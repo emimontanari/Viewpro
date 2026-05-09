@@ -17,15 +17,15 @@ El MVP no es una demo. Es una versión mínima funcional para una inmobiliaria r
 Incluye:
 
 - Registro autoservicio de inmobiliarias.
-- Trial sin límite de tiempo, limitado por uso.
+- Trial sin límite de tiempo, limitado por uso y configurado manualmente desde ViewPro.
 - Gerente principal, gerentes, vendedores y propietarios.
 - Propietarios con cuenta global.
-- Propiedades de venta/alquiler con seguimiento completo.
+- Propiedades físicas únicas con gestiones de venta/alquiler por inmobiliaria.
 - Estados fijos.
 - Movimientos manuales visibles para el propietario.
-- Múltiples vendedores por propiedad.
+- Múltiples vendedores por gestión de una propiedad.
 - Consulta al vendedor por WhatsApp mediante link prearmado.
-- Documentos por propiedad u operación.
+- Documentos por propiedad física, gestión u operación.
 - Solicitudes documentales al propietario.
 - Aprobación/rechazo de documentos con historial de versiones.
 
@@ -38,6 +38,7 @@ Fuera del MVP:
 - IA.
 - Reportes avanzados.
 - Estados configurables por inmobiliaria.
+- Planes, suscripciones y pagos automáticos.
 - Descarga de documentos.
 - Chat interno.
 - Integraciones externas.
@@ -50,14 +51,19 @@ ViewPro
     → Gerentes
     → Vendedores
     → Propietarios
-      → Propiedades
+      → Propiedades físicas
+        → Gestiones por inmobiliaria
 ```
 
 ViewPro no es marketplace. El MVP se enfoca en la relación:
 
 ```txt
-Inmobiliaria → Vendedores → Propietarios → Propiedades
+Inmobiliaria → Vendedores → Gestiones de propiedades → Propietarios
 ```
+
+Decisión de dominio:
+
+> La propiedad física es una. Los estados, movimientos, vendedores y documentos operativos pertenecen a la gestión que una inmobiliaria hace sobre esa propiedad.
 
 ## Roles
 
@@ -66,7 +72,7 @@ Inmobiliaria → Vendedores → Propietarios → Propiedades
 Usuario de ViewPro.
 
 - Ve todas las inmobiliarias.
-- Administra planes y límites.
+- Administra límites operativos por inmobiliaria.
 - Puede entrar a tenants con auditoría.
 
 ### Gerente principal
@@ -112,15 +118,17 @@ Inmobiliaria se registra
 → se crea tenant
 → se crea gerente principal
 → entra en trial limitado
-→ ViewPro controla plan/límites desde dashboard
+→ ViewPro controla límites desde dashboard
 ```
 
-Trial recomendado:
+Límites iniciales recomendados:
 
 - Sin límite de tiempo.
 - Hasta 3 vendedores.
 - Hasta 5 propiedades.
 - Storage básico.
+
+En el MVP no habrá planes ni billing automático. ViewPro configurará manualmente los límites de cada inmobiliaria desde el dashboard interno.
 
 No habrá landing pública en el MVP. La entrada inicial será una pantalla simple de login/registro.
 
@@ -132,9 +140,11 @@ Ejemplo:
 
 ```txt
 Carlos Gómez
-  → Casa Palermo / Inmobiliaria Norte
-  → Depto Belgrano / Inmobiliaria Norte
-  → Local Centro / Inmobiliaria Sur
+  → Casa Palermo
+      → Gestión con Inmobiliaria Norte
+      → Gestión con Inmobiliaria Sur
+  → Depto Belgrano
+      → Gestión con Inmobiliaria Norte
 ```
 
 Primera vista del propietario:
@@ -150,22 +160,39 @@ Archivar una propiedad sólo cambia la vista del propietario. No borra la propie
 
 Las propiedades cerradas siguen visibles para el propietario como historial y carpeta documental.
 
-## Propiedades
+## Propiedades y gestiones inmobiliarias
 
-El MVP soporta venta y alquiler con el mismo flujo de estados.
+El MVP soporta venta y alquiler con el mismo flujo de estados, pero separa dos conceptos:
 
-Datos mínimos:
+```txt
+Propiedad física
+  → inmueble único del propietario
+
+Gestión inmobiliaria
+  → proceso comercial de una inmobiliaria sobre esa propiedad
+```
+
+Esto evita duplicar mentalmente una propiedad cuando varias inmobiliarias la gestionan.
+
+Datos mínimos de la propiedad física:
 
 - Dirección o nombre.
-- Tipo de operación: venta/alquiler.
-- Propietario.
-- Vendedores asignados.
-- Estado actual.
-- Precio.
-- Documentación.
-- Movimientos.
+- Características básicas.
+- Propietario principal.
+- Copropietarios futuros.
+- Documentación general.
 
-Una propiedad puede tener varios vendedores asignados.
+Datos mínimos de la gestión inmobiliaria:
+
+- Inmobiliaria responsable.
+- Tipo de operación: venta/alquiler.
+- Estado actual.
+- Precio publicado.
+- Vendedores asignados.
+- Movimientos.
+- Documentos de operación/etapa.
+
+Una propiedad puede tener varias gestiones inmobiliarias. Cada gestión puede tener varios vendedores asignados.
 
 ## Estados
 
@@ -186,6 +213,8 @@ Operación cerrada
 Cancelada
 ```
 
+El estado pertenece a la gestión inmobiliaria, no a la propiedad física.
+
 El estado se cambia manualmente por vendedor o gerente.
 
 Algunos movimientos pueden sugerir un cambio de estado, pero el usuario confirma o ignora la sugerencia.
@@ -204,7 +233,7 @@ Movimiento: Reserva iniciada
 
 Los movimientos los carga manualmente el vendedor.
 
-Todos los movimientos cargados sobre una propiedad son visibles para el propietario.
+Todos los movimientos cargados sobre una gestión de propiedad son visibles para el propietario.
 
 Cada movimiento tiene:
 
@@ -213,7 +242,7 @@ Cada movimiento tiene:
 - Fecha/hora.
 - Vendedor responsable.
 - Próximo paso opcional.
-- Propiedad asociada.
+- Gestión de propiedad asociada.
 
 Tipos iniciales:
 
@@ -234,7 +263,9 @@ Regla UX:
 
 ## Vista del propietario sobre movimientos
 
-En cada propiedad, el propietario ve:
+En cada propiedad, el propietario ve sus gestiones por inmobiliaria.
+
+Para cada gestión, ve:
 
 - Resumen general.
 - Estado actual.
@@ -247,17 +278,20 @@ Estructura:
 
 ```txt
 Propiedad
-  → Todos los movimientos
-  → Vendedores asignados
-      → Movimientos de cada vendedor
-      → Consultar por WhatsApp
+  → Gestión Inmobiliaria Norte
+      → Todos los movimientos
+      → Vendedores asignados
+          → Movimientos de cada vendedor
+          → Consultar por WhatsApp
+  → Gestión Inmobiliaria Sur
+      → Estado y movimientos propios
 ```
 
 La consulta al vendedor se resuelve con un link prearmado de WhatsApp, no con chat interno.
 
 ## Documentos
 
-Los documentos pueden ser generales de la propiedad o propios de una operación/etapa.
+Los documentos pueden ser generales de la propiedad física o propios de una gestión/operación/etapa.
 
 ### Documentos generales
 
@@ -283,6 +317,7 @@ Cada documento o solicitud documental puede estar asociado a:
 
 ```txt
 property
+property_engagement
 operation/stage
 ```
 
@@ -292,7 +327,7 @@ En el MVP, los roles autorizados sólo visualizan documentos. No descargan.
 
 La inmobiliaria/gerencia ve toda la documentación dentro de su tenant.
 
-Los documentos sensibles de una operación no son visibles automáticamente para todos los vendedores asignados a una propiedad.
+Los documentos sensibles de una operación no son visibles automáticamente para todos los vendedores asignados a una gestión.
 
 Regla:
 
@@ -382,7 +417,7 @@ Debe permitir:
 
 - Ver inmobiliarias registradas.
 - Ver estado del tenant.
-- Ver uso del trial.
+- Ver uso de límites.
 - Configurar límites.
 - Activar/suspender tenant.
 
@@ -451,6 +486,23 @@ El MVP funciona si:
 - El gerente gana visibilidad operativa.
 - El propietario entiende qué pasa con su propiedad.
 
+## Riesgo crítico: adopción del vendedor
+
+ViewPro depende de que los vendedores usen la aplicación de forma constante. Si el vendedor siente que la app es “trabajo extra”, el producto pierde valor y no escala operativamente.
+
+Principios UX para reducir fricción:
+
+- Cargar un movimiento debe tardar menos de 60 segundos.
+- Las acciones principales deben estar dentro del contexto de la propiedad.
+- Usar tipos fijos y plantillas para evitar escritura repetitiva.
+- Mostrar próximos pasos y pendientes para que ViewPro también ayude al vendedor.
+- Evitar formularios largos y pantallas innecesarias.
+- Medir propiedades sin actualización y documentos pendientes sin convertirlo en persecución.
+
+Regla de producto:
+
+> Cada acción que ViewPro pida al vendedor debe ahorrar tiempo, reducir memoria operativa o evitar consultas repetidas.
+
 ## Decisiones pendientes
 
 - Alta de vendedores: manual, invitación o carga CSV.
@@ -461,6 +513,13 @@ El MVP funciona si:
 - Proveedor de storage.
 - Deploy inicial exacto.
 - Métricas concretas del piloto.
+
+## Futuro explícito
+
+- Matching de propiedades confirmado por propietario para evitar duplicados visuales en su dashboard.
+- Bóveda documental del propietario para reutilizar documentos generales con consentimiento.
+- Planes, suscripciones, pagos automáticos y upgrades autoservicio.
+- Sistema de puntos/recompensas para incentivar adopción diaria de vendedores, cuidando premiar calidad y constancia, no carga basura.
 
 ## Próximo paso
 
