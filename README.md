@@ -19,6 +19,9 @@ pnpm build
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm db:up
+pnpm db:generate
+pnpm db:down
 ```
 
 ## Apps

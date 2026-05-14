@@ -22,7 +22,20 @@ pnpm build
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm db:up
+pnpm db:generate
+pnpm db:down
 ```
+
+## Base de datos local
+
+```bash
+pnpm db:up
+pnpm db:generate
+pnpm db:down
+```
+
+La base local usa PostgreSQL en Docker con credenciales de desarrollo definidas en `apps/api/.env.example`.
 
 ## Apps
 
@@ -30,6 +43,6 @@ pnpm test
 - API health: http://localhost:3001/api/health
 - API docs: http://localhost:3001/api/docs
 
-## Regla de alcance Stage 0
+## Regla de alcance Stage 1
 
-Este bootstrap no incluye dominio, Prisma, auth real, Sentry, BullMQ, TanStack Query, storage ni UI final.
+Este backend foundation no incluye dominio, auth real, Sentry, BullMQ, TanStack Query, storage ni UI final.

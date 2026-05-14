@@ -4,6 +4,9 @@ import { ApiOkResponse, ApiTags } from '@nestjs/swagger'
 type HealthResponse = {
   status: 'ok'
   service: 'viewpro-api'
+  version: string
+  uptime: number
+  timestamp: string
 }
 
 @ApiTags('health')
@@ -15,6 +18,9 @@ export class HealthController {
     return {
       status: 'ok',
       service: 'viewpro-api',
+      version: '0.1.0',
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
     }
   }
 }
