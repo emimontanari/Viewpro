@@ -1,0 +1,10 @@
+node_modules/
+.atl/
+.turbo/
+dist/
+.next/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example

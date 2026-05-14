@@ -1,0 +1,400 @@
+# Roadmap de Implementación ViewPro MVP
+
+ViewPro se implementará por **slices verticales**. Cada etapa debe entregar una parte verificable del producto, evitando construir durante semanas “capas” aisladas que no prueban valor real.
+
+## Decisión principal
+
+No implementar así:
+
+```txt
+1. Toda la base de datos
+2. Todo el backend
+3. Todo el frontend
+4. Recién ahí probar el producto
+```
+
+Implementar así:
+
+```txt
+Bootstrap técnico
+→ auth + tenant real
+→ propiedad + gestión
+→ movimiento visible
+→ propietario ve seguimiento
+→ documentos
+→ métricas
+→ hardening MVP
+```
+
+Regla:
+
+> ViewPro empieza a existir cuando un vendedor carga un avance y un propietario lo ve.
+
+## Etapa 0 — Bootstrap técnico
+
+Objetivo:
+
+Crear la base técnica del monorepo sin implementar dominio grande.
+
+Incluye:
+
+- pnpm workspace
+- Turborepo
+- `apps/web` con Next.js
+- `apps/api` con NestJS
+- `packages/contracts`
+- `packages/config` si aporta
+- scripts base
+- env examples
+
+Validación:
+
+```txt
+pnpm install
+pnpm dev
+pnpm build
+pnpm lint
+pnpm typecheck
+```
+
+Resultado esperado:
+
+Frontend y backend arrancan por separado y desde el comando raíz.
+
+## Etapa 1 — Base backend real
+
+Objetivo:
+
+Tener una API NestJS lista para crecer con estructura correcta.
+
+Incluye:
+
+- configuración env
+- health endpoint
+- Swagger/OpenAPI
+- Prisma inicial
+- conexión PostgreSQL
+- estructura de módulos base
+- GlobalExceptionFilter
+- ValidationPipe
+- requestId/logging básico
+
+No incluye todavía:
+
+- auth completa
+- dominio inmobiliario grande
+- documentos
+- colas
+- Sentry completo
+
+Validación:
+
+- API arranca.
+- Swagger disponible.
+- Prisma conecta.
+- Test básico de health pasa.
+
+## Etapa 2 — Auth + registro de inmobiliaria
+
+Objetivo:
+
+Permitir que una inmobiliaria se registre y cree su gerente principal.
+
+Flujo:
+
+```txt
+Usuario registra inmobiliaria
+→ se crea user
+→ se crea tenant
+→ se crea tenant_membership como gerente principal
+→ puede iniciar sesión
+```
+
+Incluye:
+
+- modelo `users`
+- modelo `tenants`
+- modelo `tenant_memberships`
+- password hashing
+- login
+- refresh token rotativo básico
+- logout
+- endpoint `/me`
+- pantalla mínima de registro/login
+
+Estado backend:
+
+- Implementado en Stage 2: modelos Prisma, registro tenant, login, refresh rotativo, logout y `/me`.
+- Pendiente fuera de este slice: pantalla mínima de registro/login.
+
+Validación:
+
+- usuario puede registrar inmobiliaria
+- usuario puede iniciar sesión
+- `/me` devuelve usuario y tenant
+- no se guardan tokens en `localStorage`
+
+## Etapa 3 — Tenant context + permisos
+
+Objetivo:
+
+Resolver correctamente quién es el usuario, en qué tenant opera y qué puede hacer.
+
+Incluye:
+
+- `TenantMembershipGuard`
+- `PermissionGuard`
+- perfiles iniciales
+- permisos granulares en backend
+- contexto de tenant en API mediante header `x-tenant-id`
+- manejo de tenant suspendido o inválido
+
+Estado backend:
+
+- Implementado en Stage 3: guards `AuthGuard` → `TenantMembershipGuard` → `PermissionGuard`, permisos derivados del rol, `/me` con permisos y endpoint demo para validación e2e.
+- Pendiente fuera de este slice: selección/cambio de tenant en frontend.
+
+Validación:
+
+- un usuario ve sólo tenants donde tiene membresía
+- backend rechaza acceso cruzado
+- UI oculta acciones sin permiso
+- backend sigue siendo autoridad aunque la UI oculte botones
+- requests protegidos por tenant envían `x-tenant-id`
+
+## Etapa 4 — Propiedad física + gestión inmobiliaria
+
+Objetivo:
+
+Crear el corazón del dominio: propiedad física separada de gestión inmobiliaria.
+
+Flujo:
+
+```txt
+Gerente/vendedor crea propiedad física
+→ crea gestión inmobiliaria del tenant
+→ asigna vendedores
+```
+
+Incluye:
+
+- `property_assets`
+- `property_asset_owners`
+- `property_engagements`
+- `property_agents`
+- listados paginados
+- detalle de gestión
+- filtros básicos por estado
+
+Validación:
+
+- tenant A no ve gestiones de tenant B
+- propiedad física y gestión no se mezclan
+- una gestión puede tener varios vendedores
+- listados usan paginación/filtros
+
+## Etapa 5 — Movimientos
+
+Objetivo:
+
+Permitir que el vendedor cargue avances visibles.
+
+Este es el primer punto donde ViewPro empieza a entregar valor real.
+
+Flujo:
+
+```txt
+Vendedor entra a una gestión asignada
+→ carga movimiento en menos de 60 segundos
+→ movimiento queda en timeline
+→ propietario podrá verlo
+```
+
+Incluye:
+
+- modelo `movements`
+- endpoint crear movimiento
+- endpoint timeline de gestión
+- formulario mobile-first
+- tipos fijos de movimiento
+- próximo paso opcional
+- métricas simples opcionales: consultas, visitas, oferta
+
+Validación:
+
+- vendedor asignado puede cargar movimiento
+- vendedor no asignado no puede
+- gerente puede ver movimientos del tenant
+- movimiento aparece en timeline
+- carga no exige formulario largo
+
+## Etapa 6 — Portal propietario
+
+Objetivo:
+
+El propietario ve sus propiedades y entiende qué está pasando.
+
+Flujo:
+
+```txt
+Propietario inicia sesión
+→ ve sus propiedades
+→ entra al detalle
+→ ve gestiones y movimientos visibles
+→ puede consultar por WhatsApp
+```
+
+Incluye:
+
+- dashboard propietario
+- detalle de propiedad física
+- gestiones bajo la propiedad
+- timeline visible
+- documentos visibles si existen
+- link WhatsApp a vendedor asignado
+- evento `owner_viewed_property`
+
+Validación:
+
+- propietario sólo ve propiedades donde tiene acceso
+- no ve datos internos de otras inmobiliarias
+- entiende estado y últimos movimientos rápido
+- click WhatsApp queda medido
+
+## Etapa 7 — Documentos
+
+Objetivo:
+
+Ordenar solicitudes documentales entre inmobiliaria y propietario.
+
+Flujo:
+
+```txt
+Vendedor solicita documento
+→ propietario sube archivo
+→ vendedor/gerente aprueba o rechaza
+→ queda historial de versiones
+```
+
+Incluye:
+
+- `documents`
+- `document_requests`
+- `document_versions`
+- signed upload URLs
+- signed read URLs temporales
+- aprobación/rechazo con motivo
+- visibilidad por propiedad/gestión
+
+Validación:
+
+- propietario sólo sube documentos solicitados
+- backend valida permiso antes de signed URL
+- documentos sensibles no quedan públicos
+- rechazo exige motivo
+- historial de versiones queda trazable
+
+## Etapa 8 — Métricas piloto
+
+Objetivo:
+
+Medir si el MVP realmente funciona.
+
+Métrica norte:
+
+```txt
+% de gestiones activas con al menos una actualización visible por semana
+```
+
+Eventos mínimos:
+
+```txt
+seller_logged_in
+movement_created
+property_status_changed
+owner_invited
+owner_activated
+owner_viewed_dashboard
+owner_viewed_property
+document_requested
+document_uploaded
+document_approved
+document_rejected
+whatsapp_contact_clicked
+```
+
+Validación:
+
+- eventos críticos se registran
+- se puede consultar actividad semanal
+- se detectan gestiones sin actualización
+- se mide activación de propietarios
+
+## Etapa 9 — Hardening MVP
+
+Objetivo:
+
+Preparar el piloto real con seguridad, observabilidad y estabilidad razonable.
+
+Incluye:
+
+- tests críticos backend
+- smoke tests frontend
+- Sentry frontend/backend
+- rate limiting login/reset
+- CORS correcto
+- sanitización de errores
+- backups/restore básico documentado
+- revisión de permisos multi-tenant
+- deploy staging/producción
+
+Validación:
+
+- flujos críticos probados
+- errores llegan a Sentry sin datos sensibles
+- tenant isolation probado
+- app deployada en ambiente piloto
+
+## Primer slice funcional real
+
+El primer slice que demuestra valor es:
+
+```txt
+Gerente crea gestión
+→ vendedor carga movimiento
+→ propietario ve avance
+```
+
+Este slice debe guiar las decisiones de implementación. Si una tarea no ayuda a llegar ahí, probablemente puede esperar.
+
+## Criterio de prioridad
+
+Priorizar lo que reduce incertidumbre de producto:
+
+1. ¿La inmobiliaria puede cargar seguimiento?
+2. ¿El vendedor lo usa sin fricción?
+3. ¿El propietario entiende qué pasa?
+4. ¿Se reducen consultas repetidas?
+5. ¿El gerente gana visibilidad?
+
+## Qué queda explícitamente para después
+
+- marketplace/portal público
+- compradores/inquilinos como usuarios
+- WhatsApp Business API
+- pagos automáticos
+- app mobile nativa
+- IA
+- estados configurables por inmobiliaria
+- permisos editables avanzados
+- recompensas/puntos
+- reportes BI avanzados
+
+## Próximo paso
+
+Después de aprobar este roadmap:
+
+1. Crear el plan de implementación de la Etapa 0.
+2. Ejecutar bootstrap técnico.
+3. Commit pequeño y verificable.
+4. Continuar con Etapa 1.
