@@ -130,6 +130,61 @@ Límites iniciales recomendados:
 
 En el MVP no habrá planes ni billing automático. ViewPro configurará manualmente los límites de cada inmobiliaria desde el dashboard interno.
 
+Modelo comercial recomendado para cuando se formalicen planes:
+
+```txt
+Paquete por inmobiliaria
+→ X usuarios internos facturables
+→ Y propiedades/gestiones activas
+→ propietarios incluidos sin costo extra
+```
+
+Usuarios internos facturables:
+
+- gerentes
+- vendedores
+- administrativos futuros
+
+Usuarios no facturables directamente:
+
+- propietarios/clientes finales
+
+Regla comercial:
+
+> El propietario es parte del valor que compra la inmobiliaria. Cobrar por propietario podría frenar la adopción y reducir la visibilidad, que es la promesa central de ViewPro.
+
+También se debe evitar cobrar por propiedad individual. La recomendación es usar rangos amplios de capacidad operativa:
+
+```txt
+No: $X por cada propiedad cargada
+Sí: paquete con hasta X gestiones activas incluidas
+```
+
+Esto evita que la inmobiliaria deje de cargar propiedades por miedo a pagar más, pero permite proteger costos, storage y volumen operativo.
+
+Las propiedades cerradas/finalizadas deberían quedar como historial y no consumir cupo activo.
+
+Definición de gestión activa:
+
+> Una gestión activa es una propiedad en seguimiento comercial abierto.
+
+Estados que consumen cupo activo:
+
+- Captación.
+- Documentación pendiente.
+- Preparación de publicación.
+- Publicación activa.
+- Consultas y visitas.
+- Oferta / negociación.
+- Reserva iniciada.
+- Documentación final.
+
+Estados que no consumen cupo activo:
+
+- Operación cerrada.
+- Cancelada.
+- Archivada/histórica.
+
 No habrá landing pública en el MVP. La entrada inicial será una pantalla simple de login/registro.
 
 ## Propietarios
@@ -486,6 +541,72 @@ El MVP funciona si:
 - El gerente gana visibilidad operativa.
 - El propietario entiende qué pasa con su propiedad.
 
+Métrica norte del MVP:
+
+```txt
+% de gestiones activas con al menos una actualización visible por semana
+```
+
+Esta métrica resume si ViewPro está generando valor: vendedores cargan, propiedades se actualizan y propietarios tienen visibilidad.
+
+Métricas a capturar desde el MVP:
+
+### Adopción de vendedores
+
+- % de vendedores activos semanalmente.
+- Movimientos cargados por vendedor/semana.
+- Gestiones sin actualización por más de X días.
+- Tiempo promedio de carga de movimiento.
+
+### Uso del propietario
+
+- % de propietarios invitados que activan cuenta.
+- % de propietarios que entran al dashboard.
+- Visualizaciones de detalle de propiedad.
+- Documentos visualizados.
+- Clicks en “consultar por WhatsApp”.
+
+### Reducción de consultas repetitivas
+
+- Consultas manuales sobre estado de propiedad.
+- Consultas manuales sobre documentos.
+- Consultas manuales sobre novedades.
+- Comparación antes/después del piloto, aunque sea con medición manual inicial.
+
+### Flujo documental
+
+- Documentos solicitados.
+- Documentos subidos por propietario.
+- Documentos aprobados.
+- Documentos rechazados.
+- Tiempo promedio desde solicitud hasta subida.
+
+### Visibilidad gerencial
+
+- Ingresos del gerente al dashboard.
+- Revisiones de actividad.
+- Detección de gestiones sin movimiento.
+- Detección de documentos pendientes.
+
+Eventos mínimos a instrumentar:
+
+```txt
+seller_logged_in
+movement_created
+property_status_changed
+owner_invited
+owner_activated
+owner_viewed_dashboard
+owner_viewed_property
+document_requested
+document_uploaded
+document_approved
+document_rejected
+whatsapp_contact_clicked
+```
+
+Para MVP no hace falta un BI avanzado. Sí hace falta guardar eventos importantes desde el inicio.
+
 ## Riesgo crítico: adopción del vendedor
 
 ViewPro depende de que los vendedores usen la aplicación de forma constante. Si el vendedor siente que la app es “trabajo extra”, el producto pierde valor y no escala operativamente.
@@ -498,10 +619,27 @@ Principios UX para reducir fricción:
 - Mostrar próximos pasos y pendientes para que ViewPro también ayude al vendedor.
 - Evitar formularios largos y pantallas innecesarias.
 - Medir propiedades sin actualización y documentos pendientes sin convertirlo en persecución.
+- Priorizar experiencia mobile-first para carga rápida desde el celular.
+- Ofrecer un botón siempre visible de “Cargar avance”.
+- Permitir plantillas inteligentes editables para movimientos frecuentes.
+- Mostrar recordatorios suaves para propiedades sin actualización.
+- Mostrar un resumen diario del vendedor con pendientes reales.
+- Permitir en el futuro duplicar o reutilizar movimientos similares.
 
 Regla de producto:
 
 > Cada acción que ViewPro pida al vendedor debe ahorrar tiempo, reducir memoria operativa o evitar consultas repetidas.
+
+Ideas futuras para adopción del vendedor:
+
+- Voz a texto para cargar avances rápidamente.
+- WhatsApp como canal de entrada para convertir mensajes en movimientos.
+- Recompensas/puntos por constancia y calidad de seguimiento.
+- Beneficios con empresas aliadas para incentivar uso diario.
+
+Antipatrón a evitar:
+
+> No premiar cantidad bruta de movimientos, porque incentiva carga basura. Premiar calidad, constancia y resolución.
 
 ## Decisiones pendientes
 
@@ -520,6 +658,38 @@ Regla de producto:
 - Bóveda documental del propietario para reutilizar documentos generales con consentimiento.
 - Planes, suscripciones, pagos automáticos y upgrades autoservicio.
 - Sistema de puntos/recompensas para incentivar adopción diaria de vendedores, cuidando premiar calidad y constancia, no carga basura.
+- Portal público de propiedades como segunda línea de negocio, separado del MVP operativo.
+
+## Fase futura: portal público de propiedades
+
+Si ViewPro empieza a recopilar suficiente información de propiedades disponibles, una segunda etapa podría convertir parte de esa base en una web pública de oportunidades inmobiliarias.
+
+La idea:
+
+```txt
+ViewPro ordena propiedades internamente
+→ propietario/inmobiliaria aprueba publicación pública
+→ ViewPro muestra propiedades disponibles en una web
+→ interesados consultan desde el portal
+→ ViewPro genera oportunidades comerciales
+→ si la operación se concreta, ViewPro cobra comisión o fee pactado
+```
+
+Esto permitiría monetizar por dos vías:
+
+1. Servicio/SaaS operativo para inmobiliarias.
+2. Comisión o fee por oportunidades generadas desde la plataforma.
+
+Reglas importantes para esa fase:
+
+- No publicar nada sin autorización explícita.
+- Separar datos públicos de datos internos.
+- Registrar origen del lead.
+- Definir reglas claras de comisión.
+- Evitar conflictos con inmobiliarias por atribución.
+- Mantener trazabilidad desde consulta hasta operación.
+
+Esta fase se parece más a un portal/marketplace inmobiliario, por lo que debe tratarse como producto separado y posterior al MVP.
 
 ## Próximo paso
 

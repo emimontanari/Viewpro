@@ -276,6 +276,52 @@ MVP:
 - notificación interna simple
 - WhatsApp mediante link prearmado
 
+## Métricas y analytics del piloto
+
+Desde el MVP se deben capturar eventos de uso para validar si ViewPro genera valor real.
+
+No hace falta construir un BI avanzado desde el inicio, pero sí dejar una base de eventos.
+
+### `product_analytics_events`
+
+Eventos de comportamiento del producto.
+
+Campos conceptuales:
+
+- id
+- tenant_id opcional
+- user_id opcional
+- property_asset_id opcional
+- property_engagement_id opcional
+- event_name
+- metadata
+- created_at
+
+Eventos mínimos:
+
+```txt
+seller_logged_in
+movement_created
+property_status_changed
+owner_invited
+owner_activated
+owner_viewed_dashboard
+owner_viewed_property
+document_requested
+document_uploaded
+document_approved
+document_rejected
+whatsapp_contact_clicked
+```
+
+Métrica norte:
+
+```txt
+% de gestiones activas con al menos una actualización visible por semana
+```
+
+Esta métrica ayuda a validar que vendedores están usando la app y propietarios están recibiendo visibilidad real.
+
 ## Límites del tenant en MVP
 
 En el MVP no habrá módulo formal de planes, suscripciones ni pagos automáticos.
@@ -303,6 +349,62 @@ Inmobiliaria Norte
   max_agents: 5
   max_property_engagements: 20
   documents_enabled: true
+```
+
+Modelo comercial recomendado para futuro:
+
+```txt
+Paquete por inmobiliaria
+  → usuarios internos facturables
+  → gestiones/propiedades activas
+  → propietarios incluidos
+```
+
+Usuarios internos facturables:
+
+- gerentes
+- vendedores
+- administrativos futuros
+
+Propietarios/clientes finales no deberían contarse como cuentas facturables directas. Son parte del valor que la inmobiliaria compra al contratar ViewPro.
+
+Tampoco se recomienda cobrar por propiedad individual. La capacidad de propiedades/gestiones debe comunicarse como rango incluido en el paquete:
+
+```txt
+usuarios internos + hasta X gestiones activas
+```
+
+Las gestiones cerradas, canceladas o históricas deberían quedar fuera del cupo activo para no castigar el historial.
+
+Definición:
+
+```txt
+gestión activa = propiedad en seguimiento comercial abierto
+```
+
+Consumen cupo activo:
+
+- captación
+- documentación pendiente
+- preparación de publicación
+- publicación activa
+- consultas y visitas
+- oferta / negociación
+- reserva iniciada
+- documentación final
+
+No consumen cupo activo:
+
+- operación cerrada
+- cancelada
+- archivada/histórica
+
+Si un vendedor trabaja en varias inmobiliarias:
+
+```txt
+users: una identidad global
+tenant_memberships: una membresía por inmobiliaria
+facturación futura: cada tenant consume su propia cuenta interna activa
 ```
 
 Cuando una inmobiliaria llega a un límite:

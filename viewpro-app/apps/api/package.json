@@ -1,0 +1,26 @@
+{
+  "name": "@viewpro/api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "lint": "echo 'api lint not configured yet'",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'api tests not configured yet'"
+  },
+  "dependencies": {
+    "@nestjs/common": "11.1.21",
+    "@nestjs/core": "11.1.21",
+    "@nestjs/platform-express": "11.1.21",
+    "@nestjs/swagger": "11.4.2",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "11.0.21",
+    "@types/node": "25.7.0",
+    "typescript": "6.0.3"
+  }
+}
