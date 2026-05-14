@@ -20,6 +20,7 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm db:up
+pnpm db:migrate
 pnpm db:generate
 pnpm db:down
 ```
@@ -29,3 +30,17 @@ pnpm db:down
 - Web: http://localhost:3000
 - API health: http://localhost:3001/api/health
 - API docs: http://localhost:3001/api/docs
+
+## Auth backend
+
+Stage 2 agrega autenticación propia para registrar una inmobiliaria y su gerente principal.
+
+Endpoints principales:
+
+- `POST /api/auth/register-tenant`
+- `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
+
+La API usa cookies `httpOnly` para access y refresh tokens; el frontend no debe guardar tokens en `localStorage`.

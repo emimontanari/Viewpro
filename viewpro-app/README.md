@@ -23,6 +23,7 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm db:up
+pnpm db:migrate
 pnpm db:generate
 pnpm db:down
 ```
@@ -31,11 +32,31 @@ pnpm db:down
 
 ```bash
 pnpm db:up
+pnpm db:migrate
 pnpm db:generate
 pnpm db:down
 ```
 
 La base local usa PostgreSQL en Docker con credenciales de desarrollo definidas en `apps/api/.env.example`.
+Para aplicar migraciones:
+
+```bash
+pnpm db:migrate
+```
+
+Si el entorno local no tiene `apps/api/.env`, copiá `apps/api/.env.example` antes de ejecutar comandos de Prisma.
+
+## Auth backend
+
+La API expone auth propia multi-tenant inicial:
+
+- `POST /api/auth/register-tenant`: crea `User`, `Tenant` y `TenantMembership` `PRINCIPAL_MANAGER`.
+- `POST /api/auth/login`: valida credenciales y setea cookies `httpOnly`.
+- `POST /api/auth/refresh`: rota refresh token opaco hasheado en base de datos.
+- `POST /api/auth/logout`: revoca refresh token y limpia cookies.
+- `GET /api/auth/me`: lee el usuario autenticado y sus memberships desde la base.
+
+Los tokens no se devuelven en JSON ni deben guardarse en `localStorage`.
 
 ## Apps
 
@@ -43,6 +64,6 @@ La base local usa PostgreSQL en Docker con credenciales de desarrollo definidas 
 - API health: http://localhost:3001/api/health
 - API docs: http://localhost:3001/api/docs
 
-## Regla de alcance Stage 1
+## Regla de alcance Stage 2
 
-Este backend foundation no incluye dominio, auth real, Sentry, BullMQ, TanStack Query, storage ni UI final.
+Stage 2 incluye sólo backend de auth + tenant registration. No incluye UI, email verification, reset password, permisos granulares, rate limiting ni Sentry.

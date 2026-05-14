@@ -122,6 +122,11 @@ Incluye:
 - endpoint `/me`
 - pantalla mínima de registro/login
 
+Estado backend:
+
+- Implementado en Stage 2: modelos Prisma, registro tenant, login, refresh rotativo, logout y `/me`.
+- Pendiente fuera de este slice: pantalla mínima de registro/login.
+
 Validación:
 
 - usuario puede registrar inmobiliaria

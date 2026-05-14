@@ -16,6 +16,7 @@
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "db:generate": "pnpm --filter @viewpro/api db:generate",
+    "db:migrate": "pnpm --filter @viewpro/api db:migrate",
     "db:validate": "pnpm --filter @viewpro/api db:validate",
     "db:studio": "pnpm --filter @viewpro/api db:studio",
     "openapi:generate": "pnpm --filter @viewpro/contracts generate",

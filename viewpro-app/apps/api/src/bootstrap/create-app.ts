@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import cookieParser from 'cookie-parser'
 import { AppModule } from '../app.module'
 import { GlobalExceptionFilter } from '../common/filters/global-exception.filter'
 import { requestIdMiddleware } from '../common/middleware/request-id.middleware'
@@ -11,6 +12,7 @@ export async function createApiApp() {
   const configService = app.get(ConfigService)
 
   app.use(requestIdMiddleware)
+  app.use(cookieParser())
   app.setGlobalPrefix('api')
   app.enableCors({
     origin: configService.get<string>('app.corsOrigin'),
