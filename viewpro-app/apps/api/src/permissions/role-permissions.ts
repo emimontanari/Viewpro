@@ -1,0 +1,28 @@
+import { TenantRole } from '@prisma/client'
+import { PERMISSIONS, type Permission } from './permissions.constants'
+
+const ALL_MVP_PERMISSIONS = Object.values(PERMISSIONS)
+
+export const ROLE_PERMISSIONS: Record<TenantRole, Permission[]> = {
+  [TenantRole.PRINCIPAL_MANAGER]: ALL_MVP_PERMISSIONS,
+  [TenantRole.MANAGER]: [
+    PERMISSIONS.TENANT_VIEW,
+    PERMISSIONS.TEAM_VIEW,
+    PERMISSIONS.ENGAGEMENTS_VIEW_ALL,
+    PERMISSIONS.ENGAGEMENTS_CREATE,
+    PERMISSIONS.MOVEMENTS_CREATE,
+    PERMISSIONS.DOCUMENTS_VIEW_ALL,
+    PERMISSIONS.DOCUMENTS_REQUEST,
+  ],
+  [TenantRole.AGENT]: [
+    PERMISSIONS.TENANT_VIEW,
+    PERMISSIONS.ENGAGEMENTS_VIEW_ASSIGNED,
+    PERMISSIONS.MOVEMENTS_CREATE,
+    PERMISSIONS.DOCUMENTS_REQUEST,
+    PERMISSIONS.DOCUMENTS_REVIEW_OWN,
+  ],
+}
+
+export function getPermissionsForRole(role: TenantRole): Permission[] {
+  return ROLE_PERMISSIONS[role] ?? []
+}

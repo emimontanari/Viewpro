@@ -1,9 +1,12 @@
 import type { MembershipWithTenant } from '../../memberships/memberships.repository'
+import { getPermissionsForRole } from '../../permissions/role-permissions'
+import type { Permission } from '../../permissions/permissions.constants'
 import type { AuthUserResponse } from './auth-user.response'
 
 export type MembershipResponse = {
   id: string
   role: string
+  permissions: Permission[]
   tenant: {
     id: string
     name: string
@@ -21,6 +24,7 @@ export function mapMembership(membership: MembershipWithTenant): MembershipRespo
   return {
     id: membership.id,
     role: membership.role,
+    permissions: getPermissionsForRole(membership.role),
     tenant: {
       id: membership.tenant.id,
       name: membership.tenant.name,

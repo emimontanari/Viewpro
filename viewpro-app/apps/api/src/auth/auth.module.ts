@@ -50,5 +50,6 @@ import { RegisterTenantUseCase } from './use-cases/register-tenant.use-case'
     { provide: REFRESH_TOKEN_REPOSITORY, useClass: PrismaRefreshTokenRepository },
     { provide: AUTH_REGISTRATION_REPOSITORY, useClass: PrismaAuthRegistrationRepository },
   ],
+  exports: [AuthGuard, TokenService],
 })
 export class AuthModule {}

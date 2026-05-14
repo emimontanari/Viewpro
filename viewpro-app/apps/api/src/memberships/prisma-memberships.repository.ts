@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common'
 import type { Prisma, TenantMembership } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
-import type { MembershipsRepository, MembershipWithTenant } from './memberships.repository'
+import type {
+  MembershipsRepository,
+  MembershipWithTenant,
+  MembershipWithUserAndTenant,
+} from './memberships.repository'
 
 @Injectable()
 export class PrismaMembershipsRepository implements MembershipsRepository {
@@ -16,6 +20,13 @@ export class PrismaMembershipsRepository implements MembershipsRepository {
       where: { userId },
       include: { tenant: true },
       orderBy: { createdAt: 'asc' },
+    })
+  }
+
+  findByUserIdAndTenantId(userId: string, tenantId: string): Promise<MembershipWithUserAndTenant | null> {
+    return this.prisma.tenantMembership.findUnique({
+      where: { userId_tenantId: { userId, tenantId } },
+      include: { user: true, tenant: true },
     })
   }
 }

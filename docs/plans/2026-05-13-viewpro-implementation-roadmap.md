@@ -146,8 +146,13 @@ Incluye:
 - `PermissionGuard`
 - perfiles iniciales
 - permisos granulares en backend
-- selección/cambio de tenant en frontend
+- contexto de tenant en API mediante header `x-tenant-id`
 - manejo de tenant suspendido o inválido
+
+Estado backend:
+
+- Implementado en Stage 3: guards `AuthGuard` → `TenantMembershipGuard` → `PermissionGuard`, permisos derivados del rol, `/me` con permisos y endpoint demo para validación e2e.
+- Pendiente fuera de este slice: selección/cambio de tenant en frontend.
 
 Validación:
 
@@ -155,6 +160,7 @@ Validación:
 - backend rechaza acceso cruzado
 - UI oculta acciones sin permiso
 - backend sigue siendo autoridad aunque la UI oculte botones
+- requests protegidos por tenant envían `x-tenant-id`
 
 ## Etapa 4 — Propiedad física + gestión inmobiliaria
 

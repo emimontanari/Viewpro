@@ -44,3 +44,7 @@ Endpoints principales:
 - `GET /api/auth/me`
 
 La API usa cookies `httpOnly` para access y refresh tokens; el frontend no debe guardar tokens en `localStorage`.
+
+## Tenant context backend
+
+Stage 3 agrega contexto de tenant y permisos backend. Las llamadas protegidas que operen dentro de una inmobiliaria deben enviar `x-tenant-id`; la API valida que el usuario autenticado tenga membership activa y permiso suficiente antes de ejecutar la acción.
