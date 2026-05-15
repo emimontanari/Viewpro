@@ -51,6 +51,27 @@ enum PropertyEngagementStatus {
   CANCELLED
 }
 
+enum MovementType {
+  GENERAL_UPDATE
+  INQUIRY
+  VISIT_SCHEDULED
+  VISIT_COMPLETED
+  OFFER_RECEIVED
+  DOCUMENTATION_UPDATE
+  STATUS_CHANGE
+}
+
+enum MovementSource {
+  MANUAL
+  SYSTEM
+}
+
+enum InterestLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 model User {
   id              String             @id @default(uuid())
   email           String             @unique
@@ -69,6 +90,7 @@ model User {
   createdPropertyEngagements  PropertyEngagement[]
   assignedPropertyEngagements PropertyAgent[]      @relation("PropertyAgentUser")
   propertyAgentAssignments    PropertyAgent[]      @relation("PropertyAgentAssignedBy")
+  movements                   Movement[]
 
   @@map("users")
 }
@@ -85,6 +107,7 @@ model Tenant {
 
   propertyEngagements PropertyEngagement[]
   propertyAgents      PropertyAgent[]
+  movements           Movement[]
 
   @@map("tenants")
 }
@@ -161,6 +184,7 @@ model PropertyEngagement {
   propertyAsset PropertyAsset   @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
   createdBy     User            @relation(fields: [createdByUserId], references: [id])
   agents        PropertyAgent[]
+  movements     Movement[]
 
   @@index([tenantId, status, createdAt])
   @@index([propertyAssetId])
@@ -185,4 +209,30 @@ model PropertyAgent {
   @@index([tenantId, agentUserId])
   @@index([assignedByUserId])
   @@map("property_agents")
+}
+
+model Movement {
+  id                   String                    @id @default(uuid())
+  tenantId             String
+  propertyEngagementId String
+  createdByUserId      String
+  type                 MovementType
+  observation          String
+  nextStep             String?
+  previousStatus       PropertyEngagementStatus?
+  newStatus            PropertyEngagementStatus?
+  source               MovementSource            @default(MANUAL)
+  interestCount        Int?
+  visitCount           Int?
+  offerAmountCents     Int?
+  interestLevel        InterestLevel?
+  createdAt            DateTime                  @default(now())
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyEngagement PropertyEngagement @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)
+  createdBy          User               @relation(fields: [createdByUserId], references: [id])
+
+  @@index([tenantId, propertyEngagementId, createdAt])
+  @@index([createdByUserId])
+  @@map("movements")
 }

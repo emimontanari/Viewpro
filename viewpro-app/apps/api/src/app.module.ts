@@ -4,6 +4,7 @@ import { ConfigModule } from './config/config.module'
 import { DatabaseModule } from './database/database.module'
 import { HealthModule } from './health/health.module'
 import { MembershipsModule } from './memberships/memberships.module'
+import { MovementsModule } from './movements/movements.module'
 import { PermissionsModule } from './permissions/permissions.module'
 import { PropertyEngagementsModule } from './property-engagements/property-engagements.module'
 import { TenantsModule } from './tenants/tenants.module'
@@ -21,6 +22,7 @@ import { UsersModule } from './users/users.module'
     PermissionsModule,
     TenantContextModule,
     PropertyEngagementsModule,
+    MovementsModule,
     HealthModule,
   ],
 })
