@@ -93,12 +93,37 @@ Stage 6 soporta el portal propietario desde APIs backend read-only. Estas rutas 
 
 El acceso se resuelve con `PropertyAssetOwner(accessStatus: ACTIVE)`, no con `TenantMembership`. Las respuestas exponen datos sanitizados de propiedad, gestión, agentes y movimientos; recursos revocados, ajenos o inaccesibles responden `404`. Invitaciones, self-registration, UI, documentos y tracking de WhatsApp quedan fuera de alcance.
 
+## Documents backend
+
+Stage 7 soporta solicitudes documentales backend entre inmobiliaria y propietarios. La metadata vive en Postgres (`DocumentRequest`, `Document`, `DocumentVersion`) y los archivos se acceden mediante URLs firmadas generadas después de validar permisos. El storage queda detrás de `DocumentStoragePort`; esta etapa usa adapter fake y no incluye proveedor productivo S3/R2/MinIO.
+
+Rutas internas con auth, tenant y permisos:
+
+- `POST /api/property-engagements/:propertyEngagementId/document-requests`
+- `GET /api/document-requests`
+- `GET /api/document-requests/:id`
+- `POST /api/document-requests/:id/approve`
+- `POST /api/document-requests/:id/reject`
+- `POST /api/document-versions/:id/read-url`
+
+Managers administran todas las solicitudes del tenant. Vendedores sólo administran solicitudes propias (`requestedByUserId`). Recursos de vendedores pares, cross-tenant o inexistentes responden `404` para no filtrar existencia.
+
+Rutas owner con cookies de auth y sin `x-tenant-id`:
+
+- `GET /api/owner/document-requests`
+- `GET /api/owner/document-requests/:id`
+- `POST /api/owner/document-requests/:id/upload-url`
+- `POST /api/owner/document-versions/:id/confirm-upload`
+- `POST /api/owner/document-versions/:id/read-url`
+
+El upload owner valida propiedad activa, estado de solicitud, MIME permitido (`application/pdf`, `image/jpeg`, `image/png`, `image/webp`) y tamaño máximo de 10 MB. Confirmar la subida marca la versión como `UPLOADED`, la vuelve versión actual y deja la solicitud en `SUBMITTED`.
+
 ## Apps
 
 - Web: http://localhost:3000
 - API health: http://localhost:3001/api/health
 - API docs: http://localhost:3001/api/docs
 
-## Regla de alcance Stage 6
+## Regla de alcance Stage 7
 
-Stage 6 incluye sólo backend owner portal read-only. No incluye UI, invitaciones, registro de propietarios, documentos, billing, marketplace, notificaciones ni endpoints demo de producción.
+Stage 7 incluye sólo backend de documentos, e2e y documentación. No incluye UI, notificaciones, analytics, OCR, antivirus, previews, links públicos ni integración productiva de storage.

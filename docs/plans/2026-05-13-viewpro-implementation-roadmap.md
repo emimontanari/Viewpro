@@ -309,6 +309,14 @@ Incluye:
 - aprobación/rechazo con motivo
 - visibilidad por propiedad/gestión
 
+Estado backend:
+
+- Implementado en Stage 7: modelos `DocumentRequest`, `Document` y `DocumentVersion`, repositorio/use cases, storage abstraction, controllers internos y owner, tests unit/e2e y documentación.
+- Endpoints internos entregados: `POST /api/property-engagements/:propertyEngagementId/document-requests`, `GET /api/document-requests`, `GET /api/document-requests/:id`, `POST /api/document-requests/:id/approve`, `POST /api/document-requests/:id/reject`, `POST /api/document-versions/:id/read-url`.
+- Endpoints owner entregados: `GET /api/owner/document-requests`, `GET /api/owner/document-requests/:id`, `POST /api/owner/document-requests/:id/upload-url`, `POST /api/owner/document-versions/:id/confirm-upload`, `POST /api/owner/document-versions/:id/read-url`.
+- Regla de propiedad documental: managers ven/revisan todas las solicitudes del tenant; vendedores sólo ven/revisan solicitudes que crearon; propietarios sólo acceden a solicitudes dirigidas a su usuario con acceso activo a la propiedad.
+- URLs firmadas se crean sólo después de validar autorización. Stage 7 usa storage fake detrás de `DocumentStoragePort`; un adapter productivo S3/R2/MinIO queda fuera de alcance.
+
 Validación:
 
 - propietario sólo sube documentos solicitados

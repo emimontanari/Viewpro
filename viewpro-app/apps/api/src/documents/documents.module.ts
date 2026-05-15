@@ -1,8 +1,14 @@
 import { Module } from '@nestjs/common'
+import { AuthModule } from '../auth/auth.module'
+import { MembershipsModule } from '../memberships/memberships.module'
+import { PermissionsModule } from '../permissions/permissions.module'
+import { TenantContextModule } from '../tenant-context/tenant-context.module'
 import { PrismaDocumentsRepository } from './prisma-documents.repository'
 import { DOCUMENTS_REPOSITORY } from './documents.repository'
 import { DOCUMENT_STORAGE_PORT } from './storage/document-storage.port'
 import { FakeDocumentStorageAdapter } from './storage/fake-document-storage.adapter'
+import { DocumentsController } from './documents.controller'
+import { OwnerDocumentsController } from './owner-documents.controller'
 import { CreateDocumentRequestUseCase } from './use-cases/create-document-request.use-case'
 import { GetDocumentRequestUseCase } from './use-cases/get-document-request.use-case'
 import { ListDocumentRequestsUseCase } from './use-cases/list-document-requests.use-case'
@@ -16,6 +22,8 @@ import { GetOwnerDocumentRequestUseCase } from './use-cases/get-owner-document-r
 import { ListOwnerDocumentRequestsUseCase } from './use-cases/list-owner-document-requests.use-case'
 
 @Module({
+  imports: [AuthModule, MembershipsModule, PermissionsModule, TenantContextModule],
+  controllers: [DocumentsController, OwnerDocumentsController],
   providers: [
     { provide: DOCUMENTS_REPOSITORY, useClass: PrismaDocumentsRepository },
     { provide: DOCUMENT_STORAGE_PORT, useClass: FakeDocumentStorageAdapter },

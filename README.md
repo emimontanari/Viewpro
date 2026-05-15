@@ -79,3 +79,28 @@ Stage 6 agrega APIs backend read-only para propietarios existentes. Los propieta
 - `GET /api/owner/engagements/:engagementId/timeline`: devuelve el timeline paginado visible para el propietario.
 
 Recursos inexistentes, cross-tenant, revocados, no asignados o inaccesibles responden `404` para no filtrar existencia. Invitaciones, self-registration, UI, documentos, billing, marketplace y tracking de WhatsApp siguen fuera de alcance.
+
+## Documents backend
+
+Stage 7 agrega el flujo backend de solicitudes documentales. La API guarda metadata en Postgres y entrega URLs firmadas sólo después de validar autorización; los bytes quedan detrás de una abstracción `DocumentStoragePort`. En esta etapa se usa un adapter fake/determinístico para tests y backend inicial: no hay proveedor productivo S3/R2/MinIO todavía.
+
+Endpoints internos con sesión, `x-tenant-id`, membership y permisos:
+
+- `POST /api/property-engagements/:propertyEngagementId/document-requests`
+- `GET /api/document-requests`
+- `GET /api/document-requests/:id`
+- `POST /api/document-requests/:id/approve`
+- `POST /api/document-requests/:id/reject`
+- `POST /api/document-versions/:id/read-url`
+
+Managers ven y revisan todas las solicitudes del tenant. Vendedores/agentes sólo ven y revisan solicitudes que ellos crearon (`requestedByUserId`); vendedores pares, cross-tenant o recursos inexistentes responden `404`.
+
+Endpoints de propietario con `AuthGuard` solamente, sin `x-tenant-id`:
+
+- `GET /api/owner/document-requests`
+- `GET /api/owner/document-requests/:id`
+- `POST /api/owner/document-requests/:id/upload-url`
+- `POST /api/owner/document-versions/:id/confirm-upload`
+- `POST /api/owner/document-versions/:id/read-url`
+
+El propietario sólo ve solicitudes dirigidas a su usuario y respaldadas por `PropertyAssetOwner(accessStatus: ACTIVE)`. El upload acepta PDF/JPEG/PNG/WebP hasta 10 MB, crea una versión `PENDING_UPLOAD`, confirma la subida como `UPLOADED` y mueve la solicitud a `SUBMITTED` para aprobación o rechazo interno.

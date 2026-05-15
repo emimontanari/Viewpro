@@ -384,6 +384,8 @@ git commit -m "feat(api): add owner document upload lifecycle"
 - Modify: `viewpro-app/apps/api/src/documents/documents.module.ts`
 - Test: `viewpro-app/apps/api/test/documents.e2e-spec.ts`
 
+**Status:** ✅ Complete.
+
 **Step 1: Write failing e2e tests**
 
 Cover endpoints:
@@ -412,6 +414,8 @@ Expected: pass.
 - Create: `viewpro-app/apps/api/src/documents/owner-documents.controller.ts`
 - Modify: `viewpro-app/apps/api/src/documents/documents.module.ts`
 - Test: `viewpro-app/apps/api/test/owner-documents.e2e-spec.ts`
+
+**Status:** ✅ Complete.
 
 **Step 1: Write failing e2e tests**
 
@@ -442,6 +446,8 @@ Expected: pass.
 - Modify: `docs/plans/2026-05-13-viewpro-implementation-roadmap.md`
 - Modify: `docs/plans/2026-05-15-viewpro-stage-7-documents-design.md`
 - Modify: `docs/plans/2026-05-15-viewpro-stage-7-documents-implementation.md`
+
+**Status:** ✅ Complete.
 
 **Step 1: Update docs**
 
@@ -483,6 +489,38 @@ Only if the user explicitly authorizes it:
 git add README.md viewpro-app/README.md docs/plans/2026-05-13-viewpro-implementation-roadmap.md docs/plans/2026-05-15-viewpro-stage-7-documents-design.md docs/plans/2026-05-15-viewpro-stage-7-documents-implementation.md viewpro-app/apps/api/src/documents viewpro-app/apps/api/test/documents.e2e-spec.ts viewpro-app/apps/api/test/owner-documents.e2e-spec.ts
 git commit -m "feat(api): expose document request endpoints"
 ```
+
+### Delivered endpoint list
+
+Internal tenant-scoped endpoints:
+
+- `POST /api/property-engagements/:propertyEngagementId/document-requests`
+- `GET /api/document-requests`
+- `GET /api/document-requests/:id`
+- `POST /api/document-requests/:id/approve`
+- `POST /api/document-requests/:id/reject`
+- `POST /api/document-versions/:id/read-url`
+
+Owner endpoints:
+
+- `GET /api/owner/document-requests`
+- `GET /api/owner/document-requests/:id`
+- `POST /api/owner/document-requests/:id/upload-url`
+- `POST /api/owner/document-versions/:id/confirm-upload`
+- `POST /api/owner/document-versions/:id/read-url`
+
+### Stage 7 acceptance checklist
+
+- [x] Managers can view and review all tenant document requests.
+- [x] Requesting sellers can view and review only their own document requests.
+- [x] Peer sellers and cross-tenant internal access return `404`.
+- [x] Owners list/read/upload only requests addressed to them and backed by active property access.
+- [x] Owner endpoints use `AuthGuard` only and do not require `x-tenant-id`.
+- [x] Owner upload URL validates request state, MIME allowlist, and 10 MB max size before returning fake signed URL metadata.
+- [x] Confirm upload moves the request to `SUBMITTED` and sets the current version.
+- [x] Manager/requesting seller/owner read URLs are authorized before signed URL generation.
+- [x] Storage remains abstracted through `DocumentStoragePort`; no production storage provider is included in this stage.
+- [x] Full verification commands passed.
 
 ## Review workload forecast
 

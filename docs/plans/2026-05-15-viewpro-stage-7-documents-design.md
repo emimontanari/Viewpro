@@ -165,7 +165,7 @@ The first implementation should use a fake adapter for tests. A later slice can 
 | Upload URL TTL | 10 minutes |
 | Read URL TTL | 5 minutes |
 
-## Proposed endpoints
+## Delivered endpoints
 
 ### Internal agency endpoints
 
@@ -183,6 +183,17 @@ The first implementation should use a fake adapter for tests. A later slice can 
 - `POST /api/owner/document-requests/:id/upload-url`
 - `POST /api/owner/document-versions/:id/confirm-upload`
 - `POST /api/owner/document-versions/:id/read-url`
+
+## Delivered controller behavior
+
+- Internal endpoints use `AuthGuard`, `TenantMembershipGuard`, `PermissionGuard`, and `x-tenant-id`.
+- Owner endpoints use `AuthGuard` only and do not require `x-tenant-id`.
+- Request ownership is explicit: tenant managers can view/review all tenant requests; sellers can view/review only requests where `requestedByUserId` is their user ID.
+- Peer seller, cross-tenant, inaccessible, revoked, or missing resources return `404` to avoid leaking existence.
+- Owner upload URL creation validates active owner access, request state, allowlisted MIME type, and file size up to 10 MB before creating a `PENDING_UPLOAD` version.
+- Upload confirmation marks the version `UPLOADED`, sets it as the current document version, and moves the request to `SUBMITTED`.
+- Read URLs are returned only after backend authorization checks for the manager/requesting seller or the owning owner.
+- The stage still uses the fake `DocumentStoragePort` adapter. Production S3/R2/MinIO storage remains out of scope.
 
 ## Implementation slices
 
@@ -212,24 +223,24 @@ The first implementation should use a fake adapter for tests. A later slice can 
 
 ### Slice 4 — Controllers, e2e, docs, verification
 
-- Internal endpoints.
-- Owner endpoints.
-- E2E coverage for permission boundaries.
-- README/roadmap updates.
-- Full verification.
+- Internal endpoints. ✅
+- Owner endpoints. ✅
+- E2E coverage for permission boundaries. ✅
+- README/roadmap updates. ✅
+- Full verification. ✅
 
 ## Acceptance checklist
 
-- [ ] Managers can view and review all tenant document requests.
-- [ ] Requesting sellers can view and review only their own document requests.
-- [ ] Other sellers in the same tenant receive `404` for peer requests.
-- [ ] Owners can view and upload only requests addressed to them.
-- [ ] Owner endpoints do not require `x-tenant-id`.
-- [ ] Rejection requires a reason.
-- [ ] Rejected requests allow a new document version.
-- [ ] Signed URLs are created only after backend permission checks.
-- [ ] Files are represented by storage keys and metadata, not Postgres blobs.
-- [ ] Full verification passes.
+- [x] Managers can view and review all tenant document requests.
+- [x] Requesting sellers can view and review only their own document requests.
+- [x] Other sellers in the same tenant receive `404` for peer requests.
+- [x] Owners can view and upload only requests addressed to them.
+- [x] Owner endpoints do not require `x-tenant-id`.
+- [x] Rejection requires a reason.
+- [x] Rejected requests allow a new document version.
+- [x] Signed URLs are created only after backend permission checks.
+- [x] Files are represented by storage keys and metadata, not Postgres blobs.
+- [x] Full verification passes.
 
 ## Out of scope
 
