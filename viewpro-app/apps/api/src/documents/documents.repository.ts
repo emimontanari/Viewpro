@@ -20,6 +20,12 @@ export type CreateDocumentRequestInput = {
   description?: string | null
 }
 
+export type TenantEngagementForDocumentRequest = {
+  id: string
+  tenantId: string
+  propertyAssetId: string
+}
+
 export type ListInternalDocumentRequestsInput = {
   tenantId: string
   viewerUserId: string
@@ -65,6 +71,11 @@ export type FindOwnerDocumentRequestDetailInput = {
 }
 
 export type DocumentsRepository = {
+  findTenantEngagementForDocumentRequest(input: {
+    tenantId: string
+    propertyEngagementId: string
+    ownerUserId: string
+  }): Promise<TenantEngagementForDocumentRequest | null>
   createRequest(input: CreateDocumentRequestInput): Promise<DocumentRequestRecord>
   listInternalRequests(
     input: ListInternalDocumentRequestsInput,

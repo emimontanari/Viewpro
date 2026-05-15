@@ -21,6 +21,21 @@ export const documentRequestInclude = {
 export class PrismaDocumentsRepository implements DocumentsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  findTenantEngagementForDocumentRequest(input: {
+    tenantId: string
+    propertyEngagementId: string
+    ownerUserId: string
+  }): Promise<{ id: string; tenantId: string; propertyAssetId: string } | null> {
+    return this.prisma.propertyEngagement.findFirst({
+      where: {
+        id: input.propertyEngagementId,
+        tenantId: input.tenantId,
+        propertyAsset: { owners: { some: { userId: input.ownerUserId, accessStatus: 'ACTIVE' } } },
+      },
+      select: { id: true, tenantId: true, propertyAssetId: true },
+    })
+  }
+
   createRequest(input: CreateDocumentRequestInput): Promise<DocumentRequestRecord> {
     return this.prisma.documentRequest.create({
       data: {
