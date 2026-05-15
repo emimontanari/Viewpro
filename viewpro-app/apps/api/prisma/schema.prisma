@@ -25,6 +25,32 @@ enum TenantRole {
   AGENT
 }
 
+enum PropertyType {
+  HOUSE
+  APARTMENT
+  LAND
+  COMMERCIAL
+  OTHER
+}
+
+enum PropertyOperationType {
+  SALE
+  RENT
+}
+
+enum PropertyEngagementStatus {
+  CAPTURE
+  DOCUMENTATION_PENDING
+  PUBLICATION_PREPARATION
+  ACTIVE_PUBLICATION
+  INQUIRIES_AND_VISITS
+  OFFER_NEGOTIATION
+  RESERVATION_STARTED
+  FINAL_DOCUMENTATION
+  CLOSED
+  CANCELLED
+}
+
 model User {
   id              String             @id @default(uuid())
   email           String             @unique
@@ -39,6 +65,11 @@ model User {
   memberships   TenantMembership[]
   refreshTokens RefreshToken[]
 
+  createdPropertyAssets       PropertyAsset[]
+  createdPropertyEngagements  PropertyEngagement[]
+  assignedPropertyEngagements PropertyAgent[]      @relation("PropertyAgentUser")
+  propertyAgentAssignments    PropertyAgent[]      @relation("PropertyAgentAssignedBy")
+
   @@map("users")
 }
 
@@ -51,6 +82,9 @@ model Tenant {
   updatedAt DateTime     @updatedAt
 
   memberships TenantMembership[]
+
+  propertyEngagements PropertyEngagement[]
+  propertyAgents      PropertyAgent[]
 
   @@map("tenants")
 }
@@ -88,4 +122,67 @@ model RefreshToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_tokens")
+}
+
+model PropertyAsset {
+  id              String       @id @default(uuid())
+  title           String
+  addressLine     String
+  city            String
+  province        String
+  propertyType    PropertyType
+  ownerName       String?
+  ownerEmail      String?
+  createdByUserId String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  createdBy   User                 @relation(fields: [createdByUserId], references: [id])
+  engagements PropertyEngagement[]
+
+  @@index([createdByUserId])
+  @@index([city, province])
+  @@map("property_assets")
+}
+
+model PropertyEngagement {
+  id                  String                   @id @default(uuid())
+  tenantId            String
+  propertyAssetId     String
+  operationType       PropertyOperationType
+  status              PropertyEngagementStatus @default(CAPTURE)
+  publishedPriceCents Int?
+  currency            String                   @default("ARS")
+  createdByUserId     String
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyAsset PropertyAsset   @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
+  createdBy     User            @relation(fields: [createdByUserId], references: [id])
+  agents        PropertyAgent[]
+
+  @@index([tenantId, status, createdAt])
+  @@index([propertyAssetId])
+  @@index([createdByUserId])
+  @@map("property_engagements")
+}
+
+model PropertyAgent {
+  id                   String   @id @default(uuid())
+  tenantId             String
+  propertyEngagementId String
+  agentUserId          String
+  assignedByUserId     String
+  assignedAt           DateTime @default(now())
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyEngagement PropertyEngagement @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)
+  agentUser          User               @relation("PropertyAgentUser", fields: [agentUserId], references: [id], onDelete: Cascade)
+  assignedByUser     User               @relation("PropertyAgentAssignedBy", fields: [assignedByUserId], references: [id])
+
+  @@unique([propertyEngagementId, agentUserId])
+  @@index([tenantId, agentUserId])
+  @@index([assignedByUserId])
+  @@map("property_agents")
 }
