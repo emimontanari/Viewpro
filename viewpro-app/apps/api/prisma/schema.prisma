@@ -78,6 +78,21 @@ enum InterestLevel {
   HIGH
 }
 
+enum DocumentRequestStatus {
+  PENDING
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum DocumentVersionStatus {
+  PENDING_UPLOAD
+  UPLOADED
+  APPROVED
+  REJECTED
+}
+
 model User {
   id              String             @id @default(uuid())
   email           String             @unique
@@ -98,6 +113,10 @@ model User {
   propertyAgentAssignments    PropertyAgent[]      @relation("PropertyAgentAssignedBy")
   movements                   Movement[]
   ownedPropertyAssets         PropertyAssetOwner[]
+  requestedDocumentRequests   DocumentRequest[]  @relation("DocumentRequestRequester")
+  ownedDocumentRequests       DocumentRequest[]  @relation("DocumentRequestOwner")
+  reviewedDocumentRequests    DocumentRequest[]  @relation("DocumentRequestReviewer")
+  uploadedDocumentVersions    DocumentVersion[]
 
   @@map("users")
 }
@@ -115,6 +134,7 @@ model Tenant {
   propertyEngagements PropertyEngagement[]
   propertyAgents      PropertyAgent[]
   movements           Movement[]
+  documentRequests    DocumentRequest[]
 
   @@map("tenants")
 }
@@ -211,6 +231,7 @@ model PropertyEngagement {
   createdBy     User            @relation(fields: [createdByUserId], references: [id])
   agents        PropertyAgent[]
   movements     Movement[]
+  documentRequests DocumentRequest[]
 
   @@index([tenantId, status, createdAt])
   @@index([propertyAssetId])
@@ -261,4 +282,69 @@ model Movement {
   @@index([tenantId, propertyEngagementId, createdAt])
   @@index([createdByUserId])
   @@map("movements")
+}
+
+model DocumentRequest {
+  id                   String                @id @default(uuid())
+  tenantId             String
+  propertyEngagementId String
+  ownerUserId          String
+  requestedByUserId    String
+  title                String
+  description          String?
+  status               DocumentRequestStatus @default(PENDING)
+  reviewedByUserId     String?
+  reviewedAt           DateTime?
+  rejectionReason      String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyEngagement PropertyEngagement @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)
+  ownerUser          User               @relation("DocumentRequestOwner", fields: [ownerUserId], references: [id])
+  requestedByUser    User               @relation("DocumentRequestRequester", fields: [requestedByUserId], references: [id])
+  reviewedByUser     User?              @relation("DocumentRequestReviewer", fields: [reviewedByUserId], references: [id])
+  document           Document?          @relation("DocumentRequestDocument")
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, requestedByUserId])
+  @@index([ownerUserId, status])
+  @@index([propertyEngagementId])
+  @@map("document_requests")
+}
+
+model Document {
+  id                String   @id @default(uuid())
+  documentRequestId String   @unique
+  currentVersionId  String?  @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  documentRequest DocumentRequest   @relation("DocumentRequestDocument", fields: [documentRequestId], references: [id], onDelete: Cascade)
+  currentVersion  DocumentVersion? @relation("CurrentDocumentVersion", fields: [currentVersionId], references: [id])
+  versions        DocumentVersion[]
+
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id               String                @id @default(uuid())
+  documentId       String
+  uploadedByUserId String
+  storageKey       String
+  originalFilename String
+  mimeType         String
+  sizeBytes        Int
+  checksum         String?
+  status           DocumentVersionStatus @default(PENDING_UPLOAD)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  document           Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploadedByUser     User      @relation(fields: [uploadedByUserId], references: [id])
+  currentForDocument Document? @relation("CurrentDocumentVersion")
+
+  @@index([documentId, status])
+  @@index([uploadedByUserId])
+  @@map("document_versions")
 }
