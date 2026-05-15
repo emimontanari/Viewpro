@@ -73,12 +73,21 @@ Stage 4 soporta propiedades físicas y gestiones inmobiliarias tenant-scoped des
 
 Los managers pueden crear, listar y leer todas las gestiones del tenant, además de asignar agentes del mismo tenant. Los agentes sólo listan y leen gestiones asignadas. Usuarios propietarios, ownership real y portal de propietario quedan fuera de alcance para Stage 4.
 
+## Movements backend
+
+Stage 5 soporta creación de movimientos y recuperación del timeline desde la API. Todas estas rutas requieren autenticación, membership activa y header `x-tenant-id`:
+
+- `POST /api/property-engagements/:id/movements`: crea un movimiento en una gestión del tenant; el body puede incluir `newStatus` para actualizar el estado de la gestión junto con el movimiento.
+- `GET /api/property-engagements/:id/movements`: lista el timeline paginado de movimientos de la gestión.
+
+Managers acceden a todas las gestiones del tenant. Agentes acceden sólo a gestiones asignadas. Accesos cross-tenant o no asignados responden `404`. El display en portal propietario continúa como alcance futuro de Stage 6.
+
 ## Apps
 
 - Web: http://localhost:3000
 - API health: http://localhost:3001/api/health
 - API docs: http://localhost:3001/api/docs
 
-## Regla de alcance Stage 4
+## Regla de alcance Stage 5
 
-Stage 4 incluye sólo backend de propiedades y gestiones inmobiliarias. No incluye UI, usuarios propietarios, portal propietario, documentos, movimientos ni endpoints demo de producción.
+Stage 5 incluye sólo backend de movimientos y timeline. No incluye UI, portal propietario, documentos, notificaciones ni endpoints demo de producción.

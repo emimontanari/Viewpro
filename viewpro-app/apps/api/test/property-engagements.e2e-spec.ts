@@ -21,6 +21,7 @@ describe('Property engagements (e2e)', () => {
   })
 
   beforeEach(async () => {
+    await prisma.movement.deleteMany()
     await prisma.propertyAgent.deleteMany()
     await prisma.propertyEngagement.deleteMany()
     await prisma.propertyAsset.deleteMany()

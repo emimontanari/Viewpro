@@ -236,6 +236,14 @@ Validación:
 - movimiento aparece en timeline
 - carga no exige formulario largo
 
+Estado backend:
+
+- Implementado en Stage 5: modelo `movements`, `POST /api/property-engagements/:id/movements` y `GET /api/property-engagements/:id/movements` para crear movimientos y recuperar timeline paginado.
+- Los endpoints de timeline requieren `x-tenant-id`, autenticación, membership activa y permisos. Managers acceden a todas las gestiones del tenant; agentes sólo a gestiones asignadas.
+- `POST /api/property-engagements/:id/movements` puede recibir `newStatus` para actualizar el estado de la gestión junto con el movimiento.
+- Acceso cross-tenant o no asignado responde `404` para no filtrar existencia.
+- Fuera de alcance de Stage 5: formulario/UI, display en portal propietario, documentos y notificaciones. El portal propietario continúa en Stage 6.
+
 ## Etapa 6 — Portal propietario
 
 Objetivo:

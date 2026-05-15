@@ -59,3 +59,12 @@ Stage 4 agrega backend para propiedades físicas y gestiones inmobiliarias tenan
 - `POST /api/property-engagements/:id/agents`: asigna un agente miembro del mismo tenant.
 
 Los roles manager ven todas las gestiones del tenant; los agentes sólo ven gestiones asignadas. Usuarios propietarios y portal de propietario siguen fuera de alcance en Stage 4.
+
+## Movements backend
+
+Stage 5 agrega backend para cargar avances y recuperar el timeline de una gestión inmobiliaria. Los endpoints protegidos requieren sesión válida y header `x-tenant-id`:
+
+- `POST /api/property-engagements/:id/movements`: crea un movimiento para la gestión del tenant actual; opcionalmente puede enviar `newStatus` para actualizar el estado de la gestión en la misma operación.
+- `GET /api/property-engagements/:id/movements`: devuelve el timeline paginado de movimientos de esa gestión.
+
+Managers pueden crear y leer movimientos de cualquier gestión del tenant. Agentes sólo pueden hacerlo sobre gestiones asignadas. Accesos cross-tenant o a gestiones no asignadas responden `404` para no filtrar existencia. La visualización en portal propietario sigue pendiente para Stage 6.
