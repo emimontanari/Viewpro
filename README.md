@@ -48,3 +48,14 @@ La API usa cookies `httpOnly` para access y refresh tokens; el frontend no debe 
 ## Tenant context backend
 
 Stage 3 agrega contexto de tenant y permisos backend. Las llamadas protegidas que operen dentro de una inmobiliaria deben enviar `x-tenant-id`; la API valida que el usuario autenticado tenga membership activa y permiso suficiente antes de ejecutar la acción.
+
+## Property engagements backend
+
+Stage 4 agrega backend para propiedades físicas y gestiones inmobiliarias tenant-scoped. Los endpoints protegidos requieren sesión válida y header `x-tenant-id`:
+
+- `POST /api/property-engagements`: crea una propiedad física y su gestión inmobiliaria para el tenant actual.
+- `GET /api/property-engagements`: lista gestiones paginadas del tenant actual.
+- `GET /api/property-engagements/:id`: lee el detalle de una gestión del tenant actual.
+- `POST /api/property-engagements/:id/agents`: asigna un agente miembro del mismo tenant.
+
+Los roles manager ven todas las gestiones del tenant; los agentes sólo ven gestiones asignadas. Usuarios propietarios y portal de propietario siguen fuera de alcance en Stage 4.

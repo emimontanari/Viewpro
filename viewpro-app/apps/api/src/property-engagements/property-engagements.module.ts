@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common'
+import { AuthModule } from '../auth/auth.module'
 import { MembershipsModule } from '../memberships/memberships.module'
+import { PermissionsModule } from '../permissions/permissions.module'
+import { TenantContextModule } from '../tenant-context/tenant-context.module'
 import { PrismaPropertyEngagementsRepository } from './prisma-property-engagements.repository'
+import { PropertyEngagementsController } from './property-engagements.controller'
 import { PROPERTY_ENGAGEMENTS_REPOSITORY } from './property-engagements.repository'
 import { AssignPropertyAgentUseCase } from './use-cases/assign-property-agent.use-case'
 import { CreatePropertyEngagementUseCase } from './use-cases/create-property-engagement.use-case'
@@ -15,7 +19,8 @@ const propertyEngagementUseCases = [
 ]
 
 @Module({
-  imports: [MembershipsModule],
+  imports: [AuthModule, MembershipsModule, PermissionsModule, TenantContextModule],
+  controllers: [PropertyEngagementsController],
   providers: [
     { provide: PROPERTY_ENGAGEMENTS_REPOSITORY, useClass: PrismaPropertyEngagementsRepository },
     ...propertyEngagementUseCases,

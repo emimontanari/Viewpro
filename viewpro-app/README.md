@@ -62,12 +62,23 @@ Los tokens no se devuelven en JSON ni deben guardarse en `localStorage`.
 
 Las rutas protegidas por tenant usan el header `x-tenant-id`. El frontend puede navegar por slug para UX, pero la API valida el `tenantId` real contra la membership del usuario y sus permisos derivados del rol.
 
+## Property engagements backend
+
+Stage 4 soporta propiedades físicas y gestiones inmobiliarias tenant-scoped desde la API. Todas estas rutas requieren autenticación, membership activa y header `x-tenant-id`:
+
+- `POST /api/property-engagements`
+- `GET /api/property-engagements`
+- `GET /api/property-engagements/:id`
+- `POST /api/property-engagements/:id/agents`
+
+Los managers pueden crear, listar y leer todas las gestiones del tenant, además de asignar agentes del mismo tenant. Los agentes sólo listan y leen gestiones asignadas. Usuarios propietarios, ownership real y portal de propietario quedan fuera de alcance para Stage 4.
+
 ## Apps
 
 - Web: http://localhost:3000
 - API health: http://localhost:3001/api/health
 - API docs: http://localhost:3001/api/docs
 
-## Regla de alcance Stage 3
+## Regla de alcance Stage 4
 
-Stage 3 incluye sólo contexto de tenant y permisos backend, más endpoints demo explícitos para pruebas. No incluye UI de selección de tenant, roles editables ni endpoints reales de dominio.
+Stage 4 incluye sólo backend de propiedades y gestiones inmobiliarias. No incluye UI, usuarios propietarios, portal propietario, documentos, movimientos ni endpoints demo de producción.

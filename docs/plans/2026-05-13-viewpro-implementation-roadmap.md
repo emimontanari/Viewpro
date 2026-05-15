@@ -179,12 +179,18 @@ Gerente/vendedor crea propiedad física
 Incluye:
 
 - `property_assets`
-- `property_asset_owners`
 - `property_engagements`
 - `property_agents`
 - listados paginados
 - detalle de gestión
 - filtros básicos por estado
+
+Estado backend:
+
+- Implementado en Stage 4: backend para `property_assets`, `property_engagements` y `property_agents` con endpoints tenant-scoped bajo `/api/property-engagements`.
+- Todos los endpoints protegidos de gestiones requieren `x-tenant-id`; el backend valida membership y permisos antes de ejecutar casos de uso.
+- Managers ven todas las gestiones del tenant; agentes ven sólo gestiones asignadas.
+- Fuera de alcance de Stage 4: usuarios propietarios, portal propietario, ownership real (`property_asset_owners`), movimientos y documentos.
 
 Validación:
 
@@ -192,6 +198,8 @@ Validación:
 - propiedad física y gestión no se mezclan
 - una gestión puede tener varios vendedores
 - listados usan paginación/filtros
+- leer una gestión de otro tenant responde `404` para no filtrar existencia
+- asignar agentes exige que el usuario pertenezca al mismo tenant
 
 ## Etapa 5 — Movimientos
 
