@@ -35,6 +35,13 @@ export type ListInternalDocumentRequestsInput = {
   status?: DocumentRequestStatus
 }
 
+export type ListOwnerDocumentRequestsInput = {
+  ownerUserId: string
+  page: number
+  pageSize: number
+  status?: DocumentRequestStatus
+}
+
 export type FindInternalDocumentRequestDetailInput = {
   tenantId: string
   requestId: string
@@ -70,6 +77,18 @@ export type FindOwnerDocumentRequestDetailInput = {
   requestId: string
 }
 
+export type FindOwnerDocumentVersionInput = {
+  ownerUserId: string
+  versionId: string
+}
+
+export type FindInternalDocumentVersionInput = {
+  tenantId: string
+  versionId: string
+  viewerUserId: string
+  canViewAll: boolean
+}
+
 export type DocumentsRepository = {
   findTenantEngagementForDocumentRequest(input: {
     tenantId: string
@@ -77,6 +96,7 @@ export type DocumentsRepository = {
     ownerUserId: string
   }): Promise<TenantEngagementForDocumentRequest | null>
   createRequest(input: CreateDocumentRequestInput): Promise<DocumentRequestRecord>
+  listOwnerRequests(input: ListOwnerDocumentRequestsInput): Promise<{ items: DocumentRequestRecord[]; total: number }>
   listInternalRequests(
     input: ListInternalDocumentRequestsInput,
   ): Promise<{ items: DocumentRequestRecord[]; total: number }>
@@ -96,4 +116,7 @@ export type DocumentsRepository = {
   markVersionUploaded(input: MarkDocumentVersionUploadedInput): Promise<DocumentVersionRecord | null>
   reviewRequest(input: ReviewDocumentRequestInput): Promise<DocumentRequestRecord | null>
   findOwnerRequestDetail(input: FindOwnerDocumentRequestDetailInput): Promise<DocumentRequestRecord | null>
+  findOwnerPendingUploadVersion(input: FindOwnerDocumentVersionInput): Promise<DocumentVersionRecord | null>
+  findOwnerReadableVersion(input: FindOwnerDocumentVersionInput): Promise<DocumentVersionRecord | null>
+  findInternalReadableVersion(input: FindInternalDocumentVersionInput): Promise<DocumentVersionRecord | null>
 }

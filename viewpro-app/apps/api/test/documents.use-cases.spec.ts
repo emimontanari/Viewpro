@@ -7,6 +7,7 @@ import { CreateDocumentRequestUseCase } from '../src/documents/use-cases/create-
 import { GetDocumentRequestUseCase } from '../src/documents/use-cases/get-document-request.use-case'
 import { ListDocumentRequestsUseCase } from '../src/documents/use-cases/list-document-requests.use-case'
 import { ApproveDocumentRequestUseCase } from '../src/documents/use-cases/approve-document-request.use-case'
+import { CreateInternalDocumentReadUrlUseCase } from '../src/documents/use-cases/create-internal-document-read-url.use-case'
 import { RejectDocumentRequestUseCase } from '../src/documents/use-cases/reject-document-request.use-case'
 
 const managerTenant: TenantContext = {
@@ -302,6 +303,56 @@ describe('Document internal use cases', () => {
         new BadRequestException('Rejection reason is required'),
       )
       expect(repository.findInternalRequestDetail).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('CreateInternalDocumentReadUrlUseCase', () => {
+    it('allows a manager to create a read URL for a tenant document version', async () => {
+      const repository = { findInternalReadableVersion: vi.fn().mockResolvedValue(currentVersion) }
+      const storage = {
+        createReadUrl: vi.fn().mockResolvedValue({
+          url: 'https://storage.example/read/documents/request-1/version-1.pdf',
+          storageKey: currentVersion.storageKey,
+          expiresInSeconds: 300,
+        }),
+      }
+      const useCase = new CreateInternalDocumentReadUrlUseCase(repository as never, storage as never)
+
+      const result = await useCase.execute(managerTenant, currentUser, 'version-1')
+
+      expect(result).toMatchObject({ version: { id: 'version-1' }, readUrl: { expiresInSeconds: 300 } })
+      expect(repository.findInternalReadableVersion).toHaveBeenCalledWith({
+        tenantId: 'tenant-1',
+        versionId: 'version-1',
+        viewerUserId: 'agent-1',
+        canViewAll: true,
+      })
+      expect(storage.createReadUrl).toHaveBeenCalledWith({ storageKey: currentVersion.storageKey, expiresInSeconds: 300 })
+    })
+
+    it('allows the requesting seller to create a read URL for their own request version', async () => {
+      const repository = { findInternalReadableVersion: vi.fn().mockResolvedValue(currentVersion) }
+      const storage = { createReadUrl: vi.fn().mockResolvedValue({ url: 'https://storage.example/read', storageKey: currentVersion.storageKey, expiresInSeconds: 300 }) }
+      const useCase = new CreateInternalDocumentReadUrlUseCase(repository as never, storage as never)
+
+      await expect(useCase.execute(sellerTenant, currentUser, 'version-1')).resolves.toMatchObject({ version: { id: 'version-1' } })
+      expect(repository.findInternalReadableVersion).toHaveBeenCalledWith({
+        tenantId: 'tenant-1',
+        versionId: 'version-1',
+        viewerUserId: 'agent-1',
+        canViewAll: false,
+      })
+    })
+
+    it('returns not found for a peer seller document version', async () => {
+      const repository = { findInternalReadableVersion: vi.fn().mockResolvedValue(null) }
+      const storage = { createReadUrl: vi.fn() }
+      const useCase = new CreateInternalDocumentReadUrlUseCase(repository as never, storage as never)
+
+      await expect(useCase.execute(sellerTenant, { id: 'seller-2', email: 'seller2@example.com' }, 'version-1')).rejects.toThrow(
+        new NotFoundException('Document version not found'),
+      )
+      expect(storage.createReadUrl).not.toHaveBeenCalled()
     })
   })
 })

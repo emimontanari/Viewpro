@@ -8,7 +8,9 @@ import type {
   DocumentsRepository,
   DocumentVersionRecord,
   FindInternalDocumentRequestDetailInput,
+  FindInternalDocumentVersionInput,
   ListInternalDocumentRequestsInput,
+  ListOwnerDocumentRequestsInput,
   ReviewDocumentRequestInput,
 } from './documents.repository'
 
@@ -55,6 +57,25 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
     input: ListInternalDocumentRequestsInput,
   ): Promise<{ items: DocumentRequestRecord[]; total: number }> {
     const where = this.buildInternalVisibilityWhere(input)
+
+    const [items, total] = await Promise.all([
+      this.prisma.documentRequest.findMany({
+        where,
+        include: documentRequestInclude,
+        orderBy: { createdAt: 'desc' },
+        skip: (input.page - 1) * input.pageSize,
+        take: input.pageSize,
+      }),
+      this.prisma.documentRequest.count({ where }),
+    ])
+
+    return { items, total }
+  }
+
+  async listOwnerRequests(
+    input: ListOwnerDocumentRequestsInput,
+  ): Promise<{ items: DocumentRequestRecord[]; total: number }> {
+    const where = this.buildOwnerRequestWhere(input)
 
     const [items, total] = await Promise.all([
       this.prisma.documentRequest.findMany({
@@ -195,6 +216,43 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
     })
   }
 
+  findOwnerPendingUploadVersion(input: {
+    ownerUserId: string
+    versionId: string
+  }): Promise<DocumentVersionRecord | null> {
+    return this.prisma.documentVersion.findFirst({
+      where: {
+        id: input.versionId,
+        uploadedByUserId: input.ownerUserId,
+        status: DocumentVersionStatus.PENDING_UPLOAD,
+        document: { documentRequest: this.buildOwnerRequestWhere({ ownerUserId: input.ownerUserId }) },
+      },
+    })
+  }
+
+  findOwnerReadableVersion(input: {
+    ownerUserId: string
+    versionId: string
+  }): Promise<DocumentVersionRecord | null> {
+    return this.prisma.documentVersion.findFirst({
+      where: {
+        id: input.versionId,
+        status: { in: [DocumentVersionStatus.UPLOADED, DocumentVersionStatus.APPROVED, DocumentVersionStatus.REJECTED] },
+        document: { documentRequest: this.buildOwnerRequestWhere({ ownerUserId: input.ownerUserId }) },
+      },
+    })
+  }
+
+  findInternalReadableVersion(input: FindInternalDocumentVersionInput): Promise<DocumentVersionRecord | null> {
+    return this.prisma.documentVersion.findFirst({
+      where: {
+        id: input.versionId,
+        status: { in: [DocumentVersionStatus.UPLOADED, DocumentVersionStatus.APPROVED, DocumentVersionStatus.REJECTED] },
+        document: { documentRequest: this.buildInternalVersionRequestWhere(input) },
+      },
+    })
+  }
+
   private buildInternalVisibilityWhere(
     input: ListInternalDocumentRequestsInput | FindInternalDocumentRequestDetailInput,
   ): Prisma.DocumentRequestWhereInput {
@@ -209,5 +267,28 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
     }
 
     return where
+  }
+
+  private buildInternalVersionRequestWhere(input: FindInternalDocumentVersionInput): Prisma.DocumentRequestWhereInput {
+    const where: Prisma.DocumentRequestWhereInput = { tenantId: input.tenantId }
+
+    if (!input.canViewAll) {
+      where.requestedByUserId = input.viewerUserId
+    }
+
+    return where
+  }
+
+  private buildOwnerRequestWhere(input: {
+    ownerUserId: string
+    status?: DocumentRequestStatus
+  }): Prisma.DocumentRequestWhereInput {
+    return {
+      ownerUserId: input.ownerUserId,
+      ...(input.status ? { status: input.status } : {}),
+      propertyEngagement: {
+        propertyAsset: { owners: { some: { userId: input.ownerUserId, accessStatus: 'ACTIVE' } } },
+      },
+    }
   }
 }

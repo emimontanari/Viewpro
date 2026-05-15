@@ -8,6 +8,12 @@ import { GetDocumentRequestUseCase } from './use-cases/get-document-request.use-
 import { ListDocumentRequestsUseCase } from './use-cases/list-document-requests.use-case'
 import { ApproveDocumentRequestUseCase } from './use-cases/approve-document-request.use-case'
 import { RejectDocumentRequestUseCase } from './use-cases/reject-document-request.use-case'
+import { ConfirmOwnerDocumentUploadUseCase } from './use-cases/confirm-owner-document-upload.use-case'
+import { CreateInternalDocumentReadUrlUseCase } from './use-cases/create-internal-document-read-url.use-case'
+import { CreateOwnerDocumentReadUrlUseCase } from './use-cases/create-owner-document-read-url.use-case'
+import { CreateOwnerDocumentUploadUrlUseCase } from './use-cases/create-owner-document-upload-url.use-case'
+import { GetOwnerDocumentRequestUseCase } from './use-cases/get-owner-document-request.use-case'
+import { ListOwnerDocumentRequestsUseCase } from './use-cases/list-owner-document-requests.use-case'
 
 @Module({
   providers: [
@@ -18,6 +24,12 @@ import { RejectDocumentRequestUseCase } from './use-cases/reject-document-reques
     GetDocumentRequestUseCase,
     ApproveDocumentRequestUseCase,
     RejectDocumentRequestUseCase,
+    ListOwnerDocumentRequestsUseCase,
+    GetOwnerDocumentRequestUseCase,
+    CreateOwnerDocumentUploadUrlUseCase,
+    ConfirmOwnerDocumentUploadUseCase,
+    CreateOwnerDocumentReadUrlUseCase,
+    CreateInternalDocumentReadUrlUseCase,
   ],
   exports: [
     DOCUMENTS_REPOSITORY,
@@ -27,6 +39,12 @@ import { RejectDocumentRequestUseCase } from './use-cases/reject-document-reques
     GetDocumentRequestUseCase,
     ApproveDocumentRequestUseCase,
     RejectDocumentRequestUseCase,
+    ListOwnerDocumentRequestsUseCase,
+    GetOwnerDocumentRequestUseCase,
+    CreateOwnerDocumentUploadUrlUseCase,
+    ConfirmOwnerDocumentUploadUseCase,
+    CreateOwnerDocumentReadUrlUseCase,
+    CreateInternalDocumentReadUrlUseCase,
   ],
 })
 export class DocumentsModule {}
