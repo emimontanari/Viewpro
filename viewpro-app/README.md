@@ -82,12 +82,23 @@ Stage 5 soporta creación de movimientos y recuperación del timeline desde la A
 
 Managers acceden a todas las gestiones del tenant. Agentes acceden sólo a gestiones asignadas. Accesos cross-tenant o no asignados responden `404`. El display en portal propietario continúa como alcance futuro de Stage 6.
 
+## Owner portal backend
+
+Stage 6 soporta el portal propietario desde APIs backend read-only. Estas rutas usan cookies de auth existentes, `AuthGuard` solamente y no requieren `x-tenant-id`, porque el propietario no opera dentro del workspace de una inmobiliaria:
+
+- `GET /api/owner/properties`
+- `GET /api/owner/properties/:propertyAssetId`
+- `GET /api/owner/properties/:propertyAssetId/engagements`
+- `GET /api/owner/engagements/:engagementId/timeline`
+
+El acceso se resuelve con `PropertyAssetOwner(accessStatus: ACTIVE)`, no con `TenantMembership`. Las respuestas exponen datos sanitizados de propiedad, gestión, agentes y movimientos; recursos revocados, ajenos o inaccesibles responden `404`. Invitaciones, self-registration, UI, documentos y tracking de WhatsApp quedan fuera de alcance.
+
 ## Apps
 
 - Web: http://localhost:3000
 - API health: http://localhost:3001/api/health
 - API docs: http://localhost:3001/api/docs
 
-## Regla de alcance Stage 5
+## Regla de alcance Stage 6
 
-Stage 5 incluye sólo backend de movimientos y timeline. No incluye UI, portal propietario, documentos, notificaciones ni endpoints demo de producción.
+Stage 6 incluye sólo backend owner portal read-only. No incluye UI, invitaciones, registro de propietarios, documentos, billing, marketplace, notificaciones ni endpoints demo de producción.

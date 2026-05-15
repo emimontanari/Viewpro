@@ -366,14 +366,16 @@ Expected: only intended Stage 6 files are modified/untracked.
 
 ## Acceptance checklist
 
-- [ ] `PropertyAssetOwner` model and migration exist.
-- [ ] Owner endpoints use `AuthGuard` only.
-- [ ] Owner endpoints do not require `x-tenant-id`.
-- [ ] Owner sees only ACTIVE linked properties.
-- [ ] Revoked/other-owner access returns `404`.
-- [ ] Owner sees sanitized engagement and timeline data.
-- [ ] Owner response does not expose tenant memberships or other owners.
-- [ ] Full verification commands pass.
+- [x] `PropertyAssetOwner` model and migration exist.
+- [x] Owner endpoints use `AuthGuard` only.
+- [x] Owner endpoints do not require `x-tenant-id`.
+- [x] Owner sees only ACTIVE linked properties.
+- [x] Revoked/other-owner access returns `404`.
+- [x] Owner sees sanitized engagement and timeline data.
+- [x] Owner response does not expose tenant memberships or other owners.
+- [x] Full verification commands pass.
+
+Stage 6 Slice 3 completed the controller, endpoint e2e coverage, docs, roadmap, and verification work. The delivered owner routes are `GET /api/owner/properties`, `GET /api/owner/properties/:propertyAssetId`, `GET /api/owner/properties/:propertyAssetId/engagements`, and `GET /api/owner/engagements/:engagementId/timeline`.
 
 ## Review workload forecast
 

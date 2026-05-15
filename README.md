@@ -68,3 +68,14 @@ Stage 5 agrega backend para cargar avances y recuperar el timeline de una gesti�
 - `GET /api/property-engagements/:id/movements`: devuelve el timeline paginado de movimientos de esa gestión.
 
 Managers pueden crear y leer movimientos de cualquier gestión del tenant. Agentes sólo pueden hacerlo sobre gestiones asignadas. Accesos cross-tenant o a gestiones no asignadas responden `404` para no filtrar existencia. La visualización en portal propietario sigue pendiente para Stage 6.
+
+## Owner portal backend
+
+Stage 6 agrega APIs backend read-only para propietarios existentes. Los propietarios son `User`s autenticados vinculados a propiedades por `PropertyAssetOwner` con acceso `ACTIVE`; no necesitan ser `TenantMembership`s y estas rutas no requieren `x-tenant-id`:
+
+- `GET /api/owner/properties`: lista propiedades activas del propietario autenticado.
+- `GET /api/owner/properties/:propertyAssetId`: devuelve el detalle sanitizado de una propiedad accesible.
+- `GET /api/owner/properties/:propertyAssetId/engagements`: lista gestiones visibles bajo esa propiedad.
+- `GET /api/owner/engagements/:engagementId/timeline`: devuelve el timeline paginado visible para el propietario.
+
+Recursos inexistentes, cross-tenant, revocados, no asignados o inaccesibles responden `404` para no filtrar existencia. Invitaciones, self-registration, UI, documentos, billing, marketplace y tracking de WhatsApp siguen fuera de alcance.

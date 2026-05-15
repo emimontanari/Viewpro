@@ -130,15 +130,17 @@ Owner endpoints must not require `x-tenant-id`, because the owner is not operati
 
 ## Testing checklist
 
-- [ ] Owner lists only ACTIVE owned properties.
-- [ ] Owner cannot see properties for another owner.
-- [ ] Revoked owner access returns no property.
-- [ ] Owner reads property detail with sanitized fields.
-- [ ] Owner lists engagements for owned property.
-- [ ] Owner cannot read engagement timeline for non-owned property.
-- [ ] Owner reads movement timeline for owned engagement.
-- [ ] Owner endpoints do not require `x-tenant-id`.
-- [ ] Internal tenant-only data is not present in owner responses.
+- [x] Owner lists only ACTIVE owned properties.
+- [x] Owner cannot see properties for another owner.
+- [x] Revoked owner access returns no property.
+- [x] Owner reads property detail with sanitized fields.
+- [x] Owner lists engagements for owned property.
+- [x] Owner cannot read engagement timeline for non-owned property.
+- [x] Owner reads movement timeline for owned engagement.
+- [x] Owner endpoints do not require `x-tenant-id`.
+- [x] Internal tenant-only data is not present in owner responses.
+
+Verified by `viewpro-app/apps/api/test/owner-portal.e2e-spec.ts`.
 
 ## Out-of-scope follow-ups
 

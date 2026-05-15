@@ -262,20 +262,27 @@ Propietario inicia sesión
 
 Incluye:
 
-- dashboard propietario
-- detalle de propiedad física
-- gestiones bajo la propiedad
-- timeline visible
-- documentos visibles si existen
-- link WhatsApp a vendedor asignado
-- evento `owner_viewed_property`
+- APIs backend read-only para propiedades del propietario
+- detalle sanitizado de propiedad física
+- gestiones visibles bajo la propiedad
+- timeline visible de movimientos
+- base de ownership real con `PropertyAssetOwner`
+- dashboard propietario, documentos, WhatsApp y eventos de analytics quedan para slices futuros
 
 Validación:
 
 - propietario sólo ve propiedades donde tiene acceso
 - no ve datos internos de otras inmobiliarias
 - entiende estado y últimos movimientos rápido
-- click WhatsApp queda medido
+- click WhatsApp queda medido en un slice futuro, no en Stage 6 backend
+
+Estado backend:
+
+- Implementado en Stage 6: modelo `PropertyAssetOwner`, repositorio/use cases del portal propietario y endpoints read-only bajo `/api/owner/*`.
+- Los endpoints usan cookies de auth y `AuthGuard` solamente; no requieren `x-tenant-id` ni `TenantMembershipGuard`.
+- Owners son `User`s existentes vinculados por `PropertyAssetOwner(accessStatus: ACTIVE)`, no miembros del tenant.
+- Recursos inexistentes, cross-tenant, revocados, no asignados o inaccesibles responden `404` para no filtrar existencia.
+- Fuera de alcance de Stage 6 backend: owner UI, invitaciones, self-registration, documentos, WhatsApp tracking, billing y marketplace.
 
 ## Etapa 7 — Documentos
 
