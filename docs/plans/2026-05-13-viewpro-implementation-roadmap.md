@@ -23,6 +23,8 @@ Bootstrap técnico
 → propietario ve seguimiento
 → documentos
 → métricas
+→ frontend MVP vertical
+→ admin ViewPro operativo
 → hardening MVP
 ```
 
@@ -366,7 +368,59 @@ Validación:
 - se detectan gestiones sin actualización
 - se mide activación de propietarios
 
-## Etapa 9 — Hardening MVP
+## Etapa 9 — Frontend MVP vertical
+
+Objetivo:
+
+Convertir el backend MVP en una aplicación usable por inmobiliarias y propietarios con una UI claro/editorial premium.
+
+Incluye:
+
+- login/registro y selección de tenant
+- dashboard interno de inmobiliaria
+- listado/detalle/creación de gestiones
+- timeline y creación de movimientos mobile-first
+- portal propietario con propiedades, detalle y timeline
+- documentos internos y owner básicos
+- dashboard visual de métricas piloto
+
+Validación:
+
+- gerente puede operar una gestión desde UI
+- vendedor puede cargar un movimiento en menos de 60 segundos
+- propietario puede entender el avance sin pedirlo por WhatsApp
+- frontend typecheck/build pasan
+- la UI no parece template genérico ni “primera UI hecha por AI”
+
+## Etapa 10 — Admin ViewPro operativo
+
+Objetivo:
+
+Dar al equipo ViewPro una pantalla interna para operar y monitorear el piloto completo.
+
+Incluye primera versión read-only:
+
+- listado de inmobiliarias/tenants
+- actividad global del piloto
+- tenants sin uso reciente
+- conteos por tenant de gestiones, documentos y eventos
+- soporte operativo básico sin impersonar usuarios
+
+No incluye inicialmente:
+
+- edición peligrosa de tenants
+- borrado de datos
+- impersonación
+- acceso a contenido privado de documentos
+- billing
+
+Validación:
+
+- ViewPro puede ver salud general del piloto
+- se detectan tenants/inmobiliarias sin actividad
+- no se expone información sensible innecesaria
+
+## Etapa 11 — Hardening MVP
 
 Objetivo:
 
