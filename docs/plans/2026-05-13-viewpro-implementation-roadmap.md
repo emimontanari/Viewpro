@@ -340,19 +340,24 @@ Métrica norte:
 Eventos mínimos:
 
 ```txt
-seller_logged_in
-movement_created
-property_status_changed
-owner_invited
-owner_activated
-owner_viewed_dashboard
-owner_viewed_property
-document_requested
-document_uploaded
-document_approved
-document_rejected
-whatsapp_contact_clicked
+SELLER_LOGGED_IN
+MOVEMENT_CREATED
+PROPERTY_STATUS_CHANGED
+OWNER_VIEWED_PROPERTY
+DOCUMENT_REQUESTED
+DOCUMENT_UPLOADED
+DOCUMENT_APPROVED
+DOCUMENT_REJECTED
 ```
+
+Estado backend:
+
+- Implementado en Stage 8: event log interno `analytics_events`, tracking desde auth/movimientos/owner/documents y reportes manager-only bajo `/api/analytics/*`.
+- Endpoints entregados: `GET /api/analytics/pilot-summary`, `GET /api/analytics/inactive-engagements`, `GET /api/analytics/events`.
+- La métrica norte usa, por ahora, gestiones activas con al menos un `MOVEMENT_CREATED` semanal como actualización visible para propietario.
+- Regla de privacidad: metadata segura solamente; no guardar emails, nombres, direcciones completas, contenido documental, observaciones, tokens, passwords ni secretos.
+- PostHog queda como adapter futuro, no fuente de verdad del piloto MVP.
+- Diferidos: `OWNER_INVITED`, `OWNER_ACTIVATED`, `OWNER_VIEWED_DASHBOARD`, `WHATSAPP_CONTACT_CLICKED`.
 
 Validación:
 

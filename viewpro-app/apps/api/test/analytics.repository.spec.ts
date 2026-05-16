@@ -51,7 +51,7 @@ describe('Analytics repository foundation', () => {
 
     expect(findMany).toHaveBeenCalledWith({
       where: { tenantId: 'tenant-1' },
-      orderBy: { occurredAt: 'desc' },
+      orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
       skip: 10,
       take: 10,
     })

@@ -164,6 +164,8 @@ Default window: 7 days.
 
 Returns paginated event audit for the tenant.
 
+Pagination is stable (`occurredAt desc`, `id desc`) and all event queries are tenant-scoped by construction. Reports return IDs and aggregate counts only; they do not expose owner/seller private identity fields.
+
 ## Access rules
 
 - Reports are internal only.
@@ -196,17 +198,19 @@ Returns paginated event audit for the tenant.
 - Docs/roadmap updates.
 - Full verification.
 
+Status: implemented as manager-only internal backend endpoints. PostHog remains a future adapter only.
+
 ## Acceptance checklist
 
-- [ ] Events are persisted internally.
-- [ ] Event names use enums, not arbitrary strings.
-- [ ] No sensitive data is stored in metadata.
-- [ ] Analytics failures do not break primary flows.
-- [ ] Movement/document/owner events are tracked.
-- [ ] Pilot summary can compute weekly active-engagement update percentage.
-- [ ] Inactive active engagements can be listed.
-- [ ] Events audit is tenant-scoped and paginated.
-- [ ] Reports are manager-only.
+- [x] Events are persisted internally.
+- [x] Event names use enums, not arbitrary strings.
+- [x] No sensitive data is stored in metadata.
+- [x] Analytics failures do not break primary flows.
+- [x] Movement/document/owner events are tracked.
+- [x] Pilot summary can compute weekly active-engagement update percentage.
+- [x] Inactive active engagements can be listed.
+- [x] Events audit is tenant-scoped and paginated.
+- [x] Reports are manager-only.
 - [ ] Full verification passes.
 
 ## Out of scope

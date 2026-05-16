@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { JwtModule } from '@nestjs/jwt'
-import { AnalyticsModule } from '../analytics/analytics.module'
+import { AnalyticsCoreModule } from '../analytics/analytics-core.module'
 import { DatabaseModule } from '../database/database.module'
 import { MembershipsModule } from '../memberships/memberships.module'
 import { TenantsModule } from '../tenants/tenants.module'
@@ -24,7 +24,7 @@ import { RegisterTenantUseCase } from './use-cases/register-tenant.use-case'
 @Module({
   imports: [
     ConfigModule,
-    AnalyticsModule,
+    AnalyticsCoreModule,
     DatabaseModule,
     UsersModule,
     TenantsModule,

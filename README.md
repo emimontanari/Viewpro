@@ -104,3 +104,15 @@ Endpoints de propietario con `AuthGuard` solamente, sin `x-tenant-id`:
 - `POST /api/owner/document-versions/:id/read-url`
 
 El propietario sólo ve solicitudes dirigidas a su usuario y respaldadas por `PropertyAssetOwner(accessStatus: ACTIVE)`. El upload acepta PDF/JPEG/PNG/WebP hasta 10 MB, crea una versión `PENDING_UPLOAD`, confirma la subida como `UPLOADED` y mueve la solicitud a `SUBMITTED` para aprobación o rechazo interno.
+
+## Pilot analytics backend
+
+Stage 8 agrega un event log interno en Postgres (`analytics_events`) para medir el piloto sin depender de PostHog. El backend emite eventos seguros para login, movimientos, vistas owner y documentos; la metadata debe contener sólo IDs/enums seguros y nunca emails, nombres, direcciones completas, contenido documental, observaciones, tokens, passwords ni secretos.
+
+Endpoints internos de reportes con sesión, `x-tenant-id`, membership y permisos de manager:
+
+- `GET /api/analytics/pilot-summary`: resumen semanal con métrica norte, conteos documentales y vistas owner.
+- `GET /api/analytics/inactive-engagements`: gestiones activas sin `MOVEMENT_CREATED` reciente; ventana default 7 días.
+- `GET /api/analytics/events`: auditoría paginada de eventos del tenant.
+
+Managers/gerentes acceden a reportes agregados; agentes/vendedores no. PostHog queda como adapter futuro de visualización/exportación, no como fuente de verdad del MVP.

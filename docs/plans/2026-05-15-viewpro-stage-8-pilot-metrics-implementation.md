@@ -204,6 +204,8 @@ git commit -m "feat(api): track pilot analytics events"
 
 ### Task 5: Add report use cases
 
+Status: implemented.
+
 **Files:**
 - Create: `viewpro-app/apps/api/src/analytics/use-cases/get-pilot-summary.use-case.ts`
 - Create: `viewpro-app/apps/api/src/analytics/use-cases/list-inactive-engagements.use-case.ts`
@@ -232,6 +234,8 @@ pnpm --filter @viewpro/api test
 Expected: pass.
 
 ### Task 6: Add manager-only analytics endpoints
+
+Status: implemented.
 
 **Files:**
 - Create: `viewpro-app/apps/api/src/analytics/analytics.controller.ts`
@@ -265,6 +269,8 @@ pnpm --filter @viewpro/api test
 Expected: pass.
 
 ### Task 7: Update docs and run full verification
+
+Status: docs updated; verification commands recorded in apply/final output.
 
 **Files:**
 - Modify: `README.md`
@@ -322,3 +328,11 @@ Recommended delivery:
 - Analytics failures do not break primary product behavior.
 - Manager-only pilot reports are available.
 - Full verification passes.
+
+## Slice 3 delivered behavior
+
+- `GET /api/analytics/pilot-summary` returns the current-week north-star metric, document event counts, and owner property views.
+- `GET /api/analytics/inactive-engagements` returns active tenant engagements without a recent `MOVEMENT_CREATED`; default window is 7 days.
+- `GET /api/analytics/events` returns tenant-scoped events with stable pagination.
+- Aggregate report access is limited to manager-level permissions; agents are rejected.
+- PostHog remains future-only and is not required for Stage 8 reporting.

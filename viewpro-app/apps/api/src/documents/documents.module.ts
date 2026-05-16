@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common'
-import { AnalyticsModule } from '../analytics/analytics.module'
+import { AnalyticsCoreModule } from '../analytics/analytics-core.module'
 import { AuthModule } from '../auth/auth.module'
 import { MembershipsModule } from '../memberships/memberships.module'
 import { PermissionsModule } from '../permissions/permissions.module'
@@ -23,7 +23,7 @@ import { GetOwnerDocumentRequestUseCase } from './use-cases/get-owner-document-r
 import { ListOwnerDocumentRequestsUseCase } from './use-cases/list-owner-document-requests.use-case'
 
 @Module({
-  imports: [AnalyticsModule, AuthModule, MembershipsModule, PermissionsModule, TenantContextModule],
+  imports: [AnalyticsCoreModule, AuthModule, MembershipsModule, PermissionsModule, TenantContextModule],
   controllers: [DocumentsController, OwnerDocumentsController],
   providers: [
     { provide: DOCUMENTS_REPOSITORY, useClass: PrismaDocumentsRepository },

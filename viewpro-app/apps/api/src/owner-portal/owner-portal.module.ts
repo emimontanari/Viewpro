@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common'
-import { AnalyticsModule } from '../analytics/analytics.module'
+import { AnalyticsCoreModule } from '../analytics/analytics-core.module'
 import { AuthModule } from '../auth/auth.module'
 import { OwnerPortalController } from './owner-portal.controller'
 import { OWNER_PORTAL_REPOSITORY } from './owner-portal.repository'
@@ -17,7 +17,7 @@ const ownerPortalUseCases = [
 ]
 
 @Module({
-  imports: [AnalyticsModule, AuthModule],
+  imports: [AnalyticsCoreModule, AuthModule],
   controllers: [OwnerPortalController],
   providers: [{ provide: OWNER_PORTAL_REPOSITORY, useClass: PrismaOwnerPortalRepository }, ...ownerPortalUseCases],
   exports: [OWNER_PORTAL_REPOSITORY, ...ownerPortalUseCases],

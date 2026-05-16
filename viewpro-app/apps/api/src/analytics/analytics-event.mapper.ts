@@ -1,4 +1,6 @@
+import type { Prisma } from '@prisma/client'
 import type { AnalyticsEventRecord } from './analytics.repository'
+import { sanitizeAnalyticsMetadata } from './analytics.service'
 
 export type AnalyticsEventResponse = {
   id: string
@@ -25,7 +27,7 @@ export function mapAnalyticsEventToResponse(event: AnalyticsEventRecord): Analyt
     propertyAssetId: event.propertyAssetId,
     documentRequestId: event.documentRequestId,
     movementId: event.movementId,
-    metadata: event.metadata,
+    metadata: sanitizeAnalyticsMetadata(event.metadata as Prisma.InputJsonValue | null),
     occurredAt: event.occurredAt.toISOString(),
   }
 }

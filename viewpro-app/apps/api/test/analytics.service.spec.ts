@@ -1,9 +1,10 @@
 import { Test } from '@nestjs/testing'
 import { AnalyticsActorType, AnalyticsEventName } from '@prisma/client'
 import { describe, expect, it, vi } from 'vitest'
-import { AnalyticsModule } from '../src/analytics/analytics.module'
+import { AnalyticsCoreModule } from '../src/analytics/analytics-core.module'
 import { ANALYTICS_REPOSITORY, type AnalyticsRepository } from '../src/analytics/analytics.repository'
 import { AnalyticsService } from '../src/analytics/analytics.service'
+import { ConfigModule } from '../src/config/config.module'
 
 describe('AnalyticsService', () => {
   it('delegates sanitized analytics events to the repository', async () => {
@@ -76,7 +77,7 @@ describe('AnalyticsService', () => {
   })
 
   it('wires the analytics module providers through Nest dependency injection', async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AnalyticsModule] })
+    const moduleRef = await Test.createTestingModule({ imports: [ConfigModule, AnalyticsCoreModule] })
       .overrideProvider(ANALYTICS_REPOSITORY)
       .useValue({ create: vi.fn() })
       .compile()

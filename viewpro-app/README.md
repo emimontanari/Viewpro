@@ -127,3 +127,17 @@ El upload owner valida propiedad activa, estado de solicitud, MIME permitido (`a
 ## Regla de alcance Stage 7
 
 Stage 7 incluye sólo backend de documentos, e2e y documentación. No incluye UI, notificaciones, analytics, OCR, antivirus, previews, links públicos ni integración productiva de storage.
+
+## Pilot analytics backend
+
+Stage 8 usa `analytics_events` como event log interno del piloto. Los eventos actuales son `SELLER_LOGGED_IN`, `MOVEMENT_CREATED`, `PROPERTY_STATUS_CHANGED`, `OWNER_VIEWED_PROPERTY`, `DOCUMENT_REQUESTED`, `DOCUMENT_UPLOADED`, `DOCUMENT_APPROVED` y `DOCUMENT_REJECTED`.
+
+Regla de seguridad: guardar sólo IDs y metadata segura basada en enums/fuentes; no guardar emails, nombres, direcciones completas, contenido documental, observaciones de movimientos, tokens, passwords ni secretos.
+
+Rutas internas con auth, tenant y permiso manager (`engagements.view_all`):
+
+- `GET /api/analytics/pilot-summary`
+- `GET /api/analytics/inactive-engagements`
+- `GET /api/analytics/events`
+
+Los reportes siempre filtran por tenant. PostHog queda fuera de Stage 8 como adapter futuro para dashboards/exportación.
