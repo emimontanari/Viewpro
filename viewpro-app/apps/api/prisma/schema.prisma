@@ -93,6 +93,23 @@ enum DocumentVersionStatus {
   REJECTED
 }
 
+enum AnalyticsActorType {
+  INTERNAL_USER
+  OWNER
+  SYSTEM
+}
+
+enum AnalyticsEventName {
+  SELLER_LOGGED_IN
+  MOVEMENT_CREATED
+  PROPERTY_STATUS_CHANGED
+  OWNER_VIEWED_PROPERTY
+  DOCUMENT_REQUESTED
+  DOCUMENT_UPLOADED
+  DOCUMENT_APPROVED
+  DOCUMENT_REJECTED
+}
+
 model User {
   id              String             @id @default(uuid())
   email           String             @unique
@@ -347,4 +364,24 @@ model DocumentVersion {
   @@index([documentId, status])
   @@index([uploadedByUserId])
   @@map("document_versions")
+}
+
+model AnalyticsEvent {
+  id                   String             @id @default(uuid())
+  tenantId             String?
+  actorUserId          String?
+  actorType            AnalyticsActorType
+  eventName            AnalyticsEventName
+  propertyEngagementId String?
+  propertyAssetId      String?
+  documentRequestId    String?
+  movementId           String?
+  metadata             Json?
+  occurredAt           DateTime           @default(now())
+
+  @@index([tenantId, eventName, occurredAt])
+  @@index([tenantId, occurredAt])
+  @@index([propertyEngagementId, occurredAt])
+  @@index([actorUserId, occurredAt])
+  @@map("analytics_events")
 }
