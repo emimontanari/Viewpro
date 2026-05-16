@@ -696,6 +696,170 @@ svg {
   grid-column: 1 / -1;
 }
 
+.dashboard-card__actions,
+.engagement-detail__actions,
+.engagement-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.engagement-workspace,
+.engagement-list,
+.engagement-detail,
+.engagement-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.engagement-workspace,
+.engagement-detail,
+.engagement-form-card {
+  padding-bottom: clamp(2rem, 6vw, 4rem);
+}
+
+.engagement-workspace__intro-content,
+.engagement-card__footer,
+.engagement-detail__hero-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.engagement-workspace__intro-content > div,
+.engagement-detail__hero-content > div:first-child {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.engagement-workspace__eyebrow {
+  margin: 0;
+  color: var(--color-brass);
+  font-size: 0.8rem;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.engagement-workspace h2,
+.engagement-detail h2,
+.engagement-form h2,
+.engagement-card h2 {
+  margin: 0;
+  font-size: clamp(1.65rem, 3vw, 2.45rem);
+}
+
+.engagement-workspace p,
+.engagement-card p,
+.engagement-detail p,
+.engagement-form p {
+  margin: 0;
+  color: var(--color-ink-muted);
+}
+
+.engagement-card__content,
+.engagement-card__main,
+.engagement-detail__panel,
+.engagement-form__section {
+  display: grid;
+  gap: 1rem;
+}
+
+.engagement-card__topline,
+.engagement-detail__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.engagement-card__topline > span:not(.vp-badge),
+.engagement-card__footer > span {
+  color: var(--color-ink-muted);
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.engagement-card__main {
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 0.7fr);
+  align-items: start;
+}
+
+.engagement-card__meta,
+.engagement-detail__stats {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+}
+
+.engagement-card__meta div,
+.engagement-detail__stats div {
+  display: grid;
+  gap: 0.1rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.65rem;
+}
+
+.engagement-card__meta dt,
+.engagement-detail__stats dt {
+  color: var(--color-ink-muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.engagement-card__meta dd,
+.engagement-detail__stats dd {
+  margin: 0;
+  color: var(--color-ink);
+  font-weight: 800;
+}
+
+.engagement-detail__hero h2 {
+  font-size: clamp(2rem, 5vw, 4rem);
+}
+
+.engagement-detail__hero-content {
+  align-items: start;
+}
+
+.engagement-detail__stats {
+  width: min(24rem, 100%);
+}
+
+.engagement-detail__grid,
+.engagement-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.engagement-detail__agent-list {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--color-ink);
+  font-weight: 750;
+}
+
+.engagement-detail__placeholder {
+  min-height: 15rem;
+}
+
+.engagement-form__section {
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 1.25rem;
+}
+
+.engagement-form__section:last-of-type {
+  border-bottom: 0;
+}
+
 @media (max-width: 700px) {
   body {
     font-size: 1rem;
@@ -717,7 +881,10 @@ svg {
   .home-proof,
   .auth-layout,
   .tenant-selector__grid,
-  .dashboard-grid {
+  .dashboard-grid,
+  .engagement-card__main,
+  .engagement-detail__grid,
+  .engagement-form__grid {
     grid-template-columns: 1fr;
   }
 

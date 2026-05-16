@@ -232,6 +232,20 @@ Run web typecheck/build.
 
 Expected: pass.
 
+### Slice 3 implementation status — Internal engagements workspace
+
+Slice 3 is the first operational workspace for agencies. It replaces the dashboard placeholder with real tenant-scoped engagement navigation and lets authenticated internal users list, inspect, and create property engagements against the backend API.
+
+**Review path:**
+- `apps/web/src/lib/engagements.ts` wraps `GET /api/property-engagements`, `GET /api/property-engagements/:id`, and `POST /api/property-engagements` with `x-tenant-id` from the selected tenant.
+- `apps/web/src/app/(internal)/engagements/page.tsx` shows the real tenant engagement list, including loading, empty, and error states.
+- `apps/web/src/app/(internal)/engagements/[id]/page.tsx` shows property summary, status, assigned sellers, and explicit placeholders for movements and documents.
+- `apps/web/src/app/(internal)/engagements/new/page.tsx` creates an engagement with the fields required by the backend DTO, then routes to the detail page.
+
+**Out of scope remains:** movement publishing, owner portal, document workflow, pilot analytics dashboard, and ViewPro admin backoffice.
+
+**Verified:** web typecheck/build, root typecheck/build, and `git diff --check` passed for this slice.
+
 ## Slice 4 — Movement publishing
 
 ### Task 9: Add movement timeline and create movement form

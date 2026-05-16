@@ -56,7 +56,7 @@ export default function DashboardPage() {
 
   return (
     <InternalShell
-      description="Un punto de partida claro para los próximos flujos de gestiones, movimientos, documentos y métricas piloto."
+      description="Un punto de partida claro para entrar al workspace de gestiones, crear propiedades y preparar los próximos flujos operativos."
       selectedTenantName={selectedMembership?.tenant.name}
       title="Dashboard de inmobiliaria"
     >
@@ -87,13 +87,22 @@ export default function DashboardPage() {
           <Card tone="subtle">
             <CardContent className="dashboard-card">
               <span>02</span>
-              <h2>Gestiones en el próximo slice</h2>
-              <p>Listados, detalles y creación de gestiones quedan fuera de este slice por diseño.</p>
+              <h2>Gestiones internas disponibles</h2>
+              <p>Abrí el listado real del tenant o cargá una nueva propiedad sin salir del workspace interno.</p>
+              <div className="dashboard-card__actions">
+                <ButtonLink href="/engagements" size="sm" variant="secondary">
+                  Ver gestiones
+                </ButtonLink>
+                <ButtonLink href="/engagements/new" size="sm" variant="ghost">
+                  Crear gestión
+                </ButtonLink>
+              </div>
             </CardContent>
           </Card>
           <EmptyState
-            description="Este placeholder deja preparado el shell interno y el estado de tenant seleccionado sin fingir que ya existen datos de gestiones."
-            title="Las pantallas operativas llegan en el próximo slice"
+            action={<ButtonLink href="/engagements">Entrar al workspace de gestiones</ButtonLink>}
+            description="Movimientos, documentos, portal de propietario y métricas piloto siguen fuera de este slice. El foco actual es operar gestiones reales del tenant."
+            title="El workspace operativo empieza por gestiones"
           />
         </section>
       ) : null}
