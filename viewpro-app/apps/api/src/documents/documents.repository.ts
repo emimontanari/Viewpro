@@ -9,7 +9,9 @@ export type DocumentRequestRecord = Prisma.DocumentRequestGetPayload<{
   }
 }>
 
-export type DocumentVersionRecord = Prisma.DocumentVersionGetPayload<object>
+export type DocumentVersionRecord = Prisma.DocumentVersionGetPayload<object> & {
+  document?: { documentRequestId: string } | null
+}
 
 export type CreateDocumentRequestInput = {
   tenantId: string

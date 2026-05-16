@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { AnalyticsModule } from '../analytics/analytics.module'
 import { AuthModule } from '../auth/auth.module'
 import { MembershipsModule } from '../memberships/memberships.module'
 import { PermissionsModule } from '../permissions/permissions.module'
@@ -13,7 +14,7 @@ import { ListMovementsUseCase } from './use-cases/list-movements.use-case'
 const movementUseCases = [CreateMovementUseCase, ListMovementsUseCase]
 
 @Module({
-  imports: [AuthModule, MembershipsModule, PermissionsModule, TenantContextModule, PropertyEngagementsModule],
+  imports: [AnalyticsModule, AuthModule, MembershipsModule, PermissionsModule, TenantContextModule, PropertyEngagementsModule],
   controllers: [MovementsController],
   providers: [{ provide: MOVEMENTS_REPOSITORY, useClass: PrismaMovementsRepository }, ...movementUseCases],
   exports: [MOVEMENTS_REPOSITORY, ...movementUseCases],

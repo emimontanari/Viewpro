@@ -1,5 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common'
-import { DocumentRequestStatus, DocumentVersionStatus } from '@prisma/client'
+import { AnalyticsActorType, AnalyticsEventName, DocumentRequestStatus, DocumentVersionStatus } from '@prisma/client'
 import { describe, expect, it, vi } from 'vitest'
 import { ConfirmOwnerDocumentUploadUseCase } from '../src/documents/use-cases/confirm-owner-document-upload.use-case'
 import { CreateOwnerDocumentReadUrlUseCase } from '../src/documents/use-cases/create-owner-document-read-url.use-case'
@@ -30,6 +30,7 @@ const documentRequest = {
 const uploadedVersion = {
   id: 'version-1',
   documentId: 'document-1',
+  document: { documentRequestId: 'request-1' },
   uploadedByUserId: 'owner-1',
   storageKey: 'document-requests/request-1/deed.pdf',
   originalFilename: 'deed.pdf',
@@ -171,18 +172,37 @@ describe('Owner document use cases', () => {
         findOwnerPendingUploadVersion: vi.fn().mockResolvedValue(pendingVersion),
         markVersionUploaded: vi.fn().mockResolvedValue(uploadedVersion),
       }
-      const useCase = new ConfirmOwnerDocumentUploadUseCase(repository as never)
+      const analyticsService = { track: vi.fn().mockResolvedValue({ status: 'persisted' }) }
+      const useCase = new ConfirmOwnerDocumentUploadUseCase(repository as never, analyticsService as never)
 
       const result = await useCase.execute(ownerUser, 'version-1')
 
       expect(result).toMatchObject({ id: 'version-1', status: DocumentVersionStatus.UPLOADED })
       expect(repository.findOwnerPendingUploadVersion).toHaveBeenCalledWith({ ownerUserId: 'owner-1', versionId: 'version-1' })
       expect(repository.markVersionUploaded).toHaveBeenCalledWith({ versionId: 'version-1' })
+      expect(analyticsService.track).toHaveBeenCalledWith({
+        eventName: AnalyticsEventName.DOCUMENT_UPLOADED,
+        actorType: AnalyticsActorType.OWNER,
+        actorUserId: 'owner-1',
+        documentRequestId: 'request-1',
+      })
+    })
+
+    it('keeps upload confirmation successful when analytics tracking fails', async () => {
+      const pendingVersion = { ...uploadedVersion, status: DocumentVersionStatus.PENDING_UPLOAD }
+      const repository = {
+        findOwnerPendingUploadVersion: vi.fn().mockResolvedValue(pendingVersion),
+        markVersionUploaded: vi.fn().mockResolvedValue(uploadedVersion),
+      }
+      const analyticsService = { track: vi.fn().mockRejectedValue(new Error('analytics unavailable')) }
+      const useCase = new ConfirmOwnerDocumentUploadUseCase(repository as never, analyticsService as never)
+
+      await expect(useCase.execute(ownerUser, 'version-1')).resolves.toMatchObject({ id: 'version-1' })
     })
 
     it('returns not found for inaccessible or non-pending versions', async () => {
       const repository = { findOwnerPendingUploadVersion: vi.fn().mockResolvedValue(null), markVersionUploaded: vi.fn() }
-      const useCase = new ConfirmOwnerDocumentUploadUseCase(repository as never)
+      const useCase = new ConfirmOwnerDocumentUploadUseCase(repository as never, { track: vi.fn() } as never)
 
       await expect(useCase.execute({ id: 'owner-2', email: 'other@example.com' }, 'version-1')).rejects.toThrow(
         new NotFoundException('Document version not found'),

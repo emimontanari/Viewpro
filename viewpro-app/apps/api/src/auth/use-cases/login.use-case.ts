@@ -1,5 +1,6 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common'
-import { UserStatus } from '@prisma/client'
+import { AnalyticsActorType, AnalyticsEventName, UserStatus } from '@prisma/client'
+import { AnalyticsService, type TrackAnalyticsEventInput } from '../../analytics/analytics.service'
 import type { MembershipsRepository } from '../../memberships/memberships.repository'
 import { MEMBERSHIPS_REPOSITORY } from '../../memberships/memberships.repository'
 import type { UsersRepository } from '../../users/users.repository'
@@ -23,6 +24,7 @@ export class LoginUseCase {
     @Inject(PASSWORD_HASHER) private readonly passwordHasher: PasswordHasher,
     @Inject(REFRESH_TOKEN_REPOSITORY) private readonly refreshTokenRepository: RefreshTokenRepository,
     private readonly tokenService: TokenService,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   async execute(dto: LoginDto): Promise<AuthSessionResult> {
@@ -44,10 +46,28 @@ export class LoginUseCase {
 
     const memberships = await this.membershipsRepository.findManyByUserId(user.id)
 
+    const unambiguousMembership = memberships.length === 1 ? memberships[0] : null
+    if (unambiguousMembership) {
+      await this.trackAnalytics({
+        eventName: AnalyticsEventName.SELLER_LOGGED_IN,
+        actorType: AnalyticsActorType.INTERNAL_USER,
+        tenantId: unambiguousMembership.tenant.id,
+        actorUserId: user.id,
+      })
+    }
+
     return {
       accessToken,
       refreshToken,
       body: { user: mapAuthUser(user), memberships: memberships.map(mapMembership) },
+    }
+  }
+
+  private async trackAnalytics(input: TrackAnalyticsEventInput): Promise<void> {
+    try {
+      await this.analyticsService.track(input)
+    } catch {
+      // Analytics must not break login.
     }
   }
 }

@@ -1,5 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common'
-import { DocumentRequestStatus, DocumentVersionStatus, TenantRole, TenantStatus, UserStatus } from '@prisma/client'
+import { AnalyticsActorType, AnalyticsEventName, DocumentRequestStatus, DocumentVersionStatus, TenantRole, TenantStatus, UserStatus } from '@prisma/client'
 import { describe, expect, it, vi } from 'vitest'
 import { PERMISSIONS } from '../src/permissions/permissions.constants'
 import type { TenantContext } from '../src/tenant-context/tenant-context.types'
@@ -73,7 +73,8 @@ describe('Document internal use cases', () => {
         findTenantEngagementForDocumentRequest: vi.fn().mockResolvedValue(documentRequest.propertyEngagement),
         createRequest: vi.fn().mockResolvedValue(documentRequest),
       }
-      const useCase = new CreateDocumentRequestUseCase(repository as never)
+      const analyticsService = { track: vi.fn().mockResolvedValue({ status: 'persisted' }) }
+      const useCase = new CreateDocumentRequestUseCase(repository as never, analyticsService as never)
 
       const result = await useCase.execute(managerTenant, currentUser, 'engagement-1', {
         ownerUserId: 'owner-1',
@@ -100,6 +101,31 @@ describe('Document internal use cases', () => {
         title: 'Property deed',
         description: 'Latest signed deed.',
       })
+      expect(analyticsService.track).toHaveBeenCalledWith({
+        eventName: AnalyticsEventName.DOCUMENT_REQUESTED,
+        actorType: AnalyticsActorType.INTERNAL_USER,
+        tenantId: 'tenant-1',
+        actorUserId: 'agent-1',
+        propertyEngagementId: 'engagement-1',
+        documentRequestId: 'request-1',
+      })
+    })
+
+    it('keeps document request creation successful when analytics tracking fails', async () => {
+      const repository = {
+        findTenantEngagementForDocumentRequest: vi.fn().mockResolvedValue(documentRequest.propertyEngagement),
+        createRequest: vi.fn().mockResolvedValue(documentRequest),
+      }
+      const analyticsService = { track: vi.fn().mockRejectedValue(new Error('analytics unavailable')) }
+      const useCase = new CreateDocumentRequestUseCase(repository as never, analyticsService as never)
+
+      await expect(
+        useCase.execute(managerTenant, currentUser, 'engagement-1', {
+          ownerUserId: 'owner-1',
+          title: 'Property deed',
+          description: 'Latest signed deed.',
+        }),
+      ).resolves.toMatchObject({ id: 'request-1' })
     })
 
     it('allows a seller to create a request without requiring property-agent assignment', async () => {
@@ -107,7 +133,7 @@ describe('Document internal use cases', () => {
         findTenantEngagementForDocumentRequest: vi.fn().mockResolvedValue(documentRequest.propertyEngagement),
         createRequest: vi.fn().mockResolvedValue({ ...documentRequest, requestedByUserId: 'seller-1' }),
       }
-      const useCase = new CreateDocumentRequestUseCase(repository as never)
+      const useCase = new CreateDocumentRequestUseCase(repository as never, { track: vi.fn() } as never)
 
       await expect(
         useCase.execute(sellerTenant, { id: 'seller-1', email: 'seller@example.com' }, 'engagement-1', {
@@ -128,7 +154,7 @@ describe('Document internal use cases', () => {
         findTenantEngagementForDocumentRequest: vi.fn().mockResolvedValue(null),
         createRequest: vi.fn(),
       }
-      const useCase = new CreateDocumentRequestUseCase(repository as never)
+      const useCase = new CreateDocumentRequestUseCase(repository as never, { track: vi.fn() } as never)
 
       await expect(
         useCase.execute(sellerTenant, currentUser, 'inaccessible-engagement', {
@@ -216,7 +242,8 @@ describe('Document internal use cases', () => {
         findInternalRequestDetail: vi.fn().mockResolvedValue(submittedRequest),
         reviewRequest: vi.fn().mockResolvedValue(approvedRequest),
       }
-      const useCase = new ApproveDocumentRequestUseCase(repository as never)
+      const analyticsService = { track: vi.fn().mockResolvedValue({ status: 'persisted' }) }
+      const useCase = new ApproveDocumentRequestUseCase(repository as never, analyticsService as never)
 
       const result = await useCase.execute(managerTenant, currentUser, 'request-1')
 
@@ -229,6 +256,13 @@ describe('Document internal use cases', () => {
         versionStatus: DocumentVersionStatus.APPROVED,
         rejectionReason: null,
       })
+      expect(analyticsService.track).toHaveBeenCalledWith({
+        eventName: AnalyticsEventName.DOCUMENT_APPROVED,
+        actorType: AnalyticsActorType.INTERNAL_USER,
+        tenantId: 'tenant-1',
+        actorUserId: 'agent-1',
+        documentRequestId: 'request-1',
+      })
     })
 
     it('allows the requesting seller to approve their own submitted request', async () => {
@@ -236,7 +270,7 @@ describe('Document internal use cases', () => {
         findInternalRequestDetail: vi.fn().mockResolvedValue(submittedRequest),
         reviewRequest: vi.fn().mockResolvedValue({ ...submittedRequest, status: DocumentRequestStatus.APPROVED }),
       }
-      const useCase = new ApproveDocumentRequestUseCase(repository as never)
+      const useCase = new ApproveDocumentRequestUseCase(repository as never, { track: vi.fn() } as never)
 
       await expect(useCase.execute(sellerTenant, currentUser, 'request-1')).resolves.toMatchObject({
         status: DocumentRequestStatus.APPROVED,
@@ -251,7 +285,7 @@ describe('Document internal use cases', () => {
 
     it('returns not found when a peer seller approves another seller request', async () => {
       const repository = { findInternalRequestDetail: vi.fn().mockResolvedValue(null), reviewRequest: vi.fn() }
-      const useCase = new ApproveDocumentRequestUseCase(repository as never)
+      const useCase = new ApproveDocumentRequestUseCase(repository as never, { track: vi.fn() } as never)
 
       await expect(useCase.execute(sellerTenant, { id: 'seller-2', email: 'seller2@example.com' }, 'request-1')).rejects.toThrow(
         new NotFoundException('Document request not found'),
@@ -274,7 +308,8 @@ describe('Document internal use cases', () => {
         findInternalRequestDetail: vi.fn().mockResolvedValue(submittedRequest),
         reviewRequest: vi.fn().mockResolvedValue(rejectedRequest),
       }
-      const useCase = new RejectDocumentRequestUseCase(repository as never)
+      const analyticsService = { track: vi.fn().mockResolvedValue({ status: 'persisted' }) }
+      const useCase = new RejectDocumentRequestUseCase(repository as never, analyticsService as never)
 
       const result = await useCase.execute(sellerTenant, currentUser, 'request-1', {
         reason: '  The uploaded deed is expired.  ',
@@ -293,11 +328,18 @@ describe('Document internal use cases', () => {
         versionStatus: DocumentVersionStatus.REJECTED,
         rejectionReason: 'The uploaded deed is expired.',
       })
+      expect(analyticsService.track).toHaveBeenCalledWith({
+        eventName: AnalyticsEventName.DOCUMENT_REJECTED,
+        actorType: AnalyticsActorType.INTERNAL_USER,
+        tenantId: 'tenant-1',
+        actorUserId: 'agent-1',
+        documentRequestId: 'request-1',
+      })
     })
 
     it('requires a non-empty rejection reason', async () => {
       const repository = { findInternalRequestDetail: vi.fn(), reviewRequest: vi.fn() }
-      const useCase = new RejectDocumentRequestUseCase(repository as never)
+      const useCase = new RejectDocumentRequestUseCase(repository as never, { track: vi.fn() } as never)
 
       await expect(useCase.execute(managerTenant, currentUser, 'request-1', { reason: '   ' })).rejects.toThrow(
         new BadRequestException('Rejection reason is required'),

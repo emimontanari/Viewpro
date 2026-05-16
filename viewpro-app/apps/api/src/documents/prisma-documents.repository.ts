@@ -144,6 +144,7 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
           checksum: input.checksum ?? null,
           status: DocumentVersionStatus.PENDING_UPLOAD,
         },
+        include: { document: { select: { documentRequestId: true } } },
       })
     })
   }
@@ -165,7 +166,10 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
         data: { status: DocumentRequestStatus.SUBMITTED },
       })
 
-      return version
+      return tx.documentVersion.findUnique({
+        where: { id: version.id },
+        include: { document: { select: { documentRequestId: true } } },
+      })
     })
   }
 
@@ -227,6 +231,7 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
         status: DocumentVersionStatus.PENDING_UPLOAD,
         document: { documentRequest: this.buildOwnerRequestWhere({ ownerUserId: input.ownerUserId }) },
       },
+      include: { document: { select: { documentRequestId: true } } },
     })
   }
 

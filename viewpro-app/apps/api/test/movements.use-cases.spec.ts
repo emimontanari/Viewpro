@@ -1,5 +1,7 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common'
 import {
+  AnalyticsActorType,
+  AnalyticsEventName,
   InterestLevel,
   MovementSource,
   MovementType,
@@ -132,7 +134,8 @@ describe('Movement use cases', () => {
   it('allows a manager to create a movement after verifying engagement visibility', async () => {
     const propertyEngagementsRepository = { findByIdForTenant: vi.fn().mockResolvedValue(engagement) }
     const movementsRepository = { create: vi.fn().mockResolvedValue(movement) }
-    const useCase = new CreateMovementUseCase(movementsRepository as never, propertyEngagementsRepository as never)
+    const analyticsService = { track: vi.fn().mockResolvedValue({ status: 'persisted' }) }
+    const useCase = new CreateMovementUseCase(movementsRepository as never, propertyEngagementsRepository as never, analyticsService as never)
 
     const result = await useCase.execute(managerTenant, currentUser, 'engagement-1', {
       type: MovementType.INQUIRY,
@@ -160,12 +163,70 @@ describe('Movement use cases', () => {
       offerAmountCents: undefined,
       interestLevel: undefined,
     })
+    expect(analyticsService.track).toHaveBeenCalledWith({
+      eventName: AnalyticsEventName.MOVEMENT_CREATED,
+      actorType: AnalyticsActorType.INTERNAL_USER,
+      tenantId: 'tenant-1',
+      actorUserId: 'user-1',
+      propertyEngagementId: 'engagement-1',
+      movementId: 'movement-1',
+    })
+    expect(analyticsService.track).toHaveBeenCalledWith({
+      eventName: AnalyticsEventName.PROPERTY_STATUS_CHANGED,
+      actorType: AnalyticsActorType.INTERNAL_USER,
+      tenantId: 'tenant-1',
+      actorUserId: 'user-1',
+      propertyEngagementId: 'engagement-1',
+      movementId: 'movement-1',
+      metadata: {
+        previousStatus: PropertyEngagementStatus.ACTIVE_PUBLICATION,
+        newStatus: PropertyEngagementStatus.INQUIRIES_AND_VISITS,
+      },
+    })
+  })
+
+  it('does not emit status change analytics when the movement leaves status unchanged', async () => {
+    const propertyEngagementsRepository = { findByIdForTenant: vi.fn().mockResolvedValue(engagement) }
+    const movementsRepository = { create: vi.fn().mockResolvedValue({ ...movement, newStatus: null }) }
+    const analyticsService = { track: vi.fn().mockResolvedValue({ status: 'persisted' }) }
+    const useCase = new CreateMovementUseCase(movementsRepository as never, propertyEngagementsRepository as never, analyticsService as never)
+
+    await useCase.execute(managerTenant, currentUser, 'engagement-1', {
+      type: MovementType.GENERAL_UPDATE,
+      observation: 'Owner was updated without a status change.',
+    })
+
+    expect(analyticsService.track).toHaveBeenCalledTimes(1)
+    expect(analyticsService.track).toHaveBeenCalledWith({
+      eventName: AnalyticsEventName.MOVEMENT_CREATED,
+      actorType: AnalyticsActorType.INTERNAL_USER,
+      tenantId: 'tenant-1',
+      actorUserId: 'user-1',
+      propertyEngagementId: 'engagement-1',
+      movementId: 'movement-1',
+    })
+  })
+
+  it('keeps movement creation successful when analytics tracking fails', async () => {
+    const propertyEngagementsRepository = { findByIdForTenant: vi.fn().mockResolvedValue(engagement) }
+    const movementsRepository = { create: vi.fn().mockResolvedValue(movement) }
+    const analyticsService = { track: vi.fn().mockRejectedValue(new Error('analytics unavailable')) }
+    const useCase = new CreateMovementUseCase(movementsRepository as never, propertyEngagementsRepository as never, analyticsService as never)
+
+    const result = await useCase.execute(managerTenant, currentUser, 'engagement-1', {
+      type: MovementType.INQUIRY,
+      observation: 'Buyer asked for a visit.',
+      newStatus: PropertyEngagementStatus.INQUIRIES_AND_VISITS,
+    })
+
+    expect(result.id).toBe('movement-1')
+    expect(analyticsService.track).toHaveBeenCalled()
   })
 
   it('allows an assigned agent to create a movement using assigned visibility', async () => {
     const propertyEngagementsRepository = { findByIdForTenant: vi.fn().mockResolvedValue(engagement) }
     const movementsRepository = { create: vi.fn().mockResolvedValue({ ...movement, id: 'movement-agent-1' }) }
-    const useCase = new CreateMovementUseCase(movementsRepository as never, propertyEngagementsRepository as never)
+    const useCase = new CreateMovementUseCase(movementsRepository as never, propertyEngagementsRepository as never, { track: vi.fn() } as never)
 
     const result = await useCase.execute(assignedAgentTenant, currentUser, 'engagement-1', {
       type: MovementType.GENERAL_UPDATE,
@@ -184,7 +245,7 @@ describe('Movement use cases', () => {
   it('returns not found for unassigned or cross-tenant engagement movement creation', async () => {
     const propertyEngagementsRepository = { findByIdForTenant: vi.fn().mockResolvedValue(null) }
     const movementsRepository = { create: vi.fn() }
-    const useCase = new CreateMovementUseCase(movementsRepository as never, propertyEngagementsRepository as never)
+    const useCase = new CreateMovementUseCase(movementsRepository as never, propertyEngagementsRepository as never, { track: vi.fn() } as never)
 
     await expect(
       useCase.execute(assignedAgentTenant, currentUser, 'unassigned-engagement', {
@@ -198,7 +259,7 @@ describe('Movement use cases', () => {
   it('rejects movement creation when the movement permission is missing', async () => {
     const propertyEngagementsRepository = { findByIdForTenant: vi.fn() }
     const movementsRepository = { create: vi.fn() }
-    const useCase = new CreateMovementUseCase(movementsRepository as never, propertyEngagementsRepository as never)
+    const useCase = new CreateMovementUseCase(movementsRepository as never, propertyEngagementsRepository as never, { track: vi.fn() } as never)
 
     await expect(
       useCase.execute(
@@ -215,7 +276,7 @@ describe('Movement use cases', () => {
   it('maps repository null on create to the same not found response', async () => {
     const propertyEngagementsRepository = { findByIdForTenant: vi.fn().mockResolvedValue(engagement) }
     const movementsRepository = { create: vi.fn().mockResolvedValue(null) }
-    const useCase = new CreateMovementUseCase(movementsRepository as never, propertyEngagementsRepository as never)
+    const useCase = new CreateMovementUseCase(movementsRepository as never, propertyEngagementsRepository as never, { track: vi.fn() } as never)
 
     await expect(
       useCase.execute(managerTenant, currentUser, 'engagement-1', {

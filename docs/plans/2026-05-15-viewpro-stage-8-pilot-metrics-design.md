@@ -90,6 +90,8 @@ Enums are intentional. Free-form strings create dirty analytics data over time.
 | `DOCUMENT_APPROVED` | Internal user approves document. | `INTERNAL_USER` | `tenantId`, `actorUserId`, `documentRequestId`. |
 | `DOCUMENT_REJECTED` | Internal user rejects document. | `INTERNAL_USER` | `tenantId`, `actorUserId`, `documentRequestId`. |
 
+Login tenant-context decision: the current login response can include multiple tenant memberships and does not select an active tenant. To avoid misleading per-tenant login counts, `SELLER_LOGGED_IN` is emitted only when login resolves to exactly one tenant membership. Multi-tenant logins are skipped until explicit tenant selection exists.
+
 Deferred events:
 
 - `OWNER_INVITED`

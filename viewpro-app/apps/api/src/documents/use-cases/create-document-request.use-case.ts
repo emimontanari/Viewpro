@@ -1,4 +1,6 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { AnalyticsActorType, AnalyticsEventName } from '@prisma/client'
+import { AnalyticsService, type TrackAnalyticsEventInput } from '../../analytics/analytics.service'
 import type { CurrentUser } from '../../auth/types/current-user'
 import { PERMISSIONS } from '../../permissions/permissions.constants'
 import type { TenantContext } from '../../tenant-context/tenant-context.types'
@@ -11,6 +13,7 @@ export class CreateDocumentRequestUseCase {
   constructor(
     @Inject(DOCUMENTS_REPOSITORY)
     private readonly documentsRepository: DocumentsRepository,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   async execute(
@@ -42,6 +45,23 @@ export class CreateDocumentRequestUseCase {
       description: input.description,
     })
 
+    await this.trackAnalytics({
+      eventName: AnalyticsEventName.DOCUMENT_REQUESTED,
+      actorType: AnalyticsActorType.INTERNAL_USER,
+      tenantId: tenant.tenantId,
+      actorUserId: currentUser.id,
+      propertyEngagementId,
+      documentRequestId: request.id,
+    })
+
     return mapDocumentRequestResponse(request)
+  }
+
+  private async trackAnalytics(input: TrackAnalyticsEventInput): Promise<void> {
+    try {
+      await this.analyticsService.track(input)
+    } catch {
+      // Analytics must not break document request creation.
+    }
   }
 }

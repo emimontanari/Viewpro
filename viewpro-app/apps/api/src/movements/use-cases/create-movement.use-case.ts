@@ -1,4 +1,6 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { AnalyticsActorType, AnalyticsEventName } from '@prisma/client'
+import { AnalyticsService, type TrackAnalyticsEventInput } from '../../analytics/analytics.service'
 import type { CurrentUser } from '../../auth/types/current-user'
 import { PERMISSIONS } from '../../permissions/permissions.constants'
 import {
@@ -17,6 +19,7 @@ export class CreateMovementUseCase {
     private readonly movementsRepository: MovementsRepository,
     @Inject(PROPERTY_ENGAGEMENTS_REPOSITORY)
     private readonly propertyEngagementsRepository: PropertyEngagementsRepository,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   async execute(
@@ -65,6 +68,38 @@ export class CreateMovementUseCase {
       throw new NotFoundException('Property engagement not found')
     }
 
+    await this.trackAnalytics({
+      eventName: AnalyticsEventName.MOVEMENT_CREATED,
+      actorType: AnalyticsActorType.INTERNAL_USER,
+      tenantId: tenant.tenantId,
+      actorUserId: currentUser.id,
+      propertyEngagementId: engagementId,
+      movementId: movement.id,
+    })
+
+    if (movement.newStatus) {
+      await this.trackAnalytics({
+        eventName: AnalyticsEventName.PROPERTY_STATUS_CHANGED,
+        actorType: AnalyticsActorType.INTERNAL_USER,
+        tenantId: tenant.tenantId,
+        actorUserId: currentUser.id,
+        propertyEngagementId: engagementId,
+        movementId: movement.id,
+        metadata: {
+          previousStatus: movement.previousStatus,
+          newStatus: movement.newStatus,
+        },
+      })
+    }
+
     return mapMovement(movement)
+  }
+
+  private async trackAnalytics(input: TrackAnalyticsEventInput): Promise<void> {
+    try {
+      await this.analyticsService.track(input)
+    } catch {
+      // Analytics must not break movement creation.
+    }
   }
 }

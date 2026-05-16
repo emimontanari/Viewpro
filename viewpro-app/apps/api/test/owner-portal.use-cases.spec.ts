@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common'
+import { AnalyticsActorType, AnalyticsEventName } from '@prisma/client'
 import { describe, expect, it, vi } from 'vitest'
 import type { OwnerPortalRepository } from '../src/owner-portal/owner-portal.repository'
 import { GetOwnerEngagementTimelineUseCase } from '../src/owner-portal/use-cases/get-owner-engagement-timeline.use-case'
@@ -32,7 +33,8 @@ describe('Owner portal use cases', () => {
   it('gets a mapped owner property when access exists', async () => {
     const property = makeProperty({ id: 'property-2', title: 'Townhouse' })
     const repository = makeRepository({ findPropertyByOwner: vi.fn().mockResolvedValue(property) })
-    const useCase = new GetOwnerPropertyUseCase(repository)
+    const analyticsService = { track: vi.fn().mockResolvedValue({ status: 'persisted' }) }
+    const useCase = new GetOwnerPropertyUseCase(repository, analyticsService as never)
 
     const result = await useCase.execute({ userId: 'owner-1', propertyAssetId: 'property-2' })
 
@@ -44,11 +46,26 @@ describe('Owner portal use cases', () => {
         createdAt: '2026-01-01T00:00:00.000Z',
       }),
     )
+    expect(analyticsService.track).toHaveBeenCalledWith({
+      eventName: AnalyticsEventName.OWNER_VIEWED_PROPERTY,
+      actorType: AnalyticsActorType.OWNER,
+      actorUserId: 'owner-1',
+      propertyAssetId: 'property-2',
+    })
+  })
+
+  it('keeps owner property detail successful when analytics tracking fails', async () => {
+    const property = makeProperty({ id: 'property-2', title: 'Townhouse' })
+    const repository = makeRepository({ findPropertyByOwner: vi.fn().mockResolvedValue(property) })
+    const analyticsService = { track: vi.fn().mockRejectedValue(new Error('analytics unavailable')) }
+    const useCase = new GetOwnerPropertyUseCase(repository, analyticsService as never)
+
+    await expect(useCase.execute({ userId: 'owner-1', propertyAssetId: 'property-2' })).resolves.toMatchObject({ id: 'property-2' })
   })
 
   it('throws 404 when an owner property is missing', async () => {
     const repository = makeRepository({ findPropertyByOwner: vi.fn().mockResolvedValue(null) })
-    const useCase = new GetOwnerPropertyUseCase(repository)
+    const useCase = new GetOwnerPropertyUseCase(repository, { track: vi.fn() } as never)
 
     await expect(useCase.execute({ userId: 'owner-1', propertyAssetId: 'missing-property' })).rejects.toThrow(
       new NotFoundException('Owner property not found'),
