@@ -10,7 +10,7 @@ export default function HomePage() {
     <PageShell>
       <section className="home-hero" aria-labelledby="home-title">
         <div className="home-hero__copy">
-          <Badge tone="brass">Pilot foundation</Badge>
+          <Badge tone="brass">Base del piloto</Badge>
           <p className="home-hero__eyebrow">ViewPro para inmobiliarias premium</p>
           <h1 id="home-title">No solo gestionás propiedades. Tus propietarios ven el avance.</h1>
           <p className="home-hero__lead">
@@ -29,7 +29,7 @@ export default function HomePage() {
         <Card className="home-hero__panel" aria-label="Vista previa de estado de una propiedad">
           <CardHeader>
             <div className="home-panel__topline">
-              <Badge tone="teal">Owner-visible</Badge>
+              <Badge tone="teal">Visible para propietario</Badge>
               <span>Actualizado esta semana</span>
             </div>
             <h2>Seguimiento editorial, sin ruido operativo.</h2>
@@ -48,7 +48,7 @@ export default function HomePage() {
             </div>
             <Input
               disabled
-              hint="Los formularios reales llegan en el próximo slice."
+              hint="Los formularios de acceso ya están disponibles para iniciar el flujo."
               id="preview-owner-note"
               label="Nota interna futura"
               placeholder="Ej.: preparar actualización para propietario…"
@@ -75,10 +75,10 @@ export default function HomePage() {
         <EmptyState
           action={
             <ButtonLink href="/login" variant="ghost">
-              Ir al futuro ingreso
+              Ir al ingreso
             </ButtonLink>
           }
-          description="Las rutas de autenticación, selección de tenant y workspace se implementan en slices posteriores. Esta pantalla deja preparada la dirección visual."
+          description="Ingresá o creá una agencia para seleccionar tenant y abrir el primer workspace interno."
           title="La experiencia comienza acá"
         />
       </section>
