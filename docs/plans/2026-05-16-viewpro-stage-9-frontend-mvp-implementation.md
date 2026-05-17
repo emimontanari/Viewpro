@@ -316,6 +316,18 @@ Run web typecheck/build.
 
 Expected: pass.
 
+### Slice 5 implementation status — Owner portal shell and property list/detail
+
+Slice 5 adds the owner-facing portal under `/owner/properties`. Owner pages use only owner endpoints, preserve httpOnly cookie auth through `credentials: 'include'`, and intentionally do not send `x-tenant-id` because owner access is resolved by the backend from the authenticated user.
+
+**Review path:**
+- `apps/web/src/lib/owner-portal.ts` wraps `GET /api/owner/properties`, `GET /api/owner/properties/:propertyAssetId`, `GET /api/owner/properties/:propertyAssetId/engagements`, and `GET /api/owner/engagements/:engagementId/timeline` without tenant headers.
+- `apps/web/src/components/layout/owner-shell.tsx` provides a calmer owner shell with Spanish owner-oriented navigation.
+- `apps/web/src/app/(owner)/owner/properties/page.tsx` lists real owner properties with loading, empty, and error states.
+- `apps/web/src/app/(owner)/owner/properties/[propertyAssetId]/page.tsx` shows property summary, related engagements, the latest engagement timeline, and an explicit Slice 6 documents placeholder.
+
+**TDD note:** `@viewpro/web` still has only placeholder test scripts, so no meaningful RED runtime test could be expressed without adding a new frontend test stack outside this slice. Verification used typecheck/build/root checks plus the placeholder test command, reported honestly.
+
 ## Slice 6 — Documents UX
 
 ### Task 11: Add internal document request/review screens
