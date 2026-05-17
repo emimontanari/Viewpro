@@ -708,7 +708,8 @@ svg {
 .engagement-workspace,
 .engagement-list,
 .engagement-detail,
-.engagement-form {
+.engagement-form,
+.movement-form {
   display: grid;
   gap: 1rem;
 }
@@ -747,6 +748,8 @@ svg {
 .engagement-workspace h2,
 .engagement-detail h2,
 .engagement-form h2,
+.movement-form-card h2,
+.movement-timeline h2,
 .engagement-card h2 {
   margin: 0;
   font-size: clamp(1.65rem, 3vw, 2.45rem);
@@ -755,7 +758,9 @@ svg {
 .engagement-workspace p,
 .engagement-card p,
 .engagement-detail p,
-.engagement-form p {
+.engagement-form p,
+.movement-form-card p,
+.movement-timeline p {
   margin: 0;
   color: var(--color-ink-muted);
 }
@@ -849,6 +854,91 @@ svg {
 
 .engagement-detail__placeholder {
   min-height: 15rem;
+}
+
+.movement-timeline,
+.movement-form-card {
+  min-height: 15rem;
+}
+
+.movement-timeline__list {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.movement-timeline__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.8rem;
+}
+
+.movement-timeline__marker {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-top: 0.45rem;
+  border: 2px solid var(--color-teal);
+  border-radius: 999px;
+  background: var(--color-ivory-50);
+  box-shadow: 0 0 0 0.25rem var(--color-teal-soft);
+}
+
+.movement-timeline__entry,
+.movement-timeline__empty {
+  display: grid;
+  gap: 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 253, 247, 0.68);
+  padding: 0.95rem;
+}
+
+.movement-timeline__empty h3 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 1.15rem;
+}
+
+.movement-timeline__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.movement-timeline__meta time,
+.movement-timeline__author {
+  color: var(--color-ink-muted);
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+.movement-timeline__observation {
+  color: var(--color-ink) !important;
+  font-weight: 720;
+  line-height: 1.55;
+}
+
+.movement-timeline__status,
+.movement-timeline__next,
+.movement-form__success {
+  border-radius: var(--radius-md);
+  background: var(--color-teal-soft);
+  padding: 0.7rem 0.85rem;
+  color: var(--color-teal) !important;
+  font-weight: 800;
+}
+
+.movement-form__textarea {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.movement-form__success {
+  background: rgba(47, 116, 111, 0.12);
 }
 
 .engagement-form__section {

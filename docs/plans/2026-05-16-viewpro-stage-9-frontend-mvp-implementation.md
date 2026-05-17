@@ -276,6 +276,18 @@ Run web typecheck/build.
 
 Expected: pass.
 
+### Slice 4 implementation status — Movement publishing
+
+Slice 4 replaces the engagement detail movement placeholder with real tenant-scoped movement publishing. The detail page now loads the latest movement timeline from the backend, lets internal users publish a movement with type, observation, optional next step, and optional status change, then refreshes both the timeline and engagement status after submit.
+
+**Review path:**
+- `apps/web/src/lib/movements.ts` wraps `GET /api/property-engagements/:propertyEngagementId/movements` and `POST /api/property-engagements/:propertyEngagementId/movements` with `x-tenant-id` from the selected tenant.
+- `apps/web/src/components/movements/movement-timeline.tsx` renders real movement data only, including empty state, status transitions, next step, author, and timestamp.
+- `apps/web/src/components/movements/create-movement-form.tsx` publishes the backend-supported `CreateMovementDto` fields used in this slice: `type`, `observation`, optional `nextStep`, and optional `newStatus`.
+- `apps/web/src/app/(internal)/engagements/[id]/page.tsx` integrates movement loading, creation refresh, and the existing document placeholder.
+
+**TDD note:** `@viewpro/web` still has only placeholder test scripts, so no meaningful RED runtime test could be expressed without adding a new frontend test stack outside this slice. Verification used typecheck/build/root checks plus the placeholder test command, reported honestly.
+
 ## Slice 5 — Owner portal
 
 ### Task 10: Add owner portal shell and property list/detail

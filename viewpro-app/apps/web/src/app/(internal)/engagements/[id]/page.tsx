@@ -10,12 +10,15 @@ import {
   formatPropertyType,
 } from '@/components/engagements/engagement-summary-card'
 import { InternalShell } from '@/components/layout/internal-shell'
+import { CreateMovementForm } from '@/components/movements/create-movement-form'
+import { MovementTimeline } from '@/components/movements/movement-timeline'
 import { Badge } from '@/components/ui/badge'
 import { ButtonLink } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { getApiErrorMessage } from '@/lib/api-client'
 import { getEngagement, type PropertyEngagement } from '@/lib/engagements'
+import { listMovements, type Movement } from '@/lib/movements'
 import { getSession, type TenantMembership } from '@/lib/session'
 import { getSelectedTenantId } from '@/lib/tenant-selection'
 
@@ -23,6 +26,8 @@ type DetailState = {
   engagement: PropertyEngagement | null
   error: string | null
   isLoading: boolean
+  movements: Movement[]
+  movementTotal: number
   selectedMembership: TenantMembership | null
   selectedTenantId: string | null
 }
@@ -31,6 +36,8 @@ const initialState: DetailState = {
   engagement: null,
   error: null,
   isLoading: true,
+  movements: [],
+  movementTotal: 0,
   selectedMembership: null,
   selectedTenantId: null,
 }
@@ -51,7 +58,11 @@ export default function EngagementDetailPage() {
       }
 
       try {
-        const [session, engagement] = await Promise.all([getSession(), getEngagement(tenantId, engagementId)])
+        const [session, engagement, movementsResponse] = await Promise.all([
+          getSession(),
+          getEngagement(tenantId, engagementId),
+          listMovements({ order: 'desc', page: 1, pageSize: 20, propertyEngagementId: engagementId, tenantId }),
+        ])
 
         if (!isMounted) {
           return
@@ -61,6 +72,8 @@ export default function EngagementDetailPage() {
           engagement,
           error: null,
           isLoading: false,
+          movements: movementsResponse.items,
+          movementTotal: movementsResponse.total,
           selectedMembership: session.memberships.find((membership) => membership.tenant.id === tenantId) ?? null,
           selectedTenantId: tenantId,
         })
@@ -73,6 +86,8 @@ export default function EngagementDetailPage() {
           ...current,
           error: getApiErrorMessage(caughtError),
           isLoading: false,
+          movements: [],
+          movementTotal: 0,
           selectedTenantId: tenantId,
         }))
       }
@@ -84,6 +99,8 @@ export default function EngagementDetailPage() {
       isMounted = false
     }
   }, [engagementId])
+
+  const selectedTenantId = state.selectedTenantId
 
   return (
     <InternalShell
@@ -106,12 +123,50 @@ export default function EngagementDetailPage() {
           title="No pudimos abrir esta gestión"
         />
       ) : null}
-      {state.engagement ? <EngagementDetail engagement={state.engagement} /> : null}
+      {state.engagement && selectedTenantId ? (
+        <EngagementDetail
+          engagement={state.engagement}
+          movements={state.movements}
+          movementTotal={state.movementTotal}
+          onMovementCreated={async () => {
+            const [engagement, movementsResponse] = await Promise.all([
+              getEngagement(selectedTenantId, engagementId),
+              listMovements({
+                order: 'desc',
+                page: 1,
+                pageSize: 20,
+                propertyEngagementId: engagementId,
+                tenantId: selectedTenantId,
+              }),
+            ])
+
+            setState((current) => ({
+              ...current,
+              engagement,
+              movements: movementsResponse.items,
+              movementTotal: movementsResponse.total,
+            }))
+          }}
+          tenantId={selectedTenantId}
+        />
+      ) : null}
     </InternalShell>
   )
 }
 
-function EngagementDetail({ engagement }: { engagement: PropertyEngagement }) {
+function EngagementDetail({
+  engagement,
+  movements,
+  movementTotal,
+  onMovementCreated,
+  tenantId,
+}: {
+  engagement: PropertyEngagement
+  movements: Movement[]
+  movementTotal: number
+  onMovementCreated: () => Promise<void>
+  tenantId: string
+}) {
   const ownerSummary = [engagement.property.ownerName, engagement.property.ownerEmail].filter(Boolean).join(' · ')
 
   return (
@@ -184,14 +239,16 @@ function EngagementDetail({ engagement }: { engagement: PropertyEngagement }) {
       </div>
 
       <div className="engagement-detail__grid">
-        <EmptyState
-          className="engagement-detail__placeholder"
-          description="El timeline de movimientos se implementa en el próximo slice. Este espacio queda reservado para updates owner-visible y cambios de estado."
-          title="Timeline de movimientos"
+        <MovementTimeline movements={movements} total={movementTotal} />
+        <CreateMovementForm
+          currentStatus={engagement.status}
+          onCreated={onMovementCreated}
+          propertyEngagementId={engagement.id}
+          tenantId={tenantId}
         />
         <EmptyState
           className="engagement-detail__placeholder"
-          description="El flujo de solicitudes, cargas y revisión documental queda fuera de Slice 3. No se muestran documentos falsos."
+          description="El flujo de solicitudes, cargas y revisión documental queda fuera de este slice. No se muestran documentos falsos."
           title="Documentos de la operación"
         />
       </div>
