@@ -9,6 +9,8 @@ import {
   formatPrice,
   formatPropertyType,
 } from '@/components/engagements/engagement-summary-card'
+import { DocumentRequestList } from '@/components/documents/document-request-list'
+import { RequestDocumentForm } from '@/components/documents/request-document-form'
 import { InternalShell } from '@/components/layout/internal-shell'
 import { CreateMovementForm } from '@/components/movements/create-movement-form'
 import { MovementTimeline } from '@/components/movements/movement-timeline'
@@ -17,12 +19,15 @@ import { ButtonLink } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { getApiErrorMessage } from '@/lib/api-client'
+import { listInternalDocumentRequests, type DocumentRequest } from '@/lib/documents'
 import { getEngagement, type PropertyEngagement } from '@/lib/engagements'
 import { listMovements, type Movement } from '@/lib/movements'
 import { getSession, type TenantMembership } from '@/lib/session'
 import { getSelectedTenantId } from '@/lib/tenant-selection'
 
 type DetailState = {
+  documentRequests: DocumentRequest[]
+  documentTotal: number
   engagement: PropertyEngagement | null
   error: string | null
   isLoading: boolean
@@ -33,6 +38,8 @@ type DetailState = {
 }
 
 const initialState: DetailState = {
+  documentRequests: [],
+  documentTotal: 0,
   engagement: null,
   error: null,
   isLoading: true,
@@ -58,17 +65,23 @@ export default function EngagementDetailPage() {
       }
 
       try {
-        const [session, engagement, movementsResponse] = await Promise.all([
+        const [session, engagement, movementsResponse, documentRequestsResponse] = await Promise.all([
           getSession(),
           getEngagement(tenantId, engagementId),
           listMovements({ order: 'desc', page: 1, pageSize: 20, propertyEngagementId: engagementId, tenantId }),
+          listInternalDocumentRequests({ page: 1, pageSize: 50, tenantId }),
         ])
+        const engagementDocumentRequests = documentRequestsResponse.items.filter(
+          (request) => request.propertyEngagementId === engagementId,
+        )
 
         if (!isMounted) {
           return
         }
 
         setState({
+          documentRequests: engagementDocumentRequests,
+          documentTotal: engagementDocumentRequests.length,
           engagement,
           error: null,
           isLoading: false,
@@ -84,6 +97,8 @@ export default function EngagementDetailPage() {
 
         setState((current) => ({
           ...current,
+          documentRequests: [],
+          documentTotal: 0,
           error: getApiErrorMessage(caughtError),
           isLoading: false,
           movements: [],
@@ -125,6 +140,8 @@ export default function EngagementDetailPage() {
       ) : null}
       {state.engagement && selectedTenantId ? (
         <EngagementDetail
+          documentRequests={state.documentRequests}
+          documentTotal={state.documentTotal}
           engagement={state.engagement}
           movements={state.movements}
           movementTotal={state.movementTotal}
@@ -147,6 +164,18 @@ export default function EngagementDetailPage() {
               movementTotal: movementsResponse.total,
             }))
           }}
+          onDocumentsChanged={async () => {
+            const documentsResponse = await listInternalDocumentRequests({ page: 1, pageSize: 50, tenantId: selectedTenantId })
+            const engagementDocumentRequests = documentsResponse.items.filter(
+              (request) => request.propertyEngagementId === engagementId,
+            )
+
+            setState((current) => ({
+              ...current,
+              documentRequests: engagementDocumentRequests,
+              documentTotal: engagementDocumentRequests.length,
+            }))
+          }}
           tenantId={selectedTenantId}
         />
       ) : null}
@@ -155,15 +184,21 @@ export default function EngagementDetailPage() {
 }
 
 function EngagementDetail({
+  documentRequests,
+  documentTotal,
   engagement,
   movements,
   movementTotal,
+  onDocumentsChanged,
   onMovementCreated,
   tenantId,
 }: {
+  documentRequests: DocumentRequest[]
+  documentTotal: number
   engagement: PropertyEngagement
   movements: Movement[]
   movementTotal: number
+  onDocumentsChanged: () => Promise<void>
   onMovementCreated: () => Promise<void>
   tenantId: string
 }) {
@@ -246,10 +281,17 @@ function EngagementDetail({
           propertyEngagementId={engagement.id}
           tenantId={tenantId}
         />
-        <EmptyState
-          className="engagement-detail__placeholder"
-          description="El flujo de solicitudes, cargas y revisión documental queda fuera de este slice. No se muestran documentos falsos."
-          title="Documentos de la operación"
+        <DocumentRequestList
+          onChanged={onDocumentsChanged}
+          requests={documentRequests}
+          tenantId={tenantId}
+          total={documentTotal}
+        />
+        <RequestDocumentForm
+          onCreated={onDocumentsChanged}
+          ownerEmail={engagement.property.ownerEmail}
+          propertyEngagementId={engagement.id}
+          tenantId={tenantId}
         />
       </div>
     </section>

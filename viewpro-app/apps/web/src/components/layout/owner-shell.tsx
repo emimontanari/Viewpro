@@ -19,6 +19,7 @@ export function OwnerShell({ children, title, description }: OwnerShellProps) {
           </Link>
           <nav className="owner-shell__nav" aria-label="Navegación de propietarios">
             <Link href="/owner/properties">Mis propiedades</Link>
+            <Link href="/owner/documents">Mis documentos</Link>
           </nav>
         </header>
         <section className="owner-shell__hero" aria-labelledby="owner-shell-title">

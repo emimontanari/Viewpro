@@ -729,7 +729,8 @@ svg {
 .engagement-list,
 .engagement-detail,
 .engagement-form,
-.movement-form {
+.movement-form,
+.document-form {
   display: grid;
   gap: 1rem;
 }
@@ -770,6 +771,8 @@ svg {
 .engagement-form h2,
 .movement-form-card h2,
 .movement-timeline h2,
+.document-form-card h2,
+.document-requests h2,
 .engagement-card h2 {
   margin: 0;
   font-size: clamp(1.65rem, 3vw, 2.45rem);
@@ -780,7 +783,9 @@ svg {
 .engagement-detail p,
 .engagement-form p,
 .movement-form-card p,
-.movement-timeline p {
+.movement-timeline p,
+.document-form-card p,
+.document-requests p {
   margin: 0;
   color: var(--color-ink-muted);
 }
@@ -877,11 +882,15 @@ svg {
 }
 
 .movement-timeline,
-.movement-form-card {
+.movement-form-card,
+.document-requests,
+.document-form-card {
   min-height: 15rem;
 }
 
-.movement-timeline__list {
+.movement-timeline__list,
+.document-requests__list,
+.owner-documents__list {
   display: grid;
   gap: 1rem;
   margin: 0;
@@ -906,7 +915,11 @@ svg {
 }
 
 .movement-timeline__entry,
-.movement-timeline__empty {
+.movement-timeline__empty,
+.document-requests__item,
+.document-requests__empty,
+.owner-documents__item,
+.owner-documents__empty {
   display: grid;
   gap: 0.65rem;
   border: 1px solid var(--color-border);
@@ -921,7 +934,21 @@ svg {
   font-size: 1.15rem;
 }
 
-.movement-timeline__meta {
+.document-requests__item h3,
+.document-requests__empty h3,
+.owner-documents__item h3,
+.owner-documents__empty h3 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 1.15rem;
+}
+
+.movement-timeline__meta,
+.document-requests__meta,
+.owner-documents__meta,
+.document-requests__actions,
+.document-requests__reject,
+.owner-documents__upload {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -944,7 +971,10 @@ svg {
 
 .movement-timeline__status,
 .movement-timeline__next,
-.movement-form__success {
+.movement-form__success,
+.document-form__success,
+.document-requests__version,
+.document-requests__reason {
   border-radius: var(--radius-md);
   background: var(--color-teal-soft);
   padding: 0.7rem 0.85rem;
@@ -952,13 +982,34 @@ svg {
   font-weight: 800;
 }
 
+.document-form__textarea,
 .movement-form__textarea {
   min-height: 8rem;
   resize: vertical;
 }
 
-.movement-form__success {
+.movement-form__success,
+.document-form__success {
   background: rgba(47, 116, 111, 0.12);
+}
+
+.document-requests__reason {
+  background: var(--color-danger-soft);
+  color: var(--color-danger) !important;
+}
+
+.document-requests__actions {
+  justify-content: start;
+}
+
+.document-requests__reject,
+.owner-documents__upload {
+  width: 100%;
+}
+
+.document-requests__reject .vp-input,
+.owner-documents__upload .vp-input {
+  flex: 1 1 14rem;
 }
 
 .engagement-form__section {
@@ -972,7 +1023,8 @@ svg {
 
 .owner-workspace,
 .owner-property-list,
-.owner-detail {
+.owner-detail,
+.owner-documents-card {
   display: grid;
   gap: 1rem;
 }
@@ -1020,14 +1072,16 @@ svg {
 .owner-property-card p,
 .owner-detail p,
 .owner-engagements p,
-.owner-timeline p {
+.owner-timeline p,
+.owner-documents-card p {
   margin: 0;
   color: var(--color-ink-muted);
 }
 
 .owner-property-card__topline,
 .owner-detail__badges,
-.owner-timeline__meta {
+.owner-timeline__meta,
+.owner-documents__meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem;
@@ -1192,10 +1246,10 @@ svg {
   .home-proof,
   .auth-layout,
   .tenant-selector__grid,
-  .dashboard-grid,
-  .engagement-card__main,
-  .engagement-detail__grid,
-  .engagement-form__grid {
+    .dashboard-grid,
+    .engagement-card__main,
+    .engagement-detail__grid,
+    .engagement-form__grid {
     grid-template-columns: 1fr;
   }
 

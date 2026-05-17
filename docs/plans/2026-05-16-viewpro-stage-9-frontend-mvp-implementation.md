@@ -351,6 +351,24 @@ Use owner document endpoints for upload URL, confirm upload, and read URL.
 
 **Verification:** web typecheck/build.
 
+### Slice 6 implementation status — Documents UX
+
+Slice 6 connects documents to real backend contracts for both audiences. Internal users can request documents from the engagement detail, see real document request/submission state, generate read URLs, and approve or reject submitted files. Owners can open `/owner/documents`, see only owner-scoped document requests, request an upload URL, upload the selected file to the returned storage URL, confirm the upload, and refresh status.
+
+**Review path:**
+- `apps/web/src/lib/documents.ts` wraps internal tenant-scoped endpoints with `x-tenant-id` and owner endpoints without tenant headers.
+- `apps/web/src/components/documents/request-document-form.tsx` creates backend `CreateDocumentRequestDto` requests with `ownerUserId`, `title`, and optional `description`.
+- `apps/web/src/components/documents/document-request-list.tsx` renders real request/version state and uses backend approve, reject, and read URL endpoints.
+- `apps/web/src/app/(internal)/engagements/[id]/page.tsx` replaces the documents placeholder with the request/review workflow.
+- `apps/web/src/app/(owner)/owner/documents/page.tsx` and `apps/web/src/components/documents/owner-document-upload.tsx` implement owner upload/read flows with owner endpoints only.
+
+**Backend gaps/follow-ups:**
+- Internal document listing supports `page`, `pageSize`, and `status`, but not `propertyEngagementId`; the engagement detail currently requests up to 50 real document requests and filters the current engagement client-side.
+- The engagement response exposes owner name/email but not the active owner user id required by `CreateDocumentRequestDto`; the internal form therefore asks for the owner user id until an owner picker or response field exists.
+- The configured fake storage adapter returns `https://fake-documents.local/...` signed URLs. The frontend performs the required storage `PUT` before confirmation, but local end-to-end upload success depends on that storage URL being reachable or replaced by a real/local upload adapter.
+
+**TDD note:** Strict TDD mode was active, but `@viewpro/web` still has only a placeholder test script. No meaningful RED runtime test could be expressed for these frontend flows without adding a new test stack, which is explicitly out of scope for this slice. Verification used web/root typecheck, build, placeholder test commands, and `git diff --check`.
+
 ## Slice 7 — Pilot metrics dashboard
 
 ### Task 13: Add analytics dashboard
