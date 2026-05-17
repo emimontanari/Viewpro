@@ -383,6 +383,13 @@ Incluye:
 - portal propietario con propiedades, detalle y timeline
 - documentos internos y owner básicos
 - dashboard visual de métricas piloto
+- smoke tests públicos mínimos con Playwright para home, login y registro
+
+Estado frontend:
+
+- Implementado en Stage 9: shell premium, login/registro, selección de tenant, workspace interno, gestiones, movimientos, portal propietario, documentos, métricas piloto y smoke tests públicos mínimos.
+- La validación de navegador cubre rutas públicas no autenticadas sin backend ni fixtures de sesión.
+- Pendiente fuera de Stage 9: smoke/E2E autenticado de tenant, gestiones, movimientos, propietario y documentos cuando exista infraestructura seeded de usuarios/sesiones.
 
 Validación:
 
@@ -390,6 +397,7 @@ Validación:
 - vendedor puede cargar un movimiento en menos de 60 segundos
 - propietario puede entender el avance sin pedirlo por WhatsApp
 - frontend typecheck/build pasan
+- smoke tests públicos pasan
 - la UI no parece template genérico ni “primera UI hecha por AI”
 
 ## Etapa 10 — Admin ViewPro operativo
@@ -397,6 +405,10 @@ Validación:
 Objetivo:
 
 Dar al equipo ViewPro una pantalla interna para operar y monitorear el piloto completo.
+
+Estado:
+
+- Próximo item requerido antes de cerrar el MVP. Stage 9 no elimina esta etapa.
 
 Incluye primera versión read-only:
 
@@ -429,7 +441,7 @@ Preparar el piloto real con seguridad, observabilidad y estabilidad razonable.
 Incluye:
 
 - tests críticos backend
-- smoke tests frontend
+- smoke/E2E frontend autenticado cuando exista infraestructura seeded
 - Sentry frontend/backend
 - rate limiting login/reset
 - CORS correcto

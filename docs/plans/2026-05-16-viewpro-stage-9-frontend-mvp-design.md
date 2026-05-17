@@ -57,7 +57,7 @@ Avoid:
 | Rendering | Server layouts/shells where practical; client components for forms, filters, mutations, and tenant selection. |
 | Design system | Local minimal component system: buttons, inputs, cards, badges, tables, page shell, timeline, empty states. |
 | State | Keep state local first. Introduce a query/cache library only when repeated fetching becomes painful. |
-| Testing | Start with typecheck/build and add smoke tests once flows exist. |
+| Testing | Minimal Playwright browser smoke tests cover public unauthenticated routes and run through the Next.js web server. Seeded authenticated journey tests remain pending until test user/session infrastructure exists. |
 
 ## Roles and screens
 
@@ -180,6 +180,12 @@ Initial version should be read-only. Editing tenants, deleting data, impersonati
 - Inactive engagement list from analytics.
 - Event audit view.
 
+### Slice 8 — Smoke tests and roadmap closure
+
+- Minimal Playwright smoke runner for `@viewpro/web`.
+- Public unauthenticated route checks for home, login, and register.
+- Roadmap/design updates that close Stage 9 while keeping ViewPro Admin Backoffice before MVP closure.
+
 ### Later MVP requirement — ViewPro Admin Backoffice
 
 - Global internal operator dashboard.
@@ -195,7 +201,7 @@ Initial version should be read-only. Editing tenants, deleting data, impersonati
 - [ ] Owner can see properties and movement timelines.
 - [ ] Documents can be requested, uploaded, approved, and rejected from UI.
 - [ ] Manager can see pilot metrics.
-- [ ] Frontend typecheck and build pass.
+- [ ] Frontend typecheck, build, and public-route smoke tests pass.
 - [ ] MVP roadmap includes ViewPro Admin Backoffice before final MVP closure.
 
 ## Out of scope for Stage 9
@@ -206,4 +212,5 @@ Initial version should be read-only. Editing tenants, deleting data, impersonati
 - Advanced BI.
 - Editable permissions UI.
 - Full ViewPro admin backoffice implementation, unless promoted into a dedicated Stage 9B/10.
+- Seeded authenticated frontend E2E flows for tenant, engagement, movement, owner, and document journeys.
 - Sentry/rate limiting/deploy hardening, handled after the vertical frontend is usable.

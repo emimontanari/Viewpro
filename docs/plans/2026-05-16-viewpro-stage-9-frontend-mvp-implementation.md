@@ -28,16 +28,12 @@ Run from `viewpro-app/` unless noted otherwise:
 
 ```bash
 pnpm --filter @viewpro/web typecheck
+pnpm --filter @viewpro/web test
 pnpm --filter @viewpro/web build
+pnpm test
 pnpm typecheck
 pnpm build
 pnpm lint
-```
-
-When frontend smoke tests are added, also run:
-
-```bash
-pnpm --filter @viewpro/web test
 ```
 
 ## Slice 1 — Frontend foundation and premium shell
@@ -409,6 +405,22 @@ Slice 7 adds the internal `/analytics` dashboard for managers using only real St
 
 Do not add a large testing stack without confirming the tool choice. Candidate: Playwright for browser smoke tests once the vertical flow exists.
 
+### Slice 8 implementation status — Smoke tests and roadmap update
+
+Slice 8 replaces the placeholder `@viewpro/web` test script with a real minimal Playwright smoke capability. The runner starts the Next.js web app on a dedicated test port, opens Chromium, and checks the public unauthenticated routes that do not require backend seeds or session fixtures.
+
+**Review path:**
+- `apps/web/package.json` maps `test` to `test:smoke` and runs `playwright test`.
+- `apps/web/playwright.config.ts` defines the smoke test directory, Chromium project, base URL, and Next.js `webServer` on port `3100` with local server reuse outside CI.
+- `apps/web/tests/smoke/public-routes.spec.ts` verifies user-visible content and accessible controls for `/`, `/login`, and `/register`.
+
+**TDD evidence:**
+- RED: the new smoke script failed before dependency installation with `playwright: command not found`.
+- Infrastructure RED: after `pnpm install`, the tests failed because Chromium browser binaries were missing.
+- GREEN: after `pnpm --filter @viewpro/web exec playwright install chromium`, the three public route smoke tests passed.
+
+**Remaining test gap:** Authenticated tenant, engagement, movement, owner, and document journey smoke tests are intentionally deferred until seeded users/sessions or equivalent deterministic test infrastructure exists.
+
 ### Task 15: Update roadmap/docs
 
 **Files:**
@@ -417,6 +429,10 @@ Do not add a large testing stack without confirming the tool choice. Candidate: 
 - Modify: `docs/plans/2026-05-16-viewpro-stage-9-frontend-mvp-implementation.md`
 
 Document completed frontend slices and keep ViewPro Admin Backoffice as a required pre-MVP-complete item.
+
+### Slice 8 documentation status — Stage 9 closed
+
+Stage 9 is complete as the frontend MVP vertical plus smoke capability. The roadmap now keeps Stage 10, ViewPro Admin Backoffice, as the next required pre-MVP closure item rather than treating the MVP as finished immediately after the tenant/owner frontend.
 
 ## Review workload forecast
 
@@ -433,4 +449,5 @@ Recommended delivery:
 - An owner can login, see properties, read timeline, and handle documents.
 - The interface consistently follows clear/editorial premium direction.
 - Frontend typecheck/build pass.
+- Public frontend smoke tests pass.
 - ViewPro Admin Backoffice remains explicitly tracked before MVP closure.

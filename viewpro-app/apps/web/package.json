@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "echo 'web lint not configured yet'",
     "typecheck": "tsc --noEmit",
-    "test": "echo 'web tests not configured yet'"
+    "test": "pnpm test:smoke",
+    "test:smoke": "playwright test"
   },
   "dependencies": {
     "next": "16.2.6",
@@ -16,6 +17,7 @@
     "react-dom": "19.2.6"
   },
   "devDependencies": {
+    "@playwright/test": "1.57.0",
     "@types/node": "25.7.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
