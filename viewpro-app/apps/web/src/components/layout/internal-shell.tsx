@@ -21,6 +21,7 @@ export function InternalShell({ children, selectedTenantName, title, description
           <nav className="internal-shell__nav" aria-label="Navegación del workspace">
             <Link href="/dashboard">Dashboard</Link>
             <Link href="/engagements">Gestiones</Link>
+            <Link href="/analytics">Métricas</Link>
             <Link href="/select-tenant">Tenant</Link>
           </nav>
         </header>

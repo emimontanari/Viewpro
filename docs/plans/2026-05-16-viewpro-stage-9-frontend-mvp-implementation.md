@@ -387,6 +387,18 @@ Use Stage 8 endpoints:
 
 **Verification:** web typecheck/build and root typecheck/build.
 
+### Slice 7 implementation status — Pilot metrics dashboard
+
+Slice 7 adds the internal `/analytics` dashboard for managers using only real Stage 8 report endpoints. The dashboard reads the selected tenant from the existing versioned localStorage selector, sends `x-tenant-id` through the existing API client, fetches pilot summary, inactive engagements, and audit events in parallel, and renders loading, empty, and error states in Spanish without fake metrics or chart dependencies.
+
+**Review path:**
+- `apps/web/src/lib/analytics.ts` wraps `GET /api/analytics/pilot-summary`, `GET /api/analytics/inactive-engagements`, and `GET /api/analytics/events` with tenant-scoped requests.
+- `apps/web/src/app/(internal)/analytics/page.tsx` performs the session/membership check and coordinates dashboard loading plus event pagination/filter refresh.
+- `apps/web/src/components/analytics/*` renders the summary cards, inactive engagement risk list, and event audit table. Event metadata is shown only as compact key/value pairs after confirming the backend sanitizer removes sensitive metadata keys.
+- `apps/web/src/components/layout/internal-shell.tsx` adds the workspace navigation link to `/analytics`.
+
+**TDD note:** Strict TDD mode was active, but `@viewpro/web` still has only a placeholder test script. No meaningful RED runtime test could be expressed for this frontend dashboard without adding a new test stack, which is explicitly out of scope for this slice. Verification used web/root typecheck, build, placeholder test commands, and `git diff --check`.
+
 ## Slice 8 — Smoke tests and roadmap update
 
 ### Task 14: Add frontend smoke test capability
