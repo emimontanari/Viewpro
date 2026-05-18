@@ -14,8 +14,16 @@ export async function createApiApp() {
   app.use(requestIdMiddleware)
   app.use(cookieParser())
   app.setGlobalPrefix('api')
+  const allowedOrigins = configService.getOrThrow<string[]>('app.cors.origins')
   app.enableCors({
-    origin: configService.get<string>('app.corsOrigin'),
+    origin(origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true)
+        return
+      }
+
+      callback(null, false)
+    },
     credentials: true,
   })
   app.useGlobalPipes(
@@ -25,7 +33,7 @@ export async function createApiApp() {
       transform: true,
     }),
   )
-  app.useGlobalFilters(new GlobalExceptionFilter())
+  app.useGlobalFilters(new GlobalExceptionFilter(configService.get<string>('app.nodeEnv')))
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('ViewPro API')

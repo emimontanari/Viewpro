@@ -10,6 +10,8 @@ type HttpExceptionBody = {
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
+  constructor(private readonly nodeEnv = process.env.NODE_ENV ?? 'development') {}
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp()
     const response = ctx.getResponse<Response>()
@@ -28,8 +30,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const payload: ApiErrorResponse = {
       statusCode,
       error: body?.error ?? (statusCode === 500 ? 'Internal Server Error' : 'Error'),
-      message:
-        body?.message ?? (typeof exceptionResponse === 'string' ? exceptionResponse : 'Unexpected error'),
+      message: this.resolveMessage(statusCode, body?.message, exceptionResponse),
       path: request.url,
       timestamp: new Date().toISOString(),
       requestId: request.requestId,
@@ -37,4 +38,32 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     response.status(statusCode).json(payload)
   }
+
+  private resolveMessage(
+    statusCode: number,
+    message: string | string[] | undefined,
+    exceptionResponse: string | object | undefined,
+  ) {
+    if (this.nodeEnv === 'production') {
+      return sanitizeProductionMessage(statusCode)
+    }
+
+    return message ?? (typeof exceptionResponse === 'string' ? exceptionResponse : 'Unexpected error')
+  }
+}
+
+function sanitizeProductionMessage(statusCode: number) {
+  if (statusCode === HttpStatus.NOT_FOUND) {
+    return 'Resource not found'
+  }
+
+  if (statusCode === HttpStatus.BAD_REQUEST) {
+    return 'Invalid request payload'
+  }
+
+  if (statusCode >= 500) {
+    return 'Unexpected error'
+  }
+
+  return 'Request failed'
 }

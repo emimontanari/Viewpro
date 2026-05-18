@@ -190,3 +190,99 @@ describe('AuthController (e2e)', () => {
       .expect(201)
   }
 })
+
+describe('AuthController throttling (e2e)', () => {
+  let app: INestApplication
+
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test'
+    process.env.ACCESS_TOKEN_SECRET = 'test-access-token-secret'
+    process.env.COOKIE_DOMAIN = 'localhost'
+    process.env.COOKIE_SECURE = 'false'
+
+    app = await createApiApp()
+    await app.init()
+  })
+
+  afterAll(async () => {
+    await app.close()
+  })
+
+  it('rate-limits repeated login attempts without throttling guarded reads', async () => {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({ email: 'rate-limit-login@example.com', password: 'wrong-password' })
+        .expect(401)
+    }
+
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'rate-limit-login@example.com', password: 'wrong-password' })
+      .expect(429)
+
+    await request(app.getHttpServer()).get('/api/auth/me').expect(401)
+  })
+
+  it('keeps login throttling scoped to the route path instead of query strings', async () => {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await request(app.getHttpServer())
+        .post(`/api/auth/login?cacheBust=${attempt}`)
+        .send({ email: 'query-bucket-login@example.com', password: 'wrong-password' })
+        .expect(401)
+    }
+
+    await request(app.getHttpServer())
+      .post('/api/auth/login?cacheBust=final')
+      .send({ email: 'query-bucket-login@example.com', password: 'wrong-password' })
+      .expect(429)
+  })
+
+  it('rate-limits repeated tenant registration attempts on the register route only', async () => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await request(app.getHttpServer())
+        .post('/api/auth/register-tenant')
+        .send({
+          email: 'rate-limit-register@example.com',
+          password: 'short',
+          firstName: 'Owner',
+          tenantName: 'Rate Limited Homes',
+        })
+        .expect(400)
+    }
+
+    await request(app.getHttpServer())
+      .post('/api/auth/register-tenant')
+      .send({
+        email: 'rate-limit-register@example.com',
+        password: 'short',
+        firstName: 'Owner',
+        tenantName: 'Rate Limited Homes',
+      })
+      .expect(429)
+
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'register-route-scope@example.com', password: 'wrong-password' })
+      .expect(401)
+  })
+
+  it('rate-limits repeated refresh attempts on the refresh route only', async () => {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await request(app.getHttpServer())
+        .post('/api/auth/refresh')
+        .set('Cookie', [`viewpro_refresh_token=invalid-refresh-${attempt}`])
+        .expect(401)
+    }
+
+    await request(app.getHttpServer())
+      .post('/api/auth/refresh')
+      .set('Cookie', ['viewpro_refresh_token=invalid-refresh-final'])
+      .expect(429)
+
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'refresh-route-scope@example.com', password: 'wrong-password' })
+      .expect(401)
+  })
+})

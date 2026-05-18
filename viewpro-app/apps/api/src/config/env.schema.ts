@@ -11,8 +11,39 @@ class EnvironmentVariables {
   @Type(() => Number)
   PORT = 3001
 
+  @IsOptional()
   @IsString()
-  CORS_ORIGIN = 'http://localhost:3000'
+  CORS_ORIGIN?: string
+
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  AUTH_RATE_LIMIT_LOGIN_LIMIT = 5
+
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  AUTH_RATE_LIMIT_LOGIN_TTL_SECONDS = 60
+
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  AUTH_RATE_LIMIT_REGISTER_LIMIT = 3
+
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  AUTH_RATE_LIMIT_REGISTER_TTL_SECONDS = 60
+
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  AUTH_RATE_LIMIT_REFRESH_LIMIT = 20
+
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  AUTH_RATE_LIMIT_REFRESH_TTL_SECONDS = 60
 
   @IsOptional()
   @IsString()

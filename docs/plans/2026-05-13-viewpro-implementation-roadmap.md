@@ -460,6 +460,7 @@ Estado:
 
 - Slice 1 implementado: runner Playwright seeded autenticado para manager workspace y Admin ViewPro, separado del smoke público/mockeado.
 - Uso local opt-in y serial: `pnpm db:up`, `pnpm db:migrate`, `pnpm --filter @viewpro/web test:auth:seeded` desde `viewpro-app`.
+- Slice 2 implementado: hardening público del API con rate limiting en auth, CORS explícito con credenciales y sanitización de errores en producción.
 
 Validación:
 

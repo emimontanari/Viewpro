@@ -15,6 +15,7 @@ import { PrismaRefreshTokenRepository } from './tokens/prisma-refresh-token.repo
 import { REFRESH_TOKEN_REPOSITORY } from './tokens/refresh-token.repository'
 import { TokenService } from './tokens/token.service'
 import { AuthGuard } from './guards/auth.guard'
+import { AuthThrottlerGuard } from './guards/auth-throttler.guard'
 import { GetCurrentUserUseCase } from './use-cases/get-current-user.use-case'
 import { LoginUseCase } from './use-cases/login.use-case'
 import { LogoutUseCase } from './use-cases/logout.use-case'
@@ -43,6 +44,7 @@ import { RegisterTenantUseCase } from './use-cases/register-tenant.use-case'
   providers: [
     TokenService,
     AuthGuard,
+    AuthThrottlerGuard,
     RegisterTenantUseCase,
     LoginUseCase,
     RefreshSessionUseCase,

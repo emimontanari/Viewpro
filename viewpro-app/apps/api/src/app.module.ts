@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import { ThrottlerModule } from '@nestjs/throttler'
 import { AdminModule } from './admin/admin.module'
 import { AnalyticsModule } from './analytics/analytics.module'
 import { AuthModule } from './auth/auth.module'
@@ -18,6 +20,15 @@ import { UsersModule } from './users/users.module'
 @Module({
   imports: [
     ConfigModule,
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => [
+        {
+          ttl: configService.getOrThrow<number>('app.authRateLimit.login.ttlSeconds') * 1000,
+          limit: configService.getOrThrow<number>('app.authRateLimit.login.limit'),
+        },
+      ],
+    }),
     DatabaseModule,
     UsersModule,
     TenantsModule,
