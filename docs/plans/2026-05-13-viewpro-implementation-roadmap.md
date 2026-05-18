@@ -456,6 +456,11 @@ Incluye:
 - revisión de permisos multi-tenant
 - deploy staging/producción
 
+Estado:
+
+- Slice 1 implementado: runner Playwright seeded autenticado para manager workspace y Admin ViewPro, separado del smoke público/mockeado.
+- Uso local opt-in y serial: `pnpm db:up`, `pnpm db:migrate`, `pnpm --filter @viewpro/web test:auth:seeded` desde `viewpro-app`.
+
 Validación:
 
 - flujos críticos probados

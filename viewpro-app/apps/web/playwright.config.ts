@@ -4,7 +4,7 @@ const smokeTestPort = 3100
 const smokeTestBaseUrl = `http://127.0.0.1:${smokeTestPort}`
 
 export default defineConfig({
-  testDir: './tests',
+  testDir: './tests/smoke',
   timeout: 30_000,
   expect: {
     timeout: 5_000,

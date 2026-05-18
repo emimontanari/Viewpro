@@ -100,6 +100,9 @@ importers:
       '@playwright/test':
         specifier: 1.57.0
         version: 1.57.0
+      '@prisma/client':
+        specifier: 6.19.2
+        version: 6.19.2(prisma@6.19.2(typescript@6.0.3))(typescript@6.0.3)
       '@types/node':
         specifier: 25.7.0
         version: 25.7.0
@@ -109,6 +112,9 @@ importers:
       '@types/react-dom':
         specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.14)
+      argon2:
+        specifier: 0.44.0
+        version: 0.44.0
       typescript:
         specifier: 6.0.3
         version: 6.0.3
