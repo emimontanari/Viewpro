@@ -46,6 +46,62 @@ pnpm db:migrate
 
 Si el entorno local no tiene `apps/api/.env`, copiá `apps/api/.env.example` antes de ejecutar comandos de Prisma.
 
+## Backup and restore básico
+
+El estado durable actual de ViewPro vive en PostgreSQL. Las migraciones Prisma están versionadas en el repo; los dumps respaldan datos, no secretos ni variables de entorno.
+
+### Backup local
+
+Desde `viewpro-app/`, con la base local levantada:
+
+```bash
+pnpm db:up
+mkdir -p backups
+docker compose exec -T postgres pg_dump -U viewpro -d viewpro --format=custom --no-owner --no-acl > backups/viewpro-$(date +%Y%m%d-%H%M%S).dump
+```
+
+### Verificar que el dump se puede leer
+
+```bash
+docker compose exec -T postgres pg_restore --list < backups/<dump-file>.dump
+```
+
+### Restore seguro en base aislada
+
+Nunca restaures primero sobre la base activa de desarrollo o producción. Probá siempre en una base descartable:
+
+```bash
+docker compose exec -T postgres dropdb -U viewpro --if-exists viewpro_restore_check
+docker compose exec -T postgres createdb -U viewpro viewpro_restore_check
+docker compose exec -T postgres pg_restore -U viewpro -d viewpro_restore_check --clean --if-exists --no-owner --no-acl < backups/<dump-file>.dump
+```
+
+### Checklist post-restore
+
+- El archivo `.dump` existe y no está vacío.
+- `pg_restore --list` puede leer el dump.
+- El restore termina sin errores en `viewpro_restore_check`.
+- Existen tablas core: `users`, `tenants`, `tenant_memberships`, `property_engagements`, `movements`, `document_requests`, `documents`, `document_versions`, `analytics_events`.
+- La app puede conectarse a la base restaurada si se apunta temporalmente a ella.
+- No se restauró sobre una base activa por accidente.
+
+### Producción
+
+En PostgreSQL gestionado, preferí backups automáticos y PITR del proveedor cuando estén disponibles. Este runbook manual sirve como verificación o mecanismo de portabilidad; no reemplaza una estrategia de backup gestionada.
+
+Antes del piloto real tiene que estar definido:
+
+- proveedor de PostgreSQL;
+- retención de backups;
+- restore probado al menos una vez en una base no productiva;
+- dueño del procedimiento de restore;
+- ubicación de backups;
+- secretos guardados fuera de dumps de base de datos.
+
+### Document storage
+
+La metadata documental vive en PostgreSQL y queda cubierta por el dump. Los bytes de documentos todavía no están respaldados por storage real porque Stage 7 usa un adapter fake; cuando exista S3/R2/MinIO u otro storage productivo, ese storage necesitará su propia política de backup y restore.
+
 ## Auth backend
 
 La API expone auth propia multi-tenant inicial:

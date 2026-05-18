@@ -463,6 +463,7 @@ Estado:
 - Slice 2 implementado: hardening público del API con rate limiting en auth, CORS explícito con credenciales y sanitización de errores en producción.
 - Slice 3 implementado: matriz de aislamiento multi-tenant y cobertura e2e focalizada para movimientos, documentos, analytics, owner portal y admin global.
 - Slice 4 implementado: Sentry error-only frontend/backend, desactivado sin DSN y sin Replay/tracing/source-map upload. Los DSN reales son secretos de ambiente y no deben commitearse.
+- Slice 5 implementado: runbook básico de backup/restore PostgreSQL con restore aislado, checklist de verificación y nota de storage documental futuro.
 
 Validación:
 
