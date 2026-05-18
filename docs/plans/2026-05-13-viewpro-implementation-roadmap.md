@@ -412,7 +412,8 @@ Estado:
 - El rol global no reemplaza ni deriva de roles tenant (`PRINCIPAL_MANAGER`, `MANAGER`, `AGENT`) y no depende de `x-tenant-id`.
 - Slice 2 implementado: `AdminGuard`/`AdminModule` protegen `GET /api/admin/access-check` como endpoint smoke read-only para validar autorización backend de operadores ViewPro.
 - La frontera admin usa sólo `users.globalRole === VIEWPRO_ADMIN`; los roles tenant no conceden acceso admin y `x-tenant-id` se ignora en endpoints admin.
-- Pendiente para slices siguientes: read models admin reales (`/admin/summary`, `/admin/tenants`, `/admin/activity`) y UI `/admin`.
+- Slice 3 implementado: read models backend protegidos por admin global en `GET /api/admin/summary`, `GET /api/admin/tenants` y `GET /api/admin/activity`, con respuestas sanitizadas de agregados/listas sin emails, tokens ni datos privados de documentos.
+- Pendiente para el siguiente slice: UI `/admin` consumiendo estos read models sin agregar edición, impersonación, billing ni acceso a contenido documental privado.
 
 Incluye primera versión read-only:
 
