@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { AdminModule } from './admin/admin.module'
 import { AnalyticsModule } from './analytics/analytics.module'
 import { AuthModule } from './auth/auth.module'
 import { ConfigModule } from './config/config.module'
@@ -29,6 +30,7 @@ import { UsersModule } from './users/users.module'
     OwnerPortalModule,
     DocumentsModule,
     AnalyticsModule,
+    AdminModule,
     HealthModule,
   ],
 })

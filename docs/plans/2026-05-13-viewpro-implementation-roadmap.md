@@ -410,7 +410,9 @@ Estado:
 
 - Slice 1 implementado: base de rol global independiente para operadores ViewPro (`USER | VIEWPRO_ADMIN`) en `users.globalRole`, expuesta por auth y `/auth/me`.
 - El rol global no reemplaza ni deriva de roles tenant (`PRINCIPAL_MANAGER`, `MANAGER`, `AGENT`) y no depende de `x-tenant-id`.
-- Pendiente para slices siguientes: guard/admin endpoints read-only y UI `/admin`.
+- Slice 2 implementado: `AdminGuard`/`AdminModule` protegen `GET /api/admin/access-check` como endpoint smoke read-only para validar autorización backend de operadores ViewPro.
+- La frontera admin usa sólo `users.globalRole === VIEWPRO_ADMIN`; los roles tenant no conceden acceso admin y `x-tenant-id` se ignora en endpoints admin.
+- Pendiente para slices siguientes: read models admin reales (`/admin/summary`, `/admin/tenants`, `/admin/activity`) y UI `/admin`.
 
 Incluye primera versión read-only:
 
