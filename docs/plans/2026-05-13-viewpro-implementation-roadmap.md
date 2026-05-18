@@ -413,7 +413,8 @@ Estado:
 - Slice 2 implementado: `AdminGuard`/`AdminModule` protegen `GET /api/admin/access-check` como endpoint smoke read-only para validar autorización backend de operadores ViewPro.
 - La frontera admin usa sólo `users.globalRole === VIEWPRO_ADMIN`; los roles tenant no conceden acceso admin y `x-tenant-id` se ignora en endpoints admin.
 - Slice 3 implementado: read models backend protegidos por admin global en `GET /api/admin/summary`, `GET /api/admin/tenants` y `GET /api/admin/activity`, con respuestas sanitizadas de agregados/listas sin emails, tokens ni datos privados de documentos.
-- Pendiente para el siguiente slice: UI `/admin` consumiendo estos read models sin agregar edición, impersonación, billing ni acceso a contenido documental privado.
+- Slice 4 implementado: UI frontend `/admin` como comando interno read-only que valida `/auth/me`, muestra estado prohibido si el usuario no tiene `VIEWPRO_ADMIN` y consume `/api/admin/summary`, `/api/admin/tenants` y `/api/admin/activity` sin `x-tenant-id`, tenant seleccionado ni datos demo en producción.
+- Pendiente para un slice futuro: smoke/E2E autenticado con infraestructura seeded real; mantener fuera edición, impersonación, billing y acceso a contenido documental privado hasta una decisión explícita.
 
 Incluye primera versión read-only:
 

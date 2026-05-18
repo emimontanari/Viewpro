@@ -1428,6 +1428,289 @@ svg {
   font-weight: 800;
 }
 
+.admin-shell {
+  min-height: 100vh;
+  padding: clamp(0.75rem, 2vw, 1.5rem);
+  background:
+    radial-gradient(circle at 12% 6%, rgba(164, 122, 60, 0.16), transparent 28rem),
+    linear-gradient(135deg, #f5efe2 0%, var(--color-ivory-50) 45%, #e9dfce 100%);
+}
+
+.admin-shell__frame {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+}
+
+.admin-shell__header {
+  display: flex;
+  min-height: 68px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgba(23, 56, 49, 0.2);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 253, 247, 0.78);
+  padding: 0.65rem 0.8rem 0.65rem 1.1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-shell__brand {
+  color: var(--color-ink);
+  font-family: var(--font-display), serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  text-decoration: none;
+}
+
+.admin-shell__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.admin-shell__nav a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  border-radius: var(--radius-pill);
+  padding: 0.55rem 0.9rem;
+  color: var(--color-ink-muted);
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.admin-shell__nav a:hover {
+  background: var(--color-brass-soft);
+  color: var(--color-brass);
+}
+
+.admin-shell__hero {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: end;
+  padding: clamp(2rem, 6vw, 4.5rem) 0 clamp(1.25rem, 4vw, 2rem);
+}
+
+.admin-shell__hero > div {
+  display: grid;
+  max-width: 54rem;
+  gap: 1rem;
+}
+
+.admin-shell__hero h1,
+.admin-command h2 {
+  margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-display), serif;
+  font-weight: 550;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-wrap: balance;
+}
+
+.admin-shell__hero h1 {
+  font-size: clamp(2.9rem, 7vw, 5.8rem);
+}
+
+.admin-shell__hero p,
+.admin-command p,
+.admin-empty-inline p {
+  margin: 0;
+  color: var(--color-ink-muted);
+}
+
+.admin-command,
+.admin-panel .vp-card__content,
+.admin-summary .vp-card__content {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-command {
+  grid-template-columns: minmax(0, 0.8fr) minmax(22rem, 0.62fr);
+  align-items: start;
+  padding-bottom: clamp(2rem, 6vw, 4rem);
+}
+
+.admin-command__intro,
+.admin-summary,
+.admin-panel--wide {
+  grid-column: 1 / -1;
+}
+
+.admin-command__intro code {
+  color: var(--color-brass);
+  font-weight: 850;
+}
+
+.admin-eyebrow {
+  margin: 0;
+  color: var(--color-brass);
+  font-size: 0.8rem;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.admin-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.admin-section-heading > div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.admin-command h2 {
+  font-size: clamp(1.65rem, 3vw, 2.45rem);
+}
+
+.admin-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin: 0;
+}
+
+.admin-kpi-grid div,
+.admin-empty-inline {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 253, 247, 0.68);
+  padding: 0.9rem;
+}
+
+.admin-kpi-grid dt {
+  color: var(--color-ink-muted);
+  font-size: 0.75rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.admin-kpi-grid dd {
+  margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-display), serif;
+  font-size: clamp(1.65rem, 4vw, 2.6rem);
+  font-weight: 800;
+}
+
+.admin-filter {
+  display: grid;
+  min-width: min(20rem, 100%);
+  gap: 0.45rem;
+  color: var(--color-ink-muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-filter__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.admin-filter__row .vp-button {
+  align-self: stretch;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 253, 247, 0.68);
+}
+
+.admin-table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-table th {
+  color: var(--color-ink-muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.admin-table td {
+  color: var(--color-ink);
+  font-weight: 750;
+}
+
+.admin-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-table h3,
+.admin-empty-inline h3 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 1.08rem;
+}
+
+.admin-activity-list {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-activity-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(10rem, auto);
+  gap: 0.8rem;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 253, 247, 0.68);
+  padding: 0.9rem;
+}
+
+.admin-activity-list strong {
+  color: var(--color-ink);
+}
+
+.admin-activity-list span {
+  overflow-wrap: anywhere;
+  color: var(--color-brass);
+  font-size: 0.88rem;
+  font-weight: 850;
+}
+
+.admin-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--color-ink-muted);
+  font-weight: 850;
+}
+
 @media (max-width: 700px) {
   body {
     font-size: 1rem;
@@ -1453,8 +1736,15 @@ svg {
   .engagement-card__main,
   .engagement-detail__grid,
   .engagement-form__grid,
+  .admin-command,
+  .admin-kpi-grid,
   .analytics-dashboard,
   .analytics-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-activity-list li,
+  .admin-filter__row {
     grid-template-columns: 1fr;
   }
 
@@ -1476,6 +1766,8 @@ svg {
 
   .internal-shell__header,
   .internal-shell__hero,
+  .admin-shell__header,
+  .admin-shell__hero,
   .owner-shell__header,
   .owner-shell__hero {
     align-items: stretch;
@@ -1483,12 +1775,15 @@ svg {
 
   .internal-shell__header,
   .internal-shell__nav,
+  .admin-shell__header,
+  .admin-shell__nav,
   .owner-shell__header,
   .owner-shell__nav {
     flex-direction: column;
   }
 
   .internal-shell__nav a,
+  .admin-shell__nav a,
   .owner-shell__nav a {
     width: 100%;
     justify-content: center;
