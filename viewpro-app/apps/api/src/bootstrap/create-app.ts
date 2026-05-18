@@ -6,10 +6,12 @@ import cookieParser from 'cookie-parser'
 import { AppModule } from '../app.module'
 import { GlobalExceptionFilter } from '../common/filters/global-exception.filter'
 import { requestIdMiddleware } from '../common/middleware/request-id.middleware'
+import { SentryService } from '../observability/sentry.service'
 
 export async function createApiApp() {
   const app = await NestFactory.create(AppModule)
   const configService = app.get(ConfigService)
+  const sentryService = app.get(SentryService)
 
   app.use(requestIdMiddleware)
   app.use(cookieParser())
@@ -33,7 +35,7 @@ export async function createApiApp() {
       transform: true,
     }),
   )
-  app.useGlobalFilters(new GlobalExceptionFilter(configService.get<string>('app.nodeEnv')))
+  app.useGlobalFilters(new GlobalExceptionFilter(configService.get<string>('app.nodeEnv'), sentryService))
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('ViewPro API')

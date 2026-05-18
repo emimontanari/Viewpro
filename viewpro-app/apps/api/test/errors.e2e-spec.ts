@@ -1,7 +1,9 @@
-import type { INestApplication } from '@nestjs/common'
+import { BadRequestException, HttpException, HttpStatus } from '@nestjs/common'
+import type { ArgumentsHost, INestApplication } from '@nestjs/common'
 import request from 'supertest'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createApiApp } from '../src/bootstrap/create-app'
+import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter'
 
 describe('GlobalExceptionFilter (e2e)', () => {
   let app: INestApplication
@@ -33,6 +35,82 @@ describe('GlobalExceptionFilter (e2e)', () => {
     expect(response.headers['x-request-id']).toBe('test-request-id')
   })
 })
+
+describe('GlobalExceptionFilter Sentry capture policy', () => {
+  it('captures unexpected errors with safe request context only', () => {
+    const captureException = vi.fn()
+    const filter = new GlobalExceptionFilter('production', {
+      captureException,
+    })
+    const error = new Error('database password leaked in original error')
+
+    filter.catch(error, createMockArgumentsHost('/api/admin/summary', 'request-500'))
+
+    expect(captureException).toHaveBeenCalledWith({ type: 'UnhandledException', statusCode: 500 }, {
+      requestId: 'request-500',
+      path: '/api/admin/summary',
+      statusCode: 500,
+      environment: 'production',
+    })
+    expect(captureException.mock.calls[0]).not.toContain(error)
+    expect(JSON.stringify(captureException.mock.calls[0])).not.toContain('database password leaked')
+  })
+
+  it('captures HTTP 5xx errors and skips normal 4xx denials', () => {
+    const captureException = vi.fn()
+    const filter = new GlobalExceptionFilter('production', {
+      captureException,
+    })
+    const serverError = new HttpException('Upstream failed', HttpStatus.BAD_GATEWAY)
+
+    filter.catch(serverError, createMockArgumentsHost('/api/documents', 'request-502'))
+    filter.catch(new BadRequestException('Invalid payload'), createMockArgumentsHost('/api/documents', 'request-400'))
+
+    expect(captureException).toHaveBeenCalledTimes(1)
+    expect(captureException).toHaveBeenCalledWith({ type: 'HttpException', statusCode: 502 }, {
+      requestId: 'request-502',
+      path: '/api/documents',
+      statusCode: 502,
+      environment: 'production',
+    })
+    expect(captureException.mock.calls[0]).not.toContain(serverError)
+    expect(JSON.stringify(captureException.mock.calls[0])).not.toContain('Upstream failed')
+  })
+
+  it('keeps production responses sanitized while preserving request id', () => {
+    const json = vi.fn()
+    const status = vi.fn(() => ({ json }))
+    const filter = new GlobalExceptionFilter('production', {
+      captureException: vi.fn(),
+    })
+
+    filter.catch(
+      new Error('private token should never be returned'),
+      createMockArgumentsHost('/api/private', 'request-sanitized', status),
+    )
+
+    expect(status).toHaveBeenCalledWith(500)
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: 'Unexpected error',
+        path: '/api/private',
+        requestId: 'request-sanitized',
+      }),
+    )
+    expect(json.mock.calls[0][0].message).not.toContain('token')
+  })
+})
+
+function createMockArgumentsHost(path: string, requestId: string, status = vi.fn(() => ({ json: vi.fn() }))): ArgumentsHost {
+  return {
+    switchToHttp: () => ({
+      getResponse: () => ({ status }),
+      getRequest: () => ({ url: path, requestId }),
+    }),
+  } as ArgumentsHost
+}
 
 describe('GlobalExceptionFilter production sanitization (e2e)', () => {
   let app: INestApplication

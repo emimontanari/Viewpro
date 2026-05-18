@@ -1,5 +1,6 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common'
 import type { Request, Response } from 'express'
+import type { SanitizedSentryException, SentryService } from '../../observability/sentry.service'
 import type { ApiErrorResponse } from '../errors/api-error-response'
 
 type HttpExceptionBody = {
@@ -10,7 +11,10 @@ type HttpExceptionBody = {
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
-  constructor(private readonly nodeEnv = process.env.NODE_ENV ?? 'development') {}
+  constructor(
+    private readonly nodeEnv = process.env.NODE_ENV ?? 'development',
+    private readonly sentryService?: Pick<SentryService, 'captureException'>,
+  ) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp()
@@ -36,6 +40,15 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       requestId: request.requestId,
     }
 
+    if (shouldCaptureException(exception, statusCode)) {
+      this.sentryService?.captureException(sanitizeExceptionForSentry(exception, statusCode), {
+        requestId: request.requestId,
+        path: request.url,
+        statusCode,
+        environment: this.nodeEnv,
+      })
+    }
+
     response.status(statusCode).json(payload)
   }
 
@@ -49,6 +62,17 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
 
     return message ?? (typeof exceptionResponse === 'string' ? exceptionResponse : 'Unexpected error')
+  }
+}
+
+function shouldCaptureException(exception: unknown, statusCode: number) {
+  return !(exception instanceof HttpException) || statusCode >= 500
+}
+
+function sanitizeExceptionForSentry(exception: unknown, statusCode: number): SanitizedSentryException {
+  return {
+    type: exception instanceof HttpException ? 'HttpException' : 'UnhandledException',
+    statusCode,
   }
 }
 

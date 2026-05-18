@@ -2,6 +2,8 @@ import { registerAs } from '@nestjs/config'
 
 type NodeEnv = 'development' | 'test' | 'production'
 
+type SentryEnvironment = Record<string, string | undefined>
+
 export type AuthRateLimitConfig = {
   limit: number
   ttlSeconds: number
@@ -42,6 +44,20 @@ export function getAuthRateLimitConfig(): {
   }
 }
 
+export function getSentryConfig(nodeEnv: NodeEnv, env: SentryEnvironment = process.env) {
+  const tracesSampleRate = Number(env.SENTRY_TRACES_SAMPLE_RATE ?? 0)
+
+  if (tracesSampleRate < 0 || tracesSampleRate > 1) {
+    throw new Error('SENTRY_TRACES_SAMPLE_RATE must be between 0 and 1')
+  }
+
+  return {
+    dsn: env.SENTRY_DSN || undefined,
+    environment: env.SENTRY_ENVIRONMENT ?? nodeEnv,
+    tracesSampleRate,
+  }
+}
+
 export const appConfig = registerAs('app', () => {
   const nodeEnv = (process.env.NODE_ENV ?? 'development') as NodeEnv
 
@@ -51,7 +67,6 @@ export const appConfig = registerAs('app', () => {
     cors: {
       origins: parseCorsOrigins(process.env.CORS_ORIGIN, nodeEnv),
     },
-    corsOrigin: process.env.CORS_ORIGIN ?? (nodeEnv === 'production' ? undefined : 'http://localhost:3000'),
     databaseUrl: process.env.DATABASE_URL,
     auth: {
       accessTokenSecret: process.env.ACCESS_TOKEN_SECRET ?? 'change-me-in-real-env',
@@ -63,5 +78,6 @@ export const appConfig = registerAs('app', () => {
       domain: process.env.COOKIE_DOMAIN,
       secure: process.env.COOKIE_SECURE === 'true',
     },
+    sentry: getSentryConfig(nodeEnv),
   }
 })

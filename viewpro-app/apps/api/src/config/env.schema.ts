@@ -1,5 +1,5 @@
 import { plainToInstance, Transform, Type } from 'class-transformer'
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, Min, validateSync } from 'class-validator'
+import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, Min, validateSync } from 'class-validator'
 
 class EnvironmentVariables {
   @IsIn(['development', 'test', 'production'])
@@ -69,6 +69,20 @@ class EnvironmentVariables {
   @Min(3600)
   @Type(() => Number)
   REFRESH_TOKEN_TTL_SECONDS = 2592000
+
+  @IsOptional()
+  @IsString()
+  SENTRY_DSN?: string
+
+  @IsOptional()
+  @IsString()
+  SENTRY_ENVIRONMENT?: string
+
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  @Type(() => Number)
+  SENTRY_TRACES_SAMPLE_RATE = 0
 }
 
 export function validateEnv(config: Record<string, unknown>) {
