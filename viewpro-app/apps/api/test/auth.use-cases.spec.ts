@@ -1,4 +1,4 @@
-import { AnalyticsActorType, AnalyticsEventName, TenantRole, TenantStatus, UserStatus } from '@prisma/client'
+import { AnalyticsActorType, AnalyticsEventName, GlobalRole, TenantRole, TenantStatus, UserStatus } from '@prisma/client'
 import { describe, expect, it, vi } from 'vitest'
 import { LoginUseCase } from '../src/auth/use-cases/login.use-case'
 
@@ -9,6 +9,7 @@ const activeUser = {
   firstName: 'Agent',
   lastName: 'Example',
   status: UserStatus.ACTIVE,
+  globalRole: GlobalRole.USER,
   emailVerifiedAt: null,
   createdAt: new Date('2026-01-01T00:00:00.000Z'),
   updatedAt: new Date('2026-01-02T00:00:00.000Z'),

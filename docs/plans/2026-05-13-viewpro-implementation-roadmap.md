@@ -408,7 +408,9 @@ Dar al equipo ViewPro una pantalla interna para operar y monitorear el piloto co
 
 Estado:
 
-- Próximo item requerido antes de cerrar el MVP. Stage 9 no elimina esta etapa.
+- Slice 1 implementado: base de rol global independiente para operadores ViewPro (`USER | VIEWPRO_ADMIN`) en `users.globalRole`, expuesta por auth y `/auth/me`.
+- El rol global no reemplaza ni deriva de roles tenant (`PRINCIPAL_MANAGER`, `MANAGER`, `AGENT`) y no depende de `x-tenant-id`.
+- Pendiente para slices siguientes: guard/admin endpoints read-only y UI `/admin`.
 
 Incluye primera versión read-only:
 

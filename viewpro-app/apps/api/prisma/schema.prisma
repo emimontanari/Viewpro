@@ -12,6 +12,11 @@ enum UserStatus {
   SUSPENDED
 }
 
+enum GlobalRole {
+  USER
+  VIEWPRO_ADMIN
+}
+
 enum TenantStatus {
   TRIAL
   ACTIVE
@@ -117,6 +122,7 @@ model User {
   firstName       String
   lastName        String?
   status          UserStatus         @default(ACTIVE)
+  globalRole      GlobalRole         @default(USER)
   emailVerifiedAt DateTime?
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt

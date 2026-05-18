@@ -6,6 +6,7 @@ export type AuthUser = {
   firstName: string
   lastName?: string | null
   status: string
+  globalRole: 'USER' | 'VIEWPRO_ADMIN'
 }
 
 export type TenantMembership = {

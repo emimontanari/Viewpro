@@ -49,6 +49,7 @@ describe('AuthController (e2e)', () => {
       user: {
         email: 'owner@example.com',
         firstName: 'Owner',
+        globalRole: 'USER',
         status: 'ACTIVE',
         emailVerifiedAt: null,
       },
@@ -78,6 +79,7 @@ describe('AuthController (e2e)', () => {
 
     expect(user.passwordHash).not.toBe('password123')
     expect(user.passwordHash).toContain('argon2id')
+    expect(user.globalRole).toBe('USER')
     expect(membership.role).toBe('PRINCIPAL_MANAGER')
     expect(refreshToken.tokenHash).toHaveLength(64)
   })
@@ -113,9 +115,10 @@ describe('AuthController (e2e)', () => {
 
     const meResponse = await agent.get('/api/auth/me').expect(200)
     expect(meResponse.body).toMatchObject({
-      user: { email: 'login@example.com' },
-      memberships: [{ tenant: { slug: 'login-homes' } }],
+      user: { email: 'login@example.com', globalRole: 'USER' },
+      memberships: [{ role: 'PRINCIPAL_MANAGER', tenant: { slug: 'login-homes' } }],
     })
+    expect(meResponse.body.user.globalRole).not.toBe(meResponse.body.memberships[0].role)
 
     const refreshTokensBefore = await prisma.refreshToken.findMany({
       where: { user: { email: 'login@example.com' } },
@@ -142,6 +145,24 @@ describe('AuthController (e2e)', () => {
     expect(logoutResponse.headers['set-cookie'].join(';')).toContain('viewpro_access_token=;')
 
     await agent.get('/api/auth/me').expect(401)
+  })
+
+  it('returns VIEWPRO_ADMIN as an independent global role on /me', async () => {
+    await registerTenant('admin@example.com')
+    await prisma.user.update({
+      where: { email: 'admin@example.com' },
+      data: { globalRole: 'VIEWPRO_ADMIN' },
+    })
+
+    const agent = request.agent(app.getHttpServer())
+    await agent.post('/api/auth/login').send({ email: 'admin@example.com', password: 'password123' }).expect(201)
+
+    const meResponse = await agent.get('/api/auth/me').expect(200)
+    expect(meResponse.body).toMatchObject({
+      user: { email: 'admin@example.com', globalRole: 'VIEWPRO_ADMIN' },
+      memberships: [{ role: 'PRINCIPAL_MANAGER', tenant: { slug: 'duplicate-homes' } }],
+    })
+    expect(meResponse.body.user.globalRole).not.toBe(meResponse.body.memberships[0].role)
   })
 
   it('rejects wrong login password and unauthenticated session access', async () => {
