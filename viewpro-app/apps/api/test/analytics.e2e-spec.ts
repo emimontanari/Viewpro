@@ -58,8 +58,10 @@ describe('Analytics reports (e2e)', () => {
 
   it('lists inactive active engagements without returning recently updated engagements', async () => {
     const manager = await registerTenantSession('analytics-manager-inactive@example.com', 'Analytics Inactive Homes')
+    const otherTenant = await registerTenantSession('analytics-other-inactive@example.com', 'Analytics Other Inactive Homes')
     const updated = await createEngagement(manager.agent, manager.tenantId, { title: 'Recently Updated Property' }).expect(201)
     const inactive = await createEngagement(manager.agent, manager.tenantId, { title: 'Inactive Property' }).expect(201)
+    const otherInactive = await createEngagement(otherTenant.agent, otherTenant.tenantId, { title: 'Other Tenant Inactive Property' }).expect(201)
     await prisma.propertyEngagement.updateMany({ data: { status: PropertyEngagementStatus.ACTIVE_PUBLICATION } })
     await seedMovementEvent(manager.tenantId, manager.userId, updated.body.id, new Date())
 
@@ -71,6 +73,7 @@ describe('Analytics reports (e2e)', () => {
     expect(response.body.items).toHaveLength(1)
     expect(response.body.items[0]).toMatchObject({ id: inactive.body.id, tenantId: manager.tenantId })
     expect(response.body.items.map((item: { id: string }) => item.id)).not.toContain(updated.body.id)
+    expect(response.body.items.map((item: { id: string }) => item.id)).not.toContain(otherInactive.body.id)
   })
 
   it('lists tenant-scoped analytics events with pagination', async () => {

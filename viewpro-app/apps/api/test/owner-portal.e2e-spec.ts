@@ -74,6 +74,21 @@ describe('Owner portal (e2e)', () => {
     await expect(prisma.tenantMembership.count({ where: { userId: owner.userId } })).resolves.toBe(0)
   })
 
+  it('ignores misleading x-tenant-id and returns owner-owned properties by active ownership', async () => {
+    const manager = await registerTenantSession('owner-header-manager@example.com', 'Owner Header Homes')
+    const otherTenant = await registerTenantSession('owner-header-other-tenant@example.com', 'Owner Header Other Tenant Homes')
+    const owner = await registerOwnerSession('owner-header@example.com', 'Owner Header Temporary Homes')
+    const owned = await createEngagement(manager.agent, manager.tenantId, { title: 'Header Owned Property' }).expect(201)
+    await grantOwnerAccess(owner.userId, owned.body.property.id)
+
+    const list = await owner.agent.get('/api/owner/properties').set('x-tenant-id', otherTenant.tenantId).expect(200)
+    const detail = await owner.agent.get(`/api/owner/properties/${owned.body.property.id}`).set('x-tenant-id', otherTenant.tenantId).expect(200)
+
+    expect(list.body.map((property: { id: string }) => property.id)).toEqual([owned.body.property.id])
+    expect(detail.body).toMatchObject({ id: owned.body.property.id, title: 'Header Owned Property' })
+    await expect(prisma.tenantMembership.count({ where: { userId: owner.userId } })).resolves.toBe(0)
+  })
+
   it('returns property detail only to the active owner and hides inaccessible resources as 404', async () => {
     const manager = await registerTenantSession('owner-detail-manager@example.com', 'Owner Detail Homes')
     const owner = await registerOwnerSession('owner-detail@example.com', 'Owner Detail Temporary Homes')

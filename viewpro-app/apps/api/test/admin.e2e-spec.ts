@@ -87,10 +87,29 @@ describe('Admin access (e2e)', () => {
     await agent.get('/api/admin/access-check').expect(200)
   })
 
+  it('allows VIEWPRO_ADMIN access with an arbitrary x-tenant-id', async () => {
+    const { agent, userId } = await registerTenantSession('admin-arbitrary-tenant@example.com', 'Admin Arbitrary Tenant Homes')
+    const arbitraryTenant = await prisma.tenant.create({ data: { name: 'Arbitrary Header Tenant', slug: 'arbitrary-header-tenant' } })
+    await prisma.user.update({ where: { id: userId }, data: { globalRole: GlobalRole.VIEWPRO_ADMIN } })
+
+    const response = await agent.get('/api/admin/access-check').set('x-tenant-id', arbitraryTenant.id).expect(200)
+
+    expect(response.body).toEqual({ access: 'granted', globalRole: GlobalRole.VIEWPRO_ADMIN })
+  })
+
   it('does not derive admin access from a tenant header', async () => {
     const { agent, tenantId } = await registerTenantSession('tenant-header@example.com', 'Tenant Header Homes')
 
     const response = await agent.get('/api/admin/access-check').set('x-tenant-id', tenantId).expect(403)
+
+    expect(response.body.message).toBe('ViewPro admin access required')
+  })
+
+  it('does not derive admin access from an arbitrary x-tenant-id', async () => {
+    const { agent } = await registerTenantSession('tenant-arbitrary-header@example.com', 'Tenant Arbitrary Header Homes')
+    const arbitraryTenant = await prisma.tenant.create({ data: { name: 'Non Member Header Tenant', slug: 'non-member-header-tenant' } })
+
+    const response = await agent.get('/api/admin/access-check').set('x-tenant-id', arbitraryTenant.id).expect(403)
 
     expect(response.body.message).toBe('ViewPro admin access required')
   })
@@ -122,6 +141,17 @@ describe('Admin access (e2e)', () => {
       await prisma.user.update({ where: { id: userId }, data: { globalRole: GlobalRole.VIEWPRO_ADMIN } })
 
       await agent.get(route).expect(200)
+    },
+  )
+
+  it.each(['/api/admin/summary', '/api/admin/tenants', '/api/admin/activity'])(
+    'allows VIEWPRO_ADMIN access to %s with an arbitrary x-tenant-id',
+    async (route) => {
+      const { agent, userId } = await registerTenantSession(`admin-arbitrary-${route.split('/').pop()}@example.com`, 'Admin Arbitrary Homes')
+      const arbitraryTenant = await prisma.tenant.create({ data: { name: `Arbitrary ${route}`, slug: `arbitrary-${route.split('/').pop()}` } })
+      await prisma.user.update({ where: { id: userId }, data: { globalRole: GlobalRole.VIEWPRO_ADMIN } })
+
+      await agent.get(route).set('x-tenant-id', arbitraryTenant.id).expect(200)
     },
   )
 

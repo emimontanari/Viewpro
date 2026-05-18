@@ -122,6 +122,45 @@ describe('Documents internal endpoints (e2e)', () => {
     expect(crossTenantRead.body.message).toBe('Document request not found')
   })
 
+  it('returns 404 when Tenant A approves or rejects Tenant B document request', async () => {
+    const tenantA = await registerTenantSession('documents-review-tenant-a@example.com', 'Documents Review Tenant A')
+    const tenantB = await registerTenantSession('documents-review-tenant-b@example.com', 'Documents Review Tenant B')
+    const owner = await registerOwnerSession('documents-review-cross-owner@example.com')
+    const engagement = await createEngagement(tenantB.agent, tenantB.tenantId, { title: 'Tenant B Review Document Property' }).expect(201)
+    await grantOwnerAccess(owner.userId, engagement.body.property.id)
+    const approveTarget = await seedSubmittedDocumentRequest({
+      tenantId: tenantB.tenantId,
+      propertyEngagementId: engagement.body.id,
+      ownerUserId: owner.userId,
+      requestedByUserId: tenantB.userId,
+    })
+    const rejectTarget = await seedSubmittedDocumentRequest({
+      tenantId: tenantB.tenantId,
+      propertyEngagementId: engagement.body.id,
+      ownerUserId: owner.userId,
+      requestedByUserId: tenantB.userId,
+    })
+
+    const approveResponse = await tenantA.agent
+      .post(`/api/document-requests/${approveTarget.id}/approve`)
+      .set('x-tenant-id', tenantA.tenantId)
+      .expect(404)
+    const rejectResponse = await tenantA.agent
+      .post(`/api/document-requests/${rejectTarget.id}/reject`)
+      .set('x-tenant-id', tenantA.tenantId)
+      .send({ reason: 'Cross-tenant rejection must be hidden.' })
+      .expect(404)
+
+    expect(approveResponse.body.message).toBe('Document request not found')
+    expect(rejectResponse.body.message).toBe('Document request not found')
+    await expect(
+      prisma.documentRequest.findUnique({ where: { id: approveTarget.id }, select: { status: true } }),
+    ).resolves.toEqual({ status: DocumentRequestStatus.SUBMITTED })
+    await expect(
+      prisma.documentRequest.findUnique({ where: { id: rejectTarget.id }, select: { status: true } }),
+    ).resolves.toEqual({ status: DocumentRequestStatus.SUBMITTED })
+  })
+
   it('requires a rejection reason and lets authorized users create read URLs after upload', async () => {
     const manager = await registerTenantSession('documents-review-manager@example.com', 'Documents Review Tenant')
     const seller = await registerTenantSession('documents-review-seller@example.com', 'Documents Review Seller')

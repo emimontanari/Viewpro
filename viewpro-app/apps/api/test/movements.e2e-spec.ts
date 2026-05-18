@@ -167,6 +167,20 @@ describe('Movements (e2e)', () => {
     expect(response.body.message).toBe('Property engagement not found')
   })
 
+  it('returns 404 when Tenant A creates a movement for Tenant B engagement', async () => {
+    const tenantA = await registerTenantSession('tenant-a-movement-create@example.com', 'Tenant A Movement Create Homes')
+    const tenantB = await registerTenantSession('tenant-b-movement-create@example.com', 'Tenant B Movement Create Homes')
+    const tenantBEngagement = await createEngagement(tenantB.agent, tenantB.tenantId, { title: 'Tenant B Create Movement Property' }).expect(201)
+
+    const response = await createMovement(tenantA.agent, tenantA.tenantId, tenantBEngagement.body.id, {
+      type: MovementType.GENERAL_UPDATE,
+      observation: 'Tenant A must not create on Tenant B engagement.',
+    }).expect(404)
+
+    expect(response.body.message).toBe('Property engagement not found')
+    await expect(prisma.movement.count()).resolves.toBe(0)
+  })
+
   it('rejects movement endpoints without x-tenant-id', async () => {
     const manager = await registerTenantSession('manager-movement-no-tenant@example.com', 'No Tenant Movement Homes')
     const engagement = await createEngagement(manager.agent, manager.tenantId, { title: 'No Tenant Movement Property' }).expect(201)
