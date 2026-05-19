@@ -59,21 +59,21 @@ export default function SelectTenantPage() {
 
   return (
     <InternalShell
-      description="Elegí el contexto de inmobiliaria para operar las pantallas con alcance de tenant."
-      title="Seleccionar tenant"
+      description="Elegí con cuál inmobiliaria querés trabajar hoy. Después podés cambiarla desde Configuración."
+      title="Elegir inmobiliaria"
     >
-      <section className="tenant-selector" aria-label="Membresías de tenant disponibles">
-        {isLoading ? <p className="workspace-note">Cargando tus membresías…</p> : null}
+      <section className="tenant-selector" aria-label="Inmobiliarias disponibles">
+        {isLoading ? <p className="workspace-note">Cargando tus inmobiliarias…</p> : null}
         {error ? (
           <EmptyState
             description={`${error} Volvé a ingresar si tu sesión expiró.`}
-            title="No pudimos cargar tus membresías"
+            title="No pudimos cargar tus inmobiliarias"
           />
         ) : null}
         {!isLoading && !error && memberships.length === 0 ? (
           <EmptyState
-            description="Tu cuenta está autenticada, pero todavía no está asociada a una inmobiliaria. Pedile a un admin que te agregue antes de entrar al workspace."
-            title="No encontramos membresías de tenant"
+            description="Tu cuenta todavía no está asociada a una inmobiliaria. Pedile a un administrador que te agregue para poder operar."
+            title="No encontramos inmobiliarias disponibles"
           />
         ) : null}
         <div className="tenant-selector__grid">
@@ -85,7 +85,7 @@ export default function SelectTenantPage() {
                   <h2>{membership.tenant.name}</h2>
                   <p>{membership.tenant.slug}</p>
                 </div>
-                <Button onClick={() => selectTenant(membership)}>Entrar al workspace</Button>
+                <Button onClick={() => selectTenant(membership)}>Entrar al panel</Button>
               </CardContent>
             </Card>
           ))}

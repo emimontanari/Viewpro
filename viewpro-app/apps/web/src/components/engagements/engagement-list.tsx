@@ -84,21 +84,21 @@ export function EngagementList() {
 
   return (
     <InternalShell
-      description="Abrí, revisá y creá gestiones reales dentro del tenant seleccionado. Sin datos inventados: si todavía no hay operaciones, empezá por crear la primera."
+      description="Abrí, revisá y creá gestiones reales para la inmobiliaria elegida. Sin datos inventados: si todavía no hay operaciones, empezá por crear la primera."
       selectedTenantName={state.selectedMembership?.tenant.name}
-      title="Gestiones internas"
+      title="Gestiones"
     >
-      {state.isLoading ? <p className="workspace-note">Cargando gestiones del tenant…</p> : null}
+      {state.isLoading ? <p className="workspace-note">Cargando gestiones de la inmobiliaria…</p> : null}
       {!state.isLoading && !state.selectedTenantId ? (
         <EmptyState
-          action={<ButtonLink href="/select-tenant">Seleccionar tenant</ButtonLink>}
-          description="Elegí una inmobiliaria antes de abrir el workspace de gestiones. Las operaciones internas siempre se consultan con contexto de tenant."
-          title="Seleccioná un tenant para ver gestiones"
+          action={<ButtonLink href="/select-tenant">Elegir inmobiliaria</ButtonLink>}
+          description="Elegí una inmobiliaria antes de abrir sus gestiones, propiedades, propietarios y documentos."
+          title="Elegí una inmobiliaria para ver gestiones"
         />
       ) : null}
       {!state.isLoading && state.selectedTenantId && state.error ? (
         <EmptyState
-          action={<ButtonLink href="/select-tenant">Revisar tenant</ButtonLink>}
+          action={<ButtonLink href="/select-tenant">Revisar inmobiliaria</ButtonLink>}
           description={state.error}
           title="No pudimos cargar las gestiones"
         />
@@ -108,7 +108,7 @@ export function EngagementList() {
           <Card className="engagement-workspace__intro" tone="subtle">
             <CardContent className="engagement-workspace__intro-content">
               <div>
-                <p className="engagement-workspace__eyebrow">Workspace operativo</p>
+                <p className="engagement-workspace__eyebrow">Operación comercial</p>
                 <h2>{state.total === 1 ? '1 gestión activa en el radar' : `${state.total} gestiones en el radar`}</h2>
                 <p>Usá este listado para entrar al detalle de cada propiedad o cargar una nueva gestión.</p>
               </div>
@@ -125,7 +125,7 @@ export function EngagementList() {
           ) : (
             <EmptyState
               action={<ButtonLink href="/engagements/new">Crear primera gestión</ButtonLink>}
-              description="Todavía no hay propiedades cargadas para este tenant. Creá una gestión para empezar a registrar el avance real de una operación."
+              description="Todavía no hay propiedades cargadas para esta inmobiliaria. Creá una gestión para empezar a registrar el avance real de una operación."
               title="No hay gestiones creadas"
             />
           )}

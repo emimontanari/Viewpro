@@ -114,23 +114,23 @@ export function CreateEngagementForm() {
 
   return (
     <InternalShell
-      description="Cargá los datos mínimos que el backend necesita para crear el activo de propiedad y su gestión tenant-scoped."
+      description="Cargá los datos mínimos de la propiedad para iniciar una gestión comercial clara y trazable."
       selectedTenantName={state.selectedMembership?.tenant.name}
       title="Crear gestión"
     >
       {state.isLoading ? <p className="workspace-note">Preparando formulario…</p> : null}
       {!state.isLoading && !state.selectedTenantId ? (
         <EmptyState
-          action={<ButtonLink href="/select-tenant">Seleccionar tenant</ButtonLink>}
-          description="Elegí una inmobiliaria antes de crear una gestión. La operación se guarda siempre dentro del tenant seleccionado."
-          title="Seleccioná un tenant para crear gestiones"
+          action={<ButtonLink href="/select-tenant">Elegir inmobiliaria</ButtonLink>}
+          description="Elegí una inmobiliaria antes de crear una gestión. La operación queda asociada a esa inmobiliaria."
+          title="Elegí una inmobiliaria para crear gestiones"
         />
       ) : null}
       {!state.isLoading && state.selectedTenantId && state.error && !state.selectedMembership ? (
         <EmptyState
-          action={<ButtonLink href="/select-tenant">Revisar tenant</ButtonLink>}
+          action={<ButtonLink href="/select-tenant">Revisar inmobiliaria</ButtonLink>}
           description={state.error}
-          title="No pudimos validar tu tenant"
+          title="No pudimos validar tu acceso"
         />
       ) : null}
       {!state.isLoading && state.selectedTenantId && state.selectedMembership ? (
@@ -170,7 +170,7 @@ export function CreateEngagementForm() {
                   <Input id="ownerName" label="Nombre del propietario" maxLength={120} name="ownerName" />
                   <Input id="ownerEmail" label="Email del propietario" name="ownerEmail" type="email" />
                   <Input
-                    hint="Ingresá el monto sin separadores; ViewPro lo enviará al backend en centavos."
+                    hint="Ingresá el monto sin separadores; ViewPro lo normaliza para mantener importes consistentes."
                     id="publishedPrice"
                     label="Precio publicado"
                     min="0"

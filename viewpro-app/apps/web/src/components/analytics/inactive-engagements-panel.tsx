@@ -12,9 +12,9 @@ export function InactiveEngagementsPanel({ response }: InactiveEngagementsPanelP
     <Card className="analytics-panel analytics-inactive" tone="subtle">
       <CardHeader>
         <p className="analytics-eyebrow">Riesgo operativo</p>
-        <h2>Gestiones sin update reciente</h2>
+        <h2>Gestiones sin actualización reciente</h2>
         <p>
-          Activas sin movimiento owner-visible entre {formatDate(response.window.from)} y {formatDate(response.window.to)}.
+          Activas sin novedades visibles para propietarios entre {formatDate(response.window.from)} y {formatDate(response.window.to)}.
         </p>
       </CardHeader>
       <CardContent>
@@ -33,7 +33,7 @@ export function InactiveEngagementsPanel({ response }: InactiveEngagementsPanelP
         ) : (
           <div className="analytics-empty-inline">
             <h3>No hay gestiones inactivas</h3>
-            <p>El tenant no tiene gestiones activas pendientes de actualización en esta ventana.</p>
+            <p>La inmobiliaria no tiene gestiones activas pendientes de actualización en esta ventana.</p>
           </div>
         )}
       </CardContent>

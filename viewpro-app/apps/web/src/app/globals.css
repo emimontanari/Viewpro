@@ -590,8 +590,11 @@ svg {
   min-height: 100vh;
   padding: clamp(0.75rem, 2vw, 1.5rem);
   background:
-    radial-gradient(circle at top right, rgba(47, 116, 111, 0.12), transparent 30rem),
-    linear-gradient(135deg, var(--color-ivory-50), var(--color-surface-muted));
+    linear-gradient(90deg, rgba(164, 122, 60, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(164, 122, 60, 0.08) 1px, transparent 1px),
+    radial-gradient(circle at top right, rgba(47, 116, 111, 0.1), transparent 32rem),
+    linear-gradient(135deg, #fffdf7, #f3eadb);
+  background-size: 44px 44px, 44px 44px, auto, auto;
 }
 
 .owner-shell {
@@ -622,6 +625,10 @@ svg {
   box-shadow: var(--shadow-sm);
 }
 
+.internal-shell__header {
+  align-items: flex-start;
+}
+
 .internal-shell__brand,
 .owner-shell__brand {
   color: var(--color-ink);
@@ -637,6 +644,7 @@ svg {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
+  justify-content: flex-end;
 }
 
 .internal-shell__nav a,
@@ -649,9 +657,14 @@ svg {
   color: var(--color-ink-muted);
   font-weight: 800;
   text-decoration: none;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .internal-shell__nav a:hover,
+.internal-shell__nav a:focus-visible,
 .owner-shell__nav a:hover {
   background: var(--color-teal-soft);
   color: var(--color-teal);
@@ -677,6 +690,80 @@ svg {
 .internal-shell__hero h1,
 .owner-shell__hero h1 {
   font-size: clamp(2.7rem, 7vw, 5.5rem);
+}
+
+.dashboard-home {
+  display: grid;
+  gap: 1rem;
+  padding-bottom: clamp(2rem, 6vw, 4rem);
+}
+
+.dashboard-home__overview {
+  overflow: hidden;
+  border-color: rgba(164, 122, 60, 0.24);
+  background: linear-gradient(135deg, rgba(255, 253, 247, 0.96), rgba(237, 224, 202, 0.72));
+}
+
+.dashboard-overview,
+.dashboard-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.dashboard-overview h2,
+.dashboard-quick-actions h2 {
+  max-width: 48rem;
+  margin: 0.35rem 0 0;
+  color: var(--color-ink);
+  font-family: var(--font-display), serif;
+  font-size: clamp(2.1rem, 5vw, 4.2rem);
+  font-weight: 560;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.dashboard-overview p {
+  max-width: 43rem;
+  margin: 1rem 0 0;
+  color: var(--color-ink-muted);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.dashboard-overview__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.dashboard-home__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.dashboard-home__priority {
+  grid-row: span 2;
+}
+
+.dashboard-kicker {
+  color: var(--color-brass);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.dashboard-list {
+  display: grid;
+  gap: 0.85rem;
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--color-ink-muted);
 }
 
 .tenant-selector,
@@ -1733,6 +1820,7 @@ svg {
   .auth-layout,
   .tenant-selector__grid,
   .dashboard-grid,
+  .dashboard-home__grid,
   .engagement-card__main,
   .engagement-detail__grid,
   .engagement-form__grid,

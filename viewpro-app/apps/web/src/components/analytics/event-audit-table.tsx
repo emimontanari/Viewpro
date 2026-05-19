@@ -25,14 +25,14 @@ export function EventAuditTable({ eventName, isLoading, onEventNameChange, onPag
     <Card className="analytics-panel analytics-events" tone="subtle">
       <CardHeader className="analytics-events__header">
         <div>
-          <p className="analytics-eyebrow">Auditoría</p>
-          <h2>Eventos reales del piloto</h2>
-          <p>{response.total === 1 ? '1 evento registrado.' : `${response.total} eventos registrados.`}</p>
+          <p className="analytics-eyebrow">Actividad</p>
+          <h2>Movimientos reales de la inmobiliaria</h2>
+          <p>{response.total === 1 ? '1 movimiento registrado.' : `${response.total} movimientos registrados.`}</p>
         </div>
         <label className="analytics-events__filter">
-          <span>Filtrar evento</span>
+          <span>Filtrar movimiento</span>
           <select className="vp-input" disabled={isLoading} onChange={handleEventNameChange} value={eventName}>
-            <option value="">Todos los eventos</option>
+            <option value="">Todos los movimientos</option>
             {analyticsEventNames.map((name) => (
               <option key={name} value={name}>
                 {formatEventName(name)}
@@ -47,10 +47,10 @@ export function EventAuditTable({ eventName, isLoading, onEventNameChange, onPag
             <table className="analytics-events__table">
               <thead>
                 <tr>
-                  <th>Evento</th>
+                  <th>Movimiento</th>
                   <th>Actor</th>
-                  <th>Contexto</th>
-                  <th>Metadata</th>
+                  <th>Área</th>
+                  <th>Detalle</th>
                   <th>Fecha</th>
                 </tr>
               </thead>
@@ -71,8 +71,8 @@ export function EventAuditTable({ eventName, isLoading, onEventNameChange, onPag
           </div>
         ) : (
           <div className="analytics-empty-inline">
-            <h3>No hay eventos para este filtro</h3>
-            <p>Cuando el backend registre actividad del tenant, el detalle auditable va a aparecer acá.</p>
+            <h3>No hay movimientos para este filtro</h3>
+            <p>Cuando la inmobiliaria tenga actividad comercial, el detalle va a aparecer acá.</p>
           </div>
         )}
         <div className="analytics-events__pagination">
@@ -100,7 +100,7 @@ function formatEventName(eventName: string) {
     MOVEMENT_CREATED: 'Movimiento creado',
     OWNER_VIEWED_PROPERTY: 'Propietario vio propiedad',
     PROPERTY_STATUS_CHANGED: 'Estado de propiedad cambiado',
-    SELLER_LOGGED_IN: 'Seller inició sesión',
+    SELLER_LOGGED_IN: 'Vendedor inició sesión',
   }
 
   return labels[eventName as AnalyticsEventName] ?? eventName
@@ -117,11 +117,11 @@ function formatContext(event: AnalyticsEvent) {
   const context = [
     event.propertyEngagementId ? `Gestión ${event.propertyEngagementId.slice(0, 8)}` : null,
     event.propertyAssetId ? `Propiedad ${event.propertyAssetId.slice(0, 8)}` : null,
-    event.documentRequestId ? `Doc ${event.documentRequestId.slice(0, 8)}` : null,
+    event.documentRequestId ? `Documento ${event.documentRequestId.slice(0, 8)}` : null,
     event.movementId ? `Mov ${event.movementId.slice(0, 8)}` : null,
   ].filter(Boolean)
 
-  return context.length > 0 ? context.join(' · ') : 'Sin contexto adicional'
+  return context.length > 0 ? context.join(' · ') : 'Sin detalle adicional'
 }
 
 function formatMetadata(metadata: unknown) {
@@ -130,14 +130,82 @@ function formatMetadata(metadata: unknown) {
   }
 
   const entries = Object.entries(metadata)
-    .filter(([, value]) => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+    .map(([key, value]) => formatMetadataEntry(key, value))
+    .filter(Boolean)
     .slice(0, 3)
 
   if (entries.length === 0) {
     return '—'
   }
 
-  return entries.map(([key, value]) => `${key}: ${String(value)}`).join(' · ')
+  return entries.join(' · ')
+}
+
+function formatMetadataEntry(key: string, value: unknown) {
+  if (isUnsafeMetadataKey(key) || !isVisibleMetadataValue(value)) {
+    return null
+  }
+
+  const label = metadataLabels[key]
+  if (!label) {
+    return null
+  }
+
+  return `${label}: ${formatMetadataValue(key, value)}`
+}
+
+const metadataLabels: Record<string, string> = {
+  documentStatus: 'Estado del documento',
+  operationType: 'Operación',
+  propertyStatus: 'Estado de propiedad',
+  status: 'Estado comercial',
+}
+
+const statusLabels: Record<string, string> = {
+  ACTIVE_PUBLICATION: 'Publicación activa',
+  CANCELLED: 'Cancelada',
+  CAPTURE: 'Captación',
+  CLOSED: 'Cerrada',
+  DOCUMENTATION_PENDING: 'Documentación pendiente',
+  FINAL_DOCUMENTATION: 'Documentación final',
+  INQUIRIES_AND_VISITS: 'Consultas y visitas',
+  OFFER_NEGOTIATION: 'Negociación de oferta',
+  PUBLICATION_PREPARATION: 'Preparación de publicación',
+  RENT: 'Alquiler',
+  RESERVATION_STARTED: 'Reserva iniciada',
+  SALE: 'Venta',
+}
+
+function isUnsafeMetadataKey(key: string) {
+  return /tenant|uuid|workspace|request|backend|context|contexto|x-tenant-id/i.test(key)
+}
+
+function isVisibleMetadataValue(value: unknown) {
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+}
+
+function formatMetadataValue(key: string, value: string | number | boolean) {
+  if (typeof value === 'boolean') {
+    return value ? 'Sí' : 'No'
+  }
+
+  if (typeof value === 'number') {
+    return String(value)
+  }
+
+  if (key.toLowerCase().includes('status') || key === 'operationType') {
+    return statusLabels[value] ?? humanizeMetadataValue(value)
+  }
+
+  return humanizeMetadataValue(value)
+}
+
+function humanizeMetadataValue(value: string) {
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
 }
 
 function formatDateTime(value: string) {

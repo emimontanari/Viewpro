@@ -113,42 +113,42 @@ export default function AnalyticsPage() {
 
   return (
     <InternalShell
-      description="Un tablero ejecutivo para seguir salud piloto, gestiones sin actualización y trazabilidad de eventos reales del tenant."
+      description="Un tablero ejecutivo para seguir salud comercial, gestiones sin actualización y señales reales de actividad de la inmobiliaria."
       selectedTenantName={state.selectedMembership?.tenant.name}
-      title="Métricas piloto"
+      title="Métricas"
     >
-      {state.isLoading ? <p className="workspace-note">Cargando métricas reales del tenant…</p> : null}
+      {state.isLoading ? <p className="workspace-note">Cargando métricas de la inmobiliaria…</p> : null}
       {!state.isLoading && !state.selectedTenantId ? (
         <EmptyState
-          action={<ButtonLink href="/select-tenant">Seleccionar tenant</ButtonLink>}
-          description="Elegí una inmobiliaria antes de abrir métricas. Los reportes internos requieren contexto de tenant."
-          title="Seleccioná un tenant para ver métricas"
+          action={<ButtonLink href="/select-tenant">Elegir inmobiliaria</ButtonLink>}
+          description="Elegí una inmobiliaria antes de abrir métricas para ver sus gestiones, documentos y actividad comercial."
+          title="Elegí una inmobiliaria para ver métricas"
         />
       ) : null}
       {!state.isLoading && state.selectedTenantId && state.error && !state.data ? (
         <EmptyState
-          action={<ButtonLink href="/select-tenant">Revisar tenant</ButtonLink>}
+          action={<ButtonLink href="/select-tenant">Revisar inmobiliaria</ButtonLink>}
           description={state.error}
           title="No pudimos cargar las métricas"
         />
       ) : null}
       {!state.isLoading && state.selectedTenantId && !state.error && !state.selectedMembership ? (
         <EmptyState
-          action={<ButtonLink href="/select-tenant">Elegir otro tenant</ButtonLink>}
-          description="El tenant seleccionado ya no está disponible para tu cuenta o no tenés membresía activa."
-          title="El contexto de tenant necesita atención"
+          action={<ButtonLink href="/select-tenant">Elegir otra inmobiliaria</ButtonLink>}
+          description="La inmobiliaria elegida ya no está disponible para tu cuenta o necesitás que revisen tu acceso."
+          title="Necesitamos revisar tu acceso"
         />
       ) : null}
       {state.data && state.selectedMembership ? (
-        <section className="analytics-dashboard" aria-label="Dashboard de métricas piloto">
+        <section className="analytics-dashboard" aria-label="Métricas de la inmobiliaria">
           {state.error ? <p className="auth-form__error">{state.error}</p> : null}
-          {state.isRefreshingEvents ? <p className="workspace-note">Actualizando auditoría…</p> : null}
+          {state.isRefreshingEvents ? <p className="workspace-note">Actualizando actividad…</p> : null}
           <Card className="analytics-dashboard__intro" tone="subtle">
             <CardContent>
-              <p className="analytics-eyebrow">Health dashboard</p>
-              <h2>Señales para conducir el piloto sin inventar datos</h2>
+              <p className="analytics-eyebrow">Pulso operativo</p>
+              <h2>Señales para conducir la operación comercial</h2>
               <p>
-                Cada bloque consulta Stage 8 en vivo con <code>x-tenant-id</code>. No hay métricas locales, PostHog ni datos demo en este slice.
+                Cada bloque usa actividad real de la inmobiliaria. Si todavía no hay movimientos, vas a ver estados honestos para decidir el próximo paso.
               </p>
             </CardContent>
           </Card>

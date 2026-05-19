@@ -23,7 +23,7 @@ export function PilotSummaryPanel({ summary }: PilotSummaryPanelProps) {
         </div>
         <dl className="analytics-kpi-grid">
           <Metric label="Gestiones activas" value={summary.activeEngagements} />
-          <Metric label="Con update visible" value={summary.activeEngagementsWithOwnerVisibleUpdate} />
+          <Metric label="Con actualización visible" value={summary.activeEngagementsWithOwnerVisibleUpdate} />
           <Metric label="Vistas de propietarios" value={summary.ownerViewedPropertyCount} />
           <Metric label="Documentos solicitados" value={summary.documentEvents.requested} />
           <Metric label="Documentos cargados" value={summary.documentEvents.uploaded} />
