@@ -6,7 +6,21 @@ dist/
 coverage/
 playwright-report/
 test-results/
+uploads/
+viewpro-app/apps/api/uploads/
+
+# Local agent/CLI runtime state
+.pi/
+.pi-lens/
+diagnostics/
+viewpro-app/diagnostics/
+recovery/
+judgment-*.md
+repo-health-verification.md
+false
+
 *.tsbuildinfo
 .env
 .env.*
 !.env.example
+!.env.test.example
