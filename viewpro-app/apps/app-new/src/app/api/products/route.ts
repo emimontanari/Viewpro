@@ -1,45 +1,70 @@
-// ============================================================
-// Route Handler — Products (list + create)
-// ============================================================
-// Used with Pattern 2 (Route Handlers + ORM) or Pattern 3 (BFF).
-//
-// Fullstack (ORM): Replace fakeProducts calls with your ORM
-//   const products = await db.query.products.findMany({ ... })
-//
-// BFF (proxy): Replace with fetch to your external backend
-//   const res = await fetch(`${BACKEND_URL}/products?${searchParams}`, {
-//     headers: { Authorization: `Bearer ${token}` }
-//   })
-//   return NextResponse.json(await res.json())
-//
-// Current: Mock (in-memory fake data for demo/prototyping)
-// ============================================================
+// Temporary BFF adapter: the legacy frontend `/api/products` path now maps to
+// ViewPro backend property engagements.
 
-import { fakeProducts } from '@/constants/mock-api';
-import { NextRequest, NextResponse } from 'next/server';
+import { bffFetch, proxyJsonResponse } from '@/lib/bff-api';
+import { type NextRequest, NextResponse } from 'next/server';
+
+const PROPERTY_ENGAGEMENTS_PATH = '/property-engagements';
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = request.nextUrl;
-
-  const page = Number(searchParams.get('page') ?? 1);
-  const limit = Number(searchParams.get('limit') ?? 10);
-  const categories = searchParams.get('categories') ?? undefined;
-  const search = searchParams.get('search') ?? undefined;
-  const sort = searchParams.get('sort') ?? undefined;
-
-  const data = await fakeProducts.getProducts({
-    page,
-    limit,
-    categories,
-    search,
-    sort
-  });
-
-  return NextResponse.json(data);
+  try {
+    const response = await bffFetch(`${PROPERTY_ENGAGEMENTS_PATH}${buildListQuery(request)}`);
+    return proxyJsonResponse(response);
+  } catch (error) {
+    return toBffErrorResponse(error, 'No se pudieron cargar las propiedades.');
+  }
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const data = await fakeProducts.createProduct(body);
-  return NextResponse.json(data, { status: 201 });
+  try {
+    const body = await request.text();
+    const response = await bffFetch(PROPERTY_ENGAGEMENTS_PATH, {
+      body,
+      headers: {
+        'content-type': request.headers.get('content-type') ?? 'application/json'
+      },
+      method: 'POST'
+    });
+
+    return proxyJsonResponse(response);
+  } catch (error) {
+    return toBffErrorResponse(error, 'No se pudo crear la propiedad.');
+  }
+}
+
+function buildListQuery(request: NextRequest) {
+  const incomingParams = request.nextUrl.searchParams;
+  const backendParams = new URLSearchParams();
+
+  appendSearchParam(backendParams, 'page', incomingParams.get('page'));
+  appendSearchParam(
+    backendParams,
+    'pageSize',
+    incomingParams.get('limit') ?? incomingParams.get('pageSize') ?? incomingParams.get('perPage')
+  );
+  appendSearchParam(backendParams, 'status', incomingParams.get('status'));
+  appendSearchParam(
+    backendParams,
+    'operationType',
+    incomingParams.get('operationType') ?? incomingParams.get('categories')
+  );
+
+  const query = backendParams.toString();
+  return query ? `?${query}` : '';
+}
+
+function appendSearchParam(searchParams: URLSearchParams, key: string, value: string | null) {
+  if (!value) {
+    return;
+  }
+
+  searchParams.set(key, value);
+}
+
+function toBffErrorResponse(error: unknown, fallbackMessage: string) {
+  const isTimeout = error instanceof Error && error.name === 'AbortError';
+  return NextResponse.json(
+    { message: isTimeout ? 'La solicitud al backend tardó demasiado.' : fallbackMessage },
+    { status: isTimeout ? 504 : 502 }
+  );
 }

@@ -1,44 +1,48 @@
-// ============================================================
-// Route Handler — Single Product (get + update)
-// ============================================================
-// See src/app/api/products/route.ts for pattern documentation.
-// ============================================================
+// Temporary BFF adapter: the legacy frontend `/api/products/:id` path now maps
+// to ViewPro backend property engagements.
 
-import { fakeProducts } from '@/constants/mock-api';
-import { NextRequest, NextResponse } from 'next/server';
+import { bffFetch, proxyJsonResponse } from '@/lib/bff-api';
+import { type NextRequest, NextResponse } from 'next/server';
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(request: NextRequest, { params }: Params) {
-  const { id } = await params;
-  const data = await fakeProducts.getProductById(Number(id));
-
-  if (!data.success) {
-    return NextResponse.json(data, { status: 404 });
+export async function GET(_request: NextRequest, { params }: Params) {
+  try {
+    const { id } = await params;
+    const response = await bffFetch(`/property-engagements/${id}`);
+    return proxyJsonResponse(response);
+  } catch (error) {
+    return toBffErrorResponse(error, 'No se pudo cargar la propiedad.');
   }
-
-  return NextResponse.json(data);
 }
 
 export async function PUT(request: NextRequest, { params }: Params) {
-  const { id } = await params;
-  const body = await request.json();
-  const data = await fakeProducts.updateProduct(Number(id), body);
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const response = await bffFetch(`/property-engagements/${id}`, {
+      body: JSON.stringify(body),
+      headers: { 'content-type': 'application/json' },
+      method: 'PATCH'
+    });
 
-  if (!data.success) {
-    return NextResponse.json(data, { status: 404 });
+    return proxyJsonResponse(response);
+  } catch (error) {
+    return toBffErrorResponse(error, 'No se pudo editar la propiedad.');
   }
-
-  return NextResponse.json(data);
 }
 
-export async function DELETE(request: NextRequest, { params }: Params) {
-  const { id } = await params;
-  const data = await fakeProducts.deleteProduct(Number(id));
+export async function DELETE() {
+  return NextResponse.json(
+    { message: 'La eliminación de propiedades todavía no está soportada por el backend.' },
+    { status: 501 }
+  );
+}
 
-  if (!data.success) {
-    return NextResponse.json(data, { status: 404 });
-  }
-
-  return NextResponse.json(data);
+function toBffErrorResponse(error: unknown, fallbackMessage: string) {
+  const isTimeout = error instanceof Error && error.name === 'AbortError';
+  return NextResponse.json(
+    { message: isTimeout ? 'La solicitud al backend tardó demasiado.' : fallbackMessage },
+    { status: isTimeout ? 504 : 502 }
+  );
 }
