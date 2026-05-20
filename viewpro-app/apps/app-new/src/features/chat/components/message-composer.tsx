@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useRef } from 'react';
+import { type FormEvent, useRef } from 'react';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -84,6 +84,7 @@ export function MessageComposer({
             ref={fileInputRef}
             type='file'
             multiple
+            aria-label='Attach files'
             className='hidden'
             onChange={(e) => {
               if (e.target.files?.length) {
