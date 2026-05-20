@@ -1,14 +1,24 @@
 import { createParser } from 'nuqs/server';
-import { z } from 'zod';
 
 import { dataTableConfig } from '@/config/data-table';
 
 import type { ExtendedColumnFilter, ExtendedColumnSort } from '@/types/data-table';
 
-const sortingItemSchema = z.object({
-  id: z.string(),
-  desc: z.boolean()
-});
+const filterVariants = new Set<string>(dataTableConfig.filterVariants);
+const operators = new Set<string>(dataTableConfig.operators);
+
+type SortingItem = {
+  id: string;
+  desc: boolean;
+};
+
+export type FilterItemSchema = {
+  id: string;
+  value: string | string[];
+  variant: (typeof dataTableConfig.filterVariants)[number];
+  operator: (typeof dataTableConfig.operators)[number];
+  filterId: string;
+};
 
 export const getSortingStateParser = <TData>(columnIds?: string[] | Set<string>) => {
   const validKeys = columnIds ? (columnIds instanceof Set ? columnIds : new Set(columnIds)) : null;
@@ -16,16 +26,17 @@ export const getSortingStateParser = <TData>(columnIds?: string[] | Set<string>)
   return createParser({
     parse: (value) => {
       try {
-        const parsed = JSON.parse(value);
-        const result = z.array(sortingItemSchema).safeParse(parsed);
+        const parsed: unknown = JSON.parse(value);
 
-        if (!result.success) return null;
-
-        if (validKeys && result.data.some((item) => !validKeys.has(item.id))) {
+        if (!Array.isArray(parsed) || !parsed.every(isSortingItem)) {
           return null;
         }
 
-        return result.data as ExtendedColumnSort<TData>[];
+        if (validKeys && parsed.some((item) => !validKeys.has(item.id))) {
+          return null;
+        }
+
+        return parsed as ExtendedColumnSort<TData>[];
       } catch {
         return null;
       }
@@ -37,32 +48,23 @@ export const getSortingStateParser = <TData>(columnIds?: string[] | Set<string>)
   });
 };
 
-const filterItemSchema = z.object({
-  id: z.string(),
-  value: z.union([z.string(), z.array(z.string())]),
-  variant: z.enum(dataTableConfig.filterVariants),
-  operator: z.enum(dataTableConfig.operators),
-  filterId: z.string()
-});
-
-export type FilterItemSchema = z.infer<typeof filterItemSchema>;
-
 export const getFiltersStateParser = <TData>(columnIds?: string[] | Set<string>) => {
   const validKeys = columnIds ? (columnIds instanceof Set ? columnIds : new Set(columnIds)) : null;
 
   return createParser({
     parse: (value) => {
       try {
-        const parsed = JSON.parse(value);
-        const result = z.array(filterItemSchema).safeParse(parsed);
+        const parsed: unknown = JSON.parse(value);
 
-        if (!result.success) return null;
-
-        if (validKeys && result.data.some((item) => !validKeys.has(item.id))) {
+        if (!Array.isArray(parsed) || !parsed.every(isFilterItem)) {
           return null;
         }
 
-        return result.data as ExtendedColumnFilter<TData>[];
+        if (validKeys && parsed.some((item) => !validKeys.has(item.id))) {
+          return null;
+        }
+
+        return parsed as ExtendedColumnFilter<TData>[];
       } catch {
         return null;
       }
@@ -79,3 +81,37 @@ export const getFiltersStateParser = <TData>(columnIds?: string[] | Set<string>)
       )
   });
 };
+
+function isSortingItem(value: unknown): value is SortingItem {
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    typeof (value as SortingItem).id === 'string' &&
+    typeof (value as SortingItem).desc === 'boolean'
+  );
+}
+
+function isFilterItem(value: unknown): value is FilterItemSchema {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const item = value as Partial<FilterItemSchema>;
+
+  return Boolean(
+    typeof item.id === 'string' &&
+    isFilterValue(item.value) &&
+    typeof item.variant === 'string' &&
+    filterVariants.has(item.variant) &&
+    typeof item.operator === 'string' &&
+    operators.has(item.operator) &&
+    typeof item.filterId === 'string'
+  );
+}
+
+function isFilterValue(value: unknown): value is FilterItemSchema['value'] {
+  return (
+    typeof value === 'string' ||
+    (Array.isArray(value) && value.every((item) => typeof item === 'string'))
+  );
+}

@@ -4,7 +4,7 @@ import ProductViewPage from '@/features/products/components/product-view-page';
 import { Suspense } from 'react';
 
 export const metadata = {
-  title: 'Dashboard: Propiedad'
+  title: 'Dashboard: Editar propiedad'
 };
 
 type PageProps = { params: Promise<{ productId: string }> };
@@ -16,7 +16,7 @@ export default async function Page(props: PageProps) {
     <PageContainer>
       <div className='flex-1 space-y-4'>
         <Suspense fallback={<FormCardSkeleton />}>
-          <ProductViewPage productId={params.productId} />
+          <ProductViewPage mode='edit' productId={params.productId} />
         </Suspense>
       </div>
     </PageContainer>

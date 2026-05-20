@@ -1,4 +1,35 @@
-import { NavGroup } from '@/types';
+import type { NavGroup } from '@/types';
+
+const enableDemoRoutes = process.env.NEXT_PUBLIC_ENABLE_DEMO_ROUTES === 'true';
+
+const demoOverviewItems: NavGroup['items'] = enableDemoRoutes
+  ? [
+      {
+        title: 'Users',
+        url: '/dashboard/users',
+        icon: 'teams',
+        shortcut: ['u', 'u'],
+        isActive: false,
+        items: []
+      },
+      {
+        title: 'Kanban',
+        url: '/dashboard/kanban',
+        icon: 'kanban',
+        shortcut: ['k', 'k'],
+        isActive: false,
+        items: []
+      },
+      {
+        title: 'Chat',
+        url: '/dashboard/chat',
+        icon: 'chat',
+        shortcut: ['c', 'c'],
+        isActive: false,
+        items: []
+      }
+    ]
+  : [];
 
 /**
  * Navigation configuration with RBAC support
@@ -60,37 +91,14 @@ export const navGroups: NavGroup[] = [
         access: { requireOrg: true }
       },
       {
-        title: 'Product',
+        title: 'Propiedades',
         url: '/dashboard/product',
         icon: 'product',
         shortcut: ['p', 'p'],
         isActive: false,
         items: []
       },
-      {
-        title: 'Users',
-        url: '/dashboard/users',
-        icon: 'teams',
-        shortcut: ['u', 'u'],
-        isActive: false,
-        items: []
-      },
-      {
-        title: 'Kanban',
-        url: '/dashboard/kanban',
-        icon: 'kanban',
-        shortcut: ['k', 'k'],
-        isActive: false,
-        items: []
-      },
-      {
-        title: 'Chat',
-        url: '/dashboard/chat',
-        icon: 'chat',
-        shortcut: ['c', 'c'],
-        isActive: false,
-        items: []
-      }
+      ...demoOverviewItems
     ]
   },
   {
