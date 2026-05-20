@@ -34,11 +34,11 @@ export function getApiErrorMessage(error: unknown) {
 export function isApiError(error: unknown): error is ApiError {
   return Boolean(
     error &&
-      typeof error === 'object' &&
-      'status' in error &&
-      typeof (error as { status?: unknown }).status === 'number' &&
-      'message' in error &&
-      typeof (error as { message?: unknown }).message === 'string'
+    typeof error === 'object' &&
+    'status' in error &&
+    typeof (error as { status?: unknown }).status === 'number' &&
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string'
   );
 }
 

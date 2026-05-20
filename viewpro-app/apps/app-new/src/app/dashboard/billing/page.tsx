@@ -24,7 +24,9 @@ export default function BillingPage() {
         <div className='flex min-h-[400px] items-center justify-center'>
           <div className='space-y-2 text-center'>
             <h2 className='text-2xl font-semibold'>No hay una inmobiliaria seleccionada</h2>
-            <p className='text-muted-foreground'>Creá o seleccioná una inmobiliaria para ver esta sección.</p>
+            <p className='text-muted-foreground'>
+              Creá o seleccioná una inmobiliaria para ver esta sección.
+            </p>
           </div>
         </div>
       }
