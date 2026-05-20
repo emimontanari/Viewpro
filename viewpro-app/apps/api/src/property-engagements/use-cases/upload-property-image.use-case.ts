@@ -23,6 +23,7 @@ export class UploadPropertyImageUseCase {
   constructor(
     @Inject(PROPERTY_ENGAGEMENTS_REPOSITORY)
     private readonly propertyEngagementsRepository: PropertyEngagementsRepository,
+    @Inject(LocalPropertyImagesStorage)
     private readonly propertyImagesStorage: LocalPropertyImagesStorage,
   ) {}
 
