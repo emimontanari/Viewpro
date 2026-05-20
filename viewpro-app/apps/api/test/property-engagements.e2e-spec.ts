@@ -5,6 +5,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createApiApp } from '../src/bootstrap/create-app'
 import { PrismaService } from '../src/database/prisma.service'
 
+type TestAgent = ReturnType<typeof request.agent>
+
 describe('Property engagements (e2e)', () => {
   let app: INestApplication
   let prisma: PrismaService
@@ -46,6 +48,14 @@ describe('Property engagements (e2e)', () => {
       propertyType: PropertyType.APARTMENT,
       ownerName: 'Property Owner',
       ownerEmail: 'owner@example.com',
+      totalAreaSqm: 72,
+      coveredAreaSqm: 64,
+      rooms: 3,
+      bedrooms: 2,
+      bathrooms: 1,
+      garages: 1,
+      ageYears: 8,
+      orientation: 'NE',
       operationType: PropertyOperationType.SALE,
       publishedPriceCents: 12500000,
       currency: 'USD',
@@ -63,6 +73,14 @@ describe('Property engagements (e2e)', () => {
         city: 'Buenos Aires',
         province: 'CABA',
         propertyType: PropertyType.APARTMENT,
+        totalAreaSqm: 72,
+        coveredAreaSqm: 64,
+        rooms: 3,
+        bedrooms: 2,
+        bathrooms: 1,
+        garages: 1,
+        ageYears: 8,
+        orientation: 'NE',
         ownerName: 'Property Owner',
         ownerEmail: 'owner@example.com',
       },
@@ -99,6 +117,85 @@ describe('Property engagements (e2e)', () => {
     const response = await tenantA.agent
       .get(`/api/property-engagements/${created.body.id}`)
       .set('x-tenant-id', tenantA.tenantId)
+      .expect(404)
+
+    expect(response.body.message).toBe('Property engagement not found')
+  })
+
+  it('allows a manager to update property asset and engagement fields', async () => {
+    const manager = await registerTenantSession('manager-update@example.com', 'Manager Update Homes')
+    const created = await createEngagement(manager.agent, manager.tenantId, {
+      title: 'Original Property',
+      publishedPriceCents: 12500000,
+    }).expect(201)
+
+    const response = await manager.agent
+      .patch(`/api/property-engagements/${created.body.id}`)
+      .set('x-tenant-id', manager.tenantId)
+      .send({
+        title: 'Updated Property',
+        addressLine: 'Updated Street 456',
+        city: 'Córdoba',
+        province: 'Córdoba',
+        propertyType: PropertyType.HOUSE,
+        totalAreaSqm: 120,
+        coveredAreaSqm: 98,
+        rooms: 4,
+        bedrooms: 3,
+        bathrooms: 2,
+        garages: 1,
+        ageYears: 12,
+        orientation: 'NO',
+        ownerName: 'Updated Owner',
+        ownerEmail: 'updated-owner@example.com',
+        operationType: PropertyOperationType.SALE,
+        publishedPriceCents: 30000000,
+        currency: 'USD',
+      })
+      .expect(200)
+
+    expect(response.body).toMatchObject({
+      id: created.body.id,
+      tenantId: manager.tenantId,
+      operationType: PropertyOperationType.SALE,
+      publishedPriceCents: 30000000,
+      currency: 'USD',
+      property: {
+        title: 'Updated Property',
+        addressLine: 'Updated Street 456',
+        city: 'Córdoba',
+        province: 'Córdoba',
+        propertyType: PropertyType.HOUSE,
+        totalAreaSqm: 120,
+        coveredAreaSqm: 98,
+        rooms: 4,
+        bedrooms: 3,
+        bathrooms: 2,
+        garages: 1,
+        ageYears: 12,
+        orientation: 'NO',
+        ownerName: 'Updated Owner',
+        ownerEmail: 'updated-owner@example.com',
+      },
+    })
+
+    await expect(
+      prisma.propertyAsset.findUnique({
+        where: { id: created.body.property.id },
+        select: { title: true, bedrooms: true },
+      }),
+    ).resolves.toEqual({ title: 'Updated Property', bedrooms: 3 })
+  })
+
+  it('returns 404 when updating another tenant engagement', async () => {
+    const tenantA = await registerTenantSession('tenant-a-update@example.com', 'Tenant A Update Homes')
+    const tenantB = await registerTenantSession('tenant-b-update@example.com', 'Tenant B Update Homes')
+    const created = await createEngagement(tenantB.agent, tenantB.tenantId, { title: 'Tenant B Update Property' }).expect(201)
+
+    const response = await tenantA.agent
+      .patch(`/api/property-engagements/${created.body.id}`)
+      .set('x-tenant-id', tenantA.tenantId)
+      .send({ title: 'Leaked update' })
       .expect(404)
 
     expect(response.body.message).toBe('Property engagement not found')
@@ -208,7 +305,7 @@ describe('Property engagements (e2e)', () => {
   }
 
   function createEngagement(
-    agent: request.SuperAgentTest,
+    agent: TestAgent,
     tenantId: string,
     overrides: Partial<Record<string, unknown>> = {},
   ) {

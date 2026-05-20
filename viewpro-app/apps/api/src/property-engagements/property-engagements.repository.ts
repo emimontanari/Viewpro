@@ -31,6 +31,15 @@ export type ListPropertyEngagementsInput = {
   operationType?: PropertyOperationType
 }
 
+export type UpdatePropertyEngagementInput = {
+  tenantId: string
+  engagementId: string
+  userId: string
+  canViewAll: boolean
+  propertyAsset: Prisma.PropertyAssetUpdateInput
+  engagement: Prisma.PropertyEngagementUncheckedUpdateInput
+}
+
 export type PropertyEngagementsRepository = {
   createWithAsset(input: CreatePropertyEngagementInput): Promise<PropertyEngagementWithDetails>
   findMany(input: ListPropertyEngagementsInput): Promise<{ items: PropertyEngagementWithDetails[]; total: number }>
@@ -40,6 +49,7 @@ export type PropertyEngagementsRepository = {
     userId: string
     canViewAll: boolean
   }): Promise<PropertyEngagementWithDetails | null>
+  updateForTenant(input: UpdatePropertyEngagementInput): Promise<PropertyEngagementWithDetails | null>
   assignAgent(input: {
     tenantId: string
     engagementId: string

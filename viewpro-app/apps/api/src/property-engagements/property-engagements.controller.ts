@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common'
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common'
 import { CurrentUser } from '../auth/decorators/current-user.decorator'
 import type { CurrentUser as CurrentUserContext } from '../auth/types/current-user'
 import { AuthGuard } from '../auth/guards/auth.guard'
@@ -12,10 +12,12 @@ import type { TenantContext } from '../tenant-context/tenant-context.types'
 import { AssignPropertyAgentDto } from './dto/assign-property-agent.dto'
 import { CreatePropertyEngagementDto } from './dto/create-property-engagement.dto'
 import { ListPropertyEngagementsQuery } from './dto/list-property-engagements.query'
+import { UpdatePropertyEngagementDto } from './dto/update-property-engagement.dto'
 import { AssignPropertyAgentUseCase } from './use-cases/assign-property-agent.use-case'
 import { CreatePropertyEngagementUseCase } from './use-cases/create-property-engagement.use-case'
 import { GetPropertyEngagementUseCase } from './use-cases/get-property-engagement.use-case'
 import { ListPropertyEngagementsUseCase } from './use-cases/list-property-engagements.use-case'
+import { UpdatePropertyEngagementUseCase } from './use-cases/update-property-engagement.use-case'
 
 @Controller('property-engagements')
 @ApiTenantContext()
@@ -25,6 +27,7 @@ export class PropertyEngagementsController {
     private readonly createPropertyEngagementUseCase: CreatePropertyEngagementUseCase,
     private readonly listPropertyEngagementsUseCase: ListPropertyEngagementsUseCase,
     private readonly getPropertyEngagementUseCase: GetPropertyEngagementUseCase,
+    private readonly updatePropertyEngagementUseCase: UpdatePropertyEngagementUseCase,
     private readonly assignPropertyAgentUseCase: AssignPropertyAgentUseCase,
   ) {}
 
@@ -56,6 +59,17 @@ export class PropertyEngagementsController {
     @Param('id') id: string,
   ) {
     return this.getPropertyEngagementUseCase.execute(tenant, currentUser, id)
+  }
+
+  @Patch(':id')
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_CREATE)
+  update(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('id') id: string,
+    @Body() body: UpdatePropertyEngagementDto,
+  ) {
+    return this.updatePropertyEngagementUseCase.execute(tenant, currentUser, id, body)
   }
 
   @Post(':id/agents')

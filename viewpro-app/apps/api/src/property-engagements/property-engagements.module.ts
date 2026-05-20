@@ -10,11 +10,13 @@ import { AssignPropertyAgentUseCase } from './use-cases/assign-property-agent.us
 import { CreatePropertyEngagementUseCase } from './use-cases/create-property-engagement.use-case'
 import { GetPropertyEngagementUseCase } from './use-cases/get-property-engagement.use-case'
 import { ListPropertyEngagementsUseCase } from './use-cases/list-property-engagements.use-case'
+import { UpdatePropertyEngagementUseCase } from './use-cases/update-property-engagement.use-case'
 
 const propertyEngagementUseCases = [
   CreatePropertyEngagementUseCase,
   ListPropertyEngagementsUseCase,
   GetPropertyEngagementUseCase,
+  UpdatePropertyEngagementUseCase,
   AssignPropertyAgentUseCase,
 ]
 

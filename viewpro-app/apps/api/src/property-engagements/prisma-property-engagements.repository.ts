@@ -6,6 +6,7 @@ import type {
   ListPropertyEngagementsInput,
   PropertyEngagementsRepository,
   PropertyEngagementWithDetails,
+  UpdatePropertyEngagementInput,
 } from './property-engagements.repository'
 
 const propertyEngagementInclude = {
@@ -62,6 +63,39 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
     return this.prisma.propertyEngagement.findFirst({
       where: this.buildTenantVisibilityWhere(input),
       include: propertyEngagementInclude,
+    })
+  }
+
+
+  updateForTenant(input: UpdatePropertyEngagementInput): Promise<PropertyEngagementWithDetails | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.propertyEngagement.findFirst({
+        where: this.buildTenantVisibilityWhere(input),
+        select: { id: true, propertyAssetId: true },
+      })
+
+      if (!existing) {
+        return null
+      }
+
+      if (Object.keys(input.propertyAsset).length > 0) {
+        await tx.propertyAsset.update({
+          where: { id: existing.propertyAssetId },
+          data: input.propertyAsset,
+        })
+      }
+
+      if (Object.keys(input.engagement).length > 0) {
+        await tx.propertyEngagement.update({
+          where: { id: existing.id },
+          data: input.engagement,
+        })
+      }
+
+      return tx.propertyEngagement.findUnique({
+        where: { id: existing.id },
+        include: propertyEngagementInclude,
+      })
     })
   }
 

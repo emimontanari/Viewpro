@@ -1,82 +1,96 @@
 import { PropertyOperationType, PropertyType } from '@prisma/client'
-import { IsEmail, IsEnum, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator'
+import {
+  IsEmail,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator'
 
-export class CreatePropertyEngagementDto {
+export class UpdatePropertyEngagementDto {
+  @IsOptional()
   @IsString()
   @MaxLength(120)
-  title!: string
+  title?: string
 
+  @IsOptional()
   @IsString()
   @MaxLength(180)
-  addressLine!: string
+  addressLine?: string
 
+  @IsOptional()
   @IsString()
   @MaxLength(80)
-  city!: string
+  city?: string
 
+  @IsOptional()
   @IsString()
   @MaxLength(80)
-  province!: string
+  province?: string
 
+  @IsOptional()
   @IsEnum(PropertyType)
-  propertyType!: PropertyType
+  propertyType?: PropertyType
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  totalAreaSqm?: number
+  totalAreaSqm?: number | null
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  coveredAreaSqm?: number
+  coveredAreaSqm?: number | null
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  rooms?: number
+  rooms?: number | null
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  bedrooms?: number
+  bedrooms?: number | null
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  bathrooms?: number
+  bathrooms?: number | null
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  garages?: number
+  garages?: number | null
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  ageYears?: number
+  ageYears?: number | null
 
   @IsOptional()
   @IsString()
   @MaxLength(16)
-  orientation?: string
+  orientation?: string | null
 
   @IsOptional()
   @IsString()
   @MaxLength(120)
-  ownerName?: string
+  ownerName?: string | null
 
   @IsOptional()
   @IsEmail()
-  ownerEmail?: string
+  ownerEmail?: string | null
 
+  @IsOptional()
   @IsEnum(PropertyOperationType)
-  operationType!: PropertyOperationType
+  operationType?: PropertyOperationType
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  publishedPriceCents?: number
+  publishedPriceCents?: number | null
 
   @IsOptional()
   @IsString()
