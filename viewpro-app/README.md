@@ -46,6 +46,21 @@ pnpm db:migrate
 
 Si el entorno local no tiene `apps/api/.env`, copiá `apps/api/.env.example` antes de ejecutar comandos de Prisma.
 
+## Base de datos de tests API
+
+Los tests del API hacen limpieza destructiva de tablas. Para proteger la DB local de desarrollo, Vitest carga `apps/api/.env.test`/defaults de test y la API falla rápido si `DATABASE_URL` no apunta a una base claramente de test.
+
+Setup local recomendado:
+
+```bash
+cd viewpro-app
+pnpm db:up
+docker compose exec -T postgres createdb -U viewpro viewpro_test 2>/dev/null || true
+DATABASE_URL='postgresql://viewpro:viewpro@localhost:5432/viewpro_test?schema=public' pnpm --filter api exec prisma migrate deploy
+```
+
+Opcionalmente copiá `apps/api/.env.test.example` a `apps/api/.env.test`. Nunca apuntes los e2e a `viewpro`; el guard debe rechazarlo antes de ejecutar cualquier `deleteMany()`.
+
 ## Backup and restore básico
 
 El estado durable actual de ViewPro vive en PostgreSQL. Las migraciones Prisma están versionadas en el repo; los dumps respaldan datos, no secretos ni variables de entorno.
