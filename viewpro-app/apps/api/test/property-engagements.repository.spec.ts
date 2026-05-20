@@ -216,6 +216,17 @@ describe('Property engagements foundation', () => {
     expect(updateEngagement).not.toHaveBeenCalled()
   })
 
+  it('counts property images for upload limits', async () => {
+    const count = vi.fn().mockResolvedValue(5)
+    const repository = new PrismaPropertyEngagementsRepository({
+      propertyAssetImage: { count },
+    } as never)
+
+    await expect(repository.countImagesForAsset('asset-1')).resolves.toBe(5)
+    expect(count).toHaveBeenCalledWith({ where: { propertyAssetId: 'asset-1' } })
+  })
+
+
   it('assigns an agent within the engagement tenant boundary', async () => {
     const create = vi.fn().mockResolvedValue({ id: 'agent-assignment-1' })
     const repository = new PrismaPropertyEngagementsRepository({ propertyAgent: { create } } as never)

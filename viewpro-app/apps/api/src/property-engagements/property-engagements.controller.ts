@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
 import { CurrentUser } from '../auth/decorators/current-user.decorator'
 import type { CurrentUser as CurrentUserContext } from '../auth/types/current-user'
 import { AuthGuard } from '../auth/guards/auth.guard'
@@ -15,9 +16,15 @@ import { ListPropertyEngagementsQuery } from './dto/list-property-engagements.qu
 import { UpdatePropertyEngagementDto } from './dto/update-property-engagement.dto'
 import { AssignPropertyAgentUseCase } from './use-cases/assign-property-agent.use-case'
 import { CreatePropertyEngagementUseCase } from './use-cases/create-property-engagement.use-case'
+import { DeletePropertyImageUseCase } from './use-cases/delete-property-image.use-case'
 import { GetPropertyEngagementUseCase } from './use-cases/get-property-engagement.use-case'
 import { ListPropertyEngagementsUseCase } from './use-cases/list-property-engagements.use-case'
 import { UpdatePropertyEngagementUseCase } from './use-cases/update-property-engagement.use-case'
+import {
+  PROPERTY_IMAGE_MAX_BYTES,
+  UploadPropertyImageUseCase,
+  type UploadedPropertyImageFile,
+} from './use-cases/upload-property-image.use-case'
 
 @Controller('property-engagements')
 @ApiTenantContext()
@@ -29,6 +36,8 @@ export class PropertyEngagementsController {
     private readonly getPropertyEngagementUseCase: GetPropertyEngagementUseCase,
     private readonly updatePropertyEngagementUseCase: UpdatePropertyEngagementUseCase,
     private readonly assignPropertyAgentUseCase: AssignPropertyAgentUseCase,
+    private readonly uploadPropertyImageUseCase: UploadPropertyImageUseCase,
+    private readonly deletePropertyImageUseCase: DeletePropertyImageUseCase,
   ) {}
 
   @Post()
@@ -70,6 +79,29 @@ export class PropertyEngagementsController {
     @Body() body: UpdatePropertyEngagementDto,
   ) {
     return this.updatePropertyEngagementUseCase.execute(tenant, currentUser, id, body)
+  }
+
+  @Post(':id/images')
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_CREATE)
+  @UseInterceptors(FileInterceptor('image', { limits: { fileSize: PROPERTY_IMAGE_MAX_BYTES } }))
+  uploadImage(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('id') id: string,
+    @UploadedFile() image: UploadedPropertyImageFile | undefined,
+  ) {
+    return this.uploadPropertyImageUseCase.execute(tenant, currentUser, id, image)
+  }
+
+  @Delete(':id/images/:imageId')
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_CREATE)
+  deleteImage(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('id') id: string,
+    @Param('imageId') imageId: string,
+  ) {
+    return this.deletePropertyImageUseCase.execute(tenant, currentUser, id, imageId)
   }
 
   @Post(':id/agents')

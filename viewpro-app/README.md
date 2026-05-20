@@ -140,9 +140,13 @@ Stage 4 soporta propiedades físicas y gestiones inmobiliarias tenant-scoped des
 - `POST /api/property-engagements`
 - `GET /api/property-engagements`
 - `GET /api/property-engagements/:id`
+- `POST /api/property-engagements/:id/images`
+- `DELETE /api/property-engagements/:id/images/:imageId`
 - `POST /api/property-engagements/:id/agents`
 
 Los managers pueden crear, listar y leer todas las gestiones del tenant, además de asignar agentes del mismo tenant. Los agentes sólo listan y leen gestiones asignadas. Usuarios propietarios, ownership real y portal de propietario quedan fuera de alcance para Stage 4.
+
+Las imágenes de propiedades usan storage local en desarrollo. Por defecto se guardan bajo `apps/api/uploads`; se puede configurar `PROPERTY_IMAGES_UPLOADS_ROOT` para separar entornos. Los tests API usan `uploads-test` para no borrar imágenes cargadas en la base de desarrollo.
 
 ## Movements backend
 

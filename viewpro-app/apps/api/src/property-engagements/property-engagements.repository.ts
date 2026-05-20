@@ -1,6 +1,7 @@
 import type {
   Prisma,
   PropertyAgent,
+  PropertyAssetImage,
   PropertyEngagementStatus,
   PropertyOperationType,
 } from '@prisma/client'
@@ -8,7 +9,7 @@ import type {
 export const PROPERTY_ENGAGEMENTS_REPOSITORY = Symbol('PROPERTY_ENGAGEMENTS_REPOSITORY')
 
 export type PropertyEngagementWithDetails = Prisma.PropertyEngagementGetPayload<{
-  include: { propertyAsset: true; agents: { include: { agentUser: true } }; createdBy: true }
+  include: { propertyAsset: { include: { images: true } }; agents: { include: { agentUser: true } }; createdBy: true }
 }>
 
 export type CreatePropertyEngagementInput = {
@@ -31,6 +32,22 @@ export type ListPropertyEngagementsInput = {
   operationType?: PropertyOperationType
 }
 
+export type CreatePropertyAssetImageInput = {
+  id: string
+  propertyAssetId: string
+  uploadedByUserId: string
+  storageKey: string
+  originalFilename: string
+  mimeType: string
+  sizeBytes: number
+  isPrimary: boolean
+}
+
+export type DeletePropertyAssetImageResult = {
+  deletedStorageKey: string
+  promotedImageId: string | null
+}
+
 export type UpdatePropertyEngagementInput = {
   tenantId: string
   engagementId: string
@@ -50,6 +67,12 @@ export type PropertyEngagementsRepository = {
     canViewAll: boolean
   }): Promise<PropertyEngagementWithDetails | null>
   updateForTenant(input: UpdatePropertyEngagementInput): Promise<PropertyEngagementWithDetails | null>
+  countImagesForAsset(propertyAssetId: string): Promise<number>
+  createImage(input: CreatePropertyAssetImageInput): Promise<PropertyAssetImage>
+  deleteImageForAsset(input: {
+    propertyAssetId: string
+    imageId: string
+  }): Promise<DeletePropertyAssetImageResult | null>
   assignAgent(input: {
     tenantId: string
     engagementId: string
