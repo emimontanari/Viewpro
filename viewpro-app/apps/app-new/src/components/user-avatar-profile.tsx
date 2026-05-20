@@ -6,11 +6,14 @@ interface UserAvatarProfileProps {
   user: {
     imageUrl?: string;
     fullName?: string | null;
+    email?: string;
     emailAddresses: Array<{ emailAddress: string }>;
   } | null;
 }
 
 export function UserAvatarProfile({ className, showInfo = false, user }: UserAvatarProfileProps) {
+  const email = user?.email ?? user?.emailAddresses[0]?.emailAddress ?? '';
+
   return (
     <div className='flex items-center gap-2'>
       <Avatar className={className}>
@@ -23,7 +26,7 @@ export function UserAvatarProfile({ className, showInfo = false, user }: UserAva
       {showInfo && (
         <div className='grid flex-1 text-left text-sm leading-tight'>
           <span className='truncate font-semibold'>{user?.fullName || ''}</span>
-          <span className='truncate text-xs'>{user?.emailAddresses[0].emailAddress || ''}</span>
+          <span className='truncate text-xs'>{email}</span>
         </div>
       )}
     </div>

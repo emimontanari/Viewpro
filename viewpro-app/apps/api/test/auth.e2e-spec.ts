@@ -69,6 +69,10 @@ describe('AuthController (e2e)', () => {
       ]),
     )
     expect(response.headers['set-cookie'].join(';')).toContain('HttpOnly')
+    const refreshCookie = response.headers['set-cookie'].find((cookie: string) =>
+      cookie.startsWith('viewpro_refresh_token='),
+    )
+    expect(refreshCookie).toContain('Path=/')
 
     const user = await prisma.user.findUniqueOrThrow({ where: { email: 'owner@example.com' } })
     const tenant = await prisma.tenant.findUniqueOrThrow({ where: { slug: 'acme-homes' } })

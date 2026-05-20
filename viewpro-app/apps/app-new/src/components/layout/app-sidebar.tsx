@@ -26,9 +26,9 @@ import {
 } from '@/components/ui/sidebar';
 import { UserAvatarProfile } from '@/components/user-avatar-profile';
 import { navGroups } from '@/config/nav-config';
-import { useOrganization, useUser } from '@clerk/nextjs';
 import { useFilteredNavGroups } from '@/hooks/use-nav';
-import { SignOutButton } from '@clerk/nextjs';
+import { useSession } from '@/lib/session-context';
+import { getUserDisplayName } from '@/lib/session';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Icons } from '../icons';
@@ -36,10 +36,17 @@ import { OrgSwitcher } from '../org-switcher';
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const { user } = useUser();
-  const { organization } = useOrganization();
+  const { session, signOut } = useSession();
   const router = useRouter();
   const filteredGroups = useFilteredNavGroups(navGroups);
+  const user = session?.user;
+  const avatarUser = user
+    ? {
+        email: user.email,
+        emailAddresses: [{ emailAddress: user.email }],
+        fullName: getUserDisplayName(user)
+      }
+    : null;
 
   return (
     <Sidebar collapsible='icon'>
@@ -57,7 +64,10 @@ export default function AppSidebar() {
                   <Collapsible
                     key={item.title}
                     asChild
-                    defaultOpen={item.isActive}
+                    defaultOpen={item.items.some(
+                      (subItem) =>
+                        pathname === subItem.url || pathname.startsWith(`${subItem.url}/`)
+                    )}
                     className='group/collapsible'
                   >
                     <SidebarMenuItem>
@@ -73,7 +83,7 @@ export default function AppSidebar() {
                           {item.items?.map((subItem) => (
                             <SidebarMenuSubItem key={subItem.title}>
                               <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
-                                <Link href={subItem.url}>
+                                <Link href={subItem.url} prefetch={false}>
                                   <span>{subItem.title}</span>
                                 </Link>
                               </SidebarMenuSubButton>
@@ -90,7 +100,7 @@ export default function AppSidebar() {
                       tooltip={item.title}
                       isActive={pathname === item.url}
                     >
-                      <Link href={item.url}>
+                      <Link href={item.url} prefetch={false}>
                         <Icon />
                         <span>{item.title}</span>
                       </Link>
@@ -111,8 +121,8 @@ export default function AppSidebar() {
                   size='lg'
                   className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
                 >
-                  {user && (
-                    <UserAvatarProfile className='h-8 w-8 rounded-lg' showInfo user={user} />
+                  {avatarUser && (
+                    <UserAvatarProfile className='h-8 w-8 rounded-lg' showInfo user={avatarUser} />
                   )}
                   <Icons.chevronsDown className='ml-auto size-4' />
                 </SidebarMenuButton>
@@ -125,8 +135,12 @@ export default function AppSidebar() {
               >
                 <DropdownMenuLabel className='p-0 font-normal'>
                   <div className='px-1 py-1.5'>
-                    {user && (
-                      <UserAvatarProfile className='h-8 w-8 rounded-lg' showInfo user={user} />
+                    {avatarUser && (
+                      <UserAvatarProfile
+                        className='h-8 w-8 rounded-lg'
+                        showInfo
+                        user={avatarUser}
+                      />
                     )}
                   </div>
                 </DropdownMenuLabel>
@@ -135,23 +149,29 @@ export default function AppSidebar() {
                 <DropdownMenuGroup>
                   <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>
                     <Icons.account className='mr-2 h-4 w-4' />
-                    Profile
+                    Perfil
                   </DropdownMenuItem>
-                  {organization && (
+                  {session?.memberships.length ? (
                     <DropdownMenuItem onClick={() => router.push('/dashboard/billing')}>
                       <Icons.creditCard className='mr-2 h-4 w-4' />
-                      Billing
+                      Facturación
                     </DropdownMenuItem>
-                  )}
+                  ) : null}
                   <DropdownMenuItem onClick={() => router.push('/dashboard/notifications')}>
                     <Icons.notification className='mr-2 h-4 w-4' />
                     Notifications
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    await signOut();
+                    router.push('/auth/sign-in');
+                    router.refresh();
+                  }}
+                >
                   <Icons.logout className='mr-2 h-4 w-4' />
-                  <SignOutButton redirectUrl='/auth/sign-in' />
+                  Salir
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

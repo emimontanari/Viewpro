@@ -1,26 +1,50 @@
-// This file configures the initialization of Sentry on the client.
-// The added config here will be used whenever a user loads a page in their browser.
-// https://docs.sentry.io/platforms/javascript/guides/nextjs/
-import * as Sentry from '@sentry/nextjs';
+// This file configures optional Sentry client instrumentation.
+// Keep @sentry/nextjs out of the default local development bundle unless it is
+// explicitly enabled with NEXT_PUBLIC_SENTRY_ENABLED="true".
 
-const sentryDisabled = process.env.NEXT_PUBLIC_SENTRY_DISABLED === 'true';
-const tracesSampleRate = Number(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE ?? '1');
+function isLocalDevelopment() {
+  return process.env.NODE_ENV !== 'production';
+}
 
-if (!sentryDisabled) {
-  Sentry.init({
-    dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+function isSentryEnabled() {
+  return (
+    process.env.NEXT_PUBLIC_SENTRY_DISABLED !== 'true' &&
+    (!isLocalDevelopment() || process.env.NEXT_PUBLIC_SENTRY_ENABLED === 'true')
+  );
+}
 
-    // Keep client telemetry privacy-safe unless a future change explicitly opts in.
-    sendDefaultPii: false,
+function getTraceSampleRate() {
+  const value = Number(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE ?? '1');
+  return Number.isFinite(value) ? value : 1;
+}
 
-    // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
-    tracesSampleRate: Number.isFinite(tracesSampleRate) ? tracesSampleRate : 1,
+if (isSentryEnabled()) {
+  void import('@sentry/nextjs').then((Sentry) => {
+    Sentry.init({
+      dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
-    // Setting this option to true will print useful information to the console while you're setting up Sentry.
-    debug: false
+      // Keep client telemetry privacy-safe unless a future change explicitly opts in.
+      sendDefaultPii: false,
+
+      // Define how likely traces are sampled. Adjust this value in production.
+      tracesSampleRate: getTraceSampleRate(),
+
+      // Setting this option to true will print useful information to the console while you're setting up Sentry.
+      debug: false
+    });
   });
 }
 
 // Required by Next.js to instrument router transitions for Sentry tracing.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Sentry SDK v10 typing mismatch
-export const onRouterTransitionStart = (Sentry as any).captureRouterTransitionStart;
+export function onRouterTransitionStart(...args: unknown[]) {
+  if (!isSentryEnabled()) {
+    return;
+  }
+
+  void import('@sentry/nextjs').then((Sentry) => {
+    const captureRouterTransitionStart = (
+      Sentry as { captureRouterTransitionStart?: (...routerArgs: unknown[]) => void }
+    ).captureRouterTransitionStart;
+    captureRouterTransitionStart?.(...args);
+  });
+}

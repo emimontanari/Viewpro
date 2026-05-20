@@ -1,5 +1,4 @@
 import type { NextConfig } from 'next';
-import { withSentryConfig } from '@sentry/nextjs';
 
 // Define the base Next.js configuration
 const baseConfig: NextConfig = {
@@ -10,16 +9,6 @@ const baseConfig: NextConfig = {
         protocol: 'https',
         hostname: 'api.slingacademy.com',
         port: ''
-      },
-      {
-        protocol: 'https',
-        hostname: 'img.clerk.com',
-        port: ''
-      },
-      {
-        protocol: 'https',
-        hostname: 'clerk.com',
-        port: ''
       }
     ]
   },
@@ -29,13 +18,23 @@ const baseConfig: NextConfig = {
   }
 };
 
-let configWithPlugins = baseConfig;
-const isSentryDisabled = process.env.NEXT_PUBLIC_SENTRY_DISABLED === 'true';
+const isLocalDevelopment = process.env.NODE_ENV !== 'production';
+const isSentryExplicitlyEnabled = process.env.NEXT_PUBLIC_SENTRY_ENABLED === 'true';
+const isSentryDisabled =
+  process.env.NEXT_PUBLIC_SENTRY_DISABLED === 'true' ||
+  (isLocalDevelopment && !isSentryExplicitlyEnabled);
 
-// Sentry is an upstream template integration. Disable it with
-// NEXT_PUBLIC_SENTRY_DISABLED="true" until ViewPro production monitoring is configured.
-if (!isSentryDisabled) {
-  configWithPlugins = withSentryConfig(configWithPlugins, {
+async function getNextConfig(): Promise<NextConfig> {
+  // Sentry is an upstream template integration. Keep it out of local dev by default
+  // because it adds Turbopack/webpack work to every route. Set
+  // NEXT_PUBLIC_SENTRY_ENABLED="true" locally only when testing monitoring.
+  if (isSentryDisabled) {
+    return baseConfig;
+  }
+
+  const { withSentryConfig } = await import('@sentry/nextjs');
+
+  return withSentryConfig(baseConfig, {
     org: process.env.NEXT_PUBLIC_SENTRY_ORG,
     project: process.env.NEXT_PUBLIC_SENTRY_PROJECT,
     // Only print logs for uploading source maps in CI
@@ -67,5 +66,4 @@ if (!isSentryDisabled) {
   });
 }
 
-const nextConfig = configWithPlugins;
-export default nextConfig;
+export default getNextConfig();

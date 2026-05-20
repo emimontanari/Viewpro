@@ -1,14 +1,147 @@
+'use client';
+
+import * as React from 'react';
+import * as z from 'zod';
 import { buttonVariants } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAppForm, useFormFields } from '@/components/ui/tanstack-form';
+import { getApiErrorMessage } from '@/lib/api-client';
+import { login } from '@/lib/session';
+import { getSelectedTenantId, setSelectedTenantId } from '@/lib/tenant-selection';
 import { cn } from '@/lib/utils';
-import { SignIn as ClerkSignInForm } from '@clerk/nextjs';
-import { Metadata } from 'next';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { InteractiveGridPattern } from './interactive-grid';
 
-export const metadata: Metadata = {
-  title: 'Authentication',
-  description: 'Authentication forms built using the components.'
+type SignInValues = {
+  email: string;
+  password: string;
 };
+
+const DEFAULT_SIGN_IN_REDIRECT = '/dashboard/overview';
+
+const signInSchema = z.object({
+  email: z.email('Ingresá un email válido.'),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.')
+});
+
+function SignInForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+  const { FormTextField } = useFormFields<SignInValues>();
+  const form = useAppForm({
+    defaultValues: {
+      email: '',
+      password: ''
+    } as SignInValues,
+    validators: {
+      onSubmit: signInSchema
+    },
+    onSubmit: async ({ value }) => {
+      setErrorMessage(null);
+
+      try {
+        const session = await login(value);
+        const selectedTenantId = getSelectedTenantId();
+        const hasSelectedTenant = session.memberships.some(
+          (membership) => membership.tenant.id === selectedTenantId
+        );
+
+        if (!hasSelectedTenant && session.memberships[0]) {
+          setSelectedTenantId(session.memberships[0].tenant.id);
+        }
+
+        router.push(getSafeSignInRedirect(searchParams.get('redirect_url')));
+        router.refresh();
+      } catch (error) {
+        setErrorMessage(getApiErrorMessage(error));
+      }
+    }
+  });
+
+  return (
+    <Card className='w-full'>
+      <CardHeader>
+        <CardTitle className='text-2xl font-bold'>Iniciar sesión</CardTitle>
+        <p className='text-muted-foreground'>Ingresá tus credenciales para acceder a tu cuenta.</p>
+      </CardHeader>
+      <CardContent>
+        <form.AppForm>
+          <form.Form className='space-y-6'>
+            {errorMessage ? (
+              <Alert variant='destructive'>
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
+            ) : null}
+            <FormTextField
+              name='email'
+              label='Email'
+              required
+              type='email'
+              placeholder='tu@email.com'
+              validators={{ onBlur: z.email('Ingresá un email válido.') }}
+            />
+            <FormTextField
+              name='password'
+              label='Contraseña'
+              required
+              type='password'
+              placeholder='Tu contraseña'
+              validators={{ onBlur: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.') }}
+            />
+            <form.SubmitButton className='w-full'>Entrar</form.SubmitButton>
+          </form.Form>
+        </form.AppForm>
+      </CardContent>
+    </Card>
+  );
+}
+
+function getSafeSignInRedirect(redirectUrl: string | null) {
+  if (!redirectUrl) {
+    return DEFAULT_SIGN_IN_REDIRECT;
+  }
+
+  if (!redirectUrl.startsWith('/') || redirectUrl.startsWith('//')) {
+    return DEFAULT_SIGN_IN_REDIRECT;
+  }
+
+  const rawPath = redirectUrl.split(/[?#]/, 1)[0];
+  const hasSafeRawPath = rawPath === '/dashboard' || rawPath.startsWith('/dashboard/');
+
+  if (!hasSafeRawPath || hasPathTraversal(rawPath)) {
+    return DEFAULT_SIGN_IN_REDIRECT;
+  }
+
+  try {
+    const url = new URL(redirectUrl, 'http://viewpro.local');
+    const isRelativeUrl = url.origin === 'http://viewpro.local';
+    const isDashboardPath =
+      url.pathname === '/dashboard' || url.pathname.startsWith('/dashboard/');
+
+    if (!isRelativeUrl || !isDashboardPath) {
+      return DEFAULT_SIGN_IN_REDIRECT;
+    }
+
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return DEFAULT_SIGN_IN_REDIRECT;
+  }
+}
+
+function hasPathTraversal(path: string) {
+  const normalizedPath = path.toLowerCase();
+
+  return (
+    normalizedPath.includes('%2e') ||
+    path.includes('/../') ||
+    path.endsWith('/..') ||
+    path.includes('/./') ||
+    path.endsWith('/.')
+  );
+}
 
 export default function SignInViewPage() {
   return (
@@ -17,7 +150,7 @@ export default function SignInViewPage() {
         href='/auth/sign-up'
         className={cn(
           buttonVariants({ variant: 'ghost' }),
-          'absolute top-4 right-4 hidden md:top-8 md:right-8'
+          'absolute top-4 right-4 md:top-8 md:right-8'
         )}
       >
         Crear cuenta
@@ -56,8 +189,8 @@ export default function SignInViewPage() {
         </div>
       </div>
       <div className='flex h-full items-center justify-center p-4 lg:p-8'>
-        <div className='flex w-full max-w-md flex-col items-center justify-center space-y-6'>
-          <ClerkSignInForm />
+        <div className='flex w-full max-w-xl flex-col items-center justify-center space-y-6'>
+          <SignInForm />
           <div className='text-muted-foreground space-y-2 px-8 text-center text-xs'>
             <p>Ingresá para continuar con ViewPro.</p>
           </div>
