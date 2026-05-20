@@ -23,10 +23,7 @@ export const productSchema = z.object({
   }),
   publishedPriceCents: z
     .union([
-      z
-        .number()
-        .int('Usá números enteros en centavos.')
-        .min(0, 'El precio no puede ser negativo.'),
+      z.number().int('Usá números enteros en centavos.').min(0, 'El precio no puede ser negativo.'),
       z.literal('')
     ])
     .optional(),
@@ -45,10 +42,7 @@ export const productSchema = z.object({
     .custom<File[] | undefined>((value) => value === undefined || Array.isArray(value), {
       message: 'Seleccioná una imagen válida.'
     })
-    .refine(
-      (files) => !files || files.length <= PROPERTY_IMAGE_MAX_FILES,
-      'Subí hasta 5 imágenes.'
-    )
+    .refine((files) => !files || files.length <= PROPERTY_IMAGE_MAX_FILES, 'Subí hasta 5 imágenes.')
     .refine(
       (files) => !files?.some((file) => file.size > PROPERTY_IMAGE_MAX_BYTES),
       'Cada imagen debe pesar hasta 5 MB.'

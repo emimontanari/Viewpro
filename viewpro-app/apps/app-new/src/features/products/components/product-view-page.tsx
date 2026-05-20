@@ -27,7 +27,9 @@ export default function ProductViewPage({ productId, mode = 'detail' }: TProduct
     return <ProductForm initialData={null} mode='create' pageTitle='Crear propiedad' />;
   }
 
-  return <ExistingProductView mode={mode} productId={productId} selectedTenantId={selectedTenantId} />;
+  return (
+    <ExistingProductView mode={mode} productId={productId} selectedTenantId={selectedTenantId} />
+  );
 }
 
 function ExistingProductView({
