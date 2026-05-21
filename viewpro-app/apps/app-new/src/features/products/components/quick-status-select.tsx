@@ -32,12 +32,12 @@ export function QuickStatusSelect({
         previousStatus: propertyEngagement.status,
         status
       }),
-    onSuccess: async () => {
+    onSuccess: async (_response, nextStatus) => {
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
-      toast.success('Estado actualizado correctamente');
+      toast.success(`Estado cambiado a ${getStatusLabel(nextStatus)}`);
     },
-    onError: () => {
-      toast.error('No se pudo actualizar el estado');
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el estado');
     }
   });
 
