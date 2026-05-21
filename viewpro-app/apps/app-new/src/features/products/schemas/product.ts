@@ -21,13 +21,10 @@ export const productSchema = z.object({
   operationType: z.enum(['SALE', 'RENT'], {
     message: 'Seleccioná un tipo de operación.'
   }),
-  publishedPriceCents: z
-    .union([
-      z.number().int('Usá números enteros en centavos.').min(0, 'El precio no puede ser negativo.'),
-      z.literal('')
-    ])
+  publishedPrice: z
+    .union([z.number().min(0, 'El precio no puede ser negativo.'), z.literal('')])
     .optional(),
-  currency: z.string().max(3, 'Usá un código de moneda de 3 letras.').optional(),
+  currency: z.enum(['ARS', 'USD'], { message: 'Seleccioná una moneda.' }),
   ownerName: z.string().max(120, 'El nombre no puede superar 120 caracteres.').optional(),
   ownerEmail: z.union([z.string().email('Ingresá un email válido.'), z.literal('')]).optional(),
   totalAreaSqm: optionalNonNegativeInteger,

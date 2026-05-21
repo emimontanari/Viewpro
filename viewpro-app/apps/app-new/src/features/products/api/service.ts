@@ -61,6 +61,17 @@ export async function deleteProductImage(productId: string, imageId: string) {
   return parseJsonResponse(response);
 }
 
+export async function setProductImageAsPrimary(
+  productId: string,
+  imageId: string
+): Promise<PropertyImage> {
+  const response = await apiFetch(`${PRODUCTS_API_PATH}/${productId}/images/${imageId}/primary`, {
+    method: 'PATCH'
+  });
+
+  return parseJsonResponse<PropertyImage>(response);
+}
+
 export async function updateProduct(id: string, data: ProductMutationPayload): Promise<Product> {
   const response = await apiFetch(`${PRODUCTS_API_PATH}/${id}`, {
     body: JSON.stringify(data),
