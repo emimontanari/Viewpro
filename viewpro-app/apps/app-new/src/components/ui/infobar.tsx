@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Slot } from '@radix-ui/react-slot';
-import { VariantProps, cva } from 'class-variance-authority';
+import { type VariantProps, cva } from 'class-variance-authority';
 import { Icons } from '@/components/icons';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
@@ -206,7 +206,7 @@ function InfobarProvider({
               ...style
             } as React.CSSProperties
           }
-          className={cn('group/infobar-wrapper flex flex-1 w-full', className)}
+          className={cn('group/infobar-wrapper flex min-w-0 flex-1 w-full', className)}
           {...props}
         >
           {children}
