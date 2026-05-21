@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Inject, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { CurrentUser } from '../auth/decorators/current-user.decorator'
 import type { CurrentUser as CurrentUserContext } from '../auth/types/current-user'
@@ -26,17 +26,33 @@ import {
   type UploadedPropertyImageFile,
 } from './use-cases/upload-property-image.use-case'
 
+// Keep DTO/query classes as runtime values for Nest metadata when tests transpile with Vitest/esbuild.
+const nestDtoRuntimeTypes = [
+  AssignPropertyAgentDto,
+  CreatePropertyEngagementDto,
+  ListPropertyEngagementsQuery,
+  UpdatePropertyEngagementDto,
+]
+void nestDtoRuntimeTypes
+
 @Controller('property-engagements')
 @ApiTenantContext()
 @UseGuards(AuthGuard, TenantMembershipGuard, PermissionGuard)
 export class PropertyEngagementsController {
   constructor(
+    @Inject(CreatePropertyEngagementUseCase)
     private readonly createPropertyEngagementUseCase: CreatePropertyEngagementUseCase,
+    @Inject(ListPropertyEngagementsUseCase)
     private readonly listPropertyEngagementsUseCase: ListPropertyEngagementsUseCase,
+    @Inject(GetPropertyEngagementUseCase)
     private readonly getPropertyEngagementUseCase: GetPropertyEngagementUseCase,
+    @Inject(UpdatePropertyEngagementUseCase)
     private readonly updatePropertyEngagementUseCase: UpdatePropertyEngagementUseCase,
+    @Inject(AssignPropertyAgentUseCase)
     private readonly assignPropertyAgentUseCase: AssignPropertyAgentUseCase,
+    @Inject(UploadPropertyImageUseCase)
     private readonly uploadPropertyImageUseCase: UploadPropertyImageUseCase,
+    @Inject(DeletePropertyImageUseCase)
     private readonly deletePropertyImageUseCase: DeletePropertyImageUseCase,
   ) {}
 

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import type { Prisma, PropertyAgent, PropertyAssetImage } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import type {
@@ -25,7 +25,7 @@ const propertyEngagementInclude = {
 
 @Injectable()
 export class PrismaPropertyEngagementsRepository implements PropertyEngagementsRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   createWithAsset(input: CreatePropertyEngagementInput): Promise<PropertyEngagementWithDetails> {
     return this.prisma.$transaction(async (tx) => {
