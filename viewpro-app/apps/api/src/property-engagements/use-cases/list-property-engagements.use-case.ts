@@ -42,6 +42,7 @@ export class ListPropertyEngagementsUseCase {
       pageSize,
       status: query.status,
       operationType: query.operationType,
+      archived: query.archived,
     })
 
     return {

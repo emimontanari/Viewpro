@@ -70,6 +70,8 @@ enum MovementType {
   OFFER_RECEIVED
   DOCUMENTATION_UPDATE
   STATUS_CHANGE
+  ARCHIVED
+  RESTORED
 }
 
 enum MovementSource {
@@ -130,9 +132,10 @@ model User {
   memberships   TenantMembership[]
   refreshTokens RefreshToken[]
 
-  createdPropertyAssets       PropertyAsset[]
-  createdPropertyEngagements  PropertyEngagement[]
-  assignedPropertyEngagements PropertyAgent[]      @relation("PropertyAgentUser")
+  createdPropertyAssets        PropertyAsset[]
+  createdPropertyEngagements   PropertyEngagement[]
+  archivedPropertyEngagements  PropertyEngagement[] @relation("PropertyEngagementArchivedBy")
+  assignedPropertyEngagements  PropertyAgent[]      @relation("PropertyAgentUser")
   propertyAgentAssignments    PropertyAgent[]      @relation("PropertyAgentAssignedBy")
   movements                   Movement[]
   ownedPropertyAssets         PropertyAssetOwner[]
@@ -276,17 +279,22 @@ model PropertyEngagement {
   publishedPriceCents Int?
   currency            String                   @default("ARS")
   createdByUserId     String
+  archivedAt          DateTime?
+  archivedByUserId    String?
+  archiveReason       String?
   createdAt           DateTime                 @default(now())
   updatedAt           DateTime                 @updatedAt
 
-  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  propertyAsset PropertyAsset   @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
-  createdBy     User            @relation(fields: [createdByUserId], references: [id])
-  agents        PropertyAgent[]
-  movements     Movement[]
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyAsset    PropertyAsset     @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
+  createdBy        User              @relation(fields: [createdByUserId], references: [id])
+  archivedBy       User?             @relation("PropertyEngagementArchivedBy", fields: [archivedByUserId], references: [id])
+  agents           PropertyAgent[]
+  movements        Movement[]
   documentRequests DocumentRequest[]
 
   @@index([tenantId, status, createdAt])
+  @@index([tenantId, archivedAt, createdAt])
   @@index([propertyAssetId])
   @@index([createdByUserId])
   @@map("property_engagements")

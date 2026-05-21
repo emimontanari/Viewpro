@@ -159,6 +159,14 @@ export function getOperationTone(value: PropertyOperationType) {
   return tones[value];
 }
 
+export function isArchivedProduct(product: Product) {
+  return Boolean(product.archivedAt);
+}
+
+export function getArchivedTone() {
+  return 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300';
+}
+
 function hasNumber(value: number | null) {
   return typeof value === 'number';
 }

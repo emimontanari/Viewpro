@@ -11,6 +11,7 @@ import type {
   ProductByIdResponse,
   ProductFilters,
   ProductMutationPayload,
+  ProductMovementsResponse,
   ProductStatusMutationPayload,
   ProductsResponse,
   PropertyImage
@@ -29,6 +30,13 @@ export async function getProducts(filters: ProductFilters): Promise<ProductsResp
 export async function getProductById(id: string): Promise<ProductByIdResponse> {
   const response = await apiFetch(`${PRODUCTS_API_PATH}/${id}`);
   return parseJsonResponse<ProductByIdResponse>(response, { allowedErrorStatuses: [404] });
+}
+
+export async function getProductMovements(productId: string): Promise<ProductMovementsResponse> {
+  const response = await apiFetch(
+    `${PRODUCTS_API_PATH}/${productId}/movements?pageSize=8&order=desc`
+  );
+  return parseJsonResponse<ProductMovementsResponse>(response);
 }
 
 export async function createProduct(data: ProductMutationPayload): Promise<Product> {
@@ -92,6 +100,24 @@ export async function updateProductStatus(id: string, data: ProductStatusMutatio
   return parseJsonResponse(response);
 }
 
+export async function archiveProduct(id: string, reason?: string): Promise<Product> {
+  const response = await apiFetch(`${PRODUCTS_API_PATH}/${id}/archive`, {
+    body: JSON.stringify(reason === undefined ? {} : { reason }),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST'
+  });
+
+  return parseJsonResponse<Product>(response);
+}
+
+export async function restoreProduct(id: string): Promise<Product> {
+  const response = await apiFetch(`${PRODUCTS_API_PATH}/${id}/restore`, {
+    method: 'POST'
+  });
+
+  return parseJsonResponse<Product>(response);
+}
+
 export async function deleteProduct(id: string) {
   const response = await apiFetch(`${PRODUCTS_API_PATH}/${id}`, {
     method: 'DELETE'
@@ -107,6 +133,7 @@ function buildProductsUrl(filters: ProductFilters) {
   appendSearchParam(searchParams, 'limit', filters.limit);
   appendSearchParam(searchParams, 'operationType', filters.operationType);
   appendSearchParam(searchParams, 'status', filters.status);
+  appendSearchParam(searchParams, 'archived', filters.archived);
 
   const query = searchParams.toString();
   return query ? `${PRODUCTS_API_PATH}?${query}` : PRODUCTS_API_PATH;

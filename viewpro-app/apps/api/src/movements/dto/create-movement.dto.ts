@@ -1,40 +1,57 @@
-import { InterestLevel, MovementType, PropertyEngagementStatus } from '@prisma/client'
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator'
+import {
+	InterestLevel,
+	MovementType,
+	PropertyEngagementStatus,
+} from "@prisma/client";
+import {
+	IsEnum,
+	IsInt,
+	IsNotEmpty,
+	IsNotIn,
+	IsOptional,
+	IsString,
+	MaxLength,
+	Min,
+} from "class-validator";
 
 export class CreateMovementDto {
-  @IsEnum(MovementType)
-  type!: MovementType
+	@IsEnum(MovementType)
+	@IsNotIn([MovementType.ARCHIVED, MovementType.RESTORED], {
+		message:
+			"Lifecycle movements must be created through property lifecycle actions",
+	})
+	type!: MovementType;
 
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(2000)
-  observation!: string
+	@IsString()
+	@IsNotEmpty()
+	@MaxLength(2000)
+	observation!: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  nextStep?: string
+	@IsOptional()
+	@IsString()
+	@MaxLength(500)
+	nextStep?: string;
 
-  @IsOptional()
-  @IsEnum(PropertyEngagementStatus)
-  newStatus?: PropertyEngagementStatus
+	@IsOptional()
+	@IsEnum(PropertyEngagementStatus)
+	newStatus?: PropertyEngagementStatus;
 
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  interestCount?: number
+	@IsOptional()
+	@IsInt()
+	@Min(0)
+	interestCount?: number;
 
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  visitCount?: number
+	@IsOptional()
+	@IsInt()
+	@Min(0)
+	visitCount?: number;
 
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  offerAmountCents?: number
+	@IsOptional()
+	@IsInt()
+	@Min(0)
+	offerAmountCents?: number;
 
-  @IsOptional()
-  @IsEnum(InterestLevel)
-  interestLevel?: InterestLevel
+	@IsOptional()
+	@IsEnum(InterestLevel)
+	interestLevel?: InterestLevel;
 }
