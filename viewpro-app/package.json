@@ -4,7 +4,8 @@
   "private": true,
   "packageManager": "pnpm@10.13.1",
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "turbo dev --filter=@viewpro/api --filter=next-shadcn-dashboard-starter",
+    "dev:app-new": "turbo dev --filter=@viewpro/api --filter=next-shadcn-dashboard-starter",
     "dev:web": "pnpm --filter @viewpro/web dev",
     "dev:api": "pnpm --filter @viewpro/api start:dev",
     "build": "turbo build",
