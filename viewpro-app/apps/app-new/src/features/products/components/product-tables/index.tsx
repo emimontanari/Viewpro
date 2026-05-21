@@ -25,23 +25,27 @@ import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs';
-import type { Product } from '../../api/types';
+import type { Product, PropertyArchiveFilter } from '../../api/types';
 import { productsQueryOptions } from '../../api/queries';
+import { archiveFilterOptions } from '../../constants/product-options';
 import { QuickStatusSelect } from '../quick-status-select';
 import {
   columns,
   formatPrice,
   getAddress,
   getAgentSummary,
+  getArchivedTone,
   getOperationTone,
   getOperationTypeLabel,
   getPropertyFacts,
-  getPropertyTypeLabel
+  getPropertyTypeLabel,
+  isArchivedProduct
 } from './columns';
 import { OPERATION_TYPE_OPTIONS, PROPERTY_STATUS_OPTIONS } from './options';
 import { CellAction } from './cell-action';
 
 const ALL_FILTERS_VALUE = 'all';
+const DEFAULT_ARCHIVE_FILTER: PropertyArchiveFilter = 'active';
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 export function ProductTable() {
@@ -50,13 +54,16 @@ export function ProductTable() {
     page: parseAsInteger.withDefault(1),
     perPage: parseAsInteger.withDefault(10),
     operationType: parseAsString,
-    status: parseAsString
+    status: parseAsString,
+    archived: parseAsString.withDefault(DEFAULT_ARCHIVE_FILTER)
   });
+  const archivedFilter = params.archived as PropertyArchiveFilter;
 
   const filters = {
     page: params.page,
     limit: params.perPage,
     tenantId: selectedTenantId,
+    archived: archivedFilter,
     ...(params.operationType && { operationType: params.operationType }),
     ...(params.status && { status: params.status })
   };
@@ -84,8 +91,12 @@ export function ProductTable() {
   });
 
   const rows = table.getRowModel().rows;
-  const hasFilters = Boolean(params.status || params.operationType);
-  const activeFilterCount = Number(Boolean(params.status)) + Number(Boolean(params.operationType));
+  const hasArchiveFilter = archivedFilter !== DEFAULT_ARCHIVE_FILTER;
+  const hasFilters = Boolean(params.status || params.operationType || hasArchiveFilter);
+  const activeFilterCount =
+    Number(Boolean(params.status)) +
+    Number(Boolean(params.operationType)) +
+    Number(hasArchiveFilter);
 
   const setFilter = (key: 'operationType' | 'status', value: string) => {
     void setParams({
@@ -94,8 +105,15 @@ export function ProductTable() {
     });
   };
 
+  const setArchiveFilter = (value: string) => {
+    void setParams({
+      archived: value === DEFAULT_ARCHIVE_FILTER ? null : value,
+      page: 1
+    });
+  };
+
   const clearFilters = () => {
-    void setParams({ operationType: null, page: 1, status: null });
+    void setParams({ archived: null, operationType: null, page: 1, status: null });
   };
 
   const setPage = (page: number) => {
@@ -139,6 +157,7 @@ export function ProductTable() {
     <section className='min-w-0 space-y-4'>
       <PropertyTableToolbar
         activeFilterCount={activeFilterCount}
+        archivedFilter={archivedFilter}
         hasFilters={hasFilters}
         operationType={params.operationType}
         pageSize={params.perPage}
@@ -146,6 +165,7 @@ export function ProductTable() {
         total={total}
         visibleCount={products.length}
         isFetching={productsQuery.isFetching}
+        onArchiveFilterChange={setArchiveFilter}
         onClearFilters={clearFilters}
         onFilterChange={setFilter}
         onPageSizeChange={setPageSize}
@@ -211,6 +231,7 @@ export function ProductTable() {
 
 function PropertyTableToolbar({
   activeFilterCount,
+  archivedFilter,
   hasFilters,
   isFetching,
   operationType,
@@ -218,11 +239,13 @@ function PropertyTableToolbar({
   status,
   total,
   visibleCount,
+  onArchiveFilterChange,
   onClearFilters,
   onFilterChange,
   onPageSizeChange
 }: {
   activeFilterCount: number;
+  archivedFilter: PropertyArchiveFilter;
   hasFilters: boolean;
   isFetching: boolean;
   operationType: string | null;
@@ -230,12 +253,17 @@ function PropertyTableToolbar({
   status: string | null;
   total: number;
   visibleCount: number;
+  onArchiveFilterChange: (value: string) => void;
   onClearFilters: () => void;
   onFilterChange: (key: 'operationType' | 'status', value: string) => void;
   onPageSizeChange: (pageSize: string) => void;
 }) {
   const operationLabel = getOptionLabel(OPERATION_TYPE_OPTIONS, operationType);
   const statusLabel = getOptionLabel(PROPERTY_STATUS_OPTIONS, status);
+  const archiveLabel =
+    archivedFilter === DEFAULT_ARCHIVE_FILTER
+      ? undefined
+      : getOptionLabel(archiveFilterOptions, archivedFilter);
 
   return (
     <div className='overflow-hidden rounded-2xl border bg-background shadow-xs'>
@@ -281,6 +309,7 @@ function PropertyTableToolbar({
               options={PROPERTY_STATUS_OPTIONS}
               onValueChange={(value) => onFilterChange('status', value)}
             />
+            <ArchiveFilterSelect value={archivedFilter} onValueChange={onArchiveFilterChange} />
             <Select value={String(pageSize)} onValueChange={onPageSizeChange}>
               <SelectTrigger size='sm' className='w-full sm:w-[112px]'>
                 <SelectValue aria-label={`${pageSize} por página`} />
@@ -303,6 +332,7 @@ function PropertyTableToolbar({
 
         {hasFilters ? (
           <ActiveFilterSummary
+            archiveLabel={archiveLabel}
             operationLabel={operationLabel}
             statusLabel={statusLabel}
             onClearFilters={onClearFilters}
@@ -334,10 +364,12 @@ function getPropertyTableSummary({
 }
 
 function ActiveFilterSummary({
+  archiveLabel,
   operationLabel,
   statusLabel,
   onClearFilters
 }: {
+  archiveLabel?: string;
   operationLabel?: string;
   statusLabel?: string;
   onClearFilters: () => void;
@@ -348,6 +380,7 @@ function ActiveFilterSummary({
         <span className='font-medium text-foreground'>Vista filtrada</span>
         {operationLabel ? <FilterBadge label='Operación' value={operationLabel} /> : null}
         {statusLabel ? <FilterBadge label='Estado' value={statusLabel} /> : null}
+        {archiveLabel ? <FilterBadge label='Archivo' value={archiveLabel} /> : null}
       </div>
       <Button variant='ghost' size='sm' onClick={onClearFilters} className='h-7 w-fit px-2 text-xs'>
         Ver todo el inventario
@@ -385,6 +418,29 @@ function FilterSelect({
       <SelectContent align='end'>
         <SelectItem value={ALL_FILTERS_VALUE}>{allLabel}</SelectItem>
         {options.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function ArchiveFilterSelect({
+  value,
+  onValueChange
+}: {
+  value: PropertyArchiveFilter;
+  onValueChange: (value: string) => void;
+}) {
+  return (
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger size='sm' aria-label='Archivo' className='w-full sm:w-[150px]'>
+        <SelectValue placeholder='Archivo' />
+      </SelectTrigger>
+      <SelectContent align='end'>
+        {archiveFilterOptions.map((option) => (
           <SelectItem key={option.value} value={option.value}>
             {option.label}
           </SelectItem>
@@ -502,7 +558,10 @@ function PropertyIdentity({
     <div className='flex min-w-0 items-center gap-3'>
       <PropertyThumbnail propertyEngagement={propertyEngagement} compact={compact} />
       <div className='min-w-0'>
-        <p className='truncate font-medium'>{propertyEngagement.property.title}</p>
+        <div className='flex min-w-0 items-center gap-2'>
+          <p className='min-w-0 truncate font-medium'>{propertyEngagement.property.title}</p>
+          {isArchivedProduct(propertyEngagement) ? <ArchivedBadge /> : null}
+        </div>
         <p className='mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground'>
           {getAddress(propertyEngagement)}
         </p>
@@ -511,6 +570,14 @@ function PropertyIdentity({
         ) : null}
       </div>
     </div>
+  );
+}
+
+function ArchivedBadge() {
+  return (
+    <Badge variant='outline' className={cn('shrink-0 border text-[11px]', getArchivedTone())}>
+      Archivada
+    </Badge>
   );
 }
 
@@ -703,6 +770,7 @@ export function PropertyTableSkeleton() {
           <div className='flex flex-wrap gap-2'>
             <Skeleton className='h-8 w-40' />
             <Skeleton className='h-8 w-40' />
+            <Skeleton className='h-8 w-32' />
             <Skeleton className='h-8 w-24' />
           </div>
         </div>

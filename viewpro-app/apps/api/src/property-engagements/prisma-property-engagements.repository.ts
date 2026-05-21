@@ -1,13 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common'
+import { MovementSource, MovementType } from '@prisma/client'
 import type { Prisma, PropertyAgent, PropertyAssetImage } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import type {
+  ArchivePropertyEngagementInput,
+  ArchivePropertyEngagementResult,
   CreatePropertyEngagementInput,
   CreatePropertyAssetImageInput,
   DeletePropertyAssetImageResult,
   ListPropertyEngagementsInput,
   PropertyEngagementsRepository,
   PropertyEngagementWithDetails,
+  RestorePropertyEngagementInput,
+  RestorePropertyEngagementResult,
   UpdatePropertyEngagementInput,
 } from './property-engagements.repository'
 
@@ -107,6 +112,101 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
     })
   }
 
+  archiveForTenant(input: ArchivePropertyEngagementInput): Promise<ArchivePropertyEngagementResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.propertyEngagement.findFirst({
+        where: this.buildTenantVisibilityWhere(input),
+        select: { id: true, archivedAt: true },
+      })
+
+      if (!existing) {
+        return null
+      }
+
+      if (existing.archivedAt) {
+        return { status: 'alreadyArchived' }
+      }
+
+      const archivedResult = await tx.propertyEngagement.updateMany({
+        where: { id: existing.id, archivedAt: null },
+        data: {
+          archivedAt: new Date(),
+          archivedByUserId: input.archivedByUserId,
+          archiveReason: input.archiveReason ?? null,
+        },
+      })
+
+      if (archivedResult.count === 0) {
+        return { status: 'alreadyArchived' }
+      }
+
+      await tx.movement.create({
+        data: {
+          tenantId: input.tenantId,
+          propertyEngagementId: existing.id,
+          createdByUserId: input.archivedByUserId,
+          type: MovementType.ARCHIVED,
+          observation: input.archiveReason ?? 'Property archived',
+          source: MovementSource.MANUAL,
+        },
+      })
+
+      const archived = await tx.propertyEngagement.findUniqueOrThrow({
+        where: { id: existing.id },
+        include: propertyEngagementInclude,
+      })
+
+      return { status: 'archived', engagement: archived }
+    })
+  }
+
+  restoreForTenant(input: RestorePropertyEngagementInput): Promise<RestorePropertyEngagementResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.propertyEngagement.findFirst({
+        where: this.buildTenantVisibilityWhere(input),
+        select: { id: true, archivedAt: true },
+      })
+
+      if (!existing) {
+        return null
+      }
+
+      if (!existing.archivedAt) {
+        return { status: 'notArchived' }
+      }
+
+      const restoredResult = await tx.propertyEngagement.updateMany({
+        where: { id: existing.id, archivedAt: { not: null } },
+        data: {
+          archivedAt: null,
+          archivedByUserId: null,
+          archiveReason: null,
+        },
+      })
+
+      if (restoredResult.count === 0) {
+        return { status: 'notArchived' }
+      }
+
+      await tx.movement.create({
+        data: {
+          tenantId: input.tenantId,
+          propertyEngagementId: existing.id,
+          createdByUserId: input.userId,
+          type: MovementType.RESTORED,
+          observation: 'Property restored',
+          source: MovementSource.MANUAL,
+        },
+      })
+
+      const restored = await tx.propertyEngagement.findUniqueOrThrow({
+        where: { id: existing.id },
+        include: propertyEngagementInclude,
+      })
+
+      return { status: 'restored', engagement: restored }
+    })
+  }
 
   countImagesForAsset(propertyAssetId: string): Promise<number> {
     return this.prisma.propertyAssetImage.count({ where: { propertyAssetId } })
@@ -229,6 +329,18 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
       ...('engagementId' in input ? { id: input.engagementId } : {}),
       ...('status' in input && input.status ? { status: input.status } : {}),
       ...('operationType' in input && input.operationType ? { operationType: input.operationType } : {}),
+    }
+
+    if ('page' in input) {
+      const archiveFilter = input.archived ?? 'active'
+
+      if (archiveFilter === 'active') {
+        where.archivedAt = null
+      }
+
+      if (archiveFilter === 'archived') {
+        where.archivedAt = { not: null }
+      }
     }
 
     if (!input.canViewAll) {

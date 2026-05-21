@@ -1,5 +1,5 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
-import { AnalyticsActorType, AnalyticsEventName } from '@prisma/client'
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { AnalyticsActorType, AnalyticsEventName, MovementType } from '@prisma/client'
 import { AnalyticsService, type TrackAnalyticsEventInput } from '../../analytics/analytics.service'
 import type { CurrentUser } from '../../auth/types/current-user'
 import { PERMISSIONS } from '../../permissions/permissions.constants'
@@ -12,6 +12,8 @@ import type { CreateMovementDto } from '../dto/create-movement.dto'
 import { MOVEMENTS_REPOSITORY, type MovementsRepository } from '../movements.repository'
 import { mapMovement, type MovementResponse } from '../responses/movement.response'
 
+const lifecycleMovementTypes = new Set<MovementType>([MovementType.ARCHIVED, MovementType.RESTORED])
+
 @Injectable()
 export class CreateMovementUseCase {
   constructor(
@@ -19,6 +21,7 @@ export class CreateMovementUseCase {
     private readonly movementsRepository: MovementsRepository,
     @Inject(PROPERTY_ENGAGEMENTS_REPOSITORY)
     private readonly propertyEngagementsRepository: PropertyEngagementsRepository,
+    @Inject(AnalyticsService)
     private readonly analyticsService: AnalyticsService,
   ) {}
 
@@ -37,6 +40,10 @@ export class CreateMovementUseCase {
 
     if (!canViewAll && !canViewAssigned) {
       throw new ForbiddenException('Insufficient permissions')
+    }
+
+    if (lifecycleMovementTypes.has(input.type)) {
+      throw new BadRequestException('Lifecycle movements must be created through property lifecycle actions')
     }
 
     const engagement = await this.propertyEngagementsRepository.findByIdForTenant({

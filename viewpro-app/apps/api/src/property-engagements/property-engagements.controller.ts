@@ -10,15 +10,18 @@ import { CurrentTenant } from '../tenant-context/current-tenant.decorator'
 import { ApiTenantContext } from '../tenant-context/tenant-context-api-docs.decorator'
 import { TenantMembershipGuard } from '../tenant-context/tenant-membership.guard'
 import type { TenantContext } from '../tenant-context/tenant-context.types'
+import { ArchivePropertyEngagementDto } from './dto/archive-property-engagement.dto'
 import { AssignPropertyAgentDto } from './dto/assign-property-agent.dto'
 import { CreatePropertyEngagementDto } from './dto/create-property-engagement.dto'
 import { ListPropertyEngagementsQuery } from './dto/list-property-engagements.query'
 import { UpdatePropertyEngagementDto } from './dto/update-property-engagement.dto'
 import { AssignPropertyAgentUseCase } from './use-cases/assign-property-agent.use-case'
+import { ArchivePropertyEngagementUseCase } from './use-cases/archive-property-engagement.use-case'
 import { CreatePropertyEngagementUseCase } from './use-cases/create-property-engagement.use-case'
 import { DeletePropertyImageUseCase } from './use-cases/delete-property-image.use-case'
 import { GetPropertyEngagementUseCase } from './use-cases/get-property-engagement.use-case'
 import { ListPropertyEngagementsUseCase } from './use-cases/list-property-engagements.use-case'
+import { RestorePropertyEngagementUseCase } from './use-cases/restore-property-engagement.use-case'
 import { SetPropertyImagePrimaryUseCase } from './use-cases/set-property-image-primary.use-case'
 import { UpdatePropertyEngagementUseCase } from './use-cases/update-property-engagement.use-case'
 import {
@@ -29,6 +32,7 @@ import {
 
 // Keep DTO/query classes as runtime values for Nest metadata when tests transpile with Vitest/esbuild.
 const nestDtoRuntimeTypes = [
+  ArchivePropertyEngagementDto,
   AssignPropertyAgentDto,
   CreatePropertyEngagementDto,
   ListPropertyEngagementsQuery,
@@ -49,6 +53,10 @@ export class PropertyEngagementsController {
     private readonly getPropertyEngagementUseCase: GetPropertyEngagementUseCase,
     @Inject(UpdatePropertyEngagementUseCase)
     private readonly updatePropertyEngagementUseCase: UpdatePropertyEngagementUseCase,
+    @Inject(ArchivePropertyEngagementUseCase)
+    private readonly archivePropertyEngagementUseCase: ArchivePropertyEngagementUseCase,
+    @Inject(RestorePropertyEngagementUseCase)
+    private readonly restorePropertyEngagementUseCase: RestorePropertyEngagementUseCase,
     @Inject(AssignPropertyAgentUseCase)
     private readonly assignPropertyAgentUseCase: AssignPropertyAgentUseCase,
     @Inject(UploadPropertyImageUseCase)
@@ -98,6 +106,27 @@ export class PropertyEngagementsController {
     @Body() body: UpdatePropertyEngagementDto,
   ) {
     return this.updatePropertyEngagementUseCase.execute(tenant, currentUser, id, body)
+  }
+
+  @Post(':id/archive')
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_CREATE)
+  archive(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('id') id: string,
+    @Body() body: ArchivePropertyEngagementDto,
+  ) {
+    return this.archivePropertyEngagementUseCase.execute(tenant, currentUser, id, body)
+  }
+
+  @Post(':id/restore')
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_CREATE)
+  restore(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('id') id: string,
+  ) {
+    return this.restorePropertyEngagementUseCase.execute(tenant, currentUser, id)
   }
 
   @Post(':id/images')

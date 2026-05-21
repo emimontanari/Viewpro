@@ -29,5 +29,11 @@ export const propertyStatusOptions = [
   { value: 'CANCELLED', label: 'Cancelada' }
 ];
 
+export const archiveFilterOptions = [
+  { label: 'Activas', value: 'active' },
+  { label: 'Archivadas', value: 'archived' },
+  { label: 'Todas', value: 'all' }
+];
+
 // Backwards-compatible export name while product-named modules are migrated.
 export const categoryOptions = operationTypeOptions;

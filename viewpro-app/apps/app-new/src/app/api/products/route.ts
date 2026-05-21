@@ -43,6 +43,7 @@ function buildListQuery(request: NextRequest) {
     incomingParams.get('limit') ?? incomingParams.get('pageSize') ?? incomingParams.get('perPage')
   );
   appendSearchParam(backendParams, 'status', incomingParams.get('status'));
+  appendSearchParam(backendParams, 'archived', incomingParams.get('archived'));
   appendSearchParam(
     backendParams,
     'operationType',

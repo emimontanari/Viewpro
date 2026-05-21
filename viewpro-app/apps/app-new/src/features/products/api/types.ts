@@ -14,6 +14,23 @@ export type PropertyEngagementStatus =
   | 'CLOSED'
   | 'CANCELLED';
 
+export type ProductMovementType =
+  | 'GENERAL_UPDATE'
+  | 'INQUIRY'
+  | 'VISIT_SCHEDULED'
+  | 'VISIT_COMPLETED'
+  | 'OFFER_RECEIVED'
+  | 'DOCUMENTATION_UPDATE'
+  | 'STATUS_CHANGE'
+  | 'ARCHIVED'
+  | 'RESTORED';
+
+export type ProductMovementSource = 'MANUAL' | 'SYSTEM';
+
+export type ProductMovementInterestLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export type PropertyArchiveFilter = 'active' | 'archived' | 'all';
+
 export type PropertyImage = {
   id: string;
   storageKey: string;
@@ -33,6 +50,9 @@ export type PropertyEngagement = {
   status: PropertyEngagementStatus;
   publishedPriceCents: number | null;
   currency: string | null;
+  archivedAt: string | null;
+  archivedByUserId: string | null;
+  archiveReason: string | null;
   property: {
     id: string;
     title: string;
@@ -80,11 +100,41 @@ export type ProductFilters = {
   limit?: number;
   operationType?: string;
   status?: string;
+  archived?: PropertyArchiveFilter;
   tenantId?: string | null;
 };
 
 export type ProductsResponse = {
   items: PropertyEngagement[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type ProductMovement = {
+  id: string;
+  tenantId: string;
+  propertyEngagementId: string;
+  type: ProductMovementType;
+  observation: string;
+  nextStep: string | null;
+  previousStatus: PropertyEngagementStatus | null;
+  newStatus: PropertyEngagementStatus | null;
+  source: ProductMovementSource;
+  interestCount: number | null;
+  visitCount: number | null;
+  offerAmountCents: number | null;
+  interestLevel: ProductMovementInterestLevel | null;
+  createdBy: {
+    id: string;
+    email: string;
+    firstName: string | null;
+  };
+  createdAt: string;
+};
+
+export type ProductMovementsResponse = {
+  items: ProductMovement[];
   total: number;
   page: number;
   pageSize: number;
