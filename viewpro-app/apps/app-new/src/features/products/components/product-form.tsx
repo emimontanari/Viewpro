@@ -1,8 +1,10 @@
 'use client';
 
 import { useAppForm, useFormFields } from '@/components/ui/tanstack-form';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -24,11 +26,13 @@ import { productKeys } from '../api/queries';
 import {
   createProduct,
   deleteProductImage,
+  setProductImageAsPrimary,
   updateProduct,
   uploadProductImage
 } from '../api/service';
 import type { Product, ProductMutationPayload, PropertyImage } from '../api/types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -40,11 +44,21 @@ import {
   type ProductFormValues
 } from '@/features/products/schemas/product';
 import {
+  currencyOptions,
   operationTypeOptions,
   propertyTypeOptions
 } from '@/features/products/constants/product-options';
 import { QuickStatusSelect } from './quick-status-select';
-import { getOperationTypeLabel, getPropertyTypeLabel } from './product-tables/columns';
+import {
+  getAddress,
+  getAgentSummary,
+  getOperationTone,
+  getOperationTypeLabel,
+  getPropertyFacts,
+  getPropertyTypeLabel,
+  getStatusLabel,
+  getStatusTone
+} from './product-tables/columns';
 import { cn } from '@/lib/utils';
 
 const PROPERTY_IMAGE_ACCEPT = {
@@ -89,6 +103,10 @@ function PropertyEngagementEditor({
     : PROPERTY_IMAGE_MAX_FILES;
   const [imagePendingDeletion, setImagePendingDeletion] = useState<PropertyImage | null>(null);
   const [imagePreview, setImagePreview] = useState<PropertyImage | null>(null);
+  const cancelHref =
+    isEditMode && initialData ? `/dashboard/product/${initialData.id}` : '/dashboard/product';
+  const cancelLabel = isEditMode ? 'Cancelar edición' : 'Cancelar';
+  const submitLabel = isEditMode ? 'Guardar cambios' : 'Crear propiedad';
 
   const deleteImageMutation = useMutation({
     mutationFn: async (image: PropertyImage) => {
@@ -136,14 +154,24 @@ function PropertyEngagementEditor({
       if (isEditMode && initialData) {
         const updatedProperty = await updateProduct(initialData.id, toUpdatePayload(value));
         const imageUploadFailures = await uploadSelectedImages(updatedProperty.id, images);
-        return { imageUploadFailures, propertyId: updatedProperty.id, type: 'edit' as const };
+        return {
+          imageUploadCount: Math.max(images.length - imageUploadFailures, 0),
+          imageUploadFailures,
+          propertyId: updatedProperty.id,
+          type: 'edit' as const
+        };
       }
 
       const createdProperty = await createProduct(toCreatePayload(value));
       const imageUploadFailures = await uploadSelectedImages(createdProperty.id, images);
-      return { imageUploadFailures, propertyId: createdProperty.id, type: 'create' as const };
+      return {
+        imageUploadCount: Math.max(images.length - imageUploadFailures, 0),
+        imageUploadFailures,
+        propertyId: createdProperty.id,
+        type: 'create' as const
+      };
     },
-    onSuccess: async ({ imageUploadFailures, propertyId, type }) => {
+    onSuccess: async ({ imageUploadCount, imageUploadFailures, propertyId, type }) => {
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
 
       if (imageUploadFailures > 0) {
@@ -153,9 +181,7 @@ function PropertyEngagementEditor({
             : `La propiedad se guardó, pero no se pudieron subir ${imageUploadFailures} imágenes.`
         );
       } else {
-        toast.success(
-          type === 'edit' ? 'Propiedad actualizada correctamente' : 'Propiedad creada correctamente'
-        );
+        toast.success(getPropertySaveSuccessMessage(type, imageUploadCount));
       }
 
       router.push(type === 'edit' ? `/dashboard/product/${propertyId}` : '/dashboard/product');
@@ -184,13 +210,18 @@ function PropertyEngagementEditor({
     useFormFields<ProductFormValues>();
 
   return (
-    <Card className='mx-auto w-full'>
-      <CardHeader>
+    <Card className='mx-auto w-full overflow-hidden'>
+      <CardHeader className='border-b bg-muted/20'>
         <CardTitle className='text-left text-2xl font-bold'>{pageTitle}</CardTitle>
+        <CardDescription>
+          {isEditMode
+            ? 'Actualizá los datos comerciales, el precio y las imágenes de la propiedad.'
+            : 'Cargá los datos mínimos para publicar y administrar la propiedad.'}
+        </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className='p-4 sm:p-6'>
         <form.AppForm>
-          <form.Form className='space-y-8'>
+          <form.Form className='space-y-8' onKeyDown={preventAccidentalEnterSubmit}>
             <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
               <FormTextField
                 name='title'
@@ -248,22 +279,41 @@ function PropertyEngagementEditor({
                 placeholder='Seleccioná una operación'
               />
 
-              <FormTextField
-                name='publishedPriceCents'
-                label='Precio publicado en centavos'
-                type='number'
-                min={0}
-                step={1}
-                placeholder='12000000'
+              <form.AppField
+                name='publishedPrice'
+                children={(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+
+                  return (
+                    <field.FieldSet>
+                      <field.Field>
+                        <field.FieldLabel htmlFor={field.name}>Precio publicado</field.FieldLabel>
+                        <Input
+                          id={field.name}
+                          inputMode='numeric'
+                          placeholder='125.000'
+                          value={formatAmountInput(field.state.value)}
+                          onBlur={field.handleBlur}
+                          onChange={(event) => {
+                            field.handleChange(parseAmountInput(event.target.value));
+                          }}
+                          aria-invalid={isInvalid}
+                        />
+                        <field.FieldDescription>
+                          Se formatea automáticamente para que no te pierdas con los ceros.
+                        </field.FieldDescription>
+                      </field.Field>
+                      <field.FieldError />
+                    </field.FieldSet>
+                  );
+                }}
               />
 
-              <FormTextField
+              <FormSelectField
                 name='currency'
                 label='Moneda'
-                placeholder='ARS'
-                validators={{
-                  onBlur: z.string().max(3, 'Usá un código de moneda de 3 letras.')
-                }}
+                options={currencyOptions}
+                placeholder='Seleccioná una moneda'
               />
 
               <div className='md:col-span-2 rounded-xl border bg-muted/20 p-4'>
@@ -358,7 +408,28 @@ function PropertyEngagementEditor({
                 placeholder='propietario@email.com'
               />
 
-              <div className='space-y-4 md:col-span-2'>
+              <section className='space-y-4 rounded-2xl border bg-muted/10 p-4 md:col-span-2'>
+                <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+                  <div className='space-y-1'>
+                    <h3 className='text-sm font-semibold'>Galería de imágenes</h3>
+                    <p className='text-xs text-muted-foreground'>
+                      Las fotos se suben al guardar la propiedad. Si una imagen viene marcada como
+                      principal, la señalamos en la galería.
+                    </p>
+                  </div>
+                  <Badge variant='outline' className='w-fit rounded-full bg-background'>
+                    {existingImageCount} / {PROPERTY_IMAGE_MAX_FILES} cargadas
+                  </Badge>
+                </div>
+                <div className='h-2 overflow-hidden rounded-full bg-muted'>
+                  <div
+                    className='h-full rounded-full bg-primary transition-all'
+                    style={{
+                      width: `${Math.min((existingImageCount / PROPERTY_IMAGE_MAX_FILES) * 100, 100)}%`
+                    }}
+                  />
+                </div>
+
                 {isEditMode && initialData ? (
                   <ExistingImagesSummary
                     images={initialData.property.images}
@@ -370,29 +441,36 @@ function PropertyEngagementEditor({
                   />
                 ) : null}
                 {availableImageSlots > 0 ? (
-                  <FormFileUploadField
-                    name='image'
-                    label={isEditMode ? 'Agregar imágenes' : 'Imágenes'}
-                    description={getImageUploadDescription(availableImageSlots)}
-                    maxFiles={availableImageSlots}
-                    maxSize={PROPERTY_IMAGE_MAX_BYTES}
-                    accept={PROPERTY_IMAGE_ACCEPT}
-                  />
+                  <div className='rounded-xl border bg-background p-4'>
+                    <FormFileUploadField
+                      name='image'
+                      label={isEditMode ? 'Sumar nuevas imágenes' : 'Imágenes iniciales'}
+                      description={getImageUploadDescription(availableImageSlots)}
+                      maxFiles={availableImageSlots}
+                      maxSize={PROPERTY_IMAGE_MAX_BYTES}
+                      accept={PROPERTY_IMAGE_ACCEPT}
+                    />
+                  </div>
                 ) : (
-                  <div className='rounded-lg border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground'>
-                    Esta propiedad ya tiene el máximo de 5 imágenes.
+                  <div className='rounded-xl border border-dashed bg-background p-4 text-sm text-muted-foreground'>
+                    La galería ya tiene el máximo de {PROPERTY_IMAGE_MAX_FILES} imágenes. Eliminá
+                    una foto existente si necesitás subir otra.
                   </div>
                 )}
-              </div>
+              </section>
             </div>
 
-            <div className='flex justify-end gap-2'>
-              <Button type='button' variant='outline' onClick={() => router.back()}>
-                Volver
-              </Button>
-              <form.SubmitButton disabled={mutation.isPending}>
-                {isEditMode ? 'Guardar cambios' : 'Crear propiedad'}
-              </form.SubmitButton>
+            <div className='flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-end'>
+              {mutation.isPending ? (
+                <Button type='button' variant='outline' disabled>
+                  {cancelLabel}
+                </Button>
+              ) : (
+                <Button asChild variant='outline'>
+                  <Link href={cancelHref}>{cancelLabel}</Link>
+                </Button>
+              )}
+              <form.SubmitButton disabled={mutation.isPending}>{submitLabel}</form.SubmitButton>
             </div>
           </form.Form>
         </form.AppForm>
@@ -404,8 +482,10 @@ function PropertyEngagementEditor({
           onOpenChange={handleDeleteDialogOpenChange}
         />
         <PropertyImagePreviewDialog
+          engagementId={initialData?.id}
           image={imagePreview}
           open={Boolean(imagePreview)}
+          onPrimaryChange={setImagePreview}
           onOpenChange={(open) => {
             if (!open) {
               setImagePreview(null);
@@ -415,6 +495,27 @@ function PropertyEngagementEditor({
       </CardContent>
     </Card>
   );
+}
+
+function preventAccidentalEnterSubmit(event: React.KeyboardEvent<HTMLFormElement>) {
+  if (event.key !== 'Enter' || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
+    return;
+  }
+
+  const target = event.target;
+
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  const tagName = target.tagName.toLowerCase();
+  const inputType = target instanceof HTMLInputElement ? target.type : '';
+  const shouldPrevent =
+    tagName === 'textarea' ? false : tagName === 'input' && inputType !== 'file';
+
+  if (shouldPrevent) {
+    event.preventDefault();
+  }
 }
 
 function DeletePropertyImageDialog({
@@ -458,14 +559,40 @@ function DeletePropertyImageDialog({
 }
 
 function PropertyImagePreviewDialog({
+  engagementId,
   image,
   open,
+  onPrimaryChange,
   onOpenChange
 }: {
+  engagementId?: string;
   image: PropertyImage | null;
   open: boolean;
+  onPrimaryChange: (image: PropertyImage) => void;
   onOpenChange: (open: boolean) => void;
 }) {
+  const queryClient = useQueryClient();
+  const setPrimaryMutation = useMutation({
+    mutationFn: async () => {
+      if (!engagementId || !image) {
+        throw new Error('PRIMARY_IMAGE_UNAVAILABLE');
+      }
+
+      return setProductImageAsPrimary(engagementId, image.id);
+    },
+    onSuccess: async (updatedImage) => {
+      onPrimaryChange(updatedImage);
+      await queryClient.invalidateQueries({ queryKey: productKeys.all });
+      toast.success('Imagen principal actualizada');
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : 'No se pudo marcar la imagen como principal'
+      );
+    }
+  });
+  const canSetPrimary = Boolean(engagementId && image && !image.isPrimary);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='max-w-4xl gap-4 p-4 sm:p-6'>
@@ -486,6 +613,27 @@ function PropertyImagePreviewDialog({
             />
           ) : null}
         </div>
+        {image && engagementId ? (
+          <div className='flex flex-col gap-3 rounded-xl border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between'>
+            <div className='space-y-1'>
+              <p className='text-sm font-medium'>Imagen de portada</p>
+              <p className='text-xs text-muted-foreground'>
+                La imagen principal aparece primero en la ficha y en el listado.
+              </p>
+            </div>
+            <Button
+              type='button'
+              size='sm'
+              variant={image.isPrimary ? 'secondary' : 'default'}
+              disabled={!canSetPrimary || setPrimaryMutation.isPending}
+              isLoading={setPrimaryMutation.isPending}
+              onClick={() => setPrimaryMutation.mutate()}
+              className='shrink-0'
+            >
+              {image.isPrimary ? 'Imagen principal' : 'Poner como principal'}
+            </Button>
+          </div>
+        ) : null}
       </DialogContent>
     </Dialog>
   );
@@ -499,54 +647,134 @@ function PropertyEngagementDetails({
   pageTitle: string;
 }) {
   const router = useRouter();
+  const address = getAddress(propertyEngagement) || 'Sin dirección cargada';
+  const propertyFacts = getPropertyFacts(propertyEngagement);
+  const agentSummary = getAgentSummary(propertyEngagement);
 
   return (
-    <Card className='mx-auto w-full'>
-      <CardHeader>
-        <CardTitle className='text-left text-2xl font-bold'>{pageTitle}</CardTitle>
-      </CardHeader>
-      <CardContent className='space-y-6'>
-        <PropertyImageCarousel
-          images={getCarouselImages(propertyEngagement)}
-          title={propertyEngagement.property.title}
-        />
+    <Card className='mx-auto w-full overflow-hidden'>
+      <CardHeader className='border-b bg-muted/20'>
+        <div className='flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between'>
+          <div className='min-w-0 space-y-3'>
+            <div className='flex flex-wrap gap-2'>
+              <Badge
+                variant='outline'
+                className={cn('rounded-full', getOperationTone(propertyEngagement.operationType))}
+              >
+                {getOperationTypeLabel(propertyEngagement.operationType)}
+              </Badge>
+              <Badge
+                variant='outline'
+                className={cn('rounded-full', getStatusTone(propertyEngagement.status))}
+              >
+                {getStatusLabel(propertyEngagement.status)}
+              </Badge>
+              <Badge variant='outline' className='rounded-full bg-background/70'>
+                {getPropertyTypeLabel(propertyEngagement.property.propertyType)}
+              </Badge>
+            </div>
+            <div className='space-y-1'>
+              <p className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
+                {pageTitle}
+              </p>
+              <CardTitle className='break-words text-left text-2xl font-bold md:text-3xl'>
+                {propertyEngagement.property.title}
+              </CardTitle>
+              <p className='break-words text-sm text-muted-foreground'>{address}</p>
+              {propertyFacts ? (
+                <p className='text-sm font-medium text-muted-foreground'>{propertyFacts}</p>
+              ) : null}
+            </div>
+          </div>
 
-        <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-          <ReadOnlyField label='Título' value={propertyEngagement.property.title} />
-          <ReadOnlyField
-            label='Tipo'
-            value={getPropertyTypeLabel(propertyEngagement.property.propertyType)}
+          <div className='flex shrink-0 flex-col gap-2 sm:flex-row lg:justify-end'>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => router.push('/dashboard/product')}
+            >
+              Volver al listado
+            </Button>
+            <Button
+              type='button'
+              onClick={() => router.push(`/dashboard/product/${propertyEngagement.id}/edit`)}
+            >
+              <Icons.edit className='mr-2 size-4' />
+              Editar propiedad
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className='space-y-6 p-4 sm:p-6'>
+        <div className='grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]'>
+          <PropertyImageCarousel
+            images={getCarouselImages(propertyEngagement)}
+            title={propertyEngagement.property.title}
           />
-          <ReadOnlyField label='Dirección' value={propertyEngagement.property.addressLine} />
-          <ReadOnlyField label='Ciudad' value={propertyEngagement.property.city} />
-          <ReadOnlyField label='Provincia' value={propertyEngagement.property.province} />
-          <ReadOnlyField
-            label='Operación'
-            value={getOperationTypeLabel(propertyEngagement.operationType)}
-          />
-          <ReadOnlyStatusField propertyEngagement={propertyEngagement} />
-          <ReadOnlyField
-            label='Precio'
-            value={formatPrice(propertyEngagement.publishedPriceCents, propertyEngagement.currency)}
-          />
-          <ReadOnlyField
-            label='Propietario'
-            value={propertyEngagement.property.ownerName ?? 'Sin nombre'}
-          />
-          <ReadOnlyField
-            label='Email propietario'
-            value={propertyEngagement.property.ownerEmail ?? 'Sin email'}
-          />
+
+          <aside className='flex flex-col gap-4 rounded-2xl border bg-card p-4 shadow-xs'>
+            <div className='rounded-xl border bg-muted/20 p-4'>
+              <div className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
+                Precio publicado
+              </div>
+              <div className='mt-2 text-3xl font-bold tracking-tight'>
+                {formatPrice(propertyEngagement.publishedPriceCents, propertyEngagement.currency)}
+              </div>
+              <p className='mt-1 text-xs text-muted-foreground'>
+                Moneda: {propertyEngagement.currency ?? 'ARS'}
+              </p>
+            </div>
+
+            <ReadOnlyStatusField propertyEngagement={propertyEngagement} />
+
+            <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-1'>
+              <ReadOnlyField
+                label='Propietario'
+                value={propertyEngagement.property.ownerName ?? 'Sin nombre'}
+              />
+              <ReadOnlyField
+                label='Email propietario'
+                value={propertyEngagement.property.ownerEmail ?? 'Sin email'}
+              />
+              <ReadOnlyField label='Agente' value={agentSummary.label} />
+              <ReadOnlyField label='Contacto agente' value={agentSummary.detail} />
+            </div>
+          </aside>
         </div>
 
-        <div className='space-y-3'>
+        <section className='space-y-3'>
           <div>
-            <h3 className='text-sm font-semibold'>Características</h3>
-            <p className='text-xs text-muted-foreground'>
+            <h3 className='text-base font-semibold'>Información principal</h3>
+            <p className='text-sm text-muted-foreground'>
+              Datos base para identificar y publicar la propiedad.
+            </p>
+          </div>
+          <div className='grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4'>
+            <ReadOnlyField
+              label='Tipo'
+              value={getPropertyTypeLabel(propertyEngagement.property.propertyType)}
+            />
+            <ReadOnlyField
+              label='Operación'
+              value={getOperationTypeLabel(propertyEngagement.operationType)}
+            />
+            <ReadOnlyField label='Dirección' value={propertyEngagement.property.addressLine} />
+            <ReadOnlyField
+              label='Localidad'
+              value={`${propertyEngagement.property.city}, ${propertyEngagement.property.province}`}
+            />
+          </div>
+        </section>
+
+        <section className='space-y-3'>
+          <div>
+            <h3 className='text-base font-semibold'>Características</h3>
+            <p className='text-sm text-muted-foreground'>
               Datos físicos registrados para esta propiedad.
             </p>
           </div>
-          <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4'>
+          <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'>
             <ReadOnlyField
               label='Superficie total'
               value={formatNumberWithSuffix(propertyEngagement.property.totalAreaSqm, 'm²')}
@@ -580,19 +808,7 @@ function PropertyEngagementDetails({
               value={propertyEngagement.property.orientation ?? 'Sin dato'}
             />
           </div>
-        </div>
-
-        <div className='flex flex-col justify-end gap-2 sm:flex-row'>
-          <Button type='button' variant='outline' onClick={() => router.push('/dashboard/product')}>
-            Volver al listado
-          </Button>
-          <Button
-            type='button'
-            onClick={() => router.push(`/dashboard/product/${propertyEngagement.id}/edit`)}
-          >
-            Editar propiedad
-          </Button>
-        </div>
+        </section>
       </CardContent>
     </Card>
   );
@@ -638,8 +854,14 @@ function PropertyImageCarousel({ images, title }: { images: PropertyImage[]; tit
 
   if (!activeImage) {
     return (
-      <div className='flex h-56 items-center justify-center rounded-lg border border-dashed bg-muted/40 text-sm text-muted-foreground'>
-        Sin imagen principal
+      <div className='flex min-h-[22rem] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed bg-muted/30 p-8 text-center text-sm text-muted-foreground'>
+        <div className='rounded-full bg-background p-4 shadow-xs'>
+          <Icons.media className='size-8 opacity-70' />
+        </div>
+        <div className='space-y-1'>
+          <p className='font-medium text-foreground'>Sin imágenes cargadas</p>
+          <p>Agregá fotos desde edición para completar la ficha visual de la propiedad.</p>
+        </div>
       </div>
     );
   }
@@ -655,51 +877,76 @@ function PropertyImageCarousel({ images, title }: { images: PropertyImage[]; tit
   }
 
   return (
-    <div className='relative h-56 w-full overflow-hidden rounded-lg border bg-muted'>
-      <PropertyImagePreview
-        key={activeImage.id}
-        src={activeImage.url}
-        alt={`Imagen ${activeIndex + 1} de ${images.length} de ${title}`}
-        className='absolute inset-0 h-full w-full object-cover'
-        fallbackClassName='p-4'
-      />
+    <div className='space-y-3'>
+      <div className='relative min-h-[22rem] w-full overflow-hidden rounded-2xl border bg-muted shadow-xs'>
+        <PropertyImagePreview
+          key={activeImage.id}
+          src={activeImage.url}
+          alt={`Imagen ${activeIndex + 1} de ${images.length} de ${title}`}
+          className='absolute inset-0 h-full w-full object-cover'
+          fallbackClassName='p-4'
+        />
+        <div className='absolute left-3 top-3 flex flex-wrap gap-2'>
+          <Badge className='rounded-full bg-background/85 text-foreground shadow-sm backdrop-blur'>
+            {activeIndex + 1} / {images.length}
+          </Badge>
+          {activeImage.isPrimary ? (
+            <Badge className='rounded-full bg-background/85 text-foreground shadow-sm backdrop-blur'>
+              Principal
+            </Badge>
+          ) : null}
+        </div>
+        {hasMultipleImages ? (
+          <>
+            <Button
+              type='button'
+              variant='secondary'
+              size='icon'
+              className='absolute left-3 top-1/2 size-9 -translate-y-1/2 rounded-full bg-background/85 shadow-sm backdrop-blur hover:bg-background'
+              onClick={showPreviousImage}
+            >
+              <Icons.chevronLeft className='h-4 w-4' />
+              <span className='sr-only'>Imagen anterior</span>
+            </Button>
+            <Button
+              type='button'
+              variant='secondary'
+              size='icon'
+              className='absolute right-3 top-1/2 size-9 -translate-y-1/2 rounded-full bg-background/85 shadow-sm backdrop-blur hover:bg-background'
+              onClick={showNextImage}
+            >
+              <Icons.chevronRight className='h-4 w-4' />
+              <span className='sr-only'>Imagen siguiente</span>
+            </Button>
+          </>
+        ) : null}
+      </div>
+
       {hasMultipleImages ? (
-        <>
-          <Button
-            type='button'
-            variant='secondary'
-            size='icon'
-            className='absolute left-3 top-1/2 size-8 -translate-y-1/2 rounded-full bg-background/80 shadow-sm backdrop-blur hover:bg-background'
-            onClick={showPreviousImage}
-          >
-            <Icons.chevronLeft className='h-4 w-4' />
-            <span className='sr-only'>Imagen anterior</span>
-          </Button>
-          <Button
-            type='button'
-            variant='secondary'
-            size='icon'
-            className='absolute right-3 top-1/2 size-8 -translate-y-1/2 rounded-full bg-background/80 shadow-sm backdrop-blur hover:bg-background'
-            onClick={showNextImage}
-          >
-            <Icons.chevronRight className='h-4 w-4' />
-            <span className='sr-only'>Imagen siguiente</span>
-          </Button>
-          <div className='absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 rounded-full bg-background/75 px-2 py-1 backdrop-blur'>
-            {images.map((image, index) => (
-              <button
-                key={image.id}
-                type='button'
-                aria-label={`Ver imagen ${index + 1}`}
-                aria-current={index === activeIndex ? 'true' : undefined}
-                className={`h-1.5 rounded-full transition-all ${
-                  index === activeIndex ? 'w-5 bg-foreground' : 'w-1.5 bg-muted-foreground/50'
-                }`}
-                onClick={() => setActiveIndex(index)}
+        <div className='grid grid-cols-4 gap-2 sm:grid-cols-5 lg:grid-cols-6'>
+          {images.map((image, index) => (
+            <button
+              key={image.id}
+              type='button'
+              aria-label={`Ver imagen ${index + 1}`}
+              aria-current={index === activeIndex ? 'true' : undefined}
+              className={cn(
+                'group relative h-16 overflow-hidden rounded-lg border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                index === activeIndex
+                  ? 'border-primary ring-2 ring-primary/20'
+                  : 'hover:border-foreground/30'
+              )}
+              onClick={() => setActiveIndex(index)}
+            >
+              <PropertyImagePreview
+                src={image.url}
+                alt={`Miniatura ${index + 1} de ${title}`}
+                className='h-full w-full object-cover transition duration-200 group-hover:scale-[1.03]'
+                fallbackClassName='p-2 text-[10px]'
               />
-            ))}
-          </div>
-        </>
+            </button>
+          ))}
+        </div>
       ) : null}
     </div>
   );
@@ -718,31 +965,37 @@ function ExistingImagesSummary({
 }) {
   if (images.length === 0) {
     return (
-      <div className='rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground'>
-        Esta propiedad todavía no tiene imágenes cargadas.
+      <div className='flex items-center gap-3 rounded-xl border border-dashed bg-muted/20 p-4 text-sm text-muted-foreground'>
+        <div className='rounded-full bg-background p-2 shadow-xs'>
+          <Icons.media className='size-4' />
+        </div>
+        <div>
+          <p className='font-medium text-foreground'>Todavía no hay imágenes</p>
+          <p>Subí hasta {PROPERTY_IMAGE_MAX_FILES} fotos para armar la galería de la propiedad.</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className='rounded-xl border bg-muted/20 p-4'>
-      <div className='mb-3 flex items-center justify-between gap-2'>
+      <div className='mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between'>
         <div>
           <h3 className='text-sm font-semibold'>Imágenes actuales</h3>
           <p className='text-xs text-muted-foreground'>
-            {images.length} de {PROPERTY_IMAGE_MAX_FILES} imágenes cargadas. Podés eliminar imágenes
-            desde el botón de cada miniatura; el reordenamiento sigue pendiente.
+            {images.length} de {PROPERTY_IMAGE_MAX_FILES} imágenes cargadas. Tocá una miniatura para
+            verla grande o usá la X para quitarla.
           </p>
         </div>
       </div>
-      <div className='flex gap-2 overflow-x-auto pb-1'>
+      <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'>
         {images.map((image) => {
           const isDeleting = pendingDeleteImageId === image.id;
 
           return (
             <div
               key={image.id}
-              className='group relative h-24 w-36 shrink-0 overflow-hidden rounded-lg border bg-muted shadow-xs transition hover:border-foreground/20 hover:shadow-sm'
+              className='group relative h-28 overflow-hidden rounded-xl border bg-muted shadow-xs transition hover:border-foreground/20 hover:shadow-sm'
             >
               <button
                 type='button'
@@ -752,16 +1005,24 @@ function ExistingImagesSummary({
                 <PropertyImagePreview
                   src={image.url}
                   alt={image.originalFilename}
-                  className='h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]'
+                  className='h-full w-full object-cover transition duration-200 group-hover:scale-[1.03]'
                   fallbackClassName='p-3 text-[11px]'
                 />
+                {image.isPrimary ? (
+                  <Badge className='absolute left-1.5 top-1.5 rounded-full bg-background/85 text-[10px] text-foreground shadow-sm backdrop-blur'>
+                    Principal
+                  </Badge>
+                ) : null}
+                <span className='absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-2 pb-2 pt-6 text-[11px] font-medium text-white opacity-0 transition group-hover:opacity-100'>
+                  Ver imagen
+                </span>
                 <span className='sr-only'>Ver imagen {image.originalFilename}</span>
               </button>
               <Button
                 type='button'
                 variant='ghost'
                 size='icon'
-                className='absolute right-0.5 top-0.5 z-10 size-5 rounded-full border border-destructive/70 bg-background/75 text-destructive shadow-xs backdrop-blur hover:border-destructive hover:bg-destructive/90 hover:text-white focus-visible:ring-destructive/30'
+                className='absolute right-1.5 top-1.5 z-10 size-9 rounded-full border border-destructive/70 bg-background/85 text-destructive shadow-xs backdrop-blur hover:border-destructive hover:bg-destructive/90 hover:text-white focus-visible:ring-destructive/30'
                 disabled={isDeleting}
                 isLoading={isDeleting}
                 onClick={(event) => {
@@ -769,7 +1030,7 @@ function ExistingImagesSummary({
                   onDeleteImage(image);
                 }}
               >
-                <Icons.close className='size-3' />
+                <Icons.close className='size-4' />
                 <span className='sr-only'>Eliminar imagen {image.originalFilename}</span>
               </Button>
             </div>
@@ -782,8 +1043,15 @@ function ExistingImagesSummary({
 
 function ReadOnlyStatusField({ propertyEngagement }: { propertyEngagement: Product }) {
   return (
-    <div className='space-y-2 rounded-md border p-3'>
-      <div className='text-xs font-medium uppercase text-muted-foreground'>Estado</div>
+    <div className='space-y-3 rounded-xl border bg-muted/20 p-4'>
+      <div>
+        <div className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
+          Estado comercial
+        </div>
+        <p className='mt-1 text-xs text-muted-foreground'>
+          Actualizá el avance sin entrar a edición completa.
+        </p>
+      </div>
       <QuickStatusSelect propertyEngagement={propertyEngagement} />
     </div>
   );
@@ -791,9 +1059,11 @@ function ReadOnlyStatusField({ propertyEngagement }: { propertyEngagement: Produ
 
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
-    <div className='space-y-1 rounded-md border p-3'>
-      <div className='text-xs font-medium uppercase text-muted-foreground'>{label}</div>
-      <div className='text-sm'>{value}</div>
+    <div className='min-w-0 space-y-1 rounded-xl border bg-background p-3 shadow-xs'>
+      <div className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
+        {label}
+      </div>
+      <div className='break-words text-sm font-medium'>{value}</div>
     </div>
   );
 }
@@ -807,7 +1077,7 @@ function getDefaultValues(initialData: Product | null): ProductFormValues {
       province: '',
       propertyType: 'APARTMENT',
       operationType: 'SALE',
-      publishedPriceCents: undefined,
+      publishedPrice: undefined,
       currency: 'ARS',
       totalAreaSqm: undefined,
       coveredAreaSqm: undefined,
@@ -830,7 +1100,7 @@ function getDefaultValues(initialData: Product | null): ProductFormValues {
     province: initialData.property.province,
     propertyType: initialData.property.propertyType,
     operationType: initialData.operationType,
-    publishedPriceCents: initialData.publishedPriceCents ?? undefined,
+    publishedPrice: centsToAmount(initialData.publishedPriceCents),
     currency: initialData.currency ?? 'ARS',
     totalAreaSqm: initialData.property.totalAreaSqm ?? undefined,
     coveredAreaSqm: initialData.property.coveredAreaSqm ?? undefined,
@@ -863,8 +1133,8 @@ function toCreatePayload(value: ProductFormValues): ProductMutationPayload {
     province: value.province,
     propertyType: value.propertyType,
     operationType: value.operationType,
-    ...(typeof value.publishedPriceCents === 'number' && {
-      publishedPriceCents: value.publishedPriceCents
+    ...(typeof value.publishedPrice === 'number' && {
+      publishedPriceCents: amountToCents(value.publishedPrice)
     }),
     ...(value.currency && { currency: value.currency.toUpperCase() }),
     ...(totalAreaSqm !== undefined && { totalAreaSqm }),
@@ -888,7 +1158,7 @@ function toUpdatePayload(value: ProductFormValues): ProductMutationPayload {
     province: value.province,
     propertyType: value.propertyType,
     operationType: value.operationType,
-    publishedPriceCents: optionalNumberOrNull(value.publishedPriceCents),
+    publishedPriceCents: optionalAmountToCentsOrNull(value.publishedPrice),
     ...(value.currency && { currency: value.currency.toUpperCase() }),
     totalAreaSqm: optionalIntegerOrNull(value.totalAreaSqm),
     coveredAreaSqm: optionalIntegerOrNull(value.coveredAreaSqm),
@@ -927,7 +1197,20 @@ function getCarouselImages(product: Product) {
 
 function getImageUploadDescription(availableImageSlots: number) {
   const slotLabel = availableImageSlots === 1 ? '1 imagen' : `${availableImageSlots} imágenes`;
-  return `Podés agregar hasta ${slotLabel}. JPG, PNG o WebP de hasta 5 MB cada una.`;
+  return `Podés seleccionar hasta ${slotLabel}. JPG, PNG o WebP de hasta 5 MB cada una.`;
+}
+
+function getPropertySaveSuccessMessage(type: 'create' | 'edit', imageUploadCount: number) {
+  if (imageUploadCount === 0) {
+    return type === 'edit'
+      ? 'Propiedad actualizada correctamente'
+      : 'Propiedad creada correctamente';
+  }
+
+  const propertyAction = type === 'edit' ? 'actualizada' : 'creada';
+  const imageLabel =
+    imageUploadCount === 1 ? '1 imagen subida' : `${imageUploadCount} imágenes subidas`;
+  return `Propiedad ${propertyAction} y ${imageLabel}.`;
 }
 
 function optionalIntegerValue(value: number | '' | undefined) {
@@ -938,8 +1221,27 @@ function optionalIntegerOrNull(value: number | '' | undefined) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-function optionalNumberOrNull(value: number | '' | undefined) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+function centsToAmount(value: number | null | undefined) {
+  return typeof value === 'number' && Number.isFinite(value) ? value / 100 : undefined;
+}
+
+function formatAmountInput(value: number | '' | undefined) {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(value)
+    : '';
+}
+
+function parseAmountInput(value: string) {
+  const normalizedValue = value.replace(/\D/g, '');
+  return normalizedValue ? Number(normalizedValue) : '';
+}
+
+function amountToCents(value: number) {
+  return Math.round(value * 100);
+}
+
+function optionalAmountToCentsOrNull(value: number | '' | undefined) {
+  return typeof value === 'number' && Number.isFinite(value) ? amountToCents(value) : null;
 }
 
 function optionalStringOrNull(value: string | undefined) {
@@ -962,6 +1264,7 @@ function formatPrice(value: number | null, currency: string | null) {
 
   return new Intl.NumberFormat('es-AR', {
     currency: currency ?? 'ARS',
+    maximumFractionDigits: 0,
     style: 'currency'
   }).format(value / 100);
 }

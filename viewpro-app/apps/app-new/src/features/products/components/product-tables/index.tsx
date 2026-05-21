@@ -136,7 +136,7 @@ export function ProductTable() {
   }
 
   return (
-    <section className='space-y-4'>
+    <section className='min-w-0 space-y-4'>
       <PropertyTableToolbar
         activeFilterCount={activeFilterCount}
         hasFilters={hasFilters}
@@ -155,29 +155,29 @@ export function ProductTable() {
         <PropertyTableEmptyState hasFilters={hasFilters} onClearFilters={clearFilters} />
       ) : (
         <>
-          <div className='hidden overflow-hidden rounded-2xl border bg-background shadow-xs md:block'>
-            <Table>
+          <div className='hidden min-w-0 overflow-hidden rounded-2xl border bg-background shadow-xs md:block'>
+            <Table className='table-fixed'>
               <TableHeader className='bg-muted/40'>
                 <TableRow className='hover:bg-transparent'>
-                  <TableHead className='w-[38%] px-5 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
+                  <TableHead className='w-[35%] px-3 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
                     Propiedad
                   </TableHead>
-                  <TableHead className='px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
+                  <TableHead className='w-28 px-3 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
                     Operación
                   </TableHead>
-                  <TableHead className='px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
+                  <TableHead className='w-36 px-3 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
                     Estado
                   </TableHead>
-                  <TableHead className='px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
+                  <TableHead className='w-28 px-3 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
                     Precio
                   </TableHead>
-                  <TableHead className='px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
+                  <TableHead className='w-36 px-3 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
                     Propietario
                   </TableHead>
-                  <TableHead className='px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
+                  <TableHead className='hidden w-36 px-3 py-3 text-xs uppercase tracking-wide text-muted-foreground 2xl:table-cell'>
                     Agente
                   </TableHead>
-                  <TableHead className='w-12 px-4 py-3' />
+                  <TableHead className='w-12 px-3 py-3' />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -196,13 +196,15 @@ export function ProductTable() {
         </>
       )}
 
-      <PropertyTablePagination
-        page={params.page}
-        pageCount={pageCount}
-        pageSize={params.perPage}
-        total={total}
-        onPageChange={setPage}
-      />
+      {total > 0 ? (
+        <PropertyTablePagination
+          page={params.page}
+          pageCount={pageCount}
+          pageSize={params.perPage}
+          total={total}
+          onPageChange={setPage}
+        />
+      ) : null}
     </section>
   );
 }
@@ -232,72 +234,144 @@ function PropertyTableToolbar({
   onFilterChange: (key: 'operationType' | 'status', value: string) => void;
   onPageSizeChange: (pageSize: string) => void;
 }) {
+  const operationLabel = getOptionLabel(OPERATION_TYPE_OPTIONS, operationType);
+  const statusLabel = getOptionLabel(PROPERTY_STATUS_OPTIONS, status);
+
   return (
     <div className='overflow-hidden rounded-2xl border bg-background shadow-xs'>
-      <div className='flex flex-col gap-4 border-b bg-muted/20 p-4 lg:flex-row lg:items-center lg:justify-between'>
-        <div className='space-y-1'>
-          <div className='flex flex-wrap items-center gap-2'>
-            <h2 className='text-base font-semibold tracking-tight'>Inventario de propiedades</h2>
-            {isFetching ? (
-              <Badge variant='outline' className='text-muted-foreground'>
-                Actualizando
-              </Badge>
+      <div className='space-y-4 border-b bg-muted/20 p-4'>
+        <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
+          <div className='space-y-1'>
+            <div className='flex flex-wrap items-center gap-2'>
+              <h2 className='text-base font-semibold tracking-tight'>Inventario de propiedades</h2>
+              {hasFilters ? (
+                <Badge variant='outline' className='bg-background text-muted-foreground'>
+                  {activeFilterCount}{' '}
+                  {activeFilterCount === 1 ? 'filtro activo' : 'filtros activos'}
+                </Badge>
+              ) : null}
+              {isFetching ? (
+                <Badge variant='outline' className='text-muted-foreground'>
+                  Actualizando
+                </Badge>
+              ) : null}
+            </div>
+            <p className='text-sm text-muted-foreground'>
+              {getPropertyTableSummary({ hasFilters, total, visibleCount })}
+            </p>
+          </div>
+
+          <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+            <Button asChild size='sm' className='sm:hidden'>
+              <Link href='/dashboard/product/new'>
+                <Icons.add className='size-4' /> Nueva propiedad
+              </Link>
+            </Button>
+            <FilterSelect
+              allLabel='Todas las operaciones'
+              label='Operación'
+              value={operationType}
+              options={OPERATION_TYPE_OPTIONS}
+              onValueChange={(value) => onFilterChange('operationType', value)}
+            />
+            <FilterSelect
+              allLabel='Todos los estados'
+              label='Estado comercial'
+              value={status}
+              options={PROPERTY_STATUS_OPTIONS}
+              onValueChange={(value) => onFilterChange('status', value)}
+            />
+            <Select value={String(pageSize)} onValueChange={onPageSizeChange}>
+              <SelectTrigger size='sm' className='w-full sm:w-[112px]'>
+                <SelectValue aria-label={`${pageSize} por página`} />
+              </SelectTrigger>
+              <SelectContent align='end'>
+                {PAGE_SIZE_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={String(option)}>
+                    {option} / pág.
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {hasFilters ? (
+              <Button variant='outline' size='sm' onClick={onClearFilters}>
+                <Icons.close className='size-4' /> Limpiar filtros
+              </Button>
             ) : null}
           </div>
-          <p className='text-sm text-muted-foreground'>
-            {total === 0
-              ? 'No hay propiedades para los filtros seleccionados.'
-              : `${total} ${total === 1 ? 'gestión inmobiliaria' : 'gestiones inmobiliarias'} · ${visibleCount} en esta vista`}
-          </p>
         </div>
 
-        <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
-          <Button asChild size='sm' className='sm:hidden'>
-            <Link href='/dashboard/product/new'>
-              <Icons.add className='size-4' /> Nueva propiedad
-            </Link>
-          </Button>
-          <FilterSelect
-            label='Operación'
-            value={operationType}
-            options={OPERATION_TYPE_OPTIONS}
-            onValueChange={(value) => onFilterChange('operationType', value)}
+        {hasFilters ? (
+          <ActiveFilterSummary
+            operationLabel={operationLabel}
+            statusLabel={statusLabel}
+            onClearFilters={onClearFilters}
           />
-          <FilterSelect
-            label='Estado'
-            value={status}
-            options={PROPERTY_STATUS_OPTIONS}
-            onValueChange={(value) => onFilterChange('status', value)}
-          />
-          <Select value={String(pageSize)} onValueChange={onPageSizeChange}>
-            <SelectTrigger size='sm' className='w-full sm:w-[112px]'>
-              <SelectValue aria-label={`${pageSize} por página`} />
-            </SelectTrigger>
-            <SelectContent align='end'>
-              {PAGE_SIZE_OPTIONS.map((option) => (
-                <SelectItem key={option} value={String(option)}>
-                  {option} / pág.
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {hasFilters ? (
-            <Button variant='ghost' size='sm' onClick={onClearFilters}>
-              <Icons.close className='size-4' /> Limpiar {activeFilterCount}
-            </Button>
-          ) : null}
-        </div>
+        ) : null}
       </div>
     </div>
   );
 }
 
+function getPropertyTableSummary({
+  hasFilters,
+  total,
+  visibleCount
+}: {
+  hasFilters: boolean;
+  total: number;
+  visibleCount: number;
+}) {
+  if (total === 0) {
+    return hasFilters
+      ? 'No encontramos propiedades con esos filtros.'
+      : 'Todavía no hay propiedades cargadas.';
+  }
+
+  const resultLabel = total === 1 ? 'gestión inmobiliaria' : 'gestiones inmobiliarias';
+  const filterContext = hasFilters ? 'con filtros' : 'en total';
+  return `${total} ${resultLabel} ${filterContext} · ${visibleCount} en esta vista`;
+}
+
+function ActiveFilterSummary({
+  operationLabel,
+  statusLabel,
+  onClearFilters
+}: {
+  operationLabel?: string;
+  statusLabel?: string;
+  onClearFilters: () => void;
+}) {
+  return (
+    <div className='flex flex-col gap-2 rounded-xl border bg-background/70 p-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between'>
+      <div className='flex flex-wrap items-center gap-2'>
+        <span className='font-medium text-foreground'>Vista filtrada</span>
+        {operationLabel ? <FilterBadge label='Operación' value={operationLabel} /> : null}
+        {statusLabel ? <FilterBadge label='Estado' value={statusLabel} /> : null}
+      </div>
+      <Button variant='ghost' size='sm' onClick={onClearFilters} className='h-7 w-fit px-2 text-xs'>
+        Ver todo el inventario
+      </Button>
+    </div>
+  );
+}
+
+function FilterBadge({ label, value }: { label: string; value: string }) {
+  return (
+    <Badge variant='outline' className='rounded-full bg-background text-foreground'>
+      {label}: {value}
+    </Badge>
+  );
+}
+
 function FilterSelect({
+  allLabel,
   label,
   value,
   options,
   onValueChange
 }: {
+  allLabel: string;
   label: string;
   value: string | null;
   options: Array<{ value: string; label: string }>;
@@ -305,11 +379,11 @@ function FilterSelect({
 }) {
   return (
     <Select value={value ?? ALL_FILTERS_VALUE} onValueChange={onValueChange}>
-      <SelectTrigger size='sm' className='w-full sm:w-[168px]'>
+      <SelectTrigger size='sm' aria-label={label} className='w-full sm:w-[176px]'>
         <SelectValue placeholder={label} />
       </SelectTrigger>
       <SelectContent align='end'>
-        <SelectItem value={ALL_FILTERS_VALUE}>Todas: {label.toLowerCase()}</SelectItem>
+        <SelectItem value={ALL_FILTERS_VALUE}>{allLabel}</SelectItem>
         {options.map((option) => (
           <SelectItem key={option.value} value={option.value}>
             {option.label}
@@ -320,15 +394,19 @@ function FilterSelect({
   );
 }
 
+function getOptionLabel(options: Array<{ value: string; label: string }>, value: string | null) {
+  return value ? options.find((option) => option.value === value)?.label : undefined;
+}
+
 function PropertyTableRow({ propertyEngagement }: { propertyEngagement: Product }) {
   const agent = getAgentSummary(propertyEngagement);
 
   return (
     <TableRow className='group hover:bg-muted/30'>
-      <TableCell className='whitespace-normal px-5 py-4'>
-        <PropertyIdentity propertyEngagement={propertyEngagement} />
+      <TableCell className='whitespace-normal px-3 py-3'>
+        <PropertyIdentity propertyEngagement={propertyEngagement} compact />
       </TableCell>
-      <TableCell className='px-4 py-4'>
+      <TableCell className='px-3 py-3'>
         <div className='flex flex-col gap-1.5'>
           <Badge
             variant='outline'
@@ -336,27 +414,30 @@ function PropertyTableRow({ propertyEngagement }: { propertyEngagement: Product 
           >
             {getOperationTypeLabel(propertyEngagement.operationType)}
           </Badge>
-          <Badge variant='outline' className='bg-background text-muted-foreground'>
+          <Badge
+            variant='outline'
+            className='hidden bg-background text-muted-foreground 2xl:inline-flex'
+          >
             {getPropertyTypeLabel(propertyEngagement.property.propertyType)}
           </Badge>
         </div>
       </TableCell>
-      <TableCell className='px-4 py-4'>
+      <TableCell className='px-3 py-3'>
         <QuickStatusSelect propertyEngagement={propertyEngagement} />
       </TableCell>
-      <TableCell className='px-4 py-4 font-medium'>
+      <TableCell className='whitespace-nowrap px-3 py-3 font-medium'>
         {formatPrice(propertyEngagement.publishedPriceCents, propertyEngagement.currency)}
       </TableCell>
-      <TableCell className='whitespace-normal px-4 py-4'>
+      <TableCell className='whitespace-normal px-3 py-3'>
         <OwnerSummary propertyEngagement={propertyEngagement} />
       </TableCell>
-      <TableCell className='whitespace-normal px-4 py-4'>
-        <div className='max-w-44'>
+      <TableCell className='hidden whitespace-normal px-3 py-3 2xl:table-cell'>
+        <div className='max-w-36'>
           <p className='truncate text-sm font-medium'>{agent.label}</p>
           <p className='truncate text-xs text-muted-foreground'>{agent.detail}</p>
         </div>
       </TableCell>
-      <TableCell className='px-4 py-4 text-right'>
+      <TableCell className='px-3 py-3 text-right'>
         <CellAction data={propertyEngagement} />
       </TableCell>
     </TableRow>

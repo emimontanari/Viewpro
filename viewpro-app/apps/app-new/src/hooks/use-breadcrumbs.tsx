@@ -8,6 +8,9 @@ type BreadcrumbItem = {
   link: string;
 };
 
+const UUID_SEGMENT_PATTERN = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i;
+const BREADCRUMB_ID_PREVIEW_LENGTH = 5;
+
 // This allows to add custom title as well
 const routeMapping: Record<string, BreadcrumbItem[]> = {
   '/dashboard': [{ title: 'Dashboard', link: '/dashboard' }],
@@ -36,11 +39,19 @@ export function useBreadcrumbs() {
     return segments.map((segment, index) => {
       const path = `/${segments.slice(0, index + 1).join('/')}`;
       return {
-        title: segment.charAt(0).toUpperCase() + segment.slice(1),
+        title: getBreadcrumbTitle(segment),
         link: path
       };
     });
   }, [pathname]);
 
   return breadcrumbs;
+}
+
+function getBreadcrumbTitle(segment: string) {
+  if (UUID_SEGMENT_PATTERN.test(segment)) {
+    return segment.slice(0, BREADCRUMB_ID_PREVIEW_LENGTH);
+  }
+
+  return segment.charAt(0).toUpperCase() + segment.slice(1);
 }

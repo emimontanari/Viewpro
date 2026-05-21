@@ -6,8 +6,9 @@ import { AssignPropertyAgentUseCase } from '../src/property-engagements/use-case
 import { CreatePropertyEngagementUseCase } from '../src/property-engagements/use-cases/create-property-engagement.use-case'
 import { GetPropertyEngagementUseCase } from '../src/property-engagements/use-cases/get-property-engagement.use-case'
 import { ListPropertyEngagementsUseCase } from '../src/property-engagements/use-cases/list-property-engagements.use-case'
+import { SetPropertyImagePrimaryUseCase } from '../src/property-engagements/use-cases/set-property-image-primary.use-case'
 import { UpdatePropertyEngagementUseCase } from '../src/property-engagements/use-cases/update-property-engagement.use-case'
-import { mapPropertyEngagement } from '../src/property-engagements/responses/property-engagement.response'
+import { mapPropertyEngagement, mapPropertyImage } from '../src/property-engagements/responses/property-engagement.response'
 import type { TenantContext } from '../src/tenant-context/tenant-context.types'
 
 const tenant: TenantContext = {
@@ -21,6 +22,19 @@ const tenant: TenantContext = {
 }
 
 const currentUser = { id: 'user-1', email: 'user@example.com' }
+
+const propertyImage = {
+  id: 'image-1',
+  propertyAssetId: 'asset-1',
+  uploadedByUserId: 'user-1',
+  storageKey: 'tenant-1/asset-1/image-1.png',
+  originalFilename: 'front.png',
+  mimeType: 'image/png',
+  sizeBytes: 1024,
+  isPrimary: true,
+  createdAt: new Date('2026-01-03T00:00:00.000Z'),
+  updatedAt: new Date('2026-01-04T00:00:00.000Z'),
+}
 
 const engagement = {
   id: 'engagement-1',
@@ -279,7 +293,12 @@ describe('Property engagement use cases', () => {
     await useCase.execute(
       { ...tenant, permissions: [PERMISSIONS.ENGAGEMENTS_VIEW_ASSIGNED] },
       currentUser,
-      { status: PropertyEngagementStatus.ACTIVE_PUBLICATION, operationType: PropertyOperationType.SALE },
+      {
+        page: 1,
+        pageSize: 20,
+        status: PropertyEngagementStatus.ACTIVE_PUBLICATION,
+        operationType: PropertyOperationType.SALE,
+      },
     )
 
     expect(repository.findMany).toHaveBeenCalledWith({
@@ -297,9 +316,9 @@ describe('Property engagement use cases', () => {
     const repository = { findMany: vi.fn() }
     const useCase = new ListPropertyEngagementsUseCase(repository as never)
 
-    await expect(useCase.execute({ ...tenant, permissions: [] }, currentUser, {})).rejects.toThrow(
-      new ForbiddenException('Insufficient permissions'),
-    )
+    await expect(
+      useCase.execute({ ...tenant, permissions: [] }, currentUser, { page: 1, pageSize: 20 }),
+    ).rejects.toThrow(new ForbiddenException('Insufficient permissions'))
     expect(repository.findMany).not.toHaveBeenCalled()
   })
 
@@ -309,6 +328,66 @@ describe('Property engagement use cases', () => {
 
     await expect(useCase.execute(tenant, currentUser, 'missing-engagement')).rejects.toThrow(
       new NotFoundException('Property engagement not found'),
+    )
+  })
+
+  it('sets an existing property image as primary', async () => {
+    const repository = {
+      findByIdForTenant: vi.fn().mockResolvedValue(engagement),
+      setImageAsPrimary: vi.fn().mockResolvedValue(propertyImage),
+    }
+    const useCase = new SetPropertyImagePrimaryUseCase(repository as never)
+
+    await expect(useCase.execute(tenant, currentUser, 'engagement-1', 'image-1')).resolves.toEqual(
+      mapPropertyImage(propertyImage),
+    )
+    expect(repository.findByIdForTenant).toHaveBeenCalledWith({
+      tenantId: 'tenant-1',
+      engagementId: 'engagement-1',
+      userId: 'user-1',
+      canViewAll: true,
+    })
+    expect(repository.setImageAsPrimary).toHaveBeenCalledWith({
+      propertyAssetId: 'asset-1',
+      imageId: 'image-1',
+    })
+  })
+
+  it('rejects primary image changes without write permission', async () => {
+    const repository = { findByIdForTenant: vi.fn(), setImageAsPrimary: vi.fn() }
+    const useCase = new SetPropertyImagePrimaryUseCase(repository as never)
+
+    await expect(
+      useCase.execute(
+        { ...tenant, permissions: [PERMISSIONS.ENGAGEMENTS_VIEW_ALL] },
+        currentUser,
+        'engagement-1',
+        'image-1',
+      ),
+    ).rejects.toThrow(new ForbiddenException('Insufficient permissions'))
+    expect(repository.findByIdForTenant).not.toHaveBeenCalled()
+    expect(repository.setImageAsPrimary).not.toHaveBeenCalled()
+  })
+
+  it('returns not found when setting a primary image for a missing engagement', async () => {
+    const repository = { findByIdForTenant: vi.fn().mockResolvedValue(null), setImageAsPrimary: vi.fn() }
+    const useCase = new SetPropertyImagePrimaryUseCase(repository as never)
+
+    await expect(useCase.execute(tenant, currentUser, 'missing-engagement', 'image-1')).rejects.toThrow(
+      new NotFoundException('Property engagement not found'),
+    )
+    expect(repository.setImageAsPrimary).not.toHaveBeenCalled()
+  })
+
+  it('returns not found when setting a primary image that does not belong to the property', async () => {
+    const repository = {
+      findByIdForTenant: vi.fn().mockResolvedValue(engagement),
+      setImageAsPrimary: vi.fn().mockResolvedValue(null),
+    }
+    const useCase = new SetPropertyImagePrimaryUseCase(repository as never)
+
+    await expect(useCase.execute(tenant, currentUser, 'engagement-1', 'missing-image')).rejects.toThrow(
+      new NotFoundException('Property image not found'),
     )
   })
 

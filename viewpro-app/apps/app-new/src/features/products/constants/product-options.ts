@@ -11,6 +11,11 @@ export const operationTypeOptions = [
   { value: 'RENT', label: 'Alquiler' }
 ];
 
+export const currencyOptions = [
+  { value: 'ARS', label: 'ARS' },
+  { value: 'USD', label: 'USD' }
+];
+
 export const propertyStatusOptions = [
   { value: 'CAPTURE', label: 'Captación' },
   { value: 'DOCUMENTATION_PENDING', label: 'Documentación pendiente' },

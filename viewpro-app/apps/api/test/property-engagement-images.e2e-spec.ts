@@ -93,6 +93,58 @@ describe('Property engagement images (e2e)', () => {
     await manager.agent.get(imagePath).expect(200)
   })
 
+  it('allows a manager to set an existing image as primary', async () => {
+    const manager = await registerTenantSession(
+      'image-primary@example.com',
+      'Image Primary Homes',
+    )
+    const engagement = await createEngagement(manager.agent, manager.tenantId, {
+      title: 'Image Primary Property',
+    }).expect(201)
+    const firstUpload = await uploadImage(
+      manager.agent,
+      manager.tenantId,
+      engagement.body.id,
+      'first.png',
+    )
+    const secondUpload = await uploadImage(
+      manager.agent,
+      manager.tenantId,
+      engagement.body.id,
+      'second.png',
+    )
+
+    expect(secondUpload.body.isPrimary).toBe(true)
+
+    const response = await manager.agent
+      .patch(`/api/property-engagements/${engagement.body.id}/images/${firstUpload.body.id}/primary`)
+      .set('x-tenant-id', manager.tenantId)
+      .expect(200)
+
+    expect(response.body).toMatchObject({
+      id: firstUpload.body.id,
+      isPrimary: true,
+    })
+
+    const detail = await manager.agent
+      .get(`/api/property-engagements/${engagement.body.id}`)
+      .set('x-tenant-id', manager.tenantId)
+      .expect(200)
+    const firstImage = detail.body.property.images.find(
+      (image: { id: string; isPrimary: boolean }) => image.id === firstUpload.body.id,
+    )
+    const secondImage = detail.body.property.images.find(
+      (image: { id: string; isPrimary: boolean }) => image.id === secondUpload.body.id,
+    )
+
+    expect(detail.body.property.primaryImage).toMatchObject({
+      id: firstUpload.body.id,
+      isPrimary: true,
+    })
+    expect(firstImage?.isPrimary).toBe(true)
+    expect(secondImage?.isPrimary).toBe(false)
+  })
+
   it('allows up to five images and rejects the sixth', async () => {
     const manager = await registerTenantSession(
       'image-limit@example.com',
