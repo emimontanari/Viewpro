@@ -5,7 +5,10 @@
 import { faker } from '@faker-js/faker';
 import { matchSorter } from 'match-sorter'; // For filtering
 
-export const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const shouldSimulateMockLatency = process.env.NEXT_PUBLIC_MOCK_API_DELAY === 'true';
+
+export const delay = (ms: number) =>
+  shouldSimulateMockLatency ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
 
 // Define the shape of Product data
 export type Product = {
@@ -150,7 +153,7 @@ export const fakeProducts = {
 
   // Get a specific product by its ID
   async getProductById(id: number) {
-    await delay(3000); // Simulate a slow API call
+    await delay(3000); // Optional mock latency when NEXT_PUBLIC_MOCK_API_DELAY="true"
 
     // Find the product by its ID
     const product = this.records.find((product) => product.id === id);

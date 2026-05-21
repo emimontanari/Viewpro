@@ -1,16 +1,56 @@
 'use client';
 
 import type { Column, Table } from '@tanstack/react-table';
+import dynamic from 'next/dynamic';
 import * as React from 'react';
 
-import { DataTableDateFilter } from '@/components/ui/table/data-table-date-filter';
-import { DataTableFacetedFilter } from '@/components/ui/table/data-table-faceted-filter';
-import { DataTableSliderFilter } from '@/components/ui/table/data-table-slider-filter';
 import { DataTableViewOptions } from '@/components/ui/table/data-table-view-options';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Cross2Icon } from '@radix-ui/react-icons';
+
+type LazyDateFilterProps = {
+  column: Column<unknown>;
+  title?: string;
+  multiple?: boolean;
+};
+
+type LazyFacetedFilterProps = {
+  column: Column<unknown>;
+  title?: string;
+  options: NonNullable<Column<unknown>['columnDef']['meta']>['options'];
+  multiple?: boolean;
+};
+
+type LazySliderFilterProps = {
+  column: Column<unknown>;
+  title?: string;
+};
+
+const DataTableDateFilter = dynamic(
+  () =>
+    import('@/components/ui/table/data-table-date-filter').then(
+      (module) => module.DataTableDateFilter as React.ComponentType<LazyDateFilterProps>
+    ),
+  { loading: DataTableFilterFallback, ssr: false }
+);
+
+const DataTableFacetedFilter = dynamic(
+  () =>
+    import('@/components/ui/table/data-table-faceted-filter').then(
+      (module) => module.DataTableFacetedFilter as React.ComponentType<LazyFacetedFilterProps>
+    ),
+  { loading: DataTableFilterFallback, ssr: false }
+);
+
+const DataTableSliderFilter = dynamic(
+  () =>
+    import('@/components/ui/table/data-table-slider-filter').then(
+      (module) => module.DataTableSliderFilter as React.ComponentType<LazySliderFilterProps>
+    ),
+  { loading: DataTableFilterFallback, ssr: false }
+);
 
 interface DataTableToolbarProps<TData> extends React.ComponentProps<'div'> {
   table: Table<TData>;
@@ -105,13 +145,18 @@ function DataTableToolbarFilter<TData>({ column }: DataTableToolbarFilterProps<T
         );
 
       case 'range':
-        return <DataTableSliderFilter column={column} title={columnMeta.label ?? column.id} />;
+        return (
+          <DataTableSliderFilter
+            column={column as Column<unknown>}
+            title={columnMeta.label ?? column.id}
+          />
+        );
 
       case 'date':
       case 'dateRange':
         return (
           <DataTableDateFilter
-            column={column}
+            column={column as Column<unknown>}
             title={columnMeta.label ?? column.id}
             multiple={columnMeta.variant === 'dateRange'}
           />
@@ -121,7 +166,7 @@ function DataTableToolbarFilter<TData>({ column }: DataTableToolbarFilterProps<T
       case 'multiSelect':
         return (
           <DataTableFacetedFilter
-            column={column}
+            column={column as Column<unknown>}
             title={columnMeta.label ?? column.id}
             options={columnMeta.options ?? []}
             multiple={columnMeta.variant === 'multiSelect'}
@@ -134,4 +179,8 @@ function DataTableToolbarFilter<TData>({ column }: DataTableToolbarFilterProps<T
   }, [column, columnMeta]);
 
   return onFilterRender();
+}
+
+function DataTableFilterFallback() {
+  return <Button variant='outline' size='sm' className='h-8 w-24 border-dashed' disabled />;
 }
