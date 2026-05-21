@@ -46,6 +46,21 @@ pnpm db:migrate
 
 Si el entorno local no tiene `apps/api/.env`, copiá `apps/api/.env.example` antes de ejecutar comandos de Prisma.
 
+## Base de datos de tests API
+
+Los tests del API hacen limpieza destructiva de tablas. Para proteger la DB local de desarrollo, Vitest carga `apps/api/.env.test`/defaults de test y la API falla rápido si `DATABASE_URL` no apunta a una base claramente de test.
+
+Setup local recomendado:
+
+```bash
+cd viewpro-app
+pnpm db:up
+docker compose exec -T postgres createdb -U viewpro viewpro_test 2>/dev/null || true
+DATABASE_URL='postgresql://viewpro:viewpro@localhost:5432/viewpro_test?schema=public' pnpm --filter api exec prisma migrate deploy
+```
+
+Opcionalmente copiá `apps/api/.env.test.example` a `apps/api/.env.test`. Nunca apuntes los e2e a `viewpro`; el guard debe rechazarlo antes de ejecutar cualquier `deleteMany()`.
+
 ## Backup and restore básico
 
 El estado durable actual de ViewPro vive en PostgreSQL. Las migraciones Prisma están versionadas en el repo; los dumps respaldan datos, no secretos ni variables de entorno.
@@ -125,9 +140,13 @@ Stage 4 soporta propiedades físicas y gestiones inmobiliarias tenant-scoped des
 - `POST /api/property-engagements`
 - `GET /api/property-engagements`
 - `GET /api/property-engagements/:id`
+- `POST /api/property-engagements/:id/images`
+- `DELETE /api/property-engagements/:id/images/:imageId`
 - `POST /api/property-engagements/:id/agents`
 
 Los managers pueden crear, listar y leer todas las gestiones del tenant, además de asignar agentes del mismo tenant. Los agentes sólo listan y leen gestiones asignadas. Usuarios propietarios, ownership real y portal de propietario quedan fuera de alcance para Stage 4.
+
+Las imágenes de propiedades usan storage local en desarrollo. Por defecto se guardan bajo `apps/api/uploads`; se puede configurar `PROPERTY_IMAGES_UPLOADS_ROOT` para separar entornos. Los tests API usan `uploads-test` para no borrar imágenes cargadas en la base de desarrollo.
 
 ## Movements backend
 

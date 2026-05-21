@@ -3,6 +3,7 @@ import { validate } from 'class-validator'
 import { describe, expect, it, vi } from 'vitest'
 import { CreatePropertyEngagementDto } from '../src/property-engagements/dto/create-property-engagement.dto'
 import { ListPropertyEngagementsQuery } from '../src/property-engagements/dto/list-property-engagements.query'
+import { UpdatePropertyEngagementDto } from '../src/property-engagements/dto/update-property-engagement.dto'
 import { PrismaPropertyEngagementsRepository } from '../src/property-engagements/prisma-property-engagements.repository'
 
 describe('Property engagements foundation', () => {
@@ -21,9 +22,30 @@ describe('Property engagements foundation', () => {
       propertyType: PropertyType.APARTMENT,
       ownerName: 'Owner Example',
       ownerEmail: 'owner@example.com',
+      totalAreaSqm: 72,
+      coveredAreaSqm: 64,
+      rooms: 3,
+      bedrooms: 2,
+      bathrooms: 1,
+      garages: 1,
+      ageYears: 8,
+      orientation: 'NE',
       operationType: PropertyOperationType.RENT,
       publishedPriceCents: 25000000,
       currency: 'ARS',
+    })
+
+    await expect(validate(dto)).resolves.toHaveLength(0)
+  })
+
+  it('validates update DTO fields as optional property and engagement data', async () => {
+    const dto = Object.assign(new UpdatePropertyEngagementDto(), {
+      title: 'Updated apartment',
+      coveredAreaSqm: null,
+      ownerName: null,
+      operationType: PropertyOperationType.SALE,
+      publishedPriceCents: 30000000,
+      currency: 'USD',
     })
 
     await expect(validate(dto)).resolves.toHaveLength(0)
@@ -127,6 +149,83 @@ describe('Property engagements foundation', () => {
       }),
     )
   })
+
+  it('updates a tenant engagement and its property asset inside one transaction', async () => {
+    const findFirst = vi.fn().mockResolvedValue({ id: 'engagement-1', propertyAssetId: 'asset-1' })
+    const updatePropertyAsset = vi.fn().mockResolvedValue({ id: 'asset-1' })
+    const updateEngagement = vi.fn().mockResolvedValue({ id: 'engagement-1' })
+    const findUnique = vi.fn().mockResolvedValue({ id: 'engagement-1' })
+    const transaction = vi.fn(async (callback) =>
+      callback({
+        propertyAsset: { update: updatePropertyAsset },
+        propertyEngagement: { findFirst, findUnique, update: updateEngagement },
+      }),
+    )
+    const repository = new PrismaPropertyEngagementsRepository({ $transaction: transaction } as never)
+
+    await expect(
+      repository.updateForTenant({
+        tenantId: 'tenant-1',
+        engagementId: 'engagement-1',
+        userId: 'manager-1',
+        canViewAll: true,
+        propertyAsset: { title: 'Updated property', coveredAreaSqm: null },
+        engagement: { operationType: PropertyOperationType.SALE, publishedPriceCents: 30000000 },
+      }),
+    ).resolves.toEqual({ id: 'engagement-1' })
+
+    expect(transaction).toHaveBeenCalledOnce()
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'engagement-1', tenantId: 'tenant-1' },
+        select: { id: true, propertyAssetId: true },
+      }),
+    )
+    expect(updatePropertyAsset).toHaveBeenCalledWith({
+      where: { id: 'asset-1' },
+      data: { title: 'Updated property', coveredAreaSqm: null },
+    })
+    expect(updateEngagement).toHaveBeenCalledWith({
+      where: { id: 'engagement-1' },
+      data: { operationType: PropertyOperationType.SALE, publishedPriceCents: 30000000 },
+    })
+  })
+
+  it('returns null instead of updating an invisible tenant engagement', async () => {
+    const updatePropertyAsset = vi.fn()
+    const updateEngagement = vi.fn()
+    const transaction = vi.fn(async (callback) =>
+      callback({
+        propertyAsset: { update: updatePropertyAsset },
+        propertyEngagement: { findFirst: vi.fn().mockResolvedValue(null), update: updateEngagement },
+      }),
+    )
+    const repository = new PrismaPropertyEngagementsRepository({ $transaction: transaction } as never)
+
+    await expect(
+      repository.updateForTenant({
+        tenantId: 'tenant-1',
+        engagementId: 'engagement-1',
+        userId: 'agent-1',
+        canViewAll: false,
+        propertyAsset: { title: 'No leak' },
+        engagement: {},
+      }),
+    ).resolves.toBeNull()
+    expect(updatePropertyAsset).not.toHaveBeenCalled()
+    expect(updateEngagement).not.toHaveBeenCalled()
+  })
+
+  it('counts property images for upload limits', async () => {
+    const count = vi.fn().mockResolvedValue(5)
+    const repository = new PrismaPropertyEngagementsRepository({
+      propertyAssetImage: { count },
+    } as never)
+
+    await expect(repository.countImagesForAsset('asset-1')).resolves.toBe(5)
+    expect(count).toHaveBeenCalledWith({ where: { propertyAssetId: 'asset-1' } })
+  })
+
 
   it('assigns an agent within the engagement tenant boundary', async () => {
     const create = vi.fn().mockResolvedValue({ id: 'agent-assignment-1' })

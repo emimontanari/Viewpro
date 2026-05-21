@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy',
+  title: 'Política de privacidad',
   robots: {
     index: false
   }
@@ -12,92 +12,69 @@ export default function PrivacyPolicyPage() {
     <div className='min-h-screen px-4 py-12 sm:px-6 lg:px-8'>
       <div className='mx-auto max-w-3xl space-y-8'>
         {/* Main Heading */}
-        <h1 className='text-foreground text-3xl font-bold'>Privacy Policy</h1>
+        <h1 className='text-foreground text-3xl font-bold'>Política de privacidad</h1>
 
         {/* Introduction */}
         <section>
-          <h2 className='text-foreground mb-3 text-xl font-semibold'>Introduction</h2>
+          <h2 className='text-foreground mb-3 text-xl font-semibold'>Introducción</h2>
           <p className='text-muted-foreground text-base leading-relaxed'>
-            This Privacy Policy explains how we handle your personal information when you use our
-            application. We are committed to protecting your privacy and ensuring transparency about
-            our data practices. Please read this policy carefully to understand how we collect, use,
-            and safeguard your information.
+            Esta política explica cómo cuidamos tu información personal cuando usás ViewPro. Nuestro
+            compromiso es proteger tu privacidad y ser claros sobre cómo usamos los datos necesarios
+            para brindarte el servicio.
           </p>
         </section>
 
         {/* Data Collection */}
         <section>
-          <h2 className='text-foreground mb-3 text-xl font-semibold'>Data Collection</h2>
+          <h2 className='text-foreground mb-3 text-xl font-semibold'>Datos que recopilamos</h2>
           <p className='text-muted-foreground text-base leading-relaxed'>
-            Our application collects minimal data necessary for authentication purposes. When you
-            sign in using our authentication provider, we receive basic profile information such as
-            your email address and name. This data is used solely to identify you within the
-            application and provide personalized access to features.
+            Recopilamos la información mínima necesaria para identificar tu cuenta, como nombre y
+            email. Usamos esos datos para mostrarte las funciones que corresponden a tu uso de
+            ViewPro.
           </p>
         </section>
 
-        {/* Auth handled by Clerk */}
+        {/* Auth handled by ViewPro */}
         <section>
-          <h2 className='text-foreground mb-3 text-xl font-semibold'>Authentication by Clerk</h2>
+          <h2 className='text-foreground mb-3 text-xl font-semibold'>Acceso a la cuenta</h2>
           <p className='text-muted-foreground text-base leading-relaxed'>
-            Our application uses{' '}
-            <a
-              href='https://clerk.com'
-              target='_blank'
-              rel='noopener noreferrer'
-              className='text-primary font-medium hover:underline'
-            >
-              Clerk
-            </a>{' '}
-            to handle user authentication securely. All authentication processes, including sign-up,
-            sign-in, and password management, are managed by Clerk. For detailed information about
-            how Clerk processes and protects your data, please review their{' '}
-            <a
-              href='https://clerk.com/legal/privacy'
-              target='_blank'
-              rel='noopener noreferrer'
-              className='text-primary font-medium hover:underline'
-            >
-              Privacy Policy
-            </a>
-            .
+            ViewPro protege el acceso a tu cuenta con cookies seguras. Esto evita guardar claves de
+            acceso en el almacenamiento del navegador y permite que tu ingreso se mantenga entre
+            visitas.
           </p>
         </section>
 
         {/* No data misuse */}
         <section>
-          <h2 className='text-foreground mb-3 text-xl font-semibold'>No Data Misuse</h2>
+          <h2 className='text-foreground mb-3 text-xl font-semibold'>Uso responsable</h2>
           <p className='text-muted-foreground text-base leading-relaxed'>
-            We take your privacy seriously. We want to assure you that your personal data is never
-            sold, rented, or shared with third parties for marketing or commercial purposes. Your
-            information is used exclusively for the intended functionality of this application and
-            is never misused or exploited in any way.
+            No vendemos ni alquilamos tus datos personales. Tu información se usa únicamente para
+            brindar las funciones de ViewPro y para acompañar la operación del servicio.
           </p>
         </section>
 
         {/* Data retention */}
         <section>
-          <h2 className='text-foreground mb-3 text-xl font-semibold'>Data Retention</h2>
+          <h2 className='text-foreground mb-3 text-xl font-semibold'>Conservación de datos</h2>
           <p className='text-muted-foreground text-base leading-relaxed'>
-            Information entered in ViewPro is kept only as long as needed for the configured service
-            and operational support. Pilot or non-production environments may have separate data
-            retention rules agreed with your ViewPro contact.
+            La información cargada en ViewPro se conserva solo durante el tiempo necesario para
+            prestar el servicio y dar soporte operativo. En pruebas o pilotos pueden aplicarse reglas
+            específicas acordadas con el equipo de ViewPro.
           </p>
         </section>
 
         {/* Contact */}
         <section>
-          <h2 className='text-foreground mb-3 text-xl font-semibold'>Contact Us</h2>
+          <h2 className='text-foreground mb-3 text-xl font-semibold'>Contacto</h2>
           <p className='text-muted-foreground text-base leading-relaxed'>
-            If you have any questions, concerns, or requests regarding this Privacy Policy or our
-            data practices, contact the ViewPro team through the support channel configured for your
-            deployment.
+            Si tenés preguntas o pedidos sobre esta política, contactá al equipo de ViewPro por el
+            canal de soporte acordado para tu cuenta.
           </p>
         </section>
 
         {/* Last Updated */}
         <div className='border-border border-t pt-4'>
-          <p className='text-muted-foreground text-sm'>Last updated: February 2026</p>
+          <p className='text-muted-foreground text-sm'>Última actualización: febrero de 2026</p>
         </div>
       </div>
     </div>

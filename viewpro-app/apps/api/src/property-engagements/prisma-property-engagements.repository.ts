@@ -1,22 +1,31 @@
-import { Injectable } from '@nestjs/common'
-import type { Prisma, PropertyAgent } from '@prisma/client'
+import { Inject, Injectable } from '@nestjs/common'
+import type { Prisma, PropertyAgent, PropertyAssetImage } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import type {
   CreatePropertyEngagementInput,
+  CreatePropertyAssetImageInput,
+  DeletePropertyAssetImageResult,
   ListPropertyEngagementsInput,
   PropertyEngagementsRepository,
   PropertyEngagementWithDetails,
+  UpdatePropertyEngagementInput,
 } from './property-engagements.repository'
 
 const propertyEngagementInclude = {
-  propertyAsset: true,
+  propertyAsset: {
+    include: {
+      images: {
+        orderBy: [{ isPrimary: 'desc' }, { createdAt: 'desc' }],
+      },
+    },
+  },
   agents: { include: { agentUser: true } },
   createdBy: true,
 } satisfies Prisma.PropertyEngagementInclude
 
 @Injectable()
 export class PrismaPropertyEngagementsRepository implements PropertyEngagementsRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   createWithAsset(input: CreatePropertyEngagementInput): Promise<PropertyEngagementWithDetails> {
     return this.prisma.$transaction(async (tx) => {
@@ -62,6 +71,104 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
     return this.prisma.propertyEngagement.findFirst({
       where: this.buildTenantVisibilityWhere(input),
       include: propertyEngagementInclude,
+    })
+  }
+
+
+  updateForTenant(input: UpdatePropertyEngagementInput): Promise<PropertyEngagementWithDetails | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.propertyEngagement.findFirst({
+        where: this.buildTenantVisibilityWhere(input),
+        select: { id: true, propertyAssetId: true },
+      })
+
+      if (!existing) {
+        return null
+      }
+
+      if (Object.keys(input.propertyAsset).length > 0) {
+        await tx.propertyAsset.update({
+          where: { id: existing.propertyAssetId },
+          data: input.propertyAsset,
+        })
+      }
+
+      if (Object.keys(input.engagement).length > 0) {
+        await tx.propertyEngagement.update({
+          where: { id: existing.id },
+          data: input.engagement,
+        })
+      }
+
+      return tx.propertyEngagement.findUnique({
+        where: { id: existing.id },
+        include: propertyEngagementInclude,
+      })
+    })
+  }
+
+
+  countImagesForAsset(propertyAssetId: string): Promise<number> {
+    return this.prisma.propertyAssetImage.count({ where: { propertyAssetId } })
+  }
+
+  createImage(input: CreatePropertyAssetImageInput): Promise<PropertyAssetImage> {
+    return this.prisma.$transaction(async (tx) => {
+      if (input.isPrimary) {
+        await tx.propertyAssetImage.updateMany({
+          where: { propertyAssetId: input.propertyAssetId },
+          data: { isPrimary: false },
+        })
+      }
+
+      return tx.propertyAssetImage.create({ data: input })
+    })
+  }
+
+  deleteImageForAsset(input: {
+    propertyAssetId: string
+    imageId: string
+  }): Promise<DeletePropertyAssetImageResult | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const image = await tx.propertyAssetImage.findFirst({
+        where: {
+          id: input.imageId,
+          propertyAssetId: input.propertyAssetId,
+        },
+      })
+
+      if (!image) {
+        return null
+      }
+
+      const deleted = await tx.propertyAssetImage.deleteMany({
+        where: {
+          id: image.id,
+          propertyAssetId: input.propertyAssetId,
+        },
+      })
+
+      if (deleted.count === 0) {
+        return null
+      }
+
+      let promotedImageId: string | null = null
+      if (image.isPrimary) {
+        const promotedImage = await tx.propertyAssetImage.findFirst({
+          where: { propertyAssetId: input.propertyAssetId },
+          orderBy: { createdAt: 'desc' },
+        })
+
+        if (promotedImage) {
+          await tx.propertyAssetImage.update({
+            where: { id: promotedImage.id },
+            data: { isPrimary: true },
+          })
+          promotedImageId = promotedImage.id
+        }
+      }
+
+      return { deletedStorageKey: image.storageKey, promotedImageId }
     })
   }
 

@@ -1,14 +1,130 @@
+'use client';
+
+import * as React from 'react';
+import * as z from 'zod';
 import { buttonVariants } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAppForm, useFormFields } from '@/components/ui/tanstack-form';
+import { getApiErrorMessage } from '@/lib/api-client';
+import { registerTenant } from '@/lib/session';
+import { setSelectedTenantId } from '@/lib/tenant-selection';
 import { cn } from '@/lib/utils';
-import { SignUp as ClerkSignUpForm } from '@clerk/nextjs';
-import { Metadata } from 'next';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { InteractiveGridPattern } from './interactive-grid';
 
-export const metadata: Metadata = {
-  title: 'Authentication',
-  description: 'Authentication forms built using the components.'
+type SignUpValues = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  tenantName: string;
 };
+
+const signUpSchema = z.object({
+  firstName: z.string().min(1, 'Ingresá tu nombre.'),
+  lastName: z.string(),
+  email: z.email('Ingresá un email válido.'),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.'),
+  tenantName: z.string().min(2, 'Ingresá el nombre de tu inmobiliaria.')
+});
+
+function SignUpForm() {
+  const router = useRouter();
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+  const { FormTextField } = useFormFields<SignUpValues>();
+  const form = useAppForm({
+    defaultValues: {
+      email: '',
+      firstName: '',
+      lastName: '',
+      password: '',
+      tenantName: ''
+    } as SignUpValues,
+    validators: {
+      onSubmit: signUpSchema
+    },
+    onSubmit: async ({ value }) => {
+      setErrorMessage(null);
+
+      try {
+        const session = await registerTenant({
+          email: value.email,
+          firstName: value.firstName,
+          lastName: value.lastName || undefined,
+          password: value.password,
+          tenantName: value.tenantName
+        });
+
+        if (session.memberships[0]) {
+          setSelectedTenantId(session.memberships[0].tenant.id);
+        }
+
+        router.push('/dashboard/overview');
+        router.refresh();
+      } catch (error) {
+        setErrorMessage(getApiErrorMessage(error));
+      }
+    }
+  });
+
+  return (
+    <Card className='w-full'>
+      <CardHeader>
+        <CardTitle className='text-2xl font-bold'>Crear cuenta</CardTitle>
+        <p className='text-muted-foreground'>Completá tus datos para crear tu cuenta y empezar a usar ViewPro.</p>
+      </CardHeader>
+      <CardContent>
+        <form.AppForm>
+          <form.Form className='space-y-6'>
+            {errorMessage ? (
+              <Alert variant='destructive'>
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
+            ) : null}
+            <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
+              <FormTextField
+                name='firstName'
+                label='Nombre'
+                required
+                placeholder='Tu nombre'
+                validators={{ onBlur: z.string().min(1, 'Ingresá tu nombre.') }}
+              />
+              <FormTextField name='lastName' label='Apellido' placeholder='Tu apellido' />
+            </div>
+            <FormTextField
+              name='email'
+              label='Email'
+              required
+              type='email'
+              placeholder='tu@email.com'
+              validators={{ onBlur: z.email('Ingresá un email válido.') }}
+            />
+            <FormTextField
+              name='password'
+              label='Contraseña'
+              required
+              type='password'
+              placeholder='Al menos 8 caracteres'
+              validators={{
+                onBlur: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.')
+              }}
+            />
+            <FormTextField
+              name='tenantName'
+              label='Inmobiliaria'
+              required
+              placeholder='Nombre de la inmobiliaria'
+              validators={{ onBlur: z.string().min(2, 'Ingresá el nombre de tu inmobiliaria.') }}
+            />
+            <form.SubmitButton className='w-full'>Crear cuenta</form.SubmitButton>
+          </form.Form>
+        </form.AppForm>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function SignUpViewPage() {
   return (
@@ -17,7 +133,7 @@ export default function SignUpViewPage() {
         href='/auth/sign-in'
         className={cn(
           buttonVariants({ variant: 'ghost' }),
-          'absolute top-4 right-4 hidden md:top-8 md:right-8'
+          'absolute top-4 right-4 md:top-8 md:right-8'
         )}
       >
         Iniciar sesión
@@ -56,8 +172,8 @@ export default function SignUpViewPage() {
         </div>
       </div>
       <div className='flex h-full items-center justify-center p-4 lg:p-8'>
-        <div className='flex w-full max-w-md flex-col items-center justify-center space-y-6'>
-          <ClerkSignUpForm />
+        <div className='flex w-full max-w-xl flex-col items-center justify-center space-y-6'>
+          <SignUpForm />
           <div className='text-muted-foreground space-y-2 px-8 text-center text-xs'>
             <p>Creá tu cuenta para continuar con ViewPro.</p>
           </div>

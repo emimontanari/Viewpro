@@ -140,6 +140,7 @@ model User {
   ownedDocumentRequests       DocumentRequest[]  @relation("DocumentRequestOwner")
   reviewedDocumentRequests    DocumentRequest[]  @relation("DocumentRequestReviewer")
   uploadedDocumentVersions    DocumentVersion[]
+  uploadedPropertyImages      PropertyAssetImage[]
 
   @@map("users")
 }
@@ -204,6 +205,14 @@ model PropertyAsset {
   city            String
   province        String
   propertyType    PropertyType
+  totalAreaSqm    Int?
+  coveredAreaSqm  Int?
+  rooms           Int?
+  bedrooms        Int?
+  bathrooms       Int?
+  garages         Int?
+  ageYears        Int?
+  orientation     String?
   ownerName       String?
   ownerEmail      String?
   createdByUserId String
@@ -213,6 +222,7 @@ model PropertyAsset {
   createdBy   User                 @relation(fields: [createdByUserId], references: [id])
   engagements PropertyEngagement[]
   owners      PropertyAssetOwner[]
+  images      PropertyAssetImage[]
 
   @@index([createdByUserId])
   @@index([city, province])
@@ -235,6 +245,26 @@ model PropertyAssetOwner {
   @@index([userId, accessStatus])
   @@index([propertyAssetId])
   @@map("property_asset_owners")
+}
+
+model PropertyAssetImage {
+  id                 String   @id @default(uuid())
+  propertyAssetId    String
+  uploadedByUserId   String
+  storageKey         String   @unique
+  originalFilename   String
+  mimeType           String
+  sizeBytes          Int
+  isPrimary          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  propertyAsset PropertyAsset @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
+  uploadedBy    User          @relation(fields: [uploadedByUserId], references: [id])
+
+  @@index([propertyAssetId])
+  @@index([uploadedByUserId])
+  @@map("property_asset_images")
 }
 
 model PropertyEngagement {

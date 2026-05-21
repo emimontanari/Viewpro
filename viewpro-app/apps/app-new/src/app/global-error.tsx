@@ -1,12 +1,28 @@
 'use client';
 
-import * as Sentry from '@sentry/nextjs';
 import NextError from 'next/error';
 import { useEffect } from 'react';
 
+function isLocalDevelopment() {
+  return process.env.NODE_ENV !== 'production';
+}
+
+function isSentryEnabled() {
+  return (
+    process.env.NEXT_PUBLIC_SENTRY_DISABLED !== 'true' &&
+    (!isLocalDevelopment() || process.env.NEXT_PUBLIC_SENTRY_ENABLED === 'true')
+  );
+}
+
 export default function GlobalError({ error }: { error: Error & { digest?: string } }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    if (!isSentryEnabled()) {
+      return;
+    }
+
+    void import('@sentry/nextjs').then((Sentry) => {
+      Sentry.captureException(error);
+    });
   }, [error]);
 
   return (

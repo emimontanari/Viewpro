@@ -1,51 +1,662 @@
 'use client';
 
-import { DataTable } from '@/components/ui/table/data-table';
-import { DataTableToolbar } from '@/components/ui/table/data-table-toolbar';
-import { useDataTable } from '@/hooks/use-data-table';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Icons } from '@/components/icons';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
+import { useSelectedTenantId } from '@/lib/tenant-selection';
+import { cn } from '@/lib/utils';
+import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs';
-import { getSortingStateParser } from '@/lib/parsers';
+import type { Product } from '../../api/types';
 import { productsQueryOptions } from '../../api/queries';
-import { columns } from './columns';
+import { QuickStatusSelect } from '../quick-status-select';
+import {
+  columns,
+  formatPrice,
+  getAddress,
+  getAgentSummary,
+  getOperationTone,
+  getOperationTypeLabel,
+  getPropertyFacts,
+  getPropertyTypeLabel
+} from './columns';
+import { OPERATION_TYPE_OPTIONS, PROPERTY_STATUS_OPTIONS } from './options';
+import { CellAction } from './cell-action';
 
-const columnIds = columns.map((c) => c.id).filter(Boolean) as string[];
+const ALL_FILTERS_VALUE = 'all';
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 export function ProductTable() {
-  const [params] = useQueryStates({
+  const selectedTenantId = useSelectedTenantId();
+  const [params, setParams] = useQueryStates({
     page: parseAsInteger.withDefault(1),
     perPage: parseAsInteger.withDefault(10),
-    name: parseAsString,
-    category: parseAsString,
-    sort: getSortingStateParser(columnIds).withDefault([])
+    operationType: parseAsString,
+    status: parseAsString
   });
 
   const filters = {
     page: params.page,
     limit: params.perPage,
-    ...(params.name && { search: params.name }),
-    ...(params.category && { categories: params.category }),
-    ...(params.sort.length > 0 && { sort: JSON.stringify(params.sort) })
+    tenantId: selectedTenantId,
+    ...(params.operationType && { operationType: params.operationType }),
+    ...(params.status && { status: params.status })
   };
 
-  const { data } = useSuspenseQuery(productsQueryOptions(filters));
+  const productsQuery = useQuery({
+    ...productsQueryOptions(filters),
+    enabled: Boolean(selectedTenantId)
+  });
 
-  const pageCount = Math.ceil(data.total_products / params.perPage);
-
-  const { table } = useDataTable({
-    data: data.products,
+  const products = productsQuery.data?.items ?? [];
+  const total = productsQuery.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / params.perPage));
+  const table = useReactTable({
     columns,
+    data: products,
+    getCoreRowModel: getCoreRowModel(),
+    manualPagination: true,
     pageCount,
-    shallow: true,
-    debounceMs: 500,
-    initialState: {
-      columnPinning: { right: ['actions'] }
+    state: {
+      pagination: {
+        pageIndex: params.page - 1,
+        pageSize: params.perPage
+      }
     }
   });
 
+  const rows = table.getRowModel().rows;
+  const hasFilters = Boolean(params.status || params.operationType);
+  const activeFilterCount = Number(Boolean(params.status)) + Number(Boolean(params.operationType));
+
+  const setFilter = (key: 'operationType' | 'status', value: string) => {
+    void setParams({
+      [key]: value === ALL_FILTERS_VALUE ? null : value,
+      page: 1
+    });
+  };
+
+  const clearFilters = () => {
+    void setParams({ operationType: null, page: 1, status: null });
+  };
+
+  const setPage = (page: number) => {
+    void setParams({ page: Math.min(Math.max(page, 1), pageCount) });
+  };
+
+  const setPageSize = (pageSize: string) => {
+    void setParams({ page: 1, perPage: Number(pageSize) });
+  };
+
+  if (!selectedTenantId) {
+    return (
+      <PropertyTableMessage
+        tone='neutral'
+        title='Seleccioná una inmobiliaria'
+        description='Elegí un workspace para ver sus propiedades y gestiones activas.'
+      />
+    );
+  }
+
+  if (productsQuery.isLoading) {
+    return <PropertyTableSkeleton />;
+  }
+
+  if (productsQuery.isError || !productsQuery.data) {
+    return (
+      <PropertyTableMessage
+        tone='danger'
+        title='No se pudieron cargar las propiedades'
+        description='Reintentá en unos segundos. Si el problema sigue, revisá que el backend esté activo.'
+        action={
+          <Button variant='outline' size='sm' onClick={() => void productsQuery.refetch()}>
+            Reintentar
+          </Button>
+        }
+      />
+    );
+  }
+
   return (
-    <DataTable table={table}>
-      <DataTableToolbar table={table} />
-    </DataTable>
+    <section className='space-y-4'>
+      <PropertyTableToolbar
+        activeFilterCount={activeFilterCount}
+        hasFilters={hasFilters}
+        operationType={params.operationType}
+        pageSize={params.perPage}
+        status={params.status}
+        total={total}
+        visibleCount={products.length}
+        isFetching={productsQuery.isFetching}
+        onClearFilters={clearFilters}
+        onFilterChange={setFilter}
+        onPageSizeChange={setPageSize}
+      />
+
+      {rows.length === 0 ? (
+        <PropertyTableEmptyState hasFilters={hasFilters} onClearFilters={clearFilters} />
+      ) : (
+        <>
+          <div className='hidden overflow-hidden rounded-2xl border bg-background shadow-xs md:block'>
+            <Table>
+              <TableHeader className='bg-muted/40'>
+                <TableRow className='hover:bg-transparent'>
+                  <TableHead className='w-[38%] px-5 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
+                    Propiedad
+                  </TableHead>
+                  <TableHead className='px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
+                    Operación
+                  </TableHead>
+                  <TableHead className='px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
+                    Estado
+                  </TableHead>
+                  <TableHead className='px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
+                    Precio
+                  </TableHead>
+                  <TableHead className='px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
+                    Propietario
+                  </TableHead>
+                  <TableHead className='px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground'>
+                    Agente
+                  </TableHead>
+                  <TableHead className='w-12 px-4 py-3' />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => (
+                  <PropertyTableRow key={row.id} propertyEngagement={row.original} />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className='grid gap-3 md:hidden'>
+            {rows.map((row) => (
+              <PropertyMobileCard key={row.id} propertyEngagement={row.original} />
+            ))}
+          </div>
+        </>
+      )}
+
+      <PropertyTablePagination
+        page={params.page}
+        pageCount={pageCount}
+        pageSize={params.perPage}
+        total={total}
+        onPageChange={setPage}
+      />
+    </section>
+  );
+}
+
+function PropertyTableToolbar({
+  activeFilterCount,
+  hasFilters,
+  isFetching,
+  operationType,
+  pageSize,
+  status,
+  total,
+  visibleCount,
+  onClearFilters,
+  onFilterChange,
+  onPageSizeChange
+}: {
+  activeFilterCount: number;
+  hasFilters: boolean;
+  isFetching: boolean;
+  operationType: string | null;
+  pageSize: number;
+  status: string | null;
+  total: number;
+  visibleCount: number;
+  onClearFilters: () => void;
+  onFilterChange: (key: 'operationType' | 'status', value: string) => void;
+  onPageSizeChange: (pageSize: string) => void;
+}) {
+  return (
+    <div className='overflow-hidden rounded-2xl border bg-background shadow-xs'>
+      <div className='flex flex-col gap-4 border-b bg-muted/20 p-4 lg:flex-row lg:items-center lg:justify-between'>
+        <div className='space-y-1'>
+          <div className='flex flex-wrap items-center gap-2'>
+            <h2 className='text-base font-semibold tracking-tight'>Inventario de propiedades</h2>
+            {isFetching ? (
+              <Badge variant='outline' className='text-muted-foreground'>
+                Actualizando
+              </Badge>
+            ) : null}
+          </div>
+          <p className='text-sm text-muted-foreground'>
+            {total === 0
+              ? 'No hay propiedades para los filtros seleccionados.'
+              : `${total} ${total === 1 ? 'gestión inmobiliaria' : 'gestiones inmobiliarias'} · ${visibleCount} en esta vista`}
+          </p>
+        </div>
+
+        <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+          <Button asChild size='sm' className='sm:hidden'>
+            <Link href='/dashboard/product/new'>
+              <Icons.add className='size-4' /> Nueva propiedad
+            </Link>
+          </Button>
+          <FilterSelect
+            label='Operación'
+            value={operationType}
+            options={OPERATION_TYPE_OPTIONS}
+            onValueChange={(value) => onFilterChange('operationType', value)}
+          />
+          <FilterSelect
+            label='Estado'
+            value={status}
+            options={PROPERTY_STATUS_OPTIONS}
+            onValueChange={(value) => onFilterChange('status', value)}
+          />
+          <Select value={String(pageSize)} onValueChange={onPageSizeChange}>
+            <SelectTrigger size='sm' className='w-full sm:w-[112px]'>
+              <SelectValue aria-label={`${pageSize} por página`} />
+            </SelectTrigger>
+            <SelectContent align='end'>
+              {PAGE_SIZE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={String(option)}>
+                  {option} / pág.
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {hasFilters ? (
+            <Button variant='ghost' size='sm' onClick={onClearFilters}>
+              <Icons.close className='size-4' /> Limpiar {activeFilterCount}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FilterSelect({
+  label,
+  value,
+  options,
+  onValueChange
+}: {
+  label: string;
+  value: string | null;
+  options: Array<{ value: string; label: string }>;
+  onValueChange: (value: string) => void;
+}) {
+  return (
+    <Select value={value ?? ALL_FILTERS_VALUE} onValueChange={onValueChange}>
+      <SelectTrigger size='sm' className='w-full sm:w-[168px]'>
+        <SelectValue placeholder={label} />
+      </SelectTrigger>
+      <SelectContent align='end'>
+        <SelectItem value={ALL_FILTERS_VALUE}>Todas: {label.toLowerCase()}</SelectItem>
+        {options.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function PropertyTableRow({ propertyEngagement }: { propertyEngagement: Product }) {
+  const agent = getAgentSummary(propertyEngagement);
+
+  return (
+    <TableRow className='group hover:bg-muted/30'>
+      <TableCell className='whitespace-normal px-5 py-4'>
+        <PropertyIdentity propertyEngagement={propertyEngagement} />
+      </TableCell>
+      <TableCell className='px-4 py-4'>
+        <div className='flex flex-col gap-1.5'>
+          <Badge
+            variant='outline'
+            className={cn('border', getOperationTone(propertyEngagement.operationType))}
+          >
+            {getOperationTypeLabel(propertyEngagement.operationType)}
+          </Badge>
+          <Badge variant='outline' className='bg-background text-muted-foreground'>
+            {getPropertyTypeLabel(propertyEngagement.property.propertyType)}
+          </Badge>
+        </div>
+      </TableCell>
+      <TableCell className='px-4 py-4'>
+        <QuickStatusSelect propertyEngagement={propertyEngagement} />
+      </TableCell>
+      <TableCell className='px-4 py-4 font-medium'>
+        {formatPrice(propertyEngagement.publishedPriceCents, propertyEngagement.currency)}
+      </TableCell>
+      <TableCell className='whitespace-normal px-4 py-4'>
+        <OwnerSummary propertyEngagement={propertyEngagement} />
+      </TableCell>
+      <TableCell className='whitespace-normal px-4 py-4'>
+        <div className='max-w-44'>
+          <p className='truncate text-sm font-medium'>{agent.label}</p>
+          <p className='truncate text-xs text-muted-foreground'>{agent.detail}</p>
+        </div>
+      </TableCell>
+      <TableCell className='px-4 py-4 text-right'>
+        <CellAction data={propertyEngagement} />
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function PropertyMobileCard({ propertyEngagement }: { propertyEngagement: Product }) {
+  const agent = getAgentSummary(propertyEngagement);
+
+  return (
+    <article className='overflow-hidden rounded-2xl border bg-background shadow-xs'>
+      <div className='p-4'>
+        <div className='flex items-start justify-between gap-3'>
+          <PropertyIdentity propertyEngagement={propertyEngagement} compact />
+          <CellAction data={propertyEngagement} />
+        </div>
+
+        <div className='mt-4 flex flex-wrap gap-2'>
+          <Badge
+            variant='outline'
+            className={cn('border', getOperationTone(propertyEngagement.operationType))}
+          >
+            {getOperationTypeLabel(propertyEngagement.operationType)}
+          </Badge>
+          <Badge variant='outline'>
+            {getPropertyTypeLabel(propertyEngagement.property.propertyType)}
+          </Badge>
+          <QuickStatusSelect propertyEngagement={propertyEngagement} size='compact' />
+        </div>
+
+        <div className='mt-4 grid grid-cols-2 gap-3 text-sm'>
+          <PropertyMetric
+            label='Precio'
+            value={formatPrice(propertyEngagement.publishedPriceCents, propertyEngagement.currency)}
+          />
+          <PropertyMetric label='Agente' value={agent.label} mutedValue={agent.detail} />
+          <PropertyMetric
+            label='Propietario'
+            value={propertyEngagement.property.ownerName ?? 'Sin nombre'}
+            mutedValue={propertyEngagement.property.ownerEmail ?? undefined}
+          />
+          <PropertyMetric
+            label='Imágenes'
+            value={String(propertyEngagement.property.images.length)}
+          />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function PropertyIdentity({
+  compact = false,
+  propertyEngagement
+}: {
+  compact?: boolean;
+  propertyEngagement: Product;
+}) {
+  const propertyFacts = getPropertyFacts(propertyEngagement);
+
+  return (
+    <div className='flex min-w-0 items-center gap-3'>
+      <PropertyThumbnail propertyEngagement={propertyEngagement} compact={compact} />
+      <div className='min-w-0'>
+        <p className='truncate font-medium'>{propertyEngagement.property.title}</p>
+        <p className='mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground'>
+          {getAddress(propertyEngagement)}
+        </p>
+        {propertyFacts ? (
+          <p className='mt-1 truncate text-xs font-medium text-muted-foreground'>{propertyFacts}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function PropertyThumbnail({
+  compact = false,
+  propertyEngagement
+}: {
+  compact?: boolean;
+  propertyEngagement: Product;
+}) {
+  const imageUrl = propertyEngagement.property.primaryImage?.url;
+  const sizeClass = compact ? 'h-16 w-20' : 'h-16 w-24';
+
+  if (imageUrl) {
+    return (
+      <div
+        role='img'
+        aria-label={`Imagen de ${propertyEngagement.property.title}`}
+        className={cn('shrink-0 rounded-xl border bg-cover bg-center shadow-xs', sizeClass)}
+        style={{ backgroundImage: `url(${imageUrl})` }}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        'flex shrink-0 items-center justify-center rounded-xl border border-dashed bg-muted/50 text-muted-foreground',
+        sizeClass
+      )}
+    >
+      <Icons.media className='size-5' />
+    </div>
+  );
+}
+
+function OwnerSummary({ propertyEngagement }: { propertyEngagement: Product }) {
+  return (
+    <div className='max-w-48'>
+      <p className='truncate text-sm font-medium'>
+        {propertyEngagement.property.ownerName ?? 'Sin nombre'}
+      </p>
+      <p className='truncate text-xs text-muted-foreground'>
+        {propertyEngagement.property.ownerEmail ?? 'Sin email'}
+      </p>
+    </div>
+  );
+}
+
+function PropertyMetric({
+  label,
+  mutedValue,
+  value
+}: {
+  label: string;
+  mutedValue?: string;
+  value: string;
+}) {
+  return (
+    <div className='rounded-xl border bg-muted/20 p-3'>
+      <p className='text-[11px] font-medium uppercase tracking-wide text-muted-foreground'>
+        {label}
+      </p>
+      <p className='mt-1 truncate font-medium'>{value}</p>
+      {mutedValue ? <p className='truncate text-xs text-muted-foreground'>{mutedValue}</p> : null}
+    </div>
+  );
+}
+
+function PropertyTablePagination({
+  page,
+  pageCount,
+  pageSize,
+  total,
+  onPageChange
+}: {
+  page: number;
+  pageCount: number;
+  pageSize: number;
+  total: number;
+  onPageChange: (page: number) => void;
+}) {
+  const firstItem = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastItem = Math.min(page * pageSize, total);
+
+  return (
+    <div className='flex flex-col gap-3 rounded-2xl border bg-background p-3 text-sm text-muted-foreground shadow-xs sm:flex-row sm:items-center sm:justify-between'>
+      <span>
+        Mostrando {firstItem}-{lastItem} de {total}
+      </span>
+      <div className='flex items-center justify-between gap-2 sm:justify-end'>
+        <Button
+          variant='outline'
+          size='sm'
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          <Icons.chevronLeft className='size-4' /> Anterior
+        </Button>
+        <span className='min-w-20 text-center text-xs font-medium'>
+          Página {page} de {pageCount}
+        </span>
+        <Button
+          variant='outline'
+          size='sm'
+          disabled={page >= pageCount}
+          onClick={() => onPageChange(page + 1)}
+        >
+          Siguiente <Icons.chevronRight className='size-4' />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function PropertyTableEmptyState({
+  hasFilters,
+  onClearFilters
+}: {
+  hasFilters: boolean;
+  onClearFilters: () => void;
+}) {
+  return (
+    <div className='rounded-2xl border border-dashed bg-muted/20 p-8 text-center'>
+      <div className='mx-auto flex size-12 items-center justify-center rounded-full bg-background text-muted-foreground shadow-xs'>
+        <Icons.workspace className='size-5' />
+      </div>
+      <h3 className='mt-4 text-base font-semibold'>No hay propiedades para mostrar</h3>
+      <p className='mx-auto mt-2 max-w-md text-sm text-muted-foreground'>
+        {hasFilters
+          ? 'Los filtros actuales no tienen resultados. Probá limpiarlos para volver al inventario completo.'
+          : 'Creá la primera propiedad para empezar a gestionar captación, publicación y seguimiento.'}
+      </p>
+      <div className='mt-5 flex flex-col justify-center gap-2 sm:flex-row'>
+        {hasFilters ? (
+          <Button variant='outline' onClick={onClearFilters}>
+            Limpiar filtros
+          </Button>
+        ) : null}
+        <Button asChild>
+          <Link href='/dashboard/product/new'>
+            <Icons.add className='size-4' /> Nueva propiedad
+          </Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function PropertyTableMessage({
+  action,
+  description,
+  title,
+  tone
+}: {
+  action?: React.ReactNode;
+  description: string;
+  title: string;
+  tone: 'danger' | 'neutral';
+}) {
+  return (
+    <div
+      className={cn(
+        'rounded-2xl border border-dashed p-6 text-sm',
+        tone === 'danger'
+          ? 'border-destructive/30 bg-destructive/5 text-destructive'
+          : 'bg-muted/20 text-muted-foreground'
+      )}
+    >
+      <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+        <div>
+          <h3 className='font-semibold text-foreground'>{title}</h3>
+          <p className='mt-1'>{description}</p>
+        </div>
+        {action}
+      </div>
+    </div>
+  );
+}
+
+export function PropertyTableSkeleton() {
+  return (
+    <div className='space-y-4'>
+      <div className='rounded-2xl border bg-background p-4 shadow-xs'>
+        <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
+          <div className='space-y-2'>
+            <Skeleton className='h-5 w-56' />
+            <Skeleton className='h-4 w-72' />
+          </div>
+          <div className='flex flex-wrap gap-2'>
+            <Skeleton className='h-8 w-40' />
+            <Skeleton className='h-8 w-40' />
+            <Skeleton className='h-8 w-24' />
+          </div>
+        </div>
+      </div>
+      <div className='hidden overflow-hidden rounded-2xl border bg-background md:block'>
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className='flex items-center gap-4 border-b p-4 last:border-b-0'>
+            <Skeleton className='h-16 w-24 rounded-xl' />
+            <div className='flex-1 space-y-2'>
+              <Skeleton className='h-4 w-64' />
+              <Skeleton className='h-3 w-96' />
+            </div>
+            <Skeleton className='h-6 w-20' />
+            <Skeleton className='h-6 w-28' />
+            <Skeleton className='h-4 w-24' />
+          </div>
+        ))}
+      </div>
+      <div className='grid gap-3 md:hidden'>
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className='rounded-2xl border bg-background p-4'>
+            <div className='flex gap-3'>
+              <Skeleton className='h-16 w-20 rounded-xl' />
+              <div className='flex-1 space-y-2'>
+                <Skeleton className='h-4 w-40' />
+                <Skeleton className='h-3 w-full' />
+              </div>
+            </div>
+            <div className='mt-4 grid grid-cols-2 gap-3'>
+              <Skeleton className='h-16 rounded-xl' />
+              <Skeleton className='h-16 rounded-xl' />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

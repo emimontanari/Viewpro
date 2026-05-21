@@ -5,7 +5,10 @@
 import { faker } from '@faker-js/faker';
 import { matchSorter } from 'match-sorter';
 
-export const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const shouldSimulateMockLatency = process.env.NEXT_PUBLIC_MOCK_API_DELAY === 'true';
+
+export const delay = (ms: number) =>
+  shouldSimulateMockLatency ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
 
 export type User = {
   id: number;

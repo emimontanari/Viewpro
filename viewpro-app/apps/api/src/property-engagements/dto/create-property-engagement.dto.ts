@@ -22,6 +22,46 @@ export class CreatePropertyEngagementDto {
   propertyType!: PropertyType
 
   @IsOptional()
+  @IsInt()
+  @Min(0)
+  totalAreaSqm?: number
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  coveredAreaSqm?: number
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  rooms?: number
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  bedrooms?: number
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  bathrooms?: number
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  garages?: number
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  ageYears?: number
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(16)
+  orientation?: string
+
+  @IsOptional()
   @IsString()
   @MaxLength(120)
   ownerName?: string

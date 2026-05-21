@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Inject, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
 import { CurrentUser } from '../auth/decorators/current-user.decorator'
 import type { CurrentUser as CurrentUserContext } from '../auth/types/current-user'
 import { AuthGuard } from '../auth/guards/auth.guard'
@@ -12,20 +13,47 @@ import type { TenantContext } from '../tenant-context/tenant-context.types'
 import { AssignPropertyAgentDto } from './dto/assign-property-agent.dto'
 import { CreatePropertyEngagementDto } from './dto/create-property-engagement.dto'
 import { ListPropertyEngagementsQuery } from './dto/list-property-engagements.query'
+import { UpdatePropertyEngagementDto } from './dto/update-property-engagement.dto'
 import { AssignPropertyAgentUseCase } from './use-cases/assign-property-agent.use-case'
 import { CreatePropertyEngagementUseCase } from './use-cases/create-property-engagement.use-case'
+import { DeletePropertyImageUseCase } from './use-cases/delete-property-image.use-case'
 import { GetPropertyEngagementUseCase } from './use-cases/get-property-engagement.use-case'
 import { ListPropertyEngagementsUseCase } from './use-cases/list-property-engagements.use-case'
+import { UpdatePropertyEngagementUseCase } from './use-cases/update-property-engagement.use-case'
+import {
+  PROPERTY_IMAGE_MAX_BYTES,
+  UploadPropertyImageUseCase,
+  type UploadedPropertyImageFile,
+} from './use-cases/upload-property-image.use-case'
+
+// Keep DTO/query classes as runtime values for Nest metadata when tests transpile with Vitest/esbuild.
+const nestDtoRuntimeTypes = [
+  AssignPropertyAgentDto,
+  CreatePropertyEngagementDto,
+  ListPropertyEngagementsQuery,
+  UpdatePropertyEngagementDto,
+]
+void nestDtoRuntimeTypes
 
 @Controller('property-engagements')
 @ApiTenantContext()
 @UseGuards(AuthGuard, TenantMembershipGuard, PermissionGuard)
 export class PropertyEngagementsController {
   constructor(
+    @Inject(CreatePropertyEngagementUseCase)
     private readonly createPropertyEngagementUseCase: CreatePropertyEngagementUseCase,
+    @Inject(ListPropertyEngagementsUseCase)
     private readonly listPropertyEngagementsUseCase: ListPropertyEngagementsUseCase,
+    @Inject(GetPropertyEngagementUseCase)
     private readonly getPropertyEngagementUseCase: GetPropertyEngagementUseCase,
+    @Inject(UpdatePropertyEngagementUseCase)
+    private readonly updatePropertyEngagementUseCase: UpdatePropertyEngagementUseCase,
+    @Inject(AssignPropertyAgentUseCase)
     private readonly assignPropertyAgentUseCase: AssignPropertyAgentUseCase,
+    @Inject(UploadPropertyImageUseCase)
+    private readonly uploadPropertyImageUseCase: UploadPropertyImageUseCase,
+    @Inject(DeletePropertyImageUseCase)
+    private readonly deletePropertyImageUseCase: DeletePropertyImageUseCase,
   ) {}
 
   @Post()
@@ -56,6 +84,40 @@ export class PropertyEngagementsController {
     @Param('id') id: string,
   ) {
     return this.getPropertyEngagementUseCase.execute(tenant, currentUser, id)
+  }
+
+  @Patch(':id')
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_CREATE)
+  update(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('id') id: string,
+    @Body() body: UpdatePropertyEngagementDto,
+  ) {
+    return this.updatePropertyEngagementUseCase.execute(tenant, currentUser, id, body)
+  }
+
+  @Post(':id/images')
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_CREATE)
+  @UseInterceptors(FileInterceptor('image', { limits: { fileSize: PROPERTY_IMAGE_MAX_BYTES } }))
+  uploadImage(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('id') id: string,
+    @UploadedFile() image: UploadedPropertyImageFile | undefined,
+  ) {
+    return this.uploadPropertyImageUseCase.execute(tenant, currentUser, id, image)
+  }
+
+  @Delete(':id/images/:imageId')
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_CREATE)
+  deleteImage(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('id') id: string,
+    @Param('imageId') imageId: string,
+  ) {
+    return this.deletePropertyImageUseCase.execute(tenant, currentUser, id, imageId)
   }
 
   @Post(':id/agents')

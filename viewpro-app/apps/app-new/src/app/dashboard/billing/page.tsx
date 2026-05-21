@@ -1,55 +1,56 @@
 'use client';
 
 import PageContainer from '@/components/layout/page-container';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useOrganization } from '@clerk/nextjs';
-import { PricingTable } from '@clerk/nextjs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icons } from '@/components/icons';
 import { billingInfoContent } from '@/config/infoconfig';
+import { useSession } from '@/lib/session-context';
+import { useSelectedTenantId } from '@/lib/tenant-selection';
 
-// Baseline upstream Clerk Billing screen. ViewPro billing/auth wiring should happen in a
-// dedicated follow-up slice so the imported dashboard visual baseline stays reviewable.
 export default function BillingPage() {
-  const { organization, isLoaded } = useOrganization();
+  const { isLoading, session } = useSession();
+  const selectedTenantId = useSelectedTenantId();
+  const selectedMembership =
+    session?.memberships.find((membership) => membership.tenant.id === selectedTenantId) ??
+    session?.memberships[0];
+  const activeBusiness = selectedMembership?.tenant.name;
 
   return (
     <PageContainer
-      isLoading={!isLoaded}
-      access={!!organization}
+      isLoading={isLoading}
+      access={isLoading || Boolean(session?.memberships.length)}
       accessFallback={
         <div className='flex min-h-[400px] items-center justify-center'>
           <div className='space-y-2 text-center'>
-            <h2 className='text-2xl font-semibold'>No Organization Selected</h2>
+            <h2 className='text-2xl font-semibold'>No hay una inmobiliaria seleccionada</h2>
             <p className='text-muted-foreground'>
-              Please select or create an organization to view billing information.
+              Creá o seleccioná una inmobiliaria para ver esta sección.
             </p>
           </div>
         </div>
       }
       infoContent={billingInfoContent}
-      pageTitle='Billing & Plans'
-      pageDescription={`Manage your subscription and usage limits for ${organization?.name}`}
+      pageTitle='Facturación y planes'
+      pageDescription={`Administrá la suscripción de ${activeBusiness ?? 'tu inmobiliaria'}`}
     >
       <div className='space-y-6'>
-        {/* Info Alert */}
         <Alert>
           <Icons.info className='h-4 w-4' />
           <AlertDescription>
-            Plans and subscriptions are managed through Clerk Billing. Subscribe to a plan to unlock
-            features and higher limits.
+            La gestión de planes se conectará en una próxima etapa. Esta pantalla mantiene el
+            espacio visual mientras se completa esa integración.
           </AlertDescription>
         </Alert>
 
-        {/* Clerk Pricing Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Available Plans</CardTitle>
-            <CardDescription>Choose a plan that fits your organization's needs</CardDescription>
+            <CardTitle>Planes disponibles</CardTitle>
+            <CardDescription>Próximamente vas a poder elegir el plan desde acá.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className='mx-auto max-w-4xl'>
-              <PricingTable for='organization' />
+            <div className='text-muted-foreground rounded-lg border p-6 text-sm'>
+              La facturación todavía no está disponible en esta versión.
             </div>
           </CardContent>
         </Card>

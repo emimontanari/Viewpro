@@ -1,5 +1,5 @@
 import PageContainer from '@/components/layout/page-container';
-import DemoForm from '@/components/forms/demo-form';
+import { BasicFormClient } from './basic-form-client';
 
 export const metadata = {
   title: 'Dashboard: Basic Form'
@@ -11,7 +11,7 @@ export default function Page() {
       pageTitle='Basic Form'
       pageDescription='A comprehensive form demo with all field types.'
     >
-      <DemoForm />
+      <BasicFormClient />
     </PageContainer>
   );
 }

@@ -81,7 +81,9 @@ function Form({
 function SubmitButton({
   children,
   className,
+  disabled,
   size,
+  type = 'submit',
   ...props
 }: React.ComponentProps<'button'> & VariantProps<typeof buttonVariants>) {
   const form = useFormContext();
@@ -89,12 +91,12 @@ function SubmitButton({
     <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting] as const}>
       {([canSubmit, isSubmitting]) => (
         <Button
+          {...props}
           className={className}
           size={size}
-          type='submit'
-          disabled={!canSubmit}
+          type={type}
+          disabled={!canSubmit || isSubmitting || disabled}
           isLoading={isSubmitting}
-          {...props}
         >
           {children}
         </Button>
