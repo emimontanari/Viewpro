@@ -73,6 +73,10 @@ export type PropertyEngagementsRepository = {
     propertyAssetId: string
     imageId: string
   }): Promise<DeletePropertyAssetImageResult | null>
+  setImageAsPrimary(input: {
+    propertyAssetId: string
+    imageId: string
+  }): Promise<PropertyAssetImage | null>
   assignAgent(input: {
     tenantId: string
     engagementId: string

@@ -19,6 +19,7 @@ import { CreatePropertyEngagementUseCase } from './use-cases/create-property-eng
 import { DeletePropertyImageUseCase } from './use-cases/delete-property-image.use-case'
 import { GetPropertyEngagementUseCase } from './use-cases/get-property-engagement.use-case'
 import { ListPropertyEngagementsUseCase } from './use-cases/list-property-engagements.use-case'
+import { SetPropertyImagePrimaryUseCase } from './use-cases/set-property-image-primary.use-case'
 import { UpdatePropertyEngagementUseCase } from './use-cases/update-property-engagement.use-case'
 import {
   PROPERTY_IMAGE_MAX_BYTES,
@@ -54,6 +55,8 @@ export class PropertyEngagementsController {
     private readonly uploadPropertyImageUseCase: UploadPropertyImageUseCase,
     @Inject(DeletePropertyImageUseCase)
     private readonly deletePropertyImageUseCase: DeletePropertyImageUseCase,
+    @Inject(SetPropertyImagePrimaryUseCase)
+    private readonly setPropertyImagePrimaryUseCase: SetPropertyImagePrimaryUseCase,
   ) {}
 
   @Post()
@@ -118,6 +121,17 @@ export class PropertyEngagementsController {
     @Param('imageId') imageId: string,
   ) {
     return this.deletePropertyImageUseCase.execute(tenant, currentUser, id, imageId)
+  }
+
+  @Patch(':id/images/:imageId/primary')
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_CREATE)
+  setImagePrimary(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('id') id: string,
+    @Param('imageId') imageId: string,
+  ) {
+    return this.setPropertyImagePrimaryUseCase.execute(tenant, currentUser, id, imageId)
   }
 
   @Post(':id/agents')

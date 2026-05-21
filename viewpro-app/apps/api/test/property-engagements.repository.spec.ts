@@ -226,6 +226,63 @@ describe('Property engagements foundation', () => {
     expect(count).toHaveBeenCalledWith({ where: { propertyAssetId: 'asset-1' } })
   })
 
+  it('sets one property image as primary inside one transaction', async () => {
+    const image = { id: 'image-1', propertyAssetId: 'asset-1', isPrimary: false }
+    const updatedImage = { ...image, isPrimary: true }
+    const findFirst = vi.fn().mockResolvedValue(image)
+    const updateMany = vi.fn().mockResolvedValue({ count: 2 })
+    const update = vi.fn().mockResolvedValue(updatedImage)
+    const transaction = vi.fn(async (callback) =>
+      callback({
+        propertyAssetImage: { findFirst, updateMany, update },
+      }),
+    )
+    const repository = new PrismaPropertyEngagementsRepository({ $transaction: transaction } as never)
+
+    await expect(
+      repository.setImageAsPrimary({
+        propertyAssetId: 'asset-1',
+        imageId: 'image-1',
+      }),
+    ).resolves.toBe(updatedImage)
+
+    expect(transaction).toHaveBeenCalledOnce()
+    expect(findFirst).toHaveBeenCalledWith({
+      where: { id: 'image-1', propertyAssetId: 'asset-1' },
+    })
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { propertyAssetId: 'asset-1' },
+      data: { isPrimary: false },
+    })
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'image-1' },
+      data: { isPrimary: true },
+    })
+  })
+
+  it('returns null when setting a primary image that is not part of the asset', async () => {
+    const updateMany = vi.fn()
+    const update = vi.fn()
+    const transaction = vi.fn(async (callback) =>
+      callback({
+        propertyAssetImage: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          updateMany,
+          update,
+        },
+      }),
+    )
+    const repository = new PrismaPropertyEngagementsRepository({ $transaction: transaction } as never)
+
+    await expect(
+      repository.setImageAsPrimary({
+        propertyAssetId: 'asset-1',
+        imageId: 'missing-image',
+      }),
+    ).resolves.toBeNull()
+    expect(updateMany).not.toHaveBeenCalled()
+    expect(update).not.toHaveBeenCalled()
+  })
 
   it('assigns an agent within the engagement tenant boundary', async () => {
     const create = vi.fn().mockResolvedValue({ id: 'agent-assignment-1' })

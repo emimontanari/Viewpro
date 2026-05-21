@@ -172,6 +172,34 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
     })
   }
 
+  setImageAsPrimary(input: {
+    propertyAssetId: string
+    imageId: string
+  }): Promise<PropertyAssetImage | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const image = await tx.propertyAssetImage.findFirst({
+        where: {
+          id: input.imageId,
+          propertyAssetId: input.propertyAssetId,
+        },
+      })
+
+      if (!image) {
+        return null
+      }
+
+      await tx.propertyAssetImage.updateMany({
+        where: { propertyAssetId: input.propertyAssetId },
+        data: { isPrimary: false },
+      })
+
+      return tx.propertyAssetImage.update({
+        where: { id: image.id },
+        data: { isPrimary: true },
+      })
+    })
+  }
+
   assignAgent(input: {
     tenantId: string
     engagementId: string
