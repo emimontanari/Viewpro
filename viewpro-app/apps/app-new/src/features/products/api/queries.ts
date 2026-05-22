@@ -8,7 +8,9 @@ export const productKeys = {
   all: ['products'] as const,
   list: (filters: ProductFilters) => [...productKeys.all, 'list', filters] as const,
   detail: (id: string, tenantId?: string | null) =>
-    [...productKeys.all, 'detail', id, tenantId ?? 'no-tenant'] as const
+    [...productKeys.all, 'detail', id, tenantId ?? 'no-tenant'] as const,
+  movements: (id: string, tenantId?: string | null) =>
+    [...productKeys.all, 'movements', id, tenantId ?? 'no-tenant'] as const
 };
 
 export const productsQueryOptions = (filters: ProductFilters) =>

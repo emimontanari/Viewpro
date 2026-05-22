@@ -10,6 +10,8 @@ import type {
   Product,
   ProductByIdResponse,
   ProductFilters,
+  ProductMovement,
+  ProductMovementMutationPayload,
   ProductMutationPayload,
   ProductMovementsResponse,
   ProductStatusMutationPayload,
@@ -37,6 +39,19 @@ export async function getProductMovements(productId: string): Promise<ProductMov
     `${PRODUCTS_API_PATH}/${productId}/movements?pageSize=8&order=desc`
   );
   return parseJsonResponse<ProductMovementsResponse>(response);
+}
+
+export async function createProductMovement(
+  productId: string,
+  data: ProductMovementMutationPayload
+): Promise<ProductMovement> {
+  const response = await apiFetch(`${PRODUCTS_API_PATH}/${productId}/movements`, {
+    body: JSON.stringify(data),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST'
+  });
+
+  return parseJsonResponse<ProductMovement>(response);
 }
 
 export async function createProduct(data: ProductMutationPayload): Promise<Product> {
