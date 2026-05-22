@@ -92,6 +92,10 @@ export type RestorePropertyEngagementResult =
 	| { status: "notArchived" }
 	| null;
 
+export type AssignPropertyAgentResult =
+	| { status: "assigned"; assignment: PropertyAgent }
+	| { status: "alreadyAssigned" };
+
 export type PropertyEngagementsRepository = {
 	createWithAsset(
 		input: CreatePropertyEngagementInput,
@@ -131,5 +135,10 @@ export type PropertyEngagementsRepository = {
 		engagementId: string;
 		agentUserId: string;
 		assignedByUserId: string;
-	}): Promise<PropertyAgent>;
+	}): Promise<AssignPropertyAgentResult>;
+	removeAgent(input: {
+		tenantId: string;
+		engagementId: string;
+		agentId: string;
+	}): Promise<boolean>;
 };

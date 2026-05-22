@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import type { CurrentUser } from '../../auth/types/current-user'
 import { MEMBERSHIPS_REPOSITORY, type MembershipsRepository } from '../../memberships/memberships.repository'
 import type { TenantContext } from '../../tenant-context/tenant-context.types'
@@ -35,11 +35,17 @@ export class AssignPropertyAgentUseCase {
       throw new BadRequestException('Agent is not a member of this tenant')
     }
 
-    return this.propertyEngagementsRepository.assignAgent({
+    const result = await this.propertyEngagementsRepository.assignAgent({
       tenantId: tenant.tenantId,
       engagementId,
       agentUserId: input.agentUserId,
       assignedByUserId: currentUser.id,
     })
+
+    if (result.status === 'alreadyAssigned') {
+      throw new ConflictException('Agent is already assigned to this property engagement')
+    }
+
+    return result.assignment
   }
 }
