@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { Icons } from '@/components/icons';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { ActivityFeedItem as ActivityFeedItemType } from '../api/types';
@@ -62,12 +63,14 @@ export function ActivityFeed({
   return (
     <section className='space-y-4'>
       <div className='flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between'>
-        <div>
-          <h2 className='text-base font-semibold'>Últimas actualizaciones</h2>
-          <p className='text-sm text-muted-foreground'>
-            {total} {total === 1 ? 'movimiento encontrado' : 'movimientos encontrados'}
-            {isFetching ? ' · actualizando…' : ''}
-          </p>
+        <div className='space-y-1'>
+          <div className='flex flex-wrap items-center gap-2'>
+            <h2 className='text-base font-semibold'>Últimas actualizaciones</h2>
+            <Badge variant='outline' className='rounded-full bg-muted/40'>
+              {total} {total === 1 ? 'encontrado' : 'encontrados'}
+            </Badge>
+          </div>
+          {isFetching ? <p className='text-sm text-muted-foreground'>Actualizando…</p> : null}
         </div>
       </div>
 
