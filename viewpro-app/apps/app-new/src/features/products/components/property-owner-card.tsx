@@ -129,8 +129,17 @@ function OwnerReference({
   );
 }
 
-function getOwnerDisplayName(owner: { email: string; firstName: string | null }) {
-  return owner.firstName?.trim() || owner.email;
+function getOwnerDisplayName(owner: PropertyLinkedOwner) {
+  const snapshotName = [owner.ownerFirstName, owner.ownerLastName]
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join(' ');
+  const userName = [owner.firstName, owner.lastName]
+    .map((value) => value?.trim())
+    .filter(Boolean)
+    .join(' ');
+
+  return snapshotName || userName || owner.email;
 }
 
 function getOwnerSummary(owners: PropertyLinkedOwner[], ownerName: string | null) {

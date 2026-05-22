@@ -37,6 +37,7 @@ import {
   uploadProductImage
 } from '../api/service';
 import type {
+  LinkProductOwnerPayload,
   Product,
   ProductMovementMutationPayload,
   ProductMutationPayload,
@@ -782,7 +783,8 @@ function PropertyEngagementDetails({
     }
   });
   const linkOwnerMutation = useMutation({
-    mutationFn: (email: string) => linkProductOwner(propertyEngagement.id, { email }),
+    mutationFn: (payload: LinkProductOwnerPayload) =>
+      linkProductOwner(propertyEngagement.id, payload),
     onSuccess: async () => {
       setOwnerDialogOpen(false);
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
@@ -825,12 +827,12 @@ function PropertyEngagementDetails({
     setOwnerDialogOpen(true);
   }
 
-  function handleLinkOwner(email: string) {
+  function handleLinkOwner(payload: LinkProductOwnerPayload) {
     if (isArchived || linkOwnerMutation.isPending) {
       return;
     }
 
-    linkOwnerMutation.mutate(email);
+    linkOwnerMutation.mutate(payload);
   }
 
   function handleAssignAgent(agentUserId: string) {
@@ -1613,10 +1615,6 @@ function getOwnerLinkErrorMessage(error: unknown) {
 
   if (error.message.includes('already linked')) {
     return 'Ese propietario ya está vinculado a esta propiedad.';
-  }
-
-  if (error.message.includes('User not found')) {
-    return 'No encontramos un usuario con ese email.';
   }
 
   return error.message || 'No se pudo vincular el propietario.';

@@ -66,14 +66,19 @@ export type PropertyOwnerAccessStatus = 'INVITED' | 'ACTIVE' | 'REVOKED';
 
 export type PropertyLinkedOwner = {
   id: string;
-  userId: string;
+  userId: string | null;
   email: string;
   firstName: string | null;
+  lastName: string | null;
+  ownerFirstName: string;
+  ownerLastName: string;
   isPrimary: boolean;
   accessStatus: PropertyOwnerAccessStatus;
 };
 
 export type LinkProductOwnerPayload = {
+  firstName: string;
+  lastName: string;
   email: string;
 };
 
