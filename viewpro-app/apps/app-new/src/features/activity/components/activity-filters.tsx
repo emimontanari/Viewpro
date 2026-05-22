@@ -1,3 +1,4 @@
+import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -51,7 +52,9 @@ export function ActivityFilters({
         <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
           <div>
             <h2 className='text-sm font-semibold'>Filtros</h2>
-            <p className='text-sm text-muted-foreground'>Ajustá el seguimiento por tipo, vendedor o fecha.</p>
+            <p className='text-sm text-muted-foreground'>
+              Ajustá el seguimiento por tipo, vendedor o fecha.
+            </p>
           </div>
           {hasFilters ? (
             <Button type='button' variant='outline' size='sm' onClick={onClearFilters}>
@@ -109,36 +112,58 @@ export function ActivityFilters({
               </SelectContent>
             </Select>
             {!isLoadingAgents && assignableAgents.length === 0 ? (
-              <p className='text-xs text-muted-foreground'>Todavía no hay vendedores para filtrar.</p>
+              <p className='text-xs text-muted-foreground'>
+                Todavía no hay vendedores para filtrar.
+              </p>
             ) : null}
           </div>
 
-          <div className='space-y-2'>
-            <label htmlFor='activity-date-from' className='text-sm font-medium'>
-              Desde
-            </label>
-            <Input
-              id='activity-date-from'
-              type='date'
-              value={dateFrom ?? ''}
-              onChange={(event) => onDateFromChange(event.target.value || null)}
-            />
-          </div>
+          <ActivityDateFilterInput
+            id='activity-date-from'
+            label='Desde'
+            value={dateFrom}
+            onChange={onDateFromChange}
+          />
 
-          <div className='space-y-2'>
-            <label htmlFor='activity-date-to' className='text-sm font-medium'>
-              Hasta
-            </label>
-            <Input
-              id='activity-date-to'
-              type='date'
-              value={dateTo ?? ''}
-              onChange={(event) => onDateToChange(event.target.value || null)}
-            />
-          </div>
+          <ActivityDateFilterInput
+            id='activity-date-to'
+            label='Hasta'
+            value={dateTo}
+            onChange={onDateToChange}
+          />
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function ActivityDateFilterInput({
+  id,
+  label,
+  value,
+  onChange
+}: {
+  id: string;
+  label: string;
+  value: string | null;
+  onChange: (value: string | null) => void;
+}) {
+  return (
+    <div className='space-y-2'>
+      <label htmlFor={id} className='text-sm font-medium'>
+        {label}
+      </label>
+      <div className='relative'>
+        <Icons.calendar className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
+        <Input
+          id={id}
+          type='date'
+          value={value ?? ''}
+          className='h-10 pl-10 pr-3 text-left [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0'
+          onChange={(event) => onChange(event.target.value || null)}
+        />
+      </div>
+    </div>
   );
 }
 

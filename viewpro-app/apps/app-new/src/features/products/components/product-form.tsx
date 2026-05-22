@@ -963,21 +963,21 @@ function PropertyEngagementDetails({
       </CardHeader>
 
       <CardContent className='space-y-6 p-4 sm:p-6'>
-        <div className='grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]'>
+        <div className='grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)]'>
           <PropertyImageCarousel
             images={getCarouselImages(propertyEngagement)}
             title={propertyEngagement.property.title}
           />
 
-          <aside className='flex flex-col gap-4 rounded-2xl border bg-card p-4 shadow-xs'>
-            <div className='rounded-xl border bg-muted/20 p-4'>
+          <aside className='flex flex-col gap-3 rounded-2xl border bg-card p-3 shadow-xs sm:p-4'>
+            <div className='rounded-xl border bg-muted/20 p-5'>
               <div className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
                 Precio publicado
               </div>
-              <div className='mt-2 text-3xl font-bold tracking-tight'>
+              <div className='mt-3 text-4xl font-bold tracking-tight'>
                 {formatPrice(propertyEngagement.publishedPriceCents, propertyEngagement.currency)}
               </div>
-              <p className='mt-1 text-xs text-muted-foreground'>
+              <p className='mt-2 text-xs text-muted-foreground'>
                 Moneda: {propertyEngagement.currency ?? 'ARS'}
               </p>
             </div>
@@ -1198,6 +1198,7 @@ function PropertyImageCarousel({ images, title }: { images: PropertyImage[]; tit
   }
 
   const hasMultipleImages = images.length > 1;
+  const shouldCenterThumbnails = images.length <= 3;
 
   function showPreviousImage() {
     setActiveIndex((current) => (current === 0 ? images.length - 1 : current - 1));
@@ -1209,7 +1210,7 @@ function PropertyImageCarousel({ images, title }: { images: PropertyImage[]; tit
 
   return (
     <div className='space-y-3'>
-      <div className='relative min-h-[22rem] w-full overflow-hidden rounded-2xl border bg-muted shadow-xs'>
+      <div className='relative min-h-[23rem] w-full overflow-hidden rounded-2xl border bg-muted shadow-xs'>
         <PropertyImagePreview
           key={activeImage.id}
           src={activeImage.url}
@@ -1233,20 +1234,20 @@ function PropertyImageCarousel({ images, title }: { images: PropertyImage[]; tit
               type='button'
               variant='secondary'
               size='icon'
-              className='absolute left-3 top-1/2 size-9 -translate-y-1/2 rounded-full bg-background/85 shadow-sm backdrop-blur hover:bg-background'
+              className='absolute left-3 top-1/2 size-10 -translate-y-1/2 rounded-full bg-background/90 shadow-sm backdrop-blur hover:bg-background'
               onClick={showPreviousImage}
             >
-              <Icons.chevronLeft className='h-4 w-4' />
+              <Icons.chevronLeft className='size-5' />
               <span className='sr-only'>Imagen anterior</span>
             </Button>
             <Button
               type='button'
               variant='secondary'
               size='icon'
-              className='absolute right-3 top-1/2 size-9 -translate-y-1/2 rounded-full bg-background/85 shadow-sm backdrop-blur hover:bg-background'
+              className='absolute right-3 top-1/2 size-10 -translate-y-1/2 rounded-full bg-background/90 shadow-sm backdrop-blur hover:bg-background'
               onClick={showNextImage}
             >
-              <Icons.chevronRight className='h-4 w-4' />
+              <Icons.chevronRight className='size-5' />
               <span className='sr-only'>Imagen siguiente</span>
             </Button>
           </>
@@ -1254,7 +1255,12 @@ function PropertyImageCarousel({ images, title }: { images: PropertyImage[]; tit
       </div>
 
       {hasMultipleImages ? (
-        <div className='grid grid-cols-4 gap-2 sm:grid-cols-5 lg:grid-cols-6'>
+        <div
+          className={cn(
+            'flex justify-start gap-3 overflow-x-auto pb-1',
+            shouldCenterThumbnails ? 'sm:justify-center' : 'sm:justify-start'
+          )}
+        >
           {images.map((image, index) => (
             <button
               key={image.id}
@@ -1262,7 +1268,7 @@ function PropertyImageCarousel({ images, title }: { images: PropertyImage[]; tit
               aria-label={`Ver imagen ${index + 1}`}
               aria-current={index === activeIndex ? 'true' : undefined}
               className={cn(
-                'group relative h-16 overflow-hidden rounded-lg border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                'group relative h-20 w-36 flex-none snap-start overflow-hidden rounded-xl border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-40',
                 index === activeIndex
                   ? 'border-primary ring-2 ring-primary/20'
                   : 'hover:border-foreground/30'
@@ -1383,7 +1389,10 @@ function ReadOnlyStatusField({ propertyEngagement }: { propertyEngagement: Produ
           Actualizá el avance sin entrar a edición completa.
         </p>
       </div>
-      <QuickStatusSelect propertyEngagement={propertyEngagement} />
+      <QuickStatusSelect
+        propertyEngagement={propertyEngagement}
+        className='h-10 max-w-none rounded-lg px-3 text-sm'
+      />
     </div>
   );
 }

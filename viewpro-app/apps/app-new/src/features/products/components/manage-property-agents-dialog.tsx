@@ -1,5 +1,6 @@
 'use client';
 
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -48,7 +49,7 @@ export function PropertyAgentsPanel({
   onManage
 }: PropertyAgentsPanelProps) {
   return (
-    <section className='space-y-3 rounded-xl border bg-muted/20 p-4'>
+    <section className='space-y-3 rounded-xl border bg-muted/20 p-3 sm:p-4'>
       <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
         <div className='space-y-1'>
           <div className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
@@ -64,6 +65,7 @@ export function PropertyAgentsPanel({
             size='sm'
             variant='outline'
             disabled={isManageDisabled}
+            className='shrink-0 whitespace-nowrap'
             onClick={onManage}
           >
             <Icons.teams className='size-4' />
@@ -300,10 +302,21 @@ function renderAssignableAgentsState({
 }
 
 function AgentIdentity({ agent }: { agent: ProductAgent }) {
+  const displayName = getAgentDisplayName(agent);
+
   return (
-    <div className='min-w-0 space-y-1'>
-      <p className='break-words text-sm font-medium'>{getAgentDisplayName(agent)}</p>
-      <p className='break-all text-sm text-muted-foreground'>{agent.email}</p>
+    <div className='flex min-w-0 items-center gap-3'>
+      <Avatar className='size-9 shrink-0 rounded-full border bg-muted'>
+        <AvatarFallback className='text-xs font-semibold'>{getAgentInitials(agent)}</AvatarFallback>
+      </Avatar>
+      <div className='min-w-0 flex-1 space-y-0.5'>
+        <p className='truncate text-sm font-medium' title={displayName}>
+          {displayName}
+        </p>
+        <p className='truncate text-sm text-muted-foreground' title={agent.email}>
+          {agent.email}
+        </p>
+      </div>
     </div>
   );
 }
@@ -338,4 +351,14 @@ function getAssignAllButtonLabel(count: number) {
 
 function getAgentDisplayName(agent: { email: string; firstName: string | null }) {
   return agent.firstName?.trim() || agent.email;
+}
+
+function getAgentInitials(agent: { email: string; firstName: string | null }) {
+  const displayName = getAgentDisplayName(agent);
+  const parts = displayName
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return (parts[0]?.slice(0, 2) || agent.email.slice(0, 2)).toUpperCase();
 }

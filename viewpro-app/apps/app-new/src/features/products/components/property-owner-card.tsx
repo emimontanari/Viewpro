@@ -1,4 +1,5 @@
 import { Icons } from '@/components/icons';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { PropertyLinkedOwner, PropertyOwnerAccessStatus } from '../api/types';
@@ -39,7 +40,7 @@ export function PropertyOwnerCard({
   const hasLinkedOwners = owners.length > 0;
 
   return (
-    <section className='space-y-3 rounded-xl border bg-muted/20 p-4'>
+    <section className='space-y-3 rounded-xl border bg-muted/20 p-3 sm:p-4'>
       <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
         <div className='space-y-1'>
           <div className='flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground'>
@@ -54,6 +55,7 @@ export function PropertyOwnerCard({
             size='sm'
             variant='outline'
             disabled={isLinkDisabled}
+            className='shrink-0 whitespace-nowrap'
             onClick={onLinkOwner}
           >
             <Icons.userPen className='size-4' />
@@ -66,23 +68,40 @@ export function PropertyOwnerCard({
         <ul className='space-y-2'>
           {owners.map((owner) => (
             <li key={owner.id} className='rounded-lg border bg-background/70 p-3'>
-              <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
-                <div className='min-w-0 space-y-1'>
-                  <p className='break-words text-sm font-medium'>{getOwnerDisplayName(owner)}</p>
-                  <p className='break-all text-sm text-muted-foreground'>{owner.email}</p>
-                </div>
-                <div className='flex flex-wrap gap-2'>
-                  {owner.isPrimary ? (
-                    <Badge variant='outline' className='rounded-md bg-background'>
-                      Principal
+              <div className='flex min-w-0 items-start gap-3'>
+                <Avatar className='size-9 shrink-0 rounded-full border bg-muted'>
+                  <AvatarFallback className='text-xs font-semibold'>
+                    {getOwnerInitials(owner)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className='min-w-0 flex-1 space-y-2'>
+                  <div className='min-w-0 space-y-0.5'>
+                    <p className='truncate text-sm font-medium' title={getOwnerDisplayName(owner)}>
+                      {getOwnerDisplayName(owner)}
+                    </p>
+                    <p className='truncate text-sm text-muted-foreground' title={owner.email}>
+                      {owner.email}
+                    </p>
+                  </div>
+                  <div className='flex flex-wrap items-center gap-1.5'>
+                    {owner.isPrimary ? (
+                      <Badge
+                        variant='outline'
+                        className='rounded-md bg-background px-1.5 py-0 text-[11px]'
+                      >
+                        Principal
+                      </Badge>
+                    ) : null}
+                    <Badge
+                      variant='outline'
+                      className={cn(
+                        'rounded-md px-1.5 py-0 text-[11px]',
+                        ownerStatusTones[owner.accessStatus]
+                      )}
+                    >
+                      {ownerStatusLabels[owner.accessStatus]}
                     </Badge>
-                  ) : null}
-                  <Badge
-                    variant='outline'
-                    className={cn('rounded-md', ownerStatusTones[owner.accessStatus])}
-                  >
-                    {ownerStatusLabels[owner.accessStatus]}
-                  </Badge>
+                  </div>
                 </div>
               </div>
             </li>
@@ -140,6 +159,20 @@ function getOwnerDisplayName(owner: PropertyLinkedOwner) {
     .join(' ');
 
   return snapshotName || userName || owner.email;
+}
+
+function getOwnerInitials(owner: PropertyLinkedOwner) {
+  const name = getOwnerDisplayName(owner);
+  const parts = name
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length >= 2) {
+    return `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`.toUpperCase();
+  }
+
+  return (parts[0]?.slice(0, 2) || owner.email.slice(0, 2)).toUpperCase();
 }
 
 function getOwnerSummary(owners: PropertyLinkedOwner[], ownerName: string | null) {
