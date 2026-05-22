@@ -22,12 +22,14 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Icons } from '@/components/icons';
-import { productKeys } from '../api/queries';
+import { assignableProductAgentsOptions, productKeys } from '../api/queries';
 import {
   createProduct,
+  assignProductAgent,
   createProductMovement,
   deleteProductImage,
   getProductMovements,
+  removeProductAgent,
   restoreProduct,
   setProductImageAsPrimary,
   updateProduct,
@@ -58,11 +60,11 @@ import {
 } from '@/features/products/constants/product-options';
 import { formatDateTime } from '../utils/format-date-time';
 import { CreatePropertyMovementDialog } from './create-property-movement-dialog';
+import { ManagePropertyAgentsDialog, PropertyAgentsPanel } from './manage-property-agents-dialog';
 import { PropertyMovementHistory } from './property-movement-history';
 import { QuickStatusSelect } from './quick-status-select';
 import {
   getAddress,
-  getAgentSummary,
   getArchivedTone,
   getOperationTone,
   getOperationTypeLabel,
@@ -662,13 +664,19 @@ function PropertyEngagementDetails({
   const router = useRouter();
   const queryClient = useQueryClient();
   const [movementDialogOpen, setMovementDialogOpen] = useState(false);
+  const [agentsDialogOpen, setAgentsDialogOpen] = useState(false);
+  const [assigningAgentUserId, setAssigningAgentUserId] = useState<string | null>(null);
+  const [removingAgentId, setRemovingAgentId] = useState<string | null>(null);
   const isArchived = isArchivedProduct(propertyEngagement);
   const address = getAddress(propertyEngagement) || 'Sin dirección cargada';
   const propertyFacts = getPropertyFacts(propertyEngagement);
-  const agentSummary = getAgentSummary(propertyEngagement);
   const movementsQuery = useQuery({
     queryKey: productKeys.movements(propertyEngagement.id, propertyEngagement.tenantId),
     queryFn: () => getProductMovements(propertyEngagement.id)
+  });
+  const assignableAgentsQuery = useQuery({
+    ...assignableProductAgentsOptions(propertyEngagement.tenantId),
+    enabled: agentsDialogOpen && !isArchived
   });
   const restoreMutation = useMutation({
     mutationFn: () => restoreProduct(propertyEngagement.id),
@@ -701,6 +709,38 @@ function PropertyEngagementDetails({
       toast.error(error instanceof Error ? error.message : 'No se pudo agregar la actualización');
     }
   });
+  const assignAgentMutation = useMutation({
+    mutationFn: (agentUserId: string) => assignProductAgent(propertyEngagement.id, { agentUserId }),
+    onMutate: (agentUserId) => {
+      setAssigningAgentUserId(agentUserId);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: productKeys.all });
+      toast.success('Vendedor asignado');
+    },
+    onError: (error) => {
+      toast.error(getAgentAssignmentErrorMessage(error, 'No se pudo asignar el vendedor'));
+    },
+    onSettled: () => {
+      setAssigningAgentUserId(null);
+    }
+  });
+  const removeAgentMutation = useMutation({
+    mutationFn: (agentId: string) => removeProductAgent(propertyEngagement.id, agentId),
+    onMutate: (agentId) => {
+      setRemovingAgentId(agentId);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: productKeys.all });
+      toast.success('Vendedor quitado');
+    },
+    onError: (error) => {
+      toast.error(getAgentAssignmentErrorMessage(error, 'No se pudo quitar el vendedor'));
+    },
+    onSettled: () => {
+      setRemovingAgentId(null);
+    }
+  });
 
   function handleRestoreProperty() {
     if (restoreMutation.isPending) {
@@ -716,6 +756,30 @@ function PropertyEngagementDetails({
     }
 
     createMovementMutation.mutate(payload);
+  }
+
+  function handleOpenAgentsDialog() {
+    if (isArchived) {
+      return;
+    }
+
+    setAgentsDialogOpen(true);
+  }
+
+  function handleAssignAgent(agentUserId: string) {
+    if (isArchived || assignAgentMutation.isPending || removeAgentMutation.isPending) {
+      return;
+    }
+
+    assignAgentMutation.mutate(agentUserId);
+  }
+
+  function handleRemoveAgent(agentId: string) {
+    if (isArchived || assignAgentMutation.isPending || removeAgentMutation.isPending) {
+      return;
+    }
+
+    removeAgentMutation.mutate(agentId);
   }
 
   return (
@@ -843,9 +907,14 @@ function PropertyEngagementDetails({
                 label='Email propietario'
                 value={propertyEngagement.property.ownerEmail ?? 'Sin email'}
               />
-              <ReadOnlyField label='Agente' value={agentSummary.label} />
-              <ReadOnlyField label='Contacto agente' value={agentSummary.detail} />
             </div>
+
+            <PropertyAgentsPanel
+              agents={propertyEngagement.agents}
+              isArchived={isArchived}
+              isManageDisabled={assignAgentMutation.isPending || removeAgentMutation.isPending}
+              onManage={handleOpenAgentsDialog}
+            />
           </aside>
         </div>
 
@@ -927,6 +996,18 @@ function PropertyEngagementDetails({
         isSubmitting={createMovementMutation.isPending}
         onOpenChange={setMovementDialogOpen}
         onSubmit={handleCreateMovement}
+      />
+      <ManagePropertyAgentsDialog
+        open={agentsDialogOpen}
+        assignedAgents={propertyEngagement.agents}
+        assignableAgents={assignableAgentsQuery.data?.items ?? []}
+        assigningUserId={assigningAgentUserId}
+        isAssignableAgentsError={assignableAgentsQuery.isError}
+        isAssignableAgentsLoading={assignableAgentsQuery.isLoading}
+        removingAgentId={removingAgentId}
+        onAssign={handleAssignAgent}
+        onOpenChange={setAgentsDialogOpen}
+        onRemove={handleRemoveAgent}
       />
     </Card>
   );
@@ -1414,4 +1495,16 @@ function formatPrice(value: number | null, currency: string | null) {
     maximumFractionDigits: 0,
     style: 'currency'
   }).format(value / 100);
+}
+
+function getAgentAssignmentErrorMessage(error: unknown, fallback: string) {
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  if (error.message.includes('already assigned')) {
+    return 'El vendedor ya está asignado a esta propiedad.';
+  }
+
+  return error.message || fallback;
 }

@@ -7,7 +7,9 @@
 // ============================================================
 
 import type {
+  AssignableProductAgentsResponse,
   Product,
+  ProductAgentAssignmentPayload,
   ProductByIdResponse,
   ProductFilters,
   ProductMovement,
@@ -16,7 +18,8 @@ import type {
   ProductMovementsResponse,
   ProductStatusMutationPayload,
   ProductsResponse,
-  PropertyImage
+  PropertyImage,
+  RemoveProductAgentResponse
 } from './types';
 
 const DEFAULT_APP_URL = 'http://localhost:3000';
@@ -39,6 +42,35 @@ export async function getProductMovements(productId: string): Promise<ProductMov
     `${PRODUCTS_API_PATH}/${productId}/movements?pageSize=8&order=desc`
   );
   return parseJsonResponse<ProductMovementsResponse>(response);
+}
+
+export async function getAssignableProductAgents(): Promise<AssignableProductAgentsResponse> {
+  const response = await apiFetch(`${PRODUCTS_API_PATH}/assignable-agents`);
+  return parseJsonResponse<AssignableProductAgentsResponse>(response);
+}
+
+export async function assignProductAgent(
+  productId: string,
+  data: ProductAgentAssignmentPayload
+): Promise<unknown> {
+  const response = await apiFetch(`${PRODUCTS_API_PATH}/${productId}/agents`, {
+    body: JSON.stringify(data),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST'
+  });
+
+  return parseJsonResponse<unknown>(response);
+}
+
+export async function removeProductAgent(
+  productId: string,
+  agentId: string
+): Promise<RemoveProductAgentResponse> {
+  const response = await apiFetch(`${PRODUCTS_API_PATH}/${productId}/agents/${agentId}`, {
+    method: 'DELETE'
+  });
+
+  return parseJsonResponse<RemoveProductAgentResponse>(response);
 }
 
 export async function createProductMovement(
