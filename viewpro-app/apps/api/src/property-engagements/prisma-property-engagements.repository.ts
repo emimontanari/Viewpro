@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { MovementSource, MovementType } from '@prisma/client'
+import { MovementSource, MovementType, PropertyAssetOwnerAccessStatus } from '@prisma/client'
 import type { Prisma, PropertyAssetImage } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import type {
@@ -9,6 +9,7 @@ import type {
   CreatePropertyEngagementInput,
   CreatePropertyAssetImageInput,
   DeletePropertyAssetImageResult,
+  LinkPropertyOwnerResult,
   ListPropertyEngagementsInput,
   PropertyEngagementsRepository,
   PropertyEngagementWithDetails,
@@ -17,11 +18,26 @@ import type {
   UpdatePropertyEngagementInput,
 } from './property-engagements.repository'
 
+const propertyOwnerSelect = {
+  id: true,
+  propertyAssetId: true,
+  userId: true,
+  isPrimary: true,
+  accessStatus: true,
+  createdAt: true,
+  updatedAt: true,
+  user: { select: { id: true, email: true, firstName: true } },
+} satisfies Prisma.PropertyAssetOwnerSelect
+
 const propertyEngagementInclude = {
   propertyAsset: {
     include: {
       images: {
         orderBy: [{ isPrimary: 'desc' }, { createdAt: 'desc' }],
+      },
+      owners: {
+        select: propertyOwnerSelect,
+        orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
       },
     },
   },
@@ -348,6 +364,44 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
     })
 
     return removed.count > 0
+  }
+
+  linkOwner(input: { propertyAssetId: string; ownerUserId: string }): Promise<LinkPropertyOwnerResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const activePrimaryOwners = await tx.propertyAssetOwner.count({
+        where: {
+          propertyAssetId: input.propertyAssetId,
+          isPrimary: true,
+          accessStatus: {
+            in: [PropertyAssetOwnerAccessStatus.INVITED, PropertyAssetOwnerAccessStatus.ACTIVE],
+          },
+        },
+      })
+
+      const created = await tx.propertyAssetOwner.createMany({
+        data: {
+          propertyAssetId: input.propertyAssetId,
+          userId: input.ownerUserId,
+          accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+          isPrimary: activePrimaryOwners === 0,
+        },
+        skipDuplicates: true,
+      })
+
+      if (created.count === 0) {
+        return { status: 'alreadyLinked' }
+      }
+
+      const owner = await tx.propertyAssetOwner.findFirstOrThrow({
+        where: {
+          propertyAssetId: input.propertyAssetId,
+          userId: input.ownerUserId,
+        },
+        select: propertyOwnerSelect,
+      })
+
+      return { status: 'linked', owner }
+    })
   }
 
   private buildTenantVisibilityWhere(

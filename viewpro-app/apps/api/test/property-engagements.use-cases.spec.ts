@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import {
 	GlobalRole,
+	PropertyAssetOwnerAccessStatus,
 	PropertyEngagementStatus,
 	PropertyOperationType,
 	PropertyType,
@@ -19,6 +20,7 @@ import { AssignPropertyAgentUseCase } from "../src/property-engagements/use-case
 import { ArchivePropertyEngagementUseCase } from "../src/property-engagements/use-cases/archive-property-engagement.use-case";
 import { CreatePropertyEngagementUseCase } from "../src/property-engagements/use-cases/create-property-engagement.use-case";
 import { GetPropertyEngagementUseCase } from "../src/property-engagements/use-cases/get-property-engagement.use-case";
+import { LinkPropertyOwnerUseCase } from "../src/property-engagements/use-cases/link-property-owner.use-case";
 import { ListAssignablePropertyAgentsUseCase } from "../src/property-engagements/use-cases/list-assignable-property-agents.use-case";
 import { ListPropertyEngagementsUseCase } from "../src/property-engagements/use-cases/list-property-engagements.use-case";
 import { RemovePropertyAgentUseCase } from "../src/property-engagements/use-cases/remove-property-agent.use-case";
@@ -91,6 +93,7 @@ const engagement = {
 		ownerName: "Owner Example",
 		ownerEmail: "owner@example.com",
 		images: [],
+		owners: [],
 		createdByUserId: "user-1",
 		createdAt: new Date("2026-01-01T00:00:00.000Z"),
 		updatedAt: new Date("2026-01-02T00:00:00.000Z"),
@@ -160,6 +163,7 @@ describe("Property engagement response mapper", () => {
 				orientation: "NE",
 				ownerName: "Owner Example",
 				ownerEmail: "owner@example.com",
+				owners: [],
 				images: [],
 				primaryImage: null,
 			},
@@ -174,6 +178,45 @@ describe("Property engagement response mapper", () => {
 			createdAt: "2026-01-01T00:00:00.000Z",
 			updatedAt: "2026-01-02T00:00:00.000Z",
 		});
+	});
+
+	it("maps linked property owners without sensitive user fields", () => {
+		const response = mapPropertyEngagement({
+			...engagement,
+			propertyAsset: {
+				...engagement.propertyAsset,
+				owners: [
+					{
+						id: "owner-link-1",
+						propertyAssetId: "asset-1",
+						userId: "owner-user-1",
+						isPrimary: true,
+						accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+						createdAt: new Date("2026-01-05T00:00:00.000Z"),
+						updatedAt: new Date("2026-01-06T00:00:00.000Z"),
+						user: {
+							id: "owner-user-1",
+							email: "owner@example.com",
+							firstName: "Owner",
+						},
+					},
+				],
+			},
+		});
+
+		expect(response.property.owners).toEqual([
+			{
+				id: "owner-link-1",
+				userId: "owner-user-1",
+				email: "owner@example.com",
+				firstName: "Owner",
+				isPrimary: true,
+				accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+			},
+		]);
+		expect(JSON.stringify(response.property.owners)).not.toContain(
+			"passwordHash",
+		);
 	});
 });
 
@@ -322,12 +365,10 @@ describe("Property engagement use cases", () => {
 			archiveReason: "Owner requested pause",
 		};
 		const repository = {
-			archiveForTenant: vi
-				.fn()
-				.mockResolvedValue({
-					status: "archived",
-					engagement: archivedEngagement,
-				}),
+			archiveForTenant: vi.fn().mockResolvedValue({
+				status: "archived",
+				engagement: archivedEngagement,
+			}),
 		};
 		const useCase = new ArchivePropertyEngagementUseCase(repository as never);
 
@@ -393,12 +434,10 @@ describe("Property engagement use cases", () => {
 			archiveReason: null,
 		};
 		const repository = {
-			restoreForTenant: vi
-				.fn()
-				.mockResolvedValue({
-					status: "restored",
-					engagement: restoredEngagement,
-				}),
+			restoreForTenant: vi.fn().mockResolvedValue({
+				status: "restored",
+				engagement: restoredEngagement,
+			}),
 		};
 		const useCase = new RestorePropertyEngagementUseCase(repository as never);
 
@@ -727,6 +766,146 @@ describe("Property engagement use cases", () => {
 			useCase.execute(tenant, currentUser, "engagement-1", "other-assignment"),
 		).rejects.toThrow(
 			new NotFoundException("Property agent assignment not found"),
+		);
+	});
+
+	it("links an existing user as a property owner", async () => {
+		const linkedOwner = {
+			id: "owner-link-1",
+			propertyAssetId: "asset-1",
+			userId: "owner-user-1",
+			isPrimary: true,
+			accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+			createdAt: new Date("2026-01-05T00:00:00.000Z"),
+			updatedAt: new Date("2026-01-05T00:00:00.000Z"),
+			user: {
+				id: "owner-user-1",
+				email: "owner@example.com",
+				firstName: "Owner",
+			},
+		};
+		const repository = {
+			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
+			linkOwner: vi
+				.fn()
+				.mockResolvedValue({ status: "linked", owner: linkedOwner }),
+		};
+		const usersRepository = {
+			findByEmail: vi.fn().mockResolvedValue({ id: "owner-user-1" }),
+		};
+		const useCase = new LinkPropertyOwnerUseCase(
+			repository as never,
+			usersRepository as never,
+		);
+
+		await expect(
+			useCase.execute(tenant, currentUser, "engagement-1", {
+				email: " Owner@Example.com ",
+			}),
+		).resolves.toEqual({
+			id: "owner-link-1",
+			propertyAssetId: "asset-1",
+			userId: "owner-user-1",
+			email: "owner@example.com",
+			firstName: "Owner",
+			isPrimary: true,
+			accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+			createdAt: "2026-01-05T00:00:00.000Z",
+			updatedAt: "2026-01-05T00:00:00.000Z",
+		});
+		expect(repository.findByIdForTenant).toHaveBeenCalledWith({
+			tenantId: "tenant-1",
+			engagementId: "engagement-1",
+			userId: "user-1",
+			canViewAll: true,
+		});
+		expect(usersRepository.findByEmail).toHaveBeenCalledWith(
+			"owner@example.com",
+		);
+		expect(repository.linkOwner).toHaveBeenCalledWith({
+			propertyAssetId: "asset-1",
+			ownerUserId: "owner-user-1",
+		});
+	});
+
+	it("rejects property owner linking without write permission", async () => {
+		const repository = { findByIdForTenant: vi.fn(), linkOwner: vi.fn() };
+		const usersRepository = { findByEmail: vi.fn() };
+		const useCase = new LinkPropertyOwnerUseCase(
+			repository as never,
+			usersRepository as never,
+		);
+
+		await expect(
+			useCase.execute(
+				{ ...tenant, permissions: [PERMISSIONS.ENGAGEMENTS_VIEW_ALL] },
+				currentUser,
+				"engagement-1",
+				{ email: "owner@example.com" },
+			),
+		).rejects.toThrow(new ForbiddenException("Insufficient permissions"));
+		expect(repository.findByIdForTenant).not.toHaveBeenCalled();
+		expect(usersRepository.findByEmail).not.toHaveBeenCalled();
+	});
+
+	it("returns not found when linking an owner to a missing engagement", async () => {
+		const repository = {
+			findByIdForTenant: vi.fn().mockResolvedValue(null),
+			linkOwner: vi.fn(),
+		};
+		const usersRepository = { findByEmail: vi.fn() };
+		const useCase = new LinkPropertyOwnerUseCase(
+			repository as never,
+			usersRepository as never,
+		);
+
+		await expect(
+			useCase.execute(tenant, currentUser, "missing-engagement", {
+				email: "owner@example.com",
+			}),
+		).rejects.toThrow(new NotFoundException("Property engagement not found"));
+		expect(usersRepository.findByEmail).not.toHaveBeenCalled();
+		expect(repository.linkOwner).not.toHaveBeenCalled();
+	});
+
+	it("returns not found when linking a missing user as owner", async () => {
+		const repository = {
+			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
+			linkOwner: vi.fn(),
+		};
+		const usersRepository = { findByEmail: vi.fn().mockResolvedValue(null) };
+		const useCase = new LinkPropertyOwnerUseCase(
+			repository as never,
+			usersRepository as never,
+		);
+
+		await expect(
+			useCase.execute(tenant, currentUser, "engagement-1", {
+				email: "missing@example.com",
+			}),
+		).rejects.toThrow(new NotFoundException("User not found"));
+		expect(repository.linkOwner).not.toHaveBeenCalled();
+	});
+
+	it("returns conflict when linking an already linked property owner", async () => {
+		const repository = {
+			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
+			linkOwner: vi.fn().mockResolvedValue({ status: "alreadyLinked" }),
+		};
+		const usersRepository = {
+			findByEmail: vi.fn().mockResolvedValue({ id: "owner-user-1" }),
+		};
+		const useCase = new LinkPropertyOwnerUseCase(
+			repository as never,
+			usersRepository as never,
+		);
+
+		await expect(
+			useCase.execute(tenant, currentUser, "engagement-1", {
+				email: "owner@example.com",
+			}),
+		).rejects.toThrow(
+			new ConflictException("Owner is already linked to this property"),
 		);
 	});
 

@@ -1,4 +1,5 @@
 import {
+	PropertyAssetOwnerAccessStatus,
 	PropertyOperationType,
 	PropertyType,
 	TenantRole,
@@ -29,6 +30,7 @@ describe("Property engagements (e2e)", () => {
 	beforeEach(async () => {
 		await prisma.movement.deleteMany();
 		await prisma.propertyAgent.deleteMany();
+		await prisma.propertyAssetOwner.deleteMany();
 		await prisma.propertyEngagement.deleteMany();
 		await prisma.propertyAsset.deleteMany();
 		await prisma.refreshToken.deleteMany();
@@ -519,6 +521,129 @@ describe("Property engagements (e2e)", () => {
 		await expect(
 			prisma.propertyAgent.count({ where: { id: assignment.body.id } }),
 		).resolves.toBe(1);
+	});
+
+	it("links an existing non-tenant user as active property owner", async () => {
+		const manager = await registerTenantSession(
+			"manager-link-owner@example.com",
+			"Manager Link Owner Homes",
+		);
+		const owner = await registerTenantSession(
+			"linked-owner@example.com",
+			"Linked Owner Homes",
+		);
+		const created = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Owner-visible property",
+		}).expect(201);
+
+		const response = await manager.agent
+			.post(`/api/property-engagements/${created.body.id}/owners`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ email: "linked-owner@example.com" })
+			.expect(201);
+
+		expect(response.body).toMatchObject({
+			propertyAssetId: created.body.property.id,
+			userId: owner.userId,
+			email: "linked-owner@example.com",
+			firstName: "Owner",
+			isPrimary: true,
+			accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+		});
+		await expect(
+			prisma.propertyAssetOwner.count({
+				where: {
+					propertyAssetId: created.body.property.id,
+					userId: owner.userId,
+					accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+				},
+			}),
+		).resolves.toBe(1);
+
+		const ownerProperties = await owner.agent.get("/api/owner/properties").expect(200);
+		expect(ownerProperties.body).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: created.body.property.id,
+					title: "Owner-visible property",
+				}),
+			]),
+		);
+	});
+
+	it("returns conflict when linking an owner twice", async () => {
+		const manager = await registerTenantSession(
+			"manager-owner-conflict@example.com",
+			"Manager Owner Conflict Homes",
+		);
+		const owner = await registerTenantSession(
+			"owner-conflict@example.com",
+			"Owner Conflict Homes",
+		);
+		const created = await createEngagement(manager.agent, manager.tenantId).expect(201);
+
+		await manager.agent
+			.post(`/api/property-engagements/${created.body.id}/owners`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ email: "owner-conflict@example.com" })
+			.expect(201);
+
+		const response = await manager.agent
+			.post(`/api/property-engagements/${created.body.id}/owners`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ email: "owner-conflict@example.com" })
+			.expect(409);
+
+		expect(response.body.message).toBe("Owner is already linked to this property");
+		await expect(
+			prisma.propertyAssetOwner.count({ where: { userId: owner.userId } }),
+		).resolves.toBe(1);
+	});
+
+	it("returns not found when linking a missing owner user", async () => {
+		const manager = await registerTenantSession(
+			"manager-owner-missing-user@example.com",
+			"Manager Owner Missing User Homes",
+		);
+		const created = await createEngagement(manager.agent, manager.tenantId).expect(201);
+
+		const response = await manager.agent
+			.post(`/api/property-engagements/${created.body.id}/owners`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ email: "missing-owner@example.com" })
+			.expect(404);
+
+		expect(response.body.message).toBe("User not found");
+	});
+
+	it("does not link owners to another tenant engagement", async () => {
+		const tenantA = await registerTenantSession(
+			"manager-owner-tenant-a@example.com",
+			"Manager Owner Tenant A Homes",
+		);
+		const tenantB = await registerTenantSession(
+			"manager-owner-tenant-b@example.com",
+			"Manager Owner Tenant B Homes",
+		);
+		const owner = await registerTenantSession(
+			"owner-cross-tenant@example.com",
+			"Owner Cross Tenant Homes",
+		);
+		const createdByTenantB = await createEngagement(
+			tenantB.agent,
+			tenantB.tenantId,
+		).expect(201);
+
+		const response = await tenantA.agent
+			.post(`/api/property-engagements/${createdByTenantB.body.id}/owners`)
+			.set("x-tenant-id", tenantA.tenantId)
+			.send({ email: "owner-cross-tenant@example.com" })
+			.expect(404);
+
+		expect(response.body.message).toBe("Property engagement not found");
+		await expect(
+			prisma.propertyAssetOwner.count({ where: { userId: owner.userId } }),
+		).resolves.toBe(0);
 	});
 
 	it("lists assignable tenant members for managers", async () => {
