@@ -33,12 +33,14 @@ type CreateDocumentRequestDialogErrors = Partial<
   Record<keyof CreateDocumentRequestDialogValues, string>
 >;
 
+type DocumentRequestOwnerOption = PropertyLinkedOwner & { userId: string };
+
 type CreateDocumentRequestDialogProps = {
   isSubmitting: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: CreateProductDocumentRequestPayload) => void;
   open: boolean;
-  owners: PropertyLinkedOwner[];
+  owners: DocumentRequestOwnerOption[];
 };
 
 export function CreateDocumentRequestDialog({
@@ -204,6 +206,15 @@ function validateDocumentRequest(values: CreateDocumentRequestDialogValues) {
   return errors;
 }
 
-function getOwnerDisplayName(owner: { email: string; firstName: string | null }) {
-  return owner.firstName?.trim() || owner.email;
+function getOwnerDisplayName(owner: DocumentRequestOwnerOption) {
+  const snapshotName = [owner.ownerFirstName, owner.ownerLastName]
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join(' ');
+  const userName = [owner.firstName, owner.lastName]
+    .map((value) => value?.trim())
+    .filter(Boolean)
+    .join(' ');
+
+  return snapshotName || userName || owner.email;
 }

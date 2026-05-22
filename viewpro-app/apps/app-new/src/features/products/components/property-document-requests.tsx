@@ -26,6 +26,8 @@ type PropertyDocumentRequestsProps = {
   tenantId: string;
 };
 
+type ActiveDocumentOwner = PropertyLinkedOwner & { userId: string };
+
 const documentStatusLabels: Record<ProductDocumentRequestStatus, string> = {
   APPROVED: 'Aprobado',
   CANCELLED: 'Cancelado',
@@ -62,10 +64,7 @@ export function PropertyDocumentRequests({
 }: PropertyDocumentRequestsProps) {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const activeOwners = useMemo(
-    () => owners.filter((owner) => owner.accessStatus === 'ACTIVE'),
-    [owners]
-  );
+  const activeOwners = useMemo(() => owners.filter(isActiveDocumentOwner), [owners]);
   const documentRequestsQuery = useQuery(productDocumentRequestsOptions(productId, tenantId));
   const createDocumentRequestMutation = useMutation({
     mutationFn: (payload: CreateProductDocumentRequestPayload) =>
@@ -120,7 +119,11 @@ export function PropertyDocumentRequests({
         </Button>
       </div>
 
-      <DocumentRequestHint isArchived={isArchived} activeOwnerCount={activeOwners.length} />
+      <DocumentRequestHint
+        isArchived={isArchived}
+        activeOwnerCount={activeOwners.length}
+        linkedOwnerCount={owners.length}
+      />
 
       <div className='rounded-2xl border bg-card p-4 shadow-xs'>
         {documentRequestsQuery.isLoading ? <DocumentRequestsLoadingState /> : null}
@@ -154,10 +157,12 @@ export function PropertyDocumentRequests({
 
 function DocumentRequestHint({
   activeOwnerCount,
-  isArchived
+  isArchived,
+  linkedOwnerCount
 }: {
   activeOwnerCount: number;
   isArchived: boolean;
+  linkedOwnerCount: number;
 }) {
   if (isArchived) {
     return (
@@ -170,7 +175,9 @@ function DocumentRequestHint({
   if (activeOwnerCount === 0) {
     return (
       <p className='rounded-xl border border-dashed bg-muted/20 p-3 text-sm text-muted-foreground'>
-        Vinculá un propietario para solicitar documentación.
+        {linkedOwnerCount > 0
+          ? 'El propietario va a poder recibir solicitudes cuando active su acceso.'
+          : 'Vinculá un propietario para solicitar documentación.'}
       </p>
     );
   }
@@ -267,6 +274,25 @@ function DocumentRequestItem({
   );
 }
 
-function getOwnerDisplayName(owner: { email: string; firstName: string | null }) {
-  return owner.firstName?.trim() || owner.email;
+function isActiveDocumentOwner(owner: PropertyLinkedOwner): owner is ActiveDocumentOwner {
+  return owner.accessStatus === 'ACTIVE' && Boolean(owner.userId);
+}
+
+function getOwnerDisplayName(owner: {
+  email: string;
+  firstName: string | null;
+  lastName?: string | null;
+  ownerFirstName?: string;
+  ownerLastName?: string;
+}) {
+  const snapshotName = [owner.ownerFirstName, owner.ownerLastName]
+    .map((value) => value?.trim())
+    .filter(Boolean)
+    .join(' ');
+  const userName = [owner.firstName, owner.lastName]
+    .map((value) => value?.trim())
+    .filter(Boolean)
+    .join(' ');
+
+  return snapshotName || userName || owner.email;
 }

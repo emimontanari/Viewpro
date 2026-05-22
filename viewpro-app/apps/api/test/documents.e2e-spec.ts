@@ -421,10 +421,18 @@ describe("Documents internal endpoints (e2e)", () => {
 	}
 
 	async function grantOwnerAccess(userId: string, propertyAssetId: string) {
+		const user = await prisma.user.findUniqueOrThrow({
+			where: { id: userId },
+			select: { email: true, firstName: true, lastName: true },
+		});
+
 		return prisma.propertyAssetOwner.create({
 			data: {
 				userId,
 				propertyAssetId,
+				ownerEmail: user.email.toLowerCase(),
+				ownerFirstName: user.firstName,
+				ownerLastName: user.lastName ?? "",
 				accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
 			},
 		});
