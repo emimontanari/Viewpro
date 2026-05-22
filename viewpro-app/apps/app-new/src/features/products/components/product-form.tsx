@@ -25,6 +25,7 @@ import { Icons } from '@/components/icons';
 import { productKeys } from '../api/queries';
 import {
   createProduct,
+  createProductMovement,
   deleteProductImage,
   getProductMovements,
   restoreProduct,
@@ -32,7 +33,12 @@ import {
   updateProduct,
   uploadProductImage
 } from '../api/service';
-import type { Product, ProductMutationPayload, PropertyImage } from '../api/types';
+import type {
+  Product,
+  ProductMovementMutationPayload,
+  ProductMutationPayload,
+  PropertyImage
+} from '../api/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -51,6 +57,7 @@ import {
   propertyTypeOptions
 } from '@/features/products/constants/product-options';
 import { formatDateTime } from '../utils/format-date-time';
+import { CreatePropertyMovementDialog } from './create-property-movement-dialog';
 import { PropertyMovementHistory } from './property-movement-history';
 import { QuickStatusSelect } from './quick-status-select';
 import {
@@ -654,6 +661,7 @@ function PropertyEngagementDetails({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [movementDialogOpen, setMovementDialogOpen] = useState(false);
   const isArchived = isArchivedProduct(propertyEngagement);
   const address = getAddress(propertyEngagement) || 'Sin dirección cargada';
   const propertyFacts = getPropertyFacts(propertyEngagement);
@@ -672,6 +680,27 @@ function PropertyEngagementDetails({
       toast.error(error instanceof Error ? error.message : 'No se pudo restaurar la propiedad');
     }
   });
+  const createMovementMutation = useMutation({
+    mutationFn: (payload: ProductMovementMutationPayload) =>
+      createProductMovement(propertyEngagement.id, payload),
+    onSuccess: async (_movement, payload) => {
+      setMovementDialogOpen(false);
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: productKeys.movements(propertyEngagement.id, propertyEngagement.tenantId)
+        }),
+        queryClient.invalidateQueries({
+          queryKey: payload.newStatus
+            ? productKeys.all
+            : productKeys.detail(propertyEngagement.id, propertyEngagement.tenantId)
+        })
+      ]);
+      toast.success('Actualización agregada');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'No se pudo agregar la actualización');
+    }
+  });
 
   function handleRestoreProperty() {
     if (restoreMutation.isPending) {
@@ -679,6 +708,14 @@ function PropertyEngagementDetails({
     }
 
     restoreMutation.mutate();
+  }
+
+  function handleCreateMovement(payload: ProductMovementMutationPayload) {
+    if (isArchived || createMovementMutation.isPending) {
+      return;
+    }
+
+    createMovementMutation.mutate(payload);
   }
 
   return (
@@ -731,17 +768,32 @@ function PropertyEngagementDetails({
               Volver al listado
             </Button>
             {isArchived ? (
+              <>
+                <Button
+                  type='button'
+                  variant='secondary'
+                  disabled={restoreMutation.isPending}
+                  isLoading={restoreMutation.isPending}
+                  onClick={handleRestoreProperty}
+                >
+                  <Icons.check className='mr-2 size-4' />
+                  Restaurar propiedad
+                </Button>
+                <p className='max-w-56 text-xs leading-5 text-muted-foreground'>
+                  Restaurá la propiedad para agregar actualizaciones.
+                </p>
+              </>
+            ) : (
               <Button
                 type='button'
                 variant='secondary'
-                disabled={restoreMutation.isPending}
-                isLoading={restoreMutation.isPending}
-                onClick={handleRestoreProperty}
+                disabled={createMovementMutation.isPending}
+                onClick={() => setMovementDialogOpen(true)}
               >
-                <Icons.check className='mr-2 size-4' />
-                Restaurar propiedad
+                <Icons.add className='mr-2 size-4' />
+                Agregar actualización
               </Button>
-            ) : null}
+            )}
             <Button
               type='button'
               onClick={() => router.push(`/dashboard/product/${propertyEngagement.id}/edit`)}
@@ -870,6 +922,12 @@ function PropertyEngagementDetails({
           movements={movementsQuery.data?.items ?? []}
         />
       </CardContent>
+      <CreatePropertyMovementDialog
+        open={movementDialogOpen}
+        isSubmitting={createMovementMutation.isPending}
+        onOpenChange={setMovementDialogOpen}
+        onSubmit={handleCreateMovement}
+      />
     </Card>
   );
 }

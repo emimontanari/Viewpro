@@ -25,6 +25,8 @@ export type ProductMovementType =
   | 'ARCHIVED'
   | 'RESTORED';
 
+export type ManualProductMovementType = Exclude<ProductMovementType, 'ARCHIVED' | 'RESTORED'>;
+
 export type ProductMovementSource = 'MANUAL' | 'SYSTEM';
 
 export type ProductMovementInterestLevel = 'LOW' | 'MEDIUM' | 'HIGH';
@@ -166,4 +168,11 @@ export type ProductMutationPayload = {
 export type ProductStatusMutationPayload = {
   previousStatus?: PropertyEngagementStatus;
   status: PropertyEngagementStatus;
+};
+
+export type ProductMovementMutationPayload = {
+  type: ManualProductMovementType;
+  observation: string;
+  nextStep?: string;
+  newStatus?: PropertyEngagementStatus;
 };

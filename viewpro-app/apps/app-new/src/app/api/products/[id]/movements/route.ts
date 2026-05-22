@@ -20,6 +20,22 @@ export async function GET(request: NextRequest, { params }: Params) {
   }
 }
 
+export async function POST(request: NextRequest, { params }: Params) {
+  try {
+    const { id } = await params;
+    const body = await request.json().catch(() => ({}));
+    const response = await bffFetch(`/property-engagements/${id}/movements`, {
+      body: JSON.stringify(body),
+      headers: { 'content-type': 'application/json' },
+      method: 'POST'
+    });
+
+    return proxyJsonResponse(response);
+  } catch (error) {
+    return toBffErrorResponse(error, 'No se pudo agregar la actualización de la propiedad.');
+  }
+}
+
 function toBffErrorResponse(error: unknown, fallbackMessage: string) {
   const isTimeout = error instanceof Error && error.name === 'AbortError';
   return NextResponse.json(

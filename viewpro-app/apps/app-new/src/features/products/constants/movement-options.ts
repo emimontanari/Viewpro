@@ -12,15 +12,20 @@ export const movementTypeLabels = {
   RESTORED: 'Restaurada'
 } satisfies Record<ProductMovementType, string>;
 
-export const manualMovementTypeOptions = [
-  { label: movementTypeLabels.GENERAL_UPDATE, value: 'GENERAL_UPDATE' },
-  { label: movementTypeLabels.INQUIRY, value: 'INQUIRY' },
-  { label: movementTypeLabels.VISIT_SCHEDULED, value: 'VISIT_SCHEDULED' },
-  { label: movementTypeLabels.VISIT_COMPLETED, value: 'VISIT_COMPLETED' },
-  { label: movementTypeLabels.OFFER_RECEIVED, value: 'OFFER_RECEIVED' },
-  { label: movementTypeLabels.DOCUMENTATION_UPDATE, value: 'DOCUMENTATION_UPDATE' },
-  { label: movementTypeLabels.STATUS_CHANGE, value: 'STATUS_CHANGE' }
-] satisfies Array<{ label: string; value: Exclude<ProductMovementType, 'ARCHIVED' | 'RESTORED'> }>;
+export const manualMovementTypes = [
+  'GENERAL_UPDATE',
+  'INQUIRY',
+  'VISIT_SCHEDULED',
+  'VISIT_COMPLETED',
+  'OFFER_RECEIVED',
+  'DOCUMENTATION_UPDATE',
+  'STATUS_CHANGE'
+] as const satisfies ReadonlyArray<Exclude<ProductMovementType, 'ARCHIVED' | 'RESTORED'>>;
+
+export const manualMovementTypeOptions = manualMovementTypes.map((value) => ({
+  label: movementTypeLabels[value],
+  value
+}));
 
 export function getMovementTypeLabel(type: ProductMovementType) {
   return movementTypeLabels[type];
