@@ -66,6 +66,7 @@ import { LinkPropertyOwnerDialog } from './link-property-owner-dialog';
 import { ManagePropertyAgentsDialog, PropertyAgentsPanel } from './manage-property-agents-dialog';
 import { PropertyOwnerCard } from './property-owner-card';
 import { PropertyMovementHistory } from './property-movement-history';
+import { PropertyDocumentRequests } from './property-document-requests';
 import { QuickStatusSelect } from './quick-status-select';
 import {
   getAddress,
@@ -1084,6 +1085,13 @@ function PropertyEngagementDetails({
           isError={movementsQuery.isError}
           isLoading={movementsQuery.isLoading}
           movements={movementsQuery.data?.items ?? []}
+        />
+
+        <PropertyDocumentRequests
+          isArchived={isArchived}
+          owners={propertyEngagement.property.owners}
+          productId={propertyEngagement.id}
+          tenantId={propertyEngagement.tenantId}
         />
       </CardContent>
       <CreatePropertyMovementDialog

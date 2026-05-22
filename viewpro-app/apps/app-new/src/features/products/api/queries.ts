@@ -1,5 +1,10 @@
 import { queryOptions } from '@tanstack/react-query';
-import { getAssignableProductAgents, getProducts, getProductById } from './service';
+import {
+  getAssignableProductAgents,
+  getProductDocumentRequests,
+  getProducts,
+  getProductById
+} from './service';
 import type { Product, ProductFilters } from './types';
 
 export type { Product };
@@ -11,6 +16,8 @@ export const productKeys = {
     [...productKeys.all, 'detail', id, tenantId ?? 'no-tenant'] as const,
   movements: (id: string, tenantId?: string | null) =>
     [...productKeys.all, 'movements', id, tenantId ?? 'no-tenant'] as const,
+  documentRequests: (id: string, tenantId?: string | null) =>
+    [...productKeys.all, 'document-requests', id, tenantId ?? 'no-tenant'] as const,
   assignableAgents: (tenantId?: string | null) =>
     [...productKeys.all, 'assignable-agents', tenantId ?? 'no-tenant'] as const
 };
@@ -25,6 +32,12 @@ export const productByIdOptions = (id: string, tenantId?: string | null) =>
   queryOptions({
     queryKey: productKeys.detail(id, tenantId),
     queryFn: () => getProductById(id)
+  });
+
+export const productDocumentRequestsOptions = (id: string, tenantId?: string | null) =>
+  queryOptions({
+    queryKey: productKeys.documentRequests(id, tenantId),
+    queryFn: () => getProductDocumentRequests(id, { pageSize: 10 })
   });
 
 export const assignableProductAgentsOptions = (tenantId?: string | null) =>

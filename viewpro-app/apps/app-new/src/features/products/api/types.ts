@@ -88,6 +88,60 @@ export type LinkProductOwnerResponse = PropertyLinkedOwner & {
   updatedAt: string;
 };
 
+export type ProductDocumentRequestStatus =
+  | 'PENDING'
+  | 'SUBMITTED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'CANCELLED';
+
+export type ProductDocumentVersionStatus = 'PENDING_UPLOAD' | 'UPLOADED' | 'APPROVED' | 'REJECTED';
+
+export type ProductDocumentVersion = {
+  id: string;
+  documentId: string;
+  uploadedByUserId: string;
+  storageKey: string;
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
+  checksum: string | null;
+  status: ProductDocumentVersionStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProductDocumentRequest = {
+  id: string;
+  tenantId: string;
+  propertyEngagementId: string;
+  ownerUserId: string;
+  requestedByUserId: string;
+  title: string;
+  description: string | null;
+  status: ProductDocumentRequestStatus;
+  reviewedByUserId: string | null;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  currentVersion: ProductDocumentVersion | null;
+  versions: ProductDocumentVersion[];
+};
+
+export type ProductDocumentRequestsResponse = {
+  items: ProductDocumentRequest[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type CreateProductDocumentRequestPayload = {
+  ownerUserId: string;
+  title: string;
+  description?: string;
+};
+
 export type PropertyImage = {
   id: string;
   storageKey: string;
