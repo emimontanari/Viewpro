@@ -1,5 +1,6 @@
 import {
 	BadRequestException,
+	ConflictException,
 	ForbiddenException,
 	NotFoundException,
 } from "@nestjs/common";
@@ -18,7 +19,9 @@ import { AssignPropertyAgentUseCase } from "../src/property-engagements/use-case
 import { ArchivePropertyEngagementUseCase } from "../src/property-engagements/use-cases/archive-property-engagement.use-case";
 import { CreatePropertyEngagementUseCase } from "../src/property-engagements/use-cases/create-property-engagement.use-case";
 import { GetPropertyEngagementUseCase } from "../src/property-engagements/use-cases/get-property-engagement.use-case";
+import { ListAssignablePropertyAgentsUseCase } from "../src/property-engagements/use-cases/list-assignable-property-agents.use-case";
 import { ListPropertyEngagementsUseCase } from "../src/property-engagements/use-cases/list-property-engagements.use-case";
+import { RemovePropertyAgentUseCase } from "../src/property-engagements/use-cases/remove-property-agent.use-case";
 import { RestorePropertyEngagementUseCase } from "../src/property-engagements/use-cases/restore-property-engagement.use-case";
 import { SetPropertyImagePrimaryUseCase } from "../src/property-engagements/use-cases/set-property-image-primary.use-case";
 import { UpdatePropertyEngagementUseCase } from "../src/property-engagements/use-cases/update-property-engagement.use-case";
@@ -321,7 +324,10 @@ describe("Property engagement use cases", () => {
 		const repository = {
 			archiveForTenant: vi
 				.fn()
-				.mockResolvedValue({ status: "archived", engagement: archivedEngagement }),
+				.mockResolvedValue({
+					status: "archived",
+					engagement: archivedEngagement,
+				}),
 		};
 		const useCase = new ArchivePropertyEngagementUseCase(repository as never);
 
@@ -357,7 +363,9 @@ describe("Property engagement use cases", () => {
 
 	it("rejects archive actions when the engagement is already archived", async () => {
 		const repository = {
-			archiveForTenant: vi.fn().mockResolvedValue({ status: "alreadyArchived" }),
+			archiveForTenant: vi
+				.fn()
+				.mockResolvedValue({ status: "alreadyArchived" }),
 		};
 		const useCase = new ArchivePropertyEngagementUseCase(repository as never);
 
@@ -387,7 +395,10 @@ describe("Property engagement use cases", () => {
 		const repository = {
 			restoreForTenant: vi
 				.fn()
-				.mockResolvedValue({ status: "restored", engagement: restoredEngagement }),
+				.mockResolvedValue({
+					status: "restored",
+					engagement: restoredEngagement,
+				}),
 		};
 		const useCase = new RestorePropertyEngagementUseCase(repository as never);
 
@@ -585,7 +596,10 @@ describe("Property engagement use cases", () => {
 	it("validates tenant membership before assigning an agent", async () => {
 		const repository = {
 			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
-			assignAgent: vi.fn().mockResolvedValue({ id: "agent-assignment-1" }),
+			assignAgent: vi.fn().mockResolvedValue({
+				status: "assigned",
+				assignment: { id: "agent-assignment-1" },
+			}),
 		};
 		const membershipsRepository = {
 			findByUserIdAndTenantId: vi
@@ -634,5 +648,141 @@ describe("Property engagement use cases", () => {
 			new BadRequestException("Agent is not a member of this tenant"),
 		);
 		expect(repository.assignAgent).not.toHaveBeenCalled();
+	});
+
+	it("returns conflict when assigning an already assigned agent", async () => {
+		const repository = {
+			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
+			assignAgent: vi.fn().mockResolvedValue({ status: "alreadyAssigned" }),
+		};
+		const membershipsRepository = {
+			findByUserIdAndTenantId: vi
+				.fn()
+				.mockResolvedValue({ id: "membership-agent-1" }),
+		};
+		const useCase = new AssignPropertyAgentUseCase(
+			repository as never,
+			membershipsRepository as never,
+		);
+
+		await expect(
+			useCase.execute(tenant, currentUser, "engagement-1", {
+				agentUserId: "agent-1",
+			}),
+		).rejects.toThrow(
+			new ConflictException(
+				"Agent is already assigned to this property engagement",
+			),
+		);
+	});
+
+	it("removes an agent assignment from a visible engagement", async () => {
+		const repository = {
+			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
+			removeAgent: vi.fn().mockResolvedValue(true),
+		};
+		const useCase = new RemovePropertyAgentUseCase(repository as never);
+
+		await expect(
+			useCase.execute(
+				tenant,
+				currentUser,
+				"engagement-1",
+				"agent-assignment-1",
+			),
+		).resolves.toEqual({ deleted: true, id: "agent-assignment-1" });
+		expect(repository.removeAgent).toHaveBeenCalledWith({
+			tenantId: "tenant-1",
+			engagementId: "engagement-1",
+			agentId: "agent-assignment-1",
+		});
+	});
+
+	it("returns not found when removing an agent from a missing engagement", async () => {
+		const repository = {
+			findByIdForTenant: vi.fn().mockResolvedValue(null),
+			removeAgent: vi.fn(),
+		};
+		const useCase = new RemovePropertyAgentUseCase(repository as never);
+
+		await expect(
+			useCase.execute(
+				tenant,
+				currentUser,
+				"missing-engagement",
+				"agent-assignment-1",
+			),
+		).rejects.toThrow(new NotFoundException("Property engagement not found"));
+		expect(repository.removeAgent).not.toHaveBeenCalled();
+	});
+
+	it("returns not found when removing an unrelated agent assignment", async () => {
+		const repository = {
+			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
+			removeAgent: vi.fn().mockResolvedValue(false),
+		};
+		const useCase = new RemovePropertyAgentUseCase(repository as never);
+
+		await expect(
+			useCase.execute(tenant, currentUser, "engagement-1", "other-assignment"),
+		).rejects.toThrow(
+			new NotFoundException("Property agent assignment not found"),
+		);
+	});
+
+	it("lists assignable property agents for a tenant", async () => {
+		const membershipsRepository = {
+			findManyByTenantId: vi.fn().mockResolvedValue([
+				{
+					userId: "manager-1",
+					role: TenantRole.MANAGER,
+					user: { email: "manager@example.com", firstName: "Manager" },
+				},
+				{
+					userId: "agent-1",
+					role: TenantRole.AGENT,
+					user: { email: "agent@example.com", firstName: "Agent" },
+				},
+			]),
+		};
+		const useCase = new ListAssignablePropertyAgentsUseCase(
+			membershipsRepository as never,
+		);
+
+		await expect(useCase.execute(tenant)).resolves.toEqual({
+			items: [
+				{
+					userId: "manager-1",
+					email: "manager@example.com",
+					firstName: "Manager",
+					role: TenantRole.MANAGER,
+				},
+				{
+					userId: "agent-1",
+					email: "agent@example.com",
+					firstName: "Agent",
+					role: TenantRole.AGENT,
+				},
+			],
+		});
+		expect(membershipsRepository.findManyByTenantId).toHaveBeenCalledWith(
+			"tenant-1",
+		);
+	});
+
+	it("rejects assignable property agents listing without team or engagement permissions", async () => {
+		const membershipsRepository = { findManyByTenantId: vi.fn() };
+		const useCase = new ListAssignablePropertyAgentsUseCase(
+			membershipsRepository as never,
+		);
+		const readOnlyTenant = {
+			...tenant,
+			permissions: [PERMISSIONS.TENANT_VIEW],
+		};
+
+		await expect(useCase.execute(readOnlyTenant)).rejects.toThrow(
+			new ForbiddenException("Insufficient permissions"),
+		);
+		expect(membershipsRepository.findManyByTenantId).not.toHaveBeenCalled();
 	});
 });

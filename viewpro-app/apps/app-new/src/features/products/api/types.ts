@@ -33,6 +33,35 @@ export type ProductMovementInterestLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 
 export type PropertyArchiveFilter = 'active' | 'archived' | 'all';
 
+export type TenantMemberRole = 'PRINCIPAL_MANAGER' | 'MANAGER' | 'AGENT';
+
+export type ProductAgent = {
+  id: string;
+  userId: string;
+  email: string;
+  firstName: string | null;
+};
+
+export type AssignableProductAgent = {
+  userId: string;
+  email: string;
+  firstName: string | null;
+  role: TenantMemberRole;
+};
+
+export type AssignableProductAgentsResponse = {
+  items: AssignableProductAgent[];
+};
+
+export type ProductAgentAssignmentPayload = {
+  agentUserId: string;
+};
+
+export type RemoveProductAgentResponse = {
+  deleted: true;
+  id: string;
+};
+
 export type PropertyImage = {
   id: string;
   storageKey: string;
@@ -75,12 +104,7 @@ export type PropertyEngagement = {
     images: PropertyImage[];
     primaryImage: PropertyImage | null;
   };
-  agents: Array<{
-    id: string;
-    userId: string;
-    email: string;
-    firstName: string;
-  }>;
+  agents: ProductAgent[];
   createdAt: string;
   updatedAt: string;
 };

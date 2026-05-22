@@ -1,32 +1,43 @@
-import { Injectable } from '@nestjs/common'
-import type { Prisma, TenantMembership } from '@prisma/client'
-import { PrismaService } from '../database/prisma.service'
+import { Injectable } from "@nestjs/common";
+import type { Prisma, TenantMembership } from "@prisma/client";
+import { PrismaService } from "../database/prisma.service";
 import type {
-  MembershipsRepository,
-  MembershipWithTenant,
-  MembershipWithUserAndTenant,
-} from './memberships.repository'
+	MembershipsRepository,
+	MembershipWithTenant,
+	MembershipWithUserAndTenant,
+} from "./memberships.repository";
 
 @Injectable()
 export class PrismaMembershipsRepository implements MembershipsRepository {
-  constructor(private readonly prisma: PrismaService) {}
+	constructor(private readonly prisma: PrismaService) {}
 
-  create(data: Prisma.TenantMembershipCreateInput): Promise<TenantMembership> {
-    return this.prisma.tenantMembership.create({ data })
-  }
+	create(data: Prisma.TenantMembershipCreateInput): Promise<TenantMembership> {
+		return this.prisma.tenantMembership.create({ data });
+	}
 
-  findManyByUserId(userId: string): Promise<MembershipWithTenant[]> {
-    return this.prisma.tenantMembership.findMany({
-      where: { userId },
-      include: { tenant: true },
-      orderBy: { createdAt: 'asc' },
-    })
-  }
+	findManyByUserId(userId: string): Promise<MembershipWithTenant[]> {
+		return this.prisma.tenantMembership.findMany({
+			where: { userId },
+			include: { tenant: true },
+			orderBy: { createdAt: "asc" },
+		});
+	}
 
-  findByUserIdAndTenantId(userId: string, tenantId: string): Promise<MembershipWithUserAndTenant | null> {
-    return this.prisma.tenantMembership.findUnique({
-      where: { userId_tenantId: { userId, tenantId } },
-      include: { user: true, tenant: true },
-    })
-  }
+	findManyByTenantId(tenantId: string): Promise<MembershipWithUserAndTenant[]> {
+		return this.prisma.tenantMembership.findMany({
+			where: { tenantId },
+			include: { user: true, tenant: true },
+			orderBy: { createdAt: "asc" },
+		});
+	}
+
+	findByUserIdAndTenantId(
+		userId: string,
+		tenantId: string,
+	): Promise<MembershipWithUserAndTenant | null> {
+		return this.prisma.tenantMembership.findUnique({
+			where: { userId_tenantId: { userId, tenantId } },
+			include: { user: true, tenant: true },
+		});
+	}
 }

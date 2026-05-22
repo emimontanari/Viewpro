@@ -672,9 +672,17 @@ describe("Property engagements foundation", () => {
 	});
 
 	it("assigns an agent within the engagement tenant boundary", async () => {
-		const create = vi.fn().mockResolvedValue({ id: "agent-assignment-1" });
+		const createMany = vi.fn().mockResolvedValue({ count: 1 });
+		const findFirstOrThrow = vi
+			.fn()
+			.mockResolvedValue({ id: "agent-assignment-1" });
+		const transaction = vi.fn(async (callback) =>
+			callback({
+				propertyAgent: { createMany, findFirstOrThrow },
+			}),
+		);
 		const repository = new PrismaPropertyEngagementsRepository({
-			propertyAgent: { create },
+			$transaction: transaction,
 		} as never);
 
 		await expect(
@@ -684,15 +692,86 @@ describe("Property engagements foundation", () => {
 				agentUserId: "agent-1",
 				assignedByUserId: "manager-1",
 			}),
-		).resolves.toEqual({ id: "agent-assignment-1" });
+		).resolves.toEqual({
+			status: "assigned",
+			assignment: { id: "agent-assignment-1" },
+		});
 
-		expect(create).toHaveBeenCalledWith({
+		expect(createMany).toHaveBeenCalledWith({
 			data: {
-				tenant: { connect: { id: "tenant-1" } },
-				propertyEngagement: { connect: { id: "engagement-1" } },
-				agentUser: { connect: { id: "agent-1" } },
-				assignedByUser: { connect: { id: "manager-1" } },
+				tenantId: "tenant-1",
+				propertyEngagementId: "engagement-1",
+				agentUserId: "agent-1",
+				assignedByUserId: "manager-1",
+			},
+			skipDuplicates: true,
+		});
+		expect(findFirstOrThrow).toHaveBeenCalledWith({
+			where: {
+				tenantId: "tenant-1",
+				propertyEngagementId: "engagement-1",
+				agentUserId: "agent-1",
 			},
 		});
+	});
+
+	it("returns already assigned when duplicate assignment is skipped", async () => {
+		const createMany = vi.fn().mockResolvedValue({ count: 0 });
+		const findFirstOrThrow = vi.fn();
+		const transaction = vi.fn(async (callback) =>
+			callback({
+				propertyAgent: { createMany, findFirstOrThrow },
+			}),
+		);
+		const repository = new PrismaPropertyEngagementsRepository({
+			$transaction: transaction,
+		} as never);
+
+		await expect(
+			repository.assignAgent({
+				tenantId: "tenant-1",
+				engagementId: "engagement-1",
+				agentUserId: "agent-1",
+				assignedByUserId: "manager-1",
+			}),
+		).resolves.toEqual({ status: "alreadyAssigned" });
+		expect(findFirstOrThrow).not.toHaveBeenCalled();
+	});
+
+	it("removes an agent assignment within the engagement tenant boundary", async () => {
+		const deleteMany = vi.fn().mockResolvedValue({ count: 1 });
+		const repository = new PrismaPropertyEngagementsRepository({
+			propertyAgent: { deleteMany },
+		} as never);
+
+		await expect(
+			repository.removeAgent({
+				tenantId: "tenant-1",
+				engagementId: "engagement-1",
+				agentId: "agent-assignment-1",
+			}),
+		).resolves.toBe(true);
+		expect(deleteMany).toHaveBeenCalledWith({
+			where: {
+				id: "agent-assignment-1",
+				tenantId: "tenant-1",
+				propertyEngagementId: "engagement-1",
+			},
+		});
+	});
+
+	it("returns false when removing an unrelated agent assignment", async () => {
+		const deleteMany = vi.fn().mockResolvedValue({ count: 0 });
+		const repository = new PrismaPropertyEngagementsRepository({
+			propertyAgent: { deleteMany },
+		} as never);
+
+		await expect(
+			repository.removeAgent({
+				tenantId: "tenant-1",
+				engagementId: "engagement-1",
+				agentId: "other-assignment",
+			}),
+		).resolves.toBe(false);
 	});
 });

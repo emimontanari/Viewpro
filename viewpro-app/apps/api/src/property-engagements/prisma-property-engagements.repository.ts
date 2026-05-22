@@ -1,10 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { MovementSource, MovementType } from '@prisma/client'
-import type { Prisma, PropertyAgent, PropertyAssetImage } from '@prisma/client'
+import type { Prisma, PropertyAssetImage } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import type {
   ArchivePropertyEngagementInput,
   ArchivePropertyEngagementResult,
+  AssignPropertyAgentResult,
   CreatePropertyEngagementInput,
   CreatePropertyAssetImageInput,
   DeletePropertyAssetImageResult,
@@ -305,15 +306,48 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
     engagementId: string
     agentUserId: string
     assignedByUserId: string
-  }): Promise<PropertyAgent> {
-    return this.prisma.propertyAgent.create({
-      data: {
-        tenant: { connect: { id: input.tenantId } },
-        propertyEngagement: { connect: { id: input.engagementId } },
-        agentUser: { connect: { id: input.agentUserId } },
-        assignedByUser: { connect: { id: input.assignedByUserId } },
+  }): Promise<AssignPropertyAgentResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.propertyAgent.createMany({
+        data: {
+          tenantId: input.tenantId,
+          propertyEngagementId: input.engagementId,
+          agentUserId: input.agentUserId,
+          assignedByUserId: input.assignedByUserId,
+        },
+        skipDuplicates: true,
+      })
+
+      if (created.count === 0) {
+        return { status: 'alreadyAssigned' }
+      }
+
+      const assignment = await tx.propertyAgent.findFirstOrThrow({
+        where: {
+          tenantId: input.tenantId,
+          propertyEngagementId: input.engagementId,
+          agentUserId: input.agentUserId,
+        },
+      })
+
+      return { status: 'assigned', assignment }
+    })
+  }
+
+  async removeAgent(input: {
+    tenantId: string
+    engagementId: string
+    agentId: string
+  }): Promise<boolean> {
+    const removed = await this.prisma.propertyAgent.deleteMany({
+      where: {
+        id: input.agentId,
+        tenantId: input.tenantId,
+        propertyEngagementId: input.engagementId,
       },
     })
+
+    return removed.count > 0
   }
 
   private buildTenantVisibilityWhere(

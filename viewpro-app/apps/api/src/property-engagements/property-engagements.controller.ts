@@ -20,7 +20,9 @@ import { ArchivePropertyEngagementUseCase } from './use-cases/archive-property-e
 import { CreatePropertyEngagementUseCase } from './use-cases/create-property-engagement.use-case'
 import { DeletePropertyImageUseCase } from './use-cases/delete-property-image.use-case'
 import { GetPropertyEngagementUseCase } from './use-cases/get-property-engagement.use-case'
+import { ListAssignablePropertyAgentsUseCase } from './use-cases/list-assignable-property-agents.use-case'
 import { ListPropertyEngagementsUseCase } from './use-cases/list-property-engagements.use-case'
+import { RemovePropertyAgentUseCase } from './use-cases/remove-property-agent.use-case'
 import { RestorePropertyEngagementUseCase } from './use-cases/restore-property-engagement.use-case'
 import { SetPropertyImagePrimaryUseCase } from './use-cases/set-property-image-primary.use-case'
 import { UpdatePropertyEngagementUseCase } from './use-cases/update-property-engagement.use-case'
@@ -59,6 +61,10 @@ export class PropertyEngagementsController {
     private readonly restorePropertyEngagementUseCase: RestorePropertyEngagementUseCase,
     @Inject(AssignPropertyAgentUseCase)
     private readonly assignPropertyAgentUseCase: AssignPropertyAgentUseCase,
+    @Inject(RemovePropertyAgentUseCase)
+    private readonly removePropertyAgentUseCase: RemovePropertyAgentUseCase,
+    @Inject(ListAssignablePropertyAgentsUseCase)
+    private readonly listAssignablePropertyAgentsUseCase: ListAssignablePropertyAgentsUseCase,
     @Inject(UploadPropertyImageUseCase)
     private readonly uploadPropertyImageUseCase: UploadPropertyImageUseCase,
     @Inject(DeletePropertyImageUseCase)
@@ -85,6 +91,12 @@ export class PropertyEngagementsController {
     @Query() query: ListPropertyEngagementsQuery,
   ) {
     return this.listPropertyEngagementsUseCase.execute(tenant, currentUser, query)
+  }
+
+  @Get('assignable-agents')
+  @RequirePermissions(PERMISSIONS.TEAM_VIEW)
+  listAssignableAgents(@CurrentTenant() tenant: TenantContext) {
+    return this.listAssignablePropertyAgentsUseCase.execute(tenant)
   }
 
   @Get(':id')
@@ -172,5 +184,16 @@ export class PropertyEngagementsController {
     @Body() body: AssignPropertyAgentDto,
   ) {
     return this.assignPropertyAgentUseCase.execute(tenant, currentUser, id, body)
+  }
+
+  @Delete(':id/agents/:agentId')
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_CREATE)
+  removeAgent(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('id') id: string,
+    @Param('agentId') agentId: string,
+  ) {
+    return this.removePropertyAgentUseCase.execute(tenant, currentUser, id, agentId)
   }
 }

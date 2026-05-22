@@ -12,7 +12,9 @@ import { ArchivePropertyEngagementUseCase } from "./use-cases/archive-property-e
 import { CreatePropertyEngagementUseCase } from "./use-cases/create-property-engagement.use-case";
 import { DeletePropertyImageUseCase } from "./use-cases/delete-property-image.use-case";
 import { GetPropertyEngagementUseCase } from "./use-cases/get-property-engagement.use-case";
+import { ListAssignablePropertyAgentsUseCase } from "./use-cases/list-assignable-property-agents.use-case";
 import { ListPropertyEngagementsUseCase } from "./use-cases/list-property-engagements.use-case";
+import { RemovePropertyAgentUseCase } from "./use-cases/remove-property-agent.use-case";
 import { RestorePropertyEngagementUseCase } from "./use-cases/restore-property-engagement.use-case";
 import { SetPropertyImagePrimaryUseCase } from "./use-cases/set-property-image-primary.use-case";
 import { UpdatePropertyEngagementUseCase } from "./use-cases/update-property-engagement.use-case";
@@ -26,6 +28,8 @@ const propertyEngagementUseCases = [
 	ArchivePropertyEngagementUseCase,
 	RestorePropertyEngagementUseCase,
 	AssignPropertyAgentUseCase,
+	RemovePropertyAgentUseCase,
+	ListAssignablePropertyAgentsUseCase,
 	UploadPropertyImageUseCase,
 	DeletePropertyImageUseCase,
 	SetPropertyImagePrimaryUseCase,
