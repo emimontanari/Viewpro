@@ -1,13 +1,13 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common'
+import { type CanActivate, type ExecutionContext, ForbiddenException, Inject, Injectable } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import type { Request } from 'express'
 import type { RequestWithTenantContext } from '../tenant-context/tenant-context.types'
 import type { Permission } from './permissions.constants'
-import { REQUIRED_PERMISSIONS_KEY } from './require-permissions.decorator'
+import { REQUIRED_ANY_PERMISSIONS_KEY, REQUIRED_PERMISSIONS_KEY } from './require-permissions.decorator'
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(@Inject(Reflector) private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
     const requiredPermissions =
@@ -15,8 +15,13 @@ export class PermissionGuard implements CanActivate {
         context.getHandler(),
         context.getClass(),
       ]) ?? []
+    const requiredAnyPermissions =
+      this.reflector.getAllAndOverride<Permission[]>(REQUIRED_ANY_PERMISSIONS_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? []
 
-    if (requiredPermissions.length === 0) {
+    if (requiredPermissions.length === 0 && requiredAnyPermissions.length === 0) {
       return true
     }
 
@@ -24,8 +29,10 @@ export class PermissionGuard implements CanActivate {
     const permissions = request.tenantContext?.permissions ?? []
 
     const hasEveryPermission = requiredPermissions.every((permission) => permissions.includes(permission))
+    const hasAnyPermission =
+      requiredAnyPermissions.length === 0 || requiredAnyPermissions.some((permission) => permissions.includes(permission))
 
-    if (!hasEveryPermission) {
+    if (!hasEveryPermission || !hasAnyPermission) {
       throw new ForbiddenException('Insufficient permissions')
     }
 
