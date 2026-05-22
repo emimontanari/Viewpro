@@ -14,7 +14,13 @@ import { formatDateTime } from '@/features/products/utils/format-date-time';
 import Link from 'next/link';
 import type { ActivityFeedItem } from '../api/types';
 
-export function ActivityFeedItem({ item }: { item: ActivityFeedItem }) {
+export function ActivityFeedItem({
+  item,
+  onViewDetails
+}: {
+  item: ActivityFeedItem;
+  onViewDetails: (item: ActivityFeedItem) => void;
+}) {
   const propertyTitle = item.property.title?.trim() || 'Propiedad sin título';
   const address = formatAddress(item);
   const actor = item.createdBy.firstName || item.createdBy.email;
@@ -30,10 +36,16 @@ export function ActivityFeedItem({ item }: { item: ActivityFeedItem }) {
               <Badge variant='outline' className='rounded-full bg-muted/40'>
                 {getMovementTypeLabel(item.type)}
               </Badge>
-              <Badge variant='outline' className={cn('rounded-full', getOperationTone(item.property.operationType))}>
+              <Badge
+                variant='outline'
+                className={cn('rounded-full', getOperationTone(item.property.operationType))}
+              >
                 {getOperationTypeLabel(item.property.operationType)}
               </Badge>
-              <Badge variant='outline' className={cn('rounded-full', getStatusTone(item.property.status))}>
+              <Badge
+                variant='outline'
+                className={cn('rounded-full', getStatusTone(item.property.status))}
+              >
                 {getStatusLabel(item.property.status)}
               </Badge>
             </div>
@@ -44,18 +56,30 @@ export function ActivityFeedItem({ item }: { item: ActivityFeedItem }) {
           </div>
           <div className='flex shrink-0 flex-col gap-2 text-sm text-muted-foreground lg:items-end'>
             <time dateTime={item.createdAt}>{formatDateTime(item.createdAt)}</time>
-            <Button asChild variant='outline' size='sm'>
-              <Link href={`/dashboard/product/${item.property.engagementId}`}>
-                Ver propiedad
-                <Icons.arrowRight className='size-4' />
-              </Link>
-            </Button>
+            <div className='flex flex-wrap gap-2 lg:justify-end'>
+              <Button
+                type='button'
+                variant='secondary'
+                size='sm'
+                onClick={() => onViewDetails(item)}
+              >
+                Ver detalle
+              </Button>
+              <Button asChild variant='outline' size='sm'>
+                <Link href={`/dashboard/product/${item.property.engagementId}`}>
+                  Ver propiedad
+                  <Icons.arrowRight className='size-4' />
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
 
-        {statusChange ? <p className='text-sm font-medium text-muted-foreground'>{statusChange}</p> : null}
+        {statusChange ? (
+          <p className='text-sm font-medium text-muted-foreground'>{statusChange}</p>
+        ) : null}
 
-        <p className='break-words text-sm leading-6'>{item.observation}</p>
+        <p className='line-clamp-2 break-words text-sm leading-6'>{item.observation}</p>
 
         <div className='grid gap-2 text-sm text-muted-foreground md:grid-cols-3'>
           <div className='flex min-w-0 items-center gap-2'>
@@ -83,7 +107,9 @@ function getMovementStatusChange(item: ActivityFeedItem) {
     return null;
   }
 
-  const previousStatus = item.previousStatus ? getStatusLabel(item.previousStatus) : 'Sin estado anterior';
+  const previousStatus = item.previousStatus
+    ? getStatusLabel(item.previousStatus)
+    : 'Sin estado anterior';
   return `${previousStatus} → ${getStatusLabel(item.newStatus)}`;
 }
 

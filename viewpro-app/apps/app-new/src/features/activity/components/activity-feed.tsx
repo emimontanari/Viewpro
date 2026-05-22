@@ -1,9 +1,12 @@
-import type React from 'react';
+'use client';
+
+import { useState, type ReactNode } from 'react';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { ActivityFeedItem as ActivityFeedItemType } from '../api/types';
 import { ActivityFeedItem } from './activity-feed-item';
+import { ActivityMovementDetailDialog } from './activity-movement-detail-dialog';
 
 export function ActivityFeed({
   isError,
@@ -26,6 +29,8 @@ export function ActivityFeed({
   onPageChange: (page: number) => void;
   onRetry: () => void;
 }) {
+  const [selectedItem, setSelectedItem] = useState<ActivityFeedItemType | null>(null);
+
   if (isLoading) {
     return <ActivityFeedSkeleton />;
   }
@@ -69,10 +74,20 @@ export function ActivityFeed({
       <ol className='space-y-3'>
         {items.map((item) => (
           <li key={item.id}>
-            <ActivityFeedItem item={item} />
+            <ActivityFeedItem item={item} onViewDetails={setSelectedItem} />
           </li>
         ))}
       </ol>
+
+      <ActivityMovementDetailDialog
+        item={selectedItem}
+        open={Boolean(selectedItem)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedItem(null);
+          }
+        }}
+      />
 
       {pageCount > 1 ? (
         <div className='flex flex-col gap-2 rounded-2xl border bg-card p-3 shadow-xs sm:flex-row sm:items-center sm:justify-between'>
@@ -133,7 +148,7 @@ function ActivityFeedMessage({
   title,
   tone = 'neutral'
 }: {
-  action?: React.ReactNode;
+  action?: ReactNode;
   description: string;
   title: string;
   tone?: 'danger' | 'neutral';
@@ -141,7 +156,11 @@ function ActivityFeedMessage({
   return (
     <div className='rounded-2xl border bg-card p-6 text-center shadow-xs'>
       <div className='mx-auto mb-3 flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground'>
-        {tone === 'danger' ? <Icons.warning className='size-5' /> : <Icons.clock className='size-5' />}
+        {tone === 'danger' ? (
+          <Icons.warning className='size-5' />
+        ) : (
+          <Icons.clock className='size-5' />
+        )}
       </div>
       <h2 className='text-base font-semibold'>{title}</h2>
       <p className='mx-auto mt-2 max-w-xl text-sm text-muted-foreground'>{description}</p>
