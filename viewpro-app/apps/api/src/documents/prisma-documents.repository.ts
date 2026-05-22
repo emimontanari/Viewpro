@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common'
-import { DocumentRequestStatus, DocumentVersionStatus, Prisma } from '@prisma/client'
+import { Inject, Injectable } from '@nestjs/common'
+import { DocumentRequestStatus, DocumentVersionStatus, type Prisma } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import type {
   CreateDocumentRequestInput,
@@ -21,7 +21,7 @@ export const documentRequestInclude = {
 
 @Injectable()
 export class PrismaDocumentsRepository implements DocumentsRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   findTenantEngagementForDocumentRequest(input: {
     tenantId: string
@@ -265,6 +265,9 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
       tenantId: input.tenantId,
       ...('requestId' in input ? { id: input.requestId } : {}),
       ...('status' in input && input.status ? { status: input.status } : {}),
+      ...('propertyEngagementId' in input && input.propertyEngagementId
+        ? { propertyEngagementId: input.propertyEngagementId }
+        : {}),
     }
 
     if (!input.canViewAll) {
