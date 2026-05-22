@@ -184,8 +184,10 @@ function StatusChangeCard({
 function StatusPill({ eyebrow, label, tone }: { eyebrow: string; label: string; tone: string }) {
   return (
     <div className='min-w-0 flex-1 rounded-xl border bg-background p-3 shadow-xs'>
-      <p className='mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground'>{eyebrow}</p>
-      <Badge variant='outline' className={cn('rounded-full text-sm', tone)}>
+      <p className='mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground'>
+        {eyebrow}
+      </p>
+      <Badge variant='outline' className={cn('rounded-md px-2.5 py-1 text-sm', tone)}>
         {label}
       </Badge>
     </div>
