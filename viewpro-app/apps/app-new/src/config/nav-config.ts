@@ -98,6 +98,14 @@ export const navGroups: NavGroup[] = [
         isActive: false,
         items: []
       },
+      {
+        title: 'Seguimiento',
+        url: '/dashboard/seguimiento',
+        icon: 'trendingUp',
+        shortcut: ['s', 's'],
+        isActive: false,
+        items: []
+      },
       ...demoOverviewItems
     ]
   },
