@@ -15,7 +15,10 @@ export const PROPERTY_ENGAGEMENTS_REPOSITORY = Symbol(
 export type PropertyOwnerRecord = {
 	id: string;
 	propertyAssetId: string;
-	userId: string;
+	userId: string | null;
+	ownerEmail: string;
+	ownerFirstName: string;
+	ownerLastName: string;
 	isPrimary: boolean;
 	accessStatus: PropertyAssetOwnerAccessStatus;
 	createdAt: Date;
@@ -24,7 +27,8 @@ export type PropertyOwnerRecord = {
 		id: string;
 		email: string;
 		firstName: string | null;
-	};
+		lastName: string | null;
+	} | null;
 };
 
 export type PropertyEngagementWithDetails =
@@ -42,7 +46,17 @@ export type PropertyEngagementWithDetails =
 							accessStatus: true;
 							createdAt: true;
 							updatedAt: true;
-							user: { select: { id: true; email: true; firstName: true } };
+							ownerEmail: true;
+							ownerFirstName: true;
+							ownerLastName: true;
+							user: {
+								select: {
+									id: true;
+									email: true;
+									firstName: true;
+									lastName: true;
+								};
+							};
 						};
 					};
 				};
@@ -179,6 +193,9 @@ export type PropertyEngagementsRepository = {
 	}): Promise<boolean>;
 	linkOwner(input: {
 		propertyAssetId: string;
-		ownerUserId: string;
+		ownerUserId: string | null;
+		ownerEmail: string;
+		ownerFirstName: string;
+		ownerLastName: string;
 	}): Promise<LinkPropertyOwnerResult>;
 };

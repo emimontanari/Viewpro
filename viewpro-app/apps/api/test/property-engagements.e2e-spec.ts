@@ -523,7 +523,7 @@ describe("Property engagements (e2e)", () => {
 		).resolves.toBe(1);
 	});
 
-	it("links an existing non-tenant user as active property owner", async () => {
+	it("links an existing user from another tenant as active property owner", async () => {
 		const manager = await registerTenantSession(
 			"manager-link-owner@example.com",
 			"Manager Link Owner Homes",
@@ -539,7 +539,11 @@ describe("Property engagements (e2e)", () => {
 		const response = await manager.agent
 			.post(`/api/property-engagements/${created.body.id}/owners`)
 			.set("x-tenant-id", manager.tenantId)
-			.send({ email: "linked-owner@example.com" })
+			.send({
+				firstName: "Staff",
+				lastName: "Snapshot",
+				email: "linked-owner@example.com",
+			})
 			.expect(201);
 
 		expect(response.body).toMatchObject({
@@ -547,6 +551,9 @@ describe("Property engagements (e2e)", () => {
 			userId: owner.userId,
 			email: "linked-owner@example.com",
 			firstName: "Owner",
+			lastName: "Snapshot",
+			ownerFirstName: "Staff",
+			ownerLastName: "Snapshot",
 			isPrimary: true,
 			accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
 		});
@@ -585,13 +592,21 @@ describe("Property engagements (e2e)", () => {
 		await manager.agent
 			.post(`/api/property-engagements/${created.body.id}/owners`)
 			.set("x-tenant-id", manager.tenantId)
-			.send({ email: "owner-conflict@example.com" })
+			.send({
+				firstName: "Owner",
+				lastName: "Conflict",
+				email: "owner-conflict@example.com",
+			})
 			.expect(201);
 
 		const response = await manager.agent
 			.post(`/api/property-engagements/${created.body.id}/owners`)
 			.set("x-tenant-id", manager.tenantId)
-			.send({ email: "owner-conflict@example.com" })
+			.send({
+				firstName: "Owner",
+				lastName: "Conflict",
+				email: "owner-conflict@example.com",
+			})
 			.expect(409);
 
 		expect(response.body.message).toBe("Owner is already linked to this property");
@@ -600,7 +615,7 @@ describe("Property engagements (e2e)", () => {
 		).resolves.toBe(1);
 	});
 
-	it("returns not found when linking a missing owner user", async () => {
+	it("links an unregistered email as invited property owner without creating a user", async () => {
 		const manager = await registerTenantSession(
 			"manager-owner-missing-user@example.com",
 			"Manager Owner Missing User Homes",
@@ -610,10 +625,37 @@ describe("Property engagements (e2e)", () => {
 		const response = await manager.agent
 			.post(`/api/property-engagements/${created.body.id}/owners`)
 			.set("x-tenant-id", manager.tenantId)
-			.send({ email: "missing-owner@example.com" })
-			.expect(404);
+			.send({
+				firstName: "Missing",
+				lastName: "Owner",
+				email: " Missing-Owner@Example.com ",
+			})
+			.expect(201);
 
-		expect(response.body.message).toBe("User not found");
+		expect(response.body).toMatchObject({
+			propertyAssetId: created.body.property.id,
+			userId: null,
+			email: "missing-owner@example.com",
+			firstName: "Missing",
+			lastName: "Owner",
+			ownerFirstName: "Missing",
+			ownerLastName: "Owner",
+			isPrimary: true,
+			accessStatus: PropertyAssetOwnerAccessStatus.INVITED,
+		});
+		await expect(
+			prisma.user.count({ where: { email: "missing-owner@example.com" } }),
+		).resolves.toBe(0);
+		await expect(
+			prisma.propertyAssetOwner.count({
+				where: {
+					propertyAssetId: created.body.property.id,
+					ownerEmail: "missing-owner@example.com",
+					userId: null,
+					accessStatus: PropertyAssetOwnerAccessStatus.INVITED,
+				},
+			}),
+		).resolves.toBe(1);
 	});
 
 	it("does not link owners to another tenant engagement", async () => {
@@ -637,7 +679,11 @@ describe("Property engagements (e2e)", () => {
 		const response = await tenantA.agent
 			.post(`/api/property-engagements/${createdByTenantB.body.id}/owners`)
 			.set("x-tenant-id", tenantA.tenantId)
-			.send({ email: "owner-cross-tenant@example.com" })
+			.send({
+				firstName: "Owner",
+				lastName: "Cross",
+				email: "owner-cross-tenant@example.com",
+			})
 			.expect(404);
 
 		expect(response.body.message).toBe("Property engagement not found");

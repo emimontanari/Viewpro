@@ -22,11 +22,14 @@ const propertyOwnerSelect = {
   id: true,
   propertyAssetId: true,
   userId: true,
+  ownerEmail: true,
+  ownerFirstName: true,
+  ownerLastName: true,
   isPrimary: true,
   accessStatus: true,
   createdAt: true,
   updatedAt: true,
-  user: { select: { id: true, email: true, firstName: true } },
+  user: { select: { id: true, email: true, firstName: true, lastName: true } },
 } satisfies Prisma.PropertyAssetOwnerSelect
 
 const propertyEngagementInclude = {
@@ -366,7 +369,13 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
     return removed.count > 0
   }
 
-  linkOwner(input: { propertyAssetId: string; ownerUserId: string }): Promise<LinkPropertyOwnerResult> {
+  linkOwner(input: {
+    propertyAssetId: string
+    ownerUserId: string | null
+    ownerEmail: string
+    ownerFirstName: string
+    ownerLastName: string
+  }): Promise<LinkPropertyOwnerResult> {
     return this.prisma.$transaction(async (tx) => {
       const activePrimaryOwners = await tx.propertyAssetOwner.count({
         where: {
@@ -382,7 +391,12 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
         data: {
           propertyAssetId: input.propertyAssetId,
           userId: input.ownerUserId,
-          accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+          ownerEmail: input.ownerEmail,
+          ownerFirstName: input.ownerFirstName,
+          ownerLastName: input.ownerLastName,
+          accessStatus: input.ownerUserId
+            ? PropertyAssetOwnerAccessStatus.ACTIVE
+            : PropertyAssetOwnerAccessStatus.INVITED,
           isPrimary: activePrimaryOwners === 0,
         },
         skipDuplicates: true,
@@ -395,7 +409,7 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
       const owner = await tx.propertyAssetOwner.findFirstOrThrow({
         where: {
           propertyAssetId: input.propertyAssetId,
-          userId: input.ownerUserId,
+          ownerEmail: input.ownerEmail,
         },
         select: propertyOwnerSelect,
       })

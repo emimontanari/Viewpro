@@ -235,15 +235,19 @@ model PropertyAsset {
 model PropertyAssetOwner {
   id              String                         @id @default(uuid())
   propertyAssetId String
-  userId          String
+  userId          String?
+  ownerEmail      String
+  ownerFirstName  String
+  ownerLastName   String
   isPrimary       Boolean                        @default(false)
   accessStatus    PropertyAssetOwnerAccessStatus @default(INVITED)
   createdAt       DateTime                       @default(now())
   updatedAt       DateTime                       @updatedAt
 
   propertyAsset PropertyAsset @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([propertyAssetId, ownerEmail])
   @@unique([propertyAssetId, userId])
   @@index([userId, accessStatus])
   @@index([propertyAssetId])
