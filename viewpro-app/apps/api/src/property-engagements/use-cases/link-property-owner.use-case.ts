@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import type { CurrentUser } from '../../auth/types/current-user'
 import { normalizeEmail } from '../../auth/utils/slugify'
 import { PERMISSIONS } from '../../permissions/permissions.constants'
@@ -41,15 +41,22 @@ export class LinkPropertyOwnerUseCase {
       throw new NotFoundException('Property engagement not found')
     }
 
-    const ownerUser = await this.usersRepository.findByEmail(normalizeEmail(input.email))
+    const ownerEmail = normalizeEmail(input.email)
+    const ownerFirstName = input.firstName.trim()
+    const ownerLastName = input.lastName.trim()
 
-    if (!ownerUser) {
-      throw new NotFoundException('User not found')
+    if (!ownerFirstName || !ownerLastName) {
+      throw new BadRequestException('Owner first name and last name are required')
     }
+
+    const ownerUser = await this.usersRepository.findByEmail(ownerEmail)
 
     const result = await this.propertyEngagementsRepository.linkOwner({
       propertyAssetId: engagement.propertyAssetId,
-      ownerUserId: ownerUser.id,
+      ownerUserId: ownerUser?.id ?? null,
+      ownerEmail,
+      ownerFirstName,
+      ownerLastName,
     })
 
     if (result.status === 'alreadyLinked') {

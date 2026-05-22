@@ -190,6 +190,9 @@ describe("Property engagement response mapper", () => {
 						id: "owner-link-1",
 						propertyAssetId: "asset-1",
 						userId: "owner-user-1",
+						ownerEmail: "owner@example.com",
+						ownerFirstName: "Owner",
+						ownerLastName: "Snapshot",
 						isPrimary: true,
 						accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
 						createdAt: new Date("2026-01-05T00:00:00.000Z"),
@@ -198,6 +201,7 @@ describe("Property engagement response mapper", () => {
 							id: "owner-user-1",
 							email: "owner@example.com",
 							firstName: "Owner",
+							lastName: "User",
 						},
 					},
 				],
@@ -210,6 +214,9 @@ describe("Property engagement response mapper", () => {
 				userId: "owner-user-1",
 				email: "owner@example.com",
 				firstName: "Owner",
+				lastName: "User",
+				ownerFirstName: "Owner",
+				ownerLastName: "Snapshot",
 				isPrimary: true,
 				accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
 			},
@@ -769,11 +776,14 @@ describe("Property engagement use cases", () => {
 		);
 	});
 
-	it("links an existing user as a property owner", async () => {
+	it("links an existing user as an active property owner with contact snapshot", async () => {
 		const linkedOwner = {
 			id: "owner-link-1",
 			propertyAssetId: "asset-1",
 			userId: "owner-user-1",
+			ownerEmail: "owner@example.com",
+			ownerFirstName: "Staff",
+			ownerLastName: "Snapshot",
 			isPrimary: true,
 			accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
 			createdAt: new Date("2026-01-05T00:00:00.000Z"),
@@ -782,6 +792,7 @@ describe("Property engagement use cases", () => {
 				id: "owner-user-1",
 				email: "owner@example.com",
 				firstName: "Owner",
+				lastName: "User",
 			},
 		};
 		const repository = {
@@ -800,6 +811,8 @@ describe("Property engagement use cases", () => {
 
 		await expect(
 			useCase.execute(tenant, currentUser, "engagement-1", {
+				firstName: " Staff ",
+				lastName: " Snapshot ",
 				email: " Owner@Example.com ",
 			}),
 		).resolves.toEqual({
@@ -808,6 +821,9 @@ describe("Property engagement use cases", () => {
 			userId: "owner-user-1",
 			email: "owner@example.com",
 			firstName: "Owner",
+			lastName: "User",
+			ownerFirstName: "Staff",
+			ownerLastName: "Snapshot",
 			isPrimary: true,
 			accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
 			createdAt: "2026-01-05T00:00:00.000Z",
@@ -825,6 +841,59 @@ describe("Property engagement use cases", () => {
 		expect(repository.linkOwner).toHaveBeenCalledWith({
 			propertyAssetId: "asset-1",
 			ownerUserId: "owner-user-1",
+			ownerEmail: "owner@example.com",
+			ownerFirstName: "Staff",
+			ownerLastName: "Snapshot",
+		});
+	});
+
+	it("links an unregistered email as an invited property owner", async () => {
+		const linkedOwner = {
+			id: "owner-link-2",
+			propertyAssetId: "asset-1",
+			userId: null,
+			ownerEmail: "missing@example.com",
+			ownerFirstName: "Missing",
+			ownerLastName: "Owner",
+			isPrimary: true,
+			accessStatus: PropertyAssetOwnerAccessStatus.INVITED,
+			createdAt: new Date("2026-01-05T00:00:00.000Z"),
+			updatedAt: new Date("2026-01-05T00:00:00.000Z"),
+			user: null,
+		};
+		const repository = {
+			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
+			linkOwner: vi
+				.fn()
+				.mockResolvedValue({ status: "linked", owner: linkedOwner }),
+		};
+		const usersRepository = { findByEmail: vi.fn().mockResolvedValue(null) };
+		const useCase = new LinkPropertyOwnerUseCase(
+			repository as never,
+			usersRepository as never,
+		);
+
+		await expect(
+			useCase.execute(tenant, currentUser, "engagement-1", {
+				firstName: " Missing ",
+				lastName: " Owner ",
+				email: " Missing@Example.com ",
+			}),
+		).resolves.toMatchObject({
+			userId: null,
+			email: "missing@example.com",
+			firstName: "Missing",
+			lastName: "Owner",
+			ownerFirstName: "Missing",
+			ownerLastName: "Owner",
+			accessStatus: PropertyAssetOwnerAccessStatus.INVITED,
+		});
+		expect(repository.linkOwner).toHaveBeenCalledWith({
+			propertyAssetId: "asset-1",
+			ownerUserId: null,
+			ownerEmail: "missing@example.com",
+			ownerFirstName: "Missing",
+			ownerLastName: "Owner",
 		});
 	});
 
@@ -841,7 +910,11 @@ describe("Property engagement use cases", () => {
 				{ ...tenant, permissions: [PERMISSIONS.ENGAGEMENTS_VIEW_ALL] },
 				currentUser,
 				"engagement-1",
-				{ email: "owner@example.com" },
+				{
+					firstName: "Owner",
+					lastName: "Example",
+					email: "owner@example.com",
+				},
 			),
 		).rejects.toThrow(new ForbiddenException("Insufficient permissions"));
 		expect(repository.findByIdForTenant).not.toHaveBeenCalled();
@@ -861,6 +934,8 @@ describe("Property engagement use cases", () => {
 
 		await expect(
 			useCase.execute(tenant, currentUser, "missing-engagement", {
+				firstName: "Owner",
+				lastName: "Example",
 				email: "owner@example.com",
 			}),
 		).rejects.toThrow(new NotFoundException("Property engagement not found"));
@@ -868,12 +943,12 @@ describe("Property engagement use cases", () => {
 		expect(repository.linkOwner).not.toHaveBeenCalled();
 	});
 
-	it("returns not found when linking a missing user as owner", async () => {
+	it("rejects owner linking with blank contact names", async () => {
 		const repository = {
 			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
 			linkOwner: vi.fn(),
 		};
-		const usersRepository = { findByEmail: vi.fn().mockResolvedValue(null) };
+		const usersRepository = { findByEmail: vi.fn() };
 		const useCase = new LinkPropertyOwnerUseCase(
 			repository as never,
 			usersRepository as never,
@@ -881,9 +956,14 @@ describe("Property engagement use cases", () => {
 
 		await expect(
 			useCase.execute(tenant, currentUser, "engagement-1", {
+				firstName: " ",
+				lastName: "Owner",
 				email: "missing@example.com",
 			}),
-		).rejects.toThrow(new NotFoundException("User not found"));
+		).rejects.toThrow(
+			new BadRequestException("Owner first name and last name are required"),
+		);
+		expect(usersRepository.findByEmail).not.toHaveBeenCalled();
 		expect(repository.linkOwner).not.toHaveBeenCalled();
 	});
 
@@ -902,6 +982,8 @@ describe("Property engagement use cases", () => {
 
 		await expect(
 			useCase.execute(tenant, currentUser, "engagement-1", {
+				firstName: "Owner",
+				lastName: "Example",
 				email: "owner@example.com",
 			}),
 		).rejects.toThrow(

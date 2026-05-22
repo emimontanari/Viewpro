@@ -781,6 +781,9 @@ describe("Property engagements foundation", () => {
 			id: "owner-link-1",
 			propertyAssetId: "asset-1",
 			userId: "owner-user-1",
+			ownerEmail: "owner@example.com",
+			ownerFirstName: "Owner",
+			ownerLastName: "Snapshot",
 			isPrimary: true,
 			accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
 			createdAt: new Date("2026-01-05T00:00:00.000Z"),
@@ -789,6 +792,7 @@ describe("Property engagements foundation", () => {
 				id: "owner-user-1",
 				email: "owner@example.com",
 				firstName: "Owner",
+				lastName: "User",
 			},
 		};
 		const count = vi.fn().mockResolvedValue(0);
@@ -807,6 +811,9 @@ describe("Property engagements foundation", () => {
 			repository.linkOwner({
 				propertyAssetId: "asset-1",
 				ownerUserId: "owner-user-1",
+				ownerEmail: "owner@example.com",
+				ownerFirstName: "Owner",
+				ownerLastName: "Snapshot",
 			}),
 		).resolves.toEqual({ status: "linked", owner: linkedOwner });
 		expect(count).toHaveBeenCalledWith({
@@ -825,6 +832,9 @@ describe("Property engagements foundation", () => {
 			data: {
 				propertyAssetId: "asset-1",
 				userId: "owner-user-1",
+				ownerEmail: "owner@example.com",
+				ownerFirstName: "Owner",
+				ownerLastName: "Snapshot",
 				accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
 				isPrimary: true,
 			},
@@ -834,13 +844,13 @@ describe("Property engagements foundation", () => {
 			expect.objectContaining({
 				where: {
 					propertyAssetId: "asset-1",
-					userId: "owner-user-1",
+					ownerEmail: "owner@example.com",
 				},
 			}),
 		);
 	});
 
-	it("links additional owners as non-primary", async () => {
+	it("links invited owners as non-primary", async () => {
 		const createMany = vi.fn().mockResolvedValue({ count: 1 });
 		const transaction = vi.fn(async (callback) =>
 			callback({
@@ -857,17 +867,24 @@ describe("Property engagements foundation", () => {
 
 		await repository.linkOwner({
 			propertyAssetId: "asset-1",
-			ownerUserId: "owner-user-2",
+			ownerUserId: null,
+			ownerEmail: "owner-two@example.com",
+			ownerFirstName: "Owner",
+			ownerLastName: "Two",
 		});
 
 		expect(createMany).toHaveBeenCalledWith(
 			expect.objectContaining({
-				data: expect.objectContaining({ isPrimary: false }),
+				data: expect.objectContaining({
+					accessStatus: PropertyAssetOwnerAccessStatus.INVITED,
+					isPrimary: false,
+					userId: null,
+				}),
 			}),
 		);
 	});
 
-	it("returns already linked when duplicate owner link is skipped", async () => {
+	it("returns already linked when duplicate owner email is skipped", async () => {
 		const findFirstOrThrow = vi.fn();
 		const transaction = vi.fn(async (callback) =>
 			callback({
@@ -886,6 +903,9 @@ describe("Property engagements foundation", () => {
 			repository.linkOwner({
 				propertyAssetId: "asset-1",
 				ownerUserId: "owner-user-1",
+				ownerEmail: "owner@example.com",
+				ownerFirstName: "Owner",
+				ownerLastName: "Snapshot",
 			}),
 		).resolves.toEqual({ status: "alreadyLinked" });
 		expect(findFirstOrThrow).not.toHaveBeenCalled();
