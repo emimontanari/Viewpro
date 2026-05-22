@@ -19,7 +19,9 @@ type ManagePropertyAgentsDialogProps = {
   assigningUserId: string | null;
   isAssignableAgentsError: boolean;
   isAssignableAgentsLoading: boolean;
+  isAssigningAllAgents: boolean;
   onAssign: (agentUserId: string) => void;
+  onAssignAll: (agentUserIds: string[]) => void;
   onOpenChange: (open: boolean) => void;
   onRemove: (agentId: string) => void;
   open: boolean;
@@ -99,7 +101,9 @@ export function ManagePropertyAgentsDialog({
   assigningUserId,
   isAssignableAgentsError,
   isAssignableAgentsLoading,
+  isAssigningAllAgents,
   onAssign,
+  onAssignAll,
   onOpenChange,
   onRemove,
   open,
@@ -113,7 +117,7 @@ export function ManagePropertyAgentsDialog({
     () => assignableAgents.filter((agent) => !assignedUserIds.has(agent.userId)),
     [assignableAgents, assignedUserIds]
   );
-  const isMutating = Boolean(assigningUserId || removingAgentId);
+  const isMutating = Boolean(assigningUserId || removingAgentId || isAssigningAllAgents);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -179,7 +183,9 @@ export function ManagePropertyAgentsDialog({
               isAssignableAgentsError,
               isAssignableAgentsLoading,
               isMutating,
-              onAssign
+              isAssigningAllAgents,
+              onAssign,
+              onAssignAll
             })}
           </section>
         </div>
@@ -194,14 +200,18 @@ function renderAssignableAgentsState({
   isAssignableAgentsError,
   isAssignableAgentsLoading,
   isMutating,
-  onAssign
+  isAssigningAllAgents,
+  onAssign,
+  onAssignAll
 }: {
   availableAgents: AssignableProductAgent[];
   assigningUserId: string | null;
   isAssignableAgentsError: boolean;
   isAssignableAgentsLoading: boolean;
   isMutating: boolean;
+  isAssigningAllAgents: boolean;
   onAssign: (agentUserId: string) => void;
+  onAssignAll: (agentUserIds: string[]) => void;
 }) {
   if (isAssignableAgentsLoading) {
     return (
@@ -232,39 +242,60 @@ function renderAssignableAgentsState({
     );
   }
 
-  return (
-    <ul className='space-y-2'>
-      {availableAgents.map((agent) => {
-        const isAssigning = assigningUserId === agent.userId;
+  const availableAgentIds = availableAgents.map((agent) => agent.userId);
 
-        return (
-          <li
-            key={agent.userId}
-            className='flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between'
-          >
-            <div className='min-w-0 space-y-1'>
-              <div className='flex flex-wrap items-center gap-2'>
-                <p className='break-words text-sm font-medium'>{getAgentDisplayName(agent)}</p>
-                <Badge variant='outline' className='rounded-full bg-muted/40'>
-                  {roleLabels[agent.role]}
-                </Badge>
-              </div>
-              <p className='break-all text-sm text-muted-foreground'>{agent.email}</p>
-            </div>
-            <Button
-              type='button'
-              size='sm'
-              disabled={isMutating}
-              isLoading={isAssigning}
-              onClick={() => onAssign(agent.userId)}
+  return (
+    <div className='space-y-3'>
+      <div className='flex flex-col gap-2 rounded-xl border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between'>
+        <p className='text-sm text-muted-foreground'>
+          {getAvailableAgentsDescription(availableAgents.length)}
+        </p>
+        <Button
+          type='button'
+          size='sm'
+          variant='secondary'
+          disabled={isMutating}
+          isLoading={isAssigningAllAgents}
+          onClick={() => onAssignAll(availableAgentIds)}
+        >
+          <Icons.add className='size-4' />
+          {getAssignAllButtonLabel(availableAgents.length)}
+        </Button>
+      </div>
+
+      <ul className='space-y-2'>
+        {availableAgents.map((agent) => {
+          const isAssigning = assigningUserId === agent.userId;
+
+          return (
+            <li
+              key={agent.userId}
+              className='flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between'
             >
-              <Icons.add className='size-4' />
-              Asignar
-            </Button>
-          </li>
-        );
-      })}
-    </ul>
+              <div className='min-w-0 space-y-1'>
+                <div className='flex flex-wrap items-center gap-2'>
+                  <p className='break-words text-sm font-medium'>{getAgentDisplayName(agent)}</p>
+                  <Badge variant='outline' className='rounded-full bg-muted/40'>
+                    {roleLabels[agent.role]}
+                  </Badge>
+                </div>
+                <p className='break-all text-sm text-muted-foreground'>{agent.email}</p>
+              </div>
+              <Button
+                type='button'
+                size='sm'
+                disabled={isMutating}
+                isLoading={isAssigning}
+                onClick={() => onAssign(agent.userId)}
+              >
+                <Icons.add className='size-4' />
+                Asignar
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -287,6 +318,22 @@ function getAssignedAgentsDescription(count: number) {
   }
 
   return `${count} vendedores asignados.`;
+}
+
+function getAvailableAgentsDescription(count: number) {
+  if (count === 1) {
+    return 'Hay 1 vendedor disponible para sumar.';
+  }
+
+  return `Hay ${count} vendedores disponibles para sumar.`;
+}
+
+function getAssignAllButtonLabel(count: number) {
+  if (count === 1) {
+    return 'Sumar 1 vendedor';
+  }
+
+  return `Sumar ${count} vendedores`;
 }
 
 function getAgentDisplayName(agent: { email: string; firstName: string | null }) {

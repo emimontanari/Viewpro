@@ -741,6 +741,42 @@ function PropertyEngagementDetails({
       setRemovingAgentId(null);
     }
   });
+  const assignAllAgentsMutation = useMutation({
+    mutationFn: async (agentUserIds: string[]) => {
+      const results = await Promise.allSettled(
+        agentUserIds.map((agentUserId) =>
+          assignProductAgent(propertyEngagement.id, { agentUserId })
+        )
+      );
+      const assignedCount = results.filter((result) => result.status === 'fulfilled').length;
+
+      return {
+        assignedCount,
+        failedCount: results.length - assignedCount,
+        totalCount: results.length
+      };
+    },
+    onSuccess: async ({ assignedCount, failedCount }) => {
+      await queryClient.invalidateQueries({ queryKey: productKeys.all });
+
+      if (failedCount === 0) {
+        toast.success(getAssignAllAgentsSuccessMessage(assignedCount));
+        return;
+      }
+
+      if (assignedCount > 0) {
+        toast.warning(
+          `Se asignaron ${assignedCount} vendedores, pero ${failedCount} no se pudieron sumar.`
+        );
+        return;
+      }
+
+      toast.error('No se pudieron asignar los vendedores. Intentá nuevamente.');
+    },
+    onError: () => {
+      toast.error('No se pudieron asignar los vendedores. Intentá nuevamente.');
+    }
+  });
 
   function handleRestoreProperty() {
     if (restoreMutation.isPending) {
@@ -767,15 +803,39 @@ function PropertyEngagementDetails({
   }
 
   function handleAssignAgent(agentUserId: string) {
-    if (isArchived || assignAgentMutation.isPending || removeAgentMutation.isPending) {
+    if (
+      isArchived ||
+      assignAgentMutation.isPending ||
+      removeAgentMutation.isPending ||
+      assignAllAgentsMutation.isPending
+    ) {
       return;
     }
 
     assignAgentMutation.mutate(agentUserId);
   }
 
+  function handleAssignAllAgents(agentUserIds: string[]) {
+    if (
+      isArchived ||
+      agentUserIds.length === 0 ||
+      assignAgentMutation.isPending ||
+      removeAgentMutation.isPending ||
+      assignAllAgentsMutation.isPending
+    ) {
+      return;
+    }
+
+    assignAllAgentsMutation.mutate(agentUserIds);
+  }
+
   function handleRemoveAgent(agentId: string) {
-    if (isArchived || assignAgentMutation.isPending || removeAgentMutation.isPending) {
+    if (
+      isArchived ||
+      assignAgentMutation.isPending ||
+      removeAgentMutation.isPending ||
+      assignAllAgentsMutation.isPending
+    ) {
       return;
     }
 
@@ -912,7 +972,11 @@ function PropertyEngagementDetails({
             <PropertyAgentsPanel
               agents={propertyEngagement.agents}
               isArchived={isArchived}
-              isManageDisabled={assignAgentMutation.isPending || removeAgentMutation.isPending}
+              isManageDisabled={
+                assignAgentMutation.isPending ||
+                removeAgentMutation.isPending ||
+                assignAllAgentsMutation.isPending
+              }
               onManage={handleOpenAgentsDialog}
             />
           </aside>
@@ -1004,8 +1068,10 @@ function PropertyEngagementDetails({
         assigningUserId={assigningAgentUserId}
         isAssignableAgentsError={assignableAgentsQuery.isError}
         isAssignableAgentsLoading={assignableAgentsQuery.isLoading}
+        isAssigningAllAgents={assignAllAgentsMutation.isPending}
         removingAgentId={removingAgentId}
         onAssign={handleAssignAgent}
+        onAssignAll={handleAssignAllAgents}
         onOpenChange={setAgentsDialogOpen}
         onRemove={handleRemoveAgent}
       />
@@ -1495,6 +1561,14 @@ function formatPrice(value: number | null, currency: string | null) {
     maximumFractionDigits: 0,
     style: 'currency'
   }).format(value / 100);
+}
+
+function getAssignAllAgentsSuccessMessage(count: number) {
+  if (count === 1) {
+    return '1 vendedor asignado';
+  }
+
+  return `${count} vendedores asignados`;
 }
 
 function getAgentAssignmentErrorMessage(error: unknown, fallback: string) {
