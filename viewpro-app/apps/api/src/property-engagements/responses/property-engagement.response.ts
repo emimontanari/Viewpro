@@ -1,6 +1,7 @@
 import type { PropertyAssetImage } from "@prisma/client";
 import type { PropertyEngagementWithDetails } from "../property-engagements.repository";
 import { buildPropertyImageUrl } from "../property-images.storage";
+import { mapPropertyOwnerSummary } from "./property-owner.response";
 
 export type PropertyImageResponse = ReturnType<typeof mapPropertyImage>;
 export type PropertyEngagementResponse = ReturnType<
@@ -11,6 +12,7 @@ export function mapPropertyEngagement(
 	engagement: PropertyEngagementWithDetails,
 ) {
 	const propertyImages = engagement.propertyAsset.images ?? [];
+	const propertyOwners = engagement.propertyAsset.owners ?? [];
 	const images = propertyImages.map(mapPropertyImage);
 	const primaryImage =
 		images.find((image) => image.isPrimary) ?? images[0] ?? null;
@@ -42,6 +44,7 @@ export function mapPropertyEngagement(
 			orientation: engagement.propertyAsset.orientation,
 			ownerName: engagement.propertyAsset.ownerName,
 			ownerEmail: engagement.propertyAsset.ownerEmail,
+			owners: propertyOwners.map(mapPropertyOwnerSummary),
 			images,
 			primaryImage,
 		},

@@ -62,6 +62,27 @@ export type RemoveProductAgentResponse = {
   id: string;
 };
 
+export type PropertyOwnerAccessStatus = 'INVITED' | 'ACTIVE' | 'REVOKED';
+
+export type PropertyLinkedOwner = {
+  id: string;
+  userId: string;
+  email: string;
+  firstName: string | null;
+  isPrimary: boolean;
+  accessStatus: PropertyOwnerAccessStatus;
+};
+
+export type LinkProductOwnerPayload = {
+  email: string;
+};
+
+export type LinkProductOwnerResponse = PropertyLinkedOwner & {
+  propertyAssetId: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type PropertyImage = {
   id: string;
   storageKey: string;
@@ -101,6 +122,7 @@ export type PropertyEngagement = {
     orientation: string | null;
     ownerName: string | null;
     ownerEmail: string | null;
+    owners: PropertyLinkedOwner[];
     images: PropertyImage[];
     primaryImage: PropertyImage | null;
   };

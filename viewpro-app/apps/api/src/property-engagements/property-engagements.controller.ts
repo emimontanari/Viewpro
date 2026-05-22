@@ -13,6 +13,7 @@ import type { TenantContext } from '../tenant-context/tenant-context.types'
 import { ArchivePropertyEngagementDto } from './dto/archive-property-engagement.dto'
 import { AssignPropertyAgentDto } from './dto/assign-property-agent.dto'
 import { CreatePropertyEngagementDto } from './dto/create-property-engagement.dto'
+import { LinkPropertyOwnerDto } from './dto/link-property-owner.dto'
 import { ListPropertyEngagementsQuery } from './dto/list-property-engagements.query'
 import { UpdatePropertyEngagementDto } from './dto/update-property-engagement.dto'
 import { AssignPropertyAgentUseCase } from './use-cases/assign-property-agent.use-case'
@@ -20,6 +21,7 @@ import { ArchivePropertyEngagementUseCase } from './use-cases/archive-property-e
 import { CreatePropertyEngagementUseCase } from './use-cases/create-property-engagement.use-case'
 import { DeletePropertyImageUseCase } from './use-cases/delete-property-image.use-case'
 import { GetPropertyEngagementUseCase } from './use-cases/get-property-engagement.use-case'
+import { LinkPropertyOwnerUseCase } from './use-cases/link-property-owner.use-case'
 import { ListAssignablePropertyAgentsUseCase } from './use-cases/list-assignable-property-agents.use-case'
 import { ListPropertyEngagementsUseCase } from './use-cases/list-property-engagements.use-case'
 import { RemovePropertyAgentUseCase } from './use-cases/remove-property-agent.use-case'
@@ -37,6 +39,7 @@ const nestDtoRuntimeTypes = [
   ArchivePropertyEngagementDto,
   AssignPropertyAgentDto,
   CreatePropertyEngagementDto,
+  LinkPropertyOwnerDto,
   ListPropertyEngagementsQuery,
   UpdatePropertyEngagementDto,
 ]
@@ -65,6 +68,8 @@ export class PropertyEngagementsController {
     private readonly removePropertyAgentUseCase: RemovePropertyAgentUseCase,
     @Inject(ListAssignablePropertyAgentsUseCase)
     private readonly listAssignablePropertyAgentsUseCase: ListAssignablePropertyAgentsUseCase,
+    @Inject(LinkPropertyOwnerUseCase)
+    private readonly linkPropertyOwnerUseCase: LinkPropertyOwnerUseCase,
     @Inject(UploadPropertyImageUseCase)
     private readonly uploadPropertyImageUseCase: UploadPropertyImageUseCase,
     @Inject(DeletePropertyImageUseCase)
@@ -173,6 +178,17 @@ export class PropertyEngagementsController {
     @Param('imageId') imageId: string,
   ) {
     return this.setPropertyImagePrimaryUseCase.execute(tenant, currentUser, id, imageId)
+  }
+
+  @Post(':id/owners')
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_CREATE)
+  linkOwner(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('id') id: string,
+    @Body() body: LinkPropertyOwnerDto,
+  ) {
+    return this.linkPropertyOwnerUseCase.execute(tenant, currentUser, id, body)
   }
 
   @Post(':id/agents')

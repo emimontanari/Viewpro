@@ -1,6 +1,7 @@
 import {
 	MovementSource,
 	MovementType,
+	PropertyAssetOwnerAccessStatus,
 	PropertyEngagementStatus,
 	PropertyOperationType,
 	PropertyType,
@@ -773,5 +774,120 @@ describe("Property engagements foundation", () => {
 				agentId: "other-assignment",
 			}),
 		).resolves.toBe(false);
+	});
+
+	it("links the first active owner as primary", async () => {
+		const linkedOwner = {
+			id: "owner-link-1",
+			propertyAssetId: "asset-1",
+			userId: "owner-user-1",
+			isPrimary: true,
+			accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+			createdAt: new Date("2026-01-05T00:00:00.000Z"),
+			updatedAt: new Date("2026-01-05T00:00:00.000Z"),
+			user: {
+				id: "owner-user-1",
+				email: "owner@example.com",
+				firstName: "Owner",
+			},
+		};
+		const count = vi.fn().mockResolvedValue(0);
+		const createMany = vi.fn().mockResolvedValue({ count: 1 });
+		const findFirstOrThrow = vi.fn().mockResolvedValue(linkedOwner);
+		const transaction = vi.fn(async (callback) =>
+			callback({
+				propertyAssetOwner: { count, createMany, findFirstOrThrow },
+			}),
+		);
+		const repository = new PrismaPropertyEngagementsRepository({
+			$transaction: transaction,
+		} as never);
+
+		await expect(
+			repository.linkOwner({
+				propertyAssetId: "asset-1",
+				ownerUserId: "owner-user-1",
+			}),
+		).resolves.toEqual({ status: "linked", owner: linkedOwner });
+		expect(count).toHaveBeenCalledWith({
+			where: {
+				propertyAssetId: "asset-1",
+				isPrimary: true,
+				accessStatus: {
+					in: [
+						PropertyAssetOwnerAccessStatus.INVITED,
+						PropertyAssetOwnerAccessStatus.ACTIVE,
+					],
+				},
+			},
+		});
+		expect(createMany).toHaveBeenCalledWith({
+			data: {
+				propertyAssetId: "asset-1",
+				userId: "owner-user-1",
+				accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+				isPrimary: true,
+			},
+			skipDuplicates: true,
+		});
+		expect(findFirstOrThrow).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: {
+					propertyAssetId: "asset-1",
+					userId: "owner-user-1",
+				},
+			}),
+		);
+	});
+
+	it("links additional owners as non-primary", async () => {
+		const createMany = vi.fn().mockResolvedValue({ count: 1 });
+		const transaction = vi.fn(async (callback) =>
+			callback({
+				propertyAssetOwner: {
+					count: vi.fn().mockResolvedValue(1),
+					createMany,
+					findFirstOrThrow: vi.fn().mockResolvedValue({ id: "owner-link-2" }),
+				},
+			}),
+		);
+		const repository = new PrismaPropertyEngagementsRepository({
+			$transaction: transaction,
+		} as never);
+
+		await repository.linkOwner({
+			propertyAssetId: "asset-1",
+			ownerUserId: "owner-user-2",
+		});
+
+		expect(createMany).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({ isPrimary: false }),
+			}),
+		);
+	});
+
+	it("returns already linked when duplicate owner link is skipped", async () => {
+		const findFirstOrThrow = vi.fn();
+		const transaction = vi.fn(async (callback) =>
+			callback({
+				propertyAssetOwner: {
+					count: vi.fn().mockResolvedValue(0),
+					createMany: vi.fn().mockResolvedValue({ count: 0 }),
+					findFirstOrThrow,
+				},
+			}),
+		);
+		const repository = new PrismaPropertyEngagementsRepository({
+			$transaction: transaction,
+		} as never);
+
+		await expect(
+			repository.linkOwner({
+				propertyAssetId: "asset-1",
+				ownerUserId: "owner-user-1",
+			}),
+		).resolves.toEqual({ status: "alreadyLinked" });
+		expect(findFirstOrThrow).not.toHaveBeenCalled();
 	});
 });

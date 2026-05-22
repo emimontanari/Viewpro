@@ -29,6 +29,7 @@ import {
   createProductMovement,
   deleteProductImage,
   getProductMovements,
+  linkProductOwner,
   removeProductAgent,
   restoreProduct,
   setProductImageAsPrimary,
@@ -60,7 +61,9 @@ import {
 } from '@/features/products/constants/product-options';
 import { formatDateTime } from '../utils/format-date-time';
 import { CreatePropertyMovementDialog } from './create-property-movement-dialog';
+import { LinkPropertyOwnerDialog } from './link-property-owner-dialog';
 import { ManagePropertyAgentsDialog, PropertyAgentsPanel } from './manage-property-agents-dialog';
+import { PropertyOwnerCard } from './property-owner-card';
 import { PropertyMovementHistory } from './property-movement-history';
 import { QuickStatusSelect } from './quick-status-select';
 import {
@@ -665,6 +668,7 @@ function PropertyEngagementDetails({
   const queryClient = useQueryClient();
   const [movementDialogOpen, setMovementDialogOpen] = useState(false);
   const [agentsDialogOpen, setAgentsDialogOpen] = useState(false);
+  const [ownerDialogOpen, setOwnerDialogOpen] = useState(false);
   const [assigningAgentUserId, setAssigningAgentUserId] = useState<string | null>(null);
   const [removingAgentId, setRemovingAgentId] = useState<string | null>(null);
   const isArchived = isArchivedProduct(propertyEngagement);
@@ -777,6 +781,17 @@ function PropertyEngagementDetails({
       toast.error('No se pudieron asignar los vendedores. Intentá nuevamente.');
     }
   });
+  const linkOwnerMutation = useMutation({
+    mutationFn: (email: string) => linkProductOwner(propertyEngagement.id, { email }),
+    onSuccess: async () => {
+      setOwnerDialogOpen(false);
+      await queryClient.invalidateQueries({ queryKey: productKeys.all });
+      toast.success('Propietario vinculado');
+    },
+    onError: (error) => {
+      toast.error(getOwnerLinkErrorMessage(error));
+    }
+  });
 
   function handleRestoreProperty() {
     if (restoreMutation.isPending) {
@@ -800,6 +815,22 @@ function PropertyEngagementDetails({
     }
 
     setAgentsDialogOpen(true);
+  }
+
+  function handleOpenOwnerDialog() {
+    if (isArchived || linkOwnerMutation.isPending) {
+      return;
+    }
+
+    setOwnerDialogOpen(true);
+  }
+
+  function handleLinkOwner(email: string) {
+    if (isArchived || linkOwnerMutation.isPending) {
+      return;
+    }
+
+    linkOwnerMutation.mutate(email);
   }
 
   function handleAssignAgent(agentUserId: string) {
@@ -958,16 +989,14 @@ function PropertyEngagementDetails({
               />
             ) : null}
 
-            <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-1'>
-              <ReadOnlyField
-                label='Propietario'
-                value={propertyEngagement.property.ownerName ?? 'Sin nombre'}
-              />
-              <ReadOnlyField
-                label='Email propietario'
-                value={propertyEngagement.property.ownerEmail ?? 'Sin email'}
-              />
-            </div>
+            <PropertyOwnerCard
+              isArchived={isArchived}
+              isLinkDisabled={linkOwnerMutation.isPending}
+              ownerEmail={propertyEngagement.property.ownerEmail}
+              ownerName={propertyEngagement.property.ownerName}
+              owners={propertyEngagement.property.owners}
+              onLinkOwner={handleOpenOwnerDialog}
+            />
 
             <PropertyAgentsPanel
               agents={propertyEngagement.agents}
@@ -1060,6 +1089,12 @@ function PropertyEngagementDetails({
         isSubmitting={createMovementMutation.isPending}
         onOpenChange={setMovementDialogOpen}
         onSubmit={handleCreateMovement}
+      />
+      <LinkPropertyOwnerDialog
+        open={ownerDialogOpen}
+        isSubmitting={linkOwnerMutation.isPending}
+        onOpenChange={setOwnerDialogOpen}
+        onSubmit={handleLinkOwner}
       />
       <ManagePropertyAgentsDialog
         open={agentsDialogOpen}
@@ -1569,6 +1604,22 @@ function getAssignAllAgentsSuccessMessage(count: number) {
   }
 
   return `${count} vendedores asignados`;
+}
+
+function getOwnerLinkErrorMessage(error: unknown) {
+  if (!(error instanceof Error)) {
+    return 'No se pudo vincular el propietario.';
+  }
+
+  if (error.message.includes('already linked')) {
+    return 'Ese propietario ya está vinculado a esta propiedad.';
+  }
+
+  if (error.message.includes('User not found')) {
+    return 'No encontramos un usuario con ese email.';
+  }
+
+  return error.message || 'No se pudo vincular el propietario.';
 }
 
 function getAgentAssignmentErrorMessage(error: unknown, fallback: string) {

@@ -3,6 +3,7 @@ import { AuthModule } from "../auth/auth.module";
 import { MembershipsModule } from "../memberships/memberships.module";
 import { PermissionsModule } from "../permissions/permissions.module";
 import { TenantContextModule } from "../tenant-context/tenant-context.module";
+import { UsersModule } from "../users/users.module";
 import { PrismaPropertyEngagementsRepository } from "./prisma-property-engagements.repository";
 import { PropertyEngagementsController } from "./property-engagements.controller";
 import { PROPERTY_ENGAGEMENTS_REPOSITORY } from "./property-engagements.repository";
@@ -12,6 +13,7 @@ import { ArchivePropertyEngagementUseCase } from "./use-cases/archive-property-e
 import { CreatePropertyEngagementUseCase } from "./use-cases/create-property-engagement.use-case";
 import { DeletePropertyImageUseCase } from "./use-cases/delete-property-image.use-case";
 import { GetPropertyEngagementUseCase } from "./use-cases/get-property-engagement.use-case";
+import { LinkPropertyOwnerUseCase } from "./use-cases/link-property-owner.use-case";
 import { ListAssignablePropertyAgentsUseCase } from "./use-cases/list-assignable-property-agents.use-case";
 import { ListPropertyEngagementsUseCase } from "./use-cases/list-property-engagements.use-case";
 import { RemovePropertyAgentUseCase } from "./use-cases/remove-property-agent.use-case";
@@ -30,6 +32,7 @@ const propertyEngagementUseCases = [
 	AssignPropertyAgentUseCase,
 	RemovePropertyAgentUseCase,
 	ListAssignablePropertyAgentsUseCase,
+	LinkPropertyOwnerUseCase,
 	UploadPropertyImageUseCase,
 	DeletePropertyImageUseCase,
 	SetPropertyImagePrimaryUseCase,
@@ -41,6 +44,7 @@ const propertyEngagementUseCases = [
 		MembershipsModule,
 		PermissionsModule,
 		TenantContextModule,
+		UsersModule,
 	],
 	controllers: [PropertyEngagementsController],
 	providers: [

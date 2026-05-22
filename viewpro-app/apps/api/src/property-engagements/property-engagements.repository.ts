@@ -2,6 +2,7 @@ import type {
 	Prisma,
 	PropertyAgent,
 	PropertyAssetImage,
+	PropertyAssetOwnerAccessStatus,
 	PropertyEngagementStatus,
 	PropertyOperationType,
 } from "@prisma/client";
@@ -11,10 +12,41 @@ export const PROPERTY_ENGAGEMENTS_REPOSITORY = Symbol(
 	"PROPERTY_ENGAGEMENTS_REPOSITORY",
 );
 
+export type PropertyOwnerRecord = {
+	id: string;
+	propertyAssetId: string;
+	userId: string;
+	isPrimary: boolean;
+	accessStatus: PropertyAssetOwnerAccessStatus;
+	createdAt: Date;
+	updatedAt: Date;
+	user: {
+		id: string;
+		email: string;
+		firstName: string | null;
+	};
+};
+
 export type PropertyEngagementWithDetails =
 	Prisma.PropertyEngagementGetPayload<{
 		include: {
-			propertyAsset: { include: { images: true } };
+			propertyAsset: {
+				include: {
+					images: true;
+					owners: {
+						select: {
+							id: true;
+							propertyAssetId: true;
+							userId: true;
+							isPrimary: true;
+							accessStatus: true;
+							createdAt: true;
+							updatedAt: true;
+							user: { select: { id: true; email: true; firstName: true } };
+						};
+					};
+				};
+			};
 			agents: { include: { agentUser: true } };
 			createdBy: true;
 		};
@@ -96,6 +128,10 @@ export type AssignPropertyAgentResult =
 	| { status: "assigned"; assignment: PropertyAgent }
 	| { status: "alreadyAssigned" };
 
+export type LinkPropertyOwnerResult =
+	| { status: "linked"; owner: PropertyOwnerRecord }
+	| { status: "alreadyLinked" };
+
 export type PropertyEngagementsRepository = {
 	createWithAsset(
 		input: CreatePropertyEngagementInput,
@@ -141,4 +177,8 @@ export type PropertyEngagementsRepository = {
 		engagementId: string;
 		agentId: string;
 	}): Promise<boolean>;
+	linkOwner(input: {
+		propertyAssetId: string;
+		ownerUserId: string;
+	}): Promise<LinkPropertyOwnerResult>;
 };

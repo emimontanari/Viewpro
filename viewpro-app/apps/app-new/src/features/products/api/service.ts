@@ -8,6 +8,8 @@
 
 import type {
   AssignableProductAgentsResponse,
+  LinkProductOwnerPayload,
+  LinkProductOwnerResponse,
   Product,
   ProductAgentAssignmentPayload,
   ProductByIdResponse,
@@ -71,6 +73,19 @@ export async function removeProductAgent(
   });
 
   return parseJsonResponse<RemoveProductAgentResponse>(response);
+}
+
+export async function linkProductOwner(
+  productId: string,
+  data: LinkProductOwnerPayload
+): Promise<LinkProductOwnerResponse> {
+  const response = await apiFetch(`${PRODUCTS_API_PATH}/${productId}/owners`, {
+    body: JSON.stringify(data),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST'
+  });
+
+  return parseJsonResponse<LinkProductOwnerResponse>(response);
 }
 
 export async function createProductMovement(
