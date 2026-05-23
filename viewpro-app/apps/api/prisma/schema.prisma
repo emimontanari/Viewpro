@@ -244,8 +244,9 @@ model PropertyAssetOwner {
   createdAt       DateTime                       @default(now())
   updatedAt       DateTime                       @updatedAt
 
-  propertyAsset PropertyAsset @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
-  user          User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyAsset    PropertyAsset     @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentRequests DocumentRequest[]
 
   @@unique([propertyAssetId, ownerEmail])
   @@unique([propertyAssetId, userId])
@@ -353,7 +354,8 @@ model DocumentRequest {
   id                   String                @id @default(uuid())
   tenantId             String
   propertyEngagementId String
-  ownerUserId          String
+  propertyAssetOwnerId String?
+  ownerUserId          String?
   requestedByUserId    String
   title                String
   description          String?
@@ -366,13 +368,15 @@ model DocumentRequest {
 
   tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   propertyEngagement PropertyEngagement @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)
-  ownerUser          User               @relation("DocumentRequestOwner", fields: [ownerUserId], references: [id])
+  propertyAssetOwner PropertyAssetOwner? @relation(fields: [propertyAssetOwnerId], references: [id], onDelete: SetNull)
+  ownerUser          User?              @relation("DocumentRequestOwner", fields: [ownerUserId], references: [id])
   requestedByUser    User               @relation("DocumentRequestRequester", fields: [requestedByUserId], references: [id])
   reviewedByUser     User?              @relation("DocumentRequestReviewer", fields: [reviewedByUserId], references: [id])
   document           Document?          @relation("DocumentRequestDocument")
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, requestedByUserId])
+  @@index([propertyAssetOwnerId, status])
   @@index([ownerUserId, status])
   @@index([propertyEngagementId])
   @@map("document_requests")

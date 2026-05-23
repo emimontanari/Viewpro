@@ -1,5 +1,10 @@
-import { Injectable } from '@nestjs/common'
-import { DocumentRequestStatus, DocumentVersionStatus, Prisma } from '@prisma/client'
+import { Inject, Injectable } from '@nestjs/common'
+import {
+  DocumentRequestStatus,
+  DocumentVersionStatus,
+  PropertyAssetOwnerAccessStatus,
+  type Prisma,
+} from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import type {
   CreateDocumentRequestInput,
@@ -21,21 +26,72 @@ export const documentRequestInclude = {
 
 @Injectable()
 export class PrismaDocumentsRepository implements DocumentsRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  findTenantEngagementForDocumentRequest(input: {
+  async findTenantEngagementForDocumentRequest(input: {
     tenantId: string
     propertyEngagementId: string
-    ownerUserId: string
-  }): Promise<{ id: string; tenantId: string; propertyAssetId: string } | null> {
-    return this.prisma.propertyEngagement.findFirst({
+    propertyAssetOwnerId?: string
+    ownerUserId?: string
+  }): Promise<{
+    id: string
+    tenantId: string
+    propertyAssetId: string
+    propertyAssetOwnerId: string
+    ownerUserId: string | null
+  } | null> {
+    const ownerWhere = this.buildDocumentRequestOwnerWhere(input)
+
+    if (!ownerWhere) {
+      return null
+    }
+
+    const eligibleOwnerWhere = {
+      ...ownerWhere,
+      accessStatus: {
+        in: [PropertyAssetOwnerAccessStatus.INVITED, PropertyAssetOwnerAccessStatus.ACTIVE],
+      },
+    } satisfies Prisma.PropertyAssetOwnerWhereInput
+
+    const engagement = await this.prisma.propertyEngagement.findFirst({
       where: {
         id: input.propertyEngagementId,
         tenantId: input.tenantId,
-        propertyAsset: { owners: { some: { userId: input.ownerUserId, accessStatus: 'ACTIVE' } } },
+        propertyAsset: {
+          owners: {
+            some: eligibleOwnerWhere,
+          },
+        },
       },
-      select: { id: true, tenantId: true, propertyAssetId: true },
+      select: {
+        id: true,
+        tenantId: true,
+        propertyAssetId: true,
+        propertyAsset: {
+          select: {
+            owners: {
+              where: eligibleOwnerWhere,
+              select: { id: true, userId: true },
+              take: 1,
+            },
+          },
+        },
+      },
     })
+
+    const owner = engagement?.propertyAsset.owners[0]
+
+    if (!engagement || !owner) {
+      return null
+    }
+
+    return {
+      id: engagement.id,
+      tenantId: engagement.tenantId,
+      propertyAssetId: engagement.propertyAssetId,
+      propertyAssetOwnerId: owner.id,
+      ownerUserId: owner.userId ?? null,
+    }
   }
 
   createRequest(input: CreateDocumentRequestInput): Promise<DocumentRequestRecord> {
@@ -43,7 +99,8 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
       data: {
         tenantId: input.tenantId,
         propertyEngagementId: input.propertyEngagementId,
-        ownerUserId: input.ownerUserId,
+        propertyAssetOwnerId: input.propertyAssetOwnerId,
+        ownerUserId: input.ownerUserId ?? null,
         requestedByUserId: input.requestedByUserId,
         title: input.title,
         description: input.description ?? null,
@@ -211,10 +268,7 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
     return this.prisma.documentRequest.findFirst({
       where: {
         id: input.requestId,
-        ownerUserId: input.ownerUserId,
-        propertyEngagement: {
-          propertyAsset: { owners: { some: { userId: input.ownerUserId, accessStatus: 'ACTIVE' } } },
-        },
+        ...this.buildOwnerRequestWhere({ ownerUserId: input.ownerUserId }),
       },
       include: documentRequestInclude,
     })
@@ -265,6 +319,9 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
       tenantId: input.tenantId,
       ...('requestId' in input ? { id: input.requestId } : {}),
       ...('status' in input && input.status ? { status: input.status } : {}),
+      ...('propertyEngagementId' in input && input.propertyEngagementId
+        ? { propertyEngagementId: input.propertyEngagementId }
+        : {}),
     }
 
     if (!input.canViewAll) {
@@ -284,16 +341,54 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
     return where
   }
 
+  private buildDocumentRequestOwnerWhere(input: {
+    propertyAssetOwnerId?: string
+    ownerUserId?: string
+  }): Prisma.PropertyAssetOwnerWhereInput | null {
+    if (input.propertyAssetOwnerId) {
+      return {
+        id: input.propertyAssetOwnerId,
+        ...(input.ownerUserId ? { userId: input.ownerUserId } : {}),
+      }
+    }
+
+    if (input.ownerUserId) {
+      return { userId: input.ownerUserId }
+    }
+
+    return null
+  }
+
   private buildOwnerRequestWhere(input: {
     ownerUserId: string
     status?: DocumentRequestStatus
   }): Prisma.DocumentRequestWhereInput {
     return {
-      ownerUserId: input.ownerUserId,
       ...(input.status ? { status: input.status } : {}),
-      propertyEngagement: {
-        propertyAsset: { owners: { some: { userId: input.ownerUserId, accessStatus: 'ACTIVE' } } },
-      },
+      OR: [
+        {
+          propertyAssetOwner: {
+            is: {
+              userId: input.ownerUserId,
+              accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+            },
+          },
+        },
+        {
+          propertyAssetOwnerId: null,
+          ownerUserId: input.ownerUserId,
+          propertyEngagement: {
+            propertyAsset: {
+              owners: {
+                some: {
+                  userId: input.ownerUserId,
+                  accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+                },
+              },
+            },
+          },
+        },
+      ],
     }
   }
 }

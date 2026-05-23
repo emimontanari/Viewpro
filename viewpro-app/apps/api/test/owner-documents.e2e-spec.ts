@@ -45,10 +45,10 @@ describe('Owner document endpoints (e2e)', () => {
     const otherOwner = await registerOwnerSession('owner-documents-other@example.com')
     const owned = await createEngagement(manager.agent, manager.tenantId, { title: 'Owner Visible Document Property' }).expect(201)
     const hidden = await createEngagement(manager.agent, manager.tenantId, { title: 'Owner Hidden Document Property' }).expect(201)
-    await grantOwnerAccess(owner.userId, owned.body.property.id)
-    await grantOwnerAccess(otherOwner.userId, hidden.body.property.id)
-    const visibleRequest = await createInternalRequest(manager.agent, manager.tenantId, owned.body.id, owner.userId, 'Visible deed').expect(201)
-    const hiddenRequest = await createInternalRequest(manager.agent, manager.tenantId, hidden.body.id, otherOwner.userId, 'Hidden deed').expect(201)
+    const ownerLink = await grantOwnerAccess(owner.userId, owned.body.property.id)
+    const otherOwnerLink = await grantOwnerAccess(otherOwner.userId, hidden.body.property.id)
+    const visibleRequest = await createInternalRequest(manager.agent, manager.tenantId, owned.body.id, ownerLink.id, 'Visible deed').expect(201)
+    const hiddenRequest = await createInternalRequest(manager.agent, manager.tenantId, hidden.body.id, otherOwnerLink.id, 'Hidden deed').expect(201)
 
     const list = await owner.agent.get('/api/owner/document-requests').expect(200)
     const detail = await owner.agent.get(`/api/owner/document-requests/${visibleRequest.body.id}`).expect(200)
@@ -56,7 +56,12 @@ describe('Owner document endpoints (e2e)', () => {
 
     expect(list.body.total).toBe(1)
     expect(list.body.items.map((item: { id: string }) => item.id)).toEqual([visibleRequest.body.id])
-    expect(detail.body).toMatchObject({ id: visibleRequest.body.id, ownerUserId: owner.userId, title: 'Visible deed' })
+    expect(detail.body).toMatchObject({
+      id: visibleRequest.body.id,
+      propertyAssetOwnerId: ownerLink.id,
+      ownerUserId: owner.userId,
+      title: 'Visible deed',
+    })
     expect(otherDetail.body.message).toBe('Document request not found')
   })
 
@@ -133,9 +138,9 @@ describe('Owner document endpoints (e2e)', () => {
     const owner = await registerOwnerSession(`${seed}-owner@example.com`)
     const otherOwner = await registerOwnerSession(`${seed}-other@example.com`)
     const engagement = await createEngagement(manager.agent, manager.tenantId, { title: `${seed} Property` }).expect(201)
-    await grantOwnerAccess(owner.userId, engagement.body.property.id)
-    const documentRequest = await createInternalRequest(manager.agent, manager.tenantId, engagement.body.id, owner.userId, `${seed} deed`).expect(201)
-    return { manager, owner, otherOwner, engagement, documentRequest }
+    const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id)
+    const documentRequest = await createInternalRequest(manager.agent, manager.tenantId, engagement.body.id, ownerLink.id, `${seed} deed`).expect(201)
+    return { manager, owner, otherOwner, engagement, ownerLink, documentRequest }
   }
 
   async function registerTenantSession(email: string, tenantName: string) {
@@ -173,13 +178,13 @@ describe('Owner document endpoints (e2e)', () => {
     agent: request.SuperAgentTest,
     tenantId: string,
     engagementId: string,
-    ownerUserId: string,
+    propertyAssetOwnerId: string,
     title: string,
   ) {
     return agent
       .post(`/api/property-engagements/${engagementId}/document-requests`)
       .set('x-tenant-id', tenantId)
-      .send({ ownerUserId, title })
+      .send({ propertyAssetOwnerId, title })
   }
 
   async function grantOwnerAccess(
@@ -187,6 +192,20 @@ describe('Owner document endpoints (e2e)', () => {
     propertyAssetId: string,
     accessStatus: PropertyAssetOwnerAccessStatus = PropertyAssetOwnerAccessStatus.ACTIVE,
   ) {
-    return prisma.propertyAssetOwner.create({ data: { userId, propertyAssetId, accessStatus } })
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { email: true, firstName: true, lastName: true },
+    })
+
+    return prisma.propertyAssetOwner.create({
+      data: {
+        userId,
+        propertyAssetId,
+        ownerEmail: user.email.toLowerCase(),
+        ownerFirstName: user.firstName,
+        ownerLastName: user.lastName ?? '',
+        accessStatus,
+      },
+    })
   }
 })

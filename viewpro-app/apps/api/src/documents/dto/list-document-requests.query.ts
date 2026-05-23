@@ -1,22 +1,26 @@
-import { DocumentRequestStatus } from '@prisma/client'
-import { Transform } from 'class-transformer'
-import { IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator'
+import { DocumentRequestStatus } from "@prisma/client";
+import { Transform } from "class-transformer";
+import { IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from "class-validator";
 
 export class ListDocumentRequestsQuery {
-  @IsOptional()
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
-  page = 1
+	@IsOptional()
+	@Transform(({ value }) => Number(value))
+	@IsInt()
+	@Min(1)
+	page = 1;
 
-  @IsOptional()
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
-  @Max(50)
-  pageSize = 20
+	@IsOptional()
+	@Transform(({ value }) => Number(value))
+	@IsInt()
+	@Min(1)
+	@Max(50)
+	pageSize = 20;
 
-  @IsOptional()
-  @IsEnum(DocumentRequestStatus)
-  status?: DocumentRequestStatus
+	@IsOptional()
+	@IsEnum(DocumentRequestStatus)
+	status?: DocumentRequestStatus;
+
+	@IsOptional()
+	@IsUUID()
+	propertyEngagementId?: string;
 }

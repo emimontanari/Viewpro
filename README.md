@@ -103,7 +103,7 @@ Endpoints de propietario con `AuthGuard` solamente, sin `x-tenant-id`:
 - `POST /api/owner/document-versions/:id/confirm-upload`
 - `POST /api/owner/document-versions/:id/read-url`
 
-El propietario sólo ve solicitudes dirigidas a su usuario y respaldadas por `PropertyAssetOwner(accessStatus: ACTIVE)`. El upload acepta PDF/JPEG/PNG/WebP hasta 10 MB, crea una versión `PENDING_UPLOAD`, confirma la subida como `UPLOADED` y mueve la solicitud a `SUBMITTED` para aprobación o rechazo interno.
+Las solicitudes documentales se dirigen al vínculo `PropertyAssetOwner`, por lo que propietarios `INVITED` o `ACTIVE` pueden recibir pedidos sin crear usuarios falsos. El portal propietario sigue autenticado: un propietario sólo ve/sube solicitudes cuando ese vínculo está `ACTIVE` y su `userId` coincide con el usuario actual. El upload acepta PDF/JPEG/PNG/WebP hasta 10 MB, crea una versión `PENDING_UPLOAD`, confirma la subida como `UPLOADED` y mueve la solicitud a `SUBMITTED` para aprobación o rechazo interno.
 
 ## Pilot analytics backend
 

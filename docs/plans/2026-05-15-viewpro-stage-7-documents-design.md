@@ -70,7 +70,7 @@ Internal endpoints use `AuthGuard`, `TenantMembershipGuard`, and permission chec
 | Target owner | Yes | Yes, while request allows upload | No |
 | Other owner | No | No | No |
 
-Owner endpoints use `AuthGuard` only. They do not require `x-tenant-id`. The owner must match `ownerUserId` and should also have active property access through `PropertyAssetOwner` for the related property.
+Owner endpoints use `AuthGuard` only. They do not require `x-tenant-id`. Revised after the pending-owner model: requests now target the `PropertyAssetOwner` link; owner portal access still requires that link to be `ACTIVE` and its `userId` to match the authenticated owner.
 
 ## Data model
 
@@ -101,7 +101,8 @@ Key fields:
 
 - `tenantId`
 - `propertyEngagementId`
-- `ownerUserId`
+- `propertyAssetOwnerId`
+- `ownerUserId` (nullable compatibility snapshot for registered owners)
 - `requestedByUserId`
 - `title`
 - `description`

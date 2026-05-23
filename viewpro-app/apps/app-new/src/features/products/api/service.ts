@@ -8,11 +8,14 @@
 
 import type {
   AssignableProductAgentsResponse,
+  CreateProductDocumentRequestPayload,
   LinkProductOwnerPayload,
   LinkProductOwnerResponse,
   Product,
   ProductAgentAssignmentPayload,
   ProductByIdResponse,
+  ProductDocumentRequestsResponse,
+  ProductDocumentRequestStatus,
   ProductFilters,
   ProductMovement,
   ProductMovementMutationPayload,
@@ -44,6 +47,35 @@ export async function getProductMovements(productId: string): Promise<ProductMov
     `${PRODUCTS_API_PATH}/${productId}/movements?pageSize=8&order=desc`
   );
   return parseJsonResponse<ProductMovementsResponse>(response);
+}
+
+export async function getProductDocumentRequests(
+  productId: string,
+  params: { page?: number; pageSize?: number; status?: ProductDocumentRequestStatus } = {}
+): Promise<ProductDocumentRequestsResponse> {
+  const searchParams = new URLSearchParams();
+  appendSearchParam(searchParams, 'page', params.page);
+  appendSearchParam(searchParams, 'pageSize', params.pageSize);
+  appendSearchParam(searchParams, 'status', params.status);
+
+  const query = searchParams.toString();
+  const response = await apiFetch(
+    `${PRODUCTS_API_PATH}/${productId}/document-requests${query ? `?${query}` : ''}`
+  );
+  return parseJsonResponse<ProductDocumentRequestsResponse>(response);
+}
+
+export async function createProductDocumentRequest(
+  productId: string,
+  data: CreateProductDocumentRequestPayload
+) {
+  const response = await apiFetch(`${PRODUCTS_API_PATH}/${productId}/document-requests`, {
+    body: JSON.stringify(data),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST'
+  });
+
+  return parseJsonResponse(response);
 }
 
 export async function getAssignableProductAgents(): Promise<AssignableProductAgentsResponse> {

@@ -48,7 +48,7 @@ pnpm lint
 Create `viewpro-app/apps/api/test/documents.repository.spec.ts` with tests that reference the future repository contract and Prisma document enums.
 
 Cover:
-- creating a document request with `requestedByUserId` and `ownerUserId`
+- creating a document request with `requestedByUserId` and a `propertyAssetOwnerId` target
 - listing manager-visible requests
 - listing requesting-seller-visible requests
 - hiding peer seller requests
@@ -75,14 +75,16 @@ Model relationships to add:
 - `Tenant.documentRequests`
 - `PropertyEngagement.documentRequests`
 - `User.requestedDocumentRequests`
-- `User.ownedDocumentRequests`
+- `PropertyAssetOwner.documentRequests`
+- `User.ownedDocumentRequests` as nullable compatibility/audit relation
 - `User.reviewedDocumentRequests`
 - `User.uploadedDocumentVersions`
 
 Recommended indexes:
 - `DocumentRequest`: `[tenantId, status, createdAt]`
 - `DocumentRequest`: `[tenantId, requestedByUserId]`
-- `DocumentRequest`: `[ownerUserId, status]`
+- `DocumentRequest`: `[propertyAssetOwnerId, status]`
+- `DocumentRequest`: `[ownerUserId, status]` for legacy compatibility
 - `DocumentRequest`: `[propertyEngagementId]`
 - `DocumentVersion`: `[documentId, status]`
 - `DocumentVersion`: `[uploadedByUserId]`
@@ -286,12 +288,12 @@ git commit -m "feat(api): add internal document request use cases"
 
 Cover:
 - owner lists only requests addressed to them
-- owner detail requires matching `ownerUserId`
+- owner detail requires a stored `PropertyAssetOwner` link whose `userId` matches the authenticated owner
 - owner with revoked property access receives `404`
 
 **Step 2: Implement use cases**
 
-Use owner user ID and active `PropertyAssetOwner` access through the related property.
+Use the stored `PropertyAssetOwner` link for access; upload/read still require an active linked `userId`.
 
 **Step 3: Run tests**
 
