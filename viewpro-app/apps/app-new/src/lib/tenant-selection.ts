@@ -27,6 +27,23 @@ export function setSelectedTenantId(selectedTenantId: string) {
   window.dispatchEvent(new Event(TENANT_SELECTION_EVENT));
 }
 
+export function getSelectedTenantCookieId() {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  const cookie = document.cookie
+    .split('; ')
+    .find((item) => item.startsWith(`${SELECTED_TENANT_COOKIE}=`));
+
+  if (!cookie) {
+    return null;
+  }
+
+  const [, value] = cookie.split('=');
+  return value ? decodeURIComponent(value) : null;
+}
+
 export function clearSelectedTenantId() {
   if (!canUseStorage()) {
     return;

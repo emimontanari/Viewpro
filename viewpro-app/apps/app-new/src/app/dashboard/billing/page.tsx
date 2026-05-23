@@ -5,21 +5,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icons } from '@/components/icons';
 import { billingInfoContent } from '@/config/infoconfig';
-import { useSession } from '@/lib/session-context';
-import { useSelectedTenantId } from '@/lib/tenant-selection';
+import { useActiveTenant } from '@/lib/session-context';
 
 export default function BillingPage() {
-  const { isLoading, session } = useSession();
-  const selectedTenantId = useSelectedTenantId();
-  const selectedMembership =
-    session?.memberships.find((membership) => membership.tenant.id === selectedTenantId) ??
-    session?.memberships[0];
-  const activeBusiness = selectedMembership?.tenant.name;
+  const { activeMembership, hasMemberships, isTenantLoading } = useActiveTenant();
+  const activeBusiness = activeMembership?.tenant.name;
 
   return (
     <PageContainer
-      isLoading={isLoading}
-      access={isLoading || Boolean(session?.memberships.length)}
+      isLoading={isTenantLoading}
+      access={isTenantLoading || hasMemberships}
       accessFallback={
         <div className='flex min-h-[400px] items-center justify-center'>
           <div className='space-y-2 text-center'>

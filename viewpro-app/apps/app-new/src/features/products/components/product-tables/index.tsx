@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
-import { useSelectedTenantId } from '@/lib/tenant-selection';
+import { useActiveTenant } from '@/lib/session-context';
 import { cn } from '@/lib/utils';
 import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
@@ -49,7 +49,7 @@ const DEFAULT_ARCHIVE_FILTER: PropertyArchiveFilter = 'active';
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 export function ProductTable() {
-  const selectedTenantId = useSelectedTenantId();
+  const { activeTenantId, isTenantLoading } = useActiveTenant();
   const [params, setParams] = useQueryStates({
     page: parseAsInteger.withDefault(1),
     perPage: parseAsInteger.withDefault(10),
@@ -62,7 +62,7 @@ export function ProductTable() {
   const filters = {
     page: params.page,
     limit: params.perPage,
-    tenantId: selectedTenantId,
+    tenantId: activeTenantId,
     archived: archivedFilter,
     ...(params.operationType && { operationType: params.operationType }),
     ...(params.status && { status: params.status })
@@ -70,7 +70,7 @@ export function ProductTable() {
 
   const productsQuery = useQuery({
     ...productsQueryOptions(filters),
-    enabled: Boolean(selectedTenantId)
+    enabled: Boolean(activeTenantId) && !isTenantLoading
   });
 
   const products = productsQuery.data?.items ?? [];
@@ -124,7 +124,11 @@ export function ProductTable() {
     void setParams({ page: 1, perPage: Number(pageSize) });
   };
 
-  if (!selectedTenantId) {
+  if (isTenantLoading) {
+    return <PropertyTableSkeleton />;
+  }
+
+  if (!activeTenantId) {
     return (
       <PropertyTableMessage
         tone='neutral'

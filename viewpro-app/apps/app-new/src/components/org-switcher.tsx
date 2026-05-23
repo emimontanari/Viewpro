@@ -2,7 +2,6 @@
 
 import { Icons } from '@/components/icons';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
 
 import {
   DropdownMenu,
@@ -20,36 +19,20 @@ import {
   useSidebar
 } from '@/components/ui/sidebar';
 import { getMembershipRoleLabel } from '@/lib/session';
-import { useSession } from '@/lib/session-context';
-import { setSelectedTenantId, useSelectedTenantId } from '@/lib/tenant-selection';
+import { useActiveTenant } from '@/lib/session-context';
+import { setSelectedTenantId } from '@/lib/tenant-selection';
 
 export function OrgSwitcher() {
   const { isMobile, state } = useSidebar();
   const router = useRouter();
-  const { isLoading, session } = useSession();
-  const selectedTenantId = useSelectedTenantId();
-
-  const memberships = useMemo(() => session?.memberships ?? [], [session?.memberships]);
-  const activeMembership =
-    memberships.find((membership) => membership.tenant.id === selectedTenantId) ?? memberships[0];
-
-  useEffect(() => {
-    const firstTenantId = memberships[0]?.tenant.id;
-    const selectedTenantExists = memberships.some(
-      (membership) => membership.tenant.id === selectedTenantId
-    );
-
-    if (firstTenantId && (!selectedTenantId || !selectedTenantExists)) {
-      setSelectedTenantId(firstTenantId);
-    }
-  }, [memberships, selectedTenantId]);
+  const { activeMembership, isTenantLoading, memberships } = useActiveTenant();
 
   const handleOrganizationSwitch = (tenantId: string) => {
     setSelectedTenantId(tenantId);
     router.refresh();
   };
 
-  if (isLoading) {
+  if (isTenantLoading) {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
