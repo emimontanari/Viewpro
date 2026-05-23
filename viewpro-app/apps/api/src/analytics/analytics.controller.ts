@@ -1,5 +1,5 @@
 import { Controller, Get, Inject, Query, UseGuards } from '@nestjs/common'
-import { ApiOperation, ApiTags } from '@nestjs/swagger'
+import { ApiExtraModels, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { CurrentUser } from '../auth/decorators/current-user.decorator'
 import { AuthGuard } from '../auth/guards/auth.guard'
 import type { CurrentUser as CurrentUserContext } from '../auth/types/current-user'
@@ -18,13 +18,10 @@ import { ListActivityFeedUseCase } from './use-cases/list-activity-feed.use-case
 import { ListAnalyticsEventsUseCase } from './use-cases/list-analytics-events.use-case'
 import { ListInactiveEngagementsUseCase } from './use-cases/list-inactive-engagements.use-case'
 
-// Keep query classes as runtime values for Nest ValidationPipe metadata.
-const nestQueryRuntimeTypes = [ListActivityFeedQuery, ListAnalyticsEventsQuery, ListInactiveEngagementsQuery]
-void nestQueryRuntimeTypes
-
 @Controller('analytics')
 @ApiTags('Analytics')
 @ApiTenantContext()
+@ApiExtraModels(ListActivityFeedQuery, ListAnalyticsEventsQuery, ListInactiveEngagementsQuery)
 @UseGuards(AuthGuard, TenantMembershipGuard, PermissionGuard)
 export class AnalyticsController {
   constructor(
@@ -58,7 +55,7 @@ export class AnalyticsController {
 
   @Get('activity-feed')
   @RequireAnyPermission(PERMISSIONS.ENGAGEMENTS_VIEW_ALL, PERMISSIONS.ENGAGEMENTS_VIEW_ASSIGNED)
-  @ApiOperation({ summary: 'List cross-property movement activity for the current tenant' })
+  @ApiOperation({ summary: 'List cross-property operational activity for the current tenant' })
   activityFeed(
     @CurrentTenant() tenant: TenantContext,
     @CurrentUser() currentUser: CurrentUserContext,

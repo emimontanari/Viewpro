@@ -20,14 +20,14 @@ import { getMovementTypeLabel } from '@/features/products/constants/movement-opt
 import { formatDateTime } from '@/features/products/utils/format-date-time';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import type { ActivityFeedItem } from '../api/types';
+import type { ActivityMovementItem } from '../api/types';
 
 export function ActivityMovementDetailDialog({
   item,
   onOpenChange,
   open
 }: {
-  item: ActivityFeedItem | null;
+  item: ActivityMovementItem | null;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) {
@@ -194,7 +194,7 @@ function StatusPill({ eyebrow, label, tone }: { eyebrow: string; label: string; 
   );
 }
 
-function getMovementStatusChange(item: ActivityFeedItem) {
+function getMovementStatusChange(item: ActivityMovementItem) {
   if (!item.newStatus) {
     return null;
   }
@@ -207,7 +207,7 @@ function getMovementStatusChange(item: ActivityFeedItem) {
   };
 }
 
-function formatAddress(item: ActivityFeedItem) {
+function formatAddress(item: ActivityMovementItem) {
   return [item.property.addressLine, item.property.city, item.property.province]
     .filter(Boolean)
     .join(', ');

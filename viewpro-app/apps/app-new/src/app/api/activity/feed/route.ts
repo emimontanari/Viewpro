@@ -18,6 +18,7 @@ function buildActivityQuery(request: NextRequest) {
 
   appendSearchParam(backendParams, 'page', incomingParams.get('page'));
   appendSearchParam(backendParams, 'pageSize', incomingParams.get('pageSize'));
+  appendSearchParam(backendParams, 'kind', normalizeActivityKind(incomingParams.get('kind')));
   appendSearchParam(backendParams, 'type', incomingParams.get('type'));
   appendSearchParam(backendParams, 'sellerId', incomingParams.get('sellerId'));
   appendSearchParam(backendParams, 'dateFrom', incomingParams.get('dateFrom'));
@@ -33,6 +34,10 @@ function appendSearchParam(searchParams: URLSearchParams, key: string, value: st
   }
 
   searchParams.set(key, value);
+}
+
+function normalizeActivityKind(kind: string | null) {
+  return kind === 'all' ? null : kind;
 }
 
 function toBffErrorResponse(error: unknown, fallbackMessage: string) {

@@ -19,6 +19,24 @@ export type DocumentVersionRecord = Prisma.DocumentVersionGetPayload<object> & {
 	document?: { documentRequestId: string } | null;
 };
 
+export type ActivityDocumentRequestRecord = Prisma.DocumentRequestGetPayload<{
+	include: {
+		document: { include: { currentVersion: true } };
+		propertyAssetOwner: true;
+		propertyEngagement: {
+			include: {
+				propertyAsset: true;
+				agents: {
+					include: {
+						agentUser: { select: { id: true; email: true; firstName: true } };
+					};
+				};
+			};
+		};
+		requestedByUser: { select: { id: true; email: true; firstName: true } };
+	};
+}>;
+
 export type CreateDocumentRequestInput = {
 	tenantId: string;
 	propertyEngagementId: string;
@@ -52,6 +70,17 @@ export type ListOwnerDocumentRequestsInput = {
 	page: number;
 	pageSize: number;
 	status?: DocumentRequestStatus;
+};
+
+export type ListActivityDocumentRequestsInput = {
+	tenantId: string;
+	viewerUserId: string;
+	canViewAll: boolean;
+	page: number;
+	pageSize: number;
+	requestedByUserId?: string;
+	from?: Date;
+	to?: Date;
 };
 
 export type FindInternalDocumentRequestDetailInput = {
@@ -117,6 +146,9 @@ export type DocumentsRepository = {
 	listInternalRequests(
 		input: ListInternalDocumentRequestsInput,
 	): Promise<{ items: DocumentRequestRecord[]; total: number }>;
+	listActivityRequests(
+		input: ListActivityDocumentRequestsInput,
+	): Promise<{ items: ActivityDocumentRequestRecord[]; total: number }>;
 	findInternalRequestDetail(
 		input: FindInternalDocumentRequestDetailInput,
 	): Promise<DocumentRequestRecord | null>;

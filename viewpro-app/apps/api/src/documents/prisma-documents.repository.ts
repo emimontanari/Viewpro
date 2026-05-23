@@ -7,6 +7,7 @@ import {
 } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import type {
+  ActivityDocumentRequestRecord,
   CreateDocumentRequestInput,
   CreatePendingDocumentVersionInput,
   DocumentRequestRecord,
@@ -14,6 +15,7 @@ import type {
   DocumentVersionRecord,
   FindInternalDocumentRequestDetailInput,
   FindInternalDocumentVersionInput,
+  ListActivityDocumentRequestsInput,
   ListInternalDocumentRequestsInput,
   ListOwnerDocumentRequestsInput,
   ReviewDocumentRequestInput,
@@ -22,6 +24,23 @@ import type {
 export const documentRequestInclude = {
   document: { include: { currentVersion: true, versions: true } },
   propertyEngagement: { select: { id: true, tenantId: true, propertyAssetId: true } },
+} satisfies Prisma.DocumentRequestInclude
+
+const activityDocumentRequestInclude = {
+  document: { include: { currentVersion: true } },
+  propertyAssetOwner: true,
+  propertyEngagement: {
+    include: {
+      propertyAsset: true,
+      agents: {
+        include: {
+          agentUser: { select: { id: true, email: true, firstName: true } },
+        },
+        orderBy: { assignedAt: 'asc' },
+      },
+    },
+  },
+  requestedByUser: { select: { id: true, email: true, firstName: true } },
 } satisfies Prisma.DocumentRequestInclude
 
 @Injectable()
@@ -139,6 +158,25 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
         where,
         include: documentRequestInclude,
         orderBy: { createdAt: 'desc' },
+        skip: (input.page - 1) * input.pageSize,
+        take: input.pageSize,
+      }),
+      this.prisma.documentRequest.count({ where }),
+    ])
+
+    return { items, total }
+  }
+
+  async listActivityRequests(
+    input: ListActivityDocumentRequestsInput,
+  ): Promise<{ items: ActivityDocumentRequestRecord[]; total: number }> {
+    const where = this.buildActivityRequestWhere(input)
+
+    const [items, total] = await Promise.all([
+      this.prisma.documentRequest.findMany({
+        where,
+        include: activityDocumentRequestInclude,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (input.page - 1) * input.pageSize,
         take: input.pageSize,
       }),
@@ -310,6 +348,25 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
         document: { documentRequest: this.buildInternalVersionRequestWhere(input) },
       },
     })
+  }
+
+  private buildActivityRequestWhere(input: ListActivityDocumentRequestsInput): Prisma.DocumentRequestWhereInput {
+    const createdAt: Prisma.DateTimeFilter = {}
+
+    if (input.from) {
+      createdAt.gte = input.from
+    }
+
+    if (input.to) {
+      createdAt.lte = input.to
+    }
+
+    return {
+      tenantId: input.tenantId,
+      ...(Object.keys(createdAt).length > 0 ? { createdAt } : {}),
+      ...(input.requestedByUserId ? { requestedByUserId: input.requestedByUserId } : {}),
+      ...(input.canViewAll ? {} : { requestedByUserId: input.viewerUserId }),
+    }
   }
 
   private buildInternalVisibilityWhere(

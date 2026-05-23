@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
+import { DocumentsModule } from "../documents/documents.module";
 import { MembershipsModule } from "../memberships/memberships.module";
 import { MovementsModule } from "../movements/movements.module";
 import { PermissionsModule } from "../permissions/permissions.module";
@@ -15,6 +16,7 @@ import { ListInactiveEngagementsUseCase } from "./use-cases/list-inactive-engage
 	imports: [
 		AnalyticsCoreModule,
 		AuthModule,
+		DocumentsModule,
 		MembershipsModule,
 		MovementsModule,
 		PermissionsModule,

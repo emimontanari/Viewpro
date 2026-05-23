@@ -2,8 +2,6 @@ import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
-import { getMovementTypeLabel } from '@/features/products/constants/movement-options';
 import {
   getOperationTone,
   getOperationTypeLabel,
@@ -11,24 +9,60 @@ import {
   getStatusTone
 } from '@/features/products/components/product-tables/columns';
 import { formatDateTime } from '@/features/products/utils/format-date-time';
+import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import type { ActivityMovementItem } from '../api/types';
+import type { ActivityDocumentRequestItem } from '../api/types';
 
-export function ActivityFeedItem({
-  item,
-  onViewDetails
-}: {
-  item: ActivityMovementItem;
-  onViewDetails: (item: ActivityMovementItem) => void;
-}) {
+const documentStatusLabels: Record<
+  ActivityDocumentRequestItem['documentRequest']['status'],
+  string
+> = {
+  APPROVED: 'Aprobada',
+  CANCELLED: 'Cancelada',
+  PENDING: 'Pendiente',
+  REJECTED: 'Rechazada',
+  SUBMITTED: 'Subida'
+};
+
+const documentStatusTones: Record<
+  ActivityDocumentRequestItem['documentRequest']['status'],
+  string
+> = {
+  APPROVED:
+    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300',
+  CANCELLED: 'border-muted bg-muted/50 text-muted-foreground',
+  PENDING:
+    'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300',
+  REJECTED:
+    'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300',
+  SUBMITTED:
+    'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/50 dark:text-sky-300'
+};
+
+const versionStatusLabels: Record<
+  NonNullable<ActivityDocumentRequestItem['documentRequest']['currentVersion']>['status'],
+  string
+> = {
+  APPROVED: 'Aprobada',
+  PENDING_UPLOAD: 'Pendiente de carga',
+  REJECTED: 'Rechazada',
+  UPLOADED: 'Subida'
+};
+
+export function ActivityDocumentRequestFeedItem({ item }: { item: ActivityDocumentRequestItem }) {
   const propertyTitle = item.property.title?.trim() || 'Propiedad sin título';
   const address = formatAddress(item);
-  const actor = item.createdBy.firstName || item.createdBy.email;
-  const statusChange = getMovementStatusChange(item);
-  const seller = getSellerLabel(item);
-  const summaryLabel = statusChange ? 'Cambio de estado' : getMovementTypeLabel(item.type);
-  const summaryValue = statusChange ?? item.observation;
+  const ownerLabel = item.owner ? getOwnerDisplayName(item.owner) : 'Propietario';
+  const requesterLabel = getRequesterDisplayName(item);
+  const documentRequest = item.documentRequest;
+  const currentVersion = documentRequest?.currentVersion ?? null;
+  const documentStatusLabel = documentRequest
+    ? documentStatusLabels[documentRequest.status]
+    : 'Solicitud no disponible';
+  const documentStatusTone = documentRequest
+    ? documentStatusTones[documentRequest.status]
+    : 'border-muted bg-muted/50 text-muted-foreground';
 
   return (
     <Card className='overflow-hidden py-0 transition-colors hover:border-primary/30'>
@@ -37,12 +71,15 @@ export function ActivityFeedItem({
           <div className='space-y-4 p-4 sm:p-5'>
             <div className='flex gap-4'>
               <div className='hidden size-12 shrink-0 items-center justify-center rounded-full border bg-muted/40 text-muted-foreground sm:flex'>
-                <Icons.product className='size-6' />
+                <Icons.post className='size-6' />
               </div>
               <div className='min-w-0 flex-1 space-y-2'>
                 <div className='flex flex-wrap items-center gap-2'>
                   <Badge variant='outline' className='rounded-full bg-muted/40'>
-                    {getMovementTypeLabel(item.type)}
+                    Solicitud documental
+                  </Badge>
+                  <Badge variant='outline' className={cn('rounded-full', documentStatusTone)}>
+                    {documentStatusLabel}
                   </Badge>
                   <Badge
                     variant='outline'
@@ -71,40 +108,49 @@ export function ActivityFeedItem({
             <div className='grid gap-3 md:grid-cols-2'>
               <div className='min-w-0 rounded-xl border bg-muted/20 p-3'>
                 <div className='flex items-center gap-2 text-xs font-medium text-muted-foreground'>
-                  <Icons.chevronsUpDown className='size-4 shrink-0' />
-                  {summaryLabel}
+                  <Icons.post className='size-4 shrink-0' />
+                  Documento solicitado
                 </div>
                 <p className='mt-1 line-clamp-2 break-words text-sm font-medium leading-6'>
-                  {summaryValue}
+                  {documentRequest?.title ?? 'Solicitud documental no disponible'}
                 </p>
-                {statusChange && item.observation ? (
+                {documentRequest?.description ? (
                   <p className='mt-1 line-clamp-2 break-words text-xs leading-5 text-muted-foreground'>
-                    {item.observation}
+                    {documentRequest.description}
                   </p>
                 ) : null}
               </div>
 
               <div className='min-w-0 rounded-xl border bg-muted/20 p-3'>
                 <div className='flex items-center gap-2 text-xs font-medium text-muted-foreground'>
-                  <Icons.arrowRight className='size-4 shrink-0' />
-                  Próximo paso
+                  <Icons.fileTypePdf className='size-4 shrink-0' />
+                  Estado del archivo
                 </div>
-                <p className='mt-1 line-clamp-2 break-words text-sm font-medium leading-6'>
-                  {item.nextStep || 'Sin próximo paso cargado'}
-                </p>
+                {currentVersion ? (
+                  <div className='mt-1 space-y-1'>
+                    <p className='line-clamp-1 break-words text-sm font-medium leading-6'>
+                      {currentVersion.originalFilename}
+                    </p>
+                    <p className='text-xs text-muted-foreground'>
+                      {versionStatusLabels[currentVersion.status]}
+                    </p>
+                  </div>
+                ) : (
+                  <p className='mt-1 text-sm font-medium leading-6'>Sin archivo cargado</p>
+                )}
               </div>
             </div>
 
             <div className='grid gap-3 border-t pt-3 text-sm text-muted-foreground sm:grid-cols-2'>
               <ActivityMeta
                 icon={<Icons.user className='size-4' />}
-                label='Registrado por'
-                value={actor}
+                label='Propietario'
+                value={ownerLabel}
               />
               <ActivityMeta
                 icon={<Icons.teams className='size-4' />}
-                label='Vendedor'
-                value={seller}
+                label='Solicitado por'
+                value={requesterLabel}
               />
             </div>
           </div>
@@ -114,23 +160,12 @@ export function ActivityFeedItem({
               <Icons.calendar className='size-4 shrink-0' />
               <time dateTime={item.createdAt}>{formatDateTime(item.createdAt)}</time>
             </div>
-            <div className='flex flex-wrap gap-2 sm:justify-end lg:w-full lg:flex-col'>
-              <Button asChild variant='outline' size='sm' className='lg:w-full'>
-                <Link href={`/dashboard/product/${item.property.engagementId}`}>
-                  Ver propiedad
-                  <Icons.arrowRight className='size-4' />
-                </Link>
-              </Button>
-              <Button
-                type='button'
-                variant='secondary'
-                size='sm'
-                className='lg:w-full'
-                onClick={() => onViewDetails(item)}
-              >
-                Ver detalle
-              </Button>
-            </div>
+            <Button asChild variant='outline' size='sm' className='lg:w-full'>
+              <Link href={`/dashboard/product/${item.property.engagementId}`}>
+                Ver propiedad
+                <Icons.arrowRight className='size-4' />
+              </Link>
+            </Button>
           </div>
         </div>
       </CardContent>
@@ -152,34 +187,25 @@ function ActivityMeta({ icon, label, value }: { icon: ReactNode; label: string; 
   );
 }
 
-function getMovementStatusChange(item: ActivityMovementItem) {
-  if (!item.newStatus) {
-    return null;
-  }
-
-  const previousStatus = item.previousStatus
-    ? getStatusLabel(item.previousStatus)
-    : 'Sin estado anterior';
-  return `${previousStatus} → ${getStatusLabel(item.newStatus)}`;
-}
-
-function formatAddress(item: ActivityMovementItem) {
+function formatAddress(item: ActivityDocumentRequestItem) {
   return [item.property.addressLine, item.property.city, item.property.province]
     .filter(Boolean)
     .join(', ');
 }
 
-function getSellerLabel(item: ActivityMovementItem) {
-  if (item.property.agents.length === 0) {
-    return 'Sin vendedor asignado';
-  }
+function getRequesterDisplayName(item: ActivityDocumentRequestItem) {
+  return item.requestedBy?.firstName || item.requestedBy?.email || 'Solicitante no disponible';
+}
 
-  const [firstAgent] = item.property.agents;
-  const firstAgentName = firstAgent.firstName || firstAgent.email;
+function getOwnerDisplayName(owner: NonNullable<ActivityDocumentRequestItem['owner']>) {
+  const snapshotName = [owner.ownerFirstName, owner.ownerLastName]
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join(' ');
+  const userName = [owner.firstName, owner.lastName]
+    .map((value) => value?.trim())
+    .filter(Boolean)
+    .join(' ');
 
-  if (item.property.agents.length === 1) {
-    return firstAgentName;
-  }
-
-  return `${firstAgentName} + ${item.property.agents.length - 1} más`;
+  return snapshotName || userName || owner.email;
 }

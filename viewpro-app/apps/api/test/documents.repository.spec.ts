@@ -78,6 +78,49 @@ describe("Documents repository foundation", () => {
 		expect(count).toHaveBeenCalledWith({ where: { tenantId: "tenant-1" } });
 	});
 
+	it("lists activity requests with ordering, requester, date, and visibility filters", async () => {
+		const items = [
+			{ id: "request-1", tenantId: "tenant-1", requestedByUserId: "agent-1" },
+		];
+		const findMany = vi.fn().mockResolvedValue(items);
+		const count = vi.fn().mockResolvedValue(1);
+		const repository = new PrismaDocumentsRepository({
+			documentRequest: { findMany, count },
+		} as never);
+
+		await expect(
+			repository.listActivityRequests({
+				tenantId: "tenant-1",
+				viewerUserId: "agent-1",
+				canViewAll: false,
+				page: 2,
+				pageSize: 10,
+				requestedByUserId: "agent-2",
+				from: new Date("2026-05-20T00:00:00.000Z"),
+				to: new Date("2026-05-22T00:00:00.000Z"),
+			}),
+		).resolves.toEqual({ items, total: 1 });
+
+		const expectedWhere = {
+			tenantId: "tenant-1",
+			createdAt: {
+				gte: new Date("2026-05-20T00:00:00.000Z"),
+				lte: new Date("2026-05-22T00:00:00.000Z"),
+			},
+			requestedByUserId: "agent-1",
+		};
+		expect(findMany).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: expectedWhere,
+				include: expect.any(Object),
+				orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+				skip: 10,
+				take: 10,
+			}),
+		);
+		expect(count).toHaveBeenCalledWith({ where: expectedWhere });
+	});
+
 	it("filters internal requests by property engagement and status", async () => {
 		const findMany = vi
 			.fn()

@@ -11,6 +11,8 @@ import {
 } from '@/components/ui/select';
 import type { AssignableProductAgent, ProductMovementType } from '@/features/products/api/types';
 import { movementTypeLabels } from '@/features/products/constants/movement-options';
+import { cn } from '@/lib/utils';
+import type { ActivityKindFilter } from '../api/types';
 
 const ALL_FILTERS_VALUE = 'all';
 
@@ -19,17 +21,25 @@ const movementTypeOptions = Object.entries(movementTypeLabels).map(([value, labe
   value: value as ProductMovementType
 }));
 
+const activityKindOptions: Array<{ label: string; value: ActivityKindFilter }> = [
+  { label: 'Todo', value: 'all' },
+  { label: 'Movimientos', value: 'movement' },
+  { label: 'Documentos', value: 'document_request' }
+];
+
 export function ActivityFilters({
   assignableAgents,
   dateFrom,
   dateTo,
   hasFilters,
   isLoadingAgents,
+  kind,
   sellerId,
   type,
   onClearFilters,
   onDateFromChange,
   onDateToChange,
+  onKindChange,
   onSellerChange,
   onTypeChange
 }: {
@@ -38,22 +48,26 @@ export function ActivityFilters({
   dateTo: string | null;
   hasFilters: boolean;
   isLoadingAgents: boolean;
+  kind: ActivityKindFilter;
   sellerId: string | null;
   type: ProductMovementType | undefined;
   onClearFilters: () => void;
   onDateFromChange: (value: string | null) => void;
   onDateToChange: (value: string | null) => void;
+  onKindChange: (value: ActivityKindFilter) => void;
   onSellerChange: (value: string | null) => void;
   onTypeChange: (value: ProductMovementType | null) => void;
 }) {
+  const isDocumentOnly = kind === 'document_request';
+
   return (
     <Card className='py-0'>
       <CardContent className='space-y-4 p-4'>
-        <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
           <div>
             <h2 className='text-sm font-semibold'>Filtros</h2>
             <p className='text-sm text-muted-foreground'>
-              Ajustá el seguimiento por tipo, vendedor o fecha.
+              Ajustá el seguimiento por actividad, responsable o fecha.
             </p>
           </div>
           {hasFilters ? (
@@ -63,12 +77,33 @@ export function ActivityFilters({
           ) : null}
         </div>
 
+        <div className='flex flex-wrap gap-2 rounded-xl border bg-muted/20 p-1'>
+          {activityKindOptions.map((option) => {
+            const isSelected = kind === option.value;
+
+            return (
+              <Button
+                key={option.value}
+                type='button'
+                variant={isSelected ? 'secondary' : 'ghost'}
+                size='sm'
+                className={cn('min-w-24 flex-1 rounded-lg sm:flex-none', isSelected && 'shadow-xs')}
+                aria-pressed={isSelected}
+                onClick={() => onKindChange(option.value)}
+              >
+                {option.label}
+              </Button>
+            );
+          })}
+        </div>
+
         <div className='grid gap-3 md:grid-cols-2 xl:grid-cols-4'>
           <div className='space-y-2'>
             <label htmlFor='activity-type-filter' className='text-sm font-medium'>
               Tipo de actualización
             </label>
             <Select
+              disabled={isDocumentOnly}
               value={type ?? ALL_FILTERS_VALUE}
               onValueChange={(value) =>
                 onTypeChange(value === ALL_FILTERS_VALUE ? null : (value as ProductMovementType))
@@ -86,11 +121,16 @@ export function ActivityFilters({
                 ))}
               </SelectContent>
             </Select>
+            {isDocumentOnly ? (
+              <p className='text-xs text-muted-foreground'>
+                El tipo de actualización aplica sólo a movimientos.
+              </p>
+            ) : null}
           </div>
 
           <div className='space-y-2'>
             <label htmlFor='activity-seller-filter' className='text-sm font-medium'>
-              Vendedor
+              Responsable
             </label>
             <Select
               disabled={isLoadingAgents || assignableAgents.length === 0}
@@ -99,11 +139,11 @@ export function ActivityFilters({
             >
               <SelectTrigger id='activity-seller-filter' className='w-full'>
                 <SelectValue
-                  placeholder={isLoadingAgents ? 'Cargando vendedores' : 'Todos los vendedores'}
+                  placeholder={isLoadingAgents ? 'Cargando responsables' : 'Todos los responsables'}
                 />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_FILTERS_VALUE}>Todos los vendedores</SelectItem>
+                <SelectItem value={ALL_FILTERS_VALUE}>Todos los responsables</SelectItem>
                 {assignableAgents.map((agent) => (
                   <SelectItem key={agent.userId} value={agent.userId}>
                     {getAgentDisplayName(agent)}
@@ -113,7 +153,7 @@ export function ActivityFilters({
             </Select>
             {!isLoadingAgents && assignableAgents.length === 0 ? (
               <p className='text-xs text-muted-foreground'>
-                Todavía no hay vendedores para filtrar.
+                Todavía no hay responsables para filtrar.
               </p>
             ) : null}
           </div>

@@ -140,7 +140,13 @@ describe("Activity feed use case", () => {
 				.fn()
 				.mockResolvedValue({ todayCount: 2, staleCount: 3, attentionCount: 1 }),
 		};
-		const useCase = new ListActivityFeedUseCase(movementsRepository as never);
+		const documentsRepository = {
+			listActivityRequests: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+		};
+		const useCase = new ListActivityFeedUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
 		const now = new Date("2026-05-22T12:00:00.000Z");
 
 		const result = await useCase.execute(
@@ -164,6 +170,7 @@ describe("Activity feed use case", () => {
 			counters: { todayCount: 2, staleCount: 3, attentionCount: 1 },
 			items: [
 				expect.objectContaining({
+					kind: "movement",
 					id: "movement-1",
 					type: MovementType.INQUIRY,
 					createdAt: "2026-05-22T10:00:00.000Z",
@@ -209,6 +216,228 @@ describe("Activity feed use case", () => {
 		});
 	});
 
+	it("merges document request activity with movement activity", async () => {
+		const documentRequest = {
+			id: "document-request-1",
+			tenantId: "tenant-1",
+			propertyEngagementId: "engagement-1",
+			propertyAssetOwnerId: "owner-link-1",
+			ownerUserId: null,
+			requestedByUserId: "seller-1",
+			title: "DNI del propietario",
+			description: "Frente y dorso.",
+			status: "PENDING",
+			reviewedByUserId: null,
+			reviewedAt: null,
+			rejectionReason: null,
+			createdAt: new Date("2026-05-22T11:00:00.000Z"),
+			updatedAt: new Date("2026-05-22T11:00:00.000Z"),
+			document: null,
+			propertyAssetOwner: {
+				id: "owner-link-1",
+				propertyAssetId: "asset-1",
+				userId: null,
+				ownerEmail: "owner@example.com",
+				ownerFirstName: "Owner",
+				ownerLastName: "Pending",
+				isPrimary: true,
+				accessStatus: "INVITED",
+				createdAt: new Date("2026-05-22T09:00:00.000Z"),
+				updatedAt: new Date("2026-05-22T09:00:00.000Z"),
+			},
+			propertyEngagement: activityMovement.propertyEngagement,
+			requestedByUser: {
+				id: "seller-1",
+				email: "seller@example.com",
+				firstName: "Seller",
+			},
+		};
+		const movementsRepository = {
+			findManyByTenant: vi
+				.fn()
+				.mockResolvedValue({ items: [activityMovement], total: 1 }),
+			getActivityCounters: vi
+				.fn()
+				.mockResolvedValue({ todayCount: 1, staleCount: 0, attentionCount: 0 }),
+		};
+		const documentsRepository = {
+			listActivityRequests: vi
+				.fn()
+				.mockResolvedValue({ items: [documentRequest], total: 1 }),
+		};
+		const useCase = new ListActivityFeedUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		const result = await useCase.execute(
+			{
+				...managerTenant,
+				permissions: [
+					...managerTenant.permissions,
+					PERMISSIONS.DOCUMENTS_VIEW_ALL,
+				],
+			},
+			currentUser,
+			{ page: 1, pageSize: 10, kind: "all" },
+		);
+
+		expect(result.total).toBe(2);
+		expect(result.items.map((item) => item.kind)).toEqual([
+			"document_request",
+			"movement",
+		]);
+		expect(result.items[0]).toMatchObject({
+			documentRequestId: "document-request-1",
+			documentRequest: { title: "DNI del propietario", status: "PENDING" },
+			owner: { email: "owner@example.com", ownerFirstName: "Owner" },
+			requestedBy: { id: "seller-1", email: "seller@example.com" },
+		});
+		expect(documentsRepository.listActivityRequests).toHaveBeenCalledWith({
+			tenantId: "tenant-1",
+			viewerUserId: "user-1",
+			canViewAll: true,
+			page: 1,
+			pageSize: 10,
+			requestedByUserId: undefined,
+			from: undefined,
+			to: undefined,
+		});
+	});
+
+	it("returns only movements when the movement kind filter is selected", async () => {
+		const movementsRepository = {
+			findManyByTenant: vi
+				.fn()
+				.mockResolvedValue({ items: [activityMovement], total: 1 }),
+			getActivityCounters: vi
+				.fn()
+				.mockResolvedValue({ todayCount: 1, staleCount: 0, attentionCount: 0 }),
+		};
+		const documentsRepository = {
+			listActivityRequests: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+		};
+		const useCase = new ListActivityFeedUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		const result = await useCase.execute(
+			{
+				...managerTenant,
+				permissions: [
+					...managerTenant.permissions,
+					PERMISSIONS.DOCUMENTS_VIEW_ALL,
+				],
+			},
+			currentUser,
+			{ page: 1, pageSize: 10, kind: "movement" },
+		);
+
+		expect(result.total).toBe(1);
+		expect(result.items).toHaveLength(1);
+		expect(result.items[0]).toMatchObject({
+			kind: "movement",
+			id: "movement-1",
+			type: MovementType.INQUIRY,
+		});
+		expect(movementsRepository.findManyByTenant).toHaveBeenCalledWith({
+			tenantId: "tenant-1",
+			userId: "user-1",
+			canViewAll: true,
+			page: 1,
+			pageSize: 10,
+			type: undefined,
+			createdByUserId: undefined,
+			from: undefined,
+			to: undefined,
+		});
+		expect(documentsRepository.listActivityRequests).not.toHaveBeenCalled();
+	});
+
+	it("returns only document requests when the document kind filter is selected", async () => {
+		const documentRequest = {
+			id: "document-request-1",
+			tenantId: "tenant-1",
+			propertyEngagementId: "engagement-1",
+			propertyAssetOwnerId: "owner-link-1",
+			ownerUserId: null,
+			requestedByUserId: "seller-1",
+			title: "DNI del propietario",
+			description: "Frente y dorso.",
+			status: "PENDING",
+			reviewedByUserId: null,
+			reviewedAt: null,
+			rejectionReason: null,
+			createdAt: new Date("2026-05-22T11:00:00.000Z"),
+			updatedAt: new Date("2026-05-22T11:00:00.000Z"),
+			document: null,
+			propertyAssetOwner: {
+				id: "owner-link-1",
+				propertyAssetId: "asset-1",
+				userId: null,
+				ownerEmail: "owner@example.com",
+				ownerFirstName: "Owner",
+				ownerLastName: "Pending",
+				isPrimary: true,
+				accessStatus: "INVITED",
+				createdAt: new Date("2026-05-22T09:00:00.000Z"),
+				updatedAt: new Date("2026-05-22T09:00:00.000Z"),
+			},
+			propertyEngagement: activityMovement.propertyEngagement,
+			requestedByUser: {
+				id: "seller-1",
+				email: "seller@example.com",
+				firstName: "Seller",
+			},
+		};
+		const movementsRepository = {
+			findManyByTenant: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+			getActivityCounters: vi
+				.fn()
+				.mockResolvedValue({ todayCount: 1, staleCount: 0, attentionCount: 0 }),
+		};
+		const documentsRepository = {
+			listActivityRequests: vi
+				.fn()
+				.mockResolvedValue({ items: [documentRequest], total: 1 }),
+		};
+		const useCase = new ListActivityFeedUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		const result = await useCase.execute(
+			{
+				...managerTenant,
+				permissions: [
+					...managerTenant.permissions,
+					PERMISSIONS.DOCUMENTS_VIEW_ALL,
+				],
+			},
+			currentUser,
+			{ page: 1, pageSize: 10, kind: "document_request" },
+		);
+
+		expect(result.total).toBe(1);
+		expect(result.items).toHaveLength(1);
+		expect(result.items[0]).toMatchObject({
+			kind: "document_request",
+			documentRequestId: "document-request-1",
+		});
+		expect(movementsRepository.findManyByTenant).not.toHaveBeenCalled();
+		expect(documentsRepository.listActivityRequests).toHaveBeenCalledWith({
+			tenantId: "tenant-1",
+			viewerUserId: "user-1",
+			canViewAll: true,
+			page: 1,
+			pageSize: 10,
+			requestedByUserId: undefined,
+			from: undefined,
+			to: undefined,
+		});
+	});
+
 	it("allows assigned agents and scopes repository calls to assigned visibility", async () => {
 		const movementsRepository = {
 			findManyByTenant: vi.fn().mockResolvedValue({ items: [], total: 0 }),
@@ -216,7 +445,13 @@ describe("Activity feed use case", () => {
 				.fn()
 				.mockResolvedValue({ todayCount: 0, staleCount: 0, attentionCount: 0 }),
 		};
-		const useCase = new ListActivityFeedUseCase(movementsRepository as never);
+		const documentsRepository = {
+			listActivityRequests: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+		};
+		const useCase = new ListActivityFeedUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
 
 		await useCase.execute(
 			assignedAgentTenant,
@@ -241,7 +476,7 @@ describe("Activity feed use case", () => {
 	});
 
 	it("rejects users without engagement activity visibility", async () => {
-		const useCase = new ListActivityFeedUseCase({} as never);
+		const useCase = new ListActivityFeedUseCase({} as never, {} as never);
 
 		await expect(
 			useCase.execute(

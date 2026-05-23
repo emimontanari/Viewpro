@@ -1,10 +1,13 @@
 import type {
   ProductAgent,
+  ProductDocumentRequestStatus,
+  ProductDocumentVersionStatus,
   ProductMovementInterestLevel,
   ProductMovementSource,
   ProductMovementType,
   PropertyEngagementStatus,
-  PropertyOperationType
+  PropertyOperationType,
+  PropertyOwnerAccessStatus
 } from '@/features/products/api/types';
 
 export type ActivityFeedCounters = {
@@ -12,6 +15,8 @@ export type ActivityFeedCounters = {
   staleCount: number;
   attentionCount: number;
 };
+
+export type ActivityKindFilter = 'all' | 'movement' | 'document_request';
 
 export type ActivityPropertySummary = {
   id: string;
@@ -26,7 +31,8 @@ export type ActivityPropertySummary = {
   agents: ProductAgent[];
 };
 
-export type ActivityFeedItem = {
+export type ActivityMovementItem = {
+  kind: 'movement';
   id: string;
   tenantId: string;
   propertyEngagementId: string;
@@ -49,6 +55,43 @@ export type ActivityFeedItem = {
   property: ActivityPropertySummary;
 };
 
+export type ActivityDocumentRequestItem = {
+  kind: 'document_request';
+  id: string;
+  tenantId: string;
+  propertyEngagementId: string;
+  documentRequestId: string;
+  createdAt: string;
+  property: ActivityPropertySummary;
+  owner: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    ownerFirstName: string;
+    ownerLastName: string;
+    accessStatus: PropertyOwnerAccessStatus;
+  } | null;
+  requestedBy: {
+    id: string;
+    email: string;
+    firstName: string | null;
+  };
+  documentRequest: {
+    title: string;
+    description: string | null;
+    status: ProductDocumentRequestStatus;
+    currentVersion: {
+      id: string;
+      originalFilename: string;
+      status: ProductDocumentVersionStatus;
+      createdAt: string;
+    } | null;
+  };
+};
+
+export type ActivityFeedItem = ActivityMovementItem | ActivityDocumentRequestItem;
+
 export type ActivityFeedResponse = {
   total: number;
   page: number;
@@ -60,6 +103,7 @@ export type ActivityFeedResponse = {
 export type ActivityFeedFilters = {
   page?: number;
   pageSize?: number;
+  kind?: ActivityKindFilter;
   type?: ProductMovementType;
   sellerId?: string;
   dateFrom?: string;
