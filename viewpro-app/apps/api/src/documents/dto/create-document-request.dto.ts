@@ -1,17 +1,23 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator'
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
 
 export class CreateDocumentRequestDto {
-  @IsString()
-  @IsNotEmpty()
-  ownerUserId!: string
+	@IsOptional()
+	@IsString()
+	@IsNotEmpty()
+	propertyAssetOwnerId?: string;
 
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(200)
-  title!: string
+	@IsOptional()
+	@IsString()
+	@IsNotEmpty()
+	ownerUserId?: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(2000)
-  description?: string
+	@IsString()
+	@IsNotEmpty()
+	@MaxLength(200)
+	title!: string;
+
+	@IsOptional()
+	@IsString()
+	@MaxLength(2000)
+	description?: string;
 }

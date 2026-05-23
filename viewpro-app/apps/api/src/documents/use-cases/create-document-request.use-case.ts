@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { AnalyticsActorType, AnalyticsEventName } from '@prisma/client'
 import { AnalyticsService, type TrackAnalyticsEventInput } from '../../analytics/analytics.service'
 import type { CurrentUser } from '../../auth/types/current-user'
@@ -26,10 +26,15 @@ export class CreateDocumentRequestUseCase {
       throw new ForbiddenException('Insufficient permissions')
     }
 
+    if (!input.propertyAssetOwnerId && !input.ownerUserId) {
+      throw new BadRequestException('Property owner link is required')
+    }
+
     const engagement = await this.documentsRepository.findTenantEngagementForDocumentRequest({
       tenantId: tenant.tenantId,
       propertyEngagementId,
-      ownerUserId: input.ownerUserId,
+      ...(input.propertyAssetOwnerId ? { propertyAssetOwnerId: input.propertyAssetOwnerId } : {}),
+      ...(input.ownerUserId ? { ownerUserId: input.ownerUserId } : {}),
     })
 
     if (!engagement) {
@@ -39,7 +44,8 @@ export class CreateDocumentRequestUseCase {
     const request = await this.documentsRepository.createRequest({
       tenantId: tenant.tenantId,
       propertyEngagementId,
-      ownerUserId: input.ownerUserId,
+      propertyAssetOwnerId: engagement.propertyAssetOwnerId,
+      ownerUserId: engagement.ownerUserId,
       requestedByUserId: currentUser.id,
       title: input.title,
       description: input.description,

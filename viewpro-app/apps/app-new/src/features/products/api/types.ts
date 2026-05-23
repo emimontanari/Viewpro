@@ -115,7 +115,8 @@ export type ProductDocumentRequest = {
   id: string;
   tenantId: string;
   propertyEngagementId: string;
-  ownerUserId: string;
+  propertyAssetOwnerId: string | null;
+  ownerUserId: string | null;
   requestedByUserId: string;
   title: string;
   description: string | null;
@@ -137,7 +138,7 @@ export type ProductDocumentRequestsResponse = {
 };
 
 export type CreateProductDocumentRequestPayload = {
-  ownerUserId: string;
+  propertyAssetOwnerId: string;
   title: string;
   description?: string;
 };

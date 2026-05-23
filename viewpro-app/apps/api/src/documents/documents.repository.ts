@@ -22,7 +22,8 @@ export type DocumentVersionRecord = Prisma.DocumentVersionGetPayload<object> & {
 export type CreateDocumentRequestInput = {
 	tenantId: string;
 	propertyEngagementId: string;
-	ownerUserId: string;
+	propertyAssetOwnerId: string;
+	ownerUserId?: string | null;
 	requestedByUserId: string;
 	title: string;
 	description?: string | null;
@@ -32,6 +33,8 @@ export type TenantEngagementForDocumentRequest = {
 	id: string;
 	tenantId: string;
 	propertyAssetId: string;
+	propertyAssetOwnerId: string;
+	ownerUserId: string | null;
 };
 
 export type ListInternalDocumentRequestsInput = {
@@ -102,7 +105,8 @@ export type DocumentsRepository = {
 	findTenantEngagementForDocumentRequest(input: {
 		tenantId: string;
 		propertyEngagementId: string;
-		ownerUserId: string;
+		propertyAssetOwnerId?: string;
+		ownerUserId?: string;
 	}): Promise<TenantEngagementForDocumentRequest | null>;
 	createRequest(
 		input: CreateDocumentRequestInput,

@@ -13,6 +13,7 @@ const documentRequest = {
   id: 'request-1',
   tenantId: 'tenant-1',
   propertyEngagementId: 'engagement-1',
+  propertyAssetOwnerId: 'owner-link-1',
   ownerUserId: 'owner-1',
   requestedByUserId: 'agent-1',
   title: 'Property deed',
@@ -51,7 +52,7 @@ describe('Owner document use cases', () => {
       const result = await useCase.execute(ownerUser, { page: 2, pageSize: 5, status: DocumentRequestStatus.PENDING })
 
       expect(result).toMatchObject({ total: 1, page: 2, pageSize: 5 })
-      expect(result.items.map((item) => item.ownerUserId)).toEqual(['owner-1'])
+      expect(result.items.map((item) => item.propertyAssetOwnerId)).toEqual(['owner-link-1'])
       expect(repository.listOwnerRequests).toHaveBeenCalledWith({
         ownerUserId: 'owner-1',
         page: 2,
@@ -66,7 +67,7 @@ describe('Owner document use cases', () => {
       const repository = { findOwnerRequestDetail: vi.fn().mockResolvedValue(documentRequest) }
       const useCase = new GetOwnerDocumentRequestUseCase(repository as never)
 
-      await expect(useCase.execute(ownerUser, 'request-1')).resolves.toMatchObject({ id: 'request-1', ownerUserId: 'owner-1' })
+      await expect(useCase.execute(ownerUser, 'request-1')).resolves.toMatchObject({ id: 'request-1', propertyAssetOwnerId: 'owner-link-1' })
       expect(repository.findOwnerRequestDetail).toHaveBeenCalledWith({ ownerUserId: 'owner-1', requestId: 'request-1' })
     })
 

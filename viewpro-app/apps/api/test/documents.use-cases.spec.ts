@@ -43,6 +43,7 @@ const documentRequest = {
 	id: "request-1",
 	tenantId: "tenant-1",
 	propertyEngagementId: "engagement-1",
+	propertyAssetOwnerId: "owner-link-1",
 	ownerUserId: "owner-1",
 	requestedByUserId: "agent-1",
 	title: "Property deed",
@@ -85,9 +86,11 @@ describe("Document internal use cases", () => {
 	describe("CreateDocumentRequestUseCase", () => {
 		it("allows a manager to create a request for an owner with active property access", async () => {
 			const repository = {
-				findTenantEngagementForDocumentRequest: vi
-					.fn()
-					.mockResolvedValue(documentRequest.propertyEngagement),
+				findTenantEngagementForDocumentRequest: vi.fn().mockResolvedValue({
+					...documentRequest.propertyEngagement,
+					propertyAssetOwnerId: "owner-link-1",
+					ownerUserId: "owner-1",
+				}),
 				createRequest: vi.fn().mockResolvedValue(documentRequest),
 			};
 			const analyticsService = {
@@ -103,7 +106,7 @@ describe("Document internal use cases", () => {
 				currentUser,
 				"engagement-1",
 				{
-					ownerUserId: "owner-1",
+					propertyAssetOwnerId: "owner-link-1",
 					title: "Property deed",
 					description: "Latest signed deed.",
 				},
@@ -120,11 +123,12 @@ describe("Document internal use cases", () => {
 			).toHaveBeenCalledWith({
 				tenantId: "tenant-1",
 				propertyEngagementId: "engagement-1",
-				ownerUserId: "owner-1",
+				propertyAssetOwnerId: "owner-link-1",
 			});
 			expect(repository.createRequest).toHaveBeenCalledWith({
 				tenantId: "tenant-1",
 				propertyEngagementId: "engagement-1",
+				propertyAssetOwnerId: "owner-link-1",
 				ownerUserId: "owner-1",
 				requestedByUserId: "agent-1",
 				title: "Property deed",
@@ -140,11 +144,72 @@ describe("Document internal use cases", () => {
 			});
 		});
 
+		it("accepts legacy owner user id while persisting the resolved owner link", async () => {
+			const repository = {
+				findTenantEngagementForDocumentRequest: vi.fn().mockResolvedValue({
+					...documentRequest.propertyEngagement,
+					propertyAssetOwnerId: "owner-link-1",
+					ownerUserId: "owner-1",
+				}),
+				createRequest: vi.fn().mockResolvedValue(documentRequest),
+			};
+			const useCase = new CreateDocumentRequestUseCase(
+				repository as never,
+				{ track: vi.fn() } as never,
+			);
+
+			await expect(
+				useCase.execute(managerTenant, currentUser, "engagement-1", {
+					ownerUserId: "owner-1",
+					title: "Property deed",
+				}),
+			).resolves.toMatchObject({ propertyAssetOwnerId: "owner-link-1" });
+
+			expect(
+				repository.findTenantEngagementForDocumentRequest,
+			).toHaveBeenCalledWith({
+				tenantId: "tenant-1",
+				propertyEngagementId: "engagement-1",
+				ownerUserId: "owner-1",
+			});
+			expect(repository.createRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					propertyAssetOwnerId: "owner-link-1",
+					ownerUserId: "owner-1",
+				}),
+			);
+		});
+
+		it("requires either an owner link id or a legacy owner user id", async () => {
+			const repository = {
+				findTenantEngagementForDocumentRequest: vi.fn(),
+				createRequest: vi.fn(),
+			};
+			const useCase = new CreateDocumentRequestUseCase(
+				repository as never,
+				{ track: vi.fn() } as never,
+			);
+
+			await expect(
+				useCase.execute(managerTenant, currentUser, "engagement-1", {
+					title: "Property deed",
+				}),
+			).rejects.toThrow(
+				new BadRequestException("Property owner link is required"),
+			);
+			expect(
+				repository.findTenantEngagementForDocumentRequest,
+			).not.toHaveBeenCalled();
+			expect(repository.createRequest).not.toHaveBeenCalled();
+		});
+
 		it("keeps document request creation successful when analytics tracking fails", async () => {
 			const repository = {
-				findTenantEngagementForDocumentRequest: vi
-					.fn()
-					.mockResolvedValue(documentRequest.propertyEngagement),
+				findTenantEngagementForDocumentRequest: vi.fn().mockResolvedValue({
+					...documentRequest.propertyEngagement,
+					propertyAssetOwnerId: "owner-link-1",
+					ownerUserId: "owner-1",
+				}),
 				createRequest: vi.fn().mockResolvedValue(documentRequest),
 			};
 			const analyticsService = {
@@ -157,7 +222,7 @@ describe("Document internal use cases", () => {
 
 			await expect(
 				useCase.execute(managerTenant, currentUser, "engagement-1", {
-					ownerUserId: "owner-1",
+					propertyAssetOwnerId: "owner-link-1",
 					title: "Property deed",
 					description: "Latest signed deed.",
 				}),
@@ -166,15 +231,15 @@ describe("Document internal use cases", () => {
 
 		it("allows a seller to create a request without requiring property-agent assignment", async () => {
 			const repository = {
-				findTenantEngagementForDocumentRequest: vi
-					.fn()
-					.mockResolvedValue(documentRequest.propertyEngagement),
-				createRequest: vi
-					.fn()
-					.mockResolvedValue({
-						...documentRequest,
-						requestedByUserId: "seller-1",
-					}),
+				findTenantEngagementForDocumentRequest: vi.fn().mockResolvedValue({
+					...documentRequest.propertyEngagement,
+					propertyAssetOwnerId: "owner-link-1",
+					ownerUserId: "owner-1",
+				}),
+				createRequest: vi.fn().mockResolvedValue({
+					...documentRequest,
+					requestedByUserId: "seller-1",
+				}),
 			};
 			const useCase = new CreateDocumentRequestUseCase(
 				repository as never,
@@ -187,7 +252,7 @@ describe("Document internal use cases", () => {
 					{ id: "seller-1", email: "seller@example.com" },
 					"engagement-1",
 					{
-						ownerUserId: "owner-1",
+						propertyAssetOwnerId: "owner-link-1",
 						title: "Proof of identity",
 					},
 				),
@@ -198,7 +263,7 @@ describe("Document internal use cases", () => {
 			).toHaveBeenCalledWith({
 				tenantId: "tenant-1",
 				propertyEngagementId: "engagement-1",
-				ownerUserId: "owner-1",
+				propertyAssetOwnerId: "owner-link-1",
 			});
 		});
 
@@ -214,7 +279,7 @@ describe("Document internal use cases", () => {
 
 			await expect(
 				useCase.execute(sellerTenant, currentUser, "inaccessible-engagement", {
-					ownerUserId: "owner-1",
+					propertyAssetOwnerId: "owner-link-1",
 					title: "Property deed",
 				}),
 			).rejects.toThrow(new NotFoundException("Property engagement not found"));
@@ -230,12 +295,10 @@ describe("Document internal use cases", () => {
 				requestedByUserId: "seller-2",
 			};
 			const repository = {
-				listInternalRequests: vi
-					.fn()
-					.mockResolvedValue({
-						items: [documentRequest, peerRequest],
-						total: 2,
-					}),
+				listInternalRequests: vi.fn().mockResolvedValue({
+					items: [documentRequest, peerRequest],
+					total: 2,
+				}),
 			};
 			const useCase = new ListDocumentRequestsUseCase(repository as never);
 
@@ -406,12 +469,10 @@ describe("Document internal use cases", () => {
 		it("allows the requesting seller to approve their own submitted request", async () => {
 			const repository = {
 				findInternalRequestDetail: vi.fn().mockResolvedValue(submittedRequest),
-				reviewRequest: vi
-					.fn()
-					.mockResolvedValue({
-						...submittedRequest,
-						status: DocumentRequestStatus.APPROVED,
-					}),
+				reviewRequest: vi.fn().mockResolvedValue({
+					...submittedRequest,
+					status: DocumentRequestStatus.APPROVED,
+				}),
 			};
 			const useCase = new ApproveDocumentRequestUseCase(
 				repository as never,
@@ -576,13 +637,11 @@ describe("Document internal use cases", () => {
 				findInternalReadableVersion: vi.fn().mockResolvedValue(currentVersion),
 			};
 			const storage = {
-				createReadUrl: vi
-					.fn()
-					.mockResolvedValue({
-						url: "https://storage.example/read",
-						storageKey: currentVersion.storageKey,
-						expiresInSeconds: 300,
-					}),
+				createReadUrl: vi.fn().mockResolvedValue({
+					url: "https://storage.example/read",
+					storageKey: currentVersion.storageKey,
+					expiresInSeconds: 300,
+				}),
 			};
 			const useCase = new CreateInternalDocumentReadUrlUseCase(
 				repository as never,

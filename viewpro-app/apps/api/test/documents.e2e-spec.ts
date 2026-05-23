@@ -57,13 +57,16 @@ describe("Documents internal endpoints (e2e)", () => {
 		const engagement = await createEngagement(manager.agent, manager.tenantId, {
 			title: "Documented Manager Property",
 		}).expect(201);
-		await grantOwnerAccess(owner.userId, engagement.body.property.id);
+		const ownerLink = await grantOwnerAccess(
+			owner.userId,
+			engagement.body.property.id,
+		);
 
 		const response = await manager.agent
 			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
 			.set("x-tenant-id", manager.tenantId)
 			.send({
-				ownerUserId: owner.userId,
+				propertyAssetOwnerId: ownerLink.id,
 				title: "Property deed",
 				description: "Latest signed deed.",
 			})
@@ -72,6 +75,7 @@ describe("Documents internal endpoints (e2e)", () => {
 		expect(response.body).toMatchObject({
 			tenantId: manager.tenantId,
 			propertyEngagementId: engagement.body.id,
+			propertyAssetOwnerId: ownerLink.id,
 			ownerUserId: owner.userId,
 			requestedByUserId: manager.userId,
 			title: "Property deed",
@@ -84,6 +88,38 @@ describe("Documents internal endpoints (e2e)", () => {
 				where: { requestedByUserId: manager.userId },
 			}),
 		).resolves.toBe(1);
+	});
+
+	it("allows a manager to create a document request for an invited owner link", async () => {
+		const manager = await registerTenantSession(
+			"documents-manager-invited@example.com",
+			"Documents Manager Invited",
+		);
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Invited Owner Document Property",
+		}).expect(201);
+		const ownerLink = await grantInvitedOwner(engagement.body.property.id, {
+			email: "invited-documents-owner@example.com",
+			firstName: "Invited",
+			lastName: "Owner",
+		});
+
+		const response = await manager.agent
+			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({
+				propertyAssetOwnerId: ownerLink.id,
+				title: "DNI del propietario",
+			})
+			.expect(201);
+
+		expect(response.body).toMatchObject({
+			propertyEngagementId: engagement.body.id,
+			propertyAssetOwnerId: ownerLink.id,
+			ownerUserId: null,
+			title: "DNI del propietario",
+			status: DocumentRequestStatus.PENDING,
+		});
 	});
 
 	it("allows a seller to create and list only their own document requests", async () => {
@@ -107,17 +143,17 @@ describe("Documents internal endpoints (e2e)", () => {
 		const engagement = await createEngagement(manager.agent, manager.tenantId, {
 			title: "Seller Request Property",
 		}).expect(201);
-		await grantOwnerAccess(owner.userId, engagement.body.property.id);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
 
 		const own = await seller.agent
 			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
 			.set("x-tenant-id", manager.tenantId)
-			.send({ ownerUserId: owner.userId, title: "Seller requested deed" })
+			.send({ propertyAssetOwnerId: ownerLink.id, title: "Seller requested deed" })
 			.expect(201);
 		const peerOwned = await peer.agent
 			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
 			.set("x-tenant-id", manager.tenantId)
-			.send({ ownerUserId: owner.userId, title: "Peer requested certificate" })
+			.send({ propertyAssetOwnerId: ownerLink.id, title: "Peer requested certificate" })
 			.expect(201);
 
 		const response = await seller.agent
@@ -152,22 +188,22 @@ describe("Documents internal endpoints (e2e)", () => {
 			manager.tenantId,
 			{ title: "Second Document Property" },
 		).expect(201);
-		await grantOwnerAccess(owner.userId, firstEngagement.body.property.id);
-		await grantOwnerAccess(owner.userId, secondEngagement.body.property.id);
+		const firstOwnerLink = await grantOwnerAccess(owner.userId, firstEngagement.body.property.id);
+		const secondOwnerLink = await grantOwnerAccess(owner.userId, secondEngagement.body.property.id);
 
 		const firstRequest = await manager.agent
 			.post(
 				`/api/property-engagements/${firstEngagement.body.id}/document-requests`,
 			)
 			.set("x-tenant-id", manager.tenantId)
-			.send({ ownerUserId: owner.userId, title: "First property deed" })
+			.send({ propertyAssetOwnerId: firstOwnerLink.id, title: "First property deed" })
 			.expect(201);
 		const secondRequest = await manager.agent
 			.post(
 				`/api/property-engagements/${secondEngagement.body.id}/document-requests`,
 			)
 			.set("x-tenant-id", manager.tenantId)
-			.send({ ownerUserId: owner.userId, title: "Second property certificate" })
+			.send({ propertyAssetOwnerId: secondOwnerLink.id, title: "Second property certificate" })
 			.expect(201);
 
 		const response = await manager.agent
@@ -224,11 +260,11 @@ describe("Documents internal endpoints (e2e)", () => {
 			tenantA.agent,
 			tenantA.tenantId,
 		).expect(201);
-		await grantOwnerAccess(owner.userId, engagement.body.property.id);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
 		const created = await seller.agent
 			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
 			.set("x-tenant-id", tenantA.tenantId)
-			.send({ ownerUserId: owner.userId, title: "Hidden deed" })
+			.send({ propertyAssetOwnerId: ownerLink.id, title: "Hidden deed" })
 			.expect(201);
 
 		const peerRead = await peer.agent
@@ -259,16 +295,18 @@ describe("Documents internal endpoints (e2e)", () => {
 		const engagement = await createEngagement(tenantB.agent, tenantB.tenantId, {
 			title: "Tenant B Review Document Property",
 		}).expect(201);
-		await grantOwnerAccess(owner.userId, engagement.body.property.id);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
 		const approveTarget = await seedSubmittedDocumentRequest({
 			tenantId: tenantB.tenantId,
 			propertyEngagementId: engagement.body.id,
+			propertyAssetOwnerId: ownerLink.id,
 			ownerUserId: owner.userId,
 			requestedByUserId: tenantB.userId,
 		});
 		const rejectTarget = await seedSubmittedDocumentRequest({
 			tenantId: tenantB.tenantId,
 			propertyEngagementId: engagement.body.id,
+			propertyAssetOwnerId: ownerLink.id,
 			ownerUserId: owner.userId,
 			requestedByUserId: tenantB.userId,
 		});
@@ -320,10 +358,11 @@ describe("Documents internal endpoints (e2e)", () => {
 		const engagement = await createEngagement(manager.agent, manager.tenantId, {
 			title: "Review Property",
 		}).expect(201);
-		await grantOwnerAccess(owner.userId, engagement.body.property.id);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
 		const documentRequest = await seedSubmittedDocumentRequest({
 			tenantId: manager.tenantId,
 			propertyEngagementId: engagement.body.id,
+			propertyAssetOwnerId: ownerLink.id,
 			ownerUserId: owner.userId,
 			requestedByUserId: seller.userId,
 		});
@@ -438,9 +477,25 @@ describe("Documents internal endpoints (e2e)", () => {
 		});
 	}
 
+	async function grantInvitedOwner(
+		propertyAssetId: string,
+		input: { email: string; firstName: string; lastName: string },
+	) {
+		return prisma.propertyAssetOwner.create({
+			data: {
+				propertyAssetId,
+				ownerEmail: input.email.toLowerCase(),
+				ownerFirstName: input.firstName,
+				ownerLastName: input.lastName,
+				accessStatus: PropertyAssetOwnerAccessStatus.INVITED,
+			},
+		});
+	}
+
 	async function seedSubmittedDocumentRequest(input: {
 		tenantId: string;
 		propertyEngagementId: string;
+		propertyAssetOwnerId: string;
 		ownerUserId: string;
 		requestedByUserId: string;
 	}) {

@@ -10,10 +10,11 @@ describe("Documents repository foundation", () => {
 		expect(DocumentVersionStatus.UPLOADED).toBe("UPLOADED");
 	});
 
-	it("creates a document request with requester and owner ownership fields", async () => {
+	it("creates a document request with requester and property owner link fields", async () => {
 		const createdRequest = {
 			id: "request-1",
 			requestedByUserId: "agent-1",
+			propertyAssetOwnerId: "owner-link-1",
 			ownerUserId: "owner-1",
 		};
 		const create = vi.fn().mockResolvedValue(createdRequest);
@@ -24,6 +25,7 @@ describe("Documents repository foundation", () => {
 		const result = await repository.createRequest({
 			tenantId: "tenant-1",
 			propertyEngagementId: "engagement-1",
+			propertyAssetOwnerId: "owner-link-1",
 			ownerUserId: "owner-1",
 			requestedByUserId: "agent-1",
 			title: "Property deed",
@@ -36,6 +38,7 @@ describe("Documents repository foundation", () => {
 				data: expect.objectContaining({
 					tenantId: "tenant-1",
 					propertyEngagementId: "engagement-1",
+					propertyAssetOwnerId: "owner-link-1",
 					ownerUserId: "owner-1",
 					requestedByUserId: "agent-1",
 					status: DocumentRequestStatus.PENDING,

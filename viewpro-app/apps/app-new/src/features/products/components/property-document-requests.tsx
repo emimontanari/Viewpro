@@ -26,8 +26,6 @@ type PropertyDocumentRequestsProps = {
   tenantId: string;
 };
 
-type ActiveDocumentOwner = PropertyLinkedOwner & { userId: string };
-
 const documentStatusLabels: Record<ProductDocumentRequestStatus, string> = {
   APPROVED: 'Aprobado',
   CANCELLED: 'Cancelado',
@@ -64,7 +62,11 @@ export function PropertyDocumentRequests({
 }: PropertyDocumentRequestsProps) {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const activeOwners = useMemo(() => owners.filter(isActiveDocumentOwner), [owners]);
+  const eligibleOwners = useMemo(() => owners.filter(isEligibleDocumentOwner), [owners]);
+  const invitedOwnerCount = useMemo(
+    () => eligibleOwners.filter((owner) => owner.accessStatus === 'INVITED').length,
+    [eligibleOwners]
+  );
   const documentRequestsQuery = useQuery(productDocumentRequestsOptions(productId, tenantId));
   const createDocumentRequestMutation = useMutation({
     mutationFn: (payload: CreateProductDocumentRequestPayload) =>
@@ -82,7 +84,7 @@ export function PropertyDocumentRequests({
   });
 
   function handleOpenDialog() {
-    if (isArchived || activeOwners.length === 0 || createDocumentRequestMutation.isPending) {
+    if (isArchived || eligibleOwners.length === 0 || createDocumentRequestMutation.isPending) {
       return;
     }
 
@@ -110,7 +112,7 @@ export function PropertyDocumentRequests({
           type='button'
           variant='secondary'
           disabled={
-            isArchived || activeOwners.length === 0 || createDocumentRequestMutation.isPending
+            isArchived || eligibleOwners.length === 0 || createDocumentRequestMutation.isPending
           }
           onClick={handleOpenDialog}
         >
@@ -121,7 +123,8 @@ export function PropertyDocumentRequests({
 
       <DocumentRequestHint
         isArchived={isArchived}
-        activeOwnerCount={activeOwners.length}
+        eligibleOwnerCount={eligibleOwners.length}
+        invitedOwnerCount={invitedOwnerCount}
         linkedOwnerCount={owners.length}
       />
 
@@ -146,7 +149,7 @@ export function PropertyDocumentRequests({
 
       <CreateDocumentRequestDialog
         open={dialogOpen}
-        owners={activeOwners}
+        owners={eligibleOwners}
         isSubmitting={createDocumentRequestMutation.isPending}
         onOpenChange={setDialogOpen}
         onSubmit={handleSubmit}
@@ -156,11 +159,13 @@ export function PropertyDocumentRequests({
 }
 
 function DocumentRequestHint({
-  activeOwnerCount,
+  eligibleOwnerCount,
+  invitedOwnerCount,
   isArchived,
   linkedOwnerCount
 }: {
-  activeOwnerCount: number;
+  eligibleOwnerCount: number;
+  invitedOwnerCount: number;
   isArchived: boolean;
   linkedOwnerCount: number;
 }) {
@@ -172,12 +177,21 @@ function DocumentRequestHint({
     );
   }
 
-  if (activeOwnerCount === 0) {
+  if (eligibleOwnerCount === 0) {
     return (
       <p className='rounded-xl border border-dashed bg-muted/20 p-3 text-sm text-muted-foreground'>
         {linkedOwnerCount > 0
-          ? 'El propietario va a poder recibir solicitudes cuando active su acceso.'
+          ? 'Vinculá un propietario activo o invitado para solicitar documentación.'
           : 'Vinculá un propietario para solicitar documentación.'}
+      </p>
+    );
+  }
+
+  if (invitedOwnerCount > 0) {
+    return (
+      <p className='rounded-xl border border-dashed bg-muted/20 p-3 text-sm text-muted-foreground'>
+        Las solicitudes a propietarios invitados quedarán asociadas y podrán verlas cuando activen
+        su acceso.
       </p>
     );
   }
@@ -222,7 +236,11 @@ function DocumentRequestItem({
   owners: PropertyLinkedOwner[];
   request: ProductDocumentRequest;
 }) {
-  const owner = owners.find((item) => item.userId === request.ownerUserId);
+  const owner = owners.find(
+    (item) =>
+      item.id === request.propertyAssetOwnerId ||
+      (request.propertyAssetOwnerId === null && item.userId === request.ownerUserId)
+  );
   const ownerName = owner ? getOwnerDisplayName(owner) : 'Propietario';
 
   return (
@@ -274,8 +292,8 @@ function DocumentRequestItem({
   );
 }
 
-function isActiveDocumentOwner(owner: PropertyLinkedOwner): owner is ActiveDocumentOwner {
-  return owner.accessStatus === 'ACTIVE' && Boolean(owner.userId);
+function isEligibleDocumentOwner(owner: PropertyLinkedOwner) {
+  return owner.accessStatus === 'INVITED' || owner.accessStatus === 'ACTIVE';
 }
 
 function getOwnerDisplayName(owner: {

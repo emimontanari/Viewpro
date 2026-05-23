@@ -24,7 +24,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 
 const INITIAL_VALUES = {
   description: '',
-  ownerUserId: '',
+  propertyAssetOwnerId: '',
   title: ''
 };
 
@@ -33,14 +33,12 @@ type CreateDocumentRequestDialogErrors = Partial<
   Record<keyof CreateDocumentRequestDialogValues, string>
 >;
 
-type DocumentRequestOwnerOption = PropertyLinkedOwner & { userId: string };
-
 type CreateDocumentRequestDialogProps = {
   isSubmitting: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: CreateProductDocumentRequestPayload) => void;
   open: boolean;
-  owners: DocumentRequestOwnerOption[];
+  owners: PropertyLinkedOwner[];
 };
 
 export function CreateDocumentRequestDialog({
@@ -74,7 +72,7 @@ export function CreateDocumentRequestDialog({
 
     setErrors({});
     onSubmit({
-      ownerUserId: values.ownerUserId,
+      propertyAssetOwnerId: values.propertyAssetOwnerId,
       title: values.title.trim(),
       description: values.description.trim() || undefined
     });
@@ -94,29 +92,29 @@ export function CreateDocumentRequestDialog({
           <Field>
             <FieldLabel htmlFor='document-owner'>Propietario</FieldLabel>
             <Select
-              value={values.ownerUserId}
+              value={values.propertyAssetOwnerId}
               disabled={isSubmitting || owners.length === 0}
               onValueChange={(value) =>
-                setValues((current) => ({ ...current, ownerUserId: value }))
+                setValues((current) => ({ ...current, propertyAssetOwnerId: value }))
               }
             >
               <SelectTrigger
                 id='document-owner'
                 className='w-full'
-                aria-invalid={!!errors.ownerUserId}
+                aria-invalid={!!errors.propertyAssetOwnerId}
               >
                 <SelectValue placeholder='Seleccioná un propietario' />
               </SelectTrigger>
               <SelectContent>
                 {owners.map((owner) => (
-                  <SelectItem key={owner.userId} value={owner.userId}>
+                  <SelectItem key={owner.id} value={owner.id}>
                     {getOwnerDisplayName(owner)} · {owner.email}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <FieldDescription>La solicitud quedará asociada a este propietario.</FieldDescription>
-            <FieldError>{errors.ownerUserId}</FieldError>
+            <FieldError>{errors.propertyAssetOwnerId}</FieldError>
           </Field>
 
           <Field>
@@ -189,8 +187,8 @@ function validateDocumentRequest(values: CreateDocumentRequestDialogValues) {
   const title = values.title.trim();
   const description = values.description.trim();
 
-  if (!values.ownerUserId) {
-    errors.ownerUserId = 'Seleccioná un propietario.';
+  if (!values.propertyAssetOwnerId) {
+    errors.propertyAssetOwnerId = 'Seleccioná un propietario.';
   }
 
   if (!title) {
@@ -206,7 +204,7 @@ function validateDocumentRequest(values: CreateDocumentRequestDialogValues) {
   return errors;
 }
 
-function getOwnerDisplayName(owner: DocumentRequestOwnerOption) {
+function getOwnerDisplayName(owner: PropertyLinkedOwner) {
   const snapshotName = [owner.ownerFirstName, owner.ownerLastName]
     .map((value) => value.trim())
     .filter(Boolean)
