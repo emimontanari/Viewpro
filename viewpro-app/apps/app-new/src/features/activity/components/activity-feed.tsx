@@ -59,11 +59,7 @@ export function ActivityFeed({
     );
   }
 
-  if (items.length === 0) {
-    const emptyCopy = getEmptyCopy(kind);
-
-    return <ActivityFeedMessage title={emptyCopy.title} description={emptyCopy.description} />;
-  }
+  const emptyCopy = items.length === 0 ? getEmptyCopy(kind) : null;
 
   return (
     <section className='space-y-4'>
@@ -79,27 +75,31 @@ export function ActivityFeed({
         </div>
       </div>
 
-      <ol className='space-y-3'>
-        {items.map((item) => {
-          if (isMovementActivityItem(item)) {
-            return (
-              <li key={item.id}>
-                <ActivityFeedItem item={item} onViewDetails={setSelectedItem} />
-              </li>
-            );
-          }
+      {emptyCopy ? (
+        <ActivityFeedMessage title={emptyCopy.title} description={emptyCopy.description} />
+      ) : (
+        <ol className='space-y-3'>
+          {items.map((item) => {
+            if (isMovementActivityItem(item)) {
+              return (
+                <li key={item.id}>
+                  <ActivityFeedItem item={item} onViewDetails={setSelectedItem} />
+                </li>
+              );
+            }
 
-          if (isDocumentRequestActivityItem(item)) {
-            return (
-              <li key={item.id}>
-                <ActivityDocumentRequestFeedItem item={item} />
-              </li>
-            );
-          }
+            if (isDocumentRequestActivityItem(item)) {
+              return (
+                <li key={item.id}>
+                  <ActivityDocumentRequestFeedItem item={item} />
+                </li>
+              );
+            }
 
-          return null;
-        })}
-      </ol>
+            return null;
+          })}
+        </ol>
+      )}
 
       <ActivityMovementDetailDialog
         item={selectedItem}

@@ -93,12 +93,10 @@ export function ActivityMonitor() {
 
   return (
     <section className='min-w-0 space-y-5'>
-      {kind !== 'document_request' ? (
-        <ActivityKpiCards
-          counters={activityQuery.data?.counters}
-          isLoading={activityQuery.isLoading}
-        />
-      ) : null}
+      <ActivityKpiCards
+        counters={activityQuery.data?.counters}
+        isLoading={activityQuery.isLoading}
+      />
 
       <ActivityFilters
         assignableAgents={agentsQuery.data?.items ?? []}
@@ -141,7 +139,7 @@ export function ActivityMonitor() {
 function ActivityTenantLoadingState({ kind }: { kind: ActivityKindFilter }) {
   return (
     <section className='min-w-0 space-y-5'>
-      {kind !== 'document_request' ? <ActivityKpiCards counters={undefined} isLoading /> : null}
+      <ActivityKpiCards counters={undefined} isLoading />
       <ActivityFeed
         isError={false}
         isFetching={false}
