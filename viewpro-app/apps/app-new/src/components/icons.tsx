@@ -46,8 +46,10 @@ import {
   IconInfoCircle,
   IconItalic,
   IconLayoutDashboard,
+  IconLayoutGrid,
   IconLayoutKanban,
   IconLayoutSidebar,
+  IconListDetails,
   IconLoader2,
   IconLock,
   IconLogin,
@@ -62,7 +64,8 @@ import {
   IconPhoto,
   IconPizza,
   IconPlus,
-  IconProps,
+  type IconProps,
+  IconRefresh,
   IconRosetteDiscountCheck,
   IconSearch,
   IconSelector,
@@ -125,7 +128,9 @@ export const Icons = {
 
   // Layout
   dashboard: IconLayoutDashboard,
+  grid: IconLayoutGrid,
   kanban: IconLayoutKanban,
+  listDetails: IconListDetails,
   panelLeft: IconLayoutSidebar,
 
   // User
@@ -163,6 +168,7 @@ export const Icons = {
   // Actions
   add: IconPlus,
   edit: IconEdit,
+  refresh: IconRefresh,
   upload: IconUpload,
   share: IconShare,
   login: IconLogin,

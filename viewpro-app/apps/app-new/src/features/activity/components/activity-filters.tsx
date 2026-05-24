@@ -1,4 +1,4 @@
-import { Icons } from '@/components/icons';
+import { Icons, type Icon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,10 +21,10 @@ const movementTypeOptions = Object.entries(movementTypeLabels).map(([value, labe
   value: value as ProductMovementType
 }));
 
-const activityKindOptions: Array<{ label: string; value: ActivityKindFilter }> = [
-  { label: 'Todo', value: 'all' },
-  { label: 'Movimientos', value: 'movement' },
-  { label: 'Documentos', value: 'document_request' }
+const activityKindOptions: Array<{ icon: Icon; label: string; value: ActivityKindFilter }> = [
+  { icon: Icons.grid, label: 'Todo', value: 'all' },
+  { icon: Icons.listDetails, label: 'Movimientos', value: 'movement' },
+  { icon: Icons.post, label: 'Documentos', value: 'document_request' }
 ];
 
 export function ActivityFilters({
@@ -72,25 +72,28 @@ export function ActivityFilters({
           </div>
           {hasFilters ? (
             <Button type='button' variant='outline' size='sm' onClick={onClearFilters}>
+              <Icons.refresh className='size-4' aria-hidden />
               Limpiar filtros
             </Button>
           ) : null}
         </div>
 
-        <div className='flex flex-wrap gap-2 rounded-xl border bg-muted/20 p-1'>
+        <div className='flex w-full max-w-3xl flex-wrap gap-2 rounded-xl border bg-muted/20 p-1 lg:w-1/2'>
           {activityKindOptions.map((option) => {
             const isSelected = kind === option.value;
+            const ActivityKindIcon = option.icon;
 
             return (
               <Button
                 key={option.value}
                 type='button'
-                variant={isSelected ? 'secondary' : 'ghost'}
+                variant={isSelected ? 'default' : 'ghost'}
                 size='sm'
-                className={cn('min-w-24 flex-1 rounded-lg sm:flex-none', isSelected && 'shadow-xs')}
+                className={cn('min-w-28 flex-1 gap-2 rounded-lg', isSelected && 'shadow-xs')}
                 aria-pressed={isSelected}
                 onClick={() => onKindChange(option.value)}
               >
+                <ActivityKindIcon className='size-4' aria-hidden />
                 {option.label}
               </Button>
             );
