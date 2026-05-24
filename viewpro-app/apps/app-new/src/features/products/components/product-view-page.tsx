@@ -1,7 +1,7 @@
 'use client';
 
 import FormCardSkeleton from '@/components/form-card-skeleton';
-import { useSelectedTenantId } from '@/lib/tenant-selection';
+import { useActiveTenant } from '@/lib/session-context';
 import { useQuery } from '@tanstack/react-query';
 import type { Product, ProductByIdResponse } from '../api/types';
 import Link from 'next/link';
@@ -17,9 +17,13 @@ type TProductViewPageProps = {
 };
 
 export default function ProductViewPage({ productId, mode = 'detail' }: TProductViewPageProps) {
-  const selectedTenantId = useSelectedTenantId();
+  const { activeTenantId, isTenantLoading } = useActiveTenant();
 
-  if (!selectedTenantId) {
+  if (isTenantLoading) {
+    return <FormCardSkeleton />;
+  }
+
+  if (!activeTenantId) {
     return <MissingTenantState />;
   }
 
@@ -28,7 +32,7 @@ export default function ProductViewPage({ productId, mode = 'detail' }: TProduct
   }
 
   return (
-    <ExistingProductView mode={mode} productId={productId} selectedTenantId={selectedTenantId} />
+    <ExistingProductView mode={mode} productId={productId} selectedTenantId={activeTenantId} />
   );
 }
 

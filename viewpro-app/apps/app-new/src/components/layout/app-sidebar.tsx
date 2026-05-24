@@ -27,7 +27,7 @@ import {
 import { UserAvatarProfile } from '@/components/user-avatar-profile';
 import { navGroups } from '@/config/nav-config';
 import { useFilteredNavGroups } from '@/hooks/use-nav';
-import { useSession } from '@/lib/session-context';
+import { useActiveTenant, useSession } from '@/lib/session-context';
 import { getUserDisplayName } from '@/lib/session';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -37,6 +37,7 @@ import { OrgSwitcher } from '../org-switcher';
 export default function AppSidebar() {
   const pathname = usePathname();
   const { session, signOut } = useSession();
+  const { hasMemberships } = useActiveTenant();
   const router = useRouter();
   const filteredGroups = useFilteredNavGroups(navGroups);
   const user = session?.user;
@@ -151,7 +152,7 @@ export default function AppSidebar() {
                     <Icons.account className='mr-2 h-4 w-4' />
                     Perfil
                   </DropdownMenuItem>
-                  {session?.memberships.length ? (
+                  {hasMemberships ? (
                     <DropdownMenuItem onClick={() => router.push('/dashboard/billing')}>
                       <Icons.creditCard className='mr-2 h-4 w-4' />
                       Facturación

@@ -5,7 +5,13 @@ import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import type { ActivityFeedItem as ActivityFeedItemType } from '../api/types';
+import type {
+  ActivityDocumentRequestItem,
+  ActivityFeedItem as ActivityFeedItemType,
+  ActivityKindFilter,
+  ActivityMovementItem
+} from '../api/types';
+import { ActivityDocumentRequestFeedItem } from './activity-document-request-feed-item';
 import { ActivityFeedItem } from './activity-feed-item';
 import { ActivityMovementDetailDialog } from './activity-movement-detail-dialog';
 
@@ -14,6 +20,7 @@ export function ActivityFeed({
   isFetching,
   isLoading,
   items,
+  kind,
   page,
   pageCount,
   total,
@@ -24,13 +31,14 @@ export function ActivityFeed({
   isFetching: boolean;
   isLoading: boolean;
   items: ActivityFeedItemType[];
+  kind: ActivityKindFilter;
   page: number;
   pageCount: number;
   total: number;
   onPageChange: (page: number) => void;
   onRetry: () => void;
 }) {
-  const [selectedItem, setSelectedItem] = useState<ActivityFeedItemType | null>(null);
+  const [selectedItem, setSelectedItem] = useState<ActivityMovementItem | null>(null);
 
   if (isLoading) {
     return <ActivityFeedSkeleton />;
@@ -52,12 +60,9 @@ export function ActivityFeed({
   }
 
   if (items.length === 0) {
-    return (
-      <ActivityFeedMessage
-        title='Sin movimientos para mostrar'
-        description='Cuando haya actualizaciones en las propiedades, van a aparecer en este seguimiento.'
-      />
-    );
+    const emptyCopy = getEmptyCopy(kind);
+
+    return <ActivityFeedMessage title={emptyCopy.title} description={emptyCopy.description} />;
   }
 
   return (
@@ -75,11 +80,25 @@ export function ActivityFeed({
       </div>
 
       <ol className='space-y-3'>
-        {items.map((item) => (
-          <li key={item.id}>
-            <ActivityFeedItem item={item} onViewDetails={setSelectedItem} />
-          </li>
-        ))}
+        {items.map((item) => {
+          if (isMovementActivityItem(item)) {
+            return (
+              <li key={item.id}>
+                <ActivityFeedItem item={item} onViewDetails={setSelectedItem} />
+              </li>
+            );
+          }
+
+          if (isDocumentRequestActivityItem(item)) {
+            return (
+              <li key={item.id}>
+                <ActivityDocumentRequestFeedItem item={item} />
+              </li>
+            );
+          }
+
+          return null;
+        })}
       </ol>
 
       <ActivityMovementDetailDialog
@@ -170,4 +189,37 @@ function ActivityFeedMessage({
       {action ? <div className='mt-4 flex justify-center'>{action}</div> : null}
     </div>
   );
+}
+
+function isMovementActivityItem(item: ActivityFeedItemType): item is ActivityMovementItem {
+  return item.kind === 'movement';
+}
+
+function isDocumentRequestActivityItem(
+  item: ActivityFeedItemType
+): item is ActivityDocumentRequestItem {
+  return item.kind === 'document_request';
+}
+
+function getEmptyCopy(kind: ActivityKindFilter) {
+  if (kind === 'document_request') {
+    return {
+      title: 'Sin documentos para mostrar',
+      description: 'Cuando haya solicitudes documentales, van a aparecer en este seguimiento.'
+    };
+  }
+
+  if (kind === 'movement') {
+    return {
+      title: 'Sin movimientos para mostrar',
+      description:
+        'Cuando haya actualizaciones en las propiedades, van a aparecer en este seguimiento.'
+    };
+  }
+
+  return {
+    title: 'Sin actividad para mostrar',
+    description:
+      'Cuando haya movimientos o solicitudes documentales, van a aparecer en este seguimiento.'
+  };
 }

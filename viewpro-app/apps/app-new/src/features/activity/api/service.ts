@@ -15,6 +15,7 @@ function buildActivityFeedUrl(filters: ActivityFeedFilters) {
 
   appendSearchParam(searchParams, 'page', filters.page);
   appendSearchParam(searchParams, 'pageSize', filters.pageSize);
+  appendSearchParam(searchParams, 'kind', filters.kind === 'all' ? undefined : filters.kind);
   appendSearchParam(searchParams, 'type', filters.type);
   appendSearchParam(searchParams, 'sellerId', filters.sellerId);
   appendSearchParam(searchParams, 'dateFrom', filters.dateFrom);

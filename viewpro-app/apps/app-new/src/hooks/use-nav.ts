@@ -1,25 +1,19 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useSession } from '@/lib/session-context';
-import { useSelectedTenantId } from '@/lib/tenant-selection';
+import { useActiveTenant } from '@/lib/session-context';
 import type { NavItem, NavGroup } from '@/types';
 
 export function useFilteredNavItems(items: NavItem[]) {
-  const { session } = useSession();
-  const selectedTenantId = useSelectedTenantId();
+  const { activeMembership } = useActiveTenant();
 
   const accessContext = useMemo(() => {
-    const membership =
-      session?.memberships.find((item) => item.tenant.id === selectedTenantId) ??
-      session?.memberships[0];
-
     return {
-      hasOrg: Boolean(membership),
-      permissions: membership?.permissions ?? [],
-      role: membership?.role
+      hasOrg: Boolean(activeMembership),
+      permissions: activeMembership?.permissions ?? [],
+      role: activeMembership?.role
     };
-  }, [selectedTenantId, session]);
+  }, [activeMembership]);
 
   return useMemo(() => {
     return items
@@ -41,7 +35,9 @@ export function useFilteredNavGroups(groups: NavGroup[]) {
       .map((group) => ({
         ...group,
         items: filteredItems.filter((item) =>
-          group.items.some((groupItem) => groupItem.title === item.title && filteredSet.has(groupItem.title))
+          group.items.some(
+            (groupItem) => groupItem.title === item.title && filteredSet.has(groupItem.title)
+          )
         )
       }))
       .filter((group) => group.items.length > 0);
