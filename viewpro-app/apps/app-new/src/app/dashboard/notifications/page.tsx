@@ -1,9 +1,10 @@
-import NotificationsPage from '@/features/notifications/components/notifications-page';
+import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 
-export const metadata = {
-  title: 'Dashboard: Notifications'
+export const metadata: Metadata = {
+  title: 'Dashboard: Inicio'
 };
 
 export default function Page() {
-  return <NotificationsPage />;
+  redirect('/dashboard');
 }

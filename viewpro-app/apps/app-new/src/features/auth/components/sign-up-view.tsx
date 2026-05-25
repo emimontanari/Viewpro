@@ -61,7 +61,7 @@ function SignUpForm() {
           setSelectedTenantId(session.memberships[0].tenant.id);
         }
 
-        router.push('/dashboard/overview');
+        router.push('/dashboard');
         router.refresh();
       } catch (error) {
         setErrorMessage(getApiErrorMessage(error));
@@ -73,7 +73,9 @@ function SignUpForm() {
     <Card className='w-full'>
       <CardHeader>
         <CardTitle className='text-2xl font-bold'>Crear cuenta</CardTitle>
-        <p className='text-muted-foreground'>Completá tus datos para crear tu cuenta y empezar a usar ViewPro.</p>
+        <p className='text-muted-foreground'>
+          Completá tus datos para crear tu cuenta y empezar a usar ViewPro.
+        </p>
       </CardHeader>
       <CardContent>
         <form.AppForm>
