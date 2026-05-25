@@ -19,7 +19,7 @@ type SignInValues = {
   password: string;
 };
 
-const DEFAULT_SIGN_IN_REDIRECT = '/dashboard/overview';
+const DEFAULT_SIGN_IN_REDIRECT = '/dashboard';
 
 const signInSchema = z.object({
   email: z.email('Ingresá un email válido.'),
@@ -89,7 +89,9 @@ function SignInForm() {
               required
               type='password'
               placeholder='Tu contraseña'
-              validators={{ onBlur: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.') }}
+              validators={{
+                onBlur: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.')
+              }}
             />
             <form.SubmitButton className='w-full'>Entrar</form.SubmitButton>
           </form.Form>
@@ -99,7 +101,7 @@ function SignInForm() {
   );
 }
 
-function getSafeSignInRedirect(redirectUrl: string | null) {
+export function getSafeSignInRedirect(redirectUrl: string | null) {
   if (!redirectUrl) {
     return DEFAULT_SIGN_IN_REDIRECT;
   }
@@ -118,8 +120,7 @@ function getSafeSignInRedirect(redirectUrl: string | null) {
   try {
     const url = new URL(redirectUrl, 'http://viewpro.local');
     const isRelativeUrl = url.origin === 'http://viewpro.local';
-    const isDashboardPath =
-      url.pathname === '/dashboard' || url.pathname.startsWith('/dashboard/');
+    const isDashboardPath = url.pathname === '/dashboard' || url.pathname.startsWith('/dashboard/');
 
     if (!isRelativeUrl || !isDashboardPath) {
       return DEFAULT_SIGN_IN_REDIRECT;
