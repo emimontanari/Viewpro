@@ -1,13 +1,19 @@
 'use client';
 
+import * as React from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { activityFeedOptions } from '@/features/activity/api/queries';
 import type { ActivityFeedItem } from '@/features/activity/api/types';
+import { dashboardSummaryOptions } from '@/features/dashboard/api/queries';
+import type {
+  DashboardSummaryRange,
+  DashboardSummaryTopProperty,
+  DashboardSummaryTopSeller
+} from '@/features/dashboard/api/types';
 import { productsQueryOptions } from '@/features/products/api/queries';
 import type { Product } from '@/features/products/api/types';
 import {
@@ -18,41 +24,27 @@ import {
 import { useActiveTenant } from '@/lib/session-context';
 import { cn } from '@/lib/utils';
 
-const ACTIVITY_PREVIEW_SIZE = 20;
-const RECENT_ACTIVITY_VISIBLE_SIZE = 5;
 const PROPERTY_PREVIEW_SIZE = 6;
-const INSIGHT_PREVIEW_SIZE = 3;
-const ROW_ACTION_CLASS =
-  'h-10 min-w-28 justify-center rounded-full border bg-background px-4 font-medium shadow-xs';
+const ROW_ACTION_CLASS = 'size-8 rounded-full border bg-background shadow-xs';
 
-type PropertyInsight = {
-  property: ActivityFeedItem['property'];
-  activityCount: number;
-  movementCount: number;
-  documentRequestCount: number;
-  latestAt: string;
-  latestTitle: string;
-};
-
-type SellerInsight = {
-  id: string;
-  name: string;
-  email: string;
-  movementCount: number;
-  propertyIds: Set<string>;
-  latestAt: string;
-};
+const RANGE_OPTIONS: Array<{ label: string; range: DashboardSummaryRange; days: number }> = [
+  { label: '7 días', range: '7d', days: 7 },
+  { label: '14 días', range: '14d', days: 14 },
+  { label: '30 días', range: '30d', days: 30 }
+];
 
 export function OperationalHomepage() {
   const { activeMembership, activeTenantId, isTenantLoading } = useActiveTenant();
-  const activityQuery = useQuery({
-    ...activityFeedOptions({
-      kind: 'all',
-      page: 1,
-      pageSize: ACTIVITY_PREVIEW_SIZE,
+  const [selectedRange, setSelectedRange] = React.useState<DashboardSummaryRange>('7d');
+  const selectedRangeOption = getRangeOption(selectedRange);
+  const summaryQuery = useQuery({
+    ...dashboardSummaryOptions({
+      range: selectedRange,
       tenantId: activeTenantId
     }),
-    enabled: Boolean(activeTenantId) && !isTenantLoading
+    enabled: Boolean(activeTenantId) && !isTenantLoading,
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false
   });
   const productsQuery = useQuery({
     ...productsQueryOptions({
@@ -61,7 +53,9 @@ export function OperationalHomepage() {
       page: 1,
       tenantId: activeTenantId
     }),
-    enabled: Boolean(activeTenantId) && !isTenantLoading
+    enabled: Boolean(activeTenantId) && !isTenantLoading,
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false
   });
 
   if (isTenantLoading) {
@@ -72,18 +66,20 @@ export function OperationalHomepage() {
     return <MissingInmobiliariaState />;
   }
 
-  const counters = activityQuery.data?.counters;
-  const activePropertiesTotal = productsQuery.data?.total ?? 0;
-  const activityItems = activityQuery.data?.items ?? [];
-  const recentActivity = activityItems.slice(0, RECENT_ACTIVITY_VISIBLE_SIZE);
+  const counters = summaryQuery.data?.counters;
+  const activePropertiesTotal = counters?.activeProperties ?? productsQuery.data?.total ?? 0;
+  const stalePropertiesTotal = counters?.staleProperties ?? 0;
+  const movementsInRange = counters?.movementsInRange ?? 0;
+  const attentionNeeded = counters?.attentionNeeded ?? 0;
+  const recentActivity = summaryQuery.data?.recentActivity ?? [];
   const propertyPreview = productsQuery.data?.items ?? [];
-  const recentDocumentRequests = activityItems.filter(
+  const recentDocumentRequests = recentActivity.filter(
     (item) => item.kind === 'document_request'
   ).length;
-  const topProperties = getRecentPropertyInsights(activityItems).slice(0, INSIGHT_PREVIEW_SIZE);
-  const sellerInsights = getSellerMovementInsights(activityItems).slice(0, INSIGHT_PREVIEW_SIZE);
-  const isLoadingData = activityQuery.isLoading || productsQuery.isLoading;
-  const hasDataError = activityQuery.isError || productsQuery.isError;
+  const topProperties = summaryQuery.data?.topProperties ?? [];
+  const sellerInsights = summaryQuery.data?.topSellers ?? [];
+  const isLoadingData = summaryQuery.isLoading || productsQuery.isLoading;
+  const hasDataError = summaryQuery.isError || productsQuery.isError;
 
   return (
     <section className='min-w-0 space-y-6'>
@@ -122,14 +118,16 @@ export function OperationalHomepage() {
                 Ver propiedades
               </Link>
             </div>
+            <RangeSelector selectedRange={selectedRange} onSelectRange={setSelectedRange} />
           </div>
 
           <PriorityCard
-            attentionCount={counters?.attentionCount ?? 0}
+            attentionCount={attentionNeeded}
             documentRequestCount={recentDocumentRequests}
             hasDataError={hasDataError}
             isLoading={isLoadingData}
-            staleCount={counters?.staleCount ?? 0}
+            rangeDays={selectedRangeOption.days}
+            staleCount={stalePropertiesTotal}
           />
         </div>
       </div>
@@ -137,35 +135,35 @@ export function OperationalHomepage() {
       <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
         <KpiCard
           icon={Icons.warning}
-          label='Sin actualización'
-          value={counters?.staleCount ?? 0}
-          helper='Gestiones que necesitan una novedad visible.'
-          isLoading={activityQuery.isLoading}
+          label={`Sin novedades en ${selectedRangeOption.days} días`}
+          value={stalePropertiesTotal}
+          helper='Gestiones activas sin movimientos en el período.'
+          isLoading={summaryQuery.isLoading}
         />
         <KpiCard
           icon={Icons.clock}
-          label='Movimientos hoy'
-          value={counters?.todayCount ?? 0}
-          helper='Actividad registrada en las últimas 24 horas.'
-          isLoading={activityQuery.isLoading}
+          label='Movimientos del período'
+          value={movementsInRange}
+          helper={`Actividad registrada en los últimos ${selectedRangeOption.days} días.`}
+          isLoading={summaryQuery.isLoading}
         />
         <KpiCard
           icon={Icons.trendingUp}
           label='Requieren atención'
-          value={counters?.attentionCount ?? 0}
+          value={attentionNeeded}
           helper='Consultas, visitas u ofertas sin próximo paso.'
-          isLoading={activityQuery.isLoading}
+          isLoading={summaryQuery.isLoading}
         />
         <KpiCard
           icon={Icons.product}
           label='Propiedades activas'
           value={activePropertiesTotal}
           helper='Gestiones disponibles para operar.'
-          isLoading={productsQuery.isLoading}
+          isLoading={summaryQuery.isLoading || productsQuery.isLoading}
         />
       </div>
 
-      <div className='grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)]'>
+      <div className='grid gap-5 xl:grid-cols-2'>
         <Card className='py-0'>
           <CardHeader className='flex flex-col gap-2 p-5 pb-0 sm:flex-row sm:items-start sm:justify-between'>
             <div>
@@ -173,7 +171,7 @@ export function OperationalHomepage() {
                 Movimientos rápidos
               </CardTitle>
               <p className='mt-1 text-sm text-muted-foreground'>
-                Últimas señales de avance para entender qué cambió en la inmobiliaria.
+                Últimas señales de avance para entender qué cambió en el período.
               </p>
             </div>
             <Button asChild variant='outline' size='sm'>
@@ -181,7 +179,7 @@ export function OperationalHomepage() {
             </Button>
           </CardHeader>
           <CardContent className='p-5'>
-            <RecentActivityList isLoading={activityQuery.isLoading} items={recentActivity} />
+            <RecentActivityList isLoading={summaryQuery.isLoading} items={recentActivity} />
           </CardContent>
         </Card>
 
@@ -206,10 +204,47 @@ export function OperationalHomepage() {
       </div>
 
       <div className='grid gap-5 xl:grid-cols-2'>
-        <TopPropertiesCard isLoading={activityQuery.isLoading} properties={topProperties} />
-        <SellerActivityCard isLoading={activityQuery.isLoading} sellers={sellerInsights} />
+        <TopPropertiesCard
+          isLoading={summaryQuery.isLoading}
+          properties={topProperties}
+          rangeLabel={selectedRangeOption.label}
+        />
+        <SellerActivityCard
+          isLoading={summaryQuery.isLoading}
+          rangeLabel={selectedRangeOption.label}
+          sellers={sellerInsights}
+        />
       </div>
     </section>
+  );
+}
+
+function RangeSelector({
+  onSelectRange,
+  selectedRange
+}: {
+  onSelectRange: (range: DashboardSummaryRange) => void;
+  selectedRange: DashboardSummaryRange;
+}) {
+  return (
+    <div className='space-y-2'>
+      <p className='text-sm font-medium text-muted-foreground'>Período del resumen</p>
+      <div className='inline-flex flex-wrap gap-2 rounded-2xl border bg-muted/30 p-1'>
+        {RANGE_OPTIONS.map((option) => (
+          <Button
+            key={option.range}
+            type='button'
+            variant={selectedRange === option.range ? 'default' : 'ghost'}
+            size='sm'
+            className='min-w-20 rounded-xl'
+            aria-pressed={selectedRange === option.range}
+            onClick={() => onSelectRange(option.range)}
+          >
+            {option.label}
+          </Button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -218,12 +253,14 @@ function PriorityCard({
   documentRequestCount,
   hasDataError,
   isLoading,
+  rangeDays,
   staleCount
 }: {
   attentionCount: number;
   documentRequestCount: number;
   hasDataError: boolean;
   isLoading: boolean;
+  rangeDays: number;
   staleCount: number;
 }) {
   return (
@@ -247,15 +284,15 @@ function PriorityCard({
             ? 'No se pudo cargar el resumen. Reintentá en unos segundos.'
             : isLoading
               ? 'Preparando el resumen operativo…'
-              : `${staleCount} gestiones necesitan una actualización visible.`}
+              : `${staleCount} gestiones no tuvieron novedades en ${rangeDays} días.`}
         </div>
         <div className='grid gap-2'>
           <PriorityLink
             action='Actualizar'
-            ariaLabel={`Ver ${staleCount} gestiones sin novedades en seguimiento`}
+            ariaLabel={`Ver ${staleCount} gestiones sin novedades en ${rangeDays} días en seguimiento`}
             count={staleCount}
             href='/dashboard/seguimiento'
-            label='Gestiones sin novedades'
+            label={`Sin novedades en ${rangeDays} días`}
           />
           <PriorityLink
             action='Resolver'
@@ -266,10 +303,10 @@ function PriorityCard({
           />
           <PriorityLink
             action='Revisar'
-            ariaLabel={`Ver ${documentRequestCount} documentos pedidos en seguimiento`}
+            ariaLabel={`Ver ${documentRequestCount} documentos recientes en seguimiento`}
             count={documentRequestCount}
             href='/dashboard/seguimiento?kind=document_request'
-            label='Documentos pedidos'
+            label='Documentos recientes'
           />
         </div>
       </CardContent>
@@ -378,14 +415,14 @@ function RecentActivityList({
             <Button
               asChild
               variant='outline'
-              size='sm'
+              size='icon'
               className={cn('shrink-0', ROW_ACTION_CLASS)}
             >
               <Link
                 href={`/dashboard/product/${item.property.engagementId}`}
                 aria-label={`Abrir actividad: ${getActivityTitle(item)}`}
               >
-                Abrir
+                <Icons.externalLink className='size-4' aria-hidden='true' />
               </Link>
             </Button>
           </div>
@@ -432,14 +469,14 @@ function PropertyPreviewList({ isLoading, products }: { isLoading: boolean; prod
             <Button
               asChild
               variant='outline'
-              size='sm'
+              size='icon'
               className={cn('shrink-0', ROW_ACTION_CLASS)}
             >
               <Link
                 href={`/dashboard/product/${product.id}`}
                 aria-label={`Abrir propiedad: ${product.property.title || 'Propiedad sin título'}`}
               >
-                Abrir
+                <Icons.externalLink className='size-4' aria-hidden='true' />
               </Link>
             </Button>
           </div>
@@ -451,10 +488,12 @@ function PropertyPreviewList({ isLoading, products }: { isLoading: boolean; prod
 
 function TopPropertiesCard({
   isLoading,
-  properties
+  properties,
+  rangeLabel
 }: {
   isLoading: boolean;
-  properties: PropertyInsight[];
+  properties: DashboardSummaryTopProperty[];
+  rangeLabel: string;
 }) {
   return (
     <Card className='py-0'>
@@ -464,11 +503,11 @@ function TopPropertiesCard({
             Propiedades con más movimiento
           </CardTitle>
           <p className='mt-1 text-sm text-muted-foreground'>
-            Lectura rápida basada en las actividades recientes cargadas en Seguimiento.
+            Lectura rápida basada en movimientos y documentos del período.
           </p>
         </div>
         <Badge variant='outline' className='w-fit rounded-full bg-muted/40'>
-          Últimas {ACTIVITY_PREVIEW_SIZE} actividades
+          Últimos {rangeLabel}
         </Badge>
       </CardHeader>
       <CardContent className='p-5'>
@@ -478,43 +517,36 @@ function TopPropertiesCard({
           <EmptyPanel
             icon={Icons.product}
             title='Sin actividad para comparar'
-            description='Cuando se registren movimientos, vas a ver qué propiedades concentraron más actividad reciente.'
+            description='Cuando se registren movimientos, vas a ver qué propiedades concentraron más actividad en el período.'
           />
         ) : (
           <ol className='space-y-3'>
             {properties.map((insight) => (
-              <li
-                key={insight.property.engagementId}
-                className='rounded-2xl border bg-muted/20 p-3'
-              >
+              <li key={insight.engagementId} className='rounded-2xl border bg-muted/20 p-3'>
                 <div className='flex items-center justify-between gap-3'>
                   <div className='min-w-0 space-y-1'>
-                    <p className='truncate font-medium'>{getPropertyTitle(insight.property)}</p>
+                    <p className='truncate font-medium'>{getDashboardPropertyTitle(insight)}</p>
                     <p className='text-sm text-muted-foreground'>
-                      {formatCount(
-                        insight.activityCount,
-                        'actividad reciente',
-                        'actividades recientes'
-                      )}
+                      {formatCount(insight.movementCount, 'movimiento', 'movimientos')}
                       {insight.documentRequestCount > 0
                         ? ` · ${formatCount(insight.documentRequestCount, 'documento', 'documentos')}`
                         : null}
                     </p>
                     <p className='truncate text-sm text-muted-foreground'>
-                      Último: {insight.latestTitle}
+                      Último: {insight.lastActivityTitle}
                     </p>
                   </div>
                   <Button
                     asChild
                     variant='outline'
-                    size='sm'
+                    size='icon'
                     className={cn('shrink-0', ROW_ACTION_CLASS)}
                   >
                     <Link
-                      href={`/dashboard/product/${insight.property.engagementId}`}
-                      aria-label={`Abrir propiedad ${getPropertyTitle(insight.property)}`}
+                      href={`/dashboard/product/${insight.engagementId}`}
+                      aria-label={`Abrir propiedad ${getDashboardPropertyTitle(insight)}`}
                     >
-                      Abrir
+                      <Icons.externalLink className='size-4' aria-hidden='true' />
                     </Link>
                   </Button>
                 </div>
@@ -529,10 +561,12 @@ function TopPropertiesCard({
 
 function SellerActivityCard({
   isLoading,
+  rangeLabel,
   sellers
 }: {
   isLoading: boolean;
-  sellers: SellerInsight[];
+  rangeLabel: string;
+  sellers: DashboardSummaryTopSeller[];
 }) {
   return (
     <Card className='py-0'>
@@ -542,11 +576,11 @@ function SellerActivityCard({
             Vendedores con más movimiento
           </CardTitle>
           <p className='mt-1 text-sm text-muted-foreground'>
-            Quiénes están generando actividad en las últimas gestiones registradas.
+            Quiénes están generando actividad en las gestiones del período.
           </p>
         </div>
         <Badge variant='outline' className='w-fit rounded-full bg-muted/40'>
-          Últimas {ACTIVITY_PREVIEW_SIZE} actividades
+          Últimos {rangeLabel}
         </Badge>
       </CardHeader>
       <CardContent className='p-5'>
@@ -556,12 +590,12 @@ function SellerActivityCard({
           <EmptyPanel
             icon={Icons.profile}
             title='Sin movimientos de vendedores'
-            description='Cuando el equipo registre movimientos manuales, vas a ver la actividad reciente por vendedor.'
+            description='Cuando el equipo registre movimientos manuales, vas a ver la actividad por vendedor.'
           />
         ) : (
           <ol className='space-y-3'>
             {sellers.map((seller) => (
-              <li key={seller.id} className='rounded-2xl border bg-muted/20 p-3'>
+              <li key={seller.userId} className='rounded-2xl border bg-muted/20 p-3'>
                 <div className='flex items-center justify-between gap-3'>
                   <div className='min-w-0 space-y-1'>
                     <p className='truncate font-medium'>{seller.name}</p>
@@ -569,7 +603,7 @@ function SellerActivityCard({
                     <p className='text-sm text-muted-foreground'>
                       {formatCount(seller.movementCount, 'movimiento', 'movimientos')} ·{' '}
                       {formatCount(
-                        seller.propertyIds.size,
+                        seller.touchedPropertiesCount,
                         'propiedad tocada',
                         'propiedades tocadas'
                       )}
@@ -582,7 +616,7 @@ function SellerActivityCard({
                     className={cn('shrink-0', ROW_ACTION_CLASS)}
                   >
                     <Link
-                      href={`/dashboard/seguimiento?sellerId=${encodeURIComponent(seller.id)}`}
+                      href={`/dashboard/seguimiento?sellerId=${encodeURIComponent(seller.userId)}`}
                       aria-label={`Ver movimientos de ${seller.name}`}
                     >
                       Ver
@@ -671,86 +705,6 @@ function OperationalHomepageSkeleton() {
   );
 }
 
-function getRecentPropertyInsights(items: ActivityFeedItem[]) {
-  const insights = new Map<string, PropertyInsight>();
-
-  for (const item of items) {
-    const key = item.property.engagementId;
-    const existing = insights.get(key);
-    const latestTitle = getActivityTitle(item);
-
-    if (!existing) {
-      insights.set(key, {
-        activityCount: 1,
-        documentRequestCount: item.kind === 'document_request' ? 1 : 0,
-        latestAt: item.createdAt,
-        latestTitle,
-        movementCount: item.kind === 'movement' ? 1 : 0,
-        property: item.property
-      });
-      continue;
-    }
-
-    existing.activityCount += 1;
-    existing.movementCount += item.kind === 'movement' ? 1 : 0;
-    existing.documentRequestCount += item.kind === 'document_request' ? 1 : 0;
-
-    if (isAfter(item.createdAt, existing.latestAt)) {
-      existing.latestAt = item.createdAt;
-      existing.latestTitle = latestTitle;
-      existing.property = item.property;
-    }
-  }
-
-  return [...insights.values()].toSorted((a, b) => {
-    if (b.activityCount !== a.activityCount) {
-      return b.activityCount - a.activityCount;
-    }
-
-    return Date.parse(b.latestAt) - Date.parse(a.latestAt);
-  });
-}
-
-function getSellerMovementInsights(items: ActivityFeedItem[]) {
-  const insights = new Map<string, SellerInsight>();
-
-  for (const item of items) {
-    if (item.kind !== 'movement') {
-      continue;
-    }
-
-    const sellerId = item.createdBy.id;
-    const existing = insights.get(sellerId);
-
-    if (!existing) {
-      insights.set(sellerId, {
-        email: item.createdBy.email,
-        id: sellerId,
-        latestAt: item.createdAt,
-        movementCount: 1,
-        name: item.createdBy.firstName || item.createdBy.email,
-        propertyIds: new Set([item.property.engagementId])
-      });
-      continue;
-    }
-
-    existing.movementCount += 1;
-    existing.propertyIds.add(item.property.engagementId);
-
-    if (isAfter(item.createdAt, existing.latestAt)) {
-      existing.latestAt = item.createdAt;
-    }
-  }
-
-  return [...insights.values()].toSorted((a, b) => {
-    if (b.movementCount !== a.movementCount) {
-      return b.movementCount - a.movementCount;
-    }
-
-    return Date.parse(b.latestAt) - Date.parse(a.latestAt);
-  });
-}
-
 function getActivityTitle(item: ActivityFeedItem) {
   if (item.kind === 'document_request') {
     return item.documentRequest.title;
@@ -760,7 +714,7 @@ function getActivityTitle(item: ActivityFeedItem) {
 }
 
 function getActivityDescription(item: ActivityFeedItem) {
-  const propertyTitle = getPropertyTitle(item.property);
+  const propertyTitle = getActivityPropertyTitle(item.property);
 
   if (item.kind === 'document_request') {
     return `Solicitud documental en ${propertyTitle}`;
@@ -769,7 +723,11 @@ function getActivityDescription(item: ActivityFeedItem) {
   return item.nextStep ? `${propertyTitle} · Próximo paso: ${item.nextStep}` : propertyTitle;
 }
 
-function getPropertyTitle(property: ActivityFeedItem['property']) {
+function getActivityPropertyTitle(property: ActivityFeedItem['property']) {
+  return property.title || property.addressLine || 'Propiedad sin título';
+}
+
+function getDashboardPropertyTitle(property: DashboardSummaryTopProperty) {
   return property.title || property.addressLine || 'Propiedad sin título';
 }
 
@@ -777,6 +735,6 @@ function formatCount(value: number, singular: string, plural: string) {
   return `${value} ${value === 1 ? singular : plural}`;
 }
 
-function isAfter(candidate: string, current: string) {
-  return Date.parse(candidate) > Date.parse(current);
+function getRangeOption(range: DashboardSummaryRange) {
+  return RANGE_OPTIONS.find((option) => option.range === range) ?? RANGE_OPTIONS[0];
 }

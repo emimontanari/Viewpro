@@ -314,6 +314,188 @@ describe("Analytics reports (e2e)", () => {
 		).not.toContain("movement");
 	});
 
+	it("returns dashboard summary with default seven-day range and tenant-scoped rankings", async () => {
+		const manager = await registerTenantSession(
+			"analytics-dashboard-summary@example.com",
+			"Analytics Dashboard Summary Homes",
+		);
+		const seller = await registerTenantSession(
+			"analytics-dashboard-seller@example.com",
+			"Analytics Dashboard Seller Homes",
+		);
+		const otherTenant = await registerTenantSession(
+			"analytics-dashboard-other@example.com",
+			"Analytics Dashboard Other Homes",
+		);
+		await addTenantAgent(seller.userId, manager.tenantId);
+		const hot = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Hot Dashboard Property",
+		}).expect(201);
+		const warm = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Warm Dashboard Property",
+		}).expect(201);
+		const stale = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Stale Dashboard Property",
+		}).expect(201);
+		const archived = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Archived Dashboard Property",
+		}).expect(201);
+		const other = await createEngagement(
+			otherTenant.agent,
+			otherTenant.tenantId,
+			{
+				title: "Other Dashboard Property",
+			},
+		).expect(201);
+		await prisma.propertyEngagement.updateMany({
+			data: { status: PropertyEngagementStatus.ACTIVE_PUBLICATION },
+		});
+		await prisma.propertyEngagement.update({
+			where: { id: archived.body.id },
+			data: { archivedAt: new Date(), archivedByUserId: manager.userId },
+		});
+		await seedMovement(manager.tenantId, manager.userId, hot.body.id, {
+			type: MovementType.INQUIRY,
+			observation: "First hot inquiry.",
+		});
+		await seedMovement(manager.tenantId, manager.userId, hot.body.id, {
+			type: MovementType.VISIT_COMPLETED,
+			observation: "Second hot visit.",
+		});
+		await seedMovement(manager.tenantId, seller.userId, warm.body.id, {
+			type: MovementType.GENERAL_UPDATE,
+			observation: "Seller moved warm property.",
+		});
+		await seedMovement(manager.tenantId, seller.userId, stale.body.id, {
+			type: MovementType.GENERAL_UPDATE,
+			observation: "Older stale property movement.",
+			createdAt: daysAgo(10),
+		});
+		await seedMovement(manager.tenantId, manager.userId, archived.body.id, {
+			type: MovementType.GENERAL_UPDATE,
+			observation: "Archived property should stay out of summary.",
+		});
+		await seedMovement(
+			otherTenant.tenantId,
+			otherTenant.userId,
+			other.body.id,
+			{
+				type: MovementType.GENERAL_UPDATE,
+				observation: "Other tenant movement.",
+			},
+		);
+		const ownerLink = await grantInvitedOwner(hot.body.property.id, {
+			email: "analytics-dashboard-owner@example.com",
+			firstName: "Dashboard",
+			lastName: "Owner",
+		});
+		await manager.agent
+			.post(`/api/property-engagements/${hot.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ propertyAssetOwnerId: ownerLink.id, title: "Escritura" })
+			.expect(201);
+		const archivedOwnerLink = await grantInvitedOwner(
+			archived.body.property.id,
+			{
+				email: "analytics-dashboard-archived-owner@example.com",
+				firstName: "Archived",
+				lastName: "Owner",
+			},
+		);
+		await manager.agent
+			.post(`/api/property-engagements/${archived.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({
+				propertyAssetOwnerId: archivedOwnerLink.id,
+				title: "Archived Escritura",
+			})
+			.expect(201);
+
+		const response = await manager.agent
+			.get("/api/analytics/dashboard-summary")
+			.set("x-tenant-id", manager.tenantId)
+			.expect(200);
+
+		expect(response.body.range.preset).toBe("7d");
+		expect(new Date(response.body.range.to).getTime()).toBeGreaterThan(
+			new Date(response.body.range.from).getTime(),
+		);
+		expect(response.body.counters).toMatchObject({
+			activeProperties: 3,
+			movementsInRange: 3,
+			staleProperties: 1,
+			attentionNeeded: 1,
+		});
+		expect(response.body.topProperties[0]).toMatchObject({
+			engagementId: hot.body.id,
+			title: "Hot Dashboard Property",
+			movementCount: 2,
+			documentRequestCount: 1,
+		});
+		expect(response.body.topSellers[0]).toMatchObject({
+			userId: manager.userId,
+			movementCount: 2,
+			touchedPropertiesCount: 1,
+		});
+		expect(
+			response.body.recentActivity.map(
+				(item: { propertyEngagementId: string }) => item.propertyEngagementId,
+			),
+		).toEqual(expect.arrayContaining([hot.body.id, warm.body.id]));
+		expect(
+			response.body.topProperties.map(
+				(item: { engagementId: string }) => item.engagementId,
+			),
+		).not.toContain(other.body.id);
+		expect(
+			response.body.topProperties.map(
+				(item: { engagementId: string }) => item.engagementId,
+			),
+		).not.toContain(archived.body.id);
+		expect(
+			response.body.recentActivity.map(
+				(item: { propertyEngagementId: string }) => item.propertyEngagementId,
+			),
+		).not.toContain(archived.body.id);
+		expect(
+			response.body.recentActivity.map(
+				(item: { documentRequest?: { title: string } }) =>
+					item.documentRequest?.title,
+			),
+		).not.toContain("Archived Escritura");
+	});
+
+	it("supports fourteen-day dashboard summary range and validates invalid ranges", async () => {
+		const manager = await registerTenantSession(
+			"analytics-dashboard-range@example.com",
+			"Analytics Dashboard Range Homes",
+		);
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Range Dashboard Property",
+		}).expect(201);
+		await prisma.propertyEngagement.updateMany({
+			data: { status: PropertyEngagementStatus.ACTIVE_PUBLICATION },
+		});
+		await seedMovement(manager.tenantId, manager.userId, engagement.body.id, {
+			type: MovementType.GENERAL_UPDATE,
+			observation: "Ten day old movement.",
+			createdAt: daysAgo(10),
+		});
+
+		const response = await manager.agent
+			.get("/api/analytics/dashboard-summary?range=14d")
+			.set("x-tenant-id", manager.tenantId)
+			.expect(200);
+
+		expect(response.body.range.preset).toBe("14d");
+		expect(response.body.counters.movementsInRange).toBe(1);
+		expect(response.body.counters.staleProperties).toBe(0);
+		await manager.agent
+			.get("/api/analytics/dashboard-summary?range=90d")
+			.set("x-tenant-id", manager.tenantId)
+			.expect(400);
+	});
+
 	it("rejects agent access to aggregate pilot reports", async () => {
 		const manager = await registerTenantSession(
 			"analytics-manager-access@example.com",
@@ -401,6 +583,32 @@ describe("Analytics reports (e2e)", () => {
 				accessStatus: PropertyAssetOwnerAccessStatus.INVITED,
 			},
 		});
+	}
+
+	async function seedMovement(
+		tenantId: string,
+		createdByUserId: string,
+		propertyEngagementId: string,
+		input: {
+			type: MovementType;
+			observation: string;
+			createdAt?: Date;
+		},
+	) {
+		return prisma.movement.create({
+			data: {
+				tenantId,
+				createdByUserId,
+				propertyEngagementId,
+				type: input.type,
+				observation: input.observation,
+				createdAt: input.createdAt,
+			},
+		});
+	}
+
+	function daysAgo(days: number) {
+		return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 	}
 
 	async function seedMovementEvent(

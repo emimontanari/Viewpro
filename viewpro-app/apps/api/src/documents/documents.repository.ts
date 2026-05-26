@@ -81,6 +81,7 @@ export type ListActivityDocumentRequestsInput = {
 	requestedByUserId?: string;
 	from?: Date;
 	to?: Date;
+	activeEngagementsOnly?: boolean;
 };
 
 export type FindInternalDocumentRequestDetailInput = {

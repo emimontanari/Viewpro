@@ -10,9 +10,11 @@ import { CurrentTenant } from '../tenant-context/current-tenant.decorator'
 import { ApiTenantContext } from '../tenant-context/tenant-context-api-docs.decorator'
 import { TenantMembershipGuard } from '../tenant-context/tenant-membership.guard'
 import type { TenantContext } from '../tenant-context/tenant-context.types'
+import { GetDashboardSummaryQuery } from './dto/get-dashboard-summary.query'
 import { ListActivityFeedQuery } from './dto/list-activity-feed.query'
 import { ListAnalyticsEventsQuery } from './dto/list-analytics-events.query'
 import { ListInactiveEngagementsQuery } from './dto/list-inactive-engagements.query'
+import { GetDashboardSummaryUseCase } from './use-cases/get-dashboard-summary.use-case'
 import { GetPilotSummaryUseCase } from './use-cases/get-pilot-summary.use-case'
 import { ListActivityFeedUseCase } from './use-cases/list-activity-feed.use-case'
 import { ListAnalyticsEventsUseCase } from './use-cases/list-analytics-events.use-case'
@@ -21,12 +23,14 @@ import { ListInactiveEngagementsUseCase } from './use-cases/list-inactive-engage
 @Controller('analytics')
 @ApiTags('Analytics')
 @ApiTenantContext()
-@ApiExtraModels(ListActivityFeedQuery, ListAnalyticsEventsQuery, ListInactiveEngagementsQuery)
+@ApiExtraModels(GetDashboardSummaryQuery, ListActivityFeedQuery, ListAnalyticsEventsQuery, ListInactiveEngagementsQuery)
 @UseGuards(AuthGuard, TenantMembershipGuard, PermissionGuard)
 export class AnalyticsController {
   constructor(
     @Inject(GetPilotSummaryUseCase)
     private readonly getPilotSummaryUseCase: GetPilotSummaryUseCase,
+    @Inject(GetDashboardSummaryUseCase)
+    private readonly getDashboardSummaryUseCase: GetDashboardSummaryUseCase,
     @Inject(ListInactiveEngagementsUseCase)
     private readonly listInactiveEngagementsUseCase: ListInactiveEngagementsUseCase,
     @Inject(ListAnalyticsEventsUseCase)
@@ -40,6 +44,17 @@ export class AnalyticsController {
   @ApiOperation({ summary: 'Get weekly pilot analytics summary for the current tenant' })
   pilotSummary(@CurrentTenant() tenant: TenantContext) {
     return this.getPilotSummaryUseCase.execute({ tenantId: tenant.tenantId })
+  }
+
+  @Get('dashboard-summary')
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_VIEW_ALL)
+  @ApiOperation({ summary: 'Get dashboard operational summary for the current tenant' })
+  dashboardSummary(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Query() query: GetDashboardSummaryQuery,
+  ) {
+    return this.getDashboardSummaryUseCase.execute(tenant, currentUser, { range: query.range })
   }
 
   @Get('inactive-engagements')
