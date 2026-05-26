@@ -20,6 +20,7 @@
     "db:migrate": "pnpm --filter @viewpro/api db:migrate",
     "db:validate": "pnpm --filter @viewpro/api db:validate",
     "db:studio": "pnpm --filter @viewpro/api db:studio",
+    "demo:seed": "pnpm --filter @viewpro/api demo:seed",
     "openapi:generate": "pnpm --filter @viewpro/contracts generate",
     "openapi:check": "pnpm --filter @viewpro/contracts check"
   },
