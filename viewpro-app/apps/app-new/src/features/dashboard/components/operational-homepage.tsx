@@ -7,6 +7,7 @@ import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { activityFeedOptions } from '@/features/activity/api/queries';
 import type { ActivityFeedItem } from '@/features/activity/api/types';
 import { dashboardSummaryOptions } from '@/features/dashboard/api/queries';
 import type {
@@ -21,11 +22,14 @@ import {
   getStatusLabel,
   getStatusTone
 } from '@/features/products/components/product-tables/columns';
+import type { TenantMembership } from '@/lib/session';
 import { useActiveTenant } from '@/lib/session-context';
 import { cn } from '@/lib/utils';
 
 const PROPERTY_PREVIEW_SIZE = 6;
-const ROW_ACTION_CLASS = 'size-8 rounded-full border bg-background shadow-xs';
+const SELLER_ACTIVITY_PREVIEW_SIZE = 6;
+const ROW_ACTION_CLASS =
+  'min-h-10 w-full justify-center rounded-xl border bg-background shadow-xs sm:size-8 sm:min-h-8 sm:w-8 sm:rounded-full sm:p-0';
 
 const RANGE_OPTIONS: Array<{ label: string; range: DashboardSummaryRange; days: number }> = [
   { label: '7 días', range: '7d', days: 7 },
@@ -35,6 +39,39 @@ const RANGE_OPTIONS: Array<{ label: string; range: DashboardSummaryRange; days: 
 
 export function OperationalHomepage() {
   const { activeMembership, activeTenantId, isTenantLoading } = useActiveTenant();
+
+  if (isTenantLoading) {
+    return <OperationalHomepageSkeleton />;
+  }
+
+  if (!activeTenantId || !activeMembership) {
+    return <MissingInmobiliariaState />;
+  }
+
+  if (isSellerMembership(activeMembership)) {
+    return (
+      <SellerOperationalHomepage
+        activeMembership={activeMembership}
+        activeTenantId={activeTenantId}
+      />
+    );
+  }
+
+  return (
+    <ManagerOperationalHomepage
+      activeMembership={activeMembership}
+      activeTenantId={activeTenantId}
+    />
+  );
+}
+
+function ManagerOperationalHomepage({
+  activeMembership,
+  activeTenantId
+}: {
+  activeMembership: TenantMembership;
+  activeTenantId: string;
+}) {
   const [selectedRange, setSelectedRange] = React.useState<DashboardSummaryRange>('7d');
   const selectedRangeOption = getRangeOption(selectedRange);
   const summaryQuery = useQuery({
@@ -42,7 +79,7 @@ export function OperationalHomepage() {
       range: selectedRange,
       tenantId: activeTenantId
     }),
-    enabled: Boolean(activeTenantId) && !isTenantLoading,
+    enabled: Boolean(activeTenantId),
     refetchOnReconnect: false,
     refetchOnWindowFocus: false
   });
@@ -53,18 +90,10 @@ export function OperationalHomepage() {
       page: 1,
       tenantId: activeTenantId
     }),
-    enabled: Boolean(activeTenantId) && !isTenantLoading,
+    enabled: Boolean(activeTenantId),
     refetchOnReconnect: false,
     refetchOnWindowFocus: false
   });
-
-  if (isTenantLoading) {
-    return <OperationalHomepageSkeleton />;
-  }
-
-  if (!activeTenantId || !activeMembership) {
-    return <MissingInmobiliariaState />;
-  }
 
   const counters = summaryQuery.data?.counters;
   const activePropertiesTotal = counters?.activeProperties ?? productsQuery.data?.total ?? 0;
@@ -217,6 +246,204 @@ export function OperationalHomepage() {
       </div>
     </section>
   );
+}
+
+function SellerOperationalHomepage({
+  activeMembership,
+  activeTenantId
+}: {
+  activeMembership: TenantMembership;
+  activeTenantId: string;
+}) {
+  const productsQuery = useQuery({
+    ...productsQueryOptions({
+      archived: 'active',
+      limit: PROPERTY_PREVIEW_SIZE,
+      page: 1,
+      tenantId: activeTenantId
+    }),
+    enabled: Boolean(activeTenantId),
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false
+  });
+  const activityQuery = useQuery({
+    ...activityFeedOptions({
+      kind: 'all',
+      page: 1,
+      pageSize: SELLER_ACTIVITY_PREVIEW_SIZE,
+      tenantId: activeTenantId
+    }),
+    enabled: Boolean(activeTenantId),
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false
+  });
+
+  const assignedProperties = productsQuery.data?.items ?? [];
+  const recentActivity = activityQuery.data?.items ?? [];
+  const counters = activityQuery.data?.counters;
+  const assignedPropertiesTotal = productsQuery.data?.total ?? 0;
+  const todayCount = counters?.todayCount ?? 0;
+  const attentionNeeded = counters?.attentionCount ?? 0;
+  const stalePropertiesTotal = counters?.staleCount ?? 0;
+  const isLoadingData = productsQuery.isLoading || activityQuery.isLoading;
+  const hasDataError = productsQuery.isError || activityQuery.isError;
+
+  return (
+    <section className='min-w-0 space-y-6'>
+      <div className='overflow-hidden rounded-3xl border bg-card shadow-xs'>
+        <div className='grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:p-8'>
+          <div className='space-y-5'>
+            <Badge variant='outline' className='rounded-full bg-muted/40'>
+              Panel de vendedor
+            </Badge>
+            <div className='max-w-3xl space-y-3'>
+              <h1 className='text-3xl font-semibold tracking-tight md:text-4xl'>
+                Tu jornada comercial en {activeMembership.tenant.name}
+              </h1>
+              <p className='text-base text-muted-foreground md:text-lg'>
+                Priorizá tus propiedades asignadas, revisá novedades recientes y entrá directo a
+                cargar actualizaciones sin perder tiempo en métricas de toda la inmobiliaria.
+              </p>
+            </div>
+            <div className='flex flex-wrap gap-2'>
+              <Link href='/dashboard/product' className={buttonVariants({ size: 'sm' })}>
+                <Icons.product className='size-4' />
+                Ver mis propiedades
+              </Link>
+              <Link
+                href='/dashboard/seguimiento'
+                className={buttonVariants({ size: 'sm', variant: 'outline' })}
+              >
+                <Icons.trendingUp className='size-4' />
+                Ver seguimiento
+              </Link>
+            </div>
+          </div>
+
+          <Card className='border-dashed bg-muted/20 py-0'>
+            <CardContent className='space-y-4 p-5'>
+              <div className='flex items-center gap-3'>
+                <div className='flex size-10 items-center justify-center rounded-full bg-background text-muted-foreground'>
+                  <Icons.clock className='size-5' />
+                </div>
+                <div>
+                  <p className='text-sm text-muted-foreground'>Foco del día</p>
+                  <p className='font-semibold'>Mover las gestiones asignadas</p>
+                </div>
+              </div>
+              <p className='text-sm text-muted-foreground'>
+                Usá este inicio para retomar propiedades sin novedades, resolver próximos pasos y
+                registrar actividad apenas ocurre.
+              </p>
+              <div className='rounded-2xl border bg-background/70 p-3 text-sm'>
+                {hasDataError
+                  ? 'No se pudo cargar tu resumen. Reintentá en unos segundos.'
+                  : isLoadingData
+                    ? 'Preparando tu jornada comercial…'
+                    : `${attentionNeeded} gestiones necesitan seguimiento y ${stalePropertiesTotal} siguen sin novedades recientes.`}
+              </div>
+              <div className='grid gap-2'>
+                <PriorityLink
+                  action='Retomar'
+                  ariaLabel={`Ver ${attentionNeeded} próximos pasos pendientes en seguimiento`}
+                  count={attentionNeeded}
+                  href='/dashboard/seguimiento'
+                  label='Próximos pasos pendientes'
+                />
+                <PriorityLink
+                  action='Actualizar'
+                  ariaLabel={`Ver ${stalePropertiesTotal} propiedades asignadas sin novedades recientes`}
+                  count={stalePropertiesTotal}
+                  href='/dashboard/seguimiento'
+                  label='Sin novedades recientes'
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
+        <KpiCard
+          icon={Icons.product}
+          label='Mis propiedades asignadas'
+          value={assignedPropertiesTotal}
+          helper='Gestiones activas donde sos parte del equipo comercial.'
+          isLoading={productsQuery.isLoading}
+        />
+        <KpiCard
+          icon={Icons.clock}
+          label='Actualizaciones hoy'
+          value={todayCount}
+          helper='Movimientos registrados hoy en tus propiedades.'
+          isLoading={activityQuery.isLoading}
+        />
+        <KpiCard
+          icon={Icons.trendingUp}
+          label='Necesitan seguimiento'
+          value={attentionNeeded}
+          helper='Consultas, visitas u ofertas sin próximo paso.'
+          isLoading={activityQuery.isLoading}
+        />
+        <KpiCard
+          icon={Icons.warning}
+          label='Sin novedades 7 días'
+          value={stalePropertiesTotal}
+          helper='Propiedades asignadas sin actividad reciente.'
+          isLoading={activityQuery.isLoading}
+        />
+      </div>
+
+      <div className='grid gap-5 xl:grid-cols-2'>
+        <Card className='py-0'>
+          <CardHeader className='flex flex-col gap-2 p-5 pb-0 sm:flex-row sm:items-start sm:justify-between'>
+            <div>
+              <CardTitle role='heading' aria-level={2}>
+                Mis propiedades asignadas
+              </CardTitle>
+              <p className='mt-1 text-sm text-muted-foreground'>
+                Abrí una gestión para revisar el detalle y cargar una actualización.
+              </p>
+            </div>
+            <Button asChild variant='outline' size='sm'>
+              <Link href='/dashboard/product'>Abrir listado</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className='p-5'>
+            <PropertyPreviewList
+              emptyDescription='Todavía no tenés propiedades activas asignadas. Cuando una gestión quede a tu cargo, va a aparecer acá.'
+              emptyTitle='Sin propiedades asignadas'
+              isLoading={productsQuery.isLoading}
+              products={assignedProperties}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className='py-0'>
+          <CardHeader className='flex flex-col gap-2 p-5 pb-0 sm:flex-row sm:items-start sm:justify-between'>
+            <div>
+              <CardTitle role='heading' aria-level={2}>
+                Actividad de mis propiedades
+              </CardTitle>
+              <p className='mt-1 text-sm text-muted-foreground'>
+                Movimientos y solicitudes documentales vinculadas a tus gestiones.
+              </p>
+            </div>
+            <Button asChild variant='outline' size='sm'>
+              <Link href='/dashboard/seguimiento'>Ver todo</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className='p-5'>
+            <RecentActivityList isLoading={activityQuery.isLoading} items={recentActivity} />
+          </CardContent>
+        </Card>
+      </div>
+    </section>
+  );
+}
+
+function isSellerMembership(membership: TenantMembership) {
+  return membership.role === 'AGENT';
 }
 
 function RangeSelector({
@@ -402,29 +629,20 @@ function RecentActivityList({
     <ol className='space-y-3'>
       {items.map((item) => (
         <li key={item.id} className='rounded-2xl border bg-muted/20 p-3'>
-          <div className='flex items-center justify-between gap-3'>
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
             <div className='min-w-0 space-y-1'>
               <Badge variant='outline' className='rounded-full bg-background'>
                 {item.kind === 'document_request' ? 'Documento' : 'Movimiento'}
               </Badge>
-              <p className='truncate font-medium'>{getActivityTitle(item)}</p>
-              <p className='truncate text-sm text-muted-foreground'>
+              <p className='line-clamp-2 break-words font-medium'>{getActivityTitle(item)}</p>
+              <p className='line-clamp-2 break-words text-sm text-muted-foreground'>
                 {getActivityDescription(item)}
               </p>
             </div>
-            <Button
-              asChild
-              variant='outline'
-              size='icon'
-              className={cn('shrink-0', ROW_ACTION_CLASS)}
-            >
-              <Link
-                href={`/dashboard/product/${item.property.engagementId}`}
-                aria-label={`Abrir actividad: ${getActivityTitle(item)}`}
-              >
-                <Icons.externalLink className='size-4' aria-hidden='true' />
-              </Link>
-            </Button>
+            <DashboardRowActionLink
+              href={`/dashboard/product/${item.property.engagementId}`}
+              ariaLabel={`Abrir actividad: ${getActivityTitle(item)}`}
+            />
           </div>
         </li>
       ))}
@@ -432,29 +650,33 @@ function RecentActivityList({
   );
 }
 
-function PropertyPreviewList({ isLoading, products }: { isLoading: boolean; products: Product[] }) {
+function PropertyPreviewList({
+  emptyDescription = 'Creá una propiedad para empezar a operar la gestión desde ViewPro.',
+  emptyTitle = 'Sin propiedades activas',
+  isLoading,
+  products
+}: {
+  emptyDescription?: string;
+  emptyTitle?: string;
+  isLoading: boolean;
+  products: Product[];
+}) {
   if (isLoading) {
     return <ListSkeleton rows={4} />;
   }
 
   if (products.length === 0) {
-    return (
-      <EmptyPanel
-        icon={Icons.product}
-        title='Sin propiedades activas'
-        description='Creá una propiedad para empezar a operar la gestión desde ViewPro.'
-      />
-    );
+    return <EmptyPanel icon={Icons.product} title={emptyTitle} description={emptyDescription} />;
   }
 
   return (
     <ol className='space-y-3'>
       {products.map((product) => (
         <li key={product.id} className='rounded-2xl border bg-muted/20 p-3'>
-          <div className='flex items-center justify-between gap-3'>
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
             <div className='min-w-0 space-y-1'>
               <div className='flex flex-wrap items-center gap-2'>
-                <p className='truncate font-medium'>
+                <p className='line-clamp-2 min-w-0 break-words font-medium'>
                   {product.property.title || 'Propiedad sin título'}
                 </p>
                 <Badge
@@ -464,25 +686,37 @@ function PropertyPreviewList({ isLoading, products }: { isLoading: boolean; prod
                   {getStatusLabel(product.status)}
                 </Badge>
               </div>
-              <p className='truncate text-sm text-muted-foreground'>{getAddress(product)}</p>
+              <p className='line-clamp-2 break-words text-sm text-muted-foreground'>
+                {getAddress(product)}
+              </p>
             </div>
-            <Button
-              asChild
-              variant='outline'
-              size='icon'
-              className={cn('shrink-0', ROW_ACTION_CLASS)}
-            >
-              <Link
-                href={`/dashboard/product/${product.id}`}
-                aria-label={`Abrir propiedad: ${product.property.title || 'Propiedad sin título'}`}
-              >
-                <Icons.externalLink className='size-4' aria-hidden='true' />
-              </Link>
-            </Button>
+            <DashboardRowActionLink
+              href={`/dashboard/product/${product.id}`}
+              ariaLabel={`Abrir propiedad: ${product.property.title || 'Propiedad sin título'}`}
+            />
           </div>
         </li>
       ))}
     </ol>
+  );
+}
+
+function DashboardRowActionLink({
+  ariaLabel,
+  href,
+  label = 'Abrir'
+}: {
+  ariaLabel: string;
+  href: string;
+  label?: string;
+}) {
+  return (
+    <Button asChild variant='outline' size='sm' className={cn('shrink-0', ROW_ACTION_CLASS)}>
+      <Link href={href} aria-label={ariaLabel}>
+        <span className='sm:sr-only'>{label}</span>
+        <Icons.externalLink className='size-4' aria-hidden='true' />
+      </Link>
+    </Button>
   );
 }
 
@@ -523,32 +757,25 @@ function TopPropertiesCard({
           <ol className='space-y-3'>
             {properties.map((insight) => (
               <li key={insight.engagementId} className='rounded-2xl border bg-muted/20 p-3'>
-                <div className='flex items-center justify-between gap-3'>
+                <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
                   <div className='min-w-0 space-y-1'>
-                    <p className='truncate font-medium'>{getDashboardPropertyTitle(insight)}</p>
+                    <p className='line-clamp-2 break-words font-medium'>
+                      {getDashboardPropertyTitle(insight)}
+                    </p>
                     <p className='text-sm text-muted-foreground'>
                       {formatCount(insight.movementCount, 'movimiento', 'movimientos')}
                       {insight.documentRequestCount > 0
                         ? ` · ${formatCount(insight.documentRequestCount, 'documento', 'documentos')}`
                         : null}
                     </p>
-                    <p className='truncate text-sm text-muted-foreground'>
+                    <p className='line-clamp-2 break-words text-sm text-muted-foreground'>
                       Último: {insight.lastActivityTitle}
                     </p>
                   </div>
-                  <Button
-                    asChild
-                    variant='outline'
-                    size='icon'
-                    className={cn('shrink-0', ROW_ACTION_CLASS)}
-                  >
-                    <Link
-                      href={`/dashboard/product/${insight.engagementId}`}
-                      aria-label={`Abrir propiedad ${getDashboardPropertyTitle(insight)}`}
-                    >
-                      <Icons.externalLink className='size-4' aria-hidden='true' />
-                    </Link>
-                  </Button>
+                  <DashboardRowActionLink
+                    href={`/dashboard/product/${insight.engagementId}`}
+                    ariaLabel={`Abrir propiedad ${getDashboardPropertyTitle(insight)}`}
+                  />
                 </div>
               </li>
             ))}
@@ -596,10 +823,12 @@ function SellerActivityCard({
           <ol className='space-y-3'>
             {sellers.map((seller) => (
               <li key={seller.userId} className='rounded-2xl border bg-muted/20 p-3'>
-                <div className='flex items-center justify-between gap-3'>
+                <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
                   <div className='min-w-0 space-y-1'>
-                    <p className='truncate font-medium'>{seller.name}</p>
-                    <p className='truncate text-sm text-muted-foreground'>{seller.email}</p>
+                    <p className='line-clamp-2 break-words font-medium'>{seller.name}</p>
+                    <p className='line-clamp-1 break-all text-sm text-muted-foreground'>
+                      {seller.email}
+                    </p>
                     <p className='text-sm text-muted-foreground'>
                       {formatCount(seller.movementCount, 'movimiento', 'movimientos')} ·{' '}
                       {formatCount(
@@ -609,19 +838,11 @@ function SellerActivityCard({
                       )}
                     </p>
                   </div>
-                  <Button
-                    asChild
-                    variant='outline'
-                    size='sm'
-                    className={cn('shrink-0', ROW_ACTION_CLASS)}
-                  >
-                    <Link
-                      href={`/dashboard/seguimiento?sellerId=${encodeURIComponent(seller.userId)}`}
-                      aria-label={`Ver movimientos de ${seller.name}`}
-                    >
-                      Ver
-                    </Link>
-                  </Button>
+                  <DashboardRowActionLink
+                    href={`/dashboard/seguimiento?sellerId=${encodeURIComponent(seller.userId)}`}
+                    ariaLabel={`Ver movimientos de ${seller.name}`}
+                    label='Ver'
+                  />
                 </div>
               </li>
             ))}
