@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { useActiveTenant } from '@/lib/session-context';
 import { OperationalHomepage } from './operational-homepage';
+import type { ActivityFeedResponse } from '@/features/activity/api/types';
 import type { DashboardSummaryResponse } from '@/features/dashboard/api/types';
 import type { ProductsResponse } from '@/features/products/api/types';
 
@@ -223,11 +224,25 @@ const productsResponse: ProductsResponse = {
   total: 2
 };
 
+const activityFeedResponse: ActivityFeedResponse = {
+  counters: {
+    attentionCount: 3,
+    staleCount: 2,
+    todayCount: 1
+  },
+  items: dashboardSummaryResponse.recentActivity,
+  page: 1,
+  pageSize: 6,
+  total: 2
+};
+
 function mockDashboardQueries({
+  activity = activityFeedResponse,
   products = productsResponse,
   summary = dashboardSummaryResponse,
   isLoading = false
 }: {
+  activity?: ActivityFeedResponse;
   products?: ProductsResponse;
   summary?: DashboardSummaryResponse;
   isLoading?: boolean;
@@ -244,11 +259,26 @@ function mockDashboardQueries({
       } as ReturnType<typeof useQuery>;
     }
 
+    if (queryScope === 'activity') {
+      return {
+        data: isLoading ? undefined : activity,
+        isError: false,
+        isLoading
+      } as ReturnType<typeof useQuery>;
+    }
+
     return {
       data: isLoading ? undefined : products,
       isError: false,
       isLoading
     } as ReturnType<typeof useQuery>;
+  });
+}
+
+function hasQueryScope(scope: string) {
+  return useQueryMock.mock.calls.some(([options]) => {
+    const queryKey = options.queryKey as readonly unknown[];
+    return queryKey[0] === scope;
   });
 }
 
@@ -361,18 +391,109 @@ describe('OperationalHomepage', () => {
     );
   });
 
-  it('renders compact icon-only open actions for scan-friendly rows', () => {
+  it('renders mobile-first row actions that collapse to compact desktop controls', () => {
     render(<OperationalHomepage />);
 
     const openLinks = screen.getAllByRole('link', { name: /^Abrir (actividad|propiedad)/ });
 
     expect(openLinks.length).toBeGreaterThan(0);
     for (const link of openLinks) {
-      expect(link).toHaveClass('border');
-      expect(link).toHaveClass('justify-center');
-      expect(link).toHaveClass('size-8');
-      expect(link).toHaveClass('rounded-full');
-      expect(link).toHaveTextContent('');
+      expect(link).toHaveClass('w-full');
+      expect(link).toHaveClass('rounded-xl');
+      expect(link).toHaveClass('sm:size-8');
+      expect(link).toHaveClass('sm:rounded-full');
+      expect(link).toHaveTextContent('Abrir');
     }
+  });
+
+  it('renders a seller-focused dashboard for agent memberships without manager summary queries', () => {
+    useActiveTenantMock.mockReturnValue({
+      ...activeTenantContext,
+      activeMembership: {
+        ...activeTenantContext.activeMembership,
+        id: 'membership-agent',
+        permissions: ['tenant.view', 'engagements.view_assigned', 'movements.create'],
+        role: 'AGENT'
+      }
+    });
+
+    render(<OperationalHomepage />);
+
+    expect(
+      screen.getByRole('heading', { name: /Tu jornada comercial en Costa Norte Propiedades/i })
+    ).toBeVisible();
+    expect(screen.getByText('Panel de vendedor')).toBeVisible();
+    expect(hasQueryScope('dashboard')).toBe(false);
+    expect(hasQueryScope('products')).toBe(true);
+    expect(hasQueryScope('activity')).toBe(true);
+    expect(screen.getByRole('link', { name: 'Ver mis propiedades' })).toHaveAttribute(
+      'href',
+      '/dashboard/product'
+    );
+    expect(screen.getByRole('link', { name: 'Ver seguimiento' })).toHaveAttribute(
+      'href',
+      '/dashboard/seguimiento'
+    );
+    expect(screen.queryByRole('link', { name: 'Nueva propiedad' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Propiedades con más movimiento')).not.toBeInTheDocument();
+    expect(screen.queryByText('Vendedores con más movimiento')).not.toBeInTheDocument();
+  });
+
+  it('shows assigned properties and assigned activity on the seller dashboard', () => {
+    useActiveTenantMock.mockReturnValue({
+      ...activeTenantContext,
+      activeMembership: {
+        ...activeTenantContext.activeMembership,
+        id: 'membership-agent',
+        permissions: ['tenant.view', 'engagements.view_assigned', 'movements.create'],
+        role: 'AGENT'
+      }
+    });
+
+    render(<OperationalHomepage />);
+
+    expect(
+      screen.getByText('3 gestiones necesitan seguimiento y 2 siguen sin novedades recientes.')
+    ).toBeVisible();
+    expect(screen.getAllByText('Mis propiedades asignadas')[0]).toBeVisible();
+    expect(screen.getByText('Actualizaciones hoy')).toBeVisible();
+    expect(screen.getByText('Necesitan seguimiento')).toBeVisible();
+    expect(screen.getByText('Sin novedades 7 días')).toBeVisible();
+    expect(screen.getAllByText('Departamento con vista abierta')[0]).toBeVisible();
+    expect(screen.getByText('Actividad de mis propiedades')).toBeVisible();
+    expect(screen.getByText('Se coordinó una visita para mañana')).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'Abrir propiedad: Departamento con vista abierta' })
+    ).toHaveAttribute('href', '/dashboard/product/engagement-1');
+  });
+
+  it('uses seller-safe copy when an agent has no active assigned properties', () => {
+    useActiveTenantMock.mockReturnValue({
+      ...activeTenantContext,
+      activeMembership: {
+        ...activeTenantContext.activeMembership,
+        id: 'membership-agent',
+        permissions: ['tenant.view', 'engagements.view_assigned', 'movements.create'],
+        role: 'AGENT'
+      }
+    });
+    mockDashboardQueries({
+      products: {
+        ...productsResponse,
+        items: [],
+        total: 0
+      }
+    });
+
+    render(<OperationalHomepage />);
+
+    expect(screen.getByText('Sin propiedades asignadas')).toBeVisible();
+    expect(
+      screen.getByText(
+        'Todavía no tenés propiedades activas asignadas. Cuando una gestión quede a tu cargo, va a aparecer acá.'
+      )
+    ).toBeVisible();
+    expect(screen.queryByText(/Creá una propiedad/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Nueva propiedad' })).not.toBeInTheDocument();
   });
 });
