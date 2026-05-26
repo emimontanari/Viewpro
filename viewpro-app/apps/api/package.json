@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "demo:seed": "node scripts/seed-demo.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:validate": "prisma validate",
