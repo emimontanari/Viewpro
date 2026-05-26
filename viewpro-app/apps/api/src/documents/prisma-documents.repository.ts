@@ -3,6 +3,7 @@ import {
   DocumentRequestStatus,
   DocumentVersionStatus,
   PropertyAssetOwnerAccessStatus,
+  PropertyEngagementStatus,
   type Prisma,
 } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
@@ -20,6 +21,8 @@ import type {
   ListOwnerDocumentRequestsInput,
   ReviewDocumentRequestInput,
 } from './documents.repository'
+
+const inactiveEngagementStatuses = [PropertyEngagementStatus.CLOSED, PropertyEngagementStatus.CANCELLED]
 
 export const documentRequestInclude = {
   document: { include: { currentVersion: true, versions: true } },
@@ -366,6 +369,15 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
       ...(Object.keys(createdAt).length > 0 ? { createdAt } : {}),
       ...(input.requestedByUserId ? { requestedByUserId: input.requestedByUserId } : {}),
       ...(input.canViewAll ? {} : { requestedByUserId: input.viewerUserId }),
+      ...(input.activeEngagementsOnly
+        ? {
+            propertyEngagement: {
+              tenantId: input.tenantId,
+              archivedAt: null,
+              status: { notIn: inactiveEngagementStatuses },
+            },
+          }
+        : {}),
     }
   }
 

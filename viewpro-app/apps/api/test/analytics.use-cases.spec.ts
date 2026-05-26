@@ -12,7 +12,9 @@ import {
 } from "@prisma/client";
 import { validate } from "class-validator";
 import { describe, expect, it, vi } from "vitest";
+import { GetDashboardSummaryQuery } from "../src/analytics/dto/get-dashboard-summary.query";
 import { ListActivityFeedQuery } from "../src/analytics/dto/list-activity-feed.query";
+import { GetDashboardSummaryUseCase } from "../src/analytics/use-cases/get-dashboard-summary.use-case";
 import { ListActivityFeedUseCase } from "../src/analytics/use-cases/list-activity-feed.use-case";
 import { PERMISSIONS } from "../src/permissions/permissions.constants";
 import type { TenantContext } from "../src/tenant-context/tenant-context.types";
@@ -485,5 +487,187 @@ describe("Activity feed use case", () => {
 				new ListActivityFeedQuery(),
 			),
 		).rejects.toBeInstanceOf(ForbiddenException);
+	});
+});
+
+describe("Dashboard summary use case", () => {
+	it("validates dashboard summary ranges", async () => {
+		const query = Object.assign(new GetDashboardSummaryQuery(), {
+			range: "90d",
+		});
+
+		const errors = await validate(query);
+
+		expect(errors.map((error) => error.property)).toEqual(["range"]);
+	});
+
+	it("defaults to a rolling seven-day window and maps summary data", async () => {
+		const analyticsRepository = {
+			countActiveEngagements: vi.fn().mockResolvedValue(4),
+			countMovementsInWindow: vi.fn().mockResolvedValue(6),
+			countActiveEngagementsWithoutRecentMovement: vi.fn().mockResolvedValue(2),
+			countActiveEngagementsNeedingAttention: vi.fn().mockResolvedValue(1),
+			listTopPropertiesByActivity: vi.fn().mockResolvedValue([
+				{
+					engagementId: "engagement-1",
+					propertyId: "asset-1",
+					title: "Casa Palermo",
+					addressLine: "Uriarte 1234",
+					city: "Buenos Aires",
+					province: "CABA",
+					status: PropertyEngagementStatus.INQUIRIES_AND_VISITS,
+					operationType: PropertyOperationType.SALE,
+					agents: [
+						{
+							id: "assignment-1",
+							userId: "seller-1",
+							email: "seller@example.com",
+							firstName: "Seller",
+						},
+					],
+					movementCount: 2,
+					documentRequestCount: 1,
+					lastActivityAt: new Date("2026-05-22T11:00:00.000Z"),
+					lastActivityTitle: "DNI del propietario",
+				},
+			]),
+			listTopSellersByMovement: vi.fn().mockResolvedValue([
+				{
+					userId: "seller-1",
+					name: "Seller",
+					email: "seller@example.com",
+					movementCount: 2,
+					touchedPropertiesCount: 1,
+					lastMovementAt: new Date("2026-05-22T10:00:00.000Z"),
+				},
+			]),
+		};
+		const movementsRepository = {
+			findManyByTenant: vi
+				.fn()
+				.mockResolvedValue({ items: [activityMovement], total: 1 }),
+		};
+		const documentsRepository = {
+			listActivityRequests: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+		};
+		const useCase = new GetDashboardSummaryUseCase(
+			analyticsRepository as never,
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+		const now = new Date("2026-05-25T12:00:00.000Z");
+
+		const result = await useCase.execute(
+			{
+				...managerTenant,
+				permissions: [
+					...managerTenant.permissions,
+					PERMISSIONS.DOCUMENTS_VIEW_ALL,
+				],
+			},
+			currentUser,
+			{ now },
+		);
+
+		expect(result).toMatchObject({
+			range: {
+				preset: "7d",
+				from: "2026-05-18T12:00:00.000Z",
+				to: "2026-05-25T12:00:00.000Z",
+			},
+			counters: {
+				activeProperties: 4,
+				movementsInRange: 6,
+				staleProperties: 2,
+				attentionNeeded: 1,
+			},
+			topProperties: [
+				expect.objectContaining({
+					engagementId: "engagement-1",
+					movementCount: 2,
+					documentRequestCount: 1,
+					lastActivityAt: "2026-05-22T11:00:00.000Z",
+				}),
+			],
+			topSellers: [
+				expect.objectContaining({
+					userId: "seller-1",
+					movementCount: 2,
+					lastMovementAt: "2026-05-22T10:00:00.000Z",
+				}),
+			],
+		});
+		expect(result.recentActivity[0]).toMatchObject({
+			kind: "movement",
+			id: "movement-1",
+		});
+		expect(analyticsRepository.countMovementsInWindow).toHaveBeenCalledWith({
+			tenantId: "tenant-1",
+			from: new Date("2026-05-18T12:00:00.000Z"),
+			to: now,
+		});
+		expect(
+			analyticsRepository.countActiveEngagementsNeedingAttention,
+		).toHaveBeenCalledWith({
+			tenantId: "tenant-1",
+			from: new Date("2026-05-18T12:00:00.000Z"),
+			to: now,
+			movementTypes: [
+				MovementType.INQUIRY,
+				MovementType.VISIT_COMPLETED,
+				MovementType.OFFER_RECEIVED,
+			],
+		});
+		expect(movementsRepository.findManyByTenant).toHaveBeenCalledWith({
+			tenantId: "tenant-1",
+			userId: "user-1",
+			canViewAll: true,
+			page: 1,
+			pageSize: 5,
+			from: new Date("2026-05-18T12:00:00.000Z"),
+			to: now,
+		});
+	});
+
+	it("uses the selected thirty-day range", async () => {
+		const analyticsRepository = {
+			countActiveEngagements: vi.fn().mockResolvedValue(0),
+			countMovementsInWindow: vi.fn().mockResolvedValue(0),
+			countActiveEngagementsWithoutRecentMovement: vi.fn().mockResolvedValue(0),
+			countActiveEngagementsNeedingAttention: vi.fn().mockResolvedValue(0),
+			listTopPropertiesByActivity: vi.fn().mockResolvedValue([]),
+			listTopSellersByMovement: vi.fn().mockResolvedValue([]),
+		};
+		const useCase = new GetDashboardSummaryUseCase(
+			analyticsRepository as never,
+			{
+				findManyByTenant: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+			} as never,
+			{
+				listActivityRequests: vi
+					.fn()
+					.mockResolvedValue({ items: [], total: 0 }),
+			} as never,
+		);
+		const now = new Date("2026-05-25T12:00:00.000Z");
+
+		const result = await useCase.execute(managerTenant, currentUser, {
+			range: "30d",
+			now,
+		});
+
+		expect(result.range).toEqual({
+			preset: "30d",
+			from: "2026-04-25T12:00:00.000Z",
+			to: "2026-05-25T12:00:00.000Z",
+		});
+		expect(
+			analyticsRepository.listTopPropertiesByActivity,
+		).toHaveBeenCalledWith({
+			tenantId: "tenant-1",
+			from: new Date("2026-04-25T12:00:00.000Z"),
+			to: now,
+			limit: 3,
+		});
 	});
 });
