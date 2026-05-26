@@ -111,7 +111,7 @@ export function getSafeSignInRedirect(redirectUrl: string | null) {
   }
 
   const rawPath = redirectUrl.split(/[?#]/, 1)[0];
-  const hasSafeRawPath = rawPath === '/dashboard' || rawPath.startsWith('/dashboard/');
+  const hasSafeRawPath = isSafeAppRedirectPath(rawPath);
 
   if (!hasSafeRawPath || hasPathTraversal(rawPath)) {
     return DEFAULT_SIGN_IN_REDIRECT;
@@ -120,9 +120,8 @@ export function getSafeSignInRedirect(redirectUrl: string | null) {
   try {
     const url = new URL(redirectUrl, 'http://viewpro.local');
     const isRelativeUrl = url.origin === 'http://viewpro.local';
-    const isDashboardPath = url.pathname === '/dashboard' || url.pathname.startsWith('/dashboard/');
 
-    if (!isRelativeUrl || !isDashboardPath) {
+    if (!isRelativeUrl || !isSafeAppRedirectPath(url.pathname)) {
       return DEFAULT_SIGN_IN_REDIRECT;
     }
 
@@ -130,6 +129,15 @@ export function getSafeSignInRedirect(redirectUrl: string | null) {
   } catch {
     return DEFAULT_SIGN_IN_REDIRECT;
   }
+}
+
+function isSafeAppRedirectPath(pathname: string) {
+  return (
+    pathname === '/dashboard' ||
+    pathname.startsWith('/dashboard/') ||
+    pathname === '/owner' ||
+    pathname.startsWith('/owner/')
+  );
 }
 
 function hasPathTraversal(path: string) {

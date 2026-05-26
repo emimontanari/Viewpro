@@ -4,6 +4,8 @@ const DEMO_EMAIL = 'demo@viewpro.local';
 const DEMO_PASSWORD = process.env.VIEWPRO_DEMO_PASSWORD ?? 'viewpro-demo-local';
 const DEMO_TENANT_NAME = 'ViewPro Demo Inmobiliaria';
 const VISIBLE_DEMO_PROPERTY_TITLE = 'Casa compacta en Funes';
+const OWNER_EMAIL = 'propietario.demo@viewpro.local';
+const OWNER_VISIBLE_PROPERTY_TITLE = 'Casa familiar con pileta en Villa Centenario';
 const SELLER_SCENARIOS = [
   {
     email: 'martin.demo@viewpro.local',
@@ -81,12 +83,29 @@ for (const scenario of SELLER_SCENARIOS) {
   });
 }
 
-async function signIn(page: Page, email: string) {
-  await page.goto('/auth/sign-in');
+test('demo owner can read the owner portal follow-up', async ({ page }) => {
+  await signIn(page, OWNER_EMAIL, '/owner');
+
+  await expect(page.getByRole('heading', { name: 'Tus propiedades' })).toBeVisible();
+  await expect(page.getByText(OWNER_VISIBLE_PROPERTY_TITLE)).toBeVisible();
+  await expect(page.getByRole('link', { name: /Ver seguimiento/i }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Nueva propiedad' })).toHaveCount(0);
+
+  await page.getByRole('link', { name: /Ver seguimiento/i }).first().click();
+  await expect(page).toHaveURL(/\/owner\/properties\/[a-f0-9-]+$/i);
+  await expect(page.getByRole('heading', { name: OWNER_VISIBLE_PROPERTY_TITLE })).toBeVisible();
+  await expect(
+    page.getByText(/Ingresó una consulta calificada|Se concretó una visita|Oferta/i).first()
+  ).toBeVisible();
+  await expect(page.getByText('Nueva propiedad')).toHaveCount(0);
+});
+
+async function signIn(page: Page, email: string, redirectPath = '/dashboard') {
+  await page.goto(`/auth/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`);
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Contraseña').fill(DEMO_PASSWORD);
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await page.waitForURL('**/dashboard');
+  await page.waitForURL(`**${redirectPath}`);
 }
 
 async function getAssignedProducts(page: Page) {

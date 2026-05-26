@@ -10,7 +10,7 @@ const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET;
 const API_URL = trimTrailingSlash(process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL);
 
 export default async function proxy(req: NextRequest) {
-  if (!req.nextUrl.pathname.startsWith('/dashboard')) {
+  if (!isProtectedAppPath(req.nextUrl.pathname)) {
     return NextResponse.next();
   }
 
@@ -42,6 +42,15 @@ export const config = {
     '/(api|trpc)(.*)'
   ]
 };
+
+function isProtectedAppPath(pathname: string) {
+  return (
+    pathname === '/dashboard' ||
+    pathname.startsWith('/dashboard/') ||
+    pathname === '/owner' ||
+    pathname.startsWith('/owner/')
+  );
+}
 
 function redirectToSignIn(req: NextRequest) {
   const signInUrl = req.nextUrl.clone();
