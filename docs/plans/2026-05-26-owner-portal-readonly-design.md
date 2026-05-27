@@ -107,6 +107,8 @@ Avoid reusing product forms or internal dashboard components that carry manager/
 - welcome copy for the authenticated owner;
 - total active owner properties;
 - a card/list of owner-visible properties;
+- no agency selector when every active property comes from one inmobiliaria;
+- an agency selector when the owner has active properties from multiple inmobiliarias, filtering property cards by the selected agency;
 - empty state when the owner has no active property access.
 
 Each property card should link to:

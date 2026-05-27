@@ -510,6 +510,8 @@ Mock API query data through TanStack Query or mock the service module. Assert:
 - heading `Portal propietario` or `Tus propiedades`;
 - seeded-like property title appears;
 - `Nueva propiedad` does not appear;
+- no agency selector appears when the owner has one inmobiliaria;
+- agency selector appears and filters cards when the owner has multiple inmobiliarias;
 - property card links to `/owner/properties/property-1`.
 
 Example assertion:
@@ -548,10 +550,13 @@ export default function OwnerPage() {
 `OwnerHome` should:
 
 - use `useQuery(ownerPropertiesOptions())`;
+- use `useQueries` with `ownerPropertyEngagementsOptions(property.id)` to derive the inmobiliarias that invited/linked each property;
 - show loading skeleton;
 - show error state;
 - show empty state for no active owner access;
 - render property cards with location and type;
+- hide the agency selector for one-inmobiliaria owners;
+- show an agency selector and filter property cards when multiple inmobiliarias exist;
 - link each card to `/owner/properties/${property.id}`.
 
 **Step 4: Run test**
