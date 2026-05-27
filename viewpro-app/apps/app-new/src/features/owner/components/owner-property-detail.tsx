@@ -38,12 +38,14 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
     <div className='space-y-6'>
       <Button
         asChild
-        variant='outline'
-        className='group h-11 w-full justify-start rounded-full border-purple-200 bg-purple-50/60 px-4 text-purple-700 shadow-sm transition-all hover:border-purple-300 hover:bg-purple-100 hover:text-purple-800 sm:w-fit dark:border-purple-500/30 dark:bg-purple-500/10 dark:text-purple-200 dark:hover:bg-purple-500/20'
+        variant='ghost'
+        className='group h-auto w-fit px-0 py-1 text-purple-700 hover:bg-transparent hover:text-purple-800 dark:text-purple-300 dark:hover:text-purple-200'
       >
         <Link href='/owner'>
-          <Icons.chevronLeft className='mr-2 size-4 transition-transform group-hover:-translate-x-0.5' />
-          Volver a mis propiedades
+          <Icons.chevronLeft className='mr-1.5 size-4 transition-transform group-hover:-translate-x-0.5' />
+          <span className='font-medium underline-offset-4 group-hover:underline'>
+            Volver a mis propiedades
+          </span>
         </Link>
       </Button>
 
