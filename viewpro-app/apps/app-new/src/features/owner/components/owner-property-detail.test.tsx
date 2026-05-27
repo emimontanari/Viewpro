@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { useQuery } from '@tanstack/react-query';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { OwnerPropertyDetail } from './owner-property-detail';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OwnerEngagementsResponse, OwnerProperty, OwnerTimelineResponse } from '../api/types';
+import { OwnerPropertyDetail } from './owner-property-detail';
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>();
@@ -22,6 +23,38 @@ const ownerProperty: OwnerProperty = {
   city: 'Córdoba',
   province: 'Córdoba',
   propertyType: 'HOUSE',
+  totalAreaSqm: 360,
+  coveredAreaSqm: 231,
+  rooms: 7,
+  bedrooms: 6,
+  bathrooms: 2,
+  garages: 2,
+  ageYears: 25,
+  orientation: 'N',
+  images: [
+    {
+      id: 'image-1',
+      storageKey: 'property-images/demo/image-1.webp',
+      url: 'http://localhost:3001/uploads/property-images/demo/image-1.webp',
+      originalFilename: 'image-1.webp',
+      mimeType: 'image/webp',
+      sizeBytes: 1024,
+      isPrimary: true,
+      createdAt: '2026-05-01T10:00:00.000Z',
+      updatedAt: '2026-05-01T10:00:00.000Z'
+    }
+  ],
+  primaryImage: {
+    id: 'image-1',
+    storageKey: 'property-images/demo/image-1.webp',
+    url: 'http://localhost:3001/uploads/property-images/demo/image-1.webp',
+    originalFilename: 'image-1.webp',
+    mimeType: 'image/webp',
+    sizeBytes: 1024,
+    isPrimary: true,
+    createdAt: '2026-05-01T10:00:00.000Z',
+    updatedAt: '2026-05-01T10:00:00.000Z'
+  },
   createdAt: '2026-05-01T10:00:00.000Z',
   updatedAt: '2026-05-20T10:00:00.000Z'
 };
@@ -70,25 +103,46 @@ describe('OwnerPropertyDetail', () => {
     useQueryMock.mockReset();
   });
 
-  it('renders owner property detail and read-only timeline without internal actions', () => {
+  it('renders owner property summary, tabs, status path and read-only timeline', async () => {
+    const user = userEvent.setup();
     useQueryMock
       .mockReturnValueOnce({ data: ownerProperty, isError: false, isLoading: false } as ReturnType<
         typeof useQuery
       >)
-      .mockReturnValueOnce({ data: engagementsResponse, isError: false, isLoading: false } as ReturnType<
-        typeof useQuery
-      >)
-      .mockReturnValueOnce({ data: timelineResponse, isError: false, isLoading: false } as ReturnType<
-        typeof useQuery
-      >);
+      .mockReturnValueOnce({
+        data: engagementsResponse,
+        isError: false,
+        isLoading: false
+      } as ReturnType<typeof useQuery>)
+      .mockReturnValueOnce({
+        data: timelineResponse,
+        isError: false,
+        isLoading: false
+      } as ReturnType<typeof useQuery>);
 
     render(<OwnerPropertyDetail propertyId='property-1' />);
 
     expect(
       screen.getByRole('heading', { name: /Casa familiar con pileta en Villa Centenario/i })
     ).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Resumen' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Seguimiento' })).toBeInTheDocument();
+    expect(
+      screen.getByAltText('Imagen principal de Casa familiar con pileta en Villa Centenario')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Ficha técnica')).toBeInTheDocument();
+    expect(screen.getByText('Superficie cubierta')).toBeInTheDocument();
+    expect(screen.getByText('231 m²')).toBeInTheDocument();
+    expect(screen.getByText('Dormitorios')).toBeInTheDocument();
+    expect(screen.getByText('6')).toBeInTheDocument();
     expect(screen.getByText(/Gestión con\s+ViewPro Demo Inmobiliaria/i)).toBeInTheDocument();
     expect(screen.getAllByText('Sofía').length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole('tab', { name: 'Seguimiento' }));
+
+    expect(screen.getByText('Estado de la gestión')).toBeInTheDocument();
+    expect(screen.getByText('Estado actual: Publicación activa')).toBeInTheDocument();
+    expect(screen.getByText('Etapa actual')).toBeInTheDocument();
     expect(screen.getByText(/Ingresó una consulta calificada/i)).toBeInTheDocument();
     expect(screen.queryByText('Nueva propiedad')).not.toBeInTheDocument();
     expect(screen.queryByText('Editar')).not.toBeInTheDocument();

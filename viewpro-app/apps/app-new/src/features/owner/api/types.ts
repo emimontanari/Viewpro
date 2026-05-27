@@ -1,3 +1,15 @@
+export type OwnerPropertyImage = {
+  id: string;
+  storageKey: string;
+  url: string;
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
+  isPrimary: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type OwnerProperty = {
   id: string;
   title: string;
@@ -5,6 +17,16 @@ export type OwnerProperty = {
   city: string;
   province: string;
   propertyType: string;
+  totalAreaSqm: number | null;
+  coveredAreaSqm: number | null;
+  rooms: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  garages: number | null;
+  ageYears: number | null;
+  orientation: string | null;
+  images: OwnerPropertyImage[];
+  primaryImage: OwnerPropertyImage | null;
   createdAt: string;
   updatedAt: string;
 };

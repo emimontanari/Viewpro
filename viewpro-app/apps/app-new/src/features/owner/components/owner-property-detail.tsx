@@ -3,11 +3,14 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { propertyTypeOptions } from '@/features/products/constants/product-options';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ownerPropertyEngagementsOptions, ownerPropertyOptions } from '../api/queries';
 import type { OwnerProperty } from '../api/types';
 import { OwnerEngagementCard } from './owner-engagement-card';
+import { OwnerPropertySummary } from './owner-property-summary';
 
 export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
   const propertyQuery = useQuery(ownerPropertyOptions(propertyId));
@@ -28,6 +31,7 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
 
   const property = propertyQuery.data;
   const engagements = engagementsQuery.data ?? [];
+  const primaryEngagement = engagements[0] ?? null;
 
   return (
     <div className='space-y-6'>
@@ -39,10 +43,10 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
         <Link href='/owner'>← Volver a tus propiedades</Link>
       </Button>
 
-      <section className='rounded-3xl border bg-background p-6 shadow-sm md:p-8'>
-        <div className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
+      <section className='overflow-hidden rounded-3xl border bg-background shadow-sm'>
+        <div className='grid gap-5 p-6 md:grid-cols-[1.5fr_0.7fr] md:p-8'>
           <div className='min-w-0 space-y-3'>
-            <Badge variant='secondary'>Seguimiento propietario</Badge>
+            <Badge variant='secondary'>Detalle propietario</Badge>
             <div className='space-y-2'>
               <h1 className='text-3xl font-semibold tracking-tight break-words md:text-4xl'>
                 {property.title}
@@ -51,23 +55,50 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
                 {formatPropertyLocation(property)}
               </p>
             </div>
+            <div className='flex flex-wrap gap-2'>
+              <Badge variant='outline'>{getPropertyTypeLabel(property.propertyType)}</Badge>
+              {primaryEngagement ? (
+                <Badge variant='outline'>Inmobiliaria: {primaryEngagement.tenant.name}</Badge>
+              ) : null}
+            </div>
           </div>
-          <Badge variant='outline'>{getPropertyTypeLabel(property.propertyType)}</Badge>
+          <div className='rounded-2xl border bg-muted/40 p-5'>
+            <p className='text-sm text-muted-foreground'>Seguimiento actual</p>
+            <p className='mt-2 text-2xl font-semibold'>
+              {primaryEngagement ? getStatusLabel(primaryEngagement.status) : 'Sin gestión activa'}
+            </p>
+            <p className='mt-2 text-sm text-muted-foreground'>
+              {primaryEngagement
+                ? `Actualizado por ${primaryEngagement.tenant.name}.`
+                : 'La inmobiliaria todavía no informó una gestión activa.'}
+            </p>
+          </div>
         </div>
       </section>
 
-      {engagements.length > 0 ? (
-        <section className='space-y-4'>
-          {engagements.map((engagement) => (
-            <OwnerEngagementCard key={engagement.id} engagement={engagement} />
-          ))}
-        </section>
-      ) : (
-        <OwnerDetailState
-          title='Todavía no hay gestiones activas'
-          description='Cuando la inmobiliaria informe avances sobre esta propiedad, los vas a ver acá.'
-        />
-      )}
+      <Tabs defaultValue='summary' className='space-y-4'>
+        <TabsList className='grid h-auto w-full grid-cols-2 sm:w-fit'>
+          <TabsTrigger value='summary'>Resumen</TabsTrigger>
+          <TabsTrigger value='tracking'>Seguimiento</TabsTrigger>
+        </TabsList>
+        <TabsContent value='summary' className='space-y-4'>
+          <OwnerPropertySummary property={property} engagement={primaryEngagement} />
+        </TabsContent>
+        <TabsContent value='tracking' className='space-y-4'>
+          {engagements.length > 0 ? (
+            <section className='space-y-4'>
+              {engagements.map((engagement) => (
+                <OwnerEngagementCard key={engagement.id} engagement={engagement} />
+              ))}
+            </section>
+          ) : (
+            <OwnerDetailState
+              title='Todavía no hay gestiones activas'
+              description='Cuando la inmobiliaria informe avances sobre esta propiedad, los vas a ver acá.'
+            />
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -100,13 +131,22 @@ function formatPropertyLocation(property: OwnerProperty) {
 }
 
 function getPropertyTypeLabel(propertyType: string) {
+  return propertyTypeOptions.find((option) => option.value === propertyType)?.label ?? propertyType;
+}
+
+function getStatusLabel(status: string) {
   const labels: Record<string, string> = {
-    APARTMENT: 'Departamento',
-    COMMERCIAL: 'Comercial',
-    HOUSE: 'Casa',
-    LAND: 'Terreno',
-    OTHER: 'Otro'
+    ACTIVE_PUBLICATION: 'Publicación activa',
+    CANCELLED: 'Cancelada',
+    CAPTURE: 'Captación',
+    CLOSED: 'Cerrada',
+    DOCUMENTATION_PENDING: 'Documentación pendiente',
+    FINAL_DOCUMENTATION: 'Documentación final',
+    INQUIRIES_AND_VISITS: 'Consultas y visitas',
+    OFFER_NEGOTIATION: 'Negociación',
+    PUBLICATION_PREPARATION: 'Preparando publicación',
+    RESERVATION_STARTED: 'Reserva iniciada'
   };
 
-  return labels[propertyType] ?? propertyType;
+  return labels[status] ?? status;
 }

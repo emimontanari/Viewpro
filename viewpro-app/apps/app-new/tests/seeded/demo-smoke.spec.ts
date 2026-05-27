@@ -93,13 +93,25 @@ test('demo owner can read the owner portal follow-up', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Ver seguimiento/i }).first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Nueva propiedad' })).toHaveCount(0);
 
-  await page.getByRole('link', { name: /Ver seguimiento/i }).first().click();
+  await page
+    .getByRole('link', { name: /Ver seguimiento/i })
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/owner\/properties\/[a-f0-9-]+$/i);
   await expect(page.getByRole('heading', { name: OWNER_VISIBLE_PROPERTY_TITLE })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Resumen' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Seguimiento' })).toBeVisible();
+  await expect(page.getByText('Ficha técnica')).toBeVisible();
+  await expect(page.getByText('Superficie cubierta')).toBeVisible();
+  await expect(page.getByText('231 m²')).toBeVisible();
+  await page.getByRole('tab', { name: 'Seguimiento' }).click();
+  await expect(page.getByText('Estado de la gestión')).toBeVisible();
+  await expect(page.getByText('Estado actual: Publicación activa')).toBeVisible();
   await expect(
     page.getByText(/Ingresó una consulta calificada|Se concretó una visita|Oferta/i).first()
   ).toBeVisible();
   await expect(page.getByText('Nueva propiedad')).toHaveCount(0);
+  await expect(page.getByText('Editar')).toHaveCount(0);
 });
 
 async function signIn(page: Page, email: string, redirectPath = '/dashboard') {

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import type { Prisma } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import type {
@@ -12,6 +12,10 @@ const activeOwnerAccess = (userId: string) => ({
   owners: { some: { userId, accessStatus: 'ACTIVE' } },
 }) satisfies Prisma.PropertyAssetWhereInput
 
+const ownerPropertyInclude = {
+  images: true,
+} satisfies Prisma.PropertyAssetInclude
+
 const ownerEngagementInclude = {
   tenant: { select: { id: true, name: true } },
   agents: { select: { agentUserId: true, agentUser: { select: { firstName: true, email: true } } } },
@@ -23,11 +27,12 @@ const ownerMovementInclude = {
 
 @Injectable()
 export class PrismaOwnerPortalRepository implements OwnerPortalRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   findPropertiesByOwnerUserId(userId: string): Promise<OwnerPropertyRecord[]> {
     return this.prisma.propertyAsset.findMany({
       where: activeOwnerAccess(userId),
+      include: ownerPropertyInclude,
       orderBy: { createdAt: 'desc' },
     })
   }
@@ -41,6 +46,7 @@ export class PrismaOwnerPortalRepository implements OwnerPortalRepository {
         id: input.propertyAssetId,
         ...activeOwnerAccess(input.userId),
       },
+      include: ownerPropertyInclude,
     })
   }
 

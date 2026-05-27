@@ -107,6 +107,16 @@ function buildOwnerProperty(input: { id: string; title: string }) {
     city: 'Córdoba',
     province: 'Córdoba',
     propertyType: 'HOUSE',
+    totalAreaSqm: 360,
+    coveredAreaSqm: 231,
+    rooms: 7,
+    bedrooms: 6,
+    bathrooms: 2,
+    garages: 2,
+    ageYears: 25,
+    orientation: 'N',
+    images: [],
+    primaryImage: null,
     createdAt: '2026-05-01T10:00:00.000Z',
     updatedAt: '2026-05-20T10:00:00.000Z'
   };

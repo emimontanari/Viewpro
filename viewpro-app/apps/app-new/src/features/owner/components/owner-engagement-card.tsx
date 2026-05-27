@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { OwnerEngagement } from '../api/types';
+import { OwnerStatusPath } from './owner-status-path';
 import { OwnerTimeline } from './owner-timeline';
 
 export function OwnerEngagementCard({ engagement }: { engagement: OwnerEngagement }) {
@@ -11,7 +12,8 @@ export function OwnerEngagementCard({ engagement }: { engagement: OwnerEngagemen
           <div className='space-y-1'>
             <CardTitle className='text-xl'>Gestión con {engagement.tenant.name}</CardTitle>
             <p className='text-sm text-muted-foreground'>
-              {getOperationTypeLabel(engagement.operationType)} · {formatMoney(engagement.publishedPriceCents, engagement.currency)}
+              {getOperationTypeLabel(engagement.operationType)} ·{' '}
+              {formatMoney(engagement.publishedPriceCents, engagement.currency)}
             </p>
           </div>
           <Badge>{getStatusLabel(engagement.status)}</Badge>
@@ -23,23 +25,33 @@ export function OwnerEngagementCard({ engagement }: { engagement: OwnerEngagemen
           {engagement.agents.length > 0 ? (
             <ul className='mt-3 grid gap-2 sm:grid-cols-2'>
               {engagement.agents.map((agent) => (
-                <li key={agent.userId} className='rounded-lg border bg-background px-3 py-2 text-sm'>
+                <li
+                  key={agent.userId}
+                  className='rounded-lg border bg-background px-3 py-2 text-sm'
+                >
                   <p className='font-medium'>{agent.firstName || agent.email}</p>
                   <p className='break-all text-muted-foreground'>{agent.email}</p>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className='mt-2 text-sm text-muted-foreground'>La inmobiliaria todavía no informó agentes asignados.</p>
+            <p className='mt-2 text-sm text-muted-foreground'>
+              La inmobiliaria todavía no informó agentes asignados.
+            </p>
           )}
         </div>
 
-        <div className='space-y-3'>
-          <div>
-            <h2 className='text-lg font-semibold'>Seguimiento</h2>
-            <p className='text-sm text-muted-foreground'>Últimos movimientos visibles para propietarios.</p>
+        <div className='space-y-4'>
+          <OwnerStatusPath status={engagement.status} />
+          <div className='space-y-3'>
+            <div>
+              <h2 className='text-lg font-semibold'>Movimientos recientes</h2>
+              <p className='text-sm text-muted-foreground'>
+                Últimos movimientos visibles para propietarios.
+              </p>
+            </div>
+            <OwnerTimeline engagementId={engagement.id} />
           </div>
-          <OwnerTimeline engagementId={engagement.id} />
         </div>
       </CardContent>
     </Card>
