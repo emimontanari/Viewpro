@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -98,61 +99,85 @@ export function OwnerHome() {
   const latestUpdatedAt = getLatestUpdatedAt(visibleRecords);
 
   return (
-    <div className='relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#05070c] text-white shadow-2xl shadow-black/30'>
-      <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(109,40,217,0.32),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(14,165,233,0.16),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.06),transparent_26%)]' />
-      <div className='pointer-events-none absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.65)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.65)_1px,transparent_1px)] [background-size:48px_48px]' />
+    <div className='space-y-6'>
+      <OwnerHeroSummary
+        activeProperties={visibleRecords.length}
+        currentAgency={currentAgency}
+        latestUpdatedAt={latestUpdatedAt}
+      />
 
-      <div className='relative space-y-6 p-4 sm:p-6 lg:p-8'>
-        <section className='grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.42fr)] lg:items-end'>
-          <div className='space-y-3'>
-            <Badge className='border-purple-400/30 bg-purple-500/15 text-purple-100 hover:bg-purple-500/20'>
-              Portal propietario
-            </Badge>
-            <div className='space-y-2'>
-              <h1 className='text-4xl font-semibold tracking-tight text-white md:text-5xl'>
-                Tus propiedades
-              </h1>
-              <p className='max-w-2xl text-base leading-7 text-white/70 md:text-lg'>
-                Seguimiento claro de las gestiones activas que tu inmobiliaria está trabajando.
-              </p>
-            </div>
-          </div>
+      <OwnerMetricGrid
+        activeProperties={visibleRecords.length}
+        agencyCount={agencies.length}
+        engagementCount={visibleEngagements.length}
+        latestUpdatedAt={latestUpdatedAt}
+      />
 
-          {hasMultipleAgencies ? (
-            <OwnerAgencySelector
-              agencies={agencies}
-              selectedAgencyId={effectiveSelectedAgencyId ?? agencies[0]?.id ?? ''}
-              onSelectedAgencyChange={setSelectedAgencyId}
-            />
-          ) : null}
-        </section>
-
-        <OwnerMetricGrid
-          activeProperties={visibleRecords.length}
-          agencyCount={agencies.length}
-          engagementCount={visibleEngagements.length}
-          latestUpdatedAt={latestUpdatedAt}
+      {hasMultipleAgencies ? (
+        <OwnerAgencySelector
+          agencies={agencies}
+          selectedAgencyId={effectiveSelectedAgencyId ?? agencies[0]?.id ?? ''}
+          onSelectedAgencyChange={setSelectedAgencyId}
         />
+      ) : null}
 
-        {visibleRecords.length > 0 ? (
-          <section className='grid gap-5'>
-            {visibleRecords.map((record) => (
-              <OwnerPropertyCard key={record.property.id} record={record} />
-            ))}
-          </section>
-        ) : (
-          <OwnerFallbackState
-            tone='dark'
-            title='Todavía no tenés propiedades activas'
-            description='Cuando tu inmobiliaria te vincule a una propiedad, vas a poder ver su seguimiento desde este portal.'
-          />
-        )}
+      {visibleRecords.length > 0 ? (
+        <section className='grid gap-4'>
+          {visibleRecords.map((record) => (
+            <OwnerPropertyCard key={record.property.id} record={record} />
+          ))}
+        </section>
+      ) : (
+        <OwnerFallbackState
+          title='Todavía no tenés propiedades activas'
+          description='Cuando tu inmobiliaria te vincule a una propiedad, vas a poder ver su seguimiento desde este portal.'
+        />
+      )}
 
-        {!hasMultipleAgencies && currentAgency ? (
-          <OwnerAgencySummary agency={currentAgency} propertyCount={visibleRecords.length} />
-        ) : null}
-      </div>
+      {currentAgency ? (
+        <OwnerAgencySummary agency={currentAgency} propertyCount={visibleRecords.length} />
+      ) : null}
     </div>
+  );
+}
+
+function OwnerHeroSummary({
+  activeProperties,
+  currentAgency,
+  latestUpdatedAt
+}: {
+  activeProperties: number;
+  currentAgency: OwnerAgency | null;
+  latestUpdatedAt: string | null;
+}) {
+  return (
+    <section className='overflow-hidden rounded-3xl border bg-background shadow-sm'>
+      <div className='grid gap-6 p-6 md:grid-cols-[minmax(0,1fr)_280px] md:p-8'>
+        <div className='space-y-3'>
+          <Badge variant='secondary'>Portal propietario</Badge>
+          <div className='space-y-2'>
+            <h1 className='text-3xl font-semibold tracking-tight md:text-4xl'>Tus propiedades</h1>
+            <p className='max-w-2xl text-muted-foreground'>
+              Seguimiento claro de las gestiones activas que tu inmobiliaria está trabajando.
+            </p>
+          </div>
+        </div>
+        <div className='rounded-2xl border bg-muted/40 p-5'>
+          <p className='text-sm text-muted-foreground'>Propiedades activas</p>
+          <p className='mt-2 text-4xl font-semibold'>{activeProperties}</p>
+          <p className='mt-2 text-sm text-muted-foreground'>
+            {currentAgency
+              ? `Con acceso propietario vigente en ${currentAgency.name}.`
+              : 'Con acceso propietario vigente en ViewPro.'}
+          </p>
+          {latestUpdatedAt ? (
+            <p className='mt-3 text-xs text-muted-foreground'>
+              Última actualización: {formatShortDate(latestUpdatedAt)}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -171,56 +196,51 @@ function OwnerMetricGrid({
     {
       icon: Icons.product,
       label: 'Activas',
-      tone: 'bg-purple-500/20 text-purple-200 shadow-purple-500/15',
-      value: activeProperties.toString()
+      value: activeProperties.toString(),
+      className: 'bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-200'
     },
     {
       icon: Icons.trendingUp,
       label: 'Gestiones',
-      tone: 'bg-sky-500/20 text-sky-200 shadow-sky-500/15',
-      value: engagementCount.toString()
+      value: engagementCount.toString(),
+      className: 'bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-200'
     },
     {
       icon: Icons.workspace,
       label: 'Inmobiliarias',
-      tone: 'bg-amber-500/20 text-amber-200 shadow-amber-500/15',
-      value: agencyCount.toString()
+      value: agencyCount.toString(),
+      className: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200'
     },
     {
       icon: Icons.calendar,
       label: 'Última act.',
-      tone: 'bg-emerald-500/20 text-emerald-200 shadow-emerald-500/15',
-      value: latestUpdatedAt ? formatShortDate(latestUpdatedAt) : '—'
+      value: latestUpdatedAt ? formatShortDate(latestUpdatedAt) : '—',
+      className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200'
     }
   ];
 
   return (
-    <section className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
+    <section className='grid grid-cols-2 gap-3 lg:grid-cols-4'>
       {metrics.map((metric) => {
         const Icon = metric.icon;
 
         return (
-          <div
-            key={metric.label}
-            className='rounded-3xl border border-white/10 bg-white/[0.055] p-4 shadow-lg shadow-black/10 backdrop-blur transition-colors hover:bg-white/[0.075]'
-          >
-            <div className='flex items-center gap-4'>
+          <Card key={metric.label} className='py-0'>
+            <CardContent className='flex items-center gap-3 p-4'>
               <span
                 className={cn(
-                  'flex size-12 shrink-0 items-center justify-center rounded-2xl shadow-lg',
-                  metric.tone
+                  'flex size-11 shrink-0 items-center justify-center rounded-xl',
+                  metric.className
                 )}
               >
-                <Icon className='size-6' aria-hidden='true' />
+                <Icon className='size-5' aria-hidden='true' />
               </span>
               <div className='min-w-0'>
-                <p className='text-sm text-white/60'>{metric.label}</p>
-                <p className='truncate text-3xl font-semibold leading-tight text-white'>
-                  {metric.value}
-                </p>
+                <p className='truncate text-sm text-muted-foreground'>{metric.label}</p>
+                <p className='truncate text-2xl font-semibold leading-tight'>{metric.value}</p>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         );
       })}
     </section>
@@ -235,23 +255,25 @@ function OwnerAgencySummary({
   propertyCount: number;
 }) {
   return (
-    <section className='rounded-3xl border border-white/10 bg-white/[0.055] p-5 shadow-lg shadow-black/10 backdrop-blur sm:flex sm:items-center sm:justify-between sm:gap-5'>
-      <div className='flex min-w-0 items-center gap-4'>
-        <span className='flex size-14 shrink-0 items-center justify-center rounded-2xl bg-purple-500/20 text-purple-100 shadow-lg shadow-purple-500/15'>
-          <Icons.workspace className='size-7' aria-hidden='true' />
-        </span>
-        <div className='min-w-0 space-y-1'>
-          <h2 className='text-xl font-semibold text-white'>Inmobiliaria vinculada</h2>
-          <p className='text-sm text-white/60'>
-            Esta inmobiliaria te vinculó a {formatPropertyCount(propertyCount)} activas.
-          </p>
+    <Card className='py-0'>
+      <CardContent className='flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='flex min-w-0 items-center gap-4'>
+          <span className='flex size-12 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-200'>
+            <Icons.workspace className='size-6' aria-hidden='true' />
+          </span>
+          <div className='min-w-0 space-y-1'>
+            <h2 className='font-semibold'>Inmobiliaria vinculada</h2>
+            <p className='text-sm text-muted-foreground'>
+              Esta inmobiliaria te vinculó a {formatPropertyCount(propertyCount)} activas.
+            </p>
+          </div>
         </div>
-      </div>
-      <div className='mt-4 min-w-0 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm font-medium text-white sm:mt-0 sm:text-right'>
-        <p className='truncate'>{agency.name}</p>
-        <p className='mt-1 text-xs text-white/50'>Acceso propietario vigente</p>
-      </div>
-    </section>
+        <div className='rounded-xl bg-muted/40 px-4 py-3 text-sm font-medium sm:text-right'>
+          <p className='truncate'>{agency.name}</p>
+          <p className='mt-1 text-xs text-muted-foreground'>Acceso propietario vigente</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -265,89 +287,90 @@ function OwnerAgencySelector({
   onSelectedAgencyChange: (agencyId: string) => void;
 }) {
   return (
-    <div className='rounded-3xl border border-white/10 bg-white/[0.055] p-4 shadow-lg shadow-black/10 backdrop-blur'>
-      <div className='space-y-1'>
-        <h2 className='font-semibold text-white'>Seleccioná inmobiliaria</h2>
-        <p className='text-sm text-white/60'>
-          Tenés propiedades vinculadas con más de una inmobiliaria.
-        </p>
-      </div>
-      <div className='mt-4'>
-        <Select value={selectedAgencyId} onValueChange={onSelectedAgencyChange}>
-          <SelectTrigger
-            aria-label='Inmobiliaria'
-            className='w-full border-white/10 bg-black/20 text-white [&_svg]:text-white/60'
-          >
-            <SelectValue placeholder='Elegí una inmobiliaria' />
-          </SelectTrigger>
-          <SelectContent>
-            {agencies.map((agency) => (
-              <SelectItem key={agency.id} value={agency.id}>
-                {agency.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </div>
+    <Card className='py-0'>
+      <CardContent className='flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='space-y-1'>
+          <h2 className='font-semibold'>Seleccioná inmobiliaria</h2>
+          <p className='text-sm text-muted-foreground'>
+            Tenés propiedades vinculadas con más de una inmobiliaria.
+          </p>
+        </div>
+        <div className='sm:w-72'>
+          <Select value={selectedAgencyId} onValueChange={onSelectedAgencyChange}>
+            <SelectTrigger aria-label='Inmobiliaria' className='w-full'>
+              <SelectValue placeholder='Elegí una inmobiliaria' />
+            </SelectTrigger>
+            <SelectContent>
+              {agencies.map((agency) => (
+                <SelectItem key={agency.id} value={agency.id}>
+                  {agency.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
 function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
   const property = record.property;
   const engagement = record.engagements[0] ?? null;
-  const currentStatusLabel = engagement ? getStatusLabel(engagement.status) : 'Sin gestión activa';
   const primaryImage = property.primaryImage ?? property.images[0] ?? null;
+  const statusLabel = engagement ? getStatusLabel(engagement.status) : 'Sin gestión activa';
 
   return (
-    <article className='overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.06] shadow-xl shadow-black/20 backdrop-blur'>
-      <div className='grid gap-5 p-4 lg:grid-cols-[248px_minmax(0,1fr)_296px] lg:items-stretch lg:p-5'>
-        <div className='relative overflow-hidden rounded-3xl bg-white/5'>
+    <Card className='overflow-hidden py-0 transition-shadow hover:shadow-md'>
+      <div className='grid gap-0 lg:grid-cols-[minmax(260px,0.45fr)_minmax(0,1fr)_260px]'>
+        <div className='relative bg-muted'>
           {primaryImage ? (
             <img
               src={primaryImage.url}
               alt={`Imagen principal de ${property.title}`}
-              className='aspect-[16/10] w-full object-cover lg:h-full lg:min-h-[220px] lg:aspect-auto'
+              className='aspect-[16/10] w-full object-cover lg:h-full lg:min-h-[260px] lg:aspect-auto'
             />
           ) : (
-            <div className='flex aspect-[16/10] w-full items-center justify-center bg-[radial-gradient(circle_at_30%_20%,rgba(109,40,217,0.45),transparent_35%),linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.03))] lg:h-full lg:min-h-[220px]'>
-              <div className='text-center'>
-                <Icons.media className='mx-auto size-10 text-white/50' aria-hidden='true' />
-                <p className='mt-2 text-sm font-medium text-white/70'>Imagen pendiente</p>
+            <div className='flex aspect-[16/10] w-full items-center justify-center bg-muted lg:h-full lg:min-h-[260px]'>
+              <div className='text-center text-muted-foreground'>
+                <Icons.media className='mx-auto size-10' aria-hidden='true' />
+                <p className='mt-2 text-sm font-medium'>Imagen pendiente</p>
               </div>
             </div>
           )}
-          <Badge className='absolute right-3 top-3 border-white/10 bg-black/60 text-white shadow-lg backdrop-blur hover:bg-black/60'>
+          <Badge variant='secondary' className='absolute right-3 top-3 bg-background/90 backdrop-blur'>
             {getPropertyTypeLabel(property.propertyType)}
           </Badge>
         </div>
 
-        <div className='min-w-0 space-y-5 lg:py-1'>
+        <div className='min-w-0 space-y-5 p-5 md:p-6'>
           <div className='space-y-2'>
-            <h2 className='text-2xl font-semibold leading-tight tracking-tight text-white md:text-3xl'>
+            <h2 className='text-2xl leading-tight font-semibold tracking-tight break-words'>
               {property.title}
             </h2>
-            <p className='text-base text-white/60'>{formatPropertyLocation(property)}</p>
+            <p className='text-sm text-muted-foreground break-words'>
+              {formatPropertyLocation(property)}
+            </p>
           </div>
 
-          <div className='flex flex-wrap items-center gap-3 text-sm'>
-            <span className='text-white/60'>Etapa actual</span>
-            <Badge className='border-white/10 bg-white/10 text-white hover:bg-white/10'>
-              {currentStatusLabel}
+          <div className='flex flex-wrap items-center gap-2'>
+            <span className='text-sm text-muted-foreground'>Etapa actual</span>
+            <Badge className='border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-50 dark:border-purple-500/30 dark:bg-purple-500/10 dark:text-purple-200'>
+              {statusLabel}
             </Badge>
           </div>
 
-          <div className='rounded-2xl border border-purple-400/20 bg-purple-500/10 p-4'>
-            <p className='text-xs font-medium uppercase tracking-[0.2em] text-purple-200/80'>
+          <div className='rounded-2xl border bg-muted/30 p-4'>
+            <p className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
               Estado informado
             </p>
-            <p className='mt-2 text-lg font-semibold text-white'>{currentStatusLabel}</p>
-            <p className='mt-1 text-sm text-white/60'>
+            <p className='mt-1 font-semibold'>{statusLabel}</p>
+            <p className='mt-1 text-sm text-muted-foreground'>
               Esta es la etapa actual comunicada por la inmobiliaria.
             </p>
           </div>
 
-          <div className='grid gap-3 md:grid-cols-2'>
+          <div className='grid gap-3 sm:grid-cols-2'>
             <OwnerPropertyInfoCard
               icon={Icons.calendar}
               label='Última actualización'
@@ -361,29 +384,26 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
           </div>
         </div>
 
-        <div className='grid content-start gap-3 border-white/10 lg:border-l lg:pl-5'>
-          <Button
-            asChild
-            className='h-[52px] rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-base font-semibold text-white shadow-lg shadow-purple-950/40 hover:from-violet-500 hover:to-purple-500'
-          >
+        <CardContent className='grid content-start gap-3 border-t p-5 lg:border-l lg:border-t-0 lg:p-5'>
+          <Button asChild size='lg' className='w-full'>
             <Link href={`/owner/properties/${property.id}`}>
               Abrir propiedad
-              <Icons.arrowRight className='ml-2 size-5' aria-hidden='true' />
+              <Icons.arrowRight className='ml-2 size-4' aria-hidden='true' />
             </Link>
           </Button>
-          <OwnerActionLink
+          <OwnerActionButton
             href={`/owner/properties/${property.id}`}
             icon={Icons.trendingUp}
             label='Ver seguimiento'
           />
-          <OwnerActionLink
+          <OwnerActionButton
             href={`/owner/properties/${property.id}`}
             icon={Icons.page}
             label='Ver ficha técnica'
           />
-        </div>
+        </CardContent>
       </div>
-    </article>
+    </Card>
   );
 }
 
@@ -397,19 +417,19 @@ function OwnerPropertyInfoCard({
   value: string;
 }) {
   return (
-    <div className='flex min-w-0 gap-3 rounded-2xl border border-white/10 bg-black/20 p-3'>
-      <span className='flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-purple-200'>
-        <Icon className='size-5' aria-hidden='true' />
+    <div className='flex min-w-0 gap-3 rounded-xl border bg-background/70 p-3'>
+      <span className='flex size-9 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-200'>
+        <Icon className='size-4' aria-hidden='true' />
       </span>
       <div className='min-w-0'>
-        <p className='text-xs text-white/50'>{label}</p>
-        <p className='mt-0.5 truncate text-sm font-medium text-white'>{value}</p>
+        <p className='text-xs text-muted-foreground'>{label}</p>
+        <p className='mt-0.5 truncate text-sm font-medium'>{value}</p>
       </div>
     </div>
   );
 }
 
-function OwnerActionLink({
+function OwnerActionButton({
   href,
   icon: Icon,
   label
@@ -419,13 +439,9 @@ function OwnerActionLink({
   label: string;
 }) {
   return (
-    <Button
-      asChild
-      variant='outline'
-      className='h-12 justify-start rounded-2xl border-white/10 bg-black/20 text-white hover:border-purple-400/40 hover:bg-purple-500/10 hover:text-white'
-    >
+    <Button asChild variant='outline' className='w-full justify-start'>
       <Link href={href}>
-        <Icon className='mr-3 size-5 text-white/75' aria-hidden='true' />
+        <Icon className='mr-2 size-4 text-muted-foreground' aria-hidden='true' />
         {label}
       </Link>
     </Button>
@@ -434,46 +450,24 @@ function OwnerActionLink({
 
 function OwnerHomeSkeleton() {
   return (
-    <div className='overflow-hidden rounded-[2rem] border border-white/10 bg-[#05070c] p-4 shadow-2xl shadow-black/30 sm:p-6 lg:p-8'>
-      <div className='h-16 animate-pulse rounded-3xl bg-white/10' />
-      <div className='mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
-        <div className='h-24 animate-pulse rounded-3xl bg-white/10' />
-        <div className='h-24 animate-pulse rounded-3xl bg-white/10' />
-        <div className='h-24 animate-pulse rounded-3xl bg-white/10' />
-        <div className='h-24 animate-pulse rounded-3xl bg-white/10' />
+    <div className='space-y-4'>
+      <div className='h-48 animate-pulse rounded-3xl bg-muted' />
+      <div className='grid grid-cols-2 gap-3 lg:grid-cols-4'>
+        <div className='h-24 animate-pulse rounded-xl bg-muted' />
+        <div className='h-24 animate-pulse rounded-xl bg-muted' />
+        <div className='h-24 animate-pulse rounded-xl bg-muted' />
+        <div className='h-24 animate-pulse rounded-xl bg-muted' />
       </div>
-      <div className='mt-6 h-80 animate-pulse rounded-[1.75rem] bg-white/10' />
+      <div className='h-80 animate-pulse rounded-xl bg-muted' />
     </div>
   );
 }
 
-function OwnerFallbackState({
-  description,
-  tone = 'light',
-  title
-}: {
-  description: string;
-  tone?: 'dark' | 'light';
-  title: string;
-}) {
+function OwnerFallbackState({ title, description }: { title: string; description: string }) {
   return (
-    <div
-      className={cn(
-        'rounded-3xl border border-dashed p-8 text-center shadow-lg backdrop-blur',
-        tone === 'dark'
-          ? 'border-white/15 bg-white/[0.055] text-white shadow-black/10'
-          : 'border-border bg-background text-foreground shadow-black/5'
-      )}
-    >
+    <div className='rounded-2xl border border-dashed bg-background p-8 text-center'>
       <h2 className='text-lg font-semibold'>{title}</h2>
-      <p
-        className={cn(
-          'mx-auto mt-2 max-w-xl text-sm',
-          tone === 'dark' ? 'text-white/60' : 'text-muted-foreground'
-        )}
-      >
-        {description}
-      </p>
+      <p className='mx-auto mt-2 max-w-xl text-sm text-muted-foreground'>{description}</p>
     </div>
   );
 }
