@@ -21,7 +21,13 @@ export function OwnerStatusPath({ status }: { status: string }) {
             Este caminito muestra en qué etapa está tu propiedad.
           </p>
         </div>
-        <Badge variant={status === CANCELLED_STATUS ? 'destructive' : 'secondary'}>
+        <Badge
+          variant={status === CANCELLED_STATUS ? 'destructive' : 'secondary'}
+          className={cn(
+            status !== CANCELLED_STATUS &&
+              'border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-500/30 dark:bg-purple-500/10 dark:text-purple-200'
+          )}
+        >
           Estado actual: {getStatusLabel(status)}
         </Badge>
       </div>
@@ -39,15 +45,25 @@ export function OwnerStatusPath({ status }: { status: string }) {
                 className={cn(
                   'absolute top-5 left-[11px] h-full w-px bg-border md:top-[11px] md:left-1/2 md:h-px md:w-full',
                   index === statusOptions.length - 1 && 'hidden',
-                  state === 'completed' && 'bg-primary/70'
+                  state === 'completed' && 'bg-purple-400/70 dark:bg-purple-500/60'
                 )}
               />
-              <div className='relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background md:mx-auto'>
+              <div
+                className={cn(
+                  'relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background md:mx-auto',
+                  state === 'current' &&
+                    'border-purple-400 bg-purple-50 shadow-sm shadow-purple-500/20 dark:border-purple-400/70 dark:bg-purple-500/15'
+                )}
+              >
+                {state === 'current' ? (
+                  <span className='absolute size-8 rounded-full bg-purple-500/20 motion-safe:animate-pulse motion-reduce:animate-none' />
+                ) : null}
                 <span
                   className={cn(
-                    'size-2.5 rounded-full bg-muted-foreground/40',
-                    state === 'completed' && 'bg-primary',
-                    state === 'current' && 'size-3.5 bg-primary ring-4 ring-primary/15'
+                    'relative size-2.5 rounded-full bg-muted-foreground/40',
+                    state === 'completed' && 'bg-purple-500',
+                    state === 'current' &&
+                      'size-3.5 bg-purple-600 ring-4 ring-purple-500/20 dark:bg-purple-300 dark:ring-purple-300/20'
                   )}
                 />
               </div>
@@ -56,13 +72,15 @@ export function OwnerStatusPath({ status }: { status: string }) {
                   className={cn(
                     'text-sm font-medium text-muted-foreground',
                     state === 'completed' && 'text-foreground',
-                    state === 'current' && 'text-primary'
+                    state === 'current' && 'text-purple-700 dark:text-purple-200'
                   )}
                 >
                   {option.label}
                 </p>
                 {state === 'current' ? (
-                  <p className='mt-1 text-xs text-muted-foreground'>Etapa actual</p>
+                  <p className='mt-1 text-xs font-medium text-purple-600 dark:text-purple-300'>
+                    Etapa actual
+                  </p>
                 ) : null}
               </div>
             </li>

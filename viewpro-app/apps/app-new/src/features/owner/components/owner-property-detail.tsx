@@ -1,5 +1,6 @@
 'use client';
 
+import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -37,10 +38,13 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
     <div className='space-y-6'>
       <Button
         asChild
-        variant='ghost'
-        className='w-fit px-0 text-muted-foreground hover:text-foreground'
+        variant='outline'
+        className='group h-11 w-full justify-start rounded-full border-purple-200 bg-purple-50/60 px-4 text-purple-700 shadow-sm transition-all hover:border-purple-300 hover:bg-purple-100 hover:text-purple-800 sm:w-fit dark:border-purple-500/30 dark:bg-purple-500/10 dark:text-purple-200 dark:hover:bg-purple-500/20'
       >
-        <Link href='/owner'>← Volver a tus propiedades</Link>
+        <Link href='/owner'>
+          <Icons.chevronLeft className='mr-2 size-4 transition-transform group-hover:-translate-x-0.5' />
+          Volver a mis propiedades
+        </Link>
       </Button>
 
       <section className='overflow-hidden rounded-3xl border bg-background shadow-sm'>
