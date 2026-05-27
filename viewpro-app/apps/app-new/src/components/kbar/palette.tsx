@@ -2,6 +2,7 @@
 
 import { navGroups } from '@/config/nav-config';
 import { useFilteredNavGroups } from '@/hooks/use-nav';
+import type { NavGroup } from '@/types';
 import {
   KBarAnimator,
   KBarPortal,
@@ -17,45 +18,50 @@ import { COMMAND_PALETTE_OPEN_EVENT } from './events';
 import RenderResults from './render-result';
 import useThemeSwitching from './use-theme-switching';
 
-export function KBarPalette() {
+type KBarPaletteProps = {
+  navGroupsConfig?: NavGroup[];
+};
+
+export function buildNavigationActions(groups: NavGroup[], navigateTo: (url: string) => void) {
+  const allItems = groups.flatMap((group) => group.items);
+
+  return allItems.flatMap((navItem) => {
+    const baseAction =
+      navItem.url !== '#'
+        ? {
+            id: `${navItem.title.toLowerCase()}Action`,
+            name: navItem.title,
+            shortcut: navItem.shortcut,
+            keywords: navItem.title.toLowerCase(),
+            section: 'Navigation',
+            subtitle: `Go to ${navItem.title}`,
+            perform: () => navigateTo(navItem.url)
+          }
+        : null;
+
+    const childActions =
+      navItem.items?.map((childItem) => ({
+        id: `${childItem.title.toLowerCase()}Action`,
+        name: childItem.title,
+        shortcut: childItem.shortcut,
+        keywords: childItem.title.toLowerCase(),
+        section: navItem.title,
+        subtitle: `Go to ${childItem.title}`,
+        perform: () => navigateTo(childItem.url)
+      })) ?? [];
+
+    return baseAction ? [baseAction, ...childActions] : childActions;
+  });
+}
+
+export function KBarPalette({ navGroupsConfig = navGroups }: KBarPaletteProps) {
   const router = useRouter();
-  const filteredGroups = useFilteredNavGroups(navGroups);
+  const filteredGroups = useFilteredNavGroups(navGroupsConfig);
 
-  const actions = useMemo(() => {
-    const navigateTo = (url: string) => {
-      router.push(url);
-    };
-
-    const allItems = filteredGroups.flatMap((group) => group.items);
-
-    return allItems.flatMap((navItem) => {
-      const baseAction =
-        navItem.url !== '#'
-          ? {
-              id: `${navItem.title.toLowerCase()}Action`,
-              name: navItem.title,
-              shortcut: navItem.shortcut,
-              keywords: navItem.title.toLowerCase(),
-              section: 'Navigation',
-              subtitle: `Go to ${navItem.title}`,
-              perform: () => navigateTo(navItem.url)
-            }
-          : null;
-
-      const childActions =
-        navItem.items?.map((childItem) => ({
-          id: `${childItem.title.toLowerCase()}Action`,
-          name: childItem.title,
-          shortcut: childItem.shortcut,
-          keywords: childItem.title.toLowerCase(),
-          section: navItem.title,
-          subtitle: `Go to ${childItem.title}`,
-          perform: () => navigateTo(childItem.url)
-        })) ?? [];
-
-      return baseAction ? [baseAction, ...childActions] : childActions;
-    });
-  }, [router, filteredGroups]);
+  const actions = useMemo(
+    () => buildNavigationActions(filteredGroups, (url) => router.push(url)),
+    [router, filteredGroups]
+  );
 
   return (
     <KBarProvider actions={actions}>

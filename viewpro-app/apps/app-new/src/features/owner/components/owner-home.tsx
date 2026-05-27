@@ -5,7 +5,6 @@ import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Field, FieldLabel } from '@/components/ui/field';
 import { Progress } from '@/components/ui/progress';
 import {
   Select,
@@ -14,7 +13,10 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import type { PropertyEngagementStatus } from '@/features/products/api/types';
+import { getStatusTone as getDashboardStatusTone } from '@/features/products/components/product-tables/columns';
 import { propertyStatusOptions } from '@/features/products/constants/product-options';
+import { cn } from '@/lib/utils';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ownerPropertiesOptions, ownerPropertyEngagementsOptions } from '../api/queries';
@@ -29,6 +31,13 @@ type OwnerPropertyWithAgencies = {
   agencies: OwnerAgency[];
   engagements: OwnerEngagement[];
   property: OwnerProperty;
+};
+
+type OwnerStatusSummaryViewModel = {
+  label: string;
+  progress: number;
+  progressTone: string;
+  tone: string;
 };
 
 export function OwnerHome() {
@@ -201,7 +210,8 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
   const property = record.property;
   const engagement = record.engagements[0] ?? null;
   const primaryImage = property.primaryImage ?? property.images[0] ?? null;
-  const statusLabel = engagement ? getStatusLabel(engagement.status) : 'Sin gestión activa';
+  const statusSummary = engagement ? getOwnerStatusSummary(engagement.status) : null;
+  const contactHref = getOwnerContactHref(engagement);
 
   return (
     <Card className='overflow-hidden py-0 transition-shadow hover:shadow-md'>
@@ -230,9 +240,12 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
             </Badge>
           </div>
 
-          <div className='min-w-0 space-y-4'>
+          <div className='min-w-0'>
             <div className='space-y-2'>
-              <h2 className='text-2xl leading-tight font-semibold tracking-tight break-words'>
+              <h2
+                className='truncate text-lg leading-tight font-semibold tracking-tight sm:text-xl lg:text-2xl'
+                title={property.title}
+              >
                 {property.title}
               </h2>
               <p className='text-sm text-muted-foreground break-words'>
@@ -240,7 +253,7 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
               </p>
             </div>
 
-            <OwnerStatusSummary statusLabel={statusLabel} />
+            {statusSummary ? <OwnerStatusSummary status={statusSummary} /> : null}
           </div>
 
           <div className='grid content-start gap-3 lg:border-l lg:pl-5'>
@@ -250,7 +263,7 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
                 <Icons.arrowRight className='ml-2 size-4' aria-hidden='true' />
               </Link>
             </Button>
-            <div className='grid grid-cols-2 gap-3 lg:grid-cols-1'>
+            <div className='grid grid-cols-3 gap-3 lg:grid-cols-1'>
               <OwnerActionTile
                 href={`/owner/properties/${property.id}`}
                 icon={Icons.trendingUp}
@@ -263,6 +276,12 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
                 label='Ficha técnica'
                 ariaLabel='Ver ficha técnica'
               />
+              <OwnerActionTile
+                href={contactHref}
+                icon={Icons.chat}
+                label='Contactar'
+                ariaLabel='Contactar inmobiliaria'
+              />
             </div>
           </div>
         </div>
@@ -271,22 +290,31 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
   );
 }
 
-function OwnerStatusSummary({ statusLabel }: { statusLabel: string }) {
+function OwnerStatusSummary({ status }: { status: OwnerStatusSummaryViewModel }) {
   return (
-    <Field className='rounded-2xl border bg-muted/30 p-4'>
-      <FieldLabel asChild className='w-full items-center text-sm'>
-        <div>
-          <span className='rounded-full border border-purple-700/25 bg-purple-50 px-3 py-1 font-medium text-purple-600 dark:border-purple-700/40 dark:bg-purple-500/10 dark:text-purple-300'>
-            {statusLabel}
-          </span>
-        </div>
-      </FieldLabel>
+    <div className='mt-[18px] w-full rounded-none border border-neutral-800 bg-neutral-950 p-3'>
+      <div className='flex w-full items-center justify-between gap-3'>
+        <span
+          className={cn(
+            'inline-flex h-7 items-center rounded-none border px-2.5 py-1 text-xs leading-4 font-medium',
+            status.tone
+          )}
+        >
+          {status.label}
+        </span>
+        <span className='text-right text-sm leading-5 font-medium text-white'>
+          {status.progress}%
+        </span>
+      </div>
       <Progress
-        value={18}
-        aria-hidden='true'
-        className='h-1.5 bg-muted [&_[data-slot=progress-indicator]]:bg-[oklch(0.558_0.288_302.321)]'
+        value={status.progress}
+        aria-label={`Progreso según etapa: ${status.label} (${status.progress}%)`}
+        className={cn(
+          'mt-3 h-[6px] rounded-none bg-[#2b2b2b] [&_[data-slot=progress-indicator]]:rounded-none',
+          status.progressTone
+        )}
       />
-    </Field>
+    </div>
   );
 }
 
@@ -297,15 +325,40 @@ function OwnerActionTile({
   label
 }: {
   ariaLabel: string;
-  href: string;
+  href: string | null;
   icon: typeof Icons.product;
   label: string;
 }) {
+  const content = (
+    <>
+      <Icon className='size-6 text-muted-foreground' aria-hidden='true' />
+      <span className='text-xs sm:text-sm'>{label}</span>
+    </>
+  );
+
+  if (!href) {
+    return (
+      <Button type='button' variant='outline' disabled className='h-20 w-full flex-col gap-2'>
+        {content}
+        <span className='sr-only'>{ariaLabel} no disponible</span>
+      </Button>
+    );
+  }
+
+  if (href.startsWith('mailto:')) {
+    return (
+      <Button asChild variant='outline' className='h-20 w-full flex-col gap-2'>
+        <a href={href} aria-label={ariaLabel}>
+          {content}
+        </a>
+      </Button>
+    );
+  }
+
   return (
     <Button asChild variant='outline' className='h-20 w-full flex-col gap-2'>
       <Link href={href} aria-label={ariaLabel}>
-        <Icon className='size-5 text-muted-foreground' aria-hidden='true' />
-        <span>{label}</span>
+        {content}
       </Link>
     </Button>
   );
@@ -431,6 +484,63 @@ function getPropertyTypeLabel(propertyType: string) {
   return labels[propertyType] ?? propertyType;
 }
 
-function getStatusLabel(status: string) {
+function getOwnerStatusSummary(status: string): OwnerStatusSummaryViewModel | null {
+  if (!isKnownPropertyEngagementStatus(status)) {
+    return null;
+  }
+
+  return {
+    label: getStatusLabel(status),
+    progress: getStatusProgress(status),
+    progressTone: getStatusProgressTone(status),
+    tone: getDashboardStatusTone(status)
+  };
+}
+
+function getStatusLabel(status: PropertyEngagementStatus) {
   return propertyStatusOptions.find((option) => option.value === status)?.label ?? status;
+}
+
+function getStatusProgressTone(status: PropertyEngagementStatus) {
+  const tones: Record<PropertyEngagementStatus, string> = {
+    CAPTURE: '[&_[data-slot=progress-indicator]]:bg-amber-500',
+    DOCUMENTATION_PENDING: '[&_[data-slot=progress-indicator]]:bg-orange-500',
+    PUBLICATION_PREPARATION: '[&_[data-slot=progress-indicator]]:bg-sky-500',
+    ACTIVE_PUBLICATION: '[&_[data-slot=progress-indicator]]:bg-emerald-500',
+    INQUIRIES_AND_VISITS: '[&_[data-slot=progress-indicator]]:bg-blue-500',
+    OFFER_NEGOTIATION: '[&_[data-slot=progress-indicator]]:bg-violet-500',
+    RESERVATION_STARTED: '[&_[data-slot=progress-indicator]]:bg-fuchsia-500',
+    FINAL_DOCUMENTATION: '[&_[data-slot=progress-indicator]]:bg-indigo-500',
+    CLOSED: '[&_[data-slot=progress-indicator]]:bg-zinc-500',
+    CANCELLED: '[&_[data-slot=progress-indicator]]:bg-red-500'
+  };
+
+  return tones[status];
+}
+
+function isKnownPropertyEngagementStatus(status: string): status is PropertyEngagementStatus {
+  return propertyStatusOptions.some((option) => option.value === status);
+}
+
+function getOwnerContactHref(engagement: OwnerEngagement | null) {
+  const contactEmail = engagement?.agents.find((agent) => agent.email)?.email;
+
+  return contactEmail ? `mailto:${contactEmail}` : null;
+}
+
+function getStatusProgress(status: PropertyEngagementStatus) {
+  const activeStatusOptions = propertyStatusOptions.filter(
+    (option) => option.value !== 'CANCELLED'
+  );
+  const currentIndex = activeStatusOptions.findIndex((option) => option.value === status);
+
+  if (status === 'CANCELLED') {
+    return 100;
+  }
+
+  if (currentIndex === -1 || activeStatusOptions.length === 0) {
+    return 0;
+  }
+
+  return Math.round(((currentIndex + 1) / activeStatusOptions.length) * 100);
 }
