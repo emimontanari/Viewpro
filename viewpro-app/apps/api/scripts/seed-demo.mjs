@@ -60,8 +60,15 @@ const DEMO_USERS = [
 		role: TenantRole.AGENT,
 	},
 ];
+const DEMO_OWNER_EMAIL = "propietario.demo@viewpro.local";
+const DEMO_OWNER_USER = {
+	email: DEMO_OWNER_EMAIL,
+	firstName: "Propietario",
+	lastName: "Demo",
+};
+const DEMO_AUTH_USERS = [...DEMO_USERS, DEMO_OWNER_USER];
 
-const DEMO_USER_EMAILS = DEMO_USERS.map((user) => user.email);
+const DEMO_USER_EMAILS = DEMO_AUTH_USERS.map((user) => user.email);
 const DOCUMENT_TITLES = [
 	"Escritura",
 	"Plano municipal",
@@ -639,7 +646,7 @@ async function createDemoUsers(client) {
 	const passwordHash = await hash(DEMO_PASSWORD, { type: argon2id });
 	const users = new Map();
 
-	for (const user of DEMO_USERS) {
+	for (const user of DEMO_AUTH_USERS) {
 		const created = await client.user.upsert({
 			where: { email: user.email },
 			create: {
@@ -690,6 +697,7 @@ async function createDemoTenant(client, users) {
 
 async function createDemoProperties(client, tenant, users) {
 	const manager = users.get("demo@viewpro.local");
+	const demoOwner = users.get(DEMO_OWNER_EMAIL);
 	const sellers = [
 		users.get("sofia.demo@viewpro.local"),
 		users.get("martin.demo@viewpro.local"),
@@ -699,6 +707,13 @@ async function createDemoProperties(client, tenant, users) {
 
 	for (const [index, property] of DEMO_PROPERTIES.entries()) {
 		const seller = sellers[index % sellers.length];
+		const isDemoOwnerProperty = index === 0;
+		const ownerEmail = isDemoOwnerProperty
+			? DEMO_OWNER_EMAIL
+			: `propietario-${index + 1}@viewpro.local`;
+		const ownerName = isDemoOwnerProperty
+			? `${demoOwner.firstName} ${demoOwner.lastName}`
+			: `Propietario Demo ${index + 1}`;
 		const asset = await client.propertyAsset.create({
 			data: {
 				title: property.title,
@@ -714,8 +729,8 @@ async function createDemoProperties(client, tenant, users) {
 				garages: property.garages ?? null,
 				ageYears: property.ageYears ?? null,
 				orientation: property.orientation ?? null,
-				ownerName: `Propietario Demo ${index + 1}`,
-				ownerEmail: `propietario-${index + 1}@viewpro.local`,
+				ownerName,
+				ownerEmail,
 				createdByUserId: manager.id,
 				createdAt: daysAgo(40 - (index % 12)),
 			},
@@ -724,11 +739,18 @@ async function createDemoProperties(client, tenant, users) {
 		const owner = await client.propertyAssetOwner.create({
 			data: {
 				propertyAssetId: asset.id,
-				ownerEmail: `propietario-${index + 1}@viewpro.local`,
-				ownerFirstName: "Propietario",
-				ownerLastName: `Demo ${index + 1}`,
+				ownerEmail,
+				ownerFirstName: isDemoOwnerProperty
+					? demoOwner.firstName
+					: "Propietario",
+				ownerLastName: isDemoOwnerProperty
+					? demoOwner.lastName
+					: `Demo ${index + 1}`,
+				userId: isDemoOwnerProperty ? demoOwner.id : undefined,
 				isPrimary: true,
-				accessStatus: PropertyAssetOwnerAccessStatus.INVITED,
+				accessStatus: isDemoOwnerProperty
+					? PropertyAssetOwnerAccessStatus.ACTIVE
+					: PropertyAssetOwnerAccessStatus.INVITED,
 				createdAt: daysAgo(35 - (index % 10)),
 			},
 		});

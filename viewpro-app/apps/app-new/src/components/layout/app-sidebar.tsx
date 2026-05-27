@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/sidebar';
 import { UserAvatarProfile } from '@/components/user-avatar-profile';
 import { navGroups } from '@/config/nav-config';
+import type { NavGroup } from '@/types';
 import { useFilteredNavGroups } from '@/hooks/use-nav';
 import { useActiveTenant, useSession } from '@/lib/session-context';
 import { getUserDisplayName } from '@/lib/session';
@@ -34,12 +35,21 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Icons } from '../icons';
 import { OrgSwitcher } from '../org-switcher';
 
-export default function AppSidebar() {
+type AppSidebarProps = {
+  navGroupsConfig?: NavGroup[];
+  variant?: 'dashboard' | 'owner';
+};
+
+export default function AppSidebar({
+  navGroupsConfig = navGroups,
+  variant = 'dashboard'
+}: AppSidebarProps = {}) {
   const pathname = usePathname();
   const { session, signOut } = useSession();
   const { hasMemberships } = useActiveTenant();
   const router = useRouter();
-  const filteredGroups = useFilteredNavGroups(navGroups);
+  const filteredGroups = useFilteredNavGroups(navGroupsConfig);
+  const isOwnerVariant = variant === 'owner';
   const user = session?.user;
   const avatarUser = user
     ? {
@@ -52,7 +62,25 @@ export default function AppSidebar() {
   return (
     <Sidebar collapsible='icon'>
       <SidebarHeader className='group-data-[collapsible=icon]:pt-4'>
-        <OrgSwitcher />
+        {isOwnerVariant ? (
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild size='lg'>
+                <Link href='/owner' prefetch={false}>
+                  <div className='bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg'>
+                    <Icons.product className='size-4' />
+                  </div>
+                  <div className='grid flex-1 text-left text-sm leading-tight'>
+                    <span className='truncate font-medium'>Portal propietario</span>
+                    <span className='text-muted-foreground truncate text-xs'>ViewPro</span>
+                  </div>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        ) : (
+          <OrgSwitcher />
+        )}
       </SidebarHeader>
       <SidebarContent className='overflow-x-hidden'>
         {filteredGroups.map((group) => (
@@ -147,19 +175,23 @@ export default function AppSidebar() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
 
-                <DropdownMenuGroup>
-                  <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>
-                    <Icons.account className='mr-2 h-4 w-4' />
-                    Perfil
-                  </DropdownMenuItem>
-                  {hasMemberships ? (
-                    <DropdownMenuItem onClick={() => router.push('/dashboard/billing')}>
-                      <Icons.creditCard className='mr-2 h-4 w-4' />
-                      Facturación
-                    </DropdownMenuItem>
-                  ) : null}
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
+                {!isOwnerVariant ? (
+                  <>
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>
+                        <Icons.account className='mr-2 h-4 w-4' />
+                        Perfil
+                      </DropdownMenuItem>
+                      {hasMemberships ? (
+                        <DropdownMenuItem onClick={() => router.push('/dashboard/billing')}>
+                          <Icons.creditCard className='mr-2 h-4 w-4' />
+                          Facturación
+                        </DropdownMenuItem>
+                      ) : null}
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                  </>
+                ) : null}
                 <DropdownMenuItem
                   onClick={async () => {
                     await signOut();

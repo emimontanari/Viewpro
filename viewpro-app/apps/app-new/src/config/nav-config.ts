@@ -5,6 +5,21 @@ import type { NavGroup } from '@/types';
  * Keep template/demo routes out of this menu; they may exist in the app for
  * reference, but the sidebar should only expose product areas.
  */
+export const ownerNavGroups: NavGroup[] = [
+  {
+    label: 'Propietario',
+    items: [
+      {
+        title: 'Mis propiedades',
+        url: '/owner',
+        icon: 'product',
+        isActive: false,
+        items: []
+      }
+    ]
+  }
+];
+
 export const navGroups: NavGroup[] = [
   {
     label: 'Inmobiliaria',

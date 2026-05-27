@@ -140,11 +140,23 @@ describe("Owner portal (e2e)", () => {
 		);
 		const owned = await createEngagement(manager.agent, manager.tenantId, {
 			title: "Owned Detail House",
+			totalAreaSqm: 320,
+			coveredAreaSqm: 180,
+			rooms: 5,
+			bedrooms: 3,
+			bathrooms: 2,
+			garages: 1,
+			ageYears: 12,
+			orientation: "N",
 		}).expect(201);
 		const revoked = await createEngagement(manager.agent, manager.tenantId, {
 			title: "Revoked Detail House",
 		}).expect(201);
 		await grantOwnerAccess(owner.userId, owned.body.property.id);
+		await createPropertyImage(owner.userId, owned.body.property.id, {
+			isPrimary: true,
+			storageKey: "property-images/test-owner-detail/primary.webp",
+		});
 		await grantOwnerAccess(
 			owner.userId,
 			revoked.body.property.id,
@@ -164,7 +176,25 @@ describe("Owner portal (e2e)", () => {
 		expect(visible.body).toMatchObject({
 			id: owned.body.property.id,
 			title: "Owned Detail House",
+			totalAreaSqm: 320,
+			coveredAreaSqm: 180,
+			rooms: 5,
+			bedrooms: 3,
+			bathrooms: 2,
+			garages: 1,
+			ageYears: 12,
+			orientation: "N",
+			primaryImage: expect.objectContaining({
+				isPrimary: true,
+				storageKey: "property-images/test-owner-detail/primary.webp",
+			}),
 		});
+		expect(visible.body.images).toEqual([
+			expect.objectContaining({
+				isPrimary: true,
+				storageKey: "property-images/test-owner-detail/primary.webp",
+			}),
+		]);
 		expect(visible.body).not.toHaveProperty("owners");
 		expect(otherOwnerResponse.body.message).toBe("Owner property not found");
 		expect(revokedResponse.body.message).toBe("Owner property not found");
@@ -382,6 +412,29 @@ describe("Owner portal (e2e)", () => {
 				userId,
 				tenantId,
 				role: TenantRole.AGENT,
+			},
+		});
+	}
+
+	async function createPropertyImage(
+		uploadedByUserId: string,
+		propertyAssetId: string,
+		overrides: Partial<{
+			isPrimary: boolean;
+			storageKey: string;
+		}> = {},
+	) {
+		return prisma.propertyAssetImage.create({
+			data: {
+				propertyAssetId,
+				uploadedByUserId,
+				storageKey:
+					overrides.storageKey ??
+					`property-images/test-owner-portal/${propertyAssetId}.webp`,
+				originalFilename: "owner-property.webp",
+				mimeType: "image/webp",
+				sizeBytes: 1024,
+				isPrimary: overrides.isPrimary ?? false,
 			},
 		});
 	}

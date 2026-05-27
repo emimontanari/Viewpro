@@ -13,6 +13,7 @@ const BREADCRUMB_ID_PREVIEW_LENGTH = 5;
 
 // This allows to add custom title as well
 const routeMapping: Record<string, BreadcrumbItem[]> = {
+  '/owner': [{ title: 'Mis propiedades', link: '/owner' }],
   '/dashboard': [{ title: 'Dashboard', link: '/dashboard' }],
   '/dashboard/employee': [
     { title: 'Dashboard', link: '/dashboard' },
@@ -34,6 +35,13 @@ export function useBreadcrumbs() {
       return routeMapping[pathname];
     }
 
+    if (pathname.startsWith('/owner/properties/')) {
+      return [
+        { title: 'Mis propiedades', link: '/owner' },
+        { title: 'Detalle', link: pathname }
+      ];
+    }
+
     // If no exact match, fall back to generating breadcrumbs from the path
     const segments = pathname.split('/').filter(Boolean);
     return segments.map((segment, index) => {
@@ -53,5 +61,9 @@ function getBreadcrumbTitle(segment: string) {
     return segment.slice(0, BREADCRUMB_ID_PREVIEW_LENGTH);
   }
 
-  return segment.charAt(0).toUpperCase() + segment.slice(1);
+  const labels: Record<string, string> = {
+    owner: 'Mis propiedades'
+  };
+
+  return labels[segment] ?? segment.charAt(0).toUpperCase() + segment.slice(1);
 }

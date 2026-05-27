@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { navGroups } from './nav-config';
+import { navGroups, ownerNavGroups } from './nav-config';
 
 const navItems = navGroups.flatMap((group) =>
   group.items.flatMap((item) => [item, ...(item.items ?? [])])
@@ -25,6 +25,20 @@ describe('nav config', () => {
   it('uses product-facing Spanish labels for the main workspace areas', () => {
     expect(navTitles).toEqual(
       expect.arrayContaining(['Inicio', 'Propiedades', 'Seguimiento', 'Inmobiliarias', 'Equipo'])
+    );
+  });
+
+  it('exposes only owner-available routes in the owner menu', () => {
+    const ownerItems = ownerNavGroups.flatMap((group) => group.items);
+
+    expect(ownerItems).toEqual([
+      expect.objectContaining({
+        title: 'Mis propiedades',
+        url: '/owner'
+      })
+    ]);
+    expect(ownerItems.map((item) => item.url)).not.toEqual(
+      expect.arrayContaining(['/dashboard', '/dashboard/product', '/dashboard/billing'])
     );
   });
 });

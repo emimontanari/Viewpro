@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAppForm, useFormFields } from '@/components/ui/tanstack-form';
 import { getApiErrorMessage } from '@/lib/api-client';
-import { login } from '@/lib/session';
+import { login, type Session } from '@/lib/session';
 import { getSelectedTenantId, setSelectedTenantId } from '@/lib/tenant-selection';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -53,7 +53,7 @@ function SignInForm() {
           setSelectedTenantId(session.memberships[0].tenant.id);
         }
 
-        router.push(getSafeSignInRedirect(searchParams.get('redirect_url')));
+        router.push(getPostSignInRedirect(session, searchParams.get('redirect_url')));
         router.refresh();
       } catch (error) {
         setErrorMessage(getApiErrorMessage(error));
@@ -101,6 +101,19 @@ function SignInForm() {
   );
 }
 
+export function getPostSignInRedirect(
+  session: Pick<Session, 'memberships'>,
+  redirectUrl: string | null
+) {
+  const safeRedirect = getSafeSignInRedirect(redirectUrl);
+
+  if (session.memberships.length === 0 && isDashboardRedirect(safeRedirect)) {
+    return '/owner';
+  }
+
+  return safeRedirect;
+}
+
 export function getSafeSignInRedirect(redirectUrl: string | null) {
   if (!redirectUrl) {
     return DEFAULT_SIGN_IN_REDIRECT;
@@ -111,7 +124,7 @@ export function getSafeSignInRedirect(redirectUrl: string | null) {
   }
 
   const rawPath = redirectUrl.split(/[?#]/, 1)[0];
-  const hasSafeRawPath = rawPath === '/dashboard' || rawPath.startsWith('/dashboard/');
+  const hasSafeRawPath = isSafeAppRedirectPath(rawPath);
 
   if (!hasSafeRawPath || hasPathTraversal(rawPath)) {
     return DEFAULT_SIGN_IN_REDIRECT;
@@ -120,9 +133,8 @@ export function getSafeSignInRedirect(redirectUrl: string | null) {
   try {
     const url = new URL(redirectUrl, 'http://viewpro.local');
     const isRelativeUrl = url.origin === 'http://viewpro.local';
-    const isDashboardPath = url.pathname === '/dashboard' || url.pathname.startsWith('/dashboard/');
 
-    if (!isRelativeUrl || !isDashboardPath) {
+    if (!isRelativeUrl || !isSafeAppRedirectPath(url.pathname)) {
       return DEFAULT_SIGN_IN_REDIRECT;
     }
 
@@ -130,6 +142,20 @@ export function getSafeSignInRedirect(redirectUrl: string | null) {
   } catch {
     return DEFAULT_SIGN_IN_REDIRECT;
   }
+}
+
+function isDashboardRedirect(redirectUrl: string) {
+  const pathname = redirectUrl.split(/[?#]/, 1)[0];
+  return pathname === '/dashboard' || pathname.startsWith('/dashboard/');
+}
+
+function isSafeAppRedirectPath(pathname: string) {
+  return (
+    pathname === '/dashboard' ||
+    pathname.startsWith('/dashboard/') ||
+    pathname === '/owner' ||
+    pathname.startsWith('/owner/')
+  );
 }
 
 function hasPathTraversal(path: string) {
