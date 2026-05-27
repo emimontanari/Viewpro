@@ -33,7 +33,11 @@ export function OwnerHome() {
     queries: properties.map((property) => ownerPropertyEngagementsOptions(property.id))
   });
   const propertyRecords = React.useMemo(
-    () => buildOwnerPropertyAgencyRecords(properties, engagementQueries.map((query) => query.data)),
+    () =>
+      buildOwnerPropertyAgencyRecords(
+        properties,
+        engagementQueries.map((query) => query.data)
+      ),
     [engagementQueries, properties]
   );
   const agencies = React.useMemo(() => getOwnerAgencies(propertyRecords), [propertyRecords]);
@@ -49,7 +53,7 @@ export function OwnerHome() {
     setSelectedAgencyId((currentAgencyId) =>
       currentAgencyId && agencies.some((agency) => agency.id === currentAgencyId)
         ? currentAgencyId
-        : agencies[0]?.id ?? null
+        : (agencies[0]?.id ?? null)
     );
   }, [agencies, hasMultipleAgencies]);
 
@@ -75,12 +79,18 @@ export function OwnerHome() {
     );
   }
 
+  const effectiveSelectedAgencyId = getEffectiveSelectedAgencyId({
+    agencies,
+    hasMultipleAgencies,
+    selectedAgencyId
+  });
   const visibleRecords = getVisibleOwnerPropertyRecords({
     hasMultipleAgencies,
     propertyRecords,
-    selectedAgencyId
+    selectedAgencyId: effectiveSelectedAgencyId
   });
-  const selectedAgency = agencies.find((agency) => agency.id === selectedAgencyId) ?? null;
+  const selectedAgency = agencies.find((agency) => agency.id === effectiveSelectedAgencyId) ?? null;
+  const currentAgency = selectedAgency ?? (!hasMultipleAgencies ? (agencies[0] ?? null) : null);
 
   return (
     <div className='space-y-6'>
@@ -99,8 +109,8 @@ export function OwnerHome() {
             <p className='text-sm text-muted-foreground'>Propiedades activas</p>
             <p className='mt-2 text-4xl font-semibold'>{visibleRecords.length}</p>
             <p className='mt-2 text-sm text-muted-foreground'>
-              {selectedAgency
-                ? `Con acceso propietario vigente en ${selectedAgency.name}.`
+              {currentAgency
+                ? `Con acceso propietario vigente en ${currentAgency.name}.`
                 : 'Con acceso propietario vigente en ViewPro.'}
             </p>
           </div>
@@ -110,9 +120,11 @@ export function OwnerHome() {
       {hasMultipleAgencies ? (
         <OwnerAgencySelector
           agencies={agencies}
-          selectedAgencyId={selectedAgencyId ?? agencies[0]?.id ?? ''}
+          selectedAgencyId={effectiveSelectedAgencyId ?? agencies[0]?.id ?? ''}
           onSelectedAgencyChange={setSelectedAgencyId}
         />
+      ) : currentAgency ? (
+        <OwnerAgencySummary agency={currentAgency} />
       ) : null}
 
       {visibleRecords.length > 0 ? (
@@ -127,6 +139,22 @@ export function OwnerHome() {
           description='Cuando tu inmobiliaria te vincule a una propiedad, vas a poder ver su seguimiento desde este portal.'
         />
       )}
+    </div>
+  );
+}
+
+function OwnerAgencySummary({ agency }: { agency: OwnerAgency }) {
+  return (
+    <div className='rounded-2xl border bg-background p-4 shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-4'>
+      <div className='space-y-1'>
+        <h2 className='font-semibold'>Inmobiliaria vinculada</h2>
+        <p className='text-sm text-muted-foreground'>
+          Esta inmobiliaria te vinculó a tus propiedades activas.
+        </p>
+      </div>
+      <div className='mt-4 rounded-xl bg-muted/40 px-4 py-3 text-sm font-medium sm:mt-0'>
+        {agency.name}
+      </div>
     </div>
   );
 }
@@ -227,6 +255,24 @@ function getOwnerAgencies(propertyRecords: OwnerPropertyWithAgencies[]) {
   return getUniqueAgencies(propertyRecords.flatMap((record) => record.agencies));
 }
 
+function getEffectiveSelectedAgencyId({
+  agencies,
+  hasMultipleAgencies,
+  selectedAgencyId
+}: {
+  agencies: OwnerAgency[];
+  hasMultipleAgencies: boolean;
+  selectedAgencyId: string | null;
+}) {
+  if (!hasMultipleAgencies) {
+    return null;
+  }
+
+  return selectedAgencyId && agencies.some((agency) => agency.id === selectedAgencyId)
+    ? selectedAgencyId
+    : (agencies[0]?.id ?? null);
+}
+
 function getVisibleOwnerPropertyRecords({
   hasMultipleAgencies,
   propertyRecords,
@@ -236,8 +282,12 @@ function getVisibleOwnerPropertyRecords({
   propertyRecords: OwnerPropertyWithAgencies[];
   selectedAgencyId: string | null;
 }) {
-  if (!hasMultipleAgencies || !selectedAgencyId) {
+  if (!hasMultipleAgencies) {
     return propertyRecords;
+  }
+
+  if (!selectedAgencyId) {
+    return [];
   }
 
   return propertyRecords.filter((record) =>

@@ -87,6 +87,8 @@ test('demo owner can read the owner portal follow-up', async ({ page }) => {
   await signIn(page, OWNER_EMAIL, '/owner');
 
   await expect(page.getByRole('heading', { name: 'Tus propiedades' })).toBeVisible();
+  await expect(page.getByText('Inmobiliaria vinculada')).toBeVisible();
+  await expect(page.getByText(DEMO_TENANT_NAME, { exact: true })).toBeVisible();
   await expect(page.getByText(OWNER_VISIBLE_PROPERTY_TITLE)).toBeVisible();
   await expect(page.getByRole('link', { name: /Ver seguimiento/i }).first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Nueva propiedad' })).toHaveCount(0);

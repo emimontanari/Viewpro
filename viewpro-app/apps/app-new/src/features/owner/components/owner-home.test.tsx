@@ -41,6 +41,8 @@ describe('OwnerHome', () => {
 
     expect(screen.getByRole('heading', { name: /Tus propiedades/i })).toBeInTheDocument();
     expect(screen.getByText('Casa familiar con pileta en Villa Centenario')).toBeInTheDocument();
+    expect(screen.getByText('Inmobiliaria vinculada')).toBeInTheDocument();
+    expect(screen.getAllByText('ViewPro Demo Inmobiliaria').length).toBeGreaterThan(0);
     expect(screen.queryByText('Nueva propiedad')).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: /Inmobiliaria/i })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Ver seguimiento/i })).toHaveAttribute(
