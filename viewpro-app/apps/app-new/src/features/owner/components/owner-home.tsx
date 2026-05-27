@@ -13,7 +13,6 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { propertyStatusOptions } from '@/features/products/constants/product-options';
-import { cn } from '@/lib/utils';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ownerPropertiesOptions, ownerPropertyEngagementsOptions } from '../api/queries';
@@ -95,23 +94,10 @@ export function OwnerHome() {
   });
   const selectedAgency = agencies.find((agency) => agency.id === effectiveSelectedAgencyId) ?? null;
   const currentAgency = selectedAgency ?? (!hasMultipleAgencies ? (agencies[0] ?? null) : null);
-  const visibleEngagements = visibleRecords.flatMap((record) => record.engagements);
-  const latestUpdatedAt = getLatestUpdatedAt(visibleRecords);
 
   return (
     <div className='space-y-6'>
-      <OwnerHeroSummary
-        activeProperties={visibleRecords.length}
-        currentAgency={currentAgency}
-        latestUpdatedAt={latestUpdatedAt}
-      />
-
-      <OwnerMetricGrid
-        activeProperties={visibleRecords.length}
-        agencyCount={agencies.length}
-        engagementCount={visibleEngagements.length}
-        latestUpdatedAt={latestUpdatedAt}
-      />
+      <OwnerHeroSummary />
 
       {hasMultipleAgencies ? (
         <OwnerAgencySelector
@@ -141,108 +127,16 @@ export function OwnerHome() {
   );
 }
 
-function OwnerHeroSummary({
-  activeProperties,
-  currentAgency,
-  latestUpdatedAt
-}: {
-  activeProperties: number;
-  currentAgency: OwnerAgency | null;
-  latestUpdatedAt: string | null;
-}) {
+function OwnerHeroSummary() {
   return (
-    <section className='overflow-hidden rounded-3xl border bg-background shadow-sm'>
-      <div className='grid gap-6 p-6 md:grid-cols-[minmax(0,1fr)_280px] md:p-8'>
-        <div className='space-y-3'>
-          <Badge variant='secondary'>Portal propietario</Badge>
-          <div className='space-y-2'>
-            <h1 className='text-3xl font-semibold tracking-tight md:text-4xl'>Tus propiedades</h1>
-            <p className='max-w-2xl text-muted-foreground'>
-              Seguimiento claro de las gestiones activas que tu inmobiliaria está trabajando.
-            </p>
-          </div>
-        </div>
-        <div className='rounded-2xl border bg-muted/40 p-5'>
-          <p className='text-sm text-muted-foreground'>Propiedades activas</p>
-          <p className='mt-2 text-4xl font-semibold'>{activeProperties}</p>
-          <p className='mt-2 text-sm text-muted-foreground'>
-            {currentAgency
-              ? `Con acceso propietario vigente en ${currentAgency.name}.`
-              : 'Con acceso propietario vigente en ViewPro.'}
-          </p>
-          {latestUpdatedAt ? (
-            <p className='mt-3 text-xs text-muted-foreground'>
-              Última actualización: {formatShortDate(latestUpdatedAt)}
-            </p>
-          ) : null}
-        </div>
+    <section className='space-y-3'>
+      <Badge variant='secondary'>Portal propietario</Badge>
+      <div className='space-y-2'>
+        <h1 className='text-3xl font-semibold tracking-tight md:text-4xl'>Tus propiedades</h1>
+        <p className='max-w-2xl text-muted-foreground'>
+          Seguimiento claro de las gestiones activas que tu inmobiliaria está trabajando.
+        </p>
       </div>
-    </section>
-  );
-}
-
-function OwnerMetricGrid({
-  activeProperties,
-  agencyCount,
-  engagementCount,
-  latestUpdatedAt
-}: {
-  activeProperties: number;
-  agencyCount: number;
-  engagementCount: number;
-  latestUpdatedAt: string | null;
-}) {
-  const metrics = [
-    {
-      icon: Icons.product,
-      label: 'Activas',
-      value: activeProperties.toString(),
-      className: 'bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-200'
-    },
-    {
-      icon: Icons.trendingUp,
-      label: 'Gestiones',
-      value: engagementCount.toString(),
-      className: 'bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-200'
-    },
-    {
-      icon: Icons.workspace,
-      label: 'Inmobiliarias',
-      value: agencyCount.toString(),
-      className: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200'
-    },
-    {
-      icon: Icons.calendar,
-      label: 'Última act.',
-      value: latestUpdatedAt ? formatShortDate(latestUpdatedAt) : '—',
-      className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200'
-    }
-  ];
-
-  return (
-    <section className='grid grid-cols-2 gap-3 lg:grid-cols-4'>
-      {metrics.map((metric) => {
-        const Icon = metric.icon;
-
-        return (
-          <Card key={metric.label} className='py-0'>
-            <CardContent className='flex items-center gap-3 p-4'>
-              <span
-                className={cn(
-                  'flex size-11 shrink-0 items-center justify-center rounded-xl',
-                  metric.className
-                )}
-              >
-                <Icon className='size-5' aria-hidden='true' />
-              </span>
-              <div className='min-w-0'>
-                <p className='truncate text-sm text-muted-foreground'>{metric.label}</p>
-                <p className='truncate text-2xl font-semibold leading-tight'>{metric.value}</p>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
     </section>
   );
 }
@@ -322,127 +216,121 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
 
   return (
     <Card className='overflow-hidden py-0 transition-shadow hover:shadow-md'>
-      <div className='grid gap-0 lg:grid-cols-[minmax(260px,0.45fr)_minmax(0,1fr)_260px]'>
-        <div className='relative bg-muted'>
-          {primaryImage ? (
-            <img
-              src={primaryImage.url}
-              alt={`Imagen principal de ${property.title}`}
-              className='aspect-[16/10] w-full object-cover lg:h-full lg:min-h-[260px] lg:aspect-auto'
-            />
-          ) : (
-            <div className='flex aspect-[16/10] w-full items-center justify-center bg-muted lg:h-full lg:min-h-[260px]'>
-              <div className='text-center text-muted-foreground'>
-                <Icons.media className='mx-auto size-10' aria-hidden='true' />
-                <p className='mt-2 text-sm font-medium'>Imagen pendiente</p>
+      <CardContent className='p-4 sm:p-5'>
+        <div className='grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)_260px] lg:items-start'>
+          <div className='relative overflow-hidden rounded-2xl bg-muted'>
+            {primaryImage ? (
+              <img
+                src={primaryImage.url}
+                alt={`Imagen principal de ${property.title}`}
+                className='aspect-[16/10] w-full object-cover lg:h-full lg:min-h-[236px] lg:aspect-auto'
+              />
+            ) : (
+              <div className='flex aspect-[16/10] w-full items-center justify-center bg-muted lg:h-full lg:min-h-[236px]'>
+                <div className='text-center text-muted-foreground'>
+                  <Icons.media className='mx-auto size-10' aria-hidden='true' />
+                  <p className='mt-2 text-sm font-medium'>Imagen pendiente</p>
+                </div>
               </div>
-            </div>
-          )}
-          <Badge variant='secondary' className='absolute right-3 top-3 bg-background/90 backdrop-blur'>
-            {getPropertyTypeLabel(property.propertyType)}
-          </Badge>
-        </div>
-
-        <div className='min-w-0 space-y-5 p-5 md:p-6'>
-          <div className='space-y-2'>
-            <h2 className='text-2xl leading-tight font-semibold tracking-tight break-words'>
-              {property.title}
-            </h2>
-            <p className='text-sm text-muted-foreground break-words'>
-              {formatPropertyLocation(property)}
-            </p>
-          </div>
-
-          <div className='flex flex-wrap items-center gap-2'>
-            <span className='text-sm text-muted-foreground'>Etapa actual</span>
-            <Badge className='border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-50 dark:border-purple-500/30 dark:bg-purple-500/10 dark:text-purple-200'>
-              {statusLabel}
+            )}
+            <Badge
+              variant='secondary'
+              className='absolute right-3 top-3 bg-background/90 backdrop-blur'
+            >
+              {getPropertyTypeLabel(property.propertyType)}
             </Badge>
           </div>
 
-          <div className='rounded-2xl border bg-muted/30 p-4'>
-            <p className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
-              Estado informado
-            </p>
-            <p className='mt-1 font-semibold'>{statusLabel}</p>
-            <p className='mt-1 text-sm text-muted-foreground'>
-              Esta es la etapa actual comunicada por la inmobiliaria.
-            </p>
+          <div className='min-w-0 space-y-4'>
+            <div className='space-y-2'>
+              <h2 className='text-2xl leading-tight font-semibold tracking-tight break-words'>
+                {property.title}
+              </h2>
+              <p className='text-sm text-muted-foreground break-words'>
+                {formatPropertyLocation(property)}
+              </p>
+            </div>
+
+            <OwnerStatusSummary statusLabel={statusLabel} tenantName={engagement?.tenant.name} />
+
           </div>
 
-          <div className='grid gap-3 sm:grid-cols-2'>
-            <OwnerPropertyInfoCard
-              icon={Icons.calendar}
-              label='Última actualización'
-              value={engagement ? formatFullDate(engagement.updatedAt) : 'Sin novedades todavía'}
-            />
-            <OwnerPropertyInfoCard
-              icon={Icons.workspace}
-              label='Inmobiliaria'
-              value={engagement ? `${engagement.tenant.name} · activa` : 'Pendiente de vinculación'}
-            />
+          <div className='grid content-start gap-3 lg:border-l lg:pl-5'>
+            <Button asChild size='lg' className='w-full'>
+              <Link href={`/owner/properties/${property.id}`}>
+                Abrir propiedad
+                <Icons.arrowRight className='ml-2 size-4' aria-hidden='true' />
+              </Link>
+            </Button>
+            <div className='grid grid-cols-2 gap-3 lg:grid-cols-1'>
+              <OwnerActionTile
+                href={`/owner/properties/${property.id}`}
+                icon={Icons.trendingUp}
+                label='Seguimiento'
+                ariaLabel='Ver seguimiento'
+              />
+              <OwnerActionTile
+                href={`/owner/properties/${property.id}`}
+                icon={Icons.page}
+                label='Ficha técnica'
+                ariaLabel='Ver ficha técnica'
+              />
+            </div>
           </div>
         </div>
-
-        <CardContent className='grid content-start gap-3 border-t p-5 lg:border-l lg:border-t-0 lg:p-5'>
-          <Button asChild size='lg' className='w-full'>
-            <Link href={`/owner/properties/${property.id}`}>
-              Abrir propiedad
-              <Icons.arrowRight className='ml-2 size-4' aria-hidden='true' />
-            </Link>
-          </Button>
-          <OwnerActionButton
-            href={`/owner/properties/${property.id}`}
-            icon={Icons.trendingUp}
-            label='Ver seguimiento'
-          />
-          <OwnerActionButton
-            href={`/owner/properties/${property.id}`}
-            icon={Icons.page}
-            label='Ver ficha técnica'
-          />
-        </CardContent>
-      </div>
+      </CardContent>
     </Card>
   );
 }
 
-function OwnerPropertyInfoCard({
-  icon: Icon,
-  label,
-  value
+function OwnerStatusSummary({
+  statusLabel,
+  tenantName
 }: {
-  icon: typeof Icons.product;
-  label: string;
-  value: string;
+  statusLabel: string;
+  tenantName: string | undefined;
 }) {
   return (
-    <div className='flex min-w-0 gap-3 rounded-xl border bg-background/70 p-3'>
-      <span className='flex size-9 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-200'>
-        <Icon className='size-4' aria-hidden='true' />
-      </span>
-      <div className='min-w-0'>
-        <p className='text-xs text-muted-foreground'>{label}</p>
-        <p className='mt-0.5 truncate text-sm font-medium'>{value}</p>
+    <div className='rounded-2xl border bg-muted/30 p-4'>
+      <div className='flex flex-wrap items-center justify-between gap-3'>
+        <div>
+          <p className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
+            Estado actual
+          </p>
+          <p className='mt-1 font-semibold'>{statusLabel}</p>
+        </div>
+        <Badge className='border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-50 dark:border-purple-500/30 dark:bg-purple-500/10 dark:text-purple-200'>
+          {statusLabel}
+        </Badge>
       </div>
+      <div className='mt-3 h-1.5 overflow-hidden rounded-full bg-muted'>
+        <div className='h-full rounded-full bg-gradient-to-r from-purple-500 via-purple-400 to-transparent' />
+      </div>
+      <p className='mt-3 text-sm text-muted-foreground'>
+        {tenantName
+          ? `Último estado informado por ${tenantName}.`
+          : 'La inmobiliaria todavía no informó una gestión activa.'}
+      </p>
     </div>
   );
 }
 
-function OwnerActionButton({
+function OwnerActionTile({
+  ariaLabel,
   href,
   icon: Icon,
   label
 }: {
+  ariaLabel: string;
   href: string;
   icon: typeof Icons.product;
   label: string;
 }) {
   return (
-    <Button asChild variant='outline' className='w-full justify-start'>
-      <Link href={href}>
-        <Icon className='mr-2 size-4 text-muted-foreground' aria-hidden='true' />
-        {label}
+    <Button asChild variant='outline' className='h-20 w-full flex-col gap-2'>
+      <Link href={href} aria-label={ariaLabel}>
+        <Icon className='size-5 text-muted-foreground' aria-hidden='true' />
+        <span>{label}</span>
       </Link>
     </Button>
   );
@@ -451,14 +339,9 @@ function OwnerActionButton({
 function OwnerHomeSkeleton() {
   return (
     <div className='space-y-4'>
-      <div className='h-48 animate-pulse rounded-3xl bg-muted' />
-      <div className='grid grid-cols-2 gap-3 lg:grid-cols-4'>
-        <div className='h-24 animate-pulse rounded-xl bg-muted' />
-        <div className='h-24 animate-pulse rounded-xl bg-muted' />
-        <div className='h-24 animate-pulse rounded-xl bg-muted' />
-        <div className='h-24 animate-pulse rounded-xl bg-muted' />
-      </div>
-      <div className='h-80 animate-pulse rounded-xl bg-muted' />
+      <div className='h-24 animate-pulse rounded-3xl bg-muted' />
+      <div className='h-96 animate-pulse rounded-xl bg-muted' />
+      <div className='h-28 animate-pulse rounded-xl bg-muted' />
     </div>
   );
 }
@@ -553,19 +436,6 @@ function getUniqueAgencies(values: OwnerAgency[]) {
   );
 }
 
-function getLatestUpdatedAt(propertyRecords: OwnerPropertyWithAgencies[]) {
-  const timestamps = propertyRecords
-    .flatMap((record) => record.engagements.map((engagement) => engagement.updatedAt))
-    .map((value) => new Date(value).getTime())
-    .filter((value) => Number.isFinite(value));
-
-  if (timestamps.length === 0) {
-    return null;
-  }
-
-  return new Date(Math.max(...timestamps)).toISOString();
-}
-
 function formatPropertyCount(count: number) {
   return count === 1 ? '1 propiedad' : `${count} propiedades`;
 }
@@ -588,25 +458,4 @@ function getPropertyTypeLabel(propertyType: string) {
 
 function getStatusLabel(status: string) {
   return propertyStatusOptions.find((option) => option.value === status)?.label ?? status;
-}
-
-function formatShortDate(value: string) {
-  return new Intl.DateTimeFormat('es-AR', {
-    day: '2-digit',
-    month: 'short'
-  })
-    .format(new Date(value))
-    .replace('.', '');
-}
-
-function formatFullDate(value: string) {
-  return new Intl.DateTimeFormat('es-AR', {
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  })
-    .format(new Date(value))
-    .replace('.', '');
 }
