@@ -5,6 +5,8 @@ import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -46,19 +48,6 @@ export function OwnerHome() {
   const agencies = React.useMemo(() => getOwnerAgencies(propertyRecords), [propertyRecords]);
   const hasMultipleAgencies = agencies.length > 1;
   const [selectedAgencyId, setSelectedAgencyId] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!hasMultipleAgencies) {
-      setSelectedAgencyId(null);
-      return;
-    }
-
-    setSelectedAgencyId((currentAgencyId) =>
-      currentAgencyId && agencies.some((agency) => agency.id === currentAgencyId)
-        ? currentAgencyId
-        : (agencies[0]?.id ?? null)
-    );
-  }, [agencies, hasMultipleAgencies]);
 
   if (propertiesQuery.isLoading || engagementQueries.some((query) => query.isLoading)) {
     return <OwnerHomeSkeleton />;
@@ -251,8 +240,7 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
               </p>
             </div>
 
-            <OwnerStatusSummary statusLabel={statusLabel} tenantName={engagement?.tenant.name} />
-
+            <OwnerStatusSummary statusLabel={statusLabel} />
           </div>
 
           <div className='grid content-start gap-3 lg:border-l lg:pl-5'>
@@ -283,35 +271,22 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
   );
 }
 
-function OwnerStatusSummary({
-  statusLabel,
-  tenantName
-}: {
-  statusLabel: string;
-  tenantName: string | undefined;
-}) {
+function OwnerStatusSummary({ statusLabel }: { statusLabel: string }) {
   return (
-    <div className='rounded-2xl border bg-muted/30 p-4'>
-      <div className='flex flex-wrap items-center justify-between gap-3'>
+    <Field className='rounded-2xl border bg-muted/30 p-4'>
+      <FieldLabel asChild className='w-full items-center text-sm'>
         <div>
-          <p className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
-            Estado actual
-          </p>
-          <p className='mt-1 font-semibold'>{statusLabel}</p>
+          <span className='rounded-full border border-purple-700/25 bg-purple-50 px-3 py-1 font-medium text-purple-600 dark:border-purple-700/40 dark:bg-purple-500/10 dark:text-purple-300'>
+            {statusLabel}
+          </span>
         </div>
-        <Badge className='border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-50 dark:border-purple-500/30 dark:bg-purple-500/10 dark:text-purple-200'>
-          {statusLabel}
-        </Badge>
-      </div>
-      <div className='mt-3 h-1.5 overflow-hidden rounded-full bg-muted'>
-        <div className='h-full rounded-full bg-gradient-to-r from-purple-500 via-purple-400 to-transparent' />
-      </div>
-      <p className='mt-3 text-sm text-muted-foreground'>
-        {tenantName
-          ? `Último estado informado por ${tenantName}.`
-          : 'La inmobiliaria todavía no informó una gestión activa.'}
-      </p>
-    </div>
+      </FieldLabel>
+      <Progress
+        value={18}
+        aria-hidden='true'
+        className='h-1.5 bg-muted [&_[data-slot=progress-indicator]]:bg-[oklch(0.558_0.288_302.321)]'
+      />
+    </Field>
   );
 }
 
