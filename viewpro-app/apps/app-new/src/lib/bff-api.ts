@@ -3,7 +3,7 @@ import { cookies, headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 const DEFAULT_API_URL = 'http://localhost:3001/api';
-const API_URL = trimTrailingSlash(process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL);
+const API_URL = trimTrailingSlash(process.env.BFF_API_URL ?? DEFAULT_API_URL);
 const BFF_TIMEOUT_MS = 10_000;
 
 export async function bffFetch(path: string, init: RequestInit = {}) {
@@ -46,6 +46,18 @@ export async function proxyJsonResponse(response: Response, successStatus = resp
   }
 
   return NextResponse.json(body, { status: successStatus });
+}
+
+export function proxyBffErrorResponse(
+  error: unknown,
+  fallbackMessage: string,
+  timeoutMessage = 'La operación tardó demasiado.'
+) {
+  const isTimeout = error instanceof Error && error.name === 'AbortError';
+  return NextResponse.json(
+    { message: isTimeout ? timeoutMessage : fallbackMessage },
+    { status: isTimeout ? 504 : 502 }
+  );
 }
 
 function normalizePath(path: string) {
