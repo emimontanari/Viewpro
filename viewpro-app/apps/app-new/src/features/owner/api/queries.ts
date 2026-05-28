@@ -1,3 +1,4 @@
+import { getDocumentRequestsRefetchInterval } from '@/lib/document-request-refresh';
 import { queryOptions } from '@tanstack/react-query';
 import {
   getOwnerDocumentRequests,
@@ -52,5 +53,8 @@ export const ownerDocumentRequestsOptions = (
 ) =>
   queryOptions({
     queryKey: ownerKeys.documentRequests(propertyEngagementId, filters),
-    queryFn: () => getOwnerDocumentRequests({ ...filters, propertyEngagementId })
+    queryFn: () => getOwnerDocumentRequests({ ...filters, propertyEngagementId }),
+    refetchInterval: getDocumentRequestsRefetchInterval,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: 'always'
   });
