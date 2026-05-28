@@ -1,7 +1,16 @@
 import type {
+  CreateOwnerDocumentUploadUrlPayload,
+  CreateOwnerDocumentUploadUrlResponse,
+  OwnerDocumentRequestsFilters,
+  OwnerDocumentRequestsResponse,
+  OwnerDocumentUploadFileOptions,
+  OwnerDocumentUploadResponse,
+  OwnerDocumentVersion,
+  OwnerDocumentVersionUrlResponse,
   OwnerEngagementsResponse,
   OwnerPropertiesResponse,
   OwnerProperty,
+  OwnerSignedStorageUrl,
   OwnerTimelineFilters,
   OwnerTimelineResponse
 } from './types';
@@ -21,9 +30,7 @@ export async function getOwnerProperty(id: string): Promise<OwnerProperty> {
   return parseJsonResponse<OwnerProperty>(response);
 }
 
-export async function getOwnerPropertyEngagements(
-  id: string
-): Promise<OwnerEngagementsResponse> {
+export async function getOwnerPropertyEngagements(id: string): Promise<OwnerEngagementsResponse> {
   const response = await apiFetch(`${OWNER_API_PATH}/properties/${id}/engagements`);
   return parseJsonResponse<OwnerEngagementsResponse>(response);
 }
@@ -32,8 +39,73 @@ export async function getOwnerEngagementTimeline(
   id: string,
   filters: OwnerTimelineFilters = {}
 ): Promise<OwnerTimelineResponse> {
-  const response = await apiFetch(`${OWNER_API_PATH}/engagements/${id}/timeline${buildTimelineQuery(filters)}`);
+  const response = await apiFetch(
+    `${OWNER_API_PATH}/engagements/${id}/timeline${buildTimelineQuery(filters)}`
+  );
   return parseJsonResponse<OwnerTimelineResponse>(response);
+}
+
+export async function getOwnerDocumentRequests(
+  filters: OwnerDocumentRequestsFilters = {}
+): Promise<OwnerDocumentRequestsResponse> {
+  const response = await apiFetch(
+    `${OWNER_API_PATH}/document-requests${buildDocumentRequestsQuery(filters)}`
+  );
+  return parseJsonResponse<OwnerDocumentRequestsResponse>(response);
+}
+
+export async function createOwnerDocumentUploadUrl(
+  requestId: string,
+  payload: CreateOwnerDocumentUploadUrlPayload
+): Promise<CreateOwnerDocumentUploadUrlResponse> {
+  const response = await apiFetch(`${OWNER_API_PATH}/document-requests/${requestId}/upload-url`, {
+    body: JSON.stringify(payload),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST'
+  });
+
+  return parseJsonResponse<CreateOwnerDocumentUploadUrlResponse>(response);
+}
+
+export async function uploadOwnerDocumentFile(
+  uploadUrl: OwnerSignedStorageUrl,
+  fileOrBlob: Blob,
+  options: OwnerDocumentUploadFileOptions = {}
+): Promise<OwnerDocumentUploadResponse> {
+  const mimeType = options.mimeType ?? fileOrBlob.type;
+
+  if (!mimeType) {
+    throw new Error('El tipo de archivo es requerido para subir documentos.');
+  }
+
+  const response = await fetch(getFetchUrl(uploadUrl.url), {
+    body: fileOrBlob,
+    headers: { 'content-type': mimeType },
+    method: 'PUT'
+  });
+
+  return parseJsonResponse<OwnerDocumentUploadResponse>(response);
+}
+
+export async function confirmOwnerDocumentUpload(versionId: string): Promise<OwnerDocumentVersion> {
+  const response = await apiFetch(
+    `${OWNER_API_PATH}/document-versions/${versionId}/confirm-upload`,
+    {
+      method: 'POST'
+    }
+  );
+
+  return parseJsonResponse<OwnerDocumentVersion>(response);
+}
+
+export async function createOwnerDocumentReadUrl(
+  versionId: string
+): Promise<OwnerDocumentVersionUrlResponse> {
+  const response = await apiFetch(`${OWNER_API_PATH}/document-versions/${versionId}/read-url`, {
+    method: 'POST'
+  });
+
+  return parseJsonResponse<OwnerDocumentVersionUrlResponse>(response);
 }
 
 function buildTimelineQuery(filters: OwnerTimelineFilters) {
@@ -42,6 +114,18 @@ function buildTimelineQuery(filters: OwnerTimelineFilters) {
   appendSearchParam(searchParams, 'page', filters.page);
   appendSearchParam(searchParams, 'pageSize', filters.pageSize);
   appendSearchParam(searchParams, 'order', filters.order);
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : '';
+}
+
+function buildDocumentRequestsQuery(filters: OwnerDocumentRequestsFilters) {
+  const searchParams = new URLSearchParams();
+
+  appendSearchParam(searchParams, 'propertyEngagementId', filters.propertyEngagementId);
+  appendSearchParam(searchParams, 'page', filters.page);
+  appendSearchParam(searchParams, 'pageSize', filters.pageSize);
+  appendSearchParam(searchParams, 'status', filters.status);
 
   const query = searchParams.toString();
   return query ? `?${query}` : '';
