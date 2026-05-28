@@ -431,9 +431,11 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
   private buildOwnerRequestWhere(input: {
     ownerUserId: string
     status?: DocumentRequestStatus
+    propertyEngagementId?: string
   }): Prisma.DocumentRequestWhereInput {
     return {
       ...(input.status ? { status: input.status } : {}),
+      ...(input.propertyEngagementId ? { propertyEngagementId: input.propertyEngagementId } : {}),
       OR: [
         {
           propertyAssetOwner: {

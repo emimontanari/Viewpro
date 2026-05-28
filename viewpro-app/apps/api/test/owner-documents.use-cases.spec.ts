@@ -49,7 +49,12 @@ describe('Owner document use cases', () => {
       const repository = { listOwnerRequests: vi.fn().mockResolvedValue({ items: [documentRequest], total: 1 }) }
       const useCase = new ListOwnerDocumentRequestsUseCase(repository as never)
 
-      const result = await useCase.execute(ownerUser, { page: 2, pageSize: 5, status: DocumentRequestStatus.PENDING })
+      const result = await useCase.execute(ownerUser, {
+        page: 2,
+        pageSize: 5,
+        status: DocumentRequestStatus.PENDING,
+        propertyEngagementId: 'engagement-1',
+      })
 
       expect(result).toMatchObject({ total: 1, page: 2, pageSize: 5 })
       expect(result.items.map((item) => item.propertyAssetOwnerId)).toEqual(['owner-link-1'])
@@ -58,6 +63,7 @@ describe('Owner document use cases', () => {
         page: 2,
         pageSize: 5,
         status: DocumentRequestStatus.PENDING,
+        propertyEngagementId: 'engagement-1',
       })
     })
   })

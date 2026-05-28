@@ -70,6 +70,7 @@ export type ListOwnerDocumentRequestsInput = {
 	page: number;
 	pageSize: number;
 	status?: DocumentRequestStatus;
+	propertyEngagementId?: string;
 };
 
 export type ListActivityDocumentRequestsInput = {

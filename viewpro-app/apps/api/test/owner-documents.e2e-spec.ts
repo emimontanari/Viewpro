@@ -44,18 +44,34 @@ describe('Owner document endpoints (e2e)', () => {
     const owner = await registerOwnerSession('owner-documents-owner@example.com')
     const otherOwner = await registerOwnerSession('owner-documents-other@example.com')
     const owned = await createEngagement(manager.agent, manager.tenantId, { title: 'Owner Visible Document Property' }).expect(201)
+    const otherOwned = await createEngagement(manager.agent, manager.tenantId, { title: 'Owner Second Visible Document Property' }).expect(201)
     const hidden = await createEngagement(manager.agent, manager.tenantId, { title: 'Owner Hidden Document Property' }).expect(201)
     const ownerLink = await grantOwnerAccess(owner.userId, owned.body.property.id)
     const otherOwnerLink = await grantOwnerAccess(otherOwner.userId, hidden.body.property.id)
+    const otherVisibleLink = await grantOwnerAccess(owner.userId, otherOwned.body.property.id)
     const visibleRequest = await createInternalRequest(manager.agent, manager.tenantId, owned.body.id, ownerLink.id, 'Visible deed').expect(201)
+    const otherVisibleRequest = await createInternalRequest(
+      manager.agent,
+      manager.tenantId,
+      otherOwned.body.id,
+      otherVisibleLink.id,
+      'Second visible deed',
+    ).expect(201)
     const hiddenRequest = await createInternalRequest(manager.agent, manager.tenantId, hidden.body.id, otherOwnerLink.id, 'Hidden deed').expect(201)
 
     const list = await owner.agent.get('/api/owner/document-requests').expect(200)
+    const filteredList = await owner.agent.get(`/api/owner/document-requests?propertyEngagementId=${owned.body.id}`).expect(200)
+    const hiddenFilteredList = await owner.agent.get(`/api/owner/document-requests?propertyEngagementId=${hidden.body.id}`).expect(200)
     const detail = await owner.agent.get(`/api/owner/document-requests/${visibleRequest.body.id}`).expect(200)
     const otherDetail = await owner.agent.get(`/api/owner/document-requests/${hiddenRequest.body.id}`).expect(404)
 
-    expect(list.body.total).toBe(1)
-    expect(list.body.items.map((item: { id: string }) => item.id)).toEqual([visibleRequest.body.id])
+    expect(list.body.total).toBe(2)
+    expect(list.body.items.map((item: { id: string }) => item.id)).toEqual(
+      expect.arrayContaining([visibleRequest.body.id, otherVisibleRequest.body.id]),
+    )
+    expect(filteredList.body.total).toBe(1)
+    expect(filteredList.body.items.map((item: { id: string }) => item.id)).toEqual([visibleRequest.body.id])
+    expect(hiddenFilteredList.body.total).toBe(0)
     expect(detail.body).toMatchObject({
       id: visibleRequest.body.id,
       propertyAssetOwnerId: ownerLink.id,
@@ -159,7 +175,7 @@ describe('Owner document endpoints (e2e)', () => {
     return owner
   }
 
-  function createEngagement(agent: request.SuperAgentTest, tenantId: string, overrides: Partial<Record<string, unknown>> = {}) {
+  function createEngagement(agent: ReturnType<typeof request.agent>, tenantId: string, overrides: Partial<Record<string, unknown>> = {}) {
     return agent
       .post('/api/property-engagements')
       .set('x-tenant-id', tenantId)
@@ -175,7 +191,7 @@ describe('Owner document endpoints (e2e)', () => {
   }
 
   function createInternalRequest(
-    agent: request.SuperAgentTest,
+    agent: ReturnType<typeof request.agent>,
     tenantId: string,
     engagementId: string,
     propertyAssetOwnerId: string,

@@ -26,6 +26,7 @@ export class ListOwnerDocumentRequestsUseCase {
       page,
       pageSize,
       status: query.status,
+      propertyEngagementId: query.propertyEngagementId,
     })
 
     return { items: result.items.map(mapDocumentRequestResponse), total: result.total, page, pageSize }
