@@ -121,7 +121,7 @@ describe('OwnerDocumentRequests', () => {
       screen.getByText('El archivo no corresponde al documento solicitado.')
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Volver a subir documento' })).toHaveClass(
-      'bg-purple-600'
+      'bg-purple-500'
     );
     expect(screen.queryByRole('button', { name: 'Abrir documento' })).not.toBeInTheDocument();
   });
@@ -264,15 +264,67 @@ describe('OwnerDocumentRequests', () => {
     expect(screen.getByText('Subida')).toBeInTheDocument();
   });
 
-  it('uses success border and blue read action for submitted requests', async () => {
+  it('uses blue submitted state and blue read action for submitted requests', async () => {
     getOwnerDocumentRequestsMock.mockResolvedValueOnce(
       documentRequestsResponse([documentRequest({ status: 'SUBMITTED' })])
     );
 
     renderOwnerDocumentRequests();
 
-    expect(await screen.findByRole('listitem')).toHaveClass('border-[#1a4028]');
+    expect(await screen.findByRole('listitem')).toHaveClass('border-blue-700');
+    expect(screen.getByText('Subido')).toHaveClass('bg-blue-50');
     expect(screen.getByRole('button', { name: 'Abrir documento' })).toHaveClass('bg-blue-50');
+  });
+
+  it('uses status-colored borders for pending and approved requests', async () => {
+    getOwnerDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([
+        documentRequest({ id: 'request-pending', status: 'PENDING', currentVersion: null }),
+        documentRequest({ id: 'request-approved', status: 'APPROVED', title: 'Escritura aprobada' })
+      ])
+    );
+
+    renderOwnerDocumentRequests();
+
+    const cards = await screen.findAllByRole('listitem');
+    expect(cards[0]).toHaveClass('border-amber-600');
+    expect(cards[1]).toHaveClass('border-[#1a4028]');
+  });
+
+  it('keeps rejected document versions visible after a new upload', async () => {
+    const rejectedVersion: OwnerDocumentVersion = {
+      ...currentVersion,
+      id: 'version-rejected',
+      originalFilename: 'dni-rechazado.pdf',
+      status: 'REJECTED',
+      createdAt: '2026-05-27T10:00:00.000Z',
+      updatedAt: '2026-05-27T10:00:00.000Z'
+    };
+    const uploadedVersion: OwnerDocumentVersion = {
+      ...currentVersion,
+      id: 'version-new',
+      originalFilename: 'dni-nuevo.pdf',
+      status: 'UPLOADED',
+      createdAt: '2026-05-28T10:00:00.000Z',
+      updatedAt: '2026-05-28T10:00:00.000Z'
+    };
+    getOwnerDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([
+        documentRequest({
+          status: 'SUBMITTED',
+          currentVersion: uploadedVersion,
+          versions: [rejectedVersion, uploadedVersion]
+        })
+      ])
+    );
+
+    renderOwnerDocumentRequests();
+
+    expect(await screen.findByText('dni-nuevo.pdf')).toBeInTheDocument();
+    expect(screen.getByText('Historial de versiones')).toBeInTheDocument();
+    expect(screen.getByText('dni-rechazado.pdf')).toBeInTheDocument();
+    expect(screen.getByText('Versión anterior')).toBeInTheDocument();
+    expect(screen.getByText('Rechazada')).toHaveClass('bg-red-50');
   });
 
   it('creates a read URL and opens it in a safe new tab', async () => {
@@ -358,6 +410,10 @@ const currentVersion: OwnerDocumentVersion = {
 };
 
 function documentRequest(overrides: Partial<OwnerDocumentRequest> = {}): OwnerDocumentRequest {
+  const resolvedCurrentVersion =
+    overrides.currentVersion === undefined ? currentVersion : overrides.currentVersion;
+  const resolvedVersions = overrides.versions ?? (resolvedCurrentVersion ? [resolvedCurrentVersion] : []);
+
   return {
     id: 'request-1',
     tenantId: 'tenant-1',
@@ -373,8 +429,8 @@ function documentRequest(overrides: Partial<OwnerDocumentRequest> = {}): OwnerDo
     rejectionReason: null,
     createdAt: '2026-05-27T10:00:00.000Z',
     updatedAt: '2026-05-27T10:00:00.000Z',
-    currentVersion,
-    versions: currentVersion ? [currentVersion] : [],
-    ...overrides
+    ...overrides,
+    currentVersion: resolvedCurrentVersion,
+    versions: resolvedVersions
   };
 }

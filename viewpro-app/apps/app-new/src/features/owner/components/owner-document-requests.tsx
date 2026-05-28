@@ -18,6 +18,7 @@ import {
 import type {
   OwnerDocumentRequest,
   OwnerDocumentRequestStatus,
+  OwnerDocumentVersion,
   OwnerDocumentVersionStatus
 } from '../api/types';
 import { OwnerDocumentUploadDialog, type OwnerUploadPhase } from './owner-document-upload-dialog';
@@ -50,7 +51,7 @@ const documentStatusTones: Record<OwnerDocumentRequestStatus, string> = {
   REJECTED:
     'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300',
   SUBMITTED:
-    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300'
+    'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300'
 };
 
 const documentVersionStatusTones: Record<OwnerDocumentVersionStatus, string> = {
@@ -61,15 +62,15 @@ const documentVersionStatusTones: Record<OwnerDocumentVersionStatus, string> = {
   REJECTED:
     'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300',
   UPLOADED:
-    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300'
+    'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300'
 };
 
 const documentCardBorderTones: Record<OwnerDocumentRequestStatus, string> = {
   APPROVED: 'border-[#1a4028]',
-  CANCELLED: 'border-border',
-  PENDING: 'border-border',
+  CANCELLED: 'border-zinc-700',
+  PENDING: 'border-amber-600',
   REJECTED: 'border-[#5a2020]',
-  SUBMITTED: 'border-[#1a4028]'
+  SUBMITTED: 'border-blue-700'
 };
 
 const documentIconChipTones: Record<OwnerDocumentRequestStatus, string> = {
@@ -82,7 +83,7 @@ const documentIconChipTones: Record<OwnerDocumentRequestStatus, string> = {
   REJECTED:
     'border-red-200 bg-red-50 text-red-700 dark:border-red-900/70 dark:bg-red-950/50 dark:text-red-200',
   SUBMITTED:
-    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/50 dark:text-emerald-200'
+    'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/70 dark:bg-blue-950/50 dark:text-blue-200'
 };
 
 type DocumentIcon = ComponentType<IconProps>;
@@ -289,9 +290,10 @@ function OwnerDocumentRequestItem({
     (request.status === 'SUBMITTED' || request.status === 'APPROVED') && request.currentVersion;
   const uploadLabel =
     request.status === 'REJECTED' ? 'Volver a subir documento' : 'Subir documento';
+  const currentVersion = request.currentVersion;
+  const historicalVersions = getHistoricalVersions(request);
   const documentTypeLabel = getDocumentTypeLabel(request.title);
   const HeaderIcon = getDocumentHeaderIcon(request.title);
-  const FileIcon = request.currentVersion ? getDocumentFileIcon(request.currentVersion.mimeType) : null;
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -356,29 +358,24 @@ function OwnerDocumentRequestItem({
           </p>
         ) : null}
 
-        {request.currentVersion && FileIcon ? (
-          <div className='flex items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3 text-sm'>
-            <div className='flex min-w-0 items-center gap-3'>
-              <span
-                aria-hidden='true'
-                className='flex size-10 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground'
-              >
-                <FileIcon className='size-5' />
-              </span>
-              <div className='min-w-0'>
-                <p className='break-words font-medium'>{request.currentVersion.originalFilename}</p>
-                <p className='text-xs text-muted-foreground'>Versión actual del documento</p>
-              </div>
+        {currentVersion ? (
+          <DocumentVersionRow label='Versión actual del documento' version={currentVersion} />
+        ) : null}
+
+        {historicalVersions.length > 0 ? (
+          <div className='space-y-2 rounded-lg border border-dashed bg-muted/10 p-3'>
+            <p className='text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase'>
+              Historial de versiones
+            </p>
+            <div className='space-y-2'>
+              {historicalVersions.map((version) => (
+                <DocumentVersionRow
+                  key={version.id}
+                  label='Versión anterior'
+                  version={version}
+                />
+              ))}
             </div>
-            <Badge
-              variant='outline'
-              className={cn(
-                'shrink-0 rounded-md',
-                documentVersionStatusTones[request.currentVersion.status]
-              )}
-            >
-              {documentVersionStatusLabels[request.currentVersion.status]}
-            </Badge>
           </div>
         ) : null}
       </div>
@@ -414,7 +411,7 @@ function OwnerDocumentRequestItem({
               />
               <Button
                 type='button'
-                className='w-full bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-400'
+                className='w-full bg-purple-500 text-white hover:bg-purple-600 dark:bg-purple-500 dark:hover:bg-purple-400'
                 disabled={isUploading}
                 onClick={handleUploadClick}
               >
@@ -440,6 +437,45 @@ function OwnerDocumentRequestItem({
       ) : null}
     </li>
   );
+}
+
+function DocumentVersionRow({
+  label,
+  version
+}: {
+  label: string;
+  version: OwnerDocumentVersion;
+}) {
+  const FileIcon = getDocumentFileIcon(version.mimeType);
+
+  return (
+    <div className='flex items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3 text-sm'>
+      <div className='flex min-w-0 items-center gap-3'>
+        <span
+          aria-hidden='true'
+          className='flex size-10 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground'
+        >
+          <FileIcon className='size-5' />
+        </span>
+        <div className='min-w-0'>
+          <p className='break-words font-medium'>{version.originalFilename}</p>
+          <p className='text-xs text-muted-foreground'>{label}</p>
+        </div>
+      </div>
+      <Badge
+        variant='outline'
+        className={cn('shrink-0 rounded-md', documentVersionStatusTones[version.status])}
+      >
+        {documentVersionStatusLabels[version.status]}
+      </Badge>
+    </div>
+  );
+}
+
+function getHistoricalVersions(request: OwnerDocumentRequest) {
+  return request.versions
+    .filter((version) => version.id !== request.currentVersion?.id)
+    .toSorted((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
 }
 
 function getDocumentTypeLabel(title: string) {
