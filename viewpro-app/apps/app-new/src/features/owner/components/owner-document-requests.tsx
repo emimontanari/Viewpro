@@ -4,8 +4,9 @@ import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { IconHome, IconId, type IconProps } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type ChangeEvent, useRef, useState } from 'react';
+import { type ChangeEvent, type ComponentType, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ownerDocumentRequestsOptions, ownerKeys } from '../api/queries';
 import {
@@ -49,8 +50,42 @@ const documentStatusTones: Record<OwnerDocumentRequestStatus, string> = {
   REJECTED:
     'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300',
   SUBMITTED:
-    'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/50 dark:text-sky-300'
+    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300'
 };
+
+const documentVersionStatusTones: Record<OwnerDocumentVersionStatus, string> = {
+  APPROVED:
+    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300',
+  PENDING_UPLOAD:
+    'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300',
+  REJECTED:
+    'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300',
+  UPLOADED:
+    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300'
+};
+
+const documentCardBorderTones: Record<OwnerDocumentRequestStatus, string> = {
+  APPROVED: 'border-[#1a4028]',
+  CANCELLED: 'border-border',
+  PENDING: 'border-border',
+  REJECTED: 'border-[#5a2020]',
+  SUBMITTED: 'border-[#1a4028]'
+};
+
+const documentIconChipTones: Record<OwnerDocumentRequestStatus, string> = {
+  APPROVED:
+    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/50 dark:text-emerald-200',
+  CANCELLED:
+    'border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300',
+  PENDING:
+    'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/50 dark:text-amber-200',
+  REJECTED:
+    'border-red-200 bg-red-50 text-red-700 dark:border-red-900/70 dark:bg-red-950/50 dark:text-red-200',
+  SUBMITTED:
+    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/50 dark:text-emerald-200'
+};
+
+type DocumentIcon = ComponentType<IconProps>;
 
 const documentVersionStatusLabels: Record<OwnerDocumentVersionStatus, string> = {
   APPROVED: 'Aprobada',
@@ -65,7 +100,13 @@ type SelectedUpload = {
   requestTitle: string;
 };
 
-export function OwnerDocumentRequests({ propertyEngagementId }: { propertyEngagementId: string }) {
+export function OwnerDocumentRequests({
+  agencyName = 'la inmobiliaria',
+  propertyEngagementId
+}: {
+  agencyName?: string;
+  propertyEngagementId: string;
+}) {
   const queryClient = useQueryClient();
   const [selectedUpload, setSelectedUpload] = useState<SelectedUpload | null>(null);
   const [fileSelectionError, setFileSelectionError] = useState<string | null>(null);
@@ -201,6 +242,7 @@ export function OwnerDocumentRequests({ propertyEngagementId }: { propertyEngage
             {documentRequestsQuery.data?.items.map((request) => (
               <OwnerDocumentRequestItem
                 key={request.id}
+                agencyName={agencyName}
                 request={request}
                 isUploading={uploadMutation.isPending}
                 isReading={readMutation.isPending}
@@ -228,12 +270,14 @@ export function OwnerDocumentRequests({ propertyEngagementId }: { propertyEngage
 }
 
 function OwnerDocumentRequestItem({
+  agencyName,
   isReading,
   isUploading,
   onRead,
   onUpload,
   request
 }: {
+  agencyName: string;
   isReading: boolean;
   isUploading: boolean;
   onRead: (versionId: string) => void;
@@ -245,6 +289,9 @@ function OwnerDocumentRequestItem({
     (request.status === 'SUBMITTED' || request.status === 'APPROVED') && request.currentVersion;
   const uploadLabel =
     request.status === 'REJECTED' ? 'Volver a subir documento' : 'Subir documento';
+  const documentTypeLabel = getDocumentTypeLabel(request.title);
+  const HeaderIcon = getDocumentHeaderIcon(request.title);
+  const FileIcon = request.currentVersion ? getDocumentFileIcon(request.currentVersion.mimeType) : null;
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -267,27 +314,92 @@ function OwnerDocumentRequestItem({
   }
 
   return (
-    <li className='space-y-3 rounded-xl border bg-background p-3'>
-      <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
-        <div className='min-w-0 space-y-1'>
-          <div className='flex flex-wrap items-center gap-2'>
-            <Badge
-              variant='outline'
-              className={cn('rounded-md', documentStatusTones[request.status])}
+    <li
+      className={cn(
+        'overflow-hidden rounded-xl border bg-background shadow-xs',
+        documentCardBorderTones[request.status]
+      )}
+    >
+      <div className='space-y-4 p-4'>
+        <div
+          data-testid='owner-document-card-header'
+          className='flex items-start justify-between gap-3'
+        >
+          <div className='flex min-w-0 items-start gap-3'>
+            <span
+              aria-hidden='true'
+              className={cn(
+                'flex size-11 shrink-0 items-center justify-center rounded-xl border',
+                documentIconChipTones[request.status]
+              )}
             >
-              {documentStatusLabels[request.status]}
-            </Badge>
-            <span className='text-xs text-muted-foreground'>Solicitado por la inmobiliaria</span>
+              <HeaderIcon className='size-5' />
+            </span>
+            <div className='min-w-0 space-y-1'>
+              <h4 className='break-words text-sm font-semibold'>{request.title}</h4>
+              <p className='break-words text-xs text-muted-foreground'>
+                {documentTypeLabel} · Solicitado por {agencyName}
+              </p>
+            </div>
           </div>
-          <h4 className='break-words text-sm font-semibold'>{request.title}</h4>
-          {request.description ? (
-            <p className='whitespace-pre-wrap break-words text-sm text-muted-foreground'>
-              {request.description}
-            </p>
-          ) : null}
+          <Badge
+            variant='outline'
+            className={cn('shrink-0 rounded-md', documentStatusTones[request.status])}
+          >
+            {documentStatusLabels[request.status]}
+          </Badge>
         </div>
 
-        <div className='flex shrink-0 flex-wrap gap-2'>
+        {request.description ? (
+          <p className='whitespace-pre-wrap break-words text-sm text-muted-foreground'>
+            {request.description}
+          </p>
+        ) : null}
+
+        {request.currentVersion && FileIcon ? (
+          <div className='flex items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3 text-sm'>
+            <div className='flex min-w-0 items-center gap-3'>
+              <span
+                aria-hidden='true'
+                className='flex size-10 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground'
+              >
+                <FileIcon className='size-5' />
+              </span>
+              <div className='min-w-0'>
+                <p className='break-words font-medium'>{request.currentVersion.originalFilename}</p>
+                <p className='text-xs text-muted-foreground'>Versión actual del documento</p>
+              </div>
+            </div>
+            <Badge
+              variant='outline'
+              className={cn(
+                'shrink-0 rounded-md',
+                documentVersionStatusTones[request.currentVersion.status]
+              )}
+            >
+              {documentVersionStatusLabels[request.currentVersion.status]}
+            </Badge>
+          </div>
+        ) : null}
+      </div>
+
+      {request.status === 'REJECTED' && request.rejectionReason ? (
+        <div
+          role='alert'
+          className='flex gap-3 border-t border-red-900/70 bg-[#190b0b] px-4 py-3 text-red-100'
+        >
+          <Icons.warning className='mt-0.5 size-5 shrink-0 text-red-300' />
+          <div className='min-w-0 space-y-1'>
+            <p className='text-[11px] font-semibold tracking-[0.12em] text-red-300 uppercase'>
+              MOTIVO DEL RECHAZO
+            </p>
+            <p className='break-words text-sm'>{request.rejectionReason}</p>
+          </div>
+        </div>
+      ) : null}
+
+      {canUpload || canRead ? (
+        <div className='border-t bg-background p-4'>
           {canUpload ? (
             <>
               <input
@@ -302,8 +414,7 @@ function OwnerDocumentRequestItem({
               />
               <Button
                 type='button'
-                size='sm'
-                variant='secondary'
+                className='w-full bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-400'
                 disabled={isUploading}
                 onClick={handleUploadClick}
               >
@@ -316,8 +427,8 @@ function OwnerDocumentRequestItem({
           {canRead ? (
             <Button
               type='button'
-              size='sm'
               variant='outline'
+              className='w-full border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-900/70 dark:bg-blue-950/50 dark:text-blue-200 dark:hover:bg-blue-900/60'
               disabled={isReading}
               onClick={() => onRead(request.currentVersion!.id)}
             >
@@ -326,28 +437,56 @@ function OwnerDocumentRequestItem({
             </Button>
           ) : null}
         </div>
-      </div>
-
-      {request.rejectionReason ? (
-        <div className='rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300'>
-          <span className='font-medium'>Motivo de rechazo: </span>
-          <span className='break-words'>{request.rejectionReason}</span>
-        </div>
-      ) : null}
-
-      {request.currentVersion ? (
-        <div className='flex flex-col gap-1 rounded-lg border bg-muted/20 p-3 text-sm sm:flex-row sm:items-center sm:justify-between'>
-          <div className='min-w-0'>
-            <p className='break-words font-medium'>{request.currentVersion.originalFilename}</p>
-            <p className='text-xs text-muted-foreground'>Versión actual del documento</p>
-          </div>
-          <Badge variant='outline' className='w-fit rounded-md bg-background'>
-            {documentVersionStatusLabels[request.currentVersion.status]}
-          </Badge>
-        </div>
       ) : null}
     </li>
   );
+}
+
+function getDocumentTypeLabel(title: string) {
+  const normalizedTitle = normalizeSearchText(title);
+
+  if (normalizedTitle.includes('dni') || normalizedTitle.includes('identidad')) {
+    return 'DNI';
+  }
+
+  if (normalizedTitle.includes('escritura')) {
+    return 'Escritura';
+  }
+
+  return title;
+}
+
+function getDocumentHeaderIcon(title: string): DocumentIcon {
+  const normalizedTitle = normalizeSearchText(title);
+
+  if (normalizedTitle.includes('dni') || normalizedTitle.includes('identidad')) {
+    return IconId;
+  }
+
+  if (normalizedTitle.includes('escritura')) {
+    return IconHome;
+  }
+
+  return Icons.post;
+}
+
+function getDocumentFileIcon(mimeType: string): DocumentIcon {
+  if (mimeType === 'application/pdf') {
+    return Icons.fileTypePdf;
+  }
+
+  if (mimeType.startsWith('image/')) {
+    return Icons.media;
+  }
+
+  return Icons.page;
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 }
 
 function assertValidUploadFile(file: File) {

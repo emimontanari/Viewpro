@@ -116,11 +116,13 @@ describe('OwnerDocumentRequests', () => {
 
     renderOwnerDocumentRequests();
 
-    expect(await screen.findByText(/Motivo de rechazo:/)).toBeInTheDocument();
+    expect(await screen.findByText('MOTIVO DEL RECHAZO')).toBeInTheDocument();
     expect(
       screen.getByText('El archivo no corresponde al documento solicitado.')
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Volver a subir documento' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Volver a subir documento' })).toHaveClass(
+      'bg-purple-600'
+    );
     expect(screen.queryByRole('button', { name: 'Abrir documento' })).not.toBeInTheDocument();
   });
 
@@ -240,6 +242,39 @@ describe('OwnerDocumentRequests', () => {
     expect(createOwnerDocumentUploadUrlMock).not.toHaveBeenCalled();
   });
 
+  it('renders the requested card hierarchy and semantic styles', async () => {
+    getOwnerDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([
+        documentRequest({
+          status: 'REJECTED',
+          rejectionReason: 'El archivo no corresponde al documento solicitado.'
+        })
+      ])
+    );
+
+    renderOwnerDocumentRequests();
+
+    const card = await screen.findByRole('listitem');
+    expect(card).toHaveClass('border-[#5a2020]');
+    const header = screen.getByTestId('owner-document-card-header');
+    expect(header).toHaveTextContent('DNI del propietario');
+    expect(header).toHaveTextContent('DNI · Solicitado por ViewPro Demo Inmobiliaria');
+    expect(header).toHaveTextContent('Rechazado');
+    expect(screen.getByText('Versión actual del documento')).toBeInTheDocument();
+    expect(screen.getByText('Subida')).toBeInTheDocument();
+  });
+
+  it('uses success border and blue read action for submitted requests', async () => {
+    getOwnerDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([documentRequest({ status: 'SUBMITTED' })])
+    );
+
+    renderOwnerDocumentRequests();
+
+    expect(await screen.findByRole('listitem')).toHaveClass('border-[#1a4028]');
+    expect(screen.getByRole('button', { name: 'Abrir documento' })).toHaveClass('bg-blue-50');
+  });
+
   it('creates a read URL and opens it in a safe new tab', async () => {
     const user = userEvent.setup();
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
@@ -278,7 +313,10 @@ function renderOwnerDocumentRequests() {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <OwnerDocumentRequests propertyEngagementId={propertyEngagementId} />
+      <OwnerDocumentRequests
+        agencyName='ViewPro Demo Inmobiliaria'
+        propertyEngagementId={propertyEngagementId}
+      />
     </QueryClientProvider>
   );
 

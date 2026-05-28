@@ -120,7 +120,10 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
             />
           ) : null}
           {!isEngagementsLoading && !isEngagementsError && primaryEngagement ? (
-            <OwnerDocumentRequests propertyEngagementId={primaryEngagement.id} />
+            <OwnerDocumentRequests
+              agencyName={primaryEngagement.tenant.name}
+              propertyEngagementId={primaryEngagement.id}
+            />
           ) : null}
           {!isEngagementsLoading && !isEngagementsError && !primaryEngagement ? (
             <OwnerDetailState
