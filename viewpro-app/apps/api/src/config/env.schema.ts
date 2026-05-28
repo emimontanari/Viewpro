@@ -49,6 +49,18 @@ class EnvironmentVariables {
   @IsString()
   DATABASE_URL?: string
 
+  @IsOptional()
+  @IsIn(['fake', 'local'])
+  DOCUMENT_STORAGE_DRIVER?: 'fake' | 'local'
+
+  @IsOptional()
+  @IsString()
+  DOCUMENT_STORAGE_LOCAL_ROOT?: string
+
+  @IsOptional()
+  @IsString()
+  DOCUMENT_STORAGE_SIGNING_SECRET?: string
+
   @IsString()
   ACCESS_TOKEN_SECRET = 'change-me-in-real-env'
 

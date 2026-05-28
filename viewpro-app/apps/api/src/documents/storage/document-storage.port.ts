@@ -3,6 +3,8 @@ export const DOCUMENT_STORAGE_PORT = Symbol('DOCUMENT_STORAGE_PORT')
 export type CreateDocumentUploadUrlInput = {
   storageKey: string
   expiresInSeconds: number
+  mimeType?: string
+  sizeBytes?: number
 }
 
 export type CreateDocumentReadUrlInput = {
