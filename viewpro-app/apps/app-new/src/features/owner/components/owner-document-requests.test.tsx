@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,6 +7,7 @@ import type {
   CreateOwnerDocumentUploadUrlResponse,
   OwnerDocumentRequest,
   OwnerDocumentRequestsResponse,
+  OwnerDocumentUploadResponse,
   OwnerDocumentVersion,
   OwnerDocumentVersionUrlResponse
 } from '../api/types';
@@ -47,9 +48,15 @@ describe('OwnerDocumentRequests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getOwnerDocumentRequestsMock.mockResolvedValue(documentRequestsResponse([]));
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: vi.fn(() => 'blob:viewpro-preview'),
+      revokeObjectURL: vi.fn()
+    });
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
@@ -117,7 +124,30 @@ describe('OwnerDocumentRequests', () => {
     expect(screen.queryByRole('button', { name: 'Abrir documento' })).not.toBeInTheDocument();
   });
 
-  it('uploads a selected file and refreshes the owner document request list', async () => {
+  it('opens a confirmation dialog with PDF details and does not upload before confirmation', async () => {
+    const user = userEvent.setup();
+    getOwnerDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([documentRequest({ status: 'PENDING', currentVersion: null })])
+    );
+
+    renderOwnerDocumentRequests();
+
+    const file = new File(['demo'], 'dni.pdf', { type: 'application/pdf' });
+    await user.upload(await screen.findByLabelText('Subir documento archivo'), file);
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Confirmar carga de documento' })
+    ).toBeVisible();
+    expect(screen.getByText('dni.pdf')).toBeInTheDocument();
+    expect(screen.getByText('4 B')).toBeInTheDocument();
+    expect(screen.getByText('application/pdf')).toBeInTheDocument();
+    expect(screen.getByText(/PDF, JPG, PNG o WebP/i)).toBeInTheDocument();
+    expect(createOwnerDocumentUploadUrlMock).not.toHaveBeenCalled();
+    expect(uploadOwnerDocumentFileMock).not.toHaveBeenCalled();
+    expect(confirmOwnerDocumentUploadMock).not.toHaveBeenCalled();
+  });
+
+  it('confirms upload, reports progress, refreshes the list and closes the dialog', async () => {
     const user = userEvent.setup();
     const request = documentRequest({ status: 'PENDING', currentVersion: null });
     const uploadResponse: CreateOwnerDocumentUploadUrlResponse = {
@@ -129,12 +159,12 @@ describe('OwnerDocumentRequests', () => {
         expiresInSeconds: 600
       }
     };
+    const uploadDeferred = createDeferred<OwnerDocumentUploadResponse>();
     getOwnerDocumentRequestsMock.mockResolvedValueOnce(documentRequestsResponse([request]));
     createOwnerDocumentUploadUrlMock.mockResolvedValueOnce(uploadResponse);
-    uploadOwnerDocumentFileMock.mockResolvedValueOnce({
-      storageKey: uploadResponse.uploadUrl.storageKey,
-      mimeType: 'application/pdf',
-      sizeBytes: 4
+    uploadOwnerDocumentFileMock.mockImplementationOnce(async (_uploadUrl, _file, options) => {
+      options?.onProgress?.({ loaded: 2, total: 4, percent: 50 });
+      return uploadDeferred.promise;
     });
     confirmOwnerDocumentUploadMock.mockResolvedValueOnce({ ...currentVersion, id: 'version-new' });
     const { queryClient } = renderOwnerDocumentRequests();
@@ -142,19 +172,72 @@ describe('OwnerDocumentRequests', () => {
 
     const file = new File(['demo'], 'dni.pdf', { type: 'application/pdf' });
     await user.upload(await screen.findByLabelText('Subir documento archivo'), file);
+    await user.click(await screen.findByRole('button', { name: 'Confirmar carga' }));
+
+    expect(await screen.findByText('Subiendo archivo')).toBeInTheDocument();
+    expect(screen.getByText('50%')).toBeInTheDocument();
+    expect(uploadOwnerDocumentFileMock).toHaveBeenCalledWith(uploadResponse.uploadUrl, file, {
+      mimeType: 'application/pdf',
+      onProgress: expect.any(Function)
+    });
+
+    uploadDeferred.resolve({
+      storageKey: uploadResponse.uploadUrl.storageKey,
+      mimeType: 'application/pdf',
+      sizeBytes: 4
+    });
 
     await waitFor(() => {
-      expect(createOwnerDocumentUploadUrlMock).toHaveBeenCalledWith('request-1', {
-        originalFilename: 'dni.pdf',
-        mimeType: 'application/pdf',
-        sizeBytes: 4
-      });
+      expect(confirmOwnerDocumentUploadMock).toHaveBeenCalledWith('version-new');
     });
-    expect(uploadOwnerDocumentFileMock).toHaveBeenCalledWith(uploadResponse.uploadUrl, file, {
-      mimeType: 'application/pdf'
+    expect(createOwnerDocumentUploadUrlMock).toHaveBeenCalledWith('request-1', {
+      originalFilename: 'dni.pdf',
+      mimeType: 'application/pdf',
+      sizeBytes: 4
     });
-    expect(confirmOwnerDocumentUploadMock).toHaveBeenCalledWith('version-new');
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: documentQueryKey });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows an image preview before confirmation', async () => {
+    const user = userEvent.setup();
+    getOwnerDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([documentRequest({ status: 'PENDING', currentVersion: null })])
+    );
+
+    renderOwnerDocumentRequests();
+
+    const file = new File(['image'], 'frente-dni.png', { type: 'image/png' });
+    await user.upload(await screen.findByLabelText('Subir documento archivo'), file);
+
+    expect(await screen.findByAltText('Vista previa de frente-dni.png')).toHaveAttribute(
+      'src',
+      'blob:viewpro-preview'
+    );
+    expect(URL.createObjectURL).toHaveBeenCalledWith(file);
+  });
+
+  it('rejects unsupported file types before creating an upload URL', async () => {
+    getOwnerDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([documentRequest({ status: 'PENDING', currentVersion: null })])
+    );
+
+    renderOwnerDocumentRequests();
+
+    const file = new File(['demo'], 'notas.txt', { type: 'text/plain' });
+    fireEvent.change(await screen.findByLabelText('Subir documento archivo'), {
+      target: { files: [file] }
+    });
+
+    expect(
+      await screen.findByText('Formato no permitido. Subí PDF, JPG, PNG o WebP.')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('dialog', { name: 'Confirmar carga de documento' })
+    ).not.toBeInTheDocument();
+    expect(createOwnerDocumentUploadUrlMock).not.toHaveBeenCalled();
   });
 
   it('creates a read URL and opens it in a safe new tab', async () => {
@@ -209,6 +292,17 @@ function documentRequestsResponse(items: OwnerDocumentRequest[]): OwnerDocumentR
     pageSize: 20,
     total: items.length
   };
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return { promise, reject, resolve };
 }
 
 const currentVersion: OwnerDocumentVersion = {

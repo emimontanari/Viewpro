@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type ChangeEvent, useRef } from 'react';
+import { type ChangeEvent, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ownerDocumentRequestsOptions, ownerKeys } from '../api/queries';
 import {
@@ -19,8 +19,17 @@ import type {
   OwnerDocumentRequestStatus,
   OwnerDocumentVersionStatus
 } from '../api/types';
+import { OwnerDocumentUploadDialog, type OwnerUploadPhase } from './owner-document-upload-dialog';
 
 const OWNER_DOCUMENT_FILTERS = { pageSize: 20 };
+const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_UPLOAD_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp'
+]);
+const ACCEPTED_UPLOAD_INPUT_TYPES = 'application/pdf,image/jpeg,image/png,image/webp';
 
 const documentStatusLabels: Record<OwnerDocumentRequestStatus, string> = {
   APPROVED: 'Aprobado',
@@ -50,8 +59,19 @@ const documentVersionStatusLabels: Record<OwnerDocumentVersionStatus, string> = 
   UPLOADED: 'Subida'
 };
 
+type SelectedUpload = {
+  file: File;
+  requestId: string;
+  requestTitle: string;
+};
+
 export function OwnerDocumentRequests({ propertyEngagementId }: { propertyEngagementId: string }) {
   const queryClient = useQueryClient();
+  const [selectedUpload, setSelectedUpload] = useState<SelectedUpload | null>(null);
+  const [fileSelectionError, setFileSelectionError] = useState<string | null>(null);
+  const [uploadErrorMessage, setUploadErrorMessage] = useState<string | null>(null);
+  const [uploadPhase, setUploadPhase] = useState<OwnerUploadPhase>('idle');
+  const [uploadProgress, setUploadProgress] = useState(0);
   const documentRequestsQuery = useQuery(
     ownerDocumentRequestsOptions(propertyEngagementId, OWNER_DOCUMENT_FILTERS)
   );
@@ -61,13 +81,9 @@ export function OwnerDocumentRequests({ propertyEngagementId }: { propertyEngage
   );
   const uploadMutation = useMutation({
     mutationFn: async ({ file, requestId }: { file: File; requestId: string }) => {
-      if (!file.type) {
-        throw new Error('El tipo de archivo es requerido para subir documentos.');
-      }
-
-      if (file.size < 1) {
-        throw new Error('El archivo está vacío.');
-      }
+      assertValidUploadFile(file);
+      setUploadPhase('preparing');
+      setUploadProgress(10);
 
       const { uploadUrl, version } = await createOwnerDocumentUploadUrl(requestId, {
         originalFilename: file.name,
@@ -75,15 +91,28 @@ export function OwnerDocumentRequests({ propertyEngagementId }: { propertyEngage
         sizeBytes: file.size
       });
 
-      await uploadOwnerDocumentFile(uploadUrl, file, { mimeType: file.type });
+      setUploadPhase('uploading');
+      setUploadProgress(35);
+      await uploadOwnerDocumentFile(uploadUrl, file, {
+        mimeType: file.type,
+        onProgress: (progress) => setUploadProgress(progress.percent)
+      });
+
+      setUploadPhase('confirming');
+      setUploadProgress(90);
       return confirmOwnerDocumentUpload(version.id);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: documentRequestsQueryKey });
       toast.success('Documento subido correctamente');
+      clearUploadDialog();
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo subir el documento');
+      const message = error instanceof Error ? error.message : 'No se pudo subir el documento';
+      setUploadPhase('idle');
+      setUploadProgress(0);
+      setUploadErrorMessage(message);
+      toast.error(message);
     }
   });
   const readMutation = useMutation({
@@ -96,6 +125,50 @@ export function OwnerDocumentRequests({ propertyEngagementId }: { propertyEngage
     }
   });
 
+  function clearUploadDialog() {
+    setSelectedUpload(null);
+    setUploadErrorMessage(null);
+    setUploadPhase('idle');
+    setUploadProgress(0);
+  }
+
+  function handleCancelUpload() {
+    if (uploadMutation.isPending) {
+      return;
+    }
+
+    clearUploadDialog();
+  }
+
+  function handleSelectedUpload(request: OwnerDocumentRequest, file: File) {
+    if (uploadMutation.isPending) {
+      return;
+    }
+
+    const validationError = getUploadFileValidationError(file);
+    if (validationError) {
+      setFileSelectionError(validationError);
+      setSelectedUpload(null);
+      setUploadErrorMessage(null);
+      return;
+    }
+
+    setFileSelectionError(null);
+    setUploadErrorMessage(null);
+    setUploadPhase('idle');
+    setUploadProgress(0);
+    setSelectedUpload({ file, requestId: request.id, requestTitle: request.title });
+  }
+
+  function handleConfirmUpload() {
+    if (!selectedUpload || uploadMutation.isPending) {
+      return;
+    }
+
+    setUploadErrorMessage(null);
+    uploadMutation.mutate({ file: selectedUpload.file, requestId: selectedUpload.requestId });
+  }
+
   return (
     <section className='space-y-3'>
       <div className='flex flex-col gap-1'>
@@ -106,6 +179,14 @@ export function OwnerDocumentRequests({ propertyEngagementId }: { propertyEngage
       </div>
 
       <div className='rounded-2xl border bg-card p-4 shadow-xs'>
+        {fileSelectionError ? (
+          <div
+            role='alert'
+            className='mb-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300'
+          >
+            {fileSelectionError}
+          </div>
+        ) : null}
         {documentRequestsQuery.isLoading ? <DocumentRequestsLoadingState /> : null}
         {documentRequestsQuery.isError ? <DocumentRequestsErrorState /> : null}
         {!documentRequestsQuery.isLoading &&
@@ -124,12 +205,24 @@ export function OwnerDocumentRequests({ propertyEngagementId }: { propertyEngage
                 isUploading={uploadMutation.isPending}
                 isReading={readMutation.isPending}
                 onRead={(versionId) => readMutation.mutate(versionId)}
-                onUpload={(requestId, file) => uploadMutation.mutate({ file, requestId })}
+                onUpload={(uploadRequest, file) => handleSelectedUpload(uploadRequest, file)}
               />
             ))}
           </ul>
         ) : null}
       </div>
+
+      <OwnerDocumentUploadDialog
+        open={selectedUpload !== null}
+        file={selectedUpload?.file ?? null}
+        requestTitle={selectedUpload?.requestTitle}
+        isUploading={uploadMutation.isPending}
+        uploadPhase={uploadPhase}
+        progress={uploadProgress}
+        errorMessage={uploadErrorMessage}
+        onCancel={handleCancelUpload}
+        onConfirm={handleConfirmUpload}
+      />
     </section>
   );
 }
@@ -144,7 +237,7 @@ function OwnerDocumentRequestItem({
   isReading: boolean;
   isUploading: boolean;
   onRead: (versionId: string) => void;
-  onUpload: (requestId: string, file: File) => void;
+  onUpload: (request: OwnerDocumentRequest, file: File) => void;
   request: OwnerDocumentRequest;
 }) {
   const canUpload = request.status === 'PENDING' || request.status === 'REJECTED';
@@ -162,7 +255,7 @@ function OwnerDocumentRequestItem({
       return;
     }
 
-    onUpload(request.id, file);
+    onUpload(request, file);
   }
 
   function handleUploadClick() {
@@ -200,6 +293,7 @@ function OwnerDocumentRequestItem({
               <input
                 ref={inputRef}
                 aria-label={`${uploadLabel} archivo`}
+                accept={ACCEPTED_UPLOAD_INPUT_TYPES}
                 className='sr-only'
                 disabled={isUploading}
                 tabIndex={-1}
@@ -254,6 +348,29 @@ function OwnerDocumentRequestItem({
       ) : null}
     </li>
   );
+}
+
+function assertValidUploadFile(file: File) {
+  const validationError = getUploadFileValidationError(file);
+  if (validationError) {
+    throw new Error(validationError);
+  }
+}
+
+function getUploadFileValidationError(file: File) {
+  if (file.size < 1) {
+    return 'El archivo está vacío.';
+  }
+
+  if (!ACCEPTED_UPLOAD_MIME_TYPES.has(file.type)) {
+    return 'Formato no permitido. Subí PDF, JPG, PNG o WebP.';
+  }
+
+  if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+    return 'El archivo no puede superar 10 MB.';
+  }
+
+  return null;
 }
 
 function DocumentRequestsLoadingState() {

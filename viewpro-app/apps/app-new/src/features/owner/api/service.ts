@@ -78,13 +78,7 @@ export async function uploadOwnerDocumentFile(
     throw new Error('El tipo de archivo es requerido para subir documentos.');
   }
 
-  const response = await fetch(getFetchUrl(uploadUrl.url), {
-    body: fileOrBlob,
-    headers: { 'content-type': mimeType },
-    method: 'PUT'
-  });
-
-  return parseJsonResponse<OwnerDocumentUploadResponse>(response);
+  return uploadBlobWithProgress(getFetchUrl(uploadUrl.url), fileOrBlob, mimeType, options);
 }
 
 export async function confirmOwnerDocumentUpload(versionId: string): Promise<OwnerDocumentVersion> {
@@ -181,6 +175,60 @@ async function parseJsonResponse<TResponse>(response: Response): Promise<TRespon
   }
 
   return body as TResponse;
+}
+
+function uploadBlobWithProgress(
+  url: string,
+  fileOrBlob: Blob,
+  mimeType: string,
+  options: OwnerDocumentUploadFileOptions
+): Promise<OwnerDocumentUploadResponse> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('content-type', mimeType);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) {
+        options.onProgress?.({
+          loaded: event.loaded,
+          total: event.total,
+          percent: Math.min(100, Math.round((event.loaded / event.total) * 100))
+        });
+        return;
+      }
+
+      options.onProgress?.({ loaded: event.loaded, total: 0, percent: 35 });
+    };
+
+    xhr.onerror = () => reject(new Error('No se pudo subir el documento.'));
+    xhr.ontimeout = () => reject(new Error('La carga del documento tardó demasiado.'));
+    xhr.onload = () => {
+      const body = parseJson(xhr.responseText);
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(getErrorMessage(body, xhr.statusText || 'No se pudo subir el documento')));
+        return;
+      }
+
+      resolve(body as OwnerDocumentUploadResponse);
+    };
+
+    xhr.send(fileOrBlob);
+  });
+}
+
+function parseJson(value: string) {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return undefined;
+  }
 }
 
 function getErrorMessage(body: unknown, fallback: string) {
