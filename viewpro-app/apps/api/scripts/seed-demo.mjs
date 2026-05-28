@@ -8,6 +8,7 @@ import {
 	AnalyticsActorType,
 	AnalyticsEventName,
 	DocumentRequestStatus,
+	DocumentVersionStatus,
 	GlobalRole,
 	InterestLevel,
 	MovementSource,
@@ -77,6 +78,7 @@ const DOCUMENT_TITLES = [
 	"Reglamento de copropiedad",
 	"Estado de expensas",
 ];
+const DOCUMENT_STORAGE_PREFIX = "document-requests";
 const PROPERTY_IMAGES_STORAGE_PREFIX = "property-images";
 const DEMO_IMAGE_DOWNLOAD_TIMEOUT_MS = 10_000;
 const DEMO_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
@@ -571,10 +573,14 @@ async function resetDemoTenant(client) {
 		];
 
 		await removeDemoImageFiles(existingTenant.id);
+		await removeDemoDocumentFiles(client, existingTenant.id);
 
 		await client.$transaction([
 			client.analyticsEvent.deleteMany({
 				where: { tenantId: existingTenant.id },
+			}),
+			client.document.deleteMany({
+				where: { documentRequest: { tenantId: existingTenant.id } },
 			}),
 			client.documentRequest.deleteMany({
 				where: { tenantId: existingTenant.id },
@@ -910,12 +916,63 @@ async function removeDemoImageFiles(tenantId) {
 	});
 }
 
+async function removeDemoDocumentFiles(client, tenantId) {
+	if (!isLocalDocumentStorageConfigured()) {
+		return;
+	}
+
+	const versions = await client.documentVersion.findMany({
+		where: { document: { documentRequest: { tenantId } } },
+		select: { storageKey: true },
+	});
+
+	await Promise.all(
+		versions.flatMap((version) => {
+			const absolutePath = resolveDocumentStoragePath(version.storageKey);
+			return [
+				rm(absolutePath, { force: true }),
+				rm(`${absolutePath}.metadata.json`, { force: true }),
+			];
+		}),
+	);
+
+	await rm(join(getDocumentStorageRoot(), DOCUMENT_STORAGE_PREFIX, tenantId), {
+		force: true,
+		recursive: true,
+	});
+}
+
 function getUploadsRoot() {
 	if (process.env.PROPERTY_IMAGES_UPLOADS_ROOT) {
 		return resolve(process.env.PROPERTY_IMAGES_UPLOADS_ROOT);
 	}
 
 	return join(apiRoot, "uploads");
+}
+
+function getDocumentStorageRoot() {
+	return resolve(
+		process.env.DOCUMENT_STORAGE_LOCAL_ROOT ??
+		join(process.cwd(), ".document-storage"),
+	);
+}
+
+function resolveDocumentStoragePath(storageKey) {
+	const root = getDocumentStorageRoot();
+	const absolutePath = resolve(root, storageKey);
+
+	if (absolutePath !== root && !absolutePath.startsWith(`${root}/`)) {
+		throw new Error(`Refusing to write document fixture outside storage root: ${storageKey}`);
+	}
+
+	return absolutePath;
+}
+
+function isLocalDocumentStorageConfigured() {
+	return (
+		process.env.DOCUMENT_STORAGE_DRIVER === "local" ||
+		Boolean(process.env.DOCUMENT_STORAGE_LOCAL_ROOT)
+	);
 }
 
 function getImageMimeType(imageUrl, contentType) {
@@ -1130,6 +1187,7 @@ async function createDemoDocumentRequests(client, tenant, users, properties) {
 					tenantId: tenant.id,
 					propertyEngagementId: property.engagement.id,
 					propertyAssetOwnerId: property.owner.id,
+					ownerUserId: property.owner.userId ?? null,
 					requestedByUserId: requester.id,
 					title,
 					description: `Solicitud demo para completar carpeta: ${title}.`,
@@ -1142,9 +1200,130 @@ async function createDemoDocumentRequests(client, tenant, users, properties) {
 		}
 	}
 
+	const reviewStateRequests = await createDemoDocumentReviewStates(
+		client,
+		tenant,
+		users,
+		properties,
+	);
+	documentRequests.push(...reviewStateRequests);
+
 	await createDocumentAnalyticsEvents(client, tenant, documentRequests);
+	await createDocumentReviewAnalyticsEvents(
+		client,
+		tenant,
+		reviewStateRequests,
+	);
 
 	return documentRequests;
+}
+
+async function createDemoDocumentReviewStates(
+	client,
+	tenant,
+	users,
+	properties,
+) {
+	const property = properties[0];
+	const owner = users.get(DEMO_OWNER_EMAIL);
+	const requester = users.get("sofia.demo@viewpro.local");
+	const reviewer = users.get("demo@viewpro.local");
+
+	if (!property || !owner || !requester || !reviewer) {
+		return [];
+	}
+
+	const fixtures = [
+		{
+			title: "Escritura firmada",
+			description: "Documento demo cargado por el propietario para revisión.",
+			status: DocumentRequestStatus.SUBMITTED,
+			versionStatus: DocumentVersionStatus.UPLOADED,
+			originalFilename: "escritura-firmada-demo.pdf",
+			body: Buffer.from(
+				"%PDF-1.4\n% ViewPro demo submitted document\n",
+				"utf8",
+			),
+			createdAt: daysAgo(7),
+			uploadedAt: daysAgo(6),
+		},
+		{
+			title: "DNI del propietario observado",
+			description:
+				"Documento demo observado para probar reenvío desde portal propietario.",
+			status: DocumentRequestStatus.REJECTED,
+			versionStatus: DocumentVersionStatus.REJECTED,
+			originalFilename: "dni-propietario-observado-demo.pdf",
+			body: Buffer.from("%PDF-1.4\n% ViewPro demo rejected document\n", "utf8"),
+			rejectionReason:
+				"La imagen no permite leer el dorso del DNI. Subí una copia más nítida.",
+			createdAt: daysAgo(10),
+			uploadedAt: daysAgo(9),
+			reviewedAt: daysAgo(8),
+		},
+	];
+
+	const requests = [];
+
+	for (const fixture of fixtures) {
+		const request = await client.documentRequest.create({
+			data: {
+				tenantId: tenant.id,
+				propertyEngagementId: property.engagement.id,
+				propertyAssetOwnerId: property.owner.id,
+				ownerUserId: owner.id,
+				requestedByUserId: requester.id,
+				title: fixture.title,
+				description: fixture.description,
+				status: fixture.status,
+				reviewedByUserId:
+					fixture.status === DocumentRequestStatus.REJECTED
+						? reviewer.id
+						: null,
+				reviewedAt: fixture.reviewedAt ?? null,
+				rejectionReason: fixture.rejectionReason ?? null,
+				createdAt: fixture.createdAt,
+				updatedAt: fixture.reviewedAt ?? fixture.uploadedAt,
+			},
+		});
+		const storageKey = [
+			DOCUMENT_STORAGE_PREFIX,
+			tenant.id,
+			request.id,
+			fixture.originalFilename,
+		].join("/");
+		const document = await client.document.create({
+			data: { documentRequestId: request.id },
+		});
+		const version = await client.documentVersion.create({
+			data: {
+				documentId: document.id,
+				uploadedByUserId: owner.id,
+				storageKey,
+				originalFilename: fixture.originalFilename,
+				mimeType: "application/pdf",
+				sizeBytes: fixture.body.byteLength,
+				checksum: `demo:${fixture.status.toLowerCase()}:${request.id}`,
+				status: fixture.versionStatus,
+				createdAt: fixture.uploadedAt,
+			},
+		});
+		await client.document.update({
+			where: { id: document.id },
+			data: { currentVersionId: version.id },
+		});
+		await writeDemoDocumentFileIfEnabled(storageKey, fixture.body, {
+			mimeType: "application/pdf",
+			sizeBytes: fixture.body.byteLength,
+		});
+		requests.push({
+			...request,
+			demoUploadedAt: fixture.uploadedAt,
+			demoReviewedAt: fixture.reviewedAt ?? null,
+		});
+	}
+
+	return requests;
 }
 
 async function createDocumentAnalyticsEvents(client, tenant, documentRequests) {
@@ -1163,6 +1342,58 @@ async function createDocumentAnalyticsEvents(client, tenant, documentRequests) {
 			occurredAt: request.createdAt,
 		})),
 	});
+}
+
+async function createDocumentReviewAnalyticsEvents(
+	client,
+	tenant,
+	documentRequests,
+) {
+	if (documentRequests.length === 0) {
+		return;
+	}
+
+	const events = documentRequests.flatMap((request) => {
+		const uploadedEvent = {
+			tenantId: tenant.id,
+			actorUserId: request.ownerUserId,
+			actorType: AnalyticsActorType.OWNER,
+			eventName: AnalyticsEventName.DOCUMENT_UPLOADED,
+			propertyEngagementId: request.propertyEngagementId,
+			documentRequestId: request.id,
+			occurredAt: request.demoUploadedAt ?? request.updatedAt,
+		};
+
+		if (request.status !== DocumentRequestStatus.REJECTED) {
+			return [uploadedEvent];
+		}
+
+		return [
+			uploadedEvent,
+			{
+				tenantId: tenant.id,
+				actorUserId: request.reviewedByUserId,
+				actorType: AnalyticsActorType.INTERNAL_USER,
+				eventName: AnalyticsEventName.DOCUMENT_REJECTED,
+				propertyEngagementId: request.propertyEngagementId,
+				documentRequestId: request.id,
+				occurredAt: request.demoReviewedAt ?? request.reviewedAt ?? request.updatedAt,
+			},
+		];
+	});
+
+	await client.analyticsEvent.createMany({ data: events });
+}
+
+async function writeDemoDocumentFileIfEnabled(storageKey, buffer, metadata) {
+	if (!isLocalDocumentStorageConfigured()) {
+		return;
+	}
+
+	const absolutePath = resolveDocumentStoragePath(storageKey);
+	await mkdir(dirname(absolutePath), { recursive: true });
+	await writeFile(absolutePath, buffer);
+	await writeFile(`${absolutePath}.metadata.json`, JSON.stringify(metadata));
 }
 
 function assertSafeEnvironment() {
