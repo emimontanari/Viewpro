@@ -90,3 +90,93 @@ export type OwnerTimelineResponse = {
   page: number;
   pageSize: number;
 };
+
+export type OwnerDocumentRequestStatus =
+  | 'PENDING'
+  | 'SUBMITTED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'CANCELLED';
+
+export type OwnerDocumentVersionStatus = 'PENDING_UPLOAD' | 'UPLOADED' | 'APPROVED' | 'REJECTED';
+
+export type OwnerSignedStorageUrl = {
+  url: string;
+  storageKey: string;
+  expiresInSeconds: number;
+};
+
+export type OwnerDocumentVersion = {
+  id: string;
+  documentId: string;
+  uploadedByUserId: string;
+  storageKey: string;
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
+  checksum: string | null;
+  status: OwnerDocumentVersionStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OwnerDocumentRequest = {
+  id: string;
+  tenantId: string;
+  propertyEngagementId: string;
+  propertyAssetOwnerId: string | null;
+  ownerUserId: string | null;
+  requestedByUserId: string;
+  title: string;
+  description: string | null;
+  status: OwnerDocumentRequestStatus;
+  reviewedByUserId: string | null;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  currentVersion: OwnerDocumentVersion | null;
+  versions: OwnerDocumentVersion[];
+};
+
+export type OwnerDocumentRequestsFilters = {
+  propertyEngagementId?: string;
+  page?: number;
+  pageSize?: number;
+  status?: OwnerDocumentRequestStatus;
+};
+
+export type OwnerDocumentRequestsResponse = {
+  items: OwnerDocumentRequest[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type CreateOwnerDocumentUploadUrlPayload = {
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
+  checksum?: string;
+};
+
+export type CreateOwnerDocumentUploadUrlResponse = {
+  request: OwnerDocumentRequest;
+  version: OwnerDocumentVersion;
+  uploadUrl: OwnerSignedStorageUrl;
+};
+
+export type OwnerDocumentUploadFileOptions = {
+  mimeType?: string;
+};
+
+export type OwnerDocumentUploadResponse = {
+  storageKey: string;
+  sizeBytes: number;
+  mimeType: string;
+};
+
+export type OwnerDocumentVersionUrlResponse = {
+  version: OwnerDocumentVersion;
+  readUrl: OwnerSignedStorageUrl;
+};
