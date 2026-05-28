@@ -124,7 +124,12 @@ describe('Owner document use cases', () => {
         sizeBytes: 1024,
         checksum: 'sha256:abc123',
       })
-      expect(storage.createUploadUrl).toHaveBeenCalledWith({ storageKey: 'document-requests/request-1/deed.pdf', expiresInSeconds: 600 })
+      expect(storage.createUploadUrl).toHaveBeenCalledWith({
+        storageKey: 'document-requests/request-1/deed.pdf',
+        expiresInSeconds: 600,
+        mimeType: 'application/pdf',
+        sizeBytes: 1024,
+      })
     })
 
     it('allows a rejected request to receive a new upload URL', async () => {

@@ -1,6 +1,7 @@
 import { IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator'
+import { MAX_DOCUMENT_UPLOAD_SIZE_BYTES } from '../document-upload-constraints'
 
-export const MAX_DOCUMENT_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
+export { MAX_DOCUMENT_UPLOAD_SIZE_BYTES } from '../document-upload-constraints'
 
 export class CreateDocumentUploadUrlDto {
   @IsString()

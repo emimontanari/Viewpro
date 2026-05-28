@@ -1,12 +1,12 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { DocumentRequestStatus } from '@prisma/client'
 import type { CurrentUser } from '../../auth/types/current-user'
+import { ALLOWED_DOCUMENT_MIME_TYPES, MAX_DOCUMENT_UPLOAD_SIZE_BYTES } from '../document-upload-constraints'
 import { mapDocumentRequestResponse, mapDocumentVersionResponse, type DocumentRequestResponse, type DocumentVersionResponse } from '../document-response.mapper'
-import { MAX_DOCUMENT_UPLOAD_SIZE_BYTES, type CreateDocumentUploadUrlDto } from '../dto/create-document-upload-url.dto'
+import type { CreateDocumentUploadUrlDto } from '../dto/create-document-upload-url.dto'
 import { DOCUMENTS_REPOSITORY, type DocumentsRepository } from '../documents.repository'
 import { DOCUMENT_STORAGE_PORT, type DocumentStoragePort, type SignedStorageUrl } from '../storage/document-storage.port'
 
-const ALLOWED_DOCUMENT_MIME_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
 const DOCUMENT_UPLOAD_URL_TTL_SECONDS = 10 * 60
 
 export type CreateOwnerDocumentUploadUrlResponse = {
@@ -50,7 +50,12 @@ export class CreateOwnerDocumentUploadUrlUseCase {
       sizeBytes: input.sizeBytes,
       checksum: input.checksum,
     })
-    const uploadUrl = await this.documentStorage.createUploadUrl({ storageKey: version.storageKey, expiresInSeconds: DOCUMENT_UPLOAD_URL_TTL_SECONDS })
+    const uploadUrl = await this.documentStorage.createUploadUrl({
+      storageKey: version.storageKey,
+      expiresInSeconds: DOCUMENT_UPLOAD_URL_TTL_SECONDS,
+      mimeType: version.mimeType,
+      sizeBytes: version.sizeBytes,
+    })
 
     return { request: mapDocumentRequestResponse(request), version: mapDocumentVersionResponse(version), uploadUrl }
   }
