@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ownerPropertyEngagementsOptions, ownerPropertyOptions } from '../api/queries';
 import type { OwnerProperty } from '../api/types';
+import { OwnerDocumentRequests } from './owner-document-requests';
 import { OwnerEngagementCard } from './owner-engagement-card';
 import { OwnerPropertySummary } from './owner-property-summary';
 
@@ -83,9 +84,10 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
       </section>
 
       <Tabs defaultValue='summary' className='space-y-4'>
-        <TabsList className='grid h-auto w-full grid-cols-2 sm:w-fit'>
+        <TabsList className='grid h-auto w-full grid-cols-3 sm:w-fit'>
           <TabsTrigger value='summary'>Resumen</TabsTrigger>
           <TabsTrigger value='tracking'>Seguimiento</TabsTrigger>
+          <TabsTrigger value='documents'>Documentos</TabsTrigger>
         </TabsList>
         <TabsContent value='summary' className='space-y-4'>
           <OwnerPropertySummary property={property} engagement={primaryEngagement} />
@@ -101,6 +103,16 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
             <OwnerDetailState
               title='Todavía no hay gestiones activas'
               description='Cuando la inmobiliaria informe avances sobre esta propiedad, los vas a ver acá.'
+            />
+          )}
+        </TabsContent>
+        <TabsContent value='documents' className='space-y-4'>
+          {primaryEngagement ? (
+            <OwnerDocumentRequests propertyEngagementId={primaryEngagement.id} />
+          ) : (
+            <OwnerDetailState
+              title='Todavía no hay una gestión activa'
+              description='Cuando la inmobiliaria active una gestión, vas a ver acá las solicitudes documentales.'
             />
           )}
         </TabsContent>
