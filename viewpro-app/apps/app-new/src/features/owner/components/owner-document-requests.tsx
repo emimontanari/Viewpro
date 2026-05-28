@@ -318,7 +318,7 @@ function OwnerDocumentRequestItem({
   return (
     <li
       className={cn(
-        'overflow-hidden rounded-xl border bg-background shadow-xs',
+        'overflow-hidden rounded-xl border-[0.1px] bg-background shadow-xs',
         documentCardBorderTones[request.status]
       )}
     >
@@ -369,11 +369,7 @@ function OwnerDocumentRequestItem({
             </p>
             <div className='space-y-2'>
               {historicalVersions.map((version) => (
-                <DocumentVersionRow
-                  key={version.id}
-                  label='Versión anterior'
-                  version={version}
-                />
+                <DocumentVersionRow key={version.id} label='Versión anterior' version={version} />
               ))}
             </div>
           </div>
@@ -439,13 +435,7 @@ function OwnerDocumentRequestItem({
   );
 }
 
-function DocumentVersionRow({
-  label,
-  version
-}: {
-  label: string;
-  version: OwnerDocumentVersion;
-}) {
+function DocumentVersionRow({ label, version }: { label: string; version: OwnerDocumentVersion }) {
   const FileIcon = getDocumentFileIcon(version.mimeType);
 
   return (

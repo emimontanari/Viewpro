@@ -412,7 +412,8 @@ const currentVersion: OwnerDocumentVersion = {
 function documentRequest(overrides: Partial<OwnerDocumentRequest> = {}): OwnerDocumentRequest {
   const resolvedCurrentVersion =
     overrides.currentVersion === undefined ? currentVersion : overrides.currentVersion;
-  const resolvedVersions = overrides.versions ?? (resolvedCurrentVersion ? [resolvedCurrentVersion] : []);
+  const resolvedVersions =
+    overrides.versions ?? (resolvedCurrentVersion ? [resolvedCurrentVersion] : []);
 
   return {
     id: 'request-1',
