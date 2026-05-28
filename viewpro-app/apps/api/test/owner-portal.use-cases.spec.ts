@@ -73,6 +73,26 @@ describe('Owner portal use cases', () => {
     await expect(useCase.execute({ userId: 'owner-1', propertyAssetId: 'property-2' })).resolves.toMatchObject({ id: 'property-2' })
   })
 
+  it('does not wait for owner property analytics before returning the detail', async () => {
+    const property = makeProperty({ id: 'property-2', title: 'Townhouse' })
+    const repository = makeRepository({ findPropertyByOwner: vi.fn().mockResolvedValue(property) })
+    const analyticsService = { track: vi.fn().mockReturnValue(new Promise(() => undefined)) }
+    const useCase = new GetOwnerPropertyUseCase(repository, analyticsService as never)
+
+    const result = await Promise.race([
+      useCase.execute({ userId: 'owner-1', propertyAssetId: 'property-2' }),
+      new Promise<'blocked'>((resolve) => setTimeout(() => resolve('blocked'), 50)),
+    ])
+
+    expect(result).toMatchObject({ id: 'property-2' })
+    expect(analyticsService.track).toHaveBeenCalledWith({
+      eventName: AnalyticsEventName.OWNER_VIEWED_PROPERTY,
+      actorType: AnalyticsActorType.OWNER,
+      actorUserId: 'owner-1',
+      propertyAssetId: 'property-2',
+    })
+  })
+
   it('throws 404 when an owner property is missing', async () => {
     const repository = makeRepository({ findPropertyByOwner: vi.fn().mockResolvedValue(null) })
     const useCase = new GetOwnerPropertyUseCase(repository, { track: vi.fn() } as never)

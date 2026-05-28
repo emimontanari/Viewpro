@@ -160,4 +160,27 @@ describe('OwnerPropertyDetail', () => {
     expect(screen.queryByText('Editar')).not.toBeInTheDocument();
     expect(screen.queryByText('Crear')).not.toBeInTheDocument();
   });
+
+  it('renders property content while engagements are still loading', async () => {
+    const user = userEvent.setup();
+    useQueryMock
+      .mockReturnValueOnce({ data: ownerProperty, isError: false, isLoading: false } as ReturnType<
+        typeof useQuery
+      >)
+      .mockReturnValueOnce({ data: undefined, isError: false, isLoading: true } as ReturnType<
+        typeof useQuery
+      >);
+
+    render(<OwnerPropertyDetail propertyId='property-1' />);
+
+    expect(
+      screen.getByRole('heading', { name: /Casa familiar con pileta en Villa Centenario/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText('Cargando seguimiento')).toBeInTheDocument();
+    expect(screen.getByText('Estamos trayendo la gestión activa de esta propiedad.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Seguimiento' }));
+
+    expect(screen.getByText('Cargando gestiones activas...')).toBeInTheDocument();
+  });
 });
