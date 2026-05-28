@@ -1,11 +1,12 @@
 import { queryOptions } from '@tanstack/react-query';
 import {
+  getOwnerDocumentRequests,
   getOwnerEngagementTimeline,
   getOwnerProperties,
   getOwnerProperty,
   getOwnerPropertyEngagements
 } from './service';
-import type { OwnerTimelineFilters } from './types';
+import type { OwnerDocumentRequestsFilters, OwnerTimelineFilters } from './types';
 
 export const ownerKeys = {
   all: ['owner'] as const,
@@ -13,7 +14,9 @@ export const ownerKeys = {
   property: (id: string) => [...ownerKeys.properties(), id] as const,
   engagements: (propertyId: string) => [...ownerKeys.property(propertyId), 'engagements'] as const,
   timeline: (engagementId: string, filters: OwnerTimelineFilters) =>
-    [...ownerKeys.all, 'engagements', engagementId, 'timeline', filters] as const
+    [...ownerKeys.all, 'engagements', engagementId, 'timeline', filters] as const,
+  documentRequests: (propertyEngagementId: string, filters: OwnerDocumentRequestsFilters = {}) =>
+    [...ownerKeys.all, 'document-requests', propertyEngagementId, filters] as const
 };
 
 export const ownerPropertiesOptions = () =>
@@ -41,4 +44,13 @@ export const ownerEngagementTimelineOptions = (
   queryOptions({
     queryKey: ownerKeys.timeline(engagementId, filters),
     queryFn: () => getOwnerEngagementTimeline(engagementId, filters)
+  });
+
+export const ownerDocumentRequestsOptions = (
+  propertyEngagementId: string,
+  filters: Omit<OwnerDocumentRequestsFilters, 'propertyEngagementId'> = {}
+) =>
+  queryOptions({
+    queryKey: ownerKeys.documentRequests(propertyEngagementId, filters),
+    queryFn: () => getOwnerDocumentRequests({ ...filters, propertyEngagementId })
   });

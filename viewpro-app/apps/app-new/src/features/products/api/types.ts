@@ -111,6 +111,21 @@ export type ProductDocumentVersion = {
   updatedAt: string;
 };
 
+export type ProductSignedStorageUrl = {
+  url: string;
+  storageKey: string;
+  expiresInSeconds: number;
+};
+
+export type ProductDocumentVersionUrlResponse = {
+  version: ProductDocumentVersion;
+  readUrl: ProductSignedStorageUrl;
+};
+
+export type RejectProductDocumentRequestPayload = {
+  reason: string;
+};
+
 export type ProductDocumentRequest = {
   id: string;
   tenantId: string;

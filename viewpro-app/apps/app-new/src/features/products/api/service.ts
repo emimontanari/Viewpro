@@ -14,8 +14,10 @@ import type {
   Product,
   ProductAgentAssignmentPayload,
   ProductByIdResponse,
+  ProductDocumentRequest,
   ProductDocumentRequestsResponse,
   ProductDocumentRequestStatus,
+  ProductDocumentVersionUrlResponse,
   ProductFilters,
   ProductMovement,
   ProductMovementMutationPayload,
@@ -24,6 +26,7 @@ import type {
   ProductStatusMutationPayload,
   ProductsResponse,
   PropertyImage,
+  RejectProductDocumentRequestPayload,
   RemoveProductAgentResponse
 } from './types';
 
@@ -68,14 +71,47 @@ export async function getProductDocumentRequests(
 export async function createProductDocumentRequest(
   productId: string,
   data: CreateProductDocumentRequestPayload
-) {
+): Promise<ProductDocumentRequest> {
   const response = await apiFetch(`${PRODUCTS_API_PATH}/${productId}/document-requests`, {
     body: JSON.stringify(data),
     headers: { 'content-type': 'application/json' },
     method: 'POST'
   });
 
-  return parseJsonResponse(response);
+  return parseJsonResponse<ProductDocumentRequest>(response);
+}
+
+export async function createProductDocumentReadUrl(
+  versionId: string
+): Promise<ProductDocumentVersionUrlResponse> {
+  const response = await apiFetch(`/api/document-versions/${versionId}/read-url`, {
+    method: 'POST'
+  });
+
+  return parseJsonResponse<ProductDocumentVersionUrlResponse>(response);
+}
+
+export async function approveProductDocumentRequest(
+  requestId: string
+): Promise<ProductDocumentRequest> {
+  const response = await apiFetch(`/api/document-requests/${requestId}/approve`, {
+    method: 'POST'
+  });
+
+  return parseJsonResponse<ProductDocumentRequest>(response);
+}
+
+export async function rejectProductDocumentRequest(
+  requestId: string,
+  data: RejectProductDocumentRequestPayload
+): Promise<ProductDocumentRequest> {
+  const response = await apiFetch(`/api/document-requests/${requestId}/reject`, {
+    body: JSON.stringify(data),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST'
+  });
+
+  return parseJsonResponse<ProductDocumentRequest>(response);
 }
 
 export async function getAssignableProductAgents(): Promise<AssignableProductAgentsResponse> {
