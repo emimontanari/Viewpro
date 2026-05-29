@@ -18,6 +18,9 @@ import type {
 const DEFAULT_APP_URL = 'http://localhost:3000';
 const OWNER_API_PATH = '/api/owner';
 const OWNER_REQUEST_TIMEOUT_MS = 10_000;
+const FAKE_DOCUMENT_STORAGE_HOST = 'fake-documents.local';
+const FAKE_DOCUMENT_STORAGE_MESSAGE =
+  'La API está usando almacenamiento documental fake. Para subir o abrir documentos desde el navegador, reiniciá la API con DOCUMENT_STORAGE_DRIVER=local y API_PUBLIC_URL=http://localhost:3001.';
 const APP_URL = trimTrailingSlash(process.env.NEXT_PUBLIC_APP_URL ?? DEFAULT_APP_URL);
 
 export async function getOwnerProperties(): Promise<OwnerPropertiesResponse> {
@@ -78,13 +81,9 @@ export async function uploadOwnerDocumentFile(
     throw new Error('El tipo de archivo es requerido para subir documentos.');
   }
 
-  const response = await fetch(getFetchUrl(uploadUrl.url), {
-    body: fileOrBlob,
-    headers: { 'content-type': mimeType },
-    method: 'PUT'
-  });
+  assertBrowserReachableDocumentStorageUrl(uploadUrl.url);
 
-  return parseJsonResponse<OwnerDocumentUploadResponse>(response);
+  return uploadBlobWithProgress(getFetchUrl(uploadUrl.url), fileOrBlob, mimeType, options);
 }
 
 export async function confirmOwnerDocumentUpload(versionId: string): Promise<OwnerDocumentVersion> {
@@ -104,8 +103,11 @@ export async function createOwnerDocumentReadUrl(
   const response = await apiFetch(`${OWNER_API_PATH}/document-versions/${versionId}/read-url`, {
     method: 'POST'
   });
+  const body = await parseJsonResponse<OwnerDocumentVersionUrlResponse>(response);
 
-  return parseJsonResponse<OwnerDocumentVersionUrlResponse>(response);
+  assertBrowserReachableDocumentStorageUrl(body.readUrl.url);
+
+  return body;
 }
 
 function buildTimelineQuery(filters: OwnerTimelineFilters) {
@@ -173,6 +175,20 @@ function getFetchUrl(path: string) {
   return `${APP_URL}${path}`;
 }
 
+function assertBrowserReachableDocumentStorageUrl(url: string) {
+  if (isFakeDocumentStorageUrl(url)) {
+    throw new Error(FAKE_DOCUMENT_STORAGE_MESSAGE);
+  }
+}
+
+function isFakeDocumentStorageUrl(value: string) {
+  try {
+    return new URL(value).hostname === FAKE_DOCUMENT_STORAGE_HOST;
+  } catch {
+    return false;
+  }
+}
+
 async function parseJsonResponse<TResponse>(response: Response): Promise<TResponse> {
   const body = await response.json().catch(() => undefined);
 
@@ -181,6 +197,60 @@ async function parseJsonResponse<TResponse>(response: Response): Promise<TRespon
   }
 
   return body as TResponse;
+}
+
+function uploadBlobWithProgress(
+  url: string,
+  fileOrBlob: Blob,
+  mimeType: string,
+  options: OwnerDocumentUploadFileOptions
+): Promise<OwnerDocumentUploadResponse> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('content-type', mimeType);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) {
+        options.onProgress?.({
+          loaded: event.loaded,
+          total: event.total,
+          percent: Math.min(100, Math.round((event.loaded / event.total) * 100))
+        });
+        return;
+      }
+
+      options.onProgress?.({ loaded: event.loaded, total: 0, percent: 35 });
+    };
+
+    xhr.onerror = () => reject(new Error('No se pudo subir el documento.'));
+    xhr.ontimeout = () => reject(new Error('La carga del documento tardó demasiado.'));
+    xhr.onload = () => {
+      const body = parseJson(xhr.responseText);
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(getErrorMessage(body, xhr.statusText || 'No se pudo subir el documento')));
+        return;
+      }
+
+      resolve(body as OwnerDocumentUploadResponse);
+    };
+
+    xhr.send(fileOrBlob);
+  });
+}
+
+function parseJson(value: string) {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return undefined;
+  }
 }
 
 function getErrorMessage(body: unknown, fallback: string) {

@@ -166,8 +166,15 @@ export type CreateOwnerDocumentUploadUrlResponse = {
   uploadUrl: OwnerSignedStorageUrl;
 };
 
+export type OwnerDocumentUploadProgress = {
+  loaded: number;
+  total: number;
+  percent: number;
+};
+
 export type OwnerDocumentUploadFileOptions = {
   mimeType?: string;
+  onProgress?: (progress: OwnerDocumentUploadProgress) => void;
 };
 
 export type OwnerDocumentUploadResponse = {

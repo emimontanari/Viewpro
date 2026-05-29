@@ -146,27 +146,72 @@ function OwnerAgencySummary({
   agency: OwnerAgency;
   propertyCount: number;
 }) {
+  const initials = getAgencyInitials(agency.name);
+
   return (
-    <Card className='py-0'>
-      <CardContent className='flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between'>
+    <Card className='relative overflow-hidden py-0'>
+      <div
+        aria-hidden='true'
+        className='pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5 dark:from-primary/10 dark:to-purple-500/10'
+      />
+      <CardContent className='relative flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between'>
         <div className='flex min-w-0 items-center gap-4'>
-          <span className='flex size-12 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-200'>
-            <Icons.workspace className='size-6' aria-hidden='true' />
+          <span
+            aria-hidden='true'
+            className='flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 text-base font-semibold tracking-wide text-white shadow-sm ring-1 ring-white/10'
+          >
+            {initials}
           </span>
-          <div className='min-w-0 space-y-1'>
-            <h2 className='font-semibold'>Inmobiliaria vinculada</h2>
+          <div className='min-w-0 space-y-1.5'>
+            <p className='text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase'>
+              Inmobiliaria vinculada
+            </p>
+            <div className='flex items-center gap-2'>
+              <h2
+                className='truncate text-lg leading-tight font-semibold tracking-tight sm:text-xl'
+                title={agency.name}
+              >
+                {agency.name}
+              </h2>
+              <Icons.badgeCheck
+                className='size-5 shrink-0 text-primary'
+                aria-label='Inmobiliaria verificada'
+              />
+            </div>
             <p className='text-sm text-muted-foreground'>
-              Esta inmobiliaria te vinculó a {formatPropertyCount(propertyCount)} activas.
+              Gestionando {formatPropertyCount(propertyCount)} para vos.
             </p>
           </div>
         </div>
-        <div className='rounded-xl bg-muted/40 px-4 py-3 text-sm font-medium sm:text-right'>
-          <p className='truncate'>{agency.name}</p>
-          <p className='mt-1 text-xs text-muted-foreground'>Acceso propietario vigente</p>
+        <div className='flex shrink-0 items-center gap-2 self-start rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-700 sm:self-auto dark:text-emerald-300'>
+          <span
+            aria-hidden='true'
+            className='relative flex size-1.5 items-center justify-center'
+          >
+            <span className='absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-60' />
+            <span className='relative inline-flex size-1.5 rounded-full bg-emerald-500' />
+          </span>
+          Acceso vigente
         </div>
       </CardContent>
     </Card>
   );
+}
+
+function getAgencyInitials(name: string) {
+  const trimmed = name.trim();
+
+  if (!trimmed) {
+    return '?';
+  }
+
+  const words = trimmed.split(/\s+/);
+
+  if (words.length === 1) {
+    return words[0]!.slice(0, 2).toUpperCase();
+  }
+
+  return `${words[0]![0]}${words[words.length - 1]![0]}`.toUpperCase();
 }
 
 function OwnerAgencySelector({

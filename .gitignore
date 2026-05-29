@@ -8,6 +8,8 @@ playwright-report/
 test-results/
 uploads/
 viewpro-app/apps/api/uploads/
+viewpro-app/apps/api/.document-storage/
+viewpro-app/apps/api/.document-storage-seeded/
 
 # Local agent/CLI runtime state
 .pi/

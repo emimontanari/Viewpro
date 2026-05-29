@@ -6,22 +6,42 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { propertyTypeOptions } from '@/features/products/constants/product-options';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { ownerPropertyEngagementsOptions, ownerPropertyOptions } from '../api/queries';
-import type { OwnerProperty } from '../api/types';
+import { useEffect } from 'react';
+import {
+  ownerDocumentRequestsOptions,
+  ownerPropertyEngagementsOptions,
+  ownerPropertyOptions
+} from '../api/queries';
+import type { OwnerEngagement, OwnerProperty } from '../api/types';
+import { OwnerDocumentRequests } from './owner-document-requests';
 import { OwnerEngagementCard } from './owner-engagement-card';
 import { OwnerPropertySummary } from './owner-property-summary';
 
+const OWNER_DOCUMENT_PREFETCH_FILTERS = { pageSize: 20 };
+
 export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
+  const queryClient = useQueryClient();
   const propertyQuery = useQuery(ownerPropertyOptions(propertyId));
   const engagementsQuery = useQuery(ownerPropertyEngagementsOptions(propertyId));
+  const firstEngagementId = engagementsQuery.data?.[0]?.id;
 
-  if (propertyQuery.isLoading || engagementsQuery.isLoading) {
+  useEffect(() => {
+    if (!firstEngagementId || engagementsQuery.isError) {
+      return;
+    }
+
+    void queryClient.prefetchQuery(
+      ownerDocumentRequestsOptions(firstEngagementId, OWNER_DOCUMENT_PREFETCH_FILTERS)
+    );
+  }, [engagementsQuery.isError, firstEngagementId, queryClient]);
+
+  if (propertyQuery.isLoading) {
     return <OwnerPropertyDetailSkeleton />;
   }
 
-  if (propertyQuery.isError || engagementsQuery.isError || !propertyQuery.data) {
+  if (propertyQuery.isError || !propertyQuery.data) {
     return (
       <OwnerDetailState
         title='No pudimos cargar esta propiedad'
@@ -31,8 +51,11 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
   }
 
   const property = propertyQuery.data;
-  const engagements = engagementsQuery.data ?? [];
-  const primaryEngagement = engagements[0] ?? null;
+  const isEngagementsLoading = engagementsQuery.isLoading;
+  const isEngagementsError = engagementsQuery.isError;
+  const engagements = isEngagementsError ? [] : (engagementsQuery.data ?? []);
+  const primaryEngagement =
+    isEngagementsLoading || isEngagementsError ? null : (engagements[0] ?? null);
 
   return (
     <div className='space-y-6'>
@@ -68,44 +91,129 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
               ) : null}
             </div>
           </div>
-          <div className='rounded-2xl border bg-muted/40 p-5'>
-            <p className='text-sm text-muted-foreground'>Seguimiento actual</p>
-            <p className='mt-2 text-2xl font-semibold'>
-              {primaryEngagement ? getStatusLabel(primaryEngagement.status) : 'Sin gestión activa'}
-            </p>
-            <p className='mt-2 text-sm text-muted-foreground'>
-              {primaryEngagement
-                ? `Actualizado por ${primaryEngagement.tenant.name}.`
-                : 'La inmobiliaria todavía no informó una gestión activa.'}
-            </p>
-          </div>
+          <OwnerEngagementStatusPanel
+            engagement={primaryEngagement}
+            isError={isEngagementsError}
+            isLoading={isEngagementsLoading}
+          />
         </div>
       </section>
 
       <Tabs defaultValue='summary' className='space-y-4'>
-        <TabsList className='grid h-auto w-full grid-cols-2 sm:w-fit'>
+        <TabsList className='grid h-auto w-full grid-cols-3 sm:w-fit'>
           <TabsTrigger value='summary'>Resumen</TabsTrigger>
           <TabsTrigger value='tracking'>Seguimiento</TabsTrigger>
+          <TabsTrigger value='documents'>Documentos</TabsTrigger>
         </TabsList>
         <TabsContent value='summary' className='space-y-4'>
           <OwnerPropertySummary property={property} engagement={primaryEngagement} />
         </TabsContent>
         <TabsContent value='tracking' className='space-y-4'>
-          {engagements.length > 0 ? (
+          {isEngagementsLoading ? <OwnerEngagementsLoadingState /> : null}
+          {isEngagementsError ? (
+            <OwnerDetailState
+              title='No pudimos cargar el seguimiento'
+              description='La propiedad ya está visible. Reintentá en unos instantes para ver la gestión activa.'
+            />
+          ) : null}
+          {!isEngagementsLoading && !isEngagementsError && engagements.length > 0 ? (
             <section className='space-y-4'>
               {engagements.map((engagement) => (
                 <OwnerEngagementCard key={engagement.id} engagement={engagement} />
               ))}
             </section>
-          ) : (
+          ) : null}
+          {!isEngagementsLoading && !isEngagementsError && engagements.length === 0 ? (
             <OwnerDetailState
               title='Todavía no hay gestiones activas'
               description='Cuando la inmobiliaria informe avances sobre esta propiedad, los vas a ver acá.'
             />
-          )}
+          ) : null}
+        </TabsContent>
+        <TabsContent value='documents' className='space-y-4'>
+          {isEngagementsLoading ? <OwnerEngagementsLoadingState /> : null}
+          {isEngagementsError ? (
+            <OwnerDetailState
+              title='No pudimos cargar la gestión activa'
+              description='Necesitamos la gestión activa para mostrar las solicitudes documentales.'
+            />
+          ) : null}
+          {!isEngagementsLoading && !isEngagementsError && primaryEngagement ? (
+            <OwnerDocumentRequests
+              agencyName={primaryEngagement.tenant.name}
+              propertyEngagementId={primaryEngagement.id}
+            />
+          ) : null}
+          {!isEngagementsLoading && !isEngagementsError && !primaryEngagement ? (
+            <OwnerDetailState
+              title='Todavía no hay una gestión activa'
+              description='Cuando la inmobiliaria active una gestión, vas a ver acá las solicitudes documentales.'
+            />
+          ) : null}
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function OwnerEngagementStatusPanel({
+  engagement,
+  isError,
+  isLoading
+}: {
+  engagement: OwnerEngagement | null;
+  isError: boolean;
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className='rounded-2xl border bg-muted/40 p-5'>
+        <p className='text-sm text-muted-foreground'>Seguimiento actual</p>
+        <p className='mt-2 text-2xl font-semibold'>Cargando seguimiento</p>
+        <p className='mt-2 text-sm text-muted-foreground'>
+          Estamos trayendo la gestión activa de esta propiedad.
+        </p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className='rounded-2xl border bg-muted/40 p-5'>
+        <p className='text-sm text-muted-foreground'>Seguimiento actual</p>
+        <p className='mt-2 text-2xl font-semibold'>No disponible</p>
+        <p className='mt-2 text-sm text-muted-foreground'>
+          La propiedad ya está visible, pero no pudimos cargar la gestión activa.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className='rounded-2xl border bg-muted/40 p-5'>
+      <p className='text-sm text-muted-foreground'>Seguimiento actual</p>
+      <p className='mt-2 text-2xl font-semibold'>
+        {engagement ? getStatusLabel(engagement.status) : 'Sin gestión activa'}
+      </p>
+      <p className='mt-2 text-sm text-muted-foreground'>
+        {engagement
+          ? `Actualizado por ${engagement.tenant.name}.`
+          : 'La inmobiliaria todavía no informó una gestión activa.'}
+      </p>
+    </div>
+  );
+}
+
+function OwnerEngagementsLoadingState() {
+  return (
+    <Card className='border-dashed shadow-none'>
+      <CardContent className='py-8 text-center'>
+        <h2 className='text-lg font-semibold'>Cargando gestiones activas...</h2>
+        <p className='mx-auto mt-2 max-w-xl text-sm text-muted-foreground'>
+          Ya mostramos la propiedad mientras llega el seguimiento de la inmobiliaria.
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 

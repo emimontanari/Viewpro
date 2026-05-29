@@ -1,20 +1,29 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OwnerEngagementsResponse, OwnerProperty, OwnerTimelineResponse } from '../api/types';
 import { OwnerPropertyDetail } from './owner-property-detail';
+
+vi.mock('./owner-document-requests', () => ({
+  OwnerDocumentRequests: ({ propertyEngagementId }: { propertyEngagementId: string }) => (
+    <div data-testid='owner-document-requests'>Documentos de {propertyEngagementId}</div>
+  )
+}));
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>();
 
   return {
     ...actual,
-    useQuery: vi.fn()
+    useQuery: vi.fn(),
+    useQueryClient: vi.fn()
   };
 });
 
 const useQueryMock = vi.mocked(useQuery);
+const useQueryClientMock = vi.mocked(useQueryClient);
+const prefetchQueryMock = vi.fn();
 
 const ownerProperty: OwnerProperty = {
   id: 'property-1',
@@ -101,6 +110,8 @@ const timelineResponse: OwnerTimelineResponse = {
 describe('OwnerPropertyDetail', () => {
   beforeEach(() => {
     useQueryMock.mockReset();
+    prefetchQueryMock.mockReset();
+    useQueryClientMock.mockReturnValue({ prefetchQuery: prefetchQueryMock } as never);
   });
 
   it('renders owner property summary, tabs, status path and read-only timeline', async () => {
@@ -127,6 +138,7 @@ describe('OwnerPropertyDetail', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Resumen' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Seguimiento' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Documentos' })).toBeInTheDocument();
     expect(
       screen.getByAltText('Imagen principal de Casa familiar con pileta en Villa Centenario')
     ).toBeInTheDocument();
@@ -144,8 +156,43 @@ describe('OwnerPropertyDetail', () => {
     expect(screen.getByText('Estado actual: Publicación activa')).toBeInTheDocument();
     expect(screen.getByText('Etapa actual')).toBeInTheDocument();
     expect(screen.getByText(/Ingresó una consulta calificada/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Documentos' }));
+
+    expect(screen.getByTestId('owner-document-requests')).toHaveTextContent(
+      'Documentos de engagement-1'
+    );
     expect(screen.queryByText('Nueva propiedad')).not.toBeInTheDocument();
     expect(screen.queryByText('Editar')).not.toBeInTheDocument();
     expect(screen.queryByText('Crear')).not.toBeInTheDocument();
+    expect(prefetchQueryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ['owner', 'document-requests', 'engagement-1', { pageSize: 20 }]
+      })
+    );
+  });
+
+  it('renders property content while engagements are still loading', async () => {
+    const user = userEvent.setup();
+    useQueryMock
+      .mockReturnValueOnce({ data: ownerProperty, isError: false, isLoading: false } as ReturnType<
+        typeof useQuery
+      >)
+      .mockReturnValueOnce({ data: undefined, isError: false, isLoading: true } as ReturnType<
+        typeof useQuery
+      >);
+
+    render(<OwnerPropertyDetail propertyId='property-1' />);
+
+    expect(
+      screen.getByRole('heading', { name: /Casa familiar con pileta en Villa Centenario/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText('Cargando seguimiento')).toBeInTheDocument();
+    expect(
+      screen.getByText('Estamos trayendo la gestión activa de esta propiedad.')
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Seguimiento' }));
+
+    expect(screen.getByText('Cargando gestiones activas...')).toBeInTheDocument();
   });
 });

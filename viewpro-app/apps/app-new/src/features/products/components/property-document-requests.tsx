@@ -5,7 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { createProductDocumentRequest } from '../api/service';
+import {
+  approveProductDocumentRequest,
+  createProductDocumentReadUrl,
+  createProductDocumentRequest,
+  rejectProductDocumentRequest
+} from '../api/service';
 import { productDocumentRequestsOptions, productKeys } from '../api/queries';
 import type {
   CreateProductDocumentRequestPayload,
@@ -16,6 +21,7 @@ import type {
 } from '../api/types';
 import { formatDateTime } from '../utils/format-date-time';
 import { CreateDocumentRequestDialog } from './create-document-request-dialog';
+import { RejectDocumentRequestDialog } from './reject-document-request-dialog';
 import { cn } from '@/lib/utils';
 import { useMemo, useState } from 'react';
 
@@ -62,6 +68,8 @@ export function PropertyDocumentRequests({
 }: PropertyDocumentRequestsProps) {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [requestToReject, setRequestToReject] = useState<ProductDocumentRequest | null>(null);
+  const documentRequestsQueryKey = productKeys.documentRequests(productId, tenantId);
   const eligibleOwners = useMemo(() => owners.filter(isEligibleDocumentOwner), [owners]);
   const invitedOwnerCount = useMemo(
     () => eligibleOwners.filter((owner) => owner.accessStatus === 'INVITED').length,
@@ -73,13 +81,42 @@ export function PropertyDocumentRequests({
       createProductDocumentRequest(productId, payload),
     onSuccess: async () => {
       setDialogOpen(false);
-      await queryClient.invalidateQueries({
-        queryKey: productKeys.documentRequests(productId, tenantId)
-      });
+      await queryClient.invalidateQueries({ queryKey: documentRequestsQueryKey });
       toast.success('Solicitud de documento creada');
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : 'No se pudo solicitar el documento');
+    }
+  });
+  const readDocumentMutation = useMutation({
+    mutationFn: (versionId: string) => createProductDocumentReadUrl(versionId),
+    onSuccess: ({ readUrl }) => {
+      window.open(readUrl.url, '_blank', 'noopener,noreferrer');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'No se pudo abrir el documento');
+    }
+  });
+  const approveDocumentMutation = useMutation({
+    mutationFn: (requestId: string) => approveProductDocumentRequest(requestId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: documentRequestsQueryKey });
+      toast.success('Documento aprobado');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'No se pudo aprobar el documento');
+    }
+  });
+  const rejectDocumentMutation = useMutation({
+    mutationFn: ({ reason, requestId }: { reason: string; requestId: string }) =>
+      rejectProductDocumentRequest(requestId, { reason }),
+    onSuccess: async () => {
+      setRequestToReject(null);
+      await queryClient.invalidateQueries({ queryKey: documentRequestsQueryKey });
+      toast.success('Documento rechazado');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'No se pudo rechazar el documento');
     }
   });
 
@@ -97,6 +134,14 @@ export function PropertyDocumentRequests({
     }
 
     createDocumentRequestMutation.mutate(payload);
+  }
+
+  function handleRejectSubmit(reason: string) {
+    if (!requestToReject || rejectDocumentMutation.isPending) {
+      return;
+    }
+
+    rejectDocumentMutation.mutate({ requestId: requestToReject.id, reason });
   }
 
   return (
@@ -141,7 +186,17 @@ export function PropertyDocumentRequests({
         (documentRequestsQuery.data?.items.length ?? 0) > 0 ? (
           <ul className='space-y-3'>
             {documentRequestsQuery.data?.items.map((request) => (
-              <DocumentRequestItem key={request.id} owners={owners} request={request} />
+              <DocumentRequestItem
+                key={request.id}
+                owners={owners}
+                request={request}
+                isApproving={approveDocumentMutation.isPending}
+                isReading={readDocumentMutation.isPending}
+                isRejecting={rejectDocumentMutation.isPending}
+                onApprove={(requestId) => approveDocumentMutation.mutate(requestId)}
+                onRead={(versionId) => readDocumentMutation.mutate(versionId)}
+                onReject={setRequestToReject}
+              />
             ))}
           </ul>
         ) : null}
@@ -153,6 +208,17 @@ export function PropertyDocumentRequests({
         isSubmitting={createDocumentRequestMutation.isPending}
         onOpenChange={setDialogOpen}
         onSubmit={handleSubmit}
+      />
+      <RejectDocumentRequestDialog
+        open={requestToReject !== null}
+        requestTitle={requestToReject?.title}
+        isSubmitting={rejectDocumentMutation.isPending}
+        onOpenChange={(open) => {
+          if (!open && !rejectDocumentMutation.isPending) {
+            setRequestToReject(null);
+          }
+        }}
+        onSubmit={handleRejectSubmit}
       />
     </section>
   );
@@ -230,9 +296,21 @@ function DocumentRequestsEmptyState() {
 }
 
 function DocumentRequestItem({
+  isApproving,
+  isReading,
+  isRejecting,
+  onApprove,
+  onRead,
+  onReject,
   owners,
   request
 }: {
+  isApproving: boolean;
+  isReading: boolean;
+  isRejecting: boolean;
+  onApprove: (requestId: string) => void;
+  onRead: (versionId: string) => void;
+  onReject: (request: ProductDocumentRequest) => void;
   owners: PropertyLinkedOwner[];
   request: ProductDocumentRequest;
 }) {
@@ -242,6 +320,8 @@ function DocumentRequestItem({
       (request.propertyAssetOwnerId === null && item.userId === request.ownerUserId)
   );
   const ownerName = owner ? getOwnerDisplayName(owner) : 'Propietario';
+  const canReview = request.status === 'SUBMITTED' && request.currentVersion !== null;
+  const reviewActionsDisabled = isApproving || isReading || isRejecting;
 
   return (
     <li className='space-y-3 rounded-xl border bg-background p-3'>
@@ -278,14 +358,50 @@ function DocumentRequestItem({
       ) : null}
 
       {request.currentVersion ? (
-        <div className='flex flex-col gap-1 rounded-lg border bg-muted/20 p-3 text-sm sm:flex-row sm:items-center sm:justify-between'>
+        <div className='flex flex-col gap-3 rounded-lg border bg-muted/20 p-3 text-sm lg:flex-row lg:items-center lg:justify-between'>
           <div className='min-w-0'>
             <p className='break-words font-medium'>{request.currentVersion.originalFilename}</p>
             <p className='text-xs text-muted-foreground'>Versión actual del documento</p>
           </div>
-          <Badge variant='outline' className='w-fit rounded-md bg-background'>
-            {documentVersionStatusLabels[request.currentVersion.status]}
-          </Badge>
+          <div className='flex flex-wrap items-center gap-2'>
+            <Badge variant='outline' className='w-fit rounded-md bg-background'>
+              {documentVersionStatusLabels[request.currentVersion.status]}
+            </Badge>
+            {canReview ? (
+              <>
+                <Button
+                  type='button'
+                  size='sm'
+                  variant='outline'
+                  disabled={reviewActionsDisabled}
+                  onClick={() => onRead(request.currentVersion!.id)}
+                >
+                  <Icons.externalLink className='size-4' />
+                  Abrir documento
+                </Button>
+                <Button
+                  type='button'
+                  size='sm'
+                  variant='secondary'
+                  disabled={reviewActionsDisabled}
+                  onClick={() => onApprove(request.id)}
+                >
+                  <Icons.check className='size-4' />
+                  Aprobar
+                </Button>
+                <Button
+                  type='button'
+                  size='sm'
+                  variant='destructive'
+                  disabled={reviewActionsDisabled}
+                  onClick={() => onReject(request)}
+                >
+                  <Icons.close className='size-4' />
+                  Rechazar
+                </Button>
+              </>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </li>

@@ -1,3 +1,4 @@
+import { getDocumentRequestsRefetchInterval } from '@/lib/document-request-refresh';
 import { queryOptions } from '@tanstack/react-query';
 import {
   getAssignableProductAgents,
@@ -37,7 +38,10 @@ export const productByIdOptions = (id: string, tenantId?: string | null) =>
 export const productDocumentRequestsOptions = (id: string, tenantId?: string | null) =>
   queryOptions({
     queryKey: productKeys.documentRequests(id, tenantId),
-    queryFn: () => getProductDocumentRequests(id, { pageSize: 10 })
+    queryFn: () => getProductDocumentRequests(id, { pageSize: 10 }),
+    refetchInterval: getDocumentRequestsRefetchInterval,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: 'always'
   });
 
 export const assignableProductAgentsOptions = (tenantId?: string | null) =>

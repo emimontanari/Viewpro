@@ -9,6 +9,7 @@ export class GetOwnerPropertyUseCase {
   constructor(
     @Inject(OWNER_PORTAL_REPOSITORY)
     private readonly ownerPortalRepository: OwnerPortalRepository,
+    @Inject(AnalyticsService)
     private readonly analyticsService: AnalyticsService,
   ) {}
 
@@ -19,7 +20,7 @@ export class GetOwnerPropertyUseCase {
       throw new NotFoundException('Owner property not found')
     }
 
-    await this.trackAnalytics({
+    void this.trackAnalytics({
       eventName: AnalyticsEventName.OWNER_VIEWED_PROPERTY,
       actorType: AnalyticsActorType.OWNER,
       actorUserId: input.userId,
