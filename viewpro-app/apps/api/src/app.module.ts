@@ -11,6 +11,7 @@ import { HealthModule } from './health/health.module'
 import { MembershipsModule } from './memberships/memberships.module'
 import { MovementsModule } from './movements/movements.module'
 import { ObservabilityModule } from './observability/observability.module'
+import { OwnerInvitationsModule } from './owner-invitations/owner-invitations.module'
 import { OwnerPortalModule } from './owner-portal/owner-portal.module'
 import { PermissionsModule } from './permissions/permissions.module'
 import { PropertyEngagementsModule } from './property-engagements/property-engagements.module'
@@ -40,6 +41,7 @@ import { UsersModule } from './users/users.module'
     PropertyEngagementsModule,
     MovementsModule,
     OwnerPortalModule,
+    OwnerInvitationsModule,
     DocumentsModule,
     AnalyticsModule,
     AdminModule,
