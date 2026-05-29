@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Inject, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
+import { ApiExtraModels } from '@nestjs/swagger'
 import { CurrentUser } from '../auth/decorators/current-user.decorator'
 import type { CurrentUser as CurrentUserContext } from '../auth/types/current-user'
 import { AuthGuard } from '../auth/guards/auth.guard'
@@ -18,6 +19,7 @@ import { ListPropertyEngagementsQuery } from './dto/list-property-engagements.qu
 import { UpdatePropertyEngagementDto } from './dto/update-property-engagement.dto'
 import { AssignPropertyAgentUseCase } from './use-cases/assign-property-agent.use-case'
 import { ArchivePropertyEngagementUseCase } from './use-cases/archive-property-engagement.use-case'
+import { CreateOwnerInvitationLinkUseCase } from './use-cases/create-owner-invitation-link.use-case'
 import { CreatePropertyEngagementUseCase } from './use-cases/create-property-engagement.use-case'
 import { DeletePropertyImageUseCase } from './use-cases/delete-property-image.use-case'
 import { GetPropertyEngagementUseCase } from './use-cases/get-property-engagement.use-case'
@@ -34,19 +36,16 @@ import {
   type UploadedPropertyImageFile,
 } from './use-cases/upload-property-image.use-case'
 
-// Keep DTO/query classes as runtime values for Nest metadata when tests transpile with Vitest/esbuild.
-const nestDtoRuntimeTypes = [
+@Controller('property-engagements')
+@ApiTenantContext()
+@ApiExtraModels(
   ArchivePropertyEngagementDto,
   AssignPropertyAgentDto,
   CreatePropertyEngagementDto,
   LinkPropertyOwnerDto,
   ListPropertyEngagementsQuery,
   UpdatePropertyEngagementDto,
-]
-void nestDtoRuntimeTypes
-
-@Controller('property-engagements')
-@ApiTenantContext()
+)
 @UseGuards(AuthGuard, TenantMembershipGuard, PermissionGuard)
 export class PropertyEngagementsController {
   constructor(
@@ -70,6 +69,8 @@ export class PropertyEngagementsController {
     private readonly listAssignablePropertyAgentsUseCase: ListAssignablePropertyAgentsUseCase,
     @Inject(LinkPropertyOwnerUseCase)
     private readonly linkPropertyOwnerUseCase: LinkPropertyOwnerUseCase,
+    @Inject(CreateOwnerInvitationLinkUseCase)
+    private readonly createOwnerInvitationLinkUseCase: CreateOwnerInvitationLinkUseCase,
     @Inject(UploadPropertyImageUseCase)
     private readonly uploadPropertyImageUseCase: UploadPropertyImageUseCase,
     @Inject(DeletePropertyImageUseCase)
@@ -189,6 +190,17 @@ export class PropertyEngagementsController {
     @Body() body: LinkPropertyOwnerDto,
   ) {
     return this.linkPropertyOwnerUseCase.execute(tenant, currentUser, id, body)
+  }
+
+  @Post(':id/owners/:ownerId/invitation-link')
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_CREATE)
+  createOwnerInvitationLink(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('id') id: string,
+    @Param('ownerId') ownerId: string,
+  ) {
+    return this.createOwnerInvitationLinkUseCase.execute(tenant, currentUser, id, ownerId)
   }
 
   @Post(':id/agents')
