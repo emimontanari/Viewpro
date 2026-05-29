@@ -1,4 +1,5 @@
 import {
+	OwnerInvitationStatus,
 	PropertyAssetOwnerAccessStatus,
 	PropertyOperationType,
 	PropertyType,
@@ -30,6 +31,7 @@ describe("Property engagements (e2e)", () => {
 	beforeEach(async () => {
 		await prisma.movement.deleteMany();
 		await prisma.propertyAgent.deleteMany();
+		await prisma.ownerInvitation.deleteMany();
 		await prisma.propertyAssetOwner.deleteMany();
 		await prisma.propertyEngagement.deleteMany();
 		await prisma.propertyAsset.deleteMany();
@@ -566,8 +568,15 @@ describe("Property engagements (e2e)", () => {
 				},
 			}),
 		).resolves.toBe(1);
+		await expect(
+			prisma.ownerInvitation.count({
+				where: { email: "linked-owner@example.com" },
+			}),
+		).resolves.toBe(0);
 
-		const ownerProperties = await owner.agent.get("/api/owner/properties").expect(200);
+		const ownerProperties = await owner.agent
+			.get("/api/owner/properties")
+			.expect(200);
 		expect(ownerProperties.body).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -587,7 +596,10 @@ describe("Property engagements (e2e)", () => {
 			"owner-conflict@example.com",
 			"Owner Conflict Homes",
 		);
-		const created = await createEngagement(manager.agent, manager.tenantId).expect(201);
+		const created = await createEngagement(
+			manager.agent,
+			manager.tenantId,
+		).expect(201);
 
 		await manager.agent
 			.post(`/api/property-engagements/${created.body.id}/owners`)
@@ -609,7 +621,9 @@ describe("Property engagements (e2e)", () => {
 			})
 			.expect(409);
 
-		expect(response.body.message).toBe("Owner is already linked to this property");
+		expect(response.body.message).toBe(
+			"Owner is already linked to this property",
+		);
 		await expect(
 			prisma.propertyAssetOwner.count({ where: { userId: owner.userId } }),
 		).resolves.toBe(1);
@@ -620,7 +634,10 @@ describe("Property engagements (e2e)", () => {
 			"manager-owner-missing-user@example.com",
 			"Manager Owner Missing User Homes",
 		);
-		const created = await createEngagement(manager.agent, manager.tenantId).expect(201);
+		const created = await createEngagement(
+			manager.agent,
+			manager.tenantId,
+		).expect(201);
 
 		const response = await manager.agent
 			.post(`/api/property-engagements/${created.body.id}/owners`)
@@ -656,6 +673,18 @@ describe("Property engagements (e2e)", () => {
 				},
 			}),
 		).resolves.toBe(1);
+		const invitation = await prisma.ownerInvitation.findFirstOrThrow({
+			where: { email: "missing-owner@example.com" },
+		});
+		expect(invitation).toMatchObject({
+			propertyAssetOwnerId: response.body.id,
+			email: "missing-owner@example.com",
+			status: OwnerInvitationStatus.PENDING,
+			acceptedAt: null,
+			revokedAt: null,
+		});
+		expect(invitation.tokenHash).toMatch(/^[a-f0-9]{64}$/);
+		expect(invitation.expiresAt.getTime()).toBeGreaterThan(Date.now());
 	});
 
 	it("does not link owners to another tenant engagement", async () => {

@@ -798,9 +798,11 @@ describe("Property engagements foundation", () => {
 		const count = vi.fn().mockResolvedValue(0);
 		const createMany = vi.fn().mockResolvedValue({ count: 1 });
 		const findFirstOrThrow = vi.fn().mockResolvedValue(linkedOwner);
+		const createInvitation = vi.fn();
 		const transaction = vi.fn(async (callback) =>
 			callback({
 				propertyAssetOwner: { count, createMany, findFirstOrThrow },
+				ownerInvitation: { create: createInvitation },
 			}),
 		);
 		const repository = new PrismaPropertyEngagementsRepository({
@@ -848,10 +850,14 @@ describe("Property engagements foundation", () => {
 				},
 			}),
 		);
+		expect(createInvitation).not.toHaveBeenCalled();
 	});
 
-	it("links invited owners as non-primary", async () => {
+	it("links invited owners as non-primary and creates a pending invitation", async () => {
 		const createMany = vi.fn().mockResolvedValue({ count: 1 });
+		const createInvitation = vi
+			.fn()
+			.mockResolvedValue({ id: "owner-invitation-1" });
 		const transaction = vi.fn(async (callback) =>
 			callback({
 				propertyAssetOwner: {
@@ -859,6 +865,7 @@ describe("Property engagements foundation", () => {
 					createMany,
 					findFirstOrThrow: vi.fn().mockResolvedValue({ id: "owner-link-2" }),
 				},
+				ownerInvitation: { create: createInvitation },
 			}),
 		);
 		const repository = new PrismaPropertyEngagementsRepository({
@@ -882,6 +889,14 @@ describe("Property engagements foundation", () => {
 				}),
 			}),
 		);
+		expect(createInvitation).toHaveBeenCalledWith({
+			data: {
+				propertyAssetOwnerId: "owner-link-2",
+				email: "owner-two@example.com",
+				tokenHash: expect.any(String),
+				expiresAt: expect.any(Date),
+			},
+		});
 	});
 
 	it("returns already linked when duplicate owner email is skipped", async () => {
