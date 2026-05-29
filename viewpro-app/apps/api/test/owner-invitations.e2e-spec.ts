@@ -1,5 +1,6 @@
 import {
 	OwnerInvitationStatus,
+	PropertyAssetOwnerAccessStatus,
 	PropertyOperationType,
 	PropertyType,
 } from "@prisma/client";
@@ -14,6 +15,8 @@ type TestAgent = ReturnType<typeof request.agent>;
 
 const rawToken = "stage-21-valid-owner-token";
 const managerPassword = `manager-${Date.now()}-fixture`;
+const ownerPassword = `owner-${Date.now()}-fixture`;
+let tokenSequence = 0;
 
 describe("Owner invitations (e2e)", () => {
 	let app: INestApplication;
@@ -139,6 +142,191 @@ describe("Owner invitations (e2e)", () => {
 		expect(response.body.message).toBe("Owner invitation was already accepted");
 	});
 
+	it("accepts a pending invitation by creating an owner-only user and activating the link", async () => {
+		const token = makeRawToken();
+		const { ownerLink } = await createPendingInvitation(token);
+
+		const response = await request(app.getHttpServer())
+			.post(`/api/owner-invitations/${token}/accept`)
+			.send({
+				firstName: "Accepted",
+				lastName: "Owner",
+				password: ownerPassword,
+			})
+			.expect(201);
+
+		expect(response.body).toMatchObject({
+			user: {
+				email: "invited-owner@example.com",
+				firstName: "Accepted",
+				lastName: "Owner",
+			},
+			memberships: [],
+		});
+		const setCookieHeader = stringifySetCookieHeader(
+			response.headers["set-cookie"],
+		);
+		expect(setCookieHeader).toContain("viewpro_access_token");
+		expect(setCookieHeader).toContain("viewpro_refresh_token");
+
+		const user = await prisma.user.findUniqueOrThrow({
+			where: { email: "invited-owner@example.com" },
+		});
+		await expect(
+			prisma.tenantMembership.count({ where: { userId: user.id } }),
+		).resolves.toBe(0);
+		await expect(
+			prisma.propertyAssetOwner.count({
+				where: {
+					id: ownerLink.id,
+					userId: user.id,
+					accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+				},
+			}),
+		).resolves.toBe(1);
+		await expect(
+			prisma.ownerInvitation.count({
+				where: {
+					propertyAssetOwnerId: ownerLink.id,
+					status: OwnerInvitationStatus.ACCEPTED,
+					acceptedAt: { not: null },
+				},
+			}),
+		).resolves.toBe(1);
+	});
+
+	it("lets the accepted owner access owner portal properties", async () => {
+		const token = makeRawToken();
+		const { engagement } = await createPendingInvitation(token);
+		const ownerAgent = request.agent(app.getHttpServer());
+
+		await ownerAgent
+			.post(`/api/owner-invitations/${token}/accept`)
+			.send({
+				firstName: "Accepted",
+				lastName: "Owner",
+				password: ownerPassword,
+			})
+			.expect(201);
+
+		const properties = await ownerAgent
+			.get("/api/owner/properties")
+			.expect(200);
+		expect(properties.body).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: engagement.body.property.id,
+					title: "Invitation property",
+				}),
+			]),
+		);
+	});
+
+	it("rejects accepting the same invitation twice", async () => {
+		const token = makeRawToken();
+		await createPendingInvitation(token);
+
+		await request(app.getHttpServer())
+			.post(`/api/owner-invitations/${token}/accept`)
+			.send({
+				firstName: "Accepted",
+				lastName: "Owner",
+				password: ownerPassword,
+			})
+			.expect(201);
+
+		const response = await request(app.getHttpServer())
+			.post(`/api/owner-invitations/${token}/accept`)
+			.send({
+				firstName: "Accepted",
+				lastName: "Owner",
+				password: ownerPassword,
+			})
+			.expect(410);
+
+		expect(response.body.message).toBe("Owner invitation was already accepted");
+	});
+
+	it("rejects accepting an invitation when the owner email is already registered", async () => {
+		const token = makeRawToken();
+		const { invitation, ownerLink } = await createPendingInvitation(token);
+		await registerTenantSession(
+			"invited-owner@example.com",
+			"Existing Owner Homes",
+		);
+
+		const response = await request(app.getHttpServer())
+			.post(`/api/owner-invitations/${token}/accept`)
+			.send({
+				firstName: "Accepted",
+				lastName: "Owner",
+				password: ownerPassword,
+			})
+			.expect(409);
+
+		expect(response.body.message).toBe("Owner email is already registered");
+		await expect(
+			prisma.ownerInvitation.count({
+				where: { id: invitation.id, status: OwnerInvitationStatus.PENDING },
+			}),
+		).resolves.toBe(1);
+		await expect(
+			prisma.propertyAssetOwner.count({
+				where: {
+					id: ownerLink.id,
+					userId: null,
+					accessStatus: PropertyAssetOwnerAccessStatus.INVITED,
+				},
+			}),
+		).resolves.toBe(1);
+	});
+
+	it("rejects accepting an expired invitation", async () => {
+		const token = makeRawToken();
+		const { invitation } = await createPendingInvitation(token);
+		await prisma.ownerInvitation.update({
+			where: { id: invitation.id },
+			data: { expiresAt: new Date(Date.now() - 1000) },
+		});
+
+		const response = await request(app.getHttpServer())
+			.post(`/api/owner-invitations/${token}/accept`)
+			.send({ firstName: "Accepted", password: ownerPassword })
+			.expect(410);
+
+		expect(response.body.message).toBe("Owner invitation has expired");
+	});
+
+	it("rejects weak owner invitation credentials", async () => {
+		const token = makeRawToken();
+		const { invitation, ownerLink } = await createPendingInvitation(token);
+
+		await request(app.getHttpServer())
+			.post(`/api/owner-invitations/${token}/accept`)
+			.send({ firstName: "Accepted", password: ownerPassword.slice(0, 5) })
+			.expect(400);
+
+		await expect(
+			prisma.ownerInvitation.count({
+				where: { id: invitation.id, status: OwnerInvitationStatus.PENDING },
+			}),
+		).resolves.toBe(1);
+		await expect(
+			prisma.propertyAssetOwner.count({
+				where: {
+					id: ownerLink.id,
+					userId: null,
+					accessStatus: PropertyAssetOwnerAccessStatus.INVITED,
+				},
+			}),
+		).resolves.toBe(1);
+	});
+
+	function makeRawToken() {
+		tokenSequence += 1;
+		return `stage-21-owner-token-${tokenSequence}`;
+	}
+
 	async function createPendingInvitation(token: string) {
 		invitationSequence += 1;
 		const manager = await registerTenantSession(
@@ -194,6 +382,10 @@ describe("Owner invitations (e2e)", () => {
 			userId: response.body.user.id as string,
 			tenantId: response.body.memberships[0].tenant.id as string,
 		};
+	}
+
+	function stringifySetCookieHeader(header: string | string[] | undefined) {
+		return Array.isArray(header) ? header.join(";") : (header ?? "");
 	}
 
 	function createEngagement(

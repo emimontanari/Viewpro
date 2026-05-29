@@ -1,6 +1,7 @@
 import type {
 	OwnerInvitationStatus,
 	PropertyAssetOwnerAccessStatus,
+	User,
 } from "@prisma/client";
 
 export const OWNER_INVITATIONS_REPOSITORY = Symbol(
@@ -32,6 +33,25 @@ export type OwnerInvitationDetails = {
 	};
 };
 
+export type AcceptOwnerInvitationInput = {
+	tokenHash: string;
+	passwordHash: string;
+	firstName: string;
+	lastName?: string;
+	now: Date;
+};
+
+export type AcceptOwnerInvitationResult =
+	| { status: "accepted"; user: User }
+	| { status: "notFound" }
+	| { status: "expired" }
+	| { status: "revoked" }
+	| { status: "alreadyAccepted" }
+	| { status: "userAlreadyExists" };
+
 export type OwnerInvitationsRepository = {
 	findByTokenHash(tokenHash: string): Promise<OwnerInvitationDetails | null>;
+	acceptForNewOwner(
+		input: AcceptOwnerInvitationInput,
+	): Promise<AcceptOwnerInvitationResult>;
 };
