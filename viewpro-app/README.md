@@ -166,7 +166,13 @@ Stage 6 soporta el portal propietario desde APIs backend read-only. Estas rutas 
 - `GET /api/owner/properties/:propertyAssetId/engagements`
 - `GET /api/owner/engagements/:engagementId/timeline`
 
-El acceso se resuelve con `PropertyAssetOwner(accessStatus: ACTIVE)`, no con `TenantMembership`. Las respuestas exponen datos sanitizados de propiedad, gestión, agentes y movimientos; recursos revocados, ajenos o inaccesibles responden `404`. Invitaciones, self-registration, UI, documentos y tracking de WhatsApp quedan fuera de alcance.
+El acceso se resuelve con `PropertyAssetOwner(accessStatus: ACTIVE)`, no con `TenantMembership`. Las respuestas exponen datos sanitizados de propiedad, gestión, agentes y movimientos; recursos revocados, ajenos o inaccesibles responden `404`. En Stage 6, invitaciones, self-registration, UI, documentos y tracking de WhatsApp quedaron fuera de alcance.
+
+## Owner invitations
+
+Los propietarios no registrados quedan vinculados como `INVITED`. Desde la card de propietario, un usuario del tenant puede generar y copiar manualmente un link fresco de invitación para enviarlo por el canal que prefiera.
+
+Cada generación rota la invitación: los links pendientes anteriores se revocan, el token raw se devuelve una sola vez en la respuesta y la base guarda únicamente `tokenHash`. El envío automático por email sigue fuera de alcance por ahora.
 
 ## Documents backend
 

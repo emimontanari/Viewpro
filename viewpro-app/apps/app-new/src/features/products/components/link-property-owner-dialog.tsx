@@ -75,8 +75,8 @@ export function LinkPropertyOwnerDialog({
         <DialogHeader>
           <DialogTitle>Vincular propietario</DialogTitle>
           <DialogDescription>
-            Ingresá los datos del propietario. Vamos a dejarlo vinculado a la propiedad. La
-            invitación por email se activará en una próxima etapa.
+            Ingresá los datos del propietario. Vamos a dejarlo vinculado a la propiedad. Después vas
+            a poder copiar un link de invitación para enviarlo manualmente.
           </DialogDescription>
         </DialogHeader>
 
@@ -126,7 +126,8 @@ export function LinkPropertyOwnerDialog({
               onChange={(event) => updateField('email', event.target.value)}
             />
             <FieldDescription>
-              No vamos a enviar ningún email todavía; solo quedará vinculado a esta propiedad.
+              No enviaremos email automático todavía. El link se puede copiar manualmente desde la
+              propiedad.
             </FieldDescription>
             <FieldError>{errors.email}</FieldError>
           </Field>

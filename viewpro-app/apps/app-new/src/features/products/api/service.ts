@@ -23,6 +23,7 @@ import type {
   ProductMovementMutationPayload,
   ProductMutationPayload,
   ProductMovementsResponse,
+  ProductOwnerInvitationLinkResponse,
   ProductStatusMutationPayload,
   ProductsResponse,
   PropertyImage,
@@ -154,6 +155,18 @@ export async function linkProductOwner(
   });
 
   return parseJsonResponse<LinkProductOwnerResponse>(response);
+}
+
+export async function createProductOwnerInvitationLink(
+  productId: string,
+  ownerId: string
+): Promise<ProductOwnerInvitationLinkResponse> {
+  const response = await apiFetch(
+    `${PRODUCTS_API_PATH}/${productId}/owners/${ownerId}/invitation-link`,
+    { method: 'POST' }
+  );
+
+  return parseJsonResponse<ProductOwnerInvitationLinkResponse>(response);
 }
 
 export async function createProductMovement(

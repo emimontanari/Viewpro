@@ -5,9 +5,17 @@ import { Button } from '@/components/ui/button';
 import type { PropertyLinkedOwner, PropertyOwnerAccessStatus } from '../api/types';
 import { cn } from '@/lib/utils';
 
+type ManualInvitationFallback = {
+  ownerId: string;
+  invitationUrl: string;
+};
+
 type PropertyOwnerCardProps = {
+  copyingInvitationOwnerId?: string | null;
   isArchived: boolean;
   isLinkDisabled: boolean;
+  manualInvitationFallback?: ManualInvitationFallback | null;
+  onCopyInvitationLink?: (owner: PropertyLinkedOwner) => void;
   onLinkOwner: () => void;
   ownerEmail: string | null;
   ownerName: string | null;
@@ -30,8 +38,11 @@ const ownerStatusTones: Record<PropertyOwnerAccessStatus, string> = {
 };
 
 export function PropertyOwnerCard({
+  copyingInvitationOwnerId = null,
   isArchived,
   isLinkDisabled,
+  manualInvitationFallback = null,
+  onCopyInvitationLink,
   onLinkOwner,
   ownerEmail,
   ownerName,
@@ -102,6 +113,29 @@ export function PropertyOwnerCard({
                       {ownerStatusLabels[owner.accessStatus]}
                     </Badge>
                   </div>
+                  {owner.accessStatus === 'INVITED' && onCopyInvitationLink ? (
+                    <Button
+                      type='button'
+                      size='sm'
+                      variant='outline'
+                      className='h-8 w-fit'
+                      disabled={copyingInvitationOwnerId === owner.id}
+                      onClick={() => onCopyInvitationLink(owner)}
+                    >
+                      Copiar invitación
+                    </Button>
+                  ) : null}
+                  {manualInvitationFallback?.ownerId === owner.id ? (
+                    <div className='rounded-md border border-dashed bg-muted/40 p-2 text-xs'>
+                      <p className='font-medium'>Copiá este link manualmente:</p>
+                      <a
+                        href={manualInvitationFallback.invitationUrl}
+                        className='break-all underline underline-offset-4'
+                      >
+                        {manualInvitationFallback.invitationUrl}
+                      </a>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </li>

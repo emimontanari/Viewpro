@@ -23,6 +23,16 @@ export function parseCorsOrigins(corsOrigin: string | undefined, nodeEnv: NodeEn
   return rawOrigins.filter(Boolean)
 }
 
+export function getAppPublicUrl(appPublicUrl: string | undefined, nodeEnv: NodeEnv) {
+  const rawUrl = appPublicUrl ?? (nodeEnv === 'production' ? undefined : 'http://localhost:3000')
+
+  if (!rawUrl) {
+    throw new Error('APP_PUBLIC_URL must be configured in production')
+  }
+
+  return rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl
+}
+
 export function getAuthRateLimitConfig(): {
   login: AuthRateLimitConfig
   register: AuthRateLimitConfig
@@ -64,6 +74,7 @@ export const appConfig = registerAs('app', () => {
   return {
     nodeEnv,
     port: Number(process.env.PORT ?? 3001),
+    publicUrl: getAppPublicUrl(process.env.APP_PUBLIC_URL, nodeEnv),
     cors: {
       origins: parseCorsOrigins(process.env.CORS_ORIGIN, nodeEnv),
     },

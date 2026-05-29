@@ -88,6 +88,14 @@ export type LinkProductOwnerResponse = PropertyLinkedOwner & {
   updatedAt: string;
 };
 
+export type ProductOwnerInvitationLinkResponse = {
+  invitationId: string;
+  propertyAssetOwnerId: string;
+  email: string;
+  expiresAt: string;
+  invitationUrl: string;
+};
+
 export type ProductDocumentRequestStatus =
   | 'PENDING'
   | 'SUBMITTED'

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { MovementSource, MovementType, PropertyAssetOwnerAccessStatus } from '@prisma/client'
+import { MovementSource, MovementType, OwnerInvitationStatus, PropertyAssetOwnerAccessStatus } from '@prisma/client'
 import type { Prisma, PropertyAssetImage } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import { createOwnerInvitationToken } from './owner-invitation-token'
@@ -9,6 +9,7 @@ import type {
   AssignPropertyAgentResult,
   CreatePropertyEngagementInput,
   CreatePropertyAssetImageInput,
+  CreateOwnerInvitationLinkResult,
   DeletePropertyAssetImageResult,
   LinkPropertyOwnerResult,
   ListPropertyEngagementsInput,
@@ -428,6 +429,73 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
       }
 
       return { status: 'linked', owner }
+    })
+  }
+
+  createOwnerInvitationLink(input: {
+    propertyAssetId: string
+    ownerId: string
+  }): Promise<CreateOwnerInvitationLinkResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const owner = await tx.propertyAssetOwner.findFirst({
+        where: {
+          id: input.ownerId,
+          propertyAssetId: input.propertyAssetId,
+        },
+        select: {
+          id: true,
+          ownerEmail: true,
+          accessStatus: true,
+        },
+      })
+
+      if (!owner) {
+        return { status: 'ownerNotFound' }
+      }
+
+      if (owner.accessStatus !== PropertyAssetOwnerAccessStatus.INVITED) {
+        return {
+          status: 'ownerNotInvited',
+          accessStatus: owner.accessStatus,
+        }
+      }
+
+      const now = new Date()
+      const { token, tokenHash, expiresAt } = createOwnerInvitationToken(now)
+
+      await tx.ownerInvitation.updateMany({
+        where: {
+          propertyAssetOwnerId: owner.id,
+          status: OwnerInvitationStatus.PENDING,
+        },
+        data: {
+          status: OwnerInvitationStatus.REVOKED,
+          revokedAt: now,
+        },
+      })
+
+      const invitation = await tx.ownerInvitation.create({
+        data: {
+          propertyAssetOwnerId: owner.id,
+          email: owner.ownerEmail,
+          tokenHash,
+          expiresAt,
+        },
+        select: {
+          id: true,
+          propertyAssetOwnerId: true,
+          email: true,
+          expiresAt: true,
+        },
+      })
+
+      return {
+        status: 'created',
+        invitation: {
+          ...invitation,
+          token,
+        },
+      }
     })
   }
 

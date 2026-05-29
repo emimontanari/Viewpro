@@ -10,6 +10,7 @@ import { PROPERTY_ENGAGEMENTS_REPOSITORY } from "./property-engagements.reposito
 import { LocalPropertyImagesStorage } from "./property-images.storage";
 import { AssignPropertyAgentUseCase } from "./use-cases/assign-property-agent.use-case";
 import { ArchivePropertyEngagementUseCase } from "./use-cases/archive-property-engagement.use-case";
+import { CreateOwnerInvitationLinkUseCase } from "./use-cases/create-owner-invitation-link.use-case";
 import { CreatePropertyEngagementUseCase } from "./use-cases/create-property-engagement.use-case";
 import { DeletePropertyImageUseCase } from "./use-cases/delete-property-image.use-case";
 import { GetPropertyEngagementUseCase } from "./use-cases/get-property-engagement.use-case";
@@ -23,38 +24,39 @@ import { UpdatePropertyEngagementUseCase } from "./use-cases/update-property-eng
 import { UploadPropertyImageUseCase } from "./use-cases/upload-property-image.use-case";
 
 const propertyEngagementUseCases = [
-	CreatePropertyEngagementUseCase,
-	ListPropertyEngagementsUseCase,
-	GetPropertyEngagementUseCase,
-	UpdatePropertyEngagementUseCase,
-	ArchivePropertyEngagementUseCase,
-	RestorePropertyEngagementUseCase,
-	AssignPropertyAgentUseCase,
-	RemovePropertyAgentUseCase,
-	ListAssignablePropertyAgentsUseCase,
-	LinkPropertyOwnerUseCase,
-	UploadPropertyImageUseCase,
-	DeletePropertyImageUseCase,
-	SetPropertyImagePrimaryUseCase,
+  CreatePropertyEngagementUseCase,
+  ListPropertyEngagementsUseCase,
+  GetPropertyEngagementUseCase,
+  UpdatePropertyEngagementUseCase,
+  ArchivePropertyEngagementUseCase,
+  RestorePropertyEngagementUseCase,
+  AssignPropertyAgentUseCase,
+  RemovePropertyAgentUseCase,
+  ListAssignablePropertyAgentsUseCase,
+  LinkPropertyOwnerUseCase,
+  CreateOwnerInvitationLinkUseCase,
+  UploadPropertyImageUseCase,
+  DeletePropertyImageUseCase,
+  SetPropertyImagePrimaryUseCase,
 ];
 
 @Module({
-	imports: [
-		AuthModule,
-		MembershipsModule,
-		PermissionsModule,
-		TenantContextModule,
-		UsersModule,
-	],
-	controllers: [PropertyEngagementsController],
-	providers: [
-		{
-			provide: PROPERTY_ENGAGEMENTS_REPOSITORY,
-			useClass: PrismaPropertyEngagementsRepository,
-		},
-		LocalPropertyImagesStorage,
-		...propertyEngagementUseCases,
-	],
-	exports: [PROPERTY_ENGAGEMENTS_REPOSITORY, ...propertyEngagementUseCases],
+  imports: [
+    AuthModule,
+    MembershipsModule,
+    PermissionsModule,
+    TenantContextModule,
+    UsersModule,
+  ],
+  controllers: [PropertyEngagementsController],
+  providers: [
+    {
+      provide: PROPERTY_ENGAGEMENTS_REPOSITORY,
+      useClass: PrismaPropertyEngagementsRepository,
+    },
+    LocalPropertyImagesStorage,
+    ...propertyEngagementUseCases,
+  ],
+  exports: [PROPERTY_ENGAGEMENTS_REPOSITORY, ...propertyEngagementUseCases],
 })
 export class PropertyEngagementsModule {}
