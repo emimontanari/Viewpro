@@ -242,7 +242,7 @@ describe('OwnerDocumentRequests', () => {
     expect(createOwnerDocumentUploadUrlMock).not.toHaveBeenCalled();
   });
 
-  it('renders the requested card hierarchy and semantic styles', async () => {
+  it('renders each document request as a card with neutral chrome', async () => {
     getOwnerDocumentRequestsMock.mockResolvedValueOnce(
       documentRequestsResponse([
         documentRequest({
@@ -255,7 +255,16 @@ describe('OwnerDocumentRequests', () => {
     renderOwnerDocumentRequests();
 
     const card = await screen.findByRole('listitem');
-    expect(card).toHaveClass('border-[#5a2020]');
+    const listWrapper = card.parentElement?.parentElement;
+    expect(listWrapper).toHaveClass('space-y-3');
+    expect(listWrapper).not.toHaveClass('rounded-2xl');
+    expect(listWrapper).not.toHaveClass('border');
+    expect(listWrapper).not.toHaveClass('bg-card');
+    expect(listWrapper).not.toHaveClass('p-4');
+    expect(listWrapper).not.toHaveClass('shadow-xs');
+    expect(card).toHaveClass('border', 'bg-background', 'shadow-xs');
+    expect(card).not.toHaveClass('border-[0.1px]');
+    expect(card).not.toHaveClass('border-[#5a2020]');
     const header = screen.getByTestId('owner-document-card-header');
     expect(header).toHaveTextContent('DNI del propietario');
     expect(header).toHaveTextContent('DNI · Solicitado por ViewPro Demo Inmobiliaria');
@@ -271,12 +280,12 @@ describe('OwnerDocumentRequests', () => {
 
     renderOwnerDocumentRequests();
 
-    expect(await screen.findByRole('listitem')).toHaveClass('border-blue-700');
+    expect(await screen.findByRole('listitem')).not.toHaveClass('border-blue-700');
     expect(screen.getByText('Subido')).toHaveClass('bg-blue-50');
     expect(screen.getByRole('button', { name: 'Abrir documento' })).toHaveClass('bg-blue-50');
   });
 
-  it('uses status-colored borders for pending and approved requests', async () => {
+  it('uses status badges for pending and approved requests', async () => {
     getOwnerDocumentRequestsMock.mockResolvedValueOnce(
       documentRequestsResponse([
         documentRequest({ id: 'request-pending', status: 'PENDING', currentVersion: null }),
@@ -287,11 +296,13 @@ describe('OwnerDocumentRequests', () => {
     renderOwnerDocumentRequests();
 
     const cards = await screen.findAllByRole('listitem');
-    expect(cards[0]).toHaveClass('border-amber-600');
-    expect(cards[1]).toHaveClass('border-[#1a4028]');
+    expect(cards[0]).not.toHaveClass('border-amber-600');
+    expect(cards[1]).not.toHaveClass('border-[#1a4028]');
+    expect(screen.getByText('Pendiente')).toHaveClass('bg-amber-50');
+    expect(screen.getByText('Aprobado')).toHaveClass('bg-emerald-50');
   });
 
-  it('keeps rejected document versions visible after a new upload', async () => {
+  it('keeps rejected document versions visible with rejection reason after a new upload', async () => {
     const rejectedVersion: OwnerDocumentVersion = {
       ...currentVersion,
       id: 'version-rejected',
@@ -299,6 +310,14 @@ describe('OwnerDocumentRequests', () => {
       status: 'REJECTED',
       createdAt: '2026-05-27T10:00:00.000Z',
       updatedAt: '2026-05-27T10:00:00.000Z'
+    };
+    const abandonedPendingVersion: OwnerDocumentVersion = {
+      ...currentVersion,
+      id: 'version-pending',
+      originalFilename: 'dni-pendiente.pdf',
+      status: 'PENDING_UPLOAD',
+      createdAt: '2026-05-27T12:00:00.000Z',
+      updatedAt: '2026-05-27T12:00:00.000Z'
     };
     const uploadedVersion: OwnerDocumentVersion = {
       ...currentVersion,
@@ -312,8 +331,9 @@ describe('OwnerDocumentRequests', () => {
       documentRequestsResponse([
         documentRequest({
           status: 'SUBMITTED',
+          rejectionReason: 'El documento se ve mal. Subilo con mejor calidad.',
           currentVersion: uploadedVersion,
-          versions: [rejectedVersion, uploadedVersion]
+          versions: [rejectedVersion, abandonedPendingVersion, uploadedVersion]
         })
       ])
     );
@@ -325,6 +345,10 @@ describe('OwnerDocumentRequests', () => {
     expect(screen.getByText('dni-rechazado.pdf')).toBeInTheDocument();
     expect(screen.getByText('Versión anterior')).toBeInTheDocument();
     expect(screen.getByText('Rechazada')).toHaveClass('bg-red-50');
+    expect(
+      screen.getByText('El documento se ve mal. Subilo con mejor calidad.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('dni-pendiente.pdf')).not.toBeInTheDocument();
   });
 
   it('creates a read URL and opens it in a safe new tab', async () => {

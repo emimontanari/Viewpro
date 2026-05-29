@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OwnerEngagementsResponse, OwnerProperty, OwnerTimelineResponse } from '../api/types';
 import { OwnerPropertyDetail } from './owner-property-detail';
@@ -16,11 +16,14 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
   return {
     ...actual,
-    useQuery: vi.fn()
+    useQuery: vi.fn(),
+    useQueryClient: vi.fn()
   };
 });
 
 const useQueryMock = vi.mocked(useQuery);
+const useQueryClientMock = vi.mocked(useQueryClient);
+const prefetchQueryMock = vi.fn();
 
 const ownerProperty: OwnerProperty = {
   id: 'property-1',
@@ -107,6 +110,8 @@ const timelineResponse: OwnerTimelineResponse = {
 describe('OwnerPropertyDetail', () => {
   beforeEach(() => {
     useQueryMock.mockReset();
+    prefetchQueryMock.mockReset();
+    useQueryClientMock.mockReturnValue({ prefetchQuery: prefetchQueryMock } as never);
   });
 
   it('renders owner property summary, tabs, status path and read-only timeline', async () => {
@@ -159,6 +164,11 @@ describe('OwnerPropertyDetail', () => {
     expect(screen.queryByText('Nueva propiedad')).not.toBeInTheDocument();
     expect(screen.queryByText('Editar')).not.toBeInTheDocument();
     expect(screen.queryByText('Crear')).not.toBeInTheDocument();
+    expect(prefetchQueryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ['owner', 'document-requests', 'engagement-1', { pageSize: 20 }]
+      })
+    );
   });
 
   it('renders property content while engagements are still loading', async () => {
@@ -177,7 +187,9 @@ describe('OwnerPropertyDetail', () => {
       screen.getByRole('heading', { name: /Casa familiar con pileta en Villa Centenario/i })
     ).toBeInTheDocument();
     expect(screen.getByText('Cargando seguimiento')).toBeInTheDocument();
-    expect(screen.getByText('Estamos trayendo la gestión activa de esta propiedad.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Estamos trayendo la gestión activa de esta propiedad.')
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'Seguimiento' }));
 

@@ -6,17 +6,36 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { propertyTypeOptions } from '@/features/products/constants/product-options';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { ownerPropertyEngagementsOptions, ownerPropertyOptions } from '../api/queries';
+import { useEffect } from 'react';
+import {
+  ownerDocumentRequestsOptions,
+  ownerPropertyEngagementsOptions,
+  ownerPropertyOptions
+} from '../api/queries';
 import type { OwnerEngagement, OwnerProperty } from '../api/types';
 import { OwnerDocumentRequests } from './owner-document-requests';
 import { OwnerEngagementCard } from './owner-engagement-card';
 import { OwnerPropertySummary } from './owner-property-summary';
 
+const OWNER_DOCUMENT_PREFETCH_FILTERS = { pageSize: 20 };
+
 export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
+  const queryClient = useQueryClient();
   const propertyQuery = useQuery(ownerPropertyOptions(propertyId));
   const engagementsQuery = useQuery(ownerPropertyEngagementsOptions(propertyId));
+  const firstEngagementId = engagementsQuery.data?.[0]?.id;
+
+  useEffect(() => {
+    if (!firstEngagementId || engagementsQuery.isError) {
+      return;
+    }
+
+    void queryClient.prefetchQuery(
+      ownerDocumentRequestsOptions(firstEngagementId, OWNER_DOCUMENT_PREFETCH_FILTERS)
+    );
+  }, [engagementsQuery.isError, firstEngagementId, queryClient]);
 
   if (propertyQuery.isLoading) {
     return <OwnerPropertyDetailSkeleton />;

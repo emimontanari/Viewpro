@@ -65,14 +65,6 @@ const documentVersionStatusTones: Record<OwnerDocumentVersionStatus, string> = {
     'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300'
 };
 
-const documentCardBorderTones: Record<OwnerDocumentRequestStatus, string> = {
-  APPROVED: 'border-[#1a4028]',
-  CANCELLED: 'border-zinc-700',
-  PENDING: 'border-amber-600',
-  REJECTED: 'border-[#5a2020]',
-  SUBMITTED: 'border-blue-700'
-};
-
 const documentIconChipTones: Record<OwnerDocumentRequestStatus, string> = {
   APPROVED:
     'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/50 dark:text-emerald-200',
@@ -220,11 +212,11 @@ export function OwnerDocumentRequests({
         </p>
       </div>
 
-      <div className='rounded-2xl border bg-card p-4 shadow-xs'>
+      <div className='space-y-3'>
         {fileSelectionError ? (
           <div
             role='alert'
-            className='mb-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300'
+            className='rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300'
           >
             {fileSelectionError}
           </div>
@@ -316,12 +308,7 @@ function OwnerDocumentRequestItem({
   }
 
   return (
-    <li
-      className={cn(
-        'overflow-hidden rounded-xl border-[0.1px] bg-background shadow-xs',
-        documentCardBorderTones[request.status]
-      )}
-    >
+    <li className='overflow-hidden rounded-xl border bg-background shadow-xs'>
       <div className='space-y-4 p-4'>
         <div
           data-testid='owner-document-card-header'
@@ -369,7 +356,12 @@ function OwnerDocumentRequestItem({
             </p>
             <div className='space-y-2'>
               {historicalVersions.map((version) => (
-                <DocumentVersionRow key={version.id} label='Versión anterior' version={version} />
+                <DocumentVersionRow
+                  key={version.id}
+                  label='Versión anterior'
+                  rejectionReason={getVersionRejectionReason(version, request)}
+                  version={version}
+                />
               ))}
             </div>
           </div>
@@ -435,37 +427,63 @@ function OwnerDocumentRequestItem({
   );
 }
 
-function DocumentVersionRow({ label, version }: { label: string; version: OwnerDocumentVersion }) {
+function DocumentVersionRow({
+  label,
+  rejectionReason,
+  version
+}: {
+  label: string;
+  rejectionReason?: string | null;
+  version: OwnerDocumentVersion;
+}) {
   const FileIcon = getDocumentFileIcon(version.mimeType);
 
   return (
-    <div className='flex items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3 text-sm'>
-      <div className='flex min-w-0 items-center gap-3'>
-        <span
-          aria-hidden='true'
-          className='flex size-10 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground'
-        >
-          <FileIcon className='size-5' />
-        </span>
-        <div className='min-w-0'>
-          <p className='break-words font-medium'>{version.originalFilename}</p>
-          <p className='text-xs text-muted-foreground'>{label}</p>
+    <div className='rounded-lg border bg-muted/20 p-3 text-sm'>
+      <div className='flex items-center justify-between gap-3'>
+        <div className='flex min-w-0 items-center gap-3'>
+          <span
+            aria-hidden='true'
+            className='flex size-10 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground'
+          >
+            <FileIcon className='size-5' />
+          </span>
+          <div className='min-w-0'>
+            <p className='break-words font-medium'>{version.originalFilename}</p>
+            <p className='text-xs text-muted-foreground'>{label}</p>
+          </div>
         </div>
+        <Badge
+          variant='outline'
+          className={cn('shrink-0 rounded-md', documentVersionStatusTones[version.status])}
+        >
+          {documentVersionStatusLabels[version.status]}
+        </Badge>
       </div>
-      <Badge
-        variant='outline'
-        className={cn('shrink-0 rounded-md', documentVersionStatusTones[version.status])}
-      >
-        {documentVersionStatusLabels[version.status]}
-      </Badge>
+      {rejectionReason ? (
+        <p className='mt-2 flex items-start gap-1.5 text-xs text-red-700 dark:text-red-300'>
+          <Icons.warning className='mt-0.5 size-3.5 shrink-0' />
+          <span className='break-words'>{rejectionReason}</span>
+        </p>
+      ) : null}
     </div>
   );
 }
 
 function getHistoricalVersions(request: OwnerDocumentRequest) {
   return request.versions
-    .filter((version) => version.id !== request.currentVersion?.id)
+    .filter(
+      (version) => version.id !== request.currentVersion?.id && version.status !== 'PENDING_UPLOAD'
+    )
     .toSorted((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
+}
+
+function getVersionRejectionReason(version: OwnerDocumentVersion, request: OwnerDocumentRequest) {
+  if (version.status !== 'REJECTED') {
+    return null;
+  }
+
+  return request.rejectionReason;
 }
 
 function getDocumentTypeLabel(title: string) {
