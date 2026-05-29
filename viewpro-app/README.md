@@ -115,7 +115,7 @@ Antes del piloto real tiene que estar definido:
 
 ### Document storage
 
-La metadata documental vive en PostgreSQL y queda cubierta por el dump. Los bytes de documentos todavía no están respaldados por storage real porque Stage 7 usa un adapter fake; cuando exista S3/R2/MinIO u otro storage productivo, ese storage necesitará su propia política de backup y restore.
+La metadata documental vive en PostgreSQL y queda cubierta por el dump. Los bytes de documentos viven detrás de `DocumentStoragePort`: desarrollo/test puede usar storage local firmado y producción debe usar un bucket privado S3-compatible/R2 con URLs firmadas. Ese bucket necesita su propia política de backup, lifecycle y restore; el dump de PostgreSQL no incluye los bytes.
 
 ## Auth backend
 
@@ -170,7 +170,7 @@ El acceso se resuelve con `PropertyAssetOwner(accessStatus: ACTIVE)`, no con `Te
 
 ## Documents backend
 
-Stage 7 soporta solicitudes documentales backend entre inmobiliaria y propietarios. La metadata vive en Postgres (`DocumentRequest`, `Document`, `DocumentVersion`) y los archivos se acceden mediante URLs firmadas generadas después de validar permisos. El storage queda detrás de `DocumentStoragePort`; esta etapa usa adapter fake y no incluye proveedor productivo S3/R2/MinIO.
+Stage 7/20 soporta solicitudes documentales backend entre inmobiliaria y propietarios. La metadata vive en Postgres (`DocumentRequest`, `Document`, `DocumentVersion`) y los archivos se acceden mediante URLs firmadas generadas después de validar permisos. El storage queda detrás de `DocumentStoragePort`: `fake` queda sólo para trabajo API aislado, `local` sirve para desarrollo/test con rutas firmadas locales, y `s3` habilita producción con bucket privado S3-compatible/R2.
 
 Rutas internas con auth, tenant y permisos:
 
@@ -192,6 +192,10 @@ Rutas owner con cookies de auth y sin `x-tenant-id`:
 - `POST /api/owner/document-versions/:id/read-url`
 
 El upload owner valida propiedad activa, estado de solicitud, MIME permitido (`application/pdf`, `image/jpeg`, `image/png`, `image/webp`) y tamaño máximo de 10 MB. Confirmar la subida marca la versión como `UPLOADED`, la vuelve versión actual y deja la solicitud en `SUBMITTED`.
+
+Para producción documental configurá `DOCUMENT_STORAGE_DRIVER=s3` con bucket privado S3/R2 (`DOCUMENT_STORAGE_S3_BUCKET`, `DOCUMENT_STORAGE_S3_ENDPOINT`, `DOCUMENT_STORAGE_S3_REGION`, `DOCUMENT_STORAGE_S3_ACCESS_KEY_ID`, `DOCUMENT_STORAGE_S3_SECRET_ACCESS_KEY`). No hagas público el bucket; el acceso debe pasar por URLs firmadas de corta duración. En producción la API falla al iniciar si el driver no es `s3`, para evitar caer accidentalmente en storage fake.
+
+El bucket S3/R2 necesita CORS para uploads directos desde el navegador: permitir el origen de `app-new`, método `PUT`, header `Content-Type`, y exponer `ETag`. Las URLs de upload firman `content-type` y, cuando el tamaño fue informado, `content-length`; el browser debe enviar el mismo `Content-Type` que se usó al pedir la URL firmada.
 
 ## Apps
 

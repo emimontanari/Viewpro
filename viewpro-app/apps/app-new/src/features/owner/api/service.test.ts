@@ -31,6 +31,40 @@ describe('owner document API service', () => {
     expect(xhrMock).not.toHaveBeenCalled();
   });
 
+  it('returns upload metadata when production storage responds without JSON', async () => {
+    const xhr = createSuccessfulUploadXhr('');
+    vi.stubGlobal(
+      'XMLHttpRequest',
+      vi.fn(function XMLHttpRequest() {
+        return xhr;
+      })
+    );
+    const file = new File(['pdf'], 'deed.pdf', { type: 'application/pdf' });
+
+    await expect(
+      uploadOwnerDocumentFile(
+        {
+          url: 'https://viewpro-documents.example.r2.cloudflarestorage.com/document-requests/request-1/deed.pdf?X-Amz-Expires=600',
+          storageKey: 'document-requests/request-1/deed.pdf',
+          expiresInSeconds: 600
+        },
+        file,
+        { mimeType: 'application/pdf' }
+      )
+    ).resolves.toEqual({
+      storageKey: 'document-requests/request-1/deed.pdf',
+      sizeBytes: 3,
+      mimeType: 'application/pdf'
+    });
+
+    expect(xhr.open).toHaveBeenCalledWith(
+      'PUT',
+      'https://viewpro-documents.example.r2.cloudflarestorage.com/document-requests/request-1/deed.pdf?X-Amz-Expires=600'
+    );
+    expect(xhr.setRequestHeader).toHaveBeenCalledWith('content-type', 'application/pdf');
+    expect(xhr.send).toHaveBeenCalledWith(file);
+  });
+
   it('rejects fake document read URLs before returning them to the UI', async () => {
     const responseBody: OwnerDocumentVersionUrlResponse = {
       version: {
@@ -70,3 +104,20 @@ describe('owner document API service', () => {
     });
   });
 });
+
+function createSuccessfulUploadXhr(responseText: string) {
+  return {
+    upload: {},
+    status: 200,
+    statusText: 'OK',
+    responseText,
+    open: vi.fn(),
+    setRequestHeader: vi.fn(),
+    send: vi.fn(function send(this: { onload?: () => void }) {
+      this.onload?.();
+    }),
+    onerror: undefined as (() => void) | undefined,
+    onload: undefined as (() => void) | undefined,
+    ontimeout: undefined as (() => void) | undefined
+  };
+}

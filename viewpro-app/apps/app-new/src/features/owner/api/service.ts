@@ -83,7 +83,13 @@ export async function uploadOwnerDocumentFile(
 
   assertBrowserReachableDocumentStorageUrl(uploadUrl.url);
 
-  return uploadBlobWithProgress(getFetchUrl(uploadUrl.url), fileOrBlob, mimeType, options);
+  return uploadBlobWithProgress(
+    uploadUrl,
+    getFetchUrl(uploadUrl.url),
+    fileOrBlob,
+    mimeType,
+    options
+  );
 }
 
 export async function confirmOwnerDocumentUpload(versionId: string): Promise<OwnerDocumentVersion> {
@@ -200,6 +206,7 @@ async function parseJsonResponse<TResponse>(response: Response): Promise<TRespon
 }
 
 function uploadBlobWithProgress(
+  uploadUrl: OwnerSignedStorageUrl,
   url: string,
   fileOrBlob: Blob,
   mimeType: string,
@@ -234,7 +241,13 @@ function uploadBlobWithProgress(
         return;
       }
 
-      resolve(body as OwnerDocumentUploadResponse);
+      resolve(
+        (body as OwnerDocumentUploadResponse | undefined) ?? {
+          storageKey: uploadUrl.storageKey,
+          sizeBytes: fileOrBlob.size,
+          mimeType
+        }
+      );
     };
 
     xhr.send(fileOrBlob);
