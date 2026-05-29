@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { MovementSource, MovementType, PropertyAssetOwnerAccessStatus } from '@prisma/client'
 import type { Prisma, PropertyAssetImage } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
+import { createOwnerInvitationToken } from './owner-invitation-token'
 import type {
   ArchivePropertyEngagementInput,
   ArchivePropertyEngagementResult,
@@ -413,6 +414,18 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
         },
         select: propertyOwnerSelect,
       })
+
+      if (!input.ownerUserId) {
+        const { tokenHash, expiresAt } = createOwnerInvitationToken()
+        await tx.ownerInvitation.create({
+          data: {
+            propertyAssetOwnerId: owner.id,
+            email: input.ownerEmail,
+            tokenHash,
+            expiresAt,
+          },
+        })
+      }
 
       return { status: 'linked', owner }
     })

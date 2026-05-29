@@ -62,6 +62,12 @@ enum PropertyAssetOwnerAccessStatus {
   REVOKED
 }
 
+enum OwnerInvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
 enum MovementType {
   GENERAL_UPDATE
   INQUIRY
@@ -244,15 +250,36 @@ model PropertyAssetOwner {
   createdAt       DateTime                       @default(now())
   updatedAt       DateTime                       @updatedAt
 
-  propertyAsset    PropertyAsset     @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
-  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyAsset    PropertyAsset      @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
+  user             User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
   documentRequests DocumentRequest[]
+  invitations      OwnerInvitation[]
 
   @@unique([propertyAssetId, ownerEmail])
   @@unique([propertyAssetId, userId])
   @@index([userId, accessStatus])
   @@index([propertyAssetId])
   @@map("property_asset_owners")
+}
+
+model OwnerInvitation {
+  id                   String                @id @default(uuid())
+  propertyAssetOwnerId String
+  email                String
+  tokenHash            String                @unique
+  status               OwnerInvitationStatus @default(PENDING)
+  expiresAt            DateTime
+  acceptedAt           DateTime?
+  revokedAt            DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  propertyAssetOwner PropertyAssetOwner @relation(fields: [propertyAssetOwnerId], references: [id], onDelete: Cascade)
+
+  @@index([propertyAssetOwnerId, status])
+  @@index([email, status])
+  @@index([expiresAt])
+  @@map("owner_invitations")
 }
 
 model PropertyAssetImage {
