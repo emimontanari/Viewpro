@@ -131,6 +131,35 @@ describe('OwnerInvitationAcceptanceView', () => {
     );
   });
 
+  it('shows unavailable guidance for revoked invitations', async () => {
+    getOwnerInvitationMock.mockRejectedValueOnce(
+      apiError(410, 'Owner invitation is no longer available')
+    );
+
+    render(<OwnerInvitationAcceptanceView token='token-1' />);
+
+    expect(await screen.findByText(/esta invitación ya no está disponible/i)).toBeInTheDocument();
+  });
+
+  it('shows submit-time existing-user guidance without redirecting', async () => {
+    const user = userEvent.setup();
+    acceptOwnerInvitationMock.mockRejectedValueOnce(
+      apiError(409, 'Owner email is already registered')
+    );
+
+    render(<OwnerInvitationAcceptanceView token='token-1' />);
+
+    await user.type(await screen.findByLabelText('Contraseña *'), 'test-credential-123');
+    await user.click(screen.getByRole('button', { name: /Crear cuenta y entrar/ }));
+
+    expect(await screen.findByText(/este email ya está registrado/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /iniciar sesión/i })).toContainEqual(
+      expect.objectContaining({ href: expect.stringContaining('/auth/sign-in') })
+    );
+    expect(pushMock).not.toHaveBeenCalled();
+    expect(refreshMock).not.toHaveBeenCalled();
+  });
+
   it('prevents submitting without a first name', async () => {
     const user = userEvent.setup();
     render(<OwnerInvitationAcceptanceView token='token-1' />);
