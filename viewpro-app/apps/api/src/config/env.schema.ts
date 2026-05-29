@@ -25,6 +25,10 @@ class EnvironmentVariables {
 	@IsString()
 	CORS_ORIGIN?: string;
 
+	@IsOptional()
+	@IsString()
+	APP_PUBLIC_URL?: string;
+
 	@IsInt()
 	@Min(1)
 	@Type(() => Number)
@@ -142,8 +146,19 @@ export function validateEnv(config: Record<string, unknown>) {
 	});
 
 	if (errors.length > 0) {
-		throw new Error(errors.toString());
+		throw new Error(formatValidationErrors(errors));
 	}
 
 	return validatedConfig;
+}
+
+function formatValidationErrors(
+	errors: Array<{ property: string; constraints?: Record<string, string> }>,
+) {
+	return errors
+		.map((error) => {
+			const constraints = Object.values(error.constraints ?? {}).join(", ");
+			return constraints ? `${error.property}: ${constraints}` : error.property;
+		})
+		.join("; ");
 }
