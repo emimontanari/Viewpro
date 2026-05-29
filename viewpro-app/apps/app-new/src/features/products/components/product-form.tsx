@@ -27,6 +27,7 @@ import {
   createProduct,
   assignProductAgent,
   createProductMovement,
+  createProductOwnerInvitationLink,
   deleteProductImage,
   getProductMovements,
   linkProductOwner,
@@ -41,7 +42,8 @@ import type {
   Product,
   ProductMovementMutationPayload,
   ProductMutationPayload,
-  PropertyImage
+  PropertyImage,
+  PropertyLinkedOwner
 } from '../api/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -673,6 +675,11 @@ function PropertyEngagementDetails({
   const [ownerDialogOpen, setOwnerDialogOpen] = useState(false);
   const [assigningAgentUserId, setAssigningAgentUserId] = useState<string | null>(null);
   const [removingAgentId, setRemovingAgentId] = useState<string | null>(null);
+  const [copyingInvitationOwnerId, setCopyingInvitationOwnerId] = useState<string | null>(null);
+  const [manualInvitationFallback, setManualInvitationFallback] = useState<{
+    ownerId: string;
+    invitationUrl: string;
+  } | null>(null);
   const isArchived = isArchivedProduct(propertyEngagement);
   const address = getAddress(propertyEngagement) || 'Sin dirección cargada';
   const propertyFacts = getPropertyFacts(propertyEngagement);
@@ -836,6 +843,33 @@ function PropertyEngagementDetails({
     linkOwnerMutation.mutate(payload);
   }
 
+  async function handleCopyInvitationLink(owner: PropertyLinkedOwner) {
+    if (isArchived || copyingInvitationOwnerId) {
+      return;
+    }
+
+    setCopyingInvitationOwnerId(owner.id);
+    setManualInvitationFallback(null);
+
+    try {
+      const response = await createProductOwnerInvitationLink(propertyEngagement.id, owner.id);
+
+      try {
+        await navigator.clipboard.writeText(response.invitationUrl);
+        toast.success('Link de invitación copiado. Los links anteriores ya no funcionan.');
+      } catch {
+        setManualInvitationFallback({ ownerId: owner.id, invitationUrl: response.invitationUrl });
+        toast.warning('No pudimos copiar automáticamente. Copiá el link manualmente.');
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'No se pudo generar el link de invitación.'
+      );
+    } finally {
+      setCopyingInvitationOwnerId(null);
+    }
+  }
+
   function handleAssignAgent(agentUserId: string) {
     if (
       isArchived ||
@@ -993,11 +1027,14 @@ function PropertyEngagementDetails({
             ) : null}
 
             <PropertyOwnerCard
+              copyingInvitationOwnerId={copyingInvitationOwnerId}
               isArchived={isArchived}
               isLinkDisabled={linkOwnerMutation.isPending}
+              manualInvitationFallback={manualInvitationFallback}
               ownerEmail={propertyEngagement.property.ownerEmail}
               ownerName={propertyEngagement.property.ownerName}
               owners={propertyEngagement.property.owners}
+              onCopyInvitationLink={handleCopyInvitationLink}
               onLinkOwner={handleOpenOwnerDialog}
             />
 
