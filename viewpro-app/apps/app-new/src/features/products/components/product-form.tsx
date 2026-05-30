@@ -26,10 +26,8 @@ import {
   createProduct,
   assignProductAgent,
   createProductMovement,
-  createProductOwnerInvitationLink,
   deleteProductImage,
   getProductMovements,
-  linkProductOwner,
   removeProductAgent,
   restoreProduct,
   setProductImageAsPrimary,
@@ -37,12 +35,10 @@ import {
   uploadProductImage
 } from '../api/service';
 import type {
-  LinkProductOwnerPayload,
   Product,
   ProductMovementMutationPayload,
   ProductMutationPayload,
-  PropertyImage,
-  PropertyLinkedOwner
+  PropertyImage
 } from '../api/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -62,9 +58,8 @@ import {
   propertyTypeOptions
 } from '@/features/products/constants/product-options';
 import { CreatePropertyMovementDialog } from './create-property-movement-dialog';
-import { LinkPropertyOwnerDialog } from './link-property-owner-dialog';
 import { ManagePropertyAgentsDialog, PropertyAgentsPanel } from './manage-property-agents-dialog';
-import { PropertyOwnerCard } from './property-owner-card';
+import { PropertyOwnerSection } from './property-owner-section';
 import { PropertyMovementHistory } from './property-movement-history';
 import { PropertyDocumentRequests } from './property-document-requests';
 import { PropertyDetailHeader, PropertyReadOnlySections } from './property-detail-summary';
@@ -665,14 +660,8 @@ function PropertyEngagementDetails({
   const queryClient = useQueryClient();
   const [movementDialogOpen, setMovementDialogOpen] = useState(false);
   const [agentsDialogOpen, setAgentsDialogOpen] = useState(false);
-  const [ownerDialogOpen, setOwnerDialogOpen] = useState(false);
   const [assigningAgentUserId, setAssigningAgentUserId] = useState<string | null>(null);
   const [removingAgentId, setRemovingAgentId] = useState<string | null>(null);
-  const [copyingInvitationOwnerId, setCopyingInvitationOwnerId] = useState<string | null>(null);
-  const [manualInvitationFallback, setManualInvitationFallback] = useState<{
-    ownerId: string;
-    invitationUrl: string;
-  } | null>(null);
   const isArchived = isArchivedProduct(propertyEngagement);
   const movementsQuery = useQuery({
     queryKey: productKeys.movements(propertyEngagement.id, propertyEngagement.tenantId),
@@ -781,19 +770,6 @@ function PropertyEngagementDetails({
       toast.error('No se pudieron asignar los vendedores. Intentá nuevamente.');
     }
   });
-  const linkOwnerMutation = useMutation({
-    mutationFn: (payload: LinkProductOwnerPayload) =>
-      linkProductOwner(propertyEngagement.id, payload),
-    onSuccess: async () => {
-      setOwnerDialogOpen(false);
-      await queryClient.invalidateQueries({ queryKey: productKeys.all });
-      toast.success('Propietario vinculado');
-    },
-    onError: (error) => {
-      toast.error(getOwnerLinkErrorMessage(error));
-    }
-  });
-
   function handleRestoreProperty() {
     if (restoreMutation.isPending) {
       return;
@@ -816,49 +792,6 @@ function PropertyEngagementDetails({
     }
 
     setAgentsDialogOpen(true);
-  }
-
-  function handleOpenOwnerDialog() {
-    if (isArchived || linkOwnerMutation.isPending) {
-      return;
-    }
-
-    setOwnerDialogOpen(true);
-  }
-
-  function handleLinkOwner(payload: LinkProductOwnerPayload) {
-    if (isArchived || linkOwnerMutation.isPending) {
-      return;
-    }
-
-    linkOwnerMutation.mutate(payload);
-  }
-
-  async function handleCopyInvitationLink(owner: PropertyLinkedOwner) {
-    if (isArchived || copyingInvitationOwnerId) {
-      return;
-    }
-
-    setCopyingInvitationOwnerId(owner.id);
-    setManualInvitationFallback(null);
-
-    try {
-      const response = await createProductOwnerInvitationLink(propertyEngagement.id, owner.id);
-
-      try {
-        await navigator.clipboard.writeText(response.invitationUrl);
-        toast.success('Link de invitación copiado. Los links anteriores ya no funcionan.');
-      } catch {
-        setManualInvitationFallback({ ownerId: owner.id, invitationUrl: response.invitationUrl });
-        toast.warning('No pudimos copiar automáticamente. Copiá el link manualmente.');
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'No se pudo generar el link de invitación.'
-      );
-    } finally {
-      setCopyingInvitationOwnerId(null);
-    }
   }
 
   function handleAssignAgent(agentUserId: string) {
@@ -930,16 +863,12 @@ function PropertyEngagementDetails({
               propertyEngagement={propertyEngagement}
             />
 
-            <PropertyOwnerCard
-              copyingInvitationOwnerId={copyingInvitationOwnerId}
+            <PropertyOwnerSection
               isArchived={isArchived}
-              isLinkDisabled={linkOwnerMutation.isPending}
-              manualInvitationFallback={manualInvitationFallback}
               ownerEmail={propertyEngagement.property.ownerEmail}
               ownerName={propertyEngagement.property.ownerName}
               owners={propertyEngagement.property.owners}
-              onCopyInvitationLink={handleCopyInvitationLink}
-              onLinkOwner={handleOpenOwnerDialog}
+              productId={propertyEngagement.id}
             />
 
             <PropertyAgentsPanel
@@ -975,12 +904,6 @@ function PropertyEngagementDetails({
         isSubmitting={createMovementMutation.isPending}
         onOpenChange={setMovementDialogOpen}
         onSubmit={handleCreateMovement}
-      />
-      <LinkPropertyOwnerDialog
-        open={ownerDialogOpen}
-        isSubmitting={linkOwnerMutation.isPending}
-        onOpenChange={setOwnerDialogOpen}
-        onSubmit={handleLinkOwner}
       />
       <ManagePropertyAgentsDialog
         open={agentsDialogOpen}
@@ -1187,18 +1110,6 @@ function getAssignAllAgentsSuccessMessage(count: number) {
   }
 
   return `${count} vendedores asignados`;
-}
-
-function getOwnerLinkErrorMessage(error: unknown) {
-  if (!(error instanceof Error)) {
-    return 'No se pudo vincular el propietario.';
-  }
-
-  if (error.message.includes('already linked')) {
-    return 'Ese propietario ya está vinculado a esta propiedad.';
-  }
-
-  return error.message || 'No se pudo vincular el propietario.';
 }
 
 function getAgentAssignmentErrorMessage(error: unknown, fallback: string) {
