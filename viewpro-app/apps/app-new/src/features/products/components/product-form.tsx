@@ -1,7 +1,6 @@
 'use client';
 
 import { useAppForm, useFormFields } from '@/components/ui/tanstack-form';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +21,6 @@ import { toast } from 'sonner';
 import * as z from 'zod';
 import {
   productSchema,
-  PROPERTY_IMAGE_MAX_BYTES,
   PROPERTY_IMAGE_MAX_FILES,
   type ProductFormValues
 } from '@/features/products/schemas/product';
@@ -39,24 +37,18 @@ import { PropertyDocumentRequests } from './property-document-requests';
 import { PropertyDetailHeader, PropertyReadOnlySections } from './property-detail-summary';
 import { PropertyStatusSummary } from './property-status-summary';
 import { DeletePropertyImageDialog, PropertyImagePreviewDialog } from './property-image-dialogs';
-import { ExistingImagesSummary, PropertyImageCarousel } from './property-images';
+import { PropertyImageCarousel } from './property-images';
+import { PropertyImageEditorSection } from './property-image-editor-section';
 import { usePropertyMovementsController } from './use-property-movements-controller';
 import {
   formatAmountInput,
   getDefaultValues,
-  getImageUploadDescription,
   getPropertySaveSuccessMessage,
   parseAmountInput,
   toCreatePayload,
   toUpdatePayload
 } from './product-form-mappers';
 import { isArchivedProduct } from './product-tables/columns';
-
-const PROPERTY_IMAGE_ACCEPT = {
-  'image/jpeg': [],
-  'image/png': [],
-  'image/webp': []
-};
 
 type ProductFormMode = 'create' | 'detail' | 'edit';
 
@@ -197,8 +189,7 @@ function PropertyEngagementEditor({
     }
   });
 
-  const { FormTextField, FormSelectField, FormFileUploadField } =
-    useFormFields<ProductFormValues>();
+  const { FormTextField, FormSelectField } = useFormFields<ProductFormValues>();
 
   return (
     <Card className='mx-auto w-full overflow-hidden'>
@@ -399,56 +390,17 @@ function PropertyEngagementEditor({
                 placeholder='propietario@email.com'
               />
 
-              <section className='space-y-4 rounded-2xl border bg-muted/10 p-4 md:col-span-2'>
-                <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
-                  <div className='space-y-1'>
-                    <h3 className='text-sm font-semibold'>Galería de imágenes</h3>
-                    <p className='text-xs text-muted-foreground'>
-                      Las fotos se suben al guardar la propiedad. Si una imagen viene marcada como
-                      principal, la señalamos en la galería.
-                    </p>
-                  </div>
-                  <Badge variant='outline' className='w-fit rounded-full bg-background'>
-                    {existingImageCount} / {PROPERTY_IMAGE_MAX_FILES} cargadas
-                  </Badge>
-                </div>
-                <div className='h-2 overflow-hidden rounded-full bg-muted'>
-                  <div
-                    className='h-full rounded-full bg-primary transition-all'
-                    style={{
-                      width: `${Math.min((existingImageCount / PROPERTY_IMAGE_MAX_FILES) * 100, 100)}%`
-                    }}
-                  />
-                </div>
-
-                {isEditMode && initialData ? (
-                  <ExistingImagesSummary
-                    images={initialData.property.images}
-                    onDeleteImage={handleDeleteImage}
-                    onPreviewImage={setImagePreview}
-                    pendingDeleteImageId={
-                      deleteImageMutation.isPending ? deleteImageMutation.variables?.id : undefined
-                    }
-                  />
-                ) : null}
-                {availableImageSlots > 0 ? (
-                  <div className='rounded-xl border bg-background p-4'>
-                    <FormFileUploadField
-                      name='image'
-                      label={isEditMode ? 'Sumar nuevas imágenes' : 'Imágenes iniciales'}
-                      description={getImageUploadDescription(availableImageSlots)}
-                      maxFiles={availableImageSlots}
-                      maxSize={PROPERTY_IMAGE_MAX_BYTES}
-                      accept={PROPERTY_IMAGE_ACCEPT}
-                    />
-                  </div>
-                ) : (
-                  <div className='rounded-xl border border-dashed bg-background p-4 text-sm text-muted-foreground'>
-                    La galería ya tiene el máximo de {PROPERTY_IMAGE_MAX_FILES} imágenes. Eliminá
-                    una foto existente si necesitás subir otra.
-                  </div>
-                )}
-              </section>
+              <PropertyImageEditorSection
+                availableImageSlots={availableImageSlots}
+                existingImageCount={existingImageCount}
+                images={initialData?.property.images ?? []}
+                isEditMode={isEditMode}
+                pendingDeleteImageId={
+                  deleteImageMutation.isPending ? deleteImageMutation.variables?.id : undefined
+                }
+                onDeleteImage={handleDeleteImage}
+                onPreviewImage={setImagePreview}
+              />
             </div>
 
             <div className='flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-end'>
