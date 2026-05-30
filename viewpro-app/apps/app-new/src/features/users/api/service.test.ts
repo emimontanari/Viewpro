@@ -44,6 +44,30 @@ describe('users API service', () => {
     );
   });
 
+  it('forwards provided server request headers', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(teamMembersResponse), {
+        headers: { 'content-type': 'application/json' },
+        status: 200
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const requestHeaders = new Headers({
+      cookie: 'viewpro_session=session-token',
+      'x-tenant-id': 'tenant-1'
+    });
+
+    await expect(getUsers({}, { headers: requestHeaders })).resolves.toEqual(teamMembersResponse);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/users',
+      expect.objectContaining({
+        headers: requestHeaders
+      })
+    );
+  });
+
   it('fails honestly for unsupported mutations', async () => {
     await expect(createUser()).rejects.toThrow('User creation is not supported yet.');
     await expect(updateUser()).rejects.toThrow('User updates are not supported yet.');

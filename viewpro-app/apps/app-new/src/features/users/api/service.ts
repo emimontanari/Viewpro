@@ -5,8 +5,11 @@ const USERS_API_PATH = '/api/users';
 const USERS_REQUEST_TIMEOUT_MS = 10_000;
 const APP_URL = trimTrailingSlash(process.env.NEXT_PUBLIC_APP_URL ?? DEFAULT_APP_URL);
 
-export async function getUsers(_filters: UserFilters = {}): Promise<UsersResponse> {
-  const response = await apiFetch(USERS_API_PATH);
+export async function getUsers(
+  _filters: UserFilters = {},
+  init: RequestInit = {}
+): Promise<UsersResponse> {
+  const response = await apiFetch(USERS_API_PATH, init);
   return parseJsonResponse<UsersResponse>(response);
 }
 

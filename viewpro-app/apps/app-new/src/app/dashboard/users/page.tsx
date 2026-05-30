@@ -2,13 +2,15 @@ import PageContainer from '@/components/layout/page-container';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getUsers } from '@/features/users/api/service';
 import { TeamMembersList } from '@/features/users/components/team-members-list';
+import { SELECTED_TENANT_COOKIE } from '@/lib/tenant-selection';
+import { cookies, headers } from 'next/headers';
 
 export const metadata = {
   title: 'Dashboard: Users'
 };
 
 export default async function UsersPage() {
-  const team = await getUsers();
+  const team = await getUsers({}, { headers: await getTeamRequestHeaders() });
 
   return (
     <PageContainer
@@ -29,4 +31,23 @@ export default async function UsersPage() {
       </Card>
     </PageContainer>
   );
+}
+
+async function getTeamRequestHeaders() {
+  const cookieStore = await cookies();
+  const requestHeaders = await headers();
+  const outgoingHeaders = new Headers();
+  const cookieHeader = cookieStore.toString();
+  const selectedTenantId =
+    requestHeaders.get('x-tenant-id') ?? cookieStore.get(SELECTED_TENANT_COOKIE)?.value;
+
+  if (cookieHeader) {
+    outgoingHeaders.set('cookie', cookieHeader);
+  }
+
+  if (selectedTenantId) {
+    outgoingHeaders.set('x-tenant-id', selectedTenantId);
+  }
+
+  return outgoingHeaders;
 }
