@@ -21,7 +21,6 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
-import { Icons } from '@/components/icons';
 import { assignableProductAgentsOptions, productKeys } from '../api/queries';
 import {
   createProduct,
@@ -62,7 +61,6 @@ import {
   operationTypeOptions,
   propertyTypeOptions
 } from '@/features/products/constants/product-options';
-import { formatDateTime } from '../utils/format-date-time';
 import { CreatePropertyMovementDialog } from './create-property-movement-dialog';
 import { LinkPropertyOwnerDialog } from './link-property-owner-dialog';
 import { ManagePropertyAgentsDialog, PropertyAgentsPanel } from './manage-property-agents-dialog';
@@ -70,12 +68,12 @@ import { PropertyOwnerCard } from './property-owner-card';
 import { PropertyMovementHistory } from './property-movement-history';
 import { PropertyDocumentRequests } from './property-document-requests';
 import { PropertyDetailHeader, PropertyReadOnlySections } from './property-detail-summary';
+import { PropertyStatusSummary } from './property-status-summary';
 import {
   ExistingImagesSummary,
   PropertyImageCarousel,
   PropertyImagePreview
 } from './property-images';
-import { QuickStatusSelect } from './quick-status-select';
 import { isArchivedProduct } from './product-tables/columns';
 
 const PROPERTY_IMAGE_ACCEPT = {
@@ -927,26 +925,10 @@ function PropertyEngagementDetails({
           />
 
           <aside className='flex flex-col gap-3 rounded-2xl border bg-card p-3 shadow-xs sm:p-4'>
-            <div className='rounded-xl border bg-muted/20 p-5'>
-              <div className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
-                Precio publicado
-              </div>
-              <div className='mt-3 text-4xl font-bold tracking-tight'>
-                {formatPrice(propertyEngagement.publishedPriceCents, propertyEngagement.currency)}
-              </div>
-              <p className='mt-2 text-xs text-muted-foreground'>
-                Moneda: {propertyEngagement.currency ?? 'ARS'}
-              </p>
-            </div>
-
-            <ReadOnlyStatusField propertyEngagement={propertyEngagement} />
-
-            {isArchived ? (
-              <ArchivedStatePanel
-                archivedAt={propertyEngagement.archivedAt}
-                archiveReason={propertyEngagement.archiveReason}
-              />
-            ) : null}
+            <PropertyStatusSummary
+              isArchived={isArchived}
+              propertyEngagement={propertyEngagement}
+            />
 
             <PropertyOwnerCard
               copyingInvitationOwnerId={copyingInvitationOwnerId}
@@ -1015,54 +997,6 @@ function PropertyEngagementDetails({
         onRemove={handleRemoveAgent}
       />
     </Card>
-  );
-}
-
-function ArchivedStatePanel({
-  archivedAt,
-  archiveReason
-}: {
-  archivedAt: string | null;
-  archiveReason: string | null;
-}) {
-  return (
-    <div className='space-y-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-200'>
-      <div className='flex items-center gap-2'>
-        <Icons.eyeOff className='size-4' />
-        <div className='text-xs font-medium uppercase tracking-wide'>Archivada</div>
-      </div>
-      <div className='space-y-2 text-sm'>
-        <div>
-          <span className='font-medium'>Fecha: </span>
-          {formatDateTime(archivedAt)}
-        </div>
-        {archiveReason ? (
-          <div>
-            <span className='font-medium'>Motivo: </span>
-            <span className='break-words'>{archiveReason}</span>
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function ReadOnlyStatusField({ propertyEngagement }: { propertyEngagement: Product }) {
-  return (
-    <div className='space-y-3 rounded-xl border bg-muted/20 p-4'>
-      <div>
-        <div className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
-          Estado comercial
-        </div>
-        <p className='mt-1 text-xs text-muted-foreground'>
-          Actualizá el avance sin entrar a edición completa.
-        </p>
-      </div>
-      <QuickStatusSelect
-        propertyEngagement={propertyEngagement}
-        className='h-10 max-w-none rounded-lg px-3 text-sm'
-      />
-    </div>
   );
 }
 
@@ -1245,18 +1179,6 @@ function optionalAmountToCentsOrNull(value: number | '' | undefined) {
 function optionalStringOrNull(value: string | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
-}
-
-function formatPrice(value: number | null, currency: string | null) {
-  if (value === null) {
-    return 'Sin precio';
-  }
-
-  return new Intl.NumberFormat('es-AR', {
-    currency: currency ?? 'ARS',
-    maximumFractionDigits: 0,
-    style: 'currency'
-  }).format(value / 100);
 }
 
 function getAssignAllAgentsSuccessMessage(count: number) {
