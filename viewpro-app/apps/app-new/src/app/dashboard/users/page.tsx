@@ -3,9 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { getUsers } from '@/features/users/api/service';
 import { TeamMembersList } from '@/features/users/components/team-members-list';
 import { SELECTED_TENANT_COOKIE } from '@/lib/tenant-selection';
+import type { Metadata } from 'next';
 import { cookies, headers } from 'next/headers';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Dashboard: Users'
 };
 
