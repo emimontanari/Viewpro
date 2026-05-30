@@ -8,20 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { productKeys } from '../api/queries';
 import {
   createProduct,
-  createProductMovement,
   deleteProductImage,
-  getProductMovements,
   restoreProduct,
   updateProduct,
   uploadProductImage
 } from '../api/service';
-import type {
-  Product,
-  ProductMovementMutationPayload,
-  ProductMutationPayload,
-  PropertyImage
-} from '../api/types';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { Product, ProductMutationPayload, PropertyImage } from '../api/types';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -47,6 +40,7 @@ import { PropertyDetailHeader, PropertyReadOnlySections } from './property-detai
 import { PropertyStatusSummary } from './property-status-summary';
 import { DeletePropertyImageDialog, PropertyImagePreviewDialog } from './property-image-dialogs';
 import { ExistingImagesSummary, PropertyImageCarousel } from './property-images';
+import { usePropertyMovementsController } from './use-property-movements-controller';
 import { isArchivedProduct } from './product-tables/columns';
 
 const PROPERTY_IMAGE_ACCEPT = {
@@ -515,11 +509,11 @@ function PropertyEngagementDetails({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [movementDialogOpen, setMovementDialogOpen] = useState(false);
   const isArchived = isArchivedProduct(propertyEngagement);
-  const movementsQuery = useQuery({
-    queryKey: productKeys.movements(propertyEngagement.id, propertyEngagement.tenantId),
-    queryFn: () => getProductMovements(propertyEngagement.id)
+  const movements = usePropertyMovementsController({
+    isArchived,
+    productId: propertyEngagement.id,
+    tenantId: propertyEngagement.tenantId
   });
   const restoreMutation = useMutation({
     mutationFn: () => restoreProduct(propertyEngagement.id),
@@ -531,27 +525,6 @@ function PropertyEngagementDetails({
       toast.error(error instanceof Error ? error.message : 'No se pudo restaurar la propiedad');
     }
   });
-  const createMovementMutation = useMutation({
-    mutationFn: (payload: ProductMovementMutationPayload) =>
-      createProductMovement(propertyEngagement.id, payload),
-    onSuccess: async (_movement, payload) => {
-      setMovementDialogOpen(false);
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: productKeys.movements(propertyEngagement.id, propertyEngagement.tenantId)
-        }),
-        queryClient.invalidateQueries({
-          queryKey: payload.newStatus
-            ? productKeys.all
-            : productKeys.detail(propertyEngagement.id, propertyEngagement.tenantId)
-        })
-      ]);
-      toast.success('Actualización agregada');
-    },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo agregar la actualización');
-    }
-  });
   function handleRestoreProperty() {
     if (restoreMutation.isPending) {
       return;
@@ -560,24 +533,16 @@ function PropertyEngagementDetails({
     restoreMutation.mutate();
   }
 
-  function handleCreateMovement(payload: ProductMovementMutationPayload) {
-    if (isArchived || createMovementMutation.isPending) {
-      return;
-    }
-
-    createMovementMutation.mutate(payload);
-  }
-
   return (
     <Card className='mx-auto w-full overflow-hidden'>
       <CardHeader className='border-b bg-muted/20'>
         <PropertyDetailHeader
-          isAddingMovement={createMovementMutation.isPending}
+          isAddingMovement={movements.isCreatingMovement}
           isArchived={isArchived}
           isRestoring={restoreMutation.isPending}
           pageTitle={pageTitle}
           propertyEngagement={propertyEngagement}
-          onAddMovement={() => setMovementDialogOpen(true)}
+          onAddMovement={() => movements.setDialogOpen(true)}
           onBackToList={() => router.push('/dashboard/product')}
           onEdit={() => router.push(`/dashboard/product/${propertyEngagement.id}/edit`)}
           onRestore={handleRestoreProperty}
@@ -617,9 +582,9 @@ function PropertyEngagementDetails({
         <PropertyReadOnlySections propertyEngagement={propertyEngagement} />
 
         <PropertyMovementHistory
-          isError={movementsQuery.isError}
-          isLoading={movementsQuery.isLoading}
-          movements={movementsQuery.data?.items ?? []}
+          isError={movements.isError}
+          isLoading={movements.isLoading}
+          movements={movements.items}
         />
 
         <PropertyDocumentRequests
@@ -630,10 +595,10 @@ function PropertyEngagementDetails({
         />
       </CardContent>
       <CreatePropertyMovementDialog
-        open={movementDialogOpen}
-        isSubmitting={createMovementMutation.isPending}
-        onOpenChange={setMovementDialogOpen}
-        onSubmit={handleCreateMovement}
+        open={movements.dialogOpen}
+        isSubmitting={movements.isCreatingMovement}
+        onOpenChange={movements.setDialogOpen}
+        onSubmit={movements.handleCreateMovement}
       />
     </Card>
   );
