@@ -18,17 +18,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import * as z from 'zod';
 import {
   productSchema,
   PROPERTY_IMAGE_MAX_FILES,
   type ProductFormValues
 } from '@/features/products/schemas/product';
-import {
-  currencyOptions,
-  operationTypeOptions,
-  propertyTypeOptions
-} from '@/features/products/constants/product-options';
+import { currencyOptions } from '@/features/products/constants/product-options';
 import { CreatePropertyMovementDialog } from './create-property-movement-dialog';
 import { PropertyAgentsSection } from './property-agents-section';
 import { PropertyOwnerSection } from './property-owner-section';
@@ -38,6 +33,11 @@ import { PropertyDetailHeader, PropertyReadOnlySections } from './property-detai
 import { PropertyStatusSummary } from './property-status-summary';
 import { DeletePropertyImageDialog, PropertyImagePreviewDialog } from './property-image-dialogs';
 import { PropertyImageCarousel } from './property-images';
+import {
+  PropertyBasicFields,
+  PropertyCharacteristicsFields,
+  PropertyOwnerReferenceFields
+} from './property-editor-field-sections';
 import { PropertyImageEditorSection } from './property-image-editor-section';
 import { usePropertyMovementsController } from './use-property-movements-controller';
 import {
@@ -189,7 +189,7 @@ function PropertyEngagementEditor({
     }
   });
 
-  const { FormTextField, FormSelectField } = useFormFields<ProductFormValues>();
+  const { FormSelectField } = useFormFields<ProductFormValues>();
 
   return (
     <Card className='mx-auto w-full overflow-hidden'>
@@ -205,61 +205,7 @@ function PropertyEngagementEditor({
         <form.AppForm>
           <form.Form className='space-y-8' onKeyDown={preventAccidentalEnterSubmit}>
             <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
-              <FormTextField
-                name='title'
-                label='Título'
-                required
-                placeholder='Departamento en Palermo'
-                validators={{
-                  onBlur: z.string().min(2, 'El título debe tener al menos 2 caracteres.')
-                }}
-              />
-
-              <FormSelectField
-                name='propertyType'
-                label='Tipo de propiedad'
-                required
-                options={propertyTypeOptions}
-                placeholder='Seleccioná un tipo'
-              />
-
-              <FormTextField
-                name='addressLine'
-                label='Dirección'
-                required
-                placeholder='Av. Santa Fe 1234'
-                validators={{
-                  onBlur: z.string().min(2, 'La dirección es obligatoria.')
-                }}
-              />
-
-              <FormTextField
-                name='city'
-                label='Ciudad'
-                required
-                placeholder='CABA'
-                validators={{
-                  onBlur: z.string().min(2, 'La ciudad es obligatoria.')
-                }}
-              />
-
-              <FormTextField
-                name='province'
-                label='Provincia'
-                required
-                placeholder='Buenos Aires'
-                validators={{
-                  onBlur: z.string().min(2, 'La provincia es obligatoria.')
-                }}
-              />
-
-              <FormSelectField
-                name='operationType'
-                label='Operación'
-                required
-                options={operationTypeOptions}
-                placeholder='Seleccioná una operación'
-              />
+              <PropertyBasicFields />
 
               <form.AppField
                 name='publishedPrice'
@@ -298,97 +244,9 @@ function PropertyEngagementEditor({
                 placeholder='Seleccioná una moneda'
               />
 
-              <div className='md:col-span-2 rounded-xl border bg-muted/20 p-4'>
-                <div className='space-y-1'>
-                  <h3 className='text-sm font-semibold'>Características</h3>
-                  <p className='text-xs text-muted-foreground'>
-                    Datos físicos opcionales de la propiedad. Podés completarlos ahora o más
-                    adelante.
-                  </p>
-                </div>
-                <div className='mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-                  <FormTextField
-                    name='totalAreaSqm'
-                    label='Superficie total'
-                    type='number'
-                    min={0}
-                    step={1}
-                    placeholder='360'
-                    description='m² totales'
-                  />
-                  <FormTextField
-                    name='coveredAreaSqm'
-                    label='Superficie cubierta'
-                    type='number'
-                    min={0}
-                    step={1}
-                    placeholder='231'
-                    description='m² cubiertos'
-                  />
-                  <FormTextField
-                    name='rooms'
-                    label='Ambientes'
-                    type='number'
-                    min={0}
-                    step={1}
-                    placeholder='5'
-                  />
-                  <FormTextField
-                    name='bedrooms'
-                    label='Dormitorios'
-                    type='number'
-                    min={0}
-                    step={1}
-                    placeholder='3'
-                  />
-                  <FormTextField
-                    name='bathrooms'
-                    label='Baños'
-                    type='number'
-                    min={0}
-                    step={1}
-                    placeholder='2'
-                  />
-                  <FormTextField
-                    name='garages'
-                    label='Cocheras'
-                    type='number'
-                    min={0}
-                    step={1}
-                    placeholder='1'
-                  />
-                  <FormTextField
-                    name='ageYears'
-                    label='Antigüedad'
-                    type='number'
-                    min={0}
-                    step={1}
-                    placeholder='10'
-                    description='Años'
-                  />
-                  <FormTextField
-                    name='orientation'
-                    label='Orientación'
-                    placeholder='NE'
-                    validators={{
-                      onBlur: z.string().max(16, 'La orientación no puede superar 16 caracteres.')
-                    }}
-                  />
-                </div>
-              </div>
+              <PropertyCharacteristicsFields />
 
-              <FormTextField
-                name='ownerName'
-                label='Propietario'
-                placeholder='Nombre del propietario'
-              />
-
-              <FormTextField
-                name='ownerEmail'
-                label='Email del propietario'
-                type='email'
-                placeholder='propietario@email.com'
-              />
+              <PropertyOwnerReferenceFields />
 
               <PropertyImageEditorSection
                 availableImageSlots={availableImageSlots}
