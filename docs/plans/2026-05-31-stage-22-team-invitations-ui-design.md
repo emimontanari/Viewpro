@@ -40,6 +40,7 @@ Not included:
 - Email delivery.
 - Pending invitation list.
 - Resend/revoke UI.
+- Bulk Excel/CSV import for inviting many employees at once.
 - Role changes for active members.
 - Member deactivation/suspension.
 - Trial/user-limit enforcement.
@@ -225,6 +226,22 @@ pnpm --dir viewpro-app --filter next-shadcn-dashboard-starter test src/features/
 pnpm --dir viewpro-app --filter next-shadcn-dashboard-starter exec tsc --noEmit
 git diff --check
 ```
+
+## Future follow-up: bulk import
+
+Bulk Excel/CSV invitation import is a likely real-estate workflow: inmobiliarias may already keep employee lists in spreadsheets and need a faster path than inviting one person at a time.
+
+Keep it out of this branch. A safe future slice should first define:
+
+- accepted file formats (`.xlsx` vs `.csv`);
+- required columns (`email`, `role`, optional name fields);
+- preview/validation before sending;
+- duplicate and existing-member handling;
+- per-row errors;
+- rate limits and batch size;
+- whether the backend creates invitations synchronously or via a background job.
+
+Do not add a dead or disabled `Importar Excel` button in Stage 22.3 because it would advertise a workflow that does not exist yet.
 
 ## Risks
 

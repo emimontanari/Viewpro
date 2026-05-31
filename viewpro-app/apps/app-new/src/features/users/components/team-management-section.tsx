@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMutation } from '@tanstack/react-query';
+import { IconUserPlus } from '@tabler/icons-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { createTeamInvitation } from '../api/service';
@@ -55,7 +56,8 @@ export function TeamManagementSection({ members }: TeamManagementSectionProps) {
               o agente.
             </CardDescription>
           </div>
-          <Button type='button' onClick={handleOpenInviteDialog}>
+          <Button type='button' size='sm' onClick={handleOpenInviteDialog}>
+            <IconUserPlus className='size-4' aria-hidden='true' />
             Invitar miembro
           </Button>
         </CardHeader>
