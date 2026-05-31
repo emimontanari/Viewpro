@@ -7,23 +7,20 @@ import type { Metadata } from 'next';
 import { cookies, headers } from 'next/headers';
 
 export const metadata: Metadata = {
-  title: 'Dashboard: Users'
+  title: 'Dashboard: Equipo'
 };
 
 export default async function UsersPage() {
   const team = await getUsers({}, { headers: await getTeamRequestHeaders() });
 
   return (
-    <PageContainer
-      pageTitle='Users'
-      pageDescription='Read-only team members for the selected tenant.'
-    >
+    <PageContainer pageTitle='Equipo' pageDescription='Miembros reales del tenant seleccionado.'>
       <Card>
         <CardHeader>
-          <CardTitle>Team members</CardTitle>
+          <CardTitle>Miembros del equipo</CardTitle>
           <CardDescription>
-            This list is backed by real tenant memberships. Invitations and role changes are planned
-            for a later Stage 22 slice.
+            Esta lista usa membresías reales del tenant. Las invitaciones y cambios de rol quedan
+            para un próximo slice de Stage 22.
           </CardDescription>
         </CardHeader>
         <CardContent>
