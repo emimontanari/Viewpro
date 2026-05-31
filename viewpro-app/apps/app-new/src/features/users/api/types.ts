@@ -1,4 +1,17 @@
-export type { User } from '@/constants/mock-api-users';
+export type TenantRole = 'PRINCIPAL_MANAGER' | 'MANAGER' | 'AGENT';
+export type TeamUserStatus = 'ACTIVE' | 'SUSPENDED';
+
+export type User = {
+  membershipId: string;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string | null;
+  userStatus: TeamUserStatus;
+  role: TenantRole;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type UserFilters = {
   page?: number;
@@ -9,20 +22,7 @@ export type UserFilters = {
 };
 
 export type UsersResponse = {
-  success: boolean;
-  time: string;
-  message: string;
-  total_users: number;
-  offset: number;
-  limit: number;
-  users: import('@/constants/mock-api-users').User[];
+  items: User[];
 };
 
-export type UserMutationPayload = {
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  role: string;
-  status: string;
-};
+export type UserMutationPayload = Record<string, never>;
