@@ -28,6 +28,21 @@ describe('nav config', () => {
     );
   });
 
+  it('points the Equipo menu item to the real team list', () => {
+    expect(navItems).toContainEqual(
+      expect.objectContaining({
+        title: 'Equipo',
+        url: '/dashboard/users'
+      })
+    );
+    expect(navItems).not.toContainEqual(
+      expect.objectContaining({
+        title: 'Equipo',
+        url: '/dashboard/workspaces/team'
+      })
+    );
+  });
+
   it('exposes only owner-available routes in the owner menu', () => {
     const ownerItems = ownerNavGroups.flatMap((group) => group.items);
 
