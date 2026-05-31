@@ -41,4 +41,27 @@ export type TeamInvitationLinkResponse = {
   invitationUrl: string;
 };
 
+export type TeamInvitationResponse = {
+  invitationId: string;
+  email: string;
+  role: TeamInvitationRole;
+  status: 'PENDING' | 'ACCEPTED' | 'REVOKED';
+  expiresAt: string;
+  revokedAt: string | null;
+};
+
+export type PendingTeamInvitation = {
+  invitationId: string;
+  email: string;
+  role: TeamInvitationRole;
+  status: 'PENDING';
+  expiresAt: string;
+  createdAt: string;
+  invitedByUserId: string;
+};
+
+export type PendingTeamInvitationsResponse = {
+  items: PendingTeamInvitation[];
+};
+
 export type UserMutationPayload = Record<string, never>;
