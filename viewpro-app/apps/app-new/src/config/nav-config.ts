@@ -57,7 +57,7 @@ export const navGroups: NavGroup[] = [
       },
       {
         title: 'Equipo',
-        url: '/dashboard/workspaces/team',
+        url: '/dashboard/users',
         icon: 'teams',
         isActive: false,
         items: [],
