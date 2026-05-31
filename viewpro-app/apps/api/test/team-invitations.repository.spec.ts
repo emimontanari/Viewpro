@@ -1,9 +1,42 @@
-import { TeamInvitationStatus, TenantRole } from "@prisma/client";
+import {
+	TeamInvitationStatus,
+	TenantRole,
+	TenantStatus,
+	UserStatus,
+} from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import { PrismaTeamInvitationsRepository } from "../src/team/prisma-team-invitations.repository";
 
 const now = new Date("2026-05-31T10:00:00.000Z");
 const expiresAt = new Date("2026-06-14T10:00:00.000Z");
+
+function tenant(overrides: Record<string, unknown> = {}) {
+	return {
+		id: "tenant-1",
+		name: "Tenant One",
+		slug: "tenant-one",
+		status: TenantStatus.ACTIVE,
+		createdAt: now,
+		updatedAt: now,
+		...overrides,
+	};
+}
+
+function user(overrides: Record<string, unknown> = {}) {
+	return {
+		id: "user-1",
+		email: "seller@example.com",
+		passwordHash: "password-hash",
+		firstName: "Seller",
+		lastName: null,
+		status: UserStatus.ACTIVE,
+		globalRole: "USER",
+		emailVerifiedAt: null,
+		createdAt: now,
+		updatedAt: now,
+		...overrides,
+	};
+}
 
 function pendingInvitation(overrides: Record<string, unknown> = {}) {
 	return {
@@ -209,13 +242,11 @@ describe("PrismaTeamInvitationsRepository", () => {
 	it("returns notAvailable when resending a non-pending or expired invitation", async () => {
 		const tx = {
 			teamInvitation: {
-				findFirst: vi
-					.fn()
-					.mockResolvedValue(
-						pendingInvitation({
-							expiresAt: new Date("2026-05-30T10:00:00.000Z"),
-						}),
-					),
+				findFirst: vi.fn().mockResolvedValue(
+					pendingInvitation({
+						expiresAt: new Date("2026-05-30T10:00:00.000Z"),
+					}),
+				),
 			},
 		};
 		const repository = new PrismaTeamInvitationsRepository({
@@ -336,5 +367,257 @@ describe("PrismaTeamInvitationsRepository", () => {
 		).resolves.toEqual({
 			status: "notFound",
 		});
+	});
+
+	it("validates a pending invitation token with safe tenant metadata", async () => {
+		const invitation = { ...pendingInvitation(), tenant: tenant() };
+		const prisma = {
+			teamInvitation: { findUnique: vi.fn().mockResolvedValue(invitation) },
+			user: { findUnique: vi.fn().mockResolvedValue(null) },
+		};
+		const repository = new PrismaTeamInvitationsRepository(prisma as never);
+
+		await expect(
+			repository.validateByTokenHash({ tokenHash: "stored-token-hash", now }),
+		).resolves.toEqual({
+			status: "valid",
+			invitation,
+			emailRegistered: false,
+		});
+		expect(prisma.teamInvitation.findUnique).toHaveBeenCalledWith({
+			where: { tokenHash: "stored-token-hash" },
+			include: {
+				tenant: { select: { id: true, name: true, slug: true, status: true } },
+			},
+		});
+	});
+
+	it("marks validation metadata when the invited email already has a global account", async () => {
+		const prisma = {
+			teamInvitation: {
+				findUnique: vi
+					.fn()
+					.mockResolvedValue({ ...pendingInvitation(), tenant: tenant() }),
+			},
+			user: { findUnique: vi.fn().mockResolvedValue({ id: "user-1" }) },
+		};
+		const repository = new PrismaTeamInvitationsRepository(prisma as never);
+
+		await expect(
+			repository.validateByTokenHash({ tokenHash: "stored-token-hash", now }),
+		).resolves.toMatchObject({ status: "valid", emailRegistered: true });
+	});
+
+	it("maps invalid invitation token validation states", async () => {
+		const prisma = {
+			teamInvitation: {
+				findUnique: vi
+					.fn()
+					.mockResolvedValueOnce(null)
+					.mockResolvedValueOnce({
+						...pendingInvitation({
+							expiresAt: new Date("2026-05-30T10:00:00.000Z"),
+						}),
+						tenant: tenant(),
+					})
+					.mockResolvedValueOnce({
+						...pendingInvitation({
+							status: TeamInvitationStatus.REVOKED,
+							revokedAt: now,
+						}),
+						tenant: tenant(),
+					})
+					.mockResolvedValueOnce({
+						...pendingInvitation({
+							status: TeamInvitationStatus.ACCEPTED,
+							acceptedAt: now,
+						}),
+						tenant: tenant(),
+					}),
+			},
+			user: { findUnique: vi.fn() },
+		};
+		const repository = new PrismaTeamInvitationsRepository(prisma as never);
+
+		await expect(
+			repository.validateByTokenHash({ tokenHash: "missing", now }),
+		).resolves.toEqual({ status: "notFound" });
+		await expect(
+			repository.validateByTokenHash({ tokenHash: "expired", now }),
+		).resolves.toEqual({ status: "expired" });
+		await expect(
+			repository.validateByTokenHash({ tokenHash: "revoked", now }),
+		).resolves.toEqual({ status: "revoked" });
+		await expect(
+			repository.validateByTokenHash({ tokenHash: "accepted", now }),
+		).resolves.toEqual({ status: "alreadyAccepted" });
+	});
+
+	it("accepts a pending invitation for a new user transactionally", async () => {
+		const createdUser = user();
+		const tx = {
+			teamInvitation: {
+				findUnique: vi.fn().mockResolvedValue(pendingInvitation()),
+				updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+			},
+			user: {
+				findUnique: vi.fn().mockResolvedValue(null),
+				create: vi.fn().mockResolvedValue(createdUser),
+			},
+			tenantMembership: { create: vi.fn().mockResolvedValue({ id: "m-1" }) },
+		};
+		const repository = new PrismaTeamInvitationsRepository({
+			$transaction: vi.fn((callback) => callback(tx)),
+		} as never);
+
+		await expect(
+			repository.acceptForNewUser({
+				tokenHash: "stored-token-hash",
+				firstName: "Seller",
+				passwordHash: "password-hash",
+				now,
+			}),
+		).resolves.toEqual({ status: "accepted", user: createdUser });
+		expect(tx.teamInvitation.updateMany).toHaveBeenCalledWith({
+			where: {
+				id: "invitation-1",
+				status: TeamInvitationStatus.PENDING,
+				acceptedAt: null,
+				revokedAt: null,
+				expiresAt: { gt: now },
+			},
+			data: { status: TeamInvitationStatus.ACCEPTED, acceptedAt: now },
+		});
+		expect(tx.user.create).toHaveBeenCalledWith({
+			data: {
+				email: "seller@example.com",
+				passwordHash: "password-hash",
+				firstName: "Seller",
+				lastName: undefined,
+			},
+		});
+		expect(tx.tenantMembership.create).toHaveBeenCalledWith({
+			data: {
+				userId: "user-1",
+				tenantId: "tenant-1",
+				role: TenantRole.AGENT,
+			},
+		});
+	});
+
+	it("rejects new-user acceptance when the email already exists", async () => {
+		const tx = {
+			teamInvitation: {
+				findUnique: vi.fn().mockResolvedValue(pendingInvitation()),
+			},
+			user: { findUnique: vi.fn().mockResolvedValue({ id: "user-1" }) },
+		};
+		const repository = new PrismaTeamInvitationsRepository({
+			$transaction: vi.fn((callback) => callback(tx)),
+		} as never);
+
+		await expect(
+			repository.acceptForNewUser({
+				tokenHash: "stored-token-hash",
+				firstName: "Seller",
+				passwordHash: "password-hash",
+				now,
+			}),
+		).resolves.toEqual({ status: "userAlreadyExists" });
+	});
+
+	it("accepts a pending invitation for an existing matching user", async () => {
+		const existingUser = user();
+		const tx = {
+			teamInvitation: {
+				findUnique: vi.fn().mockResolvedValue(pendingInvitation()),
+				updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+			},
+			user: { findUnique: vi.fn().mockResolvedValue(existingUser) },
+			tenantMembership: {
+				findUnique: vi.fn().mockResolvedValue(null),
+				create: vi.fn().mockResolvedValue({ id: "membership-1" }),
+			},
+		};
+		const repository = new PrismaTeamInvitationsRepository({
+			$transaction: vi.fn((callback) => callback(tx)),
+		} as never);
+
+		await expect(
+			repository.acceptForExistingUser({
+				tokenHash: "stored-token-hash",
+				userId: "user-1",
+				now,
+			}),
+		).resolves.toEqual({ status: "accepted", user: existingUser });
+		expect(tx.tenantMembership.create).toHaveBeenCalledWith({
+			data: {
+				userId: "user-1",
+				tenantId: "tenant-1",
+				role: TenantRole.AGENT,
+			},
+		});
+	});
+
+	it("enforces email ownership and same-tenant membership during existing-user acceptance", async () => {
+		const tx = {
+			teamInvitation: {
+				findUnique: vi.fn().mockResolvedValue(pendingInvitation()),
+			},
+			user: {
+				findUnique: vi
+					.fn()
+					.mockResolvedValueOnce(user({ email: "other@example.com" }))
+					.mockResolvedValueOnce(user()),
+			},
+			tenantMembership: {
+				findUnique: vi.fn().mockResolvedValue({ id: "membership-1" }),
+			},
+		};
+		const repository = new PrismaTeamInvitationsRepository({
+			$transaction: vi.fn((callback) => callback(tx)),
+		} as never);
+
+		await expect(
+			repository.acceptForExistingUser({
+				tokenHash: "stored-token-hash",
+				userId: "other-user",
+				now,
+			}),
+		).resolves.toEqual({ status: "emailMismatch" });
+		await expect(
+			repository.acceptForExistingUser({
+				tokenHash: "stored-token-hash",
+				userId: "user-1",
+				now,
+			}),
+		).resolves.toEqual({ status: "alreadyMember" });
+	});
+
+	it("does not accept stale invitations", async () => {
+		const tx = {
+			teamInvitation: {
+				findUnique: vi.fn().mockResolvedValue(
+					pendingInvitation({
+						status: TeamInvitationStatus.ACCEPTED,
+						acceptedAt: now,
+					}),
+				),
+			},
+			user: { findUnique: vi.fn() },
+			tenantMembership: { create: vi.fn() },
+		};
+		const repository = new PrismaTeamInvitationsRepository({
+			$transaction: vi.fn((callback) => callback(tx)),
+		} as never);
+
+		await expect(
+			repository.acceptForExistingUser({
+				tokenHash: "stored-token-hash",
+				userId: "user-1",
+				now,
+			}),
+		).resolves.toEqual({ status: "alreadyAccepted" });
+		expect(tx.tenantMembership.create).not.toHaveBeenCalled();
 	});
 });
