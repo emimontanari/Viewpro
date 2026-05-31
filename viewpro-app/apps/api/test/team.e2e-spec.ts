@@ -238,6 +238,21 @@ describe("Team members (e2e)", () => {
 		expect(JSON.stringify(response.body)).toContain("role");
 	});
 
+	it("rejects invalid team invitation email payloads", async () => {
+		const principal = await registerTenantSession(
+			"team-create-invalid-email@example.com",
+			"Team Invalid Email Homes",
+		);
+
+		const response = await principal.agent
+			.post("/api/team/invitations")
+			.set("x-tenant-id", principal.tenantId)
+			.send({ email: "not-an-email", role: TenantRole.AGENT })
+			.expect(400);
+
+		expect(response.body.message).toContain("email must be an email");
+	});
+
 	it("rejects inviting an existing same-tenant member", async () => {
 		const principal = await registerTenantSession(
 			"team-existing-principal@example.com",
