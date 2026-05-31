@@ -72,17 +72,24 @@ export class PrismaTeamInvitationsRepository implements TeamInvitationsRepositor
         return { status: 'notAvailable' }
       }
 
-      await tx.teamInvitation.updateMany({
+      const revokeResult = await tx.teamInvitation.updateMany({
         where: {
           id: existingInvitation.id,
           tenantId: input.tenantId,
           status: TeamInvitationStatus.PENDING,
+          acceptedAt: null,
+          revokedAt: null,
+          expiresAt: { gt: now },
         },
         data: {
           status: TeamInvitationStatus.REVOKED,
           revokedAt: now,
         },
       })
+
+      if (revokeResult.count !== 1) {
+        return { status: 'notAvailable' }
+      }
 
       const invitation = await createFreshInvitation(tx, {
         tenantId: input.tenantId,
@@ -115,15 +122,30 @@ export class PrismaTeamInvitationsRepository implements TeamInvitationsRepositor
         return { status: 'notAvailable' }
       }
 
-      const invitation = await tx.teamInvitation.update({
-        where: { id: existingInvitation.id },
+      const revokeResult = await tx.teamInvitation.updateMany({
+        where: {
+          id: existingInvitation.id,
+          tenantId: input.tenantId,
+          status: TeamInvitationStatus.PENDING,
+          acceptedAt: null,
+          revokedAt: null,
+          expiresAt: { gt: now },
+        },
         data: {
           status: TeamInvitationStatus.REVOKED,
           revokedAt: now,
         },
       })
 
-      return { status: 'revoked', invitation }
+      if (revokeResult.count !== 1) {
+        return { status: 'notAvailable' }
+      }
+
+      const invitation = await tx.teamInvitation.findFirst({
+        where: { id: existingInvitation.id, tenantId: input.tenantId },
+      })
+
+      return invitation ? { status: 'revoked', invitation } : { status: 'notFound' }
     })
   }
 }

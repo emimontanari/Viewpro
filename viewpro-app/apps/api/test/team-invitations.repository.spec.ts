@@ -172,6 +172,9 @@ describe("PrismaTeamInvitationsRepository", () => {
 				id: "invitation-1",
 				tenantId: "tenant-1",
 				status: TeamInvitationStatus.PENDING,
+				acceptedAt: null,
+				revokedAt: null,
+				expiresAt: { gt: now },
 			},
 			data: { status: TeamInvitationStatus.REVOKED, revokedAt: now },
 		});
@@ -229,6 +232,29 @@ describe("PrismaTeamInvitationsRepository", () => {
 		).resolves.toEqual({ status: "notAvailable" });
 	});
 
+	it("does not resend when the pending invitation was changed after lookup", async () => {
+		const tx = {
+			teamInvitation: {
+				findFirst: vi.fn().mockResolvedValue(pendingInvitation()),
+				updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+				create: vi.fn(),
+			},
+		};
+		const repository = new PrismaTeamInvitationsRepository({
+			$transaction: vi.fn((callback) => callback(tx)),
+		} as never);
+
+		await expect(
+			repository.resendInvitation({
+				tenantId: "tenant-1",
+				invitationId: "invitation-1",
+				invitedByUserId: "inviter-1",
+				now,
+			}),
+		).resolves.toEqual({ status: "notAvailable" });
+		expect(tx.teamInvitation.create).not.toHaveBeenCalled();
+	});
+
 	it("revokes a pending invitation without returning a raw token", async () => {
 		const revoked = pendingInvitation({
 			status: TeamInvitationStatus.REVOKED,
@@ -236,8 +262,11 @@ describe("PrismaTeamInvitationsRepository", () => {
 		});
 		const tx = {
 			teamInvitation: {
-				findFirst: vi.fn().mockResolvedValue(pendingInvitation()),
-				update: vi.fn().mockResolvedValue(revoked),
+				findFirst: vi
+					.fn()
+					.mockResolvedValueOnce(pendingInvitation())
+					.mockResolvedValueOnce(revoked),
+				updateMany: vi.fn().mockResolvedValue({ count: 1 }),
 			},
 		};
 		const repository = new PrismaTeamInvitationsRepository({
@@ -254,10 +283,40 @@ describe("PrismaTeamInvitationsRepository", () => {
 		expect(
 			result.status === "revoked" ? result.invitation : {},
 		).not.toHaveProperty("token");
-		expect(tx.teamInvitation.update).toHaveBeenCalledWith({
-			where: { id: "invitation-1" },
+		expect(tx.teamInvitation.updateMany).toHaveBeenCalledWith({
+			where: {
+				id: "invitation-1",
+				tenantId: "tenant-1",
+				status: TeamInvitationStatus.PENDING,
+				acceptedAt: null,
+				revokedAt: null,
+				expiresAt: { gt: now },
+			},
 			data: { status: TeamInvitationStatus.REVOKED, revokedAt: now },
 		});
+		expect(tx.teamInvitation.findFirst).toHaveBeenLastCalledWith({
+			where: { id: "invitation-1", tenantId: "tenant-1" },
+		});
+	});
+
+	it("returns notAvailable when revoking a stale pending invitation", async () => {
+		const tx = {
+			teamInvitation: {
+				findFirst: vi.fn().mockResolvedValue(pendingInvitation()),
+				updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+			},
+		};
+		const repository = new PrismaTeamInvitationsRepository({
+			$transaction: vi.fn((callback) => callback(tx)),
+		} as never);
+
+		await expect(
+			repository.revokeInvitation({
+				tenantId: "tenant-1",
+				invitationId: "invitation-1",
+				now,
+			}),
+		).resolves.toEqual({ status: "notAvailable" });
 	});
 
 	it("returns notFound when revoking an invitation outside the tenant", async () => {
