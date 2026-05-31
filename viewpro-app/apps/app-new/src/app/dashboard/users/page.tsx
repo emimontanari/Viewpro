@@ -1,5 +1,5 @@
 import PageContainer from '@/components/layout/page-container';
-import { getUsers } from '@/features/users/api/service';
+import { getTeamInvitations, getUsers } from '@/features/users/api/service';
 import { TeamManagementSection } from '@/features/users/components/team-management-section';
 import { SELECTED_TENANT_COOKIE } from '@/lib/tenant-selection';
 import type { Metadata } from 'next';
@@ -10,11 +10,15 @@ export const metadata: Metadata = {
 };
 
 export default async function UsersPage() {
-  const team = await getUsers({}, { headers: await getTeamRequestHeaders() });
+  const requestHeaders = await getTeamRequestHeaders();
+  const [team, invitations] = await Promise.all([
+    getUsers({}, { headers: requestHeaders }),
+    getTeamInvitations({ headers: requestHeaders })
+  ]);
 
   return (
     <PageContainer pageTitle='Equipo' pageDescription='Miembros reales del tenant seleccionado.'>
-      <TeamManagementSection members={team.items} />
+      <TeamManagementSection members={team.items} pendingInvitations={invitations.items} />
     </PageContainer>
   );
 }
