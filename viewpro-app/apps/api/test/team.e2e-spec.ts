@@ -1,4 +1,4 @@
-import { TenantRole } from '@prisma/client'
+import { TeamInvitationStatus, TenantRole } from '@prisma/client'
 import type { INestApplication } from '@nestjs/common'
 import request from 'supertest'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
@@ -23,6 +23,7 @@ describe('Team members (e2e)', () => {
   })
 
   beforeEach(async () => {
+    await prisma.teamInvitation.deleteMany()
     await prisma.movement.deleteMany()
     await prisma.propertyAgent.deleteMany()
     await prisma.ownerInvitation.deleteMany()
@@ -109,6 +110,212 @@ describe('Team members (e2e)', () => {
     const response = await agent.agent.get('/api/team/members').set('x-tenant-id', manager.tenantId).expect(403)
 
     expect(response.body.message).toBe('Insufficient permissions')
+  })
+
+  it('requires authentication when creating team invitations', async () => {
+    await request(app.getHttpServer())
+      .post('/api/team/invitations')
+      .set('x-tenant-id', 'tenant-1')
+      .send({ email: 'seller@example.com', role: TenantRole.AGENT })
+      .expect(401)
+  })
+
+  it('requires tenant context when creating team invitations', async () => {
+    const manager = await registerTenantSession('team-invite-missing-tenant@example.com', 'Invite Missing Tenant')
+
+    const response = await manager.agent
+      .post('/api/team/invitations')
+      .send({ email: 'seller@example.com', role: TenantRole.AGENT })
+      .expect(403)
+
+    expect(response.body.message).toBe('Tenant context required')
+  })
+
+  it('rejects managers without TEAM_MANAGE when creating team invitations', async () => {
+    const principal = await registerTenantSession('team-invite-principal@example.com', 'Invite Principal Homes')
+    const manager = await registerTenantSession('team-invite-manager@example.com', 'Invite Manager Homes')
+
+    await prisma.tenantMembership.create({
+      data: {
+        user: { connect: { id: manager.userId } },
+        tenant: { connect: { id: principal.tenantId } },
+        role: TenantRole.MANAGER,
+      },
+    })
+
+    const response = await manager.agent
+      .post('/api/team/invitations')
+      .set('x-tenant-id', principal.tenantId)
+      .send({ email: 'seller@example.com', role: TenantRole.AGENT })
+      .expect(403)
+
+    expect(response.body.message).toBe('Insufficient permissions')
+  })
+
+  it('creates a tenant-scoped team invitation for a principal manager', async () => {
+    const principal = await registerTenantSession('team-create-principal@example.com', 'Team Create Homes')
+
+    const response = await principal.agent
+      .post('/api/team/invitations')
+      .set('x-tenant-id', principal.tenantId)
+      .send({ email: 'Seller@Example.com', role: TenantRole.AGENT })
+      .expect(201)
+
+    expect(response.body).toEqual({
+      invitationId: expect.any(String),
+      email: 'seller@example.com',
+      role: TenantRole.AGENT,
+      status: TeamInvitationStatus.PENDING,
+      expiresAt: expect.any(String),
+      invitationUrl: expect.stringMatching(/^http:\/\/localhost:3000\/team-invitations\//),
+    })
+    expect(JSON.stringify(response.body)).not.toContain('tokenHash')
+
+    const invitation = await prisma.teamInvitation.findUniqueOrThrow({ where: { id: response.body.invitationId } })
+    expect(invitation.tenantId).toBe(principal.tenantId)
+    expect(invitation.email).toBe('seller@example.com')
+    expect(invitation.tokenHash).toMatch(/^[a-f0-9]{64}$/)
+    expect(response.body.invitationUrl).not.toContain(invitation.tokenHash)
+  })
+
+  it('rejects principal manager team invitation role', async () => {
+    const principal = await registerTenantSession('team-create-role@example.com', 'Team Role Homes')
+
+    const response = await principal.agent
+      .post('/api/team/invitations')
+      .set('x-tenant-id', principal.tenantId)
+      .send({ email: 'principal-invite@example.com', role: TenantRole.PRINCIPAL_MANAGER })
+      .expect(400)
+
+    expect(JSON.stringify(response.body)).toContain('role')
+  })
+
+  it('rejects inviting an existing same-tenant member', async () => {
+    const principal = await registerTenantSession('team-existing-principal@example.com', 'Team Existing Homes')
+    const member = await registerTenantSession('team-existing-member@example.com', 'Team Existing Other')
+
+    await prisma.tenantMembership.create({
+      data: {
+        user: { connect: { id: member.userId } },
+        tenant: { connect: { id: principal.tenantId } },
+        role: TenantRole.AGENT,
+      },
+    })
+
+    const response = await principal.agent
+      .post('/api/team/invitations')
+      .set('x-tenant-id', principal.tenantId)
+      .send({ email: 'team-existing-member@example.com', role: TenantRole.AGENT })
+      .expect(409)
+
+    expect(response.body.message).toBe('User is already a member of this tenant')
+  })
+
+  it('allows inviting an existing global user without selected-tenant membership', async () => {
+    const principal = await registerTenantSession('team-global-principal@example.com', 'Team Global Homes')
+    await registerTenantSession('team-global-user@example.com', 'Team Global Other')
+
+    const response = await principal.agent
+      .post('/api/team/invitations')
+      .set('x-tenant-id', principal.tenantId)
+      .send({ email: 'team-global-user@example.com', role: TenantRole.MANAGER })
+      .expect(201)
+
+    expect(response.body.email).toBe('team-global-user@example.com')
+    expect(response.body.role).toBe(TenantRole.MANAGER)
+  })
+
+  it('revokes older pending invitations for the same tenant and email', async () => {
+    const principal = await registerTenantSession('team-duplicate-principal@example.com', 'Team Duplicate Homes')
+
+    const first = await principal.agent
+      .post('/api/team/invitations')
+      .set('x-tenant-id', principal.tenantId)
+      .send({ email: 'duplicate@example.com', role: TenantRole.AGENT })
+      .expect(201)
+    const second = await principal.agent
+      .post('/api/team/invitations')
+      .set('x-tenant-id', principal.tenantId)
+      .send({ email: 'duplicate@example.com', role: TenantRole.AGENT })
+      .expect(201)
+
+    const firstInvitation = await prisma.teamInvitation.findUniqueOrThrow({ where: { id: first.body.invitationId } })
+    const secondInvitation = await prisma.teamInvitation.findUniqueOrThrow({ where: { id: second.body.invitationId } })
+    expect(firstInvitation.status).toBe(TeamInvitationStatus.REVOKED)
+    expect(firstInvitation.revokedAt).toBeInstanceOf(Date)
+    expect(secondInvitation.status).toBe(TeamInvitationStatus.PENDING)
+    expect(first.body.invitationUrl).not.toBe(second.body.invitationUrl)
+  })
+
+  it('resends team invitations by rotating the pending token', async () => {
+    const principal = await registerTenantSession('team-resend-principal@example.com', 'Team Resend Homes')
+    const created = await principal.agent
+      .post('/api/team/invitations')
+      .set('x-tenant-id', principal.tenantId)
+      .send({ email: 'resend@example.com', role: TenantRole.AGENT })
+      .expect(201)
+
+    const resent = await principal.agent
+      .post(`/api/team/invitations/${created.body.invitationId}/resend`)
+      .set('x-tenant-id', principal.tenantId)
+      .expect(200)
+
+    expect(resent.body).toMatchObject({
+      invitationId: expect.any(String),
+      email: 'resend@example.com',
+      role: TenantRole.AGENT,
+      status: TeamInvitationStatus.PENDING,
+      invitationUrl: expect.stringMatching(/^http:\/\/localhost:3000\/team-invitations\//),
+    })
+    expect(resent.body.invitationId).not.toBe(created.body.invitationId)
+    expect(resent.body.invitationUrl).not.toBe(created.body.invitationUrl)
+    const oldInvitation = await prisma.teamInvitation.findUniqueOrThrow({ where: { id: created.body.invitationId } })
+    expect(oldInvitation.status).toBe(TeamInvitationStatus.REVOKED)
+  })
+
+  it('revokes pending team invitations without returning a raw invitation URL', async () => {
+    const principal = await registerTenantSession('team-revoke-principal@example.com', 'Team Revoke Homes')
+    const created = await principal.agent
+      .post('/api/team/invitations')
+      .set('x-tenant-id', principal.tenantId)
+      .send({ email: 'revoke@example.com', role: TenantRole.AGENT })
+      .expect(201)
+
+    const response = await principal.agent
+      .post(`/api/team/invitations/${created.body.invitationId}/revoke`)
+      .set('x-tenant-id', principal.tenantId)
+      .expect(200)
+
+    expect(response.body).toMatchObject({
+      invitationId: created.body.invitationId,
+      email: 'revoke@example.com',
+      role: TenantRole.AGENT,
+      status: TeamInvitationStatus.REVOKED,
+      revokedAt: expect.any(String),
+    })
+    expect(response.body).not.toHaveProperty('invitationUrl')
+    expect(JSON.stringify(response.body)).not.toContain('tokenHash')
+    const invitation = await prisma.teamInvitation.findUniqueOrThrow({ where: { id: created.body.invitationId } })
+    expect(invitation.status).toBe(TeamInvitationStatus.REVOKED)
+  })
+
+  it('keeps resend and revoke tenant-scoped', async () => {
+    const principal = await registerTenantSession('team-scope-principal@example.com', 'Team Scope Homes')
+    const other = await registerTenantSession('team-scope-other@example.com', 'Team Scope Other')
+    const created = await principal.agent
+      .post('/api/team/invitations')
+      .set('x-tenant-id', principal.tenantId)
+      .send({ email: 'scope@example.com', role: TenantRole.AGENT })
+      .expect(201)
+
+    await other.agent
+      .post(`/api/team/invitations/${created.body.invitationId}/resend`)
+      .set('x-tenant-id', other.tenantId)
+      .expect(404)
+    await other.agent
+      .post(`/api/team/invitations/${created.body.invitationId}/revoke`)
+      .set('x-tenant-id', other.tenantId)
+      .expect(404)
   })
 
   async function registerTenantSession(email: string, tenantName: string) {

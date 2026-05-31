@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { TeamInvitationStatus, type Prisma } from '@prisma/client'
-import type { PrismaService } from '../database/prisma.service'
+import { PrismaService } from '../database/prisma.service'
 import { createTeamInvitationToken } from './team-invitation-token'
 import type {
   CreateTeamInvitationInput,
@@ -13,7 +13,7 @@ import type {
 
 @Injectable()
 export class PrismaTeamInvitationsRepository implements TeamInvitationsRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   createPendingInvitation(input: CreateTeamInvitationInput): Promise<CreateTeamInvitationResult> {
     return this.prisma.$transaction(async (tx) => {
