@@ -1,5 +1,3 @@
-'use client';
-
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type SyntheticEvent } from 'react';
 import type { CreateTeamInvitationPayload, TeamInvitationRole } from '../api/types';
 
 const INITIAL_FORM: CreateTeamInvitationPayload = {
@@ -60,7 +58,7 @@ export function InviteTeamMemberDialog({
     }
   }, [open]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const payload: CreateTeamInvitationPayload = {
