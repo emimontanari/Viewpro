@@ -68,6 +68,12 @@ enum OwnerInvitationStatus {
   REVOKED
 }
 
+enum TeamInvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
 enum MovementType {
   GENERAL_UPDATE
   INQUIRY
@@ -150,6 +156,7 @@ model User {
   reviewedDocumentRequests    DocumentRequest[]  @relation("DocumentRequestReviewer")
   uploadedDocumentVersions    DocumentVersion[]
   uploadedPropertyImages      PropertyAssetImage[]
+  sentTeamInvitations         TeamInvitation[]
 
   @@map("users")
 }
@@ -168,6 +175,7 @@ model Tenant {
   propertyAgents      PropertyAgent[]
   movements           Movement[]
   documentRequests    DocumentRequest[]
+  teamInvitations     TeamInvitation[]
 
   @@map("tenants")
 }
@@ -280,6 +288,29 @@ model OwnerInvitation {
   @@index([email, status])
   @@index([expiresAt])
   @@map("owner_invitations")
+}
+
+model TeamInvitation {
+  id              String               @id @default(uuid())
+  tenantId        String
+  email           String
+  role            TenantRole
+  tokenHash       String               @unique
+  status          TeamInvitationStatus @default(PENDING)
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  revokedAt       DateTime?
+  invitedByUserId String
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  tenant        Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invitedByUser User   @relation(fields: [invitedByUserId], references: [id])
+
+  @@index([tenantId, status])
+  @@index([email, status])
+  @@index([expiresAt])
+  @@map("team_invitations")
 }
 
 model PropertyAssetImage {
