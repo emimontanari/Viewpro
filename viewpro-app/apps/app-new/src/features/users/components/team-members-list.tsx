@@ -9,8 +9,8 @@ export function TeamMembersList({ members }: TeamMembersListProps) {
   if (members.length === 0) {
     return (
       <div className='text-muted-foreground rounded-lg border p-6 text-sm'>
-        <h2 className='text-foreground mb-2 font-medium'>No team members</h2>
-        <p>No team members were returned for the selected tenant.</p>
+        <h2 className='text-foreground mb-2 font-medium'>No hay miembros del equipo</h2>
+        <p>No se encontraron miembros para el tenant seleccionado.</p>
       </div>
     );
   }
@@ -20,11 +20,11 @@ export function TeamMembersList({ members }: TeamMembersListProps) {
       <table className='w-full text-sm'>
         <thead className='bg-muted/50 text-muted-foreground'>
           <tr>
-            <th className='px-4 py-3 text-left font-medium'>Name</th>
+            <th className='px-4 py-3 text-left font-medium'>Nombre</th>
             <th className='px-4 py-3 text-left font-medium'>Email</th>
-            <th className='px-4 py-3 text-left font-medium'>Role</th>
-            <th className='px-4 py-3 text-left font-medium'>Status</th>
-            <th className='px-4 py-3 text-left font-medium'>Member since</th>
+            <th className='px-4 py-3 text-left font-medium'>Rol</th>
+            <th className='px-4 py-3 text-left font-medium'>Estado</th>
+            <th className='px-4 py-3 text-left font-medium'>Miembro desde</th>
           </tr>
         </thead>
         <tbody>
@@ -33,11 +33,11 @@ export function TeamMembersList({ members }: TeamMembersListProps) {
               <td className='px-4 py-3 font-medium'>{formatName(member)}</td>
               <td className='text-muted-foreground px-4 py-3'>{member.email}</td>
               <td className='px-4 py-3'>
-                <Badge variant='outline'>{member.role}</Badge>
+                <Badge variant='outline'>{formatRole(member.role)}</Badge>
               </td>
               <td className='px-4 py-3'>
                 <Badge variant={member.userStatus === 'ACTIVE' ? 'default' : 'secondary'}>
-                  {member.userStatus}
+                  {formatStatus(member.userStatus)}
                 </Badge>
               </td>
               <td className='text-muted-foreground px-4 py-3'>{formatDate(member.createdAt)}</td>
@@ -53,8 +53,24 @@ function formatName(member: User) {
   return [member.firstName, member.lastName].filter(Boolean).join(' ');
 }
 
+function formatRole(role: User['role']) {
+  if (role === 'PRINCIPAL_MANAGER') {
+    return 'Principal manager';
+  }
+
+  if (role === 'MANAGER') {
+    return 'Manager';
+  }
+
+  return 'Agente';
+}
+
+function formatStatus(status: User['userStatus']) {
+  return status === 'ACTIVE' ? 'Activo' : 'Suspendido';
+}
+
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeZone: 'UTC' }).format(
+  return new Intl.DateTimeFormat('es-AR', { dateStyle: 'medium', timeZone: 'UTC' }).format(
     new Date(value)
   );
 }

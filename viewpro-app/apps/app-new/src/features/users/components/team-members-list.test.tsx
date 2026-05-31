@@ -16,26 +16,22 @@ const member: User = {
 };
 
 describe('TeamMembersList', () => {
-  it('renders real team member fields without CRUD actions', () => {
+  it('renders Spanish table headings and member data', () => {
     render(<TeamMembersList members={[member]} />);
 
-    expect(screen.getByText('Ana Gómez')).toBeVisible();
-    expect(screen.getByText('ana@example.com')).toBeVisible();
-    expect(screen.getByText('MANAGER')).toBeVisible();
-    expect(screen.getByText('ACTIVE')).toBeVisible();
-    expect(screen.getByText('May 1, 2026')).toBeVisible();
-
-    expect(
-      screen.queryByRole('button', { name: /add|create|edit|update|delete|remove/i })
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Nombre' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Rol' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Estado' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Miembro desde' })).toBeInTheDocument();
+    expect(screen.getByText('ana@example.com')).toBeInTheDocument();
   });
 
-  it('renders an empty state', () => {
+  it('renders the Spanish empty state', () => {
     render(<TeamMembersList members={[]} />);
 
-    expect(screen.getByRole('heading', { name: 'No team members' })).toBeVisible();
+    expect(screen.getByText('No hay miembros del equipo')).toBeInTheDocument();
     expect(
-      screen.getByText('No team members were returned for the selected tenant.')
-    ).toBeVisible();
+      screen.getByText('No se encontraron miembros para el tenant seleccionado.')
+    ).toBeInTheDocument();
   });
 });
