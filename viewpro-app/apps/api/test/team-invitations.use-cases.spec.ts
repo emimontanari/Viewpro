@@ -17,6 +17,7 @@ import { PERMISSIONS } from "../src/permissions/permissions.constants";
 import { hashTeamInvitationToken } from "../src/team/team-invitation-token";
 import { AcceptTeamInvitationUseCase } from "../src/team/use-cases/accept-team-invitation.use-case";
 import { CreateTeamInvitationUseCase } from "../src/team/use-cases/create-team-invitation.use-case";
+import { ListTeamInvitationsUseCase } from "../src/team/use-cases/list-team-invitations.use-case";
 import { ResendTeamInvitationUseCase } from "../src/team/use-cases/resend-team-invitation.use-case";
 import { RevokeTeamInvitationUseCase } from "../src/team/use-cases/revoke-team-invitation.use-case";
 import { ValidateTeamInvitationUseCase } from "../src/team/use-cases/validate-team-invitation.use-case";
@@ -204,6 +205,51 @@ describe("team invitation use cases", () => {
 		).rejects.toThrow(
 			new ConflictException("User is already a member of this tenant"),
 		);
+	});
+
+	it("lists pending invitations without exposing token secrets", async () => {
+		const repository = {
+			listPendingInvitations: vi.fn().mockResolvedValue([
+				invitation({
+					id: "invitation-1",
+					email: "first@example.com",
+					createdAt: new Date("2026-05-31T09:00:00.000Z"),
+				}),
+			]),
+		};
+		const useCase = new ListTeamInvitationsUseCase(repository as never);
+
+		const result = await useCase.execute(tenant);
+
+		expect(repository.listPendingInvitations).toHaveBeenCalledWith({
+			tenantId: "tenant-1",
+		});
+		expect(result).toEqual({
+			items: [
+				{
+					invitationId: "invitation-1",
+					email: "first@example.com",
+					role: TenantRole.AGENT,
+					status: TeamInvitationStatus.PENDING,
+					expiresAt: "2026-06-14T10:00:00.000Z",
+					createdAt: "2026-05-31T09:00:00.000Z",
+					invitedByUserId: "user-1",
+				},
+			],
+		});
+		expect(JSON.stringify(result)).not.toContain("tokenHash");
+		expect(JSON.stringify(result)).not.toContain("raw-token");
+		expect(JSON.stringify(result)).not.toContain("invitationUrl");
+	});
+
+	it("rejects pending invitation list without TEAM_MANAGE", async () => {
+		const repository = { listPendingInvitations: vi.fn() };
+		const useCase = new ListTeamInvitationsUseCase(repository as never);
+
+		await expect(
+			useCase.execute({ ...tenant, permissions: [PERMISSIONS.TEAM_VIEW] }),
+		).rejects.toThrow(new ForbiddenException("Insufficient permissions"));
+		expect(repository.listPendingInvitations).not.toHaveBeenCalled();
 	});
 
 	it("resends an invitation and returns a fresh one-time URL", async () => {

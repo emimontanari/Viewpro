@@ -25,6 +25,20 @@ export type TeamInvitationResponse = {
 	revokedAt: string | null;
 };
 
+export type PendingTeamInvitationResponse = {
+	invitationId: string;
+	email: string;
+	role: TeamInvitationRole;
+	status: Extract<TeamInvitationStatus, "PENDING">;
+	expiresAt: string;
+	createdAt: string;
+	invitedByUserId: string;
+};
+
+export type PendingTeamInvitationsResponse = {
+	items: PendingTeamInvitationResponse[];
+};
+
 export type TeamInvitationPublicResponse = {
 	email: string;
 	role: TeamInvitationRole;
@@ -69,6 +83,29 @@ export function toTeamInvitationResponse(
 		status: invitation.status,
 		expiresAt: invitation.expiresAt.toISOString(),
 		revokedAt: invitation.revokedAt?.toISOString() ?? null,
+	};
+}
+
+export function toPendingTeamInvitationResponse(
+	invitation: Pick<
+		TeamInvitation,
+		| "id"
+		| "email"
+		| "role"
+		| "status"
+		| "expiresAt"
+		| "createdAt"
+		| "invitedByUserId"
+	>,
+): PendingTeamInvitationResponse {
+	return {
+		invitationId: invitation.id,
+		email: invitation.email,
+		role: invitation.role as TeamInvitationRole,
+		status: invitation.status as Extract<TeamInvitationStatus, "PENDING">,
+		expiresAt: invitation.expiresAt.toISOString(),
+		createdAt: invitation.createdAt.toISOString(),
+		invitedByUserId: invitation.invitedByUserId,
 	};
 }
 

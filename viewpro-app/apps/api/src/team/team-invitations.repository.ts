@@ -24,6 +24,17 @@ export type CreateTeamInvitationResult =
 	| { status: "created"; invitation: TeamInvitationWithRawToken }
 	| { status: "alreadyMember" };
 
+export type PendingTeamInvitationRecord = Pick<
+	TeamInvitation,
+	| "id"
+	| "email"
+	| "role"
+	| "status"
+	| "expiresAt"
+	| "createdAt"
+	| "invitedByUserId"
+>;
+
 export type RotateTeamInvitationResult =
 	| { status: "created"; invitation: TeamInvitationWithRawToken }
 	| { status: "notFound" }
@@ -74,6 +85,10 @@ export type TeamInvitationsRepository = {
 	createPendingInvitation(
 		input: CreateTeamInvitationInput,
 	): Promise<CreateTeamInvitationResult>;
+	listPendingInvitations(input: {
+		tenantId: string;
+		now?: Date;
+	}): Promise<PendingTeamInvitationRecord[]>;
 	resendInvitation(input: {
 		tenantId: string;
 		invitationId: string;
