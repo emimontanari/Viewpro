@@ -1,7 +1,14 @@
-import type { UserFilters, UserMutationPayload, UsersResponse } from './types';
+import type {
+  CreateTeamInvitationPayload,
+  TeamInvitationLinkResponse,
+  UserFilters,
+  UserMutationPayload,
+  UsersResponse
+} from './types';
 
 const DEFAULT_APP_URL = 'http://localhost:3000';
 const USERS_API_PATH = '/api/users';
+const TEAM_INVITATIONS_API_PATH = '/api/team/invitations';
 const USERS_REQUEST_TIMEOUT_MS = 10_000;
 const APP_URL = trimTrailingSlash(process.env.NEXT_PUBLIC_APP_URL ?? DEFAULT_APP_URL);
 
@@ -11,6 +18,18 @@ export async function getUsers(
 ): Promise<UsersResponse> {
   const response = await apiFetch(USERS_API_PATH, init);
   return parseJsonResponse<UsersResponse>(response);
+}
+
+export async function createTeamInvitation(
+  data: CreateTeamInvitationPayload
+): Promise<TeamInvitationLinkResponse> {
+  const response = await apiFetch(TEAM_INVITATIONS_API_PATH, {
+    body: JSON.stringify(data),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST'
+  });
+
+  return parseJsonResponse<TeamInvitationLinkResponse>(response);
 }
 
 export async function createUser(_data?: UserMutationPayload): Promise<never> {

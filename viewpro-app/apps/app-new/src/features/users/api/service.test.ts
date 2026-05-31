@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createUser, deleteUser, getUsers, updateUser } from './service';
+import { createTeamInvitation, createUser, deleteUser, getUsers, updateUser } from './service';
 
 const teamMembersResponse = {
   items: [
@@ -15,6 +15,15 @@ const teamMembersResponse = {
       updatedAt: '2026-05-02T10:00:00.000Z'
     }
   ]
+};
+
+const invitationResponse = {
+  invitationId: 'invitation-1',
+  email: 'agente@example.com',
+  role: 'AGENT',
+  status: 'PENDING',
+  expiresAt: '2026-06-14T10:00:00.000Z',
+  invitationUrl: 'http://localhost:3000/team-invitations/raw-token-1'
 };
 
 describe('users API service', () => {
@@ -64,6 +73,32 @@ describe('users API service', () => {
       '/api/users',
       expect.objectContaining({
         headers: requestHeaders
+      })
+    );
+  });
+
+  it('creates a team invitation through the explicit team invitations BFF route', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(invitationResponse), {
+        headers: { 'content-type': 'application/json' },
+        status: 201
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      createTeamInvitation({ email: 'agente@example.com', role: 'AGENT' })
+    ).resolves.toEqual(invitationResponse);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/team/invitations',
+      expect.objectContaining({
+        body: JSON.stringify({ email: 'agente@example.com', role: 'AGENT' }),
+        cache: 'no-store',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        method: 'POST',
+        signal: expect.any(AbortSignal)
       })
     );
   });

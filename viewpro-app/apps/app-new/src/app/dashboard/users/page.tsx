@@ -1,7 +1,6 @@
 import PageContainer from '@/components/layout/page-container';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getUsers } from '@/features/users/api/service';
-import { TeamMembersList } from '@/features/users/components/team-members-list';
+import { TeamManagementSection } from '@/features/users/components/team-management-section';
 import { SELECTED_TENANT_COOKIE } from '@/lib/tenant-selection';
 import type { Metadata } from 'next';
 import { cookies, headers } from 'next/headers';
@@ -15,18 +14,7 @@ export default async function UsersPage() {
 
   return (
     <PageContainer pageTitle='Equipo' pageDescription='Miembros reales del tenant seleccionado.'>
-      <Card>
-        <CardHeader>
-          <CardTitle>Miembros del equipo</CardTitle>
-          <CardDescription>
-            Esta lista usa membresías reales del tenant. Las invitaciones y cambios de rol quedan
-            para un próximo slice de Stage 22.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <TeamMembersList members={team.items} />
-        </CardContent>
-      </Card>
+      <TeamManagementSection members={team.items} />
     </PageContainer>
   );
 }
