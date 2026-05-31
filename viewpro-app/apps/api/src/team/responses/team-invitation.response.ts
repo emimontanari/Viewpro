@@ -1,5 +1,6 @@
 import type {
 	TeamInvitationStatus,
+	Tenant,
 	TenantRole,
 	TeamInvitation,
 } from "@prisma/client";
@@ -22,6 +23,20 @@ export type TeamInvitationResponse = {
 	status: TeamInvitationStatus;
 	expiresAt: string;
 	revokedAt: string | null;
+};
+
+export type TeamInvitationPublicResponse = {
+	email: string;
+	role: TeamInvitationRole;
+	status: Extract<TeamInvitationStatus, "PENDING">;
+	expiresAt: string;
+	emailRegistered: boolean;
+	tenant: {
+		id: string;
+		name: string;
+		slug: string;
+		status: string;
+	};
 };
 
 export function toTeamInvitationLinkResponse(
@@ -54,5 +69,27 @@ export function toTeamInvitationResponse(
 		status: invitation.status,
 		expiresAt: invitation.expiresAt.toISOString(),
 		revokedAt: invitation.revokedAt?.toISOString() ?? null,
+	};
+}
+
+export function toTeamInvitationPublicResponse(
+	invitation: Pick<
+		TeamInvitation,
+		"email" | "role" | "status" | "expiresAt"
+	> & { tenant: Pick<Tenant, "id" | "name" | "slug" | "status"> },
+	emailRegistered: boolean,
+): TeamInvitationPublicResponse {
+	return {
+		email: invitation.email,
+		role: invitation.role as TeamInvitationRole,
+		status: invitation.status as Extract<TeamInvitationStatus, "PENDING">,
+		expiresAt: invitation.expiresAt.toISOString(),
+		emailRegistered,
+		tenant: {
+			id: invitation.tenant.id,
+			name: invitation.tenant.name,
+			slug: invitation.tenant.slug,
+			status: invitation.tenant.status,
+		},
 	};
 }
