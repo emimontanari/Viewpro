@@ -113,6 +113,65 @@ describe("PrismaTeamInvitationsRepository", () => {
 		);
 	});
 
+	it("lists only pending unexpired invitations for the selected tenant newest first", async () => {
+		const invitations = [
+			{
+				id: "newer-invitation",
+				email: "newer@example.com",
+				role: TenantRole.AGENT,
+				status: TeamInvitationStatus.PENDING,
+				expiresAt: new Date("2026-06-14T10:00:00.000Z"),
+				createdAt: new Date("2026-05-31T10:05:00.000Z"),
+				invitedByUserId: "user-1",
+			},
+			{
+				id: "older-invitation",
+				email: "older@example.com",
+				role: TenantRole.MANAGER,
+				status: TeamInvitationStatus.PENDING,
+				expiresAt: new Date("2026-06-14T10:00:00.000Z"),
+				createdAt: new Date("2026-05-31T10:01:00.000Z"),
+				invitedByUserId: "user-2",
+			},
+		];
+		const prisma = {
+			teamInvitation: { findMany: vi.fn().mockResolvedValue(invitations) },
+		};
+		const repository = new PrismaTeamInvitationsRepository(prisma as never);
+
+		const result = await repository.listPendingInvitations({
+			tenantId: "tenant-1",
+			now,
+		});
+
+		expect(result).toEqual(invitations);
+		expect(prisma.teamInvitation.findMany).toHaveBeenCalledWith({
+			where: {
+				tenantId: "tenant-1",
+				status: TeamInvitationStatus.PENDING,
+				acceptedAt: null,
+				revokedAt: null,
+				expiresAt: { gt: now },
+			},
+			orderBy: { createdAt: "desc" },
+			select: {
+				id: true,
+				email: true,
+				role: true,
+				status: true,
+				expiresAt: true,
+				createdAt: true,
+				invitedByUserId: true,
+			},
+		});
+		expect(result.map((item) => item.id)).toEqual([
+			"newer-invitation",
+			"older-invitation",
+		]);
+		expect(JSON.stringify(result)).not.toContain("raw-token");
+		expect(JSON.stringify(result)).not.toContain("tokenHash");
+	});
+
 	it("returns alreadyMember for an existing same-tenant membership", async () => {
 		const tx = {
 			user: { findUnique: vi.fn().mockResolvedValue({ id: "user-1" }) },

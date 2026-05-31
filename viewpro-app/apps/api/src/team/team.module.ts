@@ -10,6 +10,7 @@ import { TeamInvitationsPublicController } from "./team-invitations-public.contr
 import { TEAM_INVITATIONS_REPOSITORY } from "./team-invitations.repository";
 import { AcceptTeamInvitationUseCase } from "./use-cases/accept-team-invitation.use-case";
 import { CreateTeamInvitationUseCase } from "./use-cases/create-team-invitation.use-case";
+import { ListTeamInvitationsUseCase } from "./use-cases/list-team-invitations.use-case";
 import { ListTeamMembersUseCase } from "./use-cases/list-team-members.use-case";
 import { ResendTeamInvitationUseCase } from "./use-cases/resend-team-invitation.use-case";
 import { RevokeTeamInvitationUseCase } from "./use-cases/revoke-team-invitation.use-case";
@@ -26,6 +27,7 @@ import { ValidateTeamInvitationUseCase } from "./use-cases/validate-team-invitat
 	controllers: [TeamController, TeamInvitationsPublicController],
 	providers: [
 		ListTeamMembersUseCase,
+		ListTeamInvitationsUseCase,
 		CreateTeamInvitationUseCase,
 		ResendTeamInvitationUseCase,
 		RevokeTeamInvitationUseCase,

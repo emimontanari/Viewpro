@@ -45,6 +45,123 @@ describe("Team invitation acceptance (e2e)", () => {
 		await app.close();
 	});
 
+	it("requires authentication when listing pending team invitations", async () => {
+		await request(app.getHttpServer())
+			.get("/api/team/invitations")
+			.set("x-tenant-id", "tenant-1")
+			.expect(401);
+	});
+
+	it("requires tenant context when listing pending team invitations", async () => {
+		const principal = await registerTenantSession(
+			"list-missing-tenant@example.com",
+			"List Missing Tenant",
+		);
+
+		const response = await principal.agent
+			.get("/api/team/invitations")
+			.expect(403);
+
+		expect(response.body.message).toBe("Tenant context required");
+	});
+
+	it("requires TEAM_MANAGE when listing pending team invitations", async () => {
+		const principal = await registerTenantSession(
+			"list-principal@example.com",
+			"List Principal",
+		);
+		const manager = await registerTenantSession(
+			"list-manager@example.com",
+			"List Manager Other",
+		);
+		await prisma.tenantMembership.create({
+			data: {
+				user: { connect: { id: manager.userId } },
+				tenant: { connect: { id: principal.tenantId } },
+				role: TenantRole.MANAGER,
+			},
+		});
+
+		const response = await manager.agent
+			.get("/api/team/invitations")
+			.set("x-tenant-id", principal.tenantId)
+			.expect(403);
+
+		expect(response.body.message).toBe("Insufficient permissions");
+	});
+
+	it("lists only selected-tenant pending unexpired team invitations", async () => {
+		const principal = await registerTenantSession(
+			"list-pending-principal@example.com",
+			"List Pending Principal",
+		);
+		const active = await createTeamInvitationForPrincipal(
+			principal,
+			"active-pending@example.com",
+			TenantRole.AGENT,
+		);
+		const expired = await createTeamInvitationForPrincipal(
+			principal,
+			"expired-pending@example.com",
+			TenantRole.AGENT,
+		);
+		const revoked = await createTeamInvitationForPrincipal(
+			principal,
+			"revoked-pending@example.com",
+			TenantRole.MANAGER,
+		);
+		const accepted = await createTeamInvitationForPrincipal(
+			principal,
+			"accepted-pending@example.com",
+			TenantRole.AGENT,
+		);
+		const otherTenant = await createTeamInvitation(
+			"other-tenant-pending@example.com",
+			TenantRole.AGENT,
+		);
+
+		await prisma.teamInvitation.update({
+			where: { id: expired.invitationId },
+			data: { expiresAt: new Date(Date.now() - 1000) },
+		});
+		await prisma.teamInvitation.update({
+			where: { id: revoked.invitationId },
+			data: { status: TeamInvitationStatus.REVOKED, revokedAt: new Date() },
+		});
+		await prisma.teamInvitation.update({
+			where: { id: accepted.invitationId },
+			data: { status: TeamInvitationStatus.ACCEPTED, acceptedAt: new Date() },
+		});
+
+		const response = await principal.agent
+			.get("/api/team/invitations")
+			.set("x-tenant-id", principal.tenantId)
+			.expect(200);
+
+		expect(response.body).toEqual({
+			items: [
+				{
+					invitationId: active.invitationId,
+					email: "active-pending@example.com",
+					role: TenantRole.AGENT,
+					status: TeamInvitationStatus.PENDING,
+					expiresAt: expect.any(String),
+					createdAt: expect.any(String),
+					invitedByUserId: principal.userId,
+				},
+			],
+		});
+		expect(JSON.stringify(response.body)).not.toContain(expired.invitationId);
+		expect(JSON.stringify(response.body)).not.toContain(revoked.invitationId);
+		expect(JSON.stringify(response.body)).not.toContain(accepted.invitationId);
+		expect(JSON.stringify(response.body)).not.toContain(
+			otherTenant.invitationId,
+		);
+		expect(JSON.stringify(response.body)).not.toContain("tokenHash");
+		expect(JSON.stringify(response.body)).not.toContain(active.token);
+		expect(JSON.stringify(response.body)).not.toContain("invitationUrl");
+	});
+
 	it("returns safe public metadata for a pending team invitation token", async () => {
 		const { token, principal } = await createTeamInvitation(
 			"public-metadata@example.com",
@@ -389,6 +506,20 @@ describe("Team invitation acceptance (e2e)", () => {
 			`principal-${sequence}@example.com`,
 			`Team Invite ${sequence}`,
 		);
+		const invitation = await createTeamInvitationForPrincipal(
+			principal,
+			email,
+			role,
+		);
+
+		return { ...invitation, principal };
+	}
+
+	async function createTeamInvitationForPrincipal(
+		principal: Awaited<ReturnType<typeof registerTenantSession>>,
+		email: string,
+		role: TenantRole,
+	) {
 		const response = await principal.agent
 			.post("/api/team/invitations")
 			.set("x-tenant-id", principal.tenantId)
@@ -396,7 +527,6 @@ describe("Team invitation acceptance (e2e)", () => {
 			.expect(201);
 
 		return {
-			principal,
 			invitationId: response.body.invitationId as string,
 			invitationUrl: response.body.invitationUrl as string,
 			token: extractToken(response.body.invitationUrl as string),

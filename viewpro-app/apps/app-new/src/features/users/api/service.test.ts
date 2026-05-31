@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createTeamInvitation, createUser, deleteUser, getUsers, updateUser } from './service';
+import {
+  createTeamInvitation,
+  createUser,
+  deleteUser,
+  getTeamInvitations,
+  getUsers,
+  resendTeamInvitation,
+  revokeTeamInvitation,
+  updateUser
+} from './service';
 
 const teamMembersResponse = {
   items: [
@@ -24,6 +33,29 @@ const invitationResponse = {
   status: 'PENDING',
   expiresAt: '2026-06-14T10:00:00.000Z',
   invitationUrl: 'http://localhost:3000/team-invitations/raw-token-1'
+};
+
+const pendingInvitationsResponse = {
+  items: [
+    {
+      invitationId: 'invitation-1',
+      email: 'agente@example.com',
+      role: 'AGENT',
+      status: 'PENDING',
+      expiresAt: '2026-06-14T10:00:00.000Z',
+      createdAt: '2026-05-31T10:00:00.000Z',
+      invitedByUserId: 'user-1'
+    }
+  ]
+};
+
+const revokeResponse = {
+  invitationId: 'invitation-1',
+  email: 'agente@example.com',
+  role: 'AGENT',
+  status: 'REVOKED',
+  expiresAt: '2026-06-14T10:00:00.000Z',
+  revokedAt: '2026-06-01T10:00:00.000Z'
 };
 
 describe('users API service', () => {
@@ -77,6 +109,27 @@ describe('users API service', () => {
     );
   });
 
+  it('loads pending team invitations through the explicit team invitations BFF route', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(pendingInvitationsResponse), {
+        headers: { 'content-type': 'application/json' },
+        status: 200
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getTeamInvitations()).resolves.toEqual(pendingInvitationsResponse);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/team/invitations',
+      expect.objectContaining({
+        cache: 'no-store',
+        credentials: 'include',
+        signal: expect.any(AbortSignal)
+      })
+    );
+  });
+
   it('creates a team invitation through the explicit team invitations BFF route', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(invitationResponse), {
@@ -97,6 +150,50 @@ describe('users API service', () => {
         cache: 'no-store',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
+        method: 'POST',
+        signal: expect.any(AbortSignal)
+      })
+    );
+  });
+
+  it('regenerates a team invitation link through the action BFF route', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(invitationResponse), {
+        headers: { 'content-type': 'application/json' },
+        status: 200
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(resendTeamInvitation('invitation 1')).resolves.toEqual(invitationResponse);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/team/invitations/invitation%201/resend',
+      expect.objectContaining({
+        cache: 'no-store',
+        credentials: 'include',
+        method: 'POST',
+        signal: expect.any(AbortSignal)
+      })
+    );
+  });
+
+  it('revokes a team invitation through the action BFF route', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(revokeResponse), {
+        headers: { 'content-type': 'application/json' },
+        status: 200
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(revokeTeamInvitation('invitation-1')).resolves.toEqual(revokeResponse);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/team/invitations/invitation-1/revoke',
+      expect.objectContaining({
+        cache: 'no-store',
+        credentials: 'include',
         method: 'POST',
         signal: expect.any(AbortSignal)
       })

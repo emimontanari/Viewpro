@@ -12,6 +12,7 @@ import type { TenantContext } from '../tenant-context/tenant-context.types'
 // biome-ignore lint/style/useImportType: Nest validation needs runtime DTO metadata.
 import { CreateTeamInvitationDto } from './dto/create-team-invitation.dto'
 import { CreateTeamInvitationUseCase } from './use-cases/create-team-invitation.use-case'
+import { ListTeamInvitationsUseCase } from './use-cases/list-team-invitations.use-case'
 import { ListTeamMembersUseCase } from './use-cases/list-team-members.use-case'
 import { ResendTeamInvitationUseCase } from './use-cases/resend-team-invitation.use-case'
 import { RevokeTeamInvitationUseCase } from './use-cases/revoke-team-invitation.use-case'
@@ -25,6 +26,8 @@ export class TeamController {
     private readonly listTeamMembersUseCase: ListTeamMembersUseCase,
     @Inject(CreateTeamInvitationUseCase)
     private readonly createTeamInvitationUseCase: CreateTeamInvitationUseCase,
+    @Inject(ListTeamInvitationsUseCase)
+    private readonly listTeamInvitationsUseCase: ListTeamInvitationsUseCase,
     @Inject(ResendTeamInvitationUseCase)
     private readonly resendTeamInvitationUseCase: ResendTeamInvitationUseCase,
     @Inject(RevokeTeamInvitationUseCase)
@@ -35,6 +38,12 @@ export class TeamController {
   @RequirePermissions(PERMISSIONS.TEAM_VIEW)
   listMembers(@CurrentTenant() tenant: TenantContext) {
     return this.listTeamMembersUseCase.execute(tenant)
+  }
+
+  @Get('invitations')
+  @RequirePermissions(PERMISSIONS.TEAM_MANAGE)
+  listInvitations(@CurrentTenant() tenant: TenantContext) {
+    return this.listTeamInvitationsUseCase.execute(tenant)
   }
 
   @Post('invitations')

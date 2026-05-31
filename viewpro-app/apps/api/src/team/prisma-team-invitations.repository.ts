@@ -56,6 +56,30 @@ export class PrismaTeamInvitationsRepository implements TeamInvitationsRepositor
     })
   }
 
+  listPendingInvitations(input: { tenantId: string; now?: Date }) {
+    const now = input.now ?? new Date()
+
+    return this.prisma.teamInvitation.findMany({
+      where: {
+        tenantId: input.tenantId,
+        status: TeamInvitationStatus.PENDING,
+        acceptedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: now },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        status: true,
+        expiresAt: true,
+        createdAt: true,
+        invitedByUserId: true,
+      },
+    })
+  }
+
   resendInvitation(input: {
     tenantId: string
     invitationId: string

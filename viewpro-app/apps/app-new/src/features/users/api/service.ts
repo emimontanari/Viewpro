@@ -1,6 +1,8 @@
 import type {
   CreateTeamInvitationPayload,
+  PendingTeamInvitationsResponse,
   TeamInvitationLinkResponse,
+  TeamInvitationResponse,
   UserFilters,
   UserMutationPayload,
   UsersResponse
@@ -20,6 +22,13 @@ export async function getUsers(
   return parseJsonResponse<UsersResponse>(response);
 }
 
+export async function getTeamInvitations(
+  init: RequestInit = {}
+): Promise<PendingTeamInvitationsResponse> {
+  const response = await apiFetch(TEAM_INVITATIONS_API_PATH, init);
+  return parseJsonResponse<PendingTeamInvitationsResponse>(response);
+}
+
 export async function createTeamInvitation(
   data: CreateTeamInvitationPayload
 ): Promise<TeamInvitationLinkResponse> {
@@ -30,6 +39,22 @@ export async function createTeamInvitation(
   });
 
   return parseJsonResponse<TeamInvitationLinkResponse>(response);
+}
+
+export async function resendTeamInvitation(id: string): Promise<TeamInvitationLinkResponse> {
+  const response = await apiFetch(teamInvitationActionPath(id, 'resend'), {
+    method: 'POST'
+  });
+
+  return parseJsonResponse<TeamInvitationLinkResponse>(response);
+}
+
+export async function revokeTeamInvitation(id: string): Promise<TeamInvitationResponse> {
+  const response = await apiFetch(teamInvitationActionPath(id, 'revoke'), {
+    method: 'POST'
+  });
+
+  return parseJsonResponse<TeamInvitationResponse>(response);
 }
 
 export async function createUser(_data?: UserMutationPayload): Promise<never> {
@@ -67,6 +92,10 @@ async function apiFetch(path: string, init: RequestInit = {}) {
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+function teamInvitationActionPath(id: string, action: 'resend' | 'revoke') {
+  return `${TEAM_INVITATIONS_API_PATH}/${encodeURIComponent(id)}/${action}`;
 }
 
 function getFetchUrl(path: string) {
