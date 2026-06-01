@@ -317,11 +317,98 @@ describe("Owner portal (e2e)", () => {
 		expect(hiddenResponse.body.message).toBe("Owner engagement not found");
 	});
 
+	it("tracks owner movement WhatsApp contact clicks without sensitive metadata", async () => {
+		const manager = await registerTenantSession(
+			"owner-movement-whatsapp-manager@example.com",
+			"Owner Movement WhatsApp Homes",
+		);
+		const owner = await registerOwnerSession(
+			"owner-movement-whatsapp@example.com",
+			"Owner Movement WhatsApp Temporary Homes",
+		);
+		const otherOwner = await registerOwnerSession(
+			"other-owner-movement-whatsapp@example.com",
+			"Other Owner Movement WhatsApp Temporary Homes",
+		);
+		const owned = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Owner Movement WhatsApp Property",
+			addressLine: "Sensitive Movement Address 123",
+		}).expect(201);
+		const hidden = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Hidden Movement WhatsApp Property",
+		}).expect(201);
+		await grantOwnerAccess(owner.userId, owned.body.property.id);
+		const visibleMovement = await createMovement(
+			manager.agent,
+			manager.tenantId,
+			owned.body.id,
+			{ observation: "Visible movement question." },
+		).expect(201);
+		const hiddenMovement = await createMovement(
+			manager.agent,
+			manager.tenantId,
+			hidden.body.id,
+			{ observation: "Hidden movement question." },
+		).expect(201);
+
+		await owner.agent
+			.post(
+				`/api/owner/engagements/${owned.body.id}/movements/${visibleMovement.body.id}/whatsapp-contact-click`,
+			)
+			.expect(204);
+		const hiddenOwnerResponse = await otherOwner.agent
+			.post(
+				`/api/owner/engagements/${owned.body.id}/movements/${visibleMovement.body.id}/whatsapp-contact-click`,
+			)
+			.expect(404);
+		await owner.agent
+			.post(
+				`/api/owner/engagements/${owned.body.id}/movements/${hiddenMovement.body.id}/whatsapp-contact-click`,
+			)
+			.expect(404);
+
+		const event = await prisma.analyticsEvent.findFirstOrThrow({
+			where: {
+				eventName: AnalyticsEventName.WHATSAPP_CONTACT_CLICKED,
+				movementId: visibleMovement.body.id,
+			},
+		});
+
+		expect(event).toMatchObject({
+			tenantId: manager.tenantId,
+			actorUserId: owner.userId,
+			actorType: AnalyticsActorType.OWNER,
+			eventName: AnalyticsEventName.WHATSAPP_CONTACT_CLICKED,
+			propertyEngagementId: owned.body.id,
+			propertyAssetId: owned.body.property.id,
+			movementId: visibleMovement.body.id,
+		});
+		expect(event.metadata).toEqual({
+			context: "movement",
+			targetType: "movement_author",
+		});
+		expect(JSON.stringify(event.metadata)).not.toContain("549");
+		expect(JSON.stringify(event.metadata)).not.toContain(
+			"Sensitive Movement Address",
+		);
+		expect(JSON.stringify(event.metadata)).not.toContain(
+			"owner-movement-whatsapp@example.com",
+		);
+		expect(JSON.stringify(event.metadata)).not.toContain(
+			"owner-movement-whatsapp-manager@example.com",
+		);
+		expect(hiddenOwnerResponse.body.message).toBe("Owner movement not found");
+	});
+
 	it("returns the owner timeline for owned engagements and 404 for non-owned engagements", async () => {
 		const manager = await registerTenantSession(
 			"owner-timeline-manager@example.com",
 			"Owner Timeline Homes",
 		);
+		await prisma.user.update({
+			where: { id: manager.userId },
+			data: { whatsappPhone: "+5493510000000" },
+		});
 		const owner = await registerOwnerSession(
 			"owner-timeline@example.com",
 			"Owner Timeline Temporary Homes",
@@ -381,9 +468,16 @@ describe("Owner portal (e2e)", () => {
 					email: "owner-timeline-manager@example.com",
 					firstName: "Owner",
 				},
+				contact: {
+					available: true,
+					targetType: "movement_author",
+					displayLabel: "Consultar responsable",
+					whatsappPhone: "+5493510000000",
+				},
 			}),
 		]);
 		expect(visible.body.items[0].createdBy).not.toHaveProperty("passwordHash");
+		expect(visible.body.items[0].createdBy).not.toHaveProperty("whatsappPhone");
 		expect(hiddenResponse.body.message).toBe("Owner engagement not found");
 	});
 

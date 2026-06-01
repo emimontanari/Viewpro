@@ -63,6 +63,24 @@ export async function trackOwnerWhatsappContactClick(engagementId: string): Prom
   }
 }
 
+export async function trackOwnerMovementWhatsappContactClick(
+  engagementId: string,
+  movementId: string
+): Promise<void> {
+  const response = await apiFetch(
+    `${OWNER_API_PATH}/engagements/${engagementId}/movements/${movementId}/whatsapp-contact-click`,
+    {
+      keepalive: true,
+      method: 'POST'
+    }
+  );
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => undefined);
+    throw new Error(getErrorMessage(body, response.statusText));
+  }
+}
+
 export async function getOwnerDocumentRequests(
   filters: OwnerDocumentRequestsFilters = {}
 ): Promise<OwnerDocumentRequestsResponse> {

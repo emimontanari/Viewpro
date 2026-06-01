@@ -44,6 +44,13 @@ export type OwnerPropertyContact = {
   whatsappPhone?: string;
 };
 
+export type OwnerMovementContact = {
+  available: boolean;
+  targetType: 'movement_author';
+  displayLabel: string;
+  whatsappPhone?: string;
+};
+
 export type OwnerEngagement = {
   id: string;
   tenant: {
@@ -78,6 +85,7 @@ export type OwnerMovement = {
     email: string;
     firstName: string;
   };
+  contact: OwnerMovementContact;
   createdAt: string;
 };
 

@@ -5,6 +5,13 @@ export type OwnerPropertyContactResponse = {
 	whatsappPhone?: string;
 };
 
+export type OwnerMovementContactResponse = {
+	available: boolean;
+	targetType: "movement_author";
+	displayLabel: string;
+	whatsappPhone?: string;
+};
+
 const MIN_WHATSAPP_DIGITS = 8;
 
 export function mapTenantWhatsappContact(
@@ -28,10 +35,39 @@ export function mapTenantWhatsappContact(
 	};
 }
 
+export function mapMovementAuthorWhatsappContact(
+	whatsappPhone: string | null,
+): OwnerMovementContactResponse {
+	if (!whatsappPhone) {
+		return unavailableMovementAuthorContact();
+	}
+
+	const digits = whatsappPhone.replace(/\D/g, "");
+
+	if (digits.length < MIN_WHATSAPP_DIGITS) {
+		return unavailableMovementAuthorContact();
+	}
+
+	return {
+		available: true,
+		targetType: "movement_author",
+		displayLabel: "Consultar responsable",
+		whatsappPhone,
+	};
+}
+
 function unavailableTenantContact(): OwnerPropertyContactResponse {
 	return {
 		available: false,
 		targetType: "tenant",
+		displayLabel: "Contacto no configurado",
+	};
+}
+
+function unavailableMovementAuthorContact(): OwnerMovementContactResponse {
+	return {
+		available: false,
+		targetType: "movement_author",
 		displayLabel: "Contacto no configurado",
 	};
 }

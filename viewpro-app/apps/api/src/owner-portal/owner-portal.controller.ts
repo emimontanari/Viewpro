@@ -8,6 +8,7 @@ import { GetOwnerEngagementTimelineUseCase } from './use-cases/get-owner-engagem
 import { GetOwnerPropertyUseCase } from './use-cases/get-owner-property.use-case'
 import { ListOwnerPropertiesUseCase } from './use-cases/list-owner-properties.use-case'
 import { ListOwnerPropertyEngagementsUseCase } from './use-cases/list-owner-property-engagements.use-case'
+import { TrackOwnerMovementWhatsappContactClickUseCase } from './use-cases/track-owner-movement-whatsapp-contact-click.use-case'
 import { TrackOwnerWhatsappContactClickUseCase } from './use-cases/track-owner-whatsapp-contact-click.use-case'
 
 @Controller('owner')
@@ -24,6 +25,8 @@ export class OwnerPortalController {
     private readonly getOwnerEngagementTimelineUseCase: GetOwnerEngagementTimelineUseCase,
     @Inject(TrackOwnerWhatsappContactClickUseCase)
     private readonly trackOwnerWhatsappContactClickUseCase: TrackOwnerWhatsappContactClickUseCase,
+    @Inject(TrackOwnerMovementWhatsappContactClickUseCase)
+    private readonly trackOwnerMovementWhatsappContactClickUseCase: TrackOwnerMovementWhatsappContactClickUseCase,
   ) {}
 
   @Get('properties')
@@ -45,6 +48,16 @@ export class OwnerPortalController {
   @HttpCode(204)
   trackWhatsappContactClick(@CurrentUser() user: CurrentUserContext, @Param('engagementId') engagementId: string) {
     return this.trackOwnerWhatsappContactClickUseCase.execute({ userId: user.id, engagementId })
+  }
+
+  @Post('engagements/:engagementId/movements/:movementId/whatsapp-contact-click')
+  @HttpCode(204)
+  trackMovementWhatsappContactClick(
+    @CurrentUser() user: CurrentUserContext,
+    @Param('engagementId') engagementId: string,
+    @Param('movementId') movementId: string,
+  ) {
+    return this.trackOwnerMovementWhatsappContactClickUseCase.execute({ userId: user.id, engagementId, movementId })
   }
 
   @Get('engagements/:engagementId/timeline')

@@ -1,10 +1,16 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { OwnerEngagement } from '../api/types';
+import type { OwnerEngagement, OwnerProperty } from '../api/types';
 import { OwnerStatusPath } from './owner-status-path';
 import { OwnerTimeline } from './owner-timeline';
 
-export function OwnerEngagementCard({ engagement }: { engagement: OwnerEngagement }) {
+export function OwnerEngagementCard({
+  engagement,
+  property
+}: {
+  engagement: OwnerEngagement;
+  property: Pick<OwnerProperty, 'addressLine' | 'city' | 'province'>;
+}) {
   return (
     <Card className='overflow-hidden'>
       <CardHeader className='space-y-4'>
@@ -50,7 +56,7 @@ export function OwnerEngagementCard({ engagement }: { engagement: OwnerEngagemen
                 Últimos movimientos visibles para propietarios.
               </p>
             </div>
-            <OwnerTimeline engagementId={engagement.id} />
+            <OwnerTimeline engagementId={engagement.id} property={property} />
           </div>
         </div>
       </CardContent>
