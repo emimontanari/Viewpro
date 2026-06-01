@@ -20,7 +20,9 @@ import { cn } from '@/lib/utils';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ownerPropertiesOptions, ownerPropertyEngagementsOptions } from '../api/queries';
+import { trackOwnerWhatsappContactClick } from '../api/service';
 import type { OwnerEngagement, OwnerProperty } from '../api/types';
+import { buildOwnerPropertyWhatsappHref } from '../utils/owner-whatsapp-contact';
 
 type OwnerAgency = {
   id: string;
@@ -184,10 +186,7 @@ function OwnerAgencySummary({
           </div>
         </div>
         <div className='flex shrink-0 items-center gap-2 self-start rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-700 sm:self-auto dark:text-emerald-300'>
-          <span
-            aria-hidden='true'
-            className='relative flex size-1.5 items-center justify-center'
-          >
+          <span aria-hidden='true' className='relative flex size-1.5 items-center justify-center'>
             <span className='absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-60' />
             <span className='relative inline-flex size-1.5 rounded-full bg-emerald-500' />
           </span>
@@ -256,7 +255,19 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
   const engagement = record.engagements[0] ?? null;
   const primaryImage = property.primaryImage ?? property.images[0] ?? null;
   const statusSummary = engagement ? getOwnerStatusSummary(engagement.status) : null;
-  const contactHref = getOwnerContactHref(engagement);
+  const contactHref = engagement
+    ? buildOwnerPropertyWhatsappHref({ contact: engagement.contact, property })
+    : null;
+  const contactLabel = contactHref
+    ? (engagement?.contact.displayLabel ?? 'Contactar inmobiliaria')
+    : 'Contacto no configurado';
+  const handleContactClick = React.useCallback(() => {
+    if (!engagement || !contactHref) {
+      return;
+    }
+
+    void trackOwnerWhatsappContactClick(engagement.id).catch(() => undefined);
+  }, [contactHref, engagement]);
 
   return (
     <Card className='overflow-hidden py-0 transition-shadow hover:shadow-md'>
@@ -324,8 +335,9 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
               <OwnerActionTile
                 href={contactHref}
                 icon={Icons.chat}
-                label='Contactar'
+                label={contactLabel}
                 ariaLabel='Contactar inmobiliaria'
+                onClick={handleContactClick}
               />
             </div>
           </div>
@@ -367,12 +379,14 @@ function OwnerActionTile({
   ariaLabel,
   href,
   icon: Icon,
-  label
+  label,
+  onClick
 }: {
   ariaLabel: string;
   href: string | null;
   icon: typeof Icons.product;
   label: string;
+  onClick?: () => void;
 }) {
   const content = (
     <>
@@ -390,10 +404,16 @@ function OwnerActionTile({
     );
   }
 
-  if (href.startsWith('mailto:')) {
+  if (href.startsWith('http://') || href.startsWith('https://')) {
     return (
       <Button asChild variant='outline' className='h-20 w-full flex-col gap-2'>
-        <a href={href} aria-label={ariaLabel}>
+        <a
+          href={href}
+          aria-label={ariaLabel}
+          target='_blank'
+          rel='noopener noreferrer'
+          onClick={onClick}
+        >
           {content}
         </a>
       </Button>
@@ -565,12 +585,6 @@ function getStatusProgressTone(status: PropertyEngagementStatus) {
 
 function isKnownPropertyEngagementStatus(status: string): status is PropertyEngagementStatus {
   return propertyStatusOptions.some((option) => option.value === status);
-}
-
-function getOwnerContactHref(engagement: OwnerEngagement | null) {
-  const contactEmail = engagement?.agents.find((agent) => agent.email)?.email;
-
-  return contactEmail ? `mailto:${contactEmail}` : null;
 }
 
 function getStatusProgress(status: PropertyEngagementStatus) {

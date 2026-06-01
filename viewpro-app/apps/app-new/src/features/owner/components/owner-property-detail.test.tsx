@@ -72,6 +72,12 @@ const engagementsResponse: OwnerEngagementsResponse = [
   {
     id: 'engagement-1',
     tenant: { id: 'tenant-1', name: 'ViewPro Demo Inmobiliaria' },
+    contact: {
+      available: true,
+      targetType: 'tenant',
+      displayLabel: 'Contactar inmobiliaria',
+      whatsappPhone: '+5493510000000'
+    },
     operationType: 'SALE',
     status: 'ACTIVE_PUBLICATION',
     publishedPriceCents: 120_000_000,
