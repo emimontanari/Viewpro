@@ -1,5 +1,5 @@
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common'
-import type { TenantRole } from '@prisma/client'
+import { UserStatus, type TenantRole } from '@prisma/client'
 import { MEMBERSHIPS_REPOSITORY, type MembershipsRepository } from '../../memberships/memberships.repository'
 import { PERMISSIONS } from '../../permissions/permissions.constants'
 import type { TenantContext } from '../../tenant-context/tenant-context.types'
@@ -33,12 +33,14 @@ export class ListAssignablePropertyAgentsUseCase {
     const memberships = await this.membershipsRepository.findManyByTenantId(tenant.tenantId)
 
     return {
-      items: memberships.map((membership) => ({
-        userId: membership.userId,
-        email: membership.user.email,
-        firstName: membership.user.firstName,
-        role: membership.role,
-      })),
+      items: memberships
+        .filter((membership) => membership.status === 'ACTIVE' && membership.user.status === UserStatus.ACTIVE)
+        .map((membership) => ({
+          userId: membership.userId,
+          email: membership.user.email,
+          firstName: membership.user.firstName,
+          role: membership.role,
+        })),
     }
   }
 }

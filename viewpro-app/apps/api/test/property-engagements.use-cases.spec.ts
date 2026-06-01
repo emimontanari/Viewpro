@@ -648,9 +648,11 @@ describe("Property engagement use cases", () => {
 			}),
 		};
 		const membershipsRepository = {
-			findByUserIdAndTenantId: vi
-				.fn()
-				.mockResolvedValue({ id: "membership-agent-1" }),
+			findByUserIdAndTenantId: vi.fn().mockResolvedValue({
+				id: "membership-agent-1",
+				status: "ACTIVE",
+				user: { status: UserStatus.ACTIVE },
+			}),
 		};
 		const useCase = new AssignPropertyAgentUseCase(
 			repository as never,
@@ -696,15 +698,44 @@ describe("Property engagement use cases", () => {
 		expect(repository.assignAgent).not.toHaveBeenCalled();
 	});
 
+	it("rejects assigning an inactive tenant member", async () => {
+		const repository = {
+			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
+			assignAgent: vi.fn(),
+		};
+		const membershipsRepository = {
+			findByUserIdAndTenantId: vi.fn().mockResolvedValue({
+				id: "membership-agent-1",
+				status: "DEACTIVATED",
+				user: { status: UserStatus.ACTIVE },
+			}),
+		};
+		const useCase = new AssignPropertyAgentUseCase(
+			repository as never,
+			membershipsRepository as never,
+		);
+
+		await expect(
+			useCase.execute(tenant, currentUser, "engagement-1", {
+				agentUserId: "agent-1",
+			}),
+		).rejects.toThrow(
+			new BadRequestException("Agent is not an active member of this tenant"),
+		);
+		expect(repository.assignAgent).not.toHaveBeenCalled();
+	});
+
 	it("returns conflict when assigning an already assigned agent", async () => {
 		const repository = {
 			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
 			assignAgent: vi.fn().mockResolvedValue({ status: "alreadyAssigned" }),
 		};
 		const membershipsRepository = {
-			findByUserIdAndTenantId: vi
-				.fn()
-				.mockResolvedValue({ id: "membership-agent-1" }),
+			findByUserIdAndTenantId: vi.fn().mockResolvedValue({
+				id: "membership-agent-1",
+				status: "ACTIVE",
+				user: { status: UserStatus.ACTIVE },
+			}),
 		};
 		const useCase = new AssignPropertyAgentUseCase(
 			repository as never,
@@ -997,12 +1028,42 @@ describe("Property engagement use cases", () => {
 				{
 					userId: "manager-1",
 					role: TenantRole.MANAGER,
-					user: { email: "manager@example.com", firstName: "Manager" },
+					status: "ACTIVE",
+					user: {
+						email: "manager@example.com",
+						firstName: "Manager",
+						status: UserStatus.ACTIVE,
+					},
 				},
 				{
 					userId: "agent-1",
 					role: TenantRole.AGENT,
-					user: { email: "agent@example.com", firstName: "Agent" },
+					status: "ACTIVE",
+					user: {
+						email: "agent@example.com",
+						firstName: "Agent",
+						status: UserStatus.ACTIVE,
+					},
+				},
+				{
+					userId: "inactive-agent",
+					role: TenantRole.AGENT,
+					status: "DEACTIVATED",
+					user: {
+						email: "inactive-agent@example.com",
+						firstName: "Inactive",
+						status: UserStatus.ACTIVE,
+					},
+				},
+				{
+					userId: "suspended-agent",
+					role: TenantRole.AGENT,
+					status: "ACTIVE",
+					user: {
+						email: "suspended-agent@example.com",
+						firstName: "Suspended",
+						status: UserStatus.SUSPENDED,
+					},
 				},
 			]),
 		};

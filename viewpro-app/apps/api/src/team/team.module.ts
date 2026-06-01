@@ -10,10 +10,12 @@ import { TeamInvitationsPublicController } from "./team-invitations-public.contr
 import { TEAM_INVITATIONS_REPOSITORY } from "./team-invitations.repository";
 import { AcceptTeamInvitationUseCase } from "./use-cases/accept-team-invitation.use-case";
 import { CreateTeamInvitationUseCase } from "./use-cases/create-team-invitation.use-case";
+import { DeactivateTeamMemberUseCase } from "./use-cases/deactivate-team-member.use-case";
 import { ListTeamInvitationsUseCase } from "./use-cases/list-team-invitations.use-case";
 import { ListTeamMembersUseCase } from "./use-cases/list-team-members.use-case";
 import { ResendTeamInvitationUseCase } from "./use-cases/resend-team-invitation.use-case";
 import { RevokeTeamInvitationUseCase } from "./use-cases/revoke-team-invitation.use-case";
+import { UpdateTeamMemberRoleUseCase } from "./use-cases/update-team-member-role.use-case";
 import { ValidateTeamInvitationUseCase } from "./use-cases/validate-team-invitation.use-case";
 
 @Module({
@@ -28,6 +30,8 @@ import { ValidateTeamInvitationUseCase } from "./use-cases/validate-team-invitat
 	providers: [
 		ListTeamMembersUseCase,
 		ListTeamInvitationsUseCase,
+		UpdateTeamMemberRoleUseCase,
+		DeactivateTeamMemberUseCase,
 		CreateTeamInvitationUseCase,
 		ResendTeamInvitationUseCase,
 		RevokeTeamInvitationUseCase,

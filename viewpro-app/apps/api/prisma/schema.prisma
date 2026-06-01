@@ -30,6 +30,11 @@ enum TenantRole {
   AGENT
 }
 
+enum TenantMembershipStatus {
+  ACTIVE
+  DEACTIVATED
+}
+
 enum PropertyType {
   HOUSE
   APARTMENT
@@ -181,18 +186,22 @@ model Tenant {
 }
 
 model TenantMembership {
-  id        String     @id @default(uuid())
-  userId    String
-  tenantId  String
-  role      TenantRole
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id                  String                 @id @default(uuid())
+  userId              String
+  tenantId            String
+  role                TenantRole
+  status              TenantMembershipStatus @default(ACTIVE)
+  deactivatedAt       DateTime?
+  deactivatedByUserId String?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tenantId])
   @@index([tenantId])
+  @@index([tenantId, status])
   @@index([userId])
   @@map("tenant_memberships")
 }

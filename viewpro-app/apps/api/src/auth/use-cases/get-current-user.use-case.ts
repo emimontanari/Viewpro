@@ -21,7 +21,7 @@ export class GetCurrentUserUseCase {
       throw new UnauthorizedException('Authentication required')
     }
 
-    const memberships = await this.membershipsRepository.findManyByUserId(user.id)
+    const memberships = await this.membershipsRepository.findActiveManyByUserId(user.id)
     return { user: mapAuthUser(user), memberships: memberships.map(mapMembership) }
   }
 }
