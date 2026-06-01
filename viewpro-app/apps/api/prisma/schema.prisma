@@ -79,6 +79,20 @@ enum TeamInvitationStatus {
   REVOKED
 }
 
+enum NotificationSurface {
+  INTERNAL
+  OWNER
+}
+
+enum NotificationType {
+  DOCUMENT_REQUESTED
+  DOCUMENT_UPLOADED
+  DOCUMENT_APPROVED
+  DOCUMENT_REJECTED
+  PROPERTY_STATUS_CHANGED
+  MOVEMENT_CREATED
+}
+
 enum MovementType {
   GENERAL_UPDATE
   INQUIRY
@@ -164,6 +178,7 @@ model User {
   uploadedDocumentVersions    DocumentVersion[]
   uploadedPropertyImages      PropertyAssetImage[]
   sentTeamInvitations         TeamInvitation[]
+  notifications               Notification[]
 
   @@map("users")
 }
@@ -184,6 +199,7 @@ model Tenant {
   movements           Movement[]
   documentRequests    DocumentRequest[]
   teamInvitations     TeamInvitation[]
+  notifications       Notification[]
 
   @@map("tenants")
 }
@@ -251,7 +267,8 @@ model PropertyAsset {
   createdBy   User                 @relation(fields: [createdByUserId], references: [id])
   engagements PropertyEngagement[]
   owners      PropertyAssetOwner[]
-  images      PropertyAssetImage[]
+  images        PropertyAssetImage[]
+  notifications Notification[]
 
   @@index([createdByUserId])
   @@index([city, province])
@@ -367,6 +384,7 @@ model PropertyEngagement {
   agents           PropertyAgent[]
   movements        Movement[]
   documentRequests DocumentRequest[]
+  notifications    Notification[]
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, archivedAt, createdAt])
@@ -414,6 +432,7 @@ model Movement {
   tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   propertyEngagement PropertyEngagement @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)
   createdBy          User               @relation(fields: [createdByUserId], references: [id])
+  notifications      Notification[]
 
   @@index([tenantId, propertyEngagementId, createdAt])
   @@index([createdByUserId])
@@ -443,6 +462,7 @@ model DocumentRequest {
   requestedByUser    User               @relation("DocumentRequestRequester", fields: [requestedByUserId], references: [id])
   reviewedByUser     User?              @relation("DocumentRequestReviewer", fields: [reviewedByUserId], references: [id])
   document           Document?          @relation("DocumentRequestDocument")
+  notifications      Notification[]
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, requestedByUserId])
@@ -486,6 +506,39 @@ model DocumentVersion {
   @@index([documentId, status])
   @@index([uploadedByUserId])
   @@map("document_versions")
+}
+
+model Notification {
+  id                   String              @id @default(uuid())
+  tenantId             String?
+  recipientUserId      String
+  surface              NotificationSurface
+  type                 NotificationType
+  title                String
+  body                 String?
+  linkHref             String?
+  propertyEngagementId String?
+  propertyAssetId      String?
+  documentRequestId    String?
+  movementId           String?
+  readAt               DateTime?
+  createdAt            DateTime            @default(now())
+
+  tenant             Tenant?             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipientUser      User                @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+  propertyEngagement PropertyEngagement? @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)
+  propertyAsset      PropertyAsset?      @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
+  documentRequest    DocumentRequest?    @relation(fields: [documentRequestId], references: [id], onDelete: SetNull)
+  movement           Movement?           @relation(fields: [movementId], references: [id], onDelete: SetNull)
+
+  @@index([recipientUserId, surface, readAt, createdAt])
+  @@index([tenantId, recipientUserId, surface, createdAt])
+  @@index([tenantId, surface, createdAt])
+  @@index([propertyEngagementId])
+  @@index([propertyAssetId])
+  @@index([documentRequestId])
+  @@index([movementId])
+  @@map("notifications")
 }
 
 model AnalyticsEvent {
