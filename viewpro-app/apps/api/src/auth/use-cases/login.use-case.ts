@@ -23,8 +23,8 @@ export class LoginUseCase {
     @Inject(MEMBERSHIPS_REPOSITORY) private readonly membershipsRepository: MembershipsRepository,
     @Inject(PASSWORD_HASHER) private readonly passwordHasher: PasswordHasher,
     @Inject(REFRESH_TOKEN_REPOSITORY) private readonly refreshTokenRepository: RefreshTokenRepository,
-    private readonly tokenService: TokenService,
-    private readonly analyticsService: AnalyticsService,
+    @Inject(TokenService) private readonly tokenService: TokenService,
+    @Inject(AnalyticsService) private readonly analyticsService: AnalyticsService,
   ) {}
 
   async execute(dto: LoginDto): Promise<AuthSessionResult> {
@@ -44,7 +44,7 @@ export class LoginUseCase {
       expiresAt: this.tokenService.getRefreshTokenExpiresAt(),
     })
 
-    const memberships = await this.membershipsRepository.findManyByUserId(user.id)
+    const memberships = await this.membershipsRepository.findActiveManyByUserId(user.id)
 
     const unambiguousMembership = memberships.length === 1 ? memberships[0] : null
     if (unambiguousMembership) {

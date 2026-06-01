@@ -3,20 +3,29 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useActiveTenant } from '@/lib/session-context';
 import { toast } from 'sonner';
 import {
   createTeamInvitation,
+  deactivateTeamMember,
   getTeamInvitations,
   resendTeamInvitation,
-  revokeTeamInvitation
+  revokeTeamInvitation,
+  updateTeamMemberRole
 } from '../api/service';
 import { TeamManagementSection } from './team-management-section';
 
 vi.mock('../api/service', () => ({
   createTeamInvitation: vi.fn(),
+  deactivateTeamMember: vi.fn(),
   getTeamInvitations: vi.fn(),
   resendTeamInvitation: vi.fn(),
-  revokeTeamInvitation: vi.fn()
+  revokeTeamInvitation: vi.fn(),
+  updateTeamMemberRole: vi.fn()
+}));
+
+vi.mock('@/lib/session-context', () => ({
+  useActiveTenant: vi.fn()
 }));
 
 vi.mock('sonner', () => ({
@@ -28,9 +37,12 @@ vi.mock('sonner', () => ({
 }));
 
 const createTeamInvitationMock = vi.mocked(createTeamInvitation);
+const deactivateTeamMemberMock = vi.mocked(deactivateTeamMember);
 const getTeamInvitationsMock = vi.mocked(getTeamInvitations);
 const resendTeamInvitationMock = vi.mocked(resendTeamInvitation);
 const revokeTeamInvitationMock = vi.mocked(revokeTeamInvitation);
+const updateTeamMemberRoleMock = vi.mocked(updateTeamMemberRole);
+const useActiveTenantMock = vi.mocked(useActiveTenant);
 const toastMock = vi.mocked(toast);
 let writeTextMock: ReturnType<typeof vi.fn>;
 const members = [
@@ -41,7 +53,10 @@ const members = [
     firstName: 'Ana',
     lastName: 'Gómez',
     userStatus: 'ACTIVE',
-    role: 'MANAGER',
+    role: 'AGENT',
+    membershipStatus: 'ACTIVE',
+    deactivatedAt: null,
+    deactivatedByUserId: null,
     createdAt: '2026-05-01T10:00:00.000Z',
     updatedAt: '2026-05-02T10:00:00.000Z'
   } as const
@@ -72,6 +87,20 @@ const refreshedPendingInvitation = {
   expiresAt: '2026-06-15T10:00:00.000Z'
 } as const;
 
+const updatedMember = {
+  ...members[0],
+  role: 'MANAGER',
+  updatedAt: '2026-05-03T10:00:00.000Z'
+} as const;
+
+const deactivatedMember = {
+  ...members[0],
+  membershipStatus: 'DEACTIVATED',
+  deactivatedAt: '2026-06-01T10:00:00.000Z',
+  deactivatedByUserId: 'user-principal',
+  updatedAt: '2026-06-01T10:00:00.000Z'
+} as const;
+
 describe('TeamManagementSection', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -83,6 +112,20 @@ describe('TeamManagementSection', () => {
       });
     }
     writeTextMock = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
+    useActiveTenantMock.mockReturnValue({
+      activeMembership: {
+        id: 'membership-principal',
+        role: 'PRINCIPAL_MANAGER',
+        permissions: ['team.view', 'team.manage'],
+        tenant: { id: 'tenant-1', name: 'Tenant One', slug: 'tenant-one', status: 'ACTIVE' }
+      },
+      activeTenantId: 'tenant-1',
+      hasMemberships: true,
+      isTenantLoading: false,
+      memberships: [],
+      needsTenantSelection: false,
+      selectedTenantId: 'tenant-1'
+    });
     createTeamInvitationMock.mockResolvedValue(invitationResponse);
     resendTeamInvitationMock.mockResolvedValue({
       ...invitationResponse,
@@ -97,6 +140,8 @@ describe('TeamManagementSection', () => {
       expiresAt: '2026-06-14T10:00:00.000Z',
       revokedAt: '2026-06-01T10:00:00.000Z'
     });
+    updateTeamMemberRoleMock.mockResolvedValue(updatedMember);
+    deactivateTeamMemberMock.mockResolvedValue(deactivatedMember);
     getTeamInvitationsMock.mockResolvedValue({ items: [refreshedPendingInvitation] });
   });
 
@@ -221,6 +266,70 @@ describe('TeamManagementSection', () => {
       expect(toastMock.error).toHaveBeenCalledWith('No autorizado');
     });
     expect(screen.getByText('agente@example.com')).toBeInTheDocument();
+  });
+
+  it('updates a team member role and replaces the member row', async () => {
+    const user = userEvent.setup();
+    renderTeamManagementSection();
+
+    await user.click(screen.getByRole('button', { name: /hacer manager/i }));
+
+    await waitFor(() => {
+      expect(updateTeamMemberRoleMock).toHaveBeenCalledWith('membership-1', { role: 'MANAGER' });
+    });
+    expect(await screen.findByText('Manager')).toBeInTheDocument();
+    expect(toastMock.success).toHaveBeenCalledWith('Rol actualizado.');
+  });
+
+  it('deactivates a team member and keeps the deactivated row visible', async () => {
+    const user = userEvent.setup();
+    renderTeamManagementSection();
+
+    await user.click(screen.getByRole('button', { name: /desactivar acceso/i }));
+
+    await waitFor(() => {
+      expect(deactivateTeamMemberMock).toHaveBeenCalledWith('membership-1');
+    });
+    expect(await screen.findByText('Desactivado')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /hacer manager/i })).not.toBeInTheDocument();
+    expect(toastMock.success).toHaveBeenCalledWith('Acceso desactivado.');
+  });
+
+  it('hides member access actions without team management permission', () => {
+    useActiveTenantMock.mockReturnValue({
+      activeMembership: {
+        id: 'membership-1',
+        role: 'MANAGER',
+        permissions: ['team.view'],
+        tenant: { id: 'tenant-1', name: 'Tenant One', slug: 'tenant-one', status: 'ACTIVE' }
+      },
+      activeTenantId: 'tenant-1',
+      hasMemberships: true,
+      isTenantLoading: false,
+      memberships: [],
+      needsTenantSelection: false,
+      selectedTenantId: 'tenant-1'
+    });
+
+    renderTeamManagementSection();
+
+    expect(screen.queryByRole('button', { name: /invitar miembro/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('agente@example.com')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /hacer manager/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /desactivar acceso/i })).not.toBeInTheDocument();
+  });
+
+  it('shows team member mutation errors without changing the row', async () => {
+    const user = userEvent.setup();
+    updateTeamMemberRoleMock.mockRejectedValueOnce(new Error('No autorizado'));
+    renderTeamManagementSection();
+
+    await user.click(screen.getByRole('button', { name: /hacer manager/i }));
+
+    await waitFor(() => {
+      expect(toastMock.error).toHaveBeenCalledWith('No autorizado');
+    });
+    expect(screen.getAllByText('Agente').length).toBeGreaterThan(0);
   });
 
   it('shows API errors without a manual link', async () => {

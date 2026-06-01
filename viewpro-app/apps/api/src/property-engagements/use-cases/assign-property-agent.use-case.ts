@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { UserStatus } from '@prisma/client'
 import type { CurrentUser } from '../../auth/types/current-user'
 import { MEMBERSHIPS_REPOSITORY, type MembershipsRepository } from '../../memberships/memberships.repository'
 import type { TenantContext } from '../../tenant-context/tenant-context.types'
@@ -33,6 +34,10 @@ export class AssignPropertyAgentUseCase {
 
     if (!membership) {
       throw new BadRequestException('Agent is not a member of this tenant')
+    }
+
+    if (membership.status !== 'ACTIVE' || membership.user.status !== UserStatus.ACTIVE) {
+      throw new BadRequestException('Agent is not an active member of this tenant')
     }
 
     const result = await this.propertyEngagementsRepository.assignAgent({

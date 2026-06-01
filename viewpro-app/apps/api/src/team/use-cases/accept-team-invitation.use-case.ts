@@ -157,7 +157,7 @@ export class AcceptTeamInvitationUseCase {
       throw new UnauthorizedException('Authentication required')
     }
 
-    const memberships = await this.membershipsRepository.findManyByUserId(user.id)
+    const memberships = await this.membershipsRepository.findActiveManyByUserId(user.id)
     const body: MeResponse = { user: mapAuthUser(user), memberships: memberships.map(mapMembership) }
 
     return { accessToken, refreshToken, body }

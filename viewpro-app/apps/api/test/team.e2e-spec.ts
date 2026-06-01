@@ -1,5 +1,6 @@
 import { TeamInvitationStatus, TenantRole } from "@prisma/client";
 import type { INestApplication } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApiApp } from "../src/bootstrap/create-app";
@@ -13,7 +14,7 @@ describe("Team members (e2e)", () => {
 
 	beforeAll(async () => {
 		process.env.NODE_ENV = "test";
-		process.env.ACCESS_TOKEN_SECRET = "test-access-token-secret";
+		process.env.ACCESS_TOKEN_SECRET ??= randomUUID();
 		process.env.COOKIE_DOMAIN = "localhost";
 		process.env.COOKIE_SECURE = "false";
 
@@ -136,6 +137,179 @@ describe("Team members (e2e)", () => {
 			.expect(403);
 
 		expect(response.body.message).toBe("Insufficient permissions");
+	});
+
+	it("updates an active non-principal member role", async () => {
+		const principal = await registerTenantSession(
+			"team-role-principal@example.com",
+			"Team Role Principal Homes",
+		);
+		const agent = await registerTenantSession(
+			"team-role-agent@example.com",
+			"Team Role Agent Homes",
+		);
+		const membership = await prisma.tenantMembership.create({
+			data: {
+				user: { connect: { id: agent.userId } },
+				tenant: { connect: { id: principal.tenantId } },
+				role: TenantRole.AGENT,
+			},
+		});
+
+		const response = await principal.agent
+			.patch(`/api/team/members/${membership.id}/role`)
+			.set("x-tenant-id", principal.tenantId)
+			.send({ role: TenantRole.MANAGER })
+			.expect(200);
+
+		expect(response.body).toMatchObject({
+			membershipId: membership.id,
+			userId: agent.userId,
+			role: TenantRole.MANAGER,
+			membershipStatus: "ACTIVE",
+			deactivatedAt: null,
+			deactivatedByUserId: null,
+		});
+		const updated = await prisma.tenantMembership.findUniqueOrThrow({
+			where: { id: membership.id },
+		});
+		expect(updated.role).toBe(TenantRole.MANAGER);
+	});
+
+	it("keeps team member role updates tenant-scoped and principal-protected", async () => {
+		const principal = await registerTenantSession(
+			"team-role-scope-principal@example.com",
+			"Team Role Scope Principal Homes",
+		);
+		const other = await registerTenantSession(
+			"team-role-scope-other@example.com",
+			"Team Role Scope Other Homes",
+		);
+		const member = await registerTenantSession(
+			"team-role-scope-member@example.com",
+			"Team Role Scope Member Homes",
+		);
+		const membership = await prisma.tenantMembership.create({
+			data: {
+				user: { connect: { id: member.userId } },
+				tenant: { connect: { id: principal.tenantId } },
+				role: TenantRole.AGENT,
+			},
+		});
+
+		await other.agent
+			.patch(`/api/team/members/${membership.id}/role`)
+			.set("x-tenant-id", other.tenantId)
+			.send({ role: TenantRole.MANAGER })
+			.expect(404);
+
+		const principalResponse = await principal.agent
+			.patch(`/api/team/members/${principal.membershipId}/role`)
+			.set("x-tenant-id", principal.tenantId)
+			.send({ role: TenantRole.AGENT })
+			.expect(400);
+		expect(principalResponse.body.message).toBe(
+			"Principal manager cannot be changed",
+		);
+
+		await principal.agent
+			.patch(`/api/team/members/${membership.id}/role`)
+			.set("x-tenant-id", principal.tenantId)
+			.send({ role: TenantRole.PRINCIPAL_MANAGER })
+			.expect(400);
+	});
+
+	it("deactivates an active non-principal member and removes tenant access", async () => {
+		const principal = await registerTenantSession(
+			"team-deactivate-principal@example.com",
+			"Team Deactivate Principal Homes",
+		);
+		const manager = await registerTenantSession(
+			"team-deactivate-manager@example.com",
+			"Team Deactivate Manager Homes",
+		);
+		const membership = await prisma.tenantMembership.create({
+			data: {
+				user: { connect: { id: manager.userId } },
+				tenant: { connect: { id: principal.tenantId } },
+				role: TenantRole.MANAGER,
+			},
+		});
+
+		const response = await principal.agent
+			.post(`/api/team/members/${membership.id}/deactivate`)
+			.set("x-tenant-id", principal.tenantId)
+			.expect(200);
+
+		expect(response.body).toMatchObject({
+			membershipId: membership.id,
+			membershipStatus: "DEACTIVATED",
+			deactivatedAt: expect.any(String),
+			deactivatedByUserId: principal.userId,
+		});
+		const [deactivated] = await prisma.$queryRaw<
+			Array<{
+				status: string;
+				deactivatedAt: Date | null;
+				deactivatedByUserId: string | null;
+			}>
+		>`SELECT "status", "deactivatedAt", "deactivatedByUserId" FROM "tenant_memberships" WHERE "id" = ${membership.id}`;
+		expect(deactivated.status).toBe("DEACTIVATED");
+		expect(deactivated.deactivatedAt).toBeInstanceOf(Date);
+		expect(deactivated.deactivatedByUserId).toBe(principal.userId);
+
+		const me = await manager.agent.get("/api/auth/me").expect(200);
+		expect(
+			me.body.memberships.map(
+				(item: { tenant: { id: string } }) => item.tenant.id,
+			),
+		).not.toContain(principal.tenantId);
+
+		const denied = await manager.agent
+			.get("/api/team/members")
+			.set("x-tenant-id", principal.tenantId)
+			.expect(403);
+		expect(denied.body.message).toBe("Tenant access denied");
+
+		const listResponse = await principal.agent
+			.get("/api/team/members")
+			.set("x-tenant-id", principal.tenantId)
+			.expect(200);
+		expect(listResponse.body.items).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					membershipId: membership.id,
+					membershipStatus: "DEACTIVATED",
+					deactivatedByUserId: principal.userId,
+				}),
+			]),
+		);
+	});
+
+	it("protects self and principal manager from deactivation", async () => {
+		const principal = await registerTenantSession(
+			"team-deactivate-self-principal@example.com",
+			"Team Deactivate Self Homes",
+		);
+		const member = await registerTenantSession(
+			"team-deactivate-self-member@example.com",
+			"Team Deactivate Self Member Homes",
+		);
+		await prisma.tenantMembership.create({
+			data: {
+				user: { connect: { id: member.userId } },
+				tenant: { connect: { id: principal.tenantId } },
+				role: TenantRole.MANAGER,
+			},
+		});
+
+		const selfResponse = await principal.agent
+			.post(`/api/team/members/${principal.membershipId}/deactivate`)
+			.set("x-tenant-id", principal.tenantId)
+			.expect(400);
+		expect(selfResponse.body.message).toBe(
+			"You cannot deactivate your own access",
+		);
 	});
 
 	it("requires authentication when creating team invitations", async () => {

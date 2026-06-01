@@ -19,7 +19,7 @@ function unsupportedUserMutationResponse() {
   return NextResponse.json(
     {
       message:
-        'User mutations are not supported yet. Team invitations and role changes are planned for a later Stage 22 slice.'
+        'Direct user mutations are not supported. Use team member and invitation endpoints for team management.'
     },
     { status: 501 }
   );

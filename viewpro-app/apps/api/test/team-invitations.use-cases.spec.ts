@@ -749,7 +749,7 @@ function createAcceptUseCaseDeps(
 		...overrides.usersRepository,
 	};
 	const membershipsRepository = {
-		findManyByUserId: vi.fn().mockResolvedValue([membership()]),
+		findActiveManyByUserId: vi.fn().mockResolvedValue([membership()]),
 	};
 	const passwordHasher = {
 		hash: vi.fn().mockResolvedValue("hashed-password"),
