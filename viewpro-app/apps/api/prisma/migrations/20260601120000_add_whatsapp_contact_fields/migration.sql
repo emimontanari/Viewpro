@@ -1,0 +1,3 @@
+ALTER TABLE "tenants" ADD COLUMN "whatsappPhone" TEXT;
+ALTER TABLE "users" ADD COLUMN "whatsappPhone" TEXT;
+ALTER TYPE "AnalyticsEventName" ADD VALUE 'WHATSAPP_CONTACT_CLICKED';

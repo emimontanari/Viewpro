@@ -6,6 +6,7 @@ import { GetOwnerEngagementTimelineUseCase } from '../src/owner-portal/use-cases
 import { GetOwnerPropertyUseCase } from '../src/owner-portal/use-cases/get-owner-property.use-case'
 import { ListOwnerPropertiesUseCase } from '../src/owner-portal/use-cases/list-owner-properties.use-case'
 import { ListOwnerPropertyEngagementsUseCase } from '../src/owner-portal/use-cases/list-owner-property-engagements.use-case'
+import { TrackOwnerWhatsappContactClickUseCase } from '../src/owner-portal/use-cases/track-owner-whatsapp-contact-click.use-case'
 
 describe('Owner portal use cases', () => {
   it('lists mapped owner properties for the current user', async () => {
@@ -123,9 +124,43 @@ describe('Owner portal use cases', () => {
       expect.objectContaining({
         id: 'engagement-1',
         tenant: { id: 'tenant-1', name: 'Acme Realty' },
+        contact: {
+          available: false,
+          targetType: 'tenant',
+          displayLabel: 'Contacto no configurado',
+        },
         agents: [{ userId: 'agent-1', firstName: 'Ada', email: 'ada@example.com' }],
       }),
     ])
+  })
+
+  it('maps tenant WhatsApp contact when listing owner property engagements', async () => {
+    const property = makeProperty({ id: 'property-1' })
+    const engagement = makeEngagement({
+      id: 'engagement-1',
+      propertyAssetId: 'property-1',
+      tenant: { id: 'tenant-1', name: 'Acme Realty', whatsappPhone: '+5493510000000' },
+    })
+    const repository = makeRepository({
+      findPropertyByOwner: vi.fn().mockResolvedValue(property),
+      findEngagementsForOwnerProperty: vi.fn().mockResolvedValue([engagement]),
+    })
+    const useCase = new ListOwnerPropertyEngagementsUseCase(repository)
+
+    const result = await useCase.execute({ userId: 'owner-1', propertyAssetId: 'property-1' })
+
+    expect(result[0]).toEqual(
+      expect.objectContaining({
+        tenant: { id: 'tenant-1', name: 'Acme Realty' },
+        contact: {
+          available: true,
+          targetType: 'tenant',
+          displayLabel: 'Contactar inmobiliaria',
+          whatsappPhone: '+5493510000000',
+        },
+      }),
+    )
+    expect(result[0].tenant).not.toHaveProperty('whatsappPhone')
   })
 
   it('does not list engagements when owner property access is missing', async () => {
@@ -167,6 +202,59 @@ describe('Owner portal use cases', () => {
     })
   })
 
+  it('tracks owner WhatsApp contact clicks with safe analytics metadata', async () => {
+    const repository = makeRepository({
+      findEngagementContactContextForOwner: vi.fn().mockResolvedValue({
+        id: 'engagement-1',
+        tenantId: 'tenant-1',
+        propertyAssetId: 'property-1',
+      }),
+    })
+    const analyticsService = { track: vi.fn().mockResolvedValue({ status: 'persisted' }) }
+    const useCase = new TrackOwnerWhatsappContactClickUseCase(repository, analyticsService as never)
+
+    await expect(useCase.execute({ userId: 'owner-1', engagementId: 'engagement-1' })).resolves.toBeUndefined()
+
+    expect(repository.findEngagementContactContextForOwner).toHaveBeenCalledWith({
+      userId: 'owner-1',
+      engagementId: 'engagement-1',
+    })
+    expect(analyticsService.track).toHaveBeenCalledWith({
+      eventName: AnalyticsEventName.WHATSAPP_CONTACT_CLICKED,
+      actorType: AnalyticsActorType.OWNER,
+      actorUserId: 'owner-1',
+      tenantId: 'tenant-1',
+      propertyEngagementId: 'engagement-1',
+      propertyAssetId: 'property-1',
+      metadata: { context: 'property', targetType: 'tenant' },
+    })
+  })
+
+  it('rejects owner WhatsApp contact clicks for inaccessible engagements', async () => {
+    const repository = makeRepository({ findEngagementContactContextForOwner: vi.fn().mockResolvedValue(null) })
+    const analyticsService = { track: vi.fn() }
+    const useCase = new TrackOwnerWhatsappContactClickUseCase(repository, analyticsService as never)
+
+    await expect(useCase.execute({ userId: 'owner-1', engagementId: 'missing-engagement' })).rejects.toThrow(
+      new NotFoundException('Owner engagement not found'),
+    )
+    expect(analyticsService.track).not.toHaveBeenCalled()
+  })
+
+  it('keeps owner WhatsApp contact clicks successful when analytics fails', async () => {
+    const repository = makeRepository({
+      findEngagementContactContextForOwner: vi.fn().mockResolvedValue({
+        id: 'engagement-1',
+        tenantId: 'tenant-1',
+        propertyAssetId: 'property-1',
+      }),
+    })
+    const analyticsService = { track: vi.fn().mockRejectedValue(new Error('analytics unavailable')) }
+    const useCase = new TrackOwnerWhatsappContactClickUseCase(repository, analyticsService as never)
+
+    await expect(useCase.execute({ userId: 'owner-1', engagementId: 'engagement-1' })).resolves.toBeUndefined()
+  })
+
   it('throws 404 when an owner engagement timeline is missing', async () => {
     const repository = makeRepository({
       findEngagementTimelineForOwner: vi.fn().mockResolvedValue({ engagement: null, items: [], total: 0 }),
@@ -185,6 +273,7 @@ function makeRepository(overrides: Partial<OwnerPortalRepository>): OwnerPortalR
     findPropertyByOwner: vi.fn(),
     findEngagementsForOwnerProperty: vi.fn(),
     findEngagementTimelineForOwner: vi.fn(),
+    findEngagementContactContextForOwner: vi.fn(),
     ...overrides,
   }
 }
@@ -220,7 +309,7 @@ function makeEngagement(overrides: Partial<Record<string, unknown>> = {}) {
     status: 'ACTIVE_PUBLICATION',
     publishedPriceCents: 120_000_00,
     currency: 'USD',
-    tenant: { id: 'tenant-1', name: 'Acme Realty' },
+    tenant: { id: 'tenant-1', name: 'Acme Realty', whatsappPhone: null },
     agents: [{ agentUserId: 'agent-1', agentUser: { firstName: 'Ada', email: 'ada@example.com' } }],
     createdAt: new Date('2026-01-03T00:00:00.000Z'),
     updatedAt: new Date('2026-01-04T00:00:00.000Z'),

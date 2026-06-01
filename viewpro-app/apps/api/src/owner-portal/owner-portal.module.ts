@@ -8,12 +8,14 @@ import { GetOwnerEngagementTimelineUseCase } from './use-cases/get-owner-engagem
 import { GetOwnerPropertyUseCase } from './use-cases/get-owner-property.use-case'
 import { ListOwnerPropertiesUseCase } from './use-cases/list-owner-properties.use-case'
 import { ListOwnerPropertyEngagementsUseCase } from './use-cases/list-owner-property-engagements.use-case'
+import { TrackOwnerWhatsappContactClickUseCase } from './use-cases/track-owner-whatsapp-contact-click.use-case'
 
 const ownerPortalUseCases = [
   ListOwnerPropertiesUseCase,
   GetOwnerPropertyUseCase,
   ListOwnerPropertyEngagementsUseCase,
   GetOwnerEngagementTimelineUseCase,
+  TrackOwnerWhatsappContactClickUseCase,
 ]
 
 @Module({

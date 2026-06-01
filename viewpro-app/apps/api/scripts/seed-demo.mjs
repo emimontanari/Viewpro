@@ -33,6 +33,8 @@ loadEnvFile(resolve(process.cwd(), ".env"));
 
 const DEMO_TENANT_SLUG = "viewpro-demo-inmobiliaria";
 const DEMO_TENANT_NAME = "ViewPro Demo Inmobiliaria";
+const DEMO_TENANT_WHATSAPP_PHONE =
+	process.env.VIEWPRO_DEMO_TENANT_WHATSAPP_PHONE ?? "+5493510000000";
 const DEMO_PASSWORD =
 	process.env.VIEWPRO_DEMO_PASSWORD ?? buildDefaultDemoPassword();
 const DEMO_USERS = [
@@ -687,6 +689,7 @@ async function createDemoTenant(client, users) {
 				name: DEMO_TENANT_NAME,
 				slug: DEMO_TENANT_SLUG,
 				status: TenantStatus.ACTIVE,
+				whatsappPhone: DEMO_TENANT_WHATSAPP_PHONE,
 				memberships: {
 					create: DEMO_USERS.map((user) => ({
 						userId: users.get(user.email).id,

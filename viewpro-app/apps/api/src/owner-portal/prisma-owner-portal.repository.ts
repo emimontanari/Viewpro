@@ -17,7 +17,7 @@ const ownerPropertyInclude = {
 } satisfies Prisma.PropertyAssetInclude
 
 const ownerEngagementInclude = {
-  tenant: { select: { id: true, name: true } },
+  tenant: { select: { id: true, name: true, whatsappPhone: true } },
   agents: { select: { agentUserId: true, agentUser: { select: { firstName: true, email: true } } } },
 } satisfies Prisma.PropertyEngagementInclude
 
@@ -96,5 +96,19 @@ export class PrismaOwnerPortalRepository implements OwnerPortalRepository {
     ])
 
     return { engagement, items, total }
+  }
+
+  findEngagementContactContextForOwner(input: { userId: string; engagementId: string }) {
+    return this.prisma.propertyEngagement.findFirst({
+      where: {
+        id: input.engagementId,
+        propertyAsset: activeOwnerAccess(input.userId),
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        propertyAssetId: true,
+      },
+    })
   }
 }

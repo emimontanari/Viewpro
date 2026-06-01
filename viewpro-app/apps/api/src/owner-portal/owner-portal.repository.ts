@@ -8,7 +8,7 @@ export type OwnerPropertyRecord = Prisma.PropertyAssetGetPayload<{
 
 export type OwnerEngagementRecord = Prisma.PropertyEngagementGetPayload<{
 	include: {
-		tenant: { select: { id: true; name: true } };
+		tenant: { select: { id: true; name: true; whatsappPhone: true } };
 		agents: {
 			select: {
 				agentUserId: true;
@@ -17,6 +17,12 @@ export type OwnerEngagementRecord = Prisma.PropertyEngagementGetPayload<{
 		};
 	};
 }>;
+
+export type OwnerEngagementContactContext = {
+	id: string;
+	tenantId: string;
+	propertyAssetId: string;
+};
 
 export type OwnerMovementRecord = Prisma.MovementGetPayload<{
 	include: {
@@ -45,4 +51,8 @@ export type OwnerPortalRepository = {
 		items: OwnerMovementRecord[];
 		total: number;
 	}>;
+	findEngagementContactContextForOwner(input: {
+		userId: string;
+		engagementId: string;
+	}): Promise<OwnerEngagementContactContext | null>;
 };

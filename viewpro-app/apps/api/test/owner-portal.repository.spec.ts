@@ -99,6 +99,11 @@ describe('Owner portal repository', () => {
     expect(mapOwnerEngagement(result[0])).toEqual({
       id: 'engagement-1',
       tenant: { id: 'tenant-1', name: 'Acme Realty' },
+      contact: {
+        available: false,
+        targetType: 'tenant',
+        displayLabel: 'Contacto no configurado',
+      },
       operationType: 'SALE',
       status: 'ACTIVE_PUBLICATION',
       publishedPriceCents: 120_000_00,
@@ -107,6 +112,49 @@ describe('Owner portal repository', () => {
       createdAt: '2026-01-03T00:00:00.000Z',
       updatedAt: '2026-01-04T00:00:00.000Z',
     })
+  })
+
+  it('maps tenant WhatsApp contact without leaking it through tenant', async () => {
+    const engagement = makeEngagement({
+      id: 'engagement-1',
+      propertyAssetId: 'property-1',
+      tenant: { id: 'tenant-1', name: 'Acme Realty', whatsappPhone: '+5493510000000' },
+    })
+    const findMany = vi.fn().mockResolvedValue([engagement])
+    const repository = new PrismaOwnerPortalRepository({ propertyEngagement: { findMany } } as never)
+
+    const result = await repository.findEngagementsForOwnerProperty({
+      userId: 'owner-1',
+      propertyAssetId: 'property-1',
+    })
+    const response = mapOwnerEngagement(result[0])
+
+    expect(response.tenant).toEqual({ id: 'tenant-1', name: 'Acme Realty' })
+    expect(response.tenant).not.toHaveProperty('whatsappPhone')
+    expect(response.contact).toEqual({
+      available: true,
+      targetType: 'tenant',
+      displayLabel: 'Contactar inmobiliaria',
+      whatsappPhone: '+5493510000000',
+    })
+  })
+
+  it('finds owner-authorized engagement contact context', async () => {
+    const findFirst = vi.fn().mockResolvedValue({ id: 'engagement-1', tenantId: 'tenant-1', propertyAssetId: 'property-1' })
+    const repository = new PrismaOwnerPortalRepository({ propertyEngagement: { findFirst } } as never)
+
+    const result = await repository.findEngagementContactContextForOwner({ userId: 'owner-1', engagementId: 'engagement-1' })
+
+    expect(result).toEqual({ id: 'engagement-1', tenantId: 'tenant-1', propertyAssetId: 'property-1' })
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 'engagement-1',
+          propertyAsset: { owners: { some: { userId: 'owner-1', accessStatus: 'ACTIVE' } } },
+        },
+        select: { id: true, tenantId: true, propertyAssetId: true },
+      }),
+    )
   })
 
   it('timeline is available only for owned engagement', async () => {
@@ -204,7 +252,7 @@ function makeEngagement(overrides: Partial<Record<string, unknown>> = {}) {
     status: 'ACTIVE_PUBLICATION',
     publishedPriceCents: 120_000_00,
     currency: 'USD',
-    tenant: { id: 'tenant-1', name: 'Acme Realty' },
+    tenant: { id: 'tenant-1', name: 'Acme Realty', whatsappPhone: null },
     agents: [{ agentUserId: 'agent-1', agentUser: { firstName: 'Ada', email: 'ada@example.com' } }],
     createdAt: new Date('2026-01-03T00:00:00.000Z'),
     updatedAt: new Date('2026-01-04T00:00:00.000Z'),
