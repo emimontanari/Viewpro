@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createOwnerDocumentReadUrl,
+  trackOwnerMovementWhatsappContactClick,
   trackOwnerWhatsappContactClick,
   uploadOwnerDocumentFile
 } from './service';
@@ -85,6 +86,40 @@ describe('owner document API service', () => {
         signal: expect.any(AbortSignal)
       }
     );
+  });
+
+  it('tracks movement WhatsApp contact clicks without sending phone or message metadata', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      trackOwnerMovementWhatsappContactClick('engagement-1', 'movement-1')
+    ).resolves.toBeUndefined();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/owner/engagements/engagement-1/movements/movement-1/whatsapp-contact-click',
+      {
+        cache: 'no-store',
+        credentials: 'include',
+        keepalive: true,
+        method: 'POST',
+        signal: expect.any(AbortSignal)
+      }
+    );
+  });
+
+  it('surfaces movement WhatsApp contact tracking errors to callers that choose to await it', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ message: 'Owner movement not found' }), {
+        headers: { 'content-type': 'application/json' },
+        status: 404
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      trackOwnerMovementWhatsappContactClick('engagement-1', 'missing-movement')
+    ).rejects.toThrow('Owner movement not found');
   });
 
   it('surfaces WhatsApp contact tracking errors to callers that choose to await it', async () => {

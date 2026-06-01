@@ -119,7 +119,11 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
           {!isEngagementsLoading && !isEngagementsError && engagements.length > 0 ? (
             <section className='space-y-4'>
               {engagements.map((engagement) => (
-                <OwnerEngagementCard key={engagement.id} engagement={engagement} />
+                <OwnerEngagementCard
+                  key={engagement.id}
+                  engagement={engagement}
+                  property={property}
+                />
               ))}
             </section>
           ) : null}

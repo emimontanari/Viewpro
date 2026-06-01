@@ -1,10 +1,19 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { ownerEngagementTimelineOptions } from '../api/queries';
-import type { OwnerMovement, OwnerTimelineFilters } from '../api/types';
+import { trackOwnerMovementWhatsappContactClick } from '../api/service';
+import type { OwnerMovement, OwnerProperty, OwnerTimelineFilters } from '../api/types';
+import {
+  formatOwnerMovementShortDate,
+  getOwnerMovementInterestLabel,
+  getOwnerMovementStatusLabel,
+  getOwnerMovementTypeLabel
+} from '../utils/owner-movement-labels';
+import { buildOwnerMovementWhatsappHref } from '../utils/owner-whatsapp-contact';
 
 const DEFAULT_TIMELINE_FILTERS: Required<OwnerTimelineFilters> = {
   order: 'desc',
@@ -12,8 +21,18 @@ const DEFAULT_TIMELINE_FILTERS: Required<OwnerTimelineFilters> = {
   pageSize: 10
 };
 
-export function OwnerTimeline({ engagementId }: { engagementId: string }) {
-  const timelineQuery = useQuery(ownerEngagementTimelineOptions(engagementId, DEFAULT_TIMELINE_FILTERS));
+type OwnerTimelinePropertyContext = Pick<OwnerProperty, 'addressLine' | 'city' | 'province'>;
+
+export function OwnerTimeline({
+  engagementId,
+  property
+}: {
+  engagementId: string;
+  property: OwnerTimelinePropertyContext;
+}) {
+  const timelineQuery = useQuery(
+    ownerEngagementTimelineOptions(engagementId, DEFAULT_TIMELINE_FILTERS)
+  );
 
   if (timelineQuery.isLoading) {
     return <div className='h-32 animate-pulse rounded-xl bg-muted' />;
@@ -40,24 +59,69 @@ export function OwnerTimeline({ engagementId }: { engagementId: string }) {
   return (
     <div className='space-y-3'>
       {movements.map((movement) => (
-        <OwnerTimelineItem key={movement.id} movement={movement} />
+        <OwnerTimelineItem key={movement.id} movement={movement} property={property} />
       ))}
     </div>
   );
 }
 
-function OwnerTimelineItem({ movement }: { movement: OwnerMovement }) {
+function OwnerTimelineItem({
+  movement,
+  property
+}: {
+  movement: OwnerMovement;
+  property: OwnerTimelinePropertyContext;
+}) {
+  const contactHref = buildOwnerMovementWhatsappHref({
+    contact: movement.contact,
+    movement,
+    property
+  });
+
+  function handleContactClick() {
+    if (!contactHref) {
+      return;
+    }
+
+    void trackOwnerMovementWhatsappContactClick(movement.propertyEngagementId, movement.id).catch(
+      () => undefined
+    );
+  }
+
   return (
     <Card className='gap-4 py-4 shadow-none'>
       <CardHeader className='gap-3 px-4 sm:px-5'>
         <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
           <div className='min-w-0 space-y-1'>
-            <CardTitle className='text-base break-words'>{getMovementTypeLabel(movement.type)}</CardTitle>
+            <CardTitle className='text-base break-words'>
+              {getOwnerMovementTypeLabel(movement.type)}
+            </CardTitle>
             <p className='text-sm text-muted-foreground'>
-              {formatDate(movement.createdAt)} · {movement.createdBy.firstName || movement.createdBy.email}
+              {formatOwnerMovementShortDate(movement.createdAt)} ·{' '}
+              {movement.createdBy.firstName || movement.createdBy.email}
             </p>
           </div>
-          {movement.newStatus ? <Badge variant='outline'>{getStatusLabel(movement.newStatus)}</Badge> : null}
+          <div className='flex flex-col gap-2 sm:items-end'>
+            {movement.newStatus ? (
+              <Badge variant='outline'>{getOwnerMovementStatusLabel(movement.newStatus)}</Badge>
+            ) : null}
+            {contactHref ? (
+              <Button asChild variant='outline' size='sm' className='w-fit'>
+                <a
+                  href={contactHref}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  onClick={handleContactClick}
+                >
+                  {movement.contact.displayLabel}
+                </a>
+              </Button>
+            ) : (
+              <Button type='button' variant='outline' size='sm' className='w-fit' disabled>
+                {movement.contact.displayLabel}
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className='space-y-3 px-4 sm:px-5'>
@@ -70,67 +134,20 @@ function OwnerTimelineItem({ movement }: { movement: OwnerMovement }) {
         ) : null}
         <div className='flex flex-wrap gap-2 text-xs text-muted-foreground'>
           {movement.interestCount !== null ? (
-            <span className='rounded-full border px-2 py-1'>{movement.interestCount} interesados</span>
+            <span className='rounded-full border px-2 py-1'>
+              {movement.interestCount} interesados
+            </span>
           ) : null}
           {movement.visitCount !== null ? (
             <span className='rounded-full border px-2 py-1'>{movement.visitCount} visitas</span>
           ) : null}
           {movement.interestLevel ? (
-            <span className='rounded-full border px-2 py-1'>Interés {getInterestLabel(movement.interestLevel)}</span>
+            <span className='rounded-full border px-2 py-1'>
+              Interés {getOwnerMovementInterestLabel(movement.interestLevel)}
+            </span>
           ) : null}
         </div>
       </CardContent>
     </Card>
   );
-}
-
-function getMovementTypeLabel(type: string) {
-  const labels: Record<string, string> = {
-    ARCHIVED: 'Archivada',
-    DOCUMENTATION_UPDATE: 'Documentación',
-    GENERAL_UPDATE: 'Actualización general',
-    INQUIRY: 'Consulta',
-    OFFER_RECEIVED: 'Oferta recibida',
-    RESTORED: 'Restaurada',
-    STATUS_CHANGE: 'Cambio de estado',
-    VISIT_COMPLETED: 'Visita realizada',
-    VISIT_SCHEDULED: 'Visita programada'
-  };
-
-  return labels[type] ?? type;
-}
-
-function getStatusLabel(status: string) {
-  const labels: Record<string, string> = {
-    ACTIVE_PUBLICATION: 'Publicación activa',
-    CANCELLED: 'Cancelada',
-    CAPTURE: 'Captación',
-    CLOSED: 'Cerrada',
-    DOCUMENTATION_PENDING: 'Documentación pendiente',
-    FINAL_DOCUMENTATION: 'Documentación final',
-    INQUIRIES_AND_VISITS: 'Consultas y visitas',
-    OFFER_NEGOTIATION: 'Negociación',
-    PUBLICATION_PREPARATION: 'Preparando publicación',
-    RESERVATION_STARTED: 'Reserva iniciada'
-  };
-
-  return labels[status] ?? status;
-}
-
-function getInterestLabel(level: string) {
-  const labels: Record<string, string> = {
-    HIGH: 'alto',
-    LOW: 'bajo',
-    MEDIUM: 'medio'
-  };
-
-  return labels[level] ?? level.toLowerCase();
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('es-AR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  }).format(new Date(value));
 }

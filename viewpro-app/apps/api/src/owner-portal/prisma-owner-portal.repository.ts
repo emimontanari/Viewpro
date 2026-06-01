@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import type {
   OwnerEngagementRecord,
+  OwnerMovementContactContext,
   OwnerMovementRecord,
   OwnerPortalRepository,
   OwnerPropertyRecord,
@@ -22,7 +23,7 @@ const ownerEngagementInclude = {
 } satisfies Prisma.PropertyEngagementInclude
 
 const ownerMovementInclude = {
-  createdBy: { select: { id: true, email: true, firstName: true } },
+  createdBy: { select: { id: true, email: true, firstName: true, whatsappPhone: true } },
 } satisfies Prisma.MovementInclude
 
 @Injectable()
@@ -110,5 +111,38 @@ export class PrismaOwnerPortalRepository implements OwnerPortalRepository {
         propertyAssetId: true,
       },
     })
+  }
+
+  async findMovementContactContextForOwner(input: {
+    userId: string
+    engagementId: string
+    movementId: string
+  }): Promise<OwnerMovementContactContext | null> {
+    const movement = await this.prisma.movement.findFirst({
+      where: {
+        id: input.movementId,
+        propertyEngagementId: input.engagementId,
+        propertyEngagement: {
+          propertyAsset: activeOwnerAccess(input.userId),
+        },
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        propertyEngagementId: true,
+        propertyEngagement: { select: { propertyAssetId: true } },
+      },
+    })
+
+    if (!movement) {
+      return null
+    }
+
+    return {
+      id: movement.id,
+      tenantId: movement.tenantId,
+      propertyEngagementId: movement.propertyEngagementId,
+      propertyAssetId: movement.propertyEngagement.propertyAssetId,
+    }
   }
 }

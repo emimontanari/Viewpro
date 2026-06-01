@@ -105,6 +105,12 @@ const timelineResponse: OwnerTimelineResponse = {
       offerAmountCents: null,
       interestLevel: 'HIGH',
       createdBy: { id: 'agent-1', email: 'sofia.demo@viewpro.local', firstName: 'Sofía' },
+      contact: {
+        available: true,
+        targetType: 'movement_author',
+        displayLabel: 'Consultar responsable',
+        whatsappPhone: '+5493511112222'
+      },
       createdAt: '2026-05-24T10:00:00.000Z'
     }
   ],

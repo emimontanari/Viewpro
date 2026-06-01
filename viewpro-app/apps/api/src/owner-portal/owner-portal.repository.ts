@@ -24,9 +24,18 @@ export type OwnerEngagementContactContext = {
 	propertyAssetId: string;
 };
 
+export type OwnerMovementContactContext = {
+	id: string;
+	tenantId: string;
+	propertyEngagementId: string;
+	propertyAssetId: string;
+};
+
 export type OwnerMovementRecord = Prisma.MovementGetPayload<{
 	include: {
-		createdBy: { select: { id: true; email: true; firstName: true } };
+		createdBy: {
+			select: { id: true; email: true; firstName: true; whatsappPhone: true };
+		};
 	};
 }>;
 
@@ -55,4 +64,9 @@ export type OwnerPortalRepository = {
 		userId: string;
 		engagementId: string;
 	}): Promise<OwnerEngagementContactContext | null>;
+	findMovementContactContextForOwner(input: {
+		userId: string;
+		engagementId: string;
+		movementId: string;
+	}): Promise<OwnerMovementContactContext | null>;
 };
