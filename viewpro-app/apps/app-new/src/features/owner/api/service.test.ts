@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createOwnerDocumentReadUrl, uploadOwnerDocumentFile } from './service';
+import {
+  createOwnerDocumentReadUrl,
+  trackOwnerWhatsappContactClick,
+  uploadOwnerDocumentFile
+} from './service';
 import type { OwnerDocumentVersionUrlResponse } from './types';
 
 const fakeStorageMessage = 'La API está usando almacenamiento documental fake.';
@@ -63,6 +67,38 @@ describe('owner document API service', () => {
     );
     expect(xhr.setRequestHeader).toHaveBeenCalledWith('content-type', 'application/pdf');
     expect(xhr.send).toHaveBeenCalledWith(file);
+  });
+
+  it('tracks WhatsApp contact clicks without sending phone or message metadata', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(trackOwnerWhatsappContactClick('engagement-1')).resolves.toBeUndefined();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/owner/engagements/engagement-1/whatsapp-contact-click',
+      {
+        cache: 'no-store',
+        credentials: 'include',
+        keepalive: true,
+        method: 'POST',
+        signal: expect.any(AbortSignal)
+      }
+    );
+  });
+
+  it('surfaces WhatsApp contact tracking errors to callers that choose to await it', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ message: 'Property engagement not found' }), {
+        headers: { 'content-type': 'application/json' },
+        status: 404
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(trackOwnerWhatsappContactClick('missing-engagement')).rejects.toThrow(
+      'Property engagement not found'
+    );
   });
 
   it('rejects fake document read URLs before returning them to the UI', async () => {

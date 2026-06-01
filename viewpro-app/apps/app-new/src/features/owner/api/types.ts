@@ -37,12 +37,20 @@ export type OwnerAgent = {
   email: string;
 };
 
+export type OwnerPropertyContact = {
+  available: boolean;
+  targetType: 'tenant';
+  displayLabel: string;
+  whatsappPhone?: string;
+};
+
 export type OwnerEngagement = {
   id: string;
   tenant: {
     id: string;
     name: string;
   };
+  contact: OwnerPropertyContact;
   operationType: string;
   status: string;
   publishedPriceCents: number;

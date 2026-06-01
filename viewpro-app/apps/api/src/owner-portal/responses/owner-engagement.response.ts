@@ -1,6 +1,8 @@
 import type { OwnerEngagementRecord } from '../owner-portal.repository'
+import { mapTenantWhatsappContact, type OwnerPropertyContactResponse } from '../owner-whatsapp-contact'
 
 export type OwnerEngagementResponse = ReturnType<typeof mapOwnerEngagement>
+export type { OwnerPropertyContactResponse }
 
 export function mapOwnerEngagement(engagement: OwnerEngagementRecord) {
   return {
@@ -9,6 +11,7 @@ export function mapOwnerEngagement(engagement: OwnerEngagementRecord) {
       id: engagement.tenant.id,
       name: engagement.tenant.name,
     },
+    contact: mapTenantWhatsappContact(engagement.tenant.whatsappPhone),
     operationType: engagement.operationType,
     status: engagement.status,
     publishedPriceCents: engagement.publishedPriceCents,

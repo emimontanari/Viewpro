@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as ownerService from '../api/service';
 import type { OwnerEngagementsResponse, OwnerPropertiesResponse } from '../api/types';
 import { OwnerHome } from './owner-home';
 
@@ -32,6 +34,7 @@ describe('OwnerHome', () => {
   beforeEach(() => {
     useQueriesMock.mockReset();
     useQueryMock.mockReset();
+    vi.restoreAllMocks();
   });
 
   it('renders owner-visible property cards without internal creation actions', () => {
@@ -69,6 +72,55 @@ describe('OwnerHome', () => {
     expect(screen.getByText('Seleccioná inmobiliaria')).toBeInTheDocument();
     expect(screen.getByText('Casa visible por Otra Inmobiliaria')).toBeInTheDocument();
     expect(screen.queryByText('Casa visible por ViewPro')).not.toBeInTheDocument();
+  });
+
+  it('renders a WhatsApp contact link and tracks clicks best-effort', async () => {
+    const trackingSpy = vi
+      .spyOn(ownerService, 'trackOwnerWhatsappContactClick')
+      .mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    mockOwnerHomeData(ownerPropertiesResponse, [singleAgencyEngagements]);
+
+    render(<OwnerHome />);
+
+    const contactLink = screen.getByRole('link', { name: /Contactar inmobiliaria/i });
+
+    expect(contactLink).toHaveAttribute(
+      'href',
+      expect.stringContaining('https://wa.me/5493510000000?text=')
+    );
+    expect(contactLink).toHaveAttribute('target', '_blank');
+    expect(contactLink).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(contactLink).toHaveAttribute('href', expect.not.stringContaining('mailto:'));
+    expect(contactLink).toHaveAttribute('href', expect.not.stringContaining('+'));
+    expect(contactLink).toHaveAttribute(
+      'href',
+      expect.stringContaining('Av.%20Siempre%20Viva%20123')
+    );
+
+    await user.click(contactLink);
+
+    expect(trackingSpy).toHaveBeenCalledWith('engagement-tenant-1');
+  });
+
+  it('renders an unavailable contact state when tenant WhatsApp is not configured', () => {
+    mockOwnerHomeData(ownerPropertiesResponse, [
+      [
+        buildOwnerEngagement({
+          contact: {
+            available: false,
+            targetType: 'tenant',
+            displayLabel: 'Contacto no configurado'
+          },
+          tenant: { id: 'tenant-1', name: 'ViewPro Demo Inmobiliaria' }
+        })
+      ]
+    ]);
+
+    render(<OwnerHome />);
+
+    expect(screen.getByRole('button', { name: /Contacto no configurado/i })).toBeDisabled();
+    expect(screen.queryByRole('link', { name: /Contactar inmobiliaria/i })).not.toBeInTheDocument();
   });
 
   it('renders an owner-safe empty state', () => {
@@ -122,10 +174,19 @@ function buildOwnerProperty(input: { id: string; title: string }) {
   };
 }
 
-function buildOwnerEngagement(input: { tenant: { id: string; name: string } }) {
+function buildOwnerEngagement(input: {
+  contact?: OwnerEngagementsResponse[number]['contact'];
+  tenant: { id: string; name: string };
+}) {
   return {
     id: `engagement-${input.tenant.id}`,
     tenant: input.tenant,
+    contact: input.contact ?? {
+      available: true,
+      targetType: 'tenant',
+      displayLabel: 'Contactar inmobiliaria',
+      whatsappPhone: '+5493510000000'
+    },
     operationType: 'SALE',
     status: 'ACTIVE_PUBLICATION',
     publishedPriceCents: 100_000_000,

@@ -132,6 +132,7 @@ enum AnalyticsEventName {
   DOCUMENT_UPLOADED
   DOCUMENT_APPROVED
   DOCUMENT_REJECTED
+  WHATSAPP_CONTACT_CLICKED
 }
 
 model User {
@@ -140,6 +141,7 @@ model User {
   passwordHash    String
   firstName       String
   lastName        String?
+  whatsappPhone   String?
   status          UserStatus         @default(ACTIVE)
   globalRole      GlobalRole         @default(USER)
   emailVerifiedAt DateTime?
@@ -167,12 +169,13 @@ model User {
 }
 
 model Tenant {
-  id        String       @id @default(uuid())
-  name      String
-  slug      String       @unique
-  status    TenantStatus @default(TRIAL)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id            String       @id @default(uuid())
+  name          String
+  slug          String       @unique
+  status        TenantStatus @default(TRIAL)
+  whatsappPhone String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   memberships TenantMembership[]
 

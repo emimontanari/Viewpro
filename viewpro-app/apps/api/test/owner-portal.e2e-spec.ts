@@ -1,4 +1,6 @@
 import {
+	AnalyticsActorType,
+	AnalyticsEventName,
 	MovementType,
 	PropertyAssetOwnerAccessStatus,
 	PropertyEngagementStatus,
@@ -7,6 +9,7 @@ import {
 	TenantRole,
 } from "@prisma/client";
 import type { INestApplication } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApiApp } from "../src/bootstrap/create-app";
@@ -20,7 +23,7 @@ describe("Owner portal (e2e)", () => {
 
 	beforeAll(async () => {
 		process.env.NODE_ENV = "test";
-		process.env.ACCESS_TOKEN_SECRET = "test-access-token-secret";
+		process.env.ACCESS_TOKEN_SECRET ??= randomUUID();
 		process.env.COOKIE_DOMAIN = "localhost";
 		process.env.COOKIE_SECURE = "false";
 
@@ -30,6 +33,7 @@ describe("Owner portal (e2e)", () => {
 	});
 
 	beforeEach(async () => {
+		await prisma.analyticsEvent.deleteMany();
 		await prisma.movement.deleteMany();
 		await prisma.propertyAgent.deleteMany();
 		await prisma.propertyEngagement.deleteMany();
@@ -252,6 +256,65 @@ describe("Owner portal (e2e)", () => {
 		expect(response.body[0]).not.toHaveProperty("tenantId");
 		expect(response.body[0]).not.toHaveProperty("propertyAssetId");
 		expect(response.body[0].agents[0]).not.toHaveProperty("assignedByUserId");
+	});
+
+	it("tracks owner WhatsApp contact clicks without sensitive metadata", async () => {
+		const manager = await registerTenantSession(
+			"owner-whatsapp-manager@example.com",
+			"Owner WhatsApp Homes",
+		);
+		const owner = await registerOwnerSession(
+			"owner-whatsapp@example.com",
+			"Owner WhatsApp Temporary Homes",
+		);
+		const otherOwner = await registerOwnerSession(
+			"other-owner-whatsapp@example.com",
+			"Other Owner WhatsApp Temporary Homes",
+		);
+		const owned = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Owner WhatsApp Property",
+			addressLine: "Sensitive Address 123",
+		}).expect(201);
+		const hidden = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Hidden WhatsApp Property",
+		}).expect(201);
+		await grantOwnerAccess(owner.userId, owned.body.property.id);
+
+		await owner.agent
+			.post(`/api/owner/engagements/${owned.body.id}/whatsapp-contact-click`)
+			.expect(204);
+		const hiddenResponse = await otherOwner.agent
+			.post(`/api/owner/engagements/${owned.body.id}/whatsapp-contact-click`)
+			.expect(404);
+		await owner.agent
+			.post(`/api/owner/engagements/${hidden.body.id}/whatsapp-contact-click`)
+			.expect(404);
+
+		const event = await prisma.analyticsEvent.findFirstOrThrow({
+			where: {
+				eventName: AnalyticsEventName.WHATSAPP_CONTACT_CLICKED,
+				propertyEngagementId: owned.body.id,
+			},
+		});
+
+		expect(event).toMatchObject({
+			tenantId: manager.tenantId,
+			actorUserId: owner.userId,
+			actorType: AnalyticsActorType.OWNER,
+			eventName: AnalyticsEventName.WHATSAPP_CONTACT_CLICKED,
+			propertyEngagementId: owned.body.id,
+			propertyAssetId: owned.body.property.id,
+		});
+		expect(event.metadata).toEqual({
+			context: "property",
+			targetType: "tenant",
+		});
+		expect(JSON.stringify(event.metadata)).not.toContain("549");
+		expect(JSON.stringify(event.metadata)).not.toContain("Sensitive Address");
+		expect(JSON.stringify(event.metadata)).not.toContain(
+			"owner-whatsapp@example.com",
+		);
+		expect(hiddenResponse.body.message).toBe("Owner engagement not found");
 	});
 
 	it("returns the owner timeline for owned engagements and 404 for non-owned engagements", async () => {
