@@ -4,15 +4,23 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMutation } from '@tanstack/react-query';
 import { IconUserPlus } from '@tabler/icons-react';
+import { useActiveTenant } from '@/lib/session-context';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import {
   createTeamInvitation,
+  deactivateTeamMember,
   getTeamInvitations,
   resendTeamInvitation,
-  revokeTeamInvitation
+  revokeTeamInvitation,
+  updateTeamMemberRole
 } from '../api/service';
-import type { CreateTeamInvitationPayload, PendingTeamInvitation, User } from '../api/types';
+import type {
+  CreateTeamInvitationPayload,
+  PendingTeamInvitation,
+  TeamInvitationRole,
+  User
+} from '../api/types';
 import { InviteTeamMemberDialog } from './invite-team-member-dialog';
 import { PendingTeamInvitationsList } from './pending-team-invitations-list';
 import { TeamMembersList } from './team-members-list';
@@ -23,6 +31,10 @@ type TeamManagementSectionProps = {
 };
 
 export function TeamManagementSection({ members, pendingInvitations }: TeamManagementSectionProps) {
+  const { activeMembership } = useActiveTenant();
+  const canManageTeam = activeMembership?.permissions.includes('team.manage') ?? false;
+  const currentMembershipId = activeMembership?.id ?? null;
+  const [membersState, setMembersState] = useState<User[]>(members);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [manualInvitationUrl, setManualInvitationUrl] = useState<string | null>(null);
   const [copiedInvitationUrl, setCopiedInvitationUrl] = useState<string | null>(null);
@@ -59,6 +71,37 @@ export function TeamManagementSection({ members, pendingInvitations }: TeamManag
     const response = await getTeamInvitations();
     setPendingInvitationsState(response.items);
   }
+
+  function replaceMember(updatedMember: User) {
+    setMembersState((current) =>
+      current.map((member) =>
+        member.membershipId === updatedMember.membershipId ? updatedMember : member
+      )
+    );
+  }
+
+  const updateRoleMutation = useMutation({
+    mutationFn: ({ membershipId, role }: { membershipId: string; role: TeamInvitationRole }) =>
+      updateTeamMemberRole(membershipId, { role }),
+    onSuccess: (updatedMember) => {
+      replaceMember(updatedMember);
+      toast.success('Rol actualizado.');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el rol.');
+    }
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (membershipId: string) => deactivateTeamMember(membershipId),
+    onSuccess: (updatedMember) => {
+      replaceMember(updatedMember);
+      toast.success('Acceso desactivado.');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'No se pudo desactivar el acceso.');
+    }
+  });
 
   const resendMutation = useMutation({
     mutationFn: (invitationId: string) => resendTeamInvitation(invitationId),
@@ -111,23 +154,39 @@ export function TeamManagementSection({ members, pendingInvitations }: TeamManag
               o agente.
             </CardDescription>
           </div>
-          <Button type='button' size='sm' onClick={handleOpenInviteDialog}>
-            <IconUserPlus className='size-4' aria-hidden='true' />
-            Invitar miembro
-          </Button>
+          {canManageTeam ? (
+            <Button type='button' size='sm' onClick={handleOpenInviteDialog}>
+              <IconUserPlus className='size-4' aria-hidden='true' />
+              Invitar miembro
+            </Button>
+          ) : null}
         </CardHeader>
         <CardContent>
-          <TeamMembersList members={members} />
+          <TeamMembersList
+            canManageTeam={canManageTeam}
+            currentMembershipId={currentMembershipId}
+            members={membersState}
+            isUpdatingRoleMembershipId={
+              updateRoleMutation.isPending ? updateRoleMutation.variables.membershipId : null
+            }
+            isDeactivatingMembershipId={
+              deactivateMutation.isPending ? deactivateMutation.variables : null
+            }
+            onUpdateRole={(membershipId, role) => updateRoleMutation.mutate({ membershipId, role })}
+            onDeactivate={(membershipId) => deactivateMutation.mutate(membershipId)}
+          />
         </CardContent>
       </Card>
-      <PendingTeamInvitationsList
-        copiedInvitationUrl={copiedInvitationUrl}
-        invitations={pendingInvitationsState}
-        isRegeneratingInvitationId={resendMutation.isPending ? resendMutation.variables : null}
-        isRevokingInvitationId={revokeMutation.isPending ? revokeMutation.variables : null}
-        onRegenerateAndCopy={(invitationId) => resendMutation.mutate(invitationId)}
-        onRevoke={(invitationId) => revokeMutation.mutate(invitationId)}
-      />
+      {canManageTeam ? (
+        <PendingTeamInvitationsList
+          copiedInvitationUrl={copiedInvitationUrl}
+          invitations={pendingInvitationsState}
+          isRegeneratingInvitationId={resendMutation.isPending ? resendMutation.variables : null}
+          isRevokingInvitationId={revokeMutation.isPending ? revokeMutation.variables : null}
+          onRegenerateAndCopy={(invitationId) => resendMutation.mutate(invitationId)}
+          onRevoke={(invitationId) => revokeMutation.mutate(invitationId)}
+        />
+      ) : null}
       <InviteTeamMemberDialog
         open={inviteDialogOpen}
         invitationUrl={manualInvitationUrl}

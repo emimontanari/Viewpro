@@ -1,5 +1,6 @@
 export type TenantRole = 'PRINCIPAL_MANAGER' | 'MANAGER' | 'AGENT';
 export type TeamUserStatus = 'ACTIVE' | 'SUSPENDED';
+export type TenantMembershipStatus = 'ACTIVE' | 'DEACTIVATED';
 
 export type User = {
   membershipId: string;
@@ -9,6 +10,9 @@ export type User = {
   lastName: string | null;
   userStatus: TeamUserStatus;
   role: TenantRole;
+  membershipStatus: TenantMembershipStatus;
+  deactivatedAt: string | null;
+  deactivatedByUserId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -26,6 +30,9 @@ export type UsersResponse = {
 };
 
 export type TeamInvitationRole = Extract<TenantRole, 'MANAGER' | 'AGENT'>;
+export type UpdateTeamMemberRolePayload = {
+  role: TeamInvitationRole;
+};
 
 export type CreateTeamInvitationPayload = {
   email: string;

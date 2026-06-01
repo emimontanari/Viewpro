@@ -3,6 +3,8 @@ import type {
   PendingTeamInvitationsResponse,
   TeamInvitationLinkResponse,
   TeamInvitationResponse,
+  UpdateTeamMemberRolePayload,
+  User,
   UserFilters,
   UserMutationPayload,
   UsersResponse
@@ -11,6 +13,7 @@ import type {
 const DEFAULT_APP_URL = 'http://localhost:3000';
 const USERS_API_PATH = '/api/users';
 const TEAM_INVITATIONS_API_PATH = '/api/team/invitations';
+const TEAM_MEMBERS_API_PATH = '/api/team/members';
 const USERS_REQUEST_TIMEOUT_MS = 10_000;
 const APP_URL = trimTrailingSlash(process.env.NEXT_PUBLIC_APP_URL ?? DEFAULT_APP_URL);
 
@@ -26,6 +29,18 @@ export async function getTeamInvitations(
   init: RequestInit = {}
 ): Promise<PendingTeamInvitationsResponse> {
   const response = await apiFetch(TEAM_INVITATIONS_API_PATH, init);
+  return parseJsonResponse<PendingTeamInvitationsResponse>(response);
+}
+
+export async function getTeamInvitationsOrEmptyOnForbidden(
+  init: RequestInit = {}
+): Promise<PendingTeamInvitationsResponse> {
+  const response = await apiFetch(TEAM_INVITATIONS_API_PATH, init);
+
+  if (response.status === 403) {
+    return { items: [] };
+  }
+
   return parseJsonResponse<PendingTeamInvitationsResponse>(response);
 }
 
@@ -55,6 +70,27 @@ export async function revokeTeamInvitation(id: string): Promise<TeamInvitationRe
   });
 
   return parseJsonResponse<TeamInvitationResponse>(response);
+}
+
+export async function updateTeamMemberRole(
+  membershipId: string,
+  payload: UpdateTeamMemberRolePayload
+): Promise<User> {
+  const response = await apiFetch(teamMemberActionPath(membershipId, 'role'), {
+    body: JSON.stringify(payload),
+    headers: { 'content-type': 'application/json' },
+    method: 'PATCH'
+  });
+
+  return parseJsonResponse<User>(response);
+}
+
+export async function deactivateTeamMember(membershipId: string): Promise<User> {
+  const response = await apiFetch(teamMemberActionPath(membershipId, 'deactivate'), {
+    method: 'POST'
+  });
+
+  return parseJsonResponse<User>(response);
 }
 
 export async function createUser(_data?: UserMutationPayload): Promise<never> {
@@ -96,6 +132,10 @@ async function apiFetch(path: string, init: RequestInit = {}) {
 
 function teamInvitationActionPath(id: string, action: 'resend' | 'revoke') {
   return `${TEAM_INVITATIONS_API_PATH}/${encodeURIComponent(id)}/${action}`;
+}
+
+function teamMemberActionPath(membershipId: string, action: 'role' | 'deactivate') {
+  return `${TEAM_MEMBERS_API_PATH}/${encodeURIComponent(membershipId)}/${action}`;
 }
 
 function getFetchUrl(path: string) {
