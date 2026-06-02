@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { AnalyticsCoreModule } from "../analytics/analytics-core.module";
 import { AuthModule } from "../auth/auth.module";
 import { MembershipsModule } from "../memberships/memberships.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 import { PermissionsModule } from "../permissions/permissions.module";
 import { TenantContextModule } from "../tenant-context/tenant-context.module";
 import { PrismaDocumentsRepository } from "./prisma-documents.repository";
@@ -30,6 +31,7 @@ import { ListOwnerDocumentRequestsUseCase } from "./use-cases/list-owner-documen
 		AnalyticsCoreModule,
 		AuthModule,
 		MembershipsModule,
+		NotificationsModule,
 		PermissionsModule,
 		TenantContextModule,
 	],

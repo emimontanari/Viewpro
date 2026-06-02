@@ -3,6 +3,7 @@ import { AuthModule } from "../auth/auth.module";
 import { MembershipsModule } from "../memberships/memberships.module";
 import { PermissionsModule } from "../permissions/permissions.module";
 import { TenantContextModule } from "../tenant-context/tenant-context.module";
+import { NotificationProducerService } from "./notification-producer.service";
 import { NotificationsController } from "./notifications.controller";
 import { OwnerNotificationsController } from "./owner-notifications.controller";
 import { NOTIFICATIONS_REPOSITORY } from "./notifications.repository";
@@ -37,9 +38,11 @@ import { MarkOwnerNotificationReadUseCase } from "./use-cases/mark-owner-notific
 		GetUnreadOwnerNotificationsCountUseCase,
 		MarkOwnerNotificationReadUseCase,
 		MarkAllOwnerNotificationsReadUseCase,
+		NotificationProducerService,
 	],
 	exports: [
 		NOTIFICATIONS_REPOSITORY,
+		NotificationProducerService,
 		ListNotificationsUseCase,
 		GetUnreadNotificationsCountUseCase,
 		MarkNotificationReadUseCase,

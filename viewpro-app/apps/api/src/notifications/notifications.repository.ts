@@ -21,6 +21,13 @@ export type CreateInternalNotificationInput = {
 	movementId?: string | null;
 };
 
+export type CreateOwnerNotificationInput = Omit<
+	CreateInternalNotificationInput,
+	"tenantId"
+> & {
+	tenantId?: string | null;
+};
+
 export type InternalNotificationScope = {
 	tenantId: string;
 	recipientUserId: string;
@@ -65,6 +72,7 @@ export type NotificationsRepository = {
 	createInternal(
 		input: CreateInternalNotificationInput,
 	): Promise<NotificationRecord>;
+	createOwner(input: CreateOwnerNotificationInput): Promise<NotificationRecord>;
 	listInternalForRecipient(input: ListInternalNotificationsInput): Promise<{
 		items: NotificationRecord[];
 		total: number;

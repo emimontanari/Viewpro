@@ -261,6 +261,7 @@ function makeRepository(
 ): NotificationsRepository {
 	return {
 		createInternal: vi.fn(),
+		createOwner: vi.fn(),
 		listInternalForRecipient: vi.fn(),
 		countUnreadInternalForRecipient: vi.fn(),
 		markInternalRead: vi.fn(),

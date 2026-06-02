@@ -96,9 +96,13 @@ describe("Document internal use cases", () => {
 			const analyticsService = {
 				track: vi.fn().mockResolvedValue({ status: "persisted" }),
 			};
+			const notificationProducer = {
+				notifyDocumentRequested: vi.fn().mockResolvedValue(undefined),
+			};
 			const useCase = new CreateDocumentRequestUseCase(
 				repository as never,
 				analyticsService as never,
+				notificationProducer as never,
 			);
 
 			const result = await useCase.execute(
@@ -142,6 +146,16 @@ describe("Document internal use cases", () => {
 				propertyEngagementId: "engagement-1",
 				documentRequestId: "request-1",
 			});
+			expect(notificationProducer.notifyDocumentRequested).toHaveBeenCalledWith(
+				{
+					tenantId: "tenant-1",
+					ownerUserId: "owner-1",
+					propertyEngagementId: "engagement-1",
+					propertyAssetId: "asset-1",
+					documentRequestId: "request-1",
+					documentTitle: "Property deed",
+				},
+			);
 		});
 
 		it("accepts legacy owner user id while persisting the resolved owner link", async () => {
@@ -225,6 +239,34 @@ describe("Document internal use cases", () => {
 					propertyAssetOwnerId: "owner-link-1",
 					title: "Property deed",
 					description: "Latest signed deed.",
+				}),
+			).resolves.toMatchObject({ id: "request-1" });
+		});
+
+		it("keeps document request creation successful when notification production fails", async () => {
+			const repository = {
+				findTenantEngagementForDocumentRequest: vi.fn().mockResolvedValue({
+					...documentRequest.propertyEngagement,
+					propertyAssetOwnerId: "owner-link-1",
+					ownerUserId: "owner-1",
+				}),
+				createRequest: vi.fn().mockResolvedValue(documentRequest),
+			};
+			const notificationProducer = {
+				notifyDocumentRequested: vi
+					.fn()
+					.mockRejectedValue(new Error("notifications unavailable")),
+			};
+			const useCase = new CreateDocumentRequestUseCase(
+				repository as never,
+				{ track: vi.fn() } as never,
+				notificationProducer as never,
+			);
+
+			await expect(
+				useCase.execute(managerTenant, currentUser, "engagement-1", {
+					propertyAssetOwnerId: "owner-link-1",
+					title: "Property deed",
 				}),
 			).resolves.toMatchObject({ id: "request-1" });
 		});
@@ -434,9 +476,13 @@ describe("Document internal use cases", () => {
 			const analyticsService = {
 				track: vi.fn().mockResolvedValue({ status: "persisted" }),
 			};
+			const notificationProducer = {
+				notifyDocumentApproved: vi.fn().mockResolvedValue(undefined),
+			};
 			const useCase = new ApproveDocumentRequestUseCase(
 				repository as never,
 				analyticsService as never,
+				notificationProducer as never,
 			);
 
 			const result = await useCase.execute(
@@ -464,6 +510,39 @@ describe("Document internal use cases", () => {
 				actorUserId: "agent-1",
 				documentRequestId: "request-1",
 			});
+			expect(notificationProducer.notifyDocumentApproved).toHaveBeenCalledWith({
+				tenantId: "tenant-1",
+				ownerUserId: "owner-1",
+				propertyEngagementId: "engagement-1",
+				propertyAssetId: "asset-1",
+				documentRequestId: "request-1",
+				documentTitle: "Property deed",
+			});
+		});
+
+		it("keeps document approval successful when notification production fails", async () => {
+			const approvedRequest = {
+				...submittedRequest,
+				status: DocumentRequestStatus.APPROVED,
+			};
+			const repository = {
+				findInternalRequestDetail: vi.fn().mockResolvedValue(submittedRequest),
+				reviewRequest: vi.fn().mockResolvedValue(approvedRequest),
+			};
+			const notificationProducer = {
+				notifyDocumentApproved: vi
+					.fn()
+					.mockRejectedValue(new Error("notifications unavailable")),
+			};
+			const useCase = new ApproveDocumentRequestUseCase(
+				repository as never,
+				{ track: vi.fn() } as never,
+				notificationProducer as never,
+			);
+
+			await expect(
+				useCase.execute(managerTenant, currentUser, "request-1"),
+			).resolves.toMatchObject({ status: DocumentRequestStatus.APPROVED });
 		});
 
 		it("allows the requesting seller to approve their own submitted request", async () => {
@@ -536,9 +615,13 @@ describe("Document internal use cases", () => {
 			const analyticsService = {
 				track: vi.fn().mockResolvedValue({ status: "persisted" }),
 			};
+			const notificationProducer = {
+				notifyDocumentRejected: vi.fn().mockResolvedValue(undefined),
+			};
 			const useCase = new RejectDocumentRequestUseCase(
 				repository as never,
 				analyticsService as never,
+				notificationProducer as never,
 			);
 
 			const result = await useCase.execute(
@@ -570,6 +653,42 @@ describe("Document internal use cases", () => {
 				actorUserId: "agent-1",
 				documentRequestId: "request-1",
 			});
+			expect(notificationProducer.notifyDocumentRejected).toHaveBeenCalledWith({
+				tenantId: "tenant-1",
+				ownerUserId: "owner-1",
+				propertyEngagementId: "engagement-1",
+				propertyAssetId: "asset-1",
+				documentRequestId: "request-1",
+				documentTitle: "Property deed",
+			});
+		});
+
+		it("keeps document rejection successful when notification production fails", async () => {
+			const rejectedRequest = {
+				...submittedRequest,
+				status: DocumentRequestStatus.REJECTED,
+				rejectionReason: "The uploaded deed is expired.",
+			};
+			const repository = {
+				findInternalRequestDetail: vi.fn().mockResolvedValue(submittedRequest),
+				reviewRequest: vi.fn().mockResolvedValue(rejectedRequest),
+			};
+			const notificationProducer = {
+				notifyDocumentRejected: vi
+					.fn()
+					.mockRejectedValue(new Error("notifications unavailable")),
+			};
+			const useCase = new RejectDocumentRequestUseCase(
+				repository as never,
+				{ track: vi.fn() } as never,
+				notificationProducer as never,
+			);
+
+			await expect(
+				useCase.execute(managerTenant, currentUser, "request-1", {
+					reason: "The uploaded deed is expired.",
+				}),
+			).resolves.toMatchObject({ status: DocumentRequestStatus.REJECTED });
 		});
 
 		it("requires a non-empty rejection reason", async () => {

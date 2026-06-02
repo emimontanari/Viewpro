@@ -60,6 +60,52 @@ describe("Notifications repository", () => {
 		});
 	});
 
+	it("creates owner notifications with scoped recipient and nullable refs", async () => {
+		const notification = makeNotification({
+			surface: NotificationSurface.OWNER,
+			type: NotificationType.DOCUMENT_REQUESTED,
+			title: "Document requested",
+			body: "Property deed",
+			linkHref: "/owner/properties/property-1",
+			propertyEngagementId: "engagement-1",
+			propertyAssetId: "property-1",
+			documentRequestId: "request-1",
+		});
+		const create = vi.fn().mockResolvedValue(notification);
+		const repository = new PrismaNotificationsRepository({
+			notification: { create },
+		} as never);
+
+		const result = await repository.createOwner({
+			tenantId: "tenant-1",
+			recipientUserId: "owner-1",
+			type: NotificationType.DOCUMENT_REQUESTED,
+			title: "Document requested",
+			body: "Property deed",
+			linkHref: "/owner/properties/property-1",
+			propertyEngagementId: "engagement-1",
+			propertyAssetId: "property-1",
+			documentRequestId: "request-1",
+		});
+
+		expect(result).toEqual(notification);
+		expect(create).toHaveBeenCalledWith({
+			data: {
+				tenantId: "tenant-1",
+				recipientUserId: "owner-1",
+				surface: NotificationSurface.OWNER,
+				type: NotificationType.DOCUMENT_REQUESTED,
+				title: "Document requested",
+				body: "Property deed",
+				linkHref: "/owner/properties/property-1",
+				propertyEngagementId: "engagement-1",
+				propertyAssetId: "property-1",
+				documentRequestId: "request-1",
+				movementId: null,
+			},
+		});
+	});
+
 	it("lists only tenant, recipient, internal notifications", async () => {
 		const notification = makeNotification();
 		const findMany = vi.fn().mockResolvedValue([notification]);
