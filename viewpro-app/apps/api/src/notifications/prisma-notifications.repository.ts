@@ -5,10 +5,14 @@ import type {
 	CreateInternalNotificationInput,
 	InternalNotificationScope,
 	ListInternalNotificationsInput,
+	ListOwnerNotificationsInput,
 	MarkAllInternalNotificationsReadInput,
+	MarkAllOwnerNotificationsReadInput,
 	MarkInternalNotificationReadInput,
+	MarkOwnerNotificationReadInput,
 	NotificationRecord,
 	NotificationsRepository,
+	OwnerNotificationScope,
 } from "./notifications.repository";
 
 function internalScopeWhere(
@@ -18,6 +22,47 @@ function internalScopeWhere(
 		tenantId: input.tenantId,
 		recipientUserId: input.recipientUserId,
 		surface: NotificationSurface.INTERNAL,
+	};
+}
+
+function ownerScopeWhere(
+	input: OwnerNotificationScope,
+): Prisma.NotificationWhereInput {
+	const activeOwnerAccess = {
+		owners: {
+			some: {
+				userId: input.recipientUserId,
+				accessStatus: "ACTIVE" as const,
+			},
+		},
+	};
+
+	return {
+		recipientUserId: input.recipientUserId,
+		surface: NotificationSurface.OWNER,
+		AND: [
+			{
+				OR: [{ propertyAssetId: null }, { propertyAsset: activeOwnerAccess }],
+			},
+			{
+				OR: [
+					{ propertyEngagementId: null },
+					{ propertyEngagement: { propertyAsset: activeOwnerAccess } },
+				],
+			},
+			{
+				OR: [
+					{ documentRequestId: null },
+					{ documentRequest: { propertyEngagement: { propertyAsset: activeOwnerAccess } } },
+				],
+			},
+			{
+				OR: [
+					{ movementId: null },
+					{ movement: { propertyEngagement: { propertyAsset: activeOwnerAccess } } },
+				],
+			},
+		],
 	};
 }
 
@@ -107,6 +152,76 @@ export class PrismaNotificationsRepository implements NotificationsRepository {
 		const result = await this.prisma.notification.updateMany({
 			where: {
 				...internalScopeWhere(input),
+				readAt: null,
+			},
+			data: { readAt: input.readAt ?? new Date() },
+		});
+
+		return result.count;
+	}
+
+	async listOwnerForRecipient(
+		input: ListOwnerNotificationsInput,
+	): Promise<{ items: NotificationRecord[]; total: number }> {
+		const where = {
+			...ownerScopeWhere(input),
+			...(input.unreadOnly ? { readAt: null } : {}),
+		} satisfies Prisma.NotificationWhereInput;
+
+		const [items, total] = await Promise.all([
+			this.prisma.notification.findMany({
+				where,
+				orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+				skip: (input.page - 1) * input.pageSize,
+				take: input.pageSize,
+			}),
+			this.prisma.notification.count({ where }),
+		]);
+
+		return { items, total };
+	}
+
+	countUnreadOwnerForRecipient(
+		input: OwnerNotificationScope,
+	): Promise<number> {
+		return this.prisma.notification.count({
+			where: {
+				...ownerScopeWhere(input),
+				readAt: null,
+			},
+		});
+	}
+
+	async markOwnerRead(
+		input: MarkOwnerNotificationReadInput,
+	): Promise<NotificationRecord | null> {
+		const notification = await this.prisma.notification.findFirst({
+			where: {
+				...ownerScopeWhere(input),
+				id: input.notificationId,
+			},
+		});
+
+		if (!notification) {
+			return null;
+		}
+
+		if (notification.readAt) {
+			return notification;
+		}
+
+		return this.prisma.notification.update({
+			where: { id: notification.id },
+			data: { readAt: input.readAt ?? new Date() },
+		});
+	}
+
+	async markAllOwnerRead(
+		input: MarkAllOwnerNotificationsReadInput,
+	): Promise<number> {
+		const result = await this.prisma.notification.updateMany({
+			where: {
+				...ownerScopeWhere(input),
 				readAt: null,
 			},
 			data: { readAt: input.readAt ?? new Date() },

@@ -1,7 +1,10 @@
 import { NotificationSurface, NotificationType } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import { sanitizeInternalNotificationLink } from "../src/notifications/notification-link.helper";
-import { mapNotificationResponse } from "../src/notifications/notification-response.mapper";
+import {
+	mapNotificationResponse,
+	mapOwnerNotificationResponse,
+} from "../src/notifications/notification-response.mapper";
 import { PrismaNotificationsRepository } from "../src/notifications/prisma-notifications.repository";
 
 describe("Notifications repository", () => {
@@ -233,6 +236,96 @@ describe("Notifications repository", () => {
 		});
 	});
 
+	it("lists owner notifications with recipient, OWNER surface, and active owner access", async () => {
+		const notification = makeNotification({
+			surface: NotificationSurface.OWNER,
+		});
+		const findMany = vi.fn().mockResolvedValue([notification]);
+		const count = vi.fn().mockResolvedValue(1);
+		const repository = new PrismaNotificationsRepository({
+			notification: { findMany, count },
+		} as never);
+
+		const result = await repository.listOwnerForRecipient({
+			recipientUserId: "owner-1",
+			page: 2,
+			pageSize: 10,
+			unreadOnly: true,
+		});
+
+		expect(result).toEqual({ items: [notification], total: 1 });
+		const expectedWhere = ownerScopeWhere("owner-1", { readAt: null });
+		expect(findMany).toHaveBeenCalledWith({
+			where: expectedWhere,
+			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+			skip: 10,
+			take: 10,
+		});
+		expect(count).toHaveBeenCalledWith({ where: expectedWhere });
+	});
+
+	it("counts unread owner notifications with active owner access", async () => {
+		const count = vi.fn().mockResolvedValue(3);
+		const repository = new PrismaNotificationsRepository({
+			notification: { count },
+		} as never);
+
+		const result = await repository.countUnreadOwnerForRecipient({
+			recipientUserId: "owner-1",
+		});
+
+		expect(result).toBe(3);
+		expect(count).toHaveBeenCalledWith({
+			where: ownerScopeWhere("owner-1", { readAt: null }),
+		});
+	});
+
+	it("marks one owner notification read only within owner scope", async () => {
+		const notification = makeNotification({
+			surface: NotificationSurface.OWNER,
+		});
+		const readAt = new Date("2026-06-01T12:00:00.000Z");
+		const findFirst = vi.fn().mockResolvedValue(notification);
+		const update = vi.fn().mockResolvedValue({ ...notification, readAt });
+		const repository = new PrismaNotificationsRepository({
+			notification: { findFirst, update },
+		} as never);
+
+		const result = await repository.markOwnerRead({
+			recipientUserId: "owner-1",
+			notificationId: "notification-1",
+			readAt,
+		});
+
+		expect(result?.readAt).toBe(readAt);
+		expect(findFirst).toHaveBeenCalledWith({
+			where: ownerScopeWhere("owner-1", { id: "notification-1" }),
+		});
+		expect(update).toHaveBeenCalledWith({
+			where: { id: "notification-1" },
+			data: { readAt },
+		});
+	});
+
+	it("marks all owner notifications read only within owner scope", async () => {
+		const updateMany = vi.fn().mockResolvedValue({ count: 2 });
+		const readAt = new Date("2026-06-01T12:00:00.000Z");
+		const repository = new PrismaNotificationsRepository({
+			notification: { updateMany },
+		} as never);
+
+		const result = await repository.markAllOwnerRead({
+			recipientUserId: "owner-1",
+			readAt,
+		});
+
+		expect(result).toBe(2);
+		expect(updateMany).toHaveBeenCalledWith({
+			where: ownerScopeWhere("owner-1", { readAt: null }),
+			data: { readAt },
+		});
+	});
+
 	it("sanitizes internal notification links", () => {
 		expect(sanitizeInternalNotificationLink({ linkHref: "/dashboard" })).toBe(
 			"/dashboard",
@@ -289,14 +382,86 @@ describe("Notifications repository", () => {
 		expect(response).not.toHaveProperty("recipientUserId");
 	});
 
-	it("nulls unsafe response links", () => {
+	it("nulls unsafe internal response links", () => {
 		const response = mapNotificationResponse(
 			makeNotification({ linkHref: "/owner/properties/property-1" }),
 		);
 
 		expect(response.linkHref).toBeNull();
 	});
+
+	it("maps only safe owner response links", () => {
+		const safe = mapOwnerNotificationResponse(
+			makeNotification({
+				surface: NotificationSurface.OWNER,
+				linkHref: "/owner/properties/property-1",
+				propertyAssetId: "property-1",
+			}),
+		);
+		const dashboard = mapOwnerNotificationResponse(
+			makeNotification({
+				surface: NotificationSurface.OWNER,
+				linkHref: "/dashboard",
+			}),
+		);
+		const external = mapOwnerNotificationResponse(
+			makeNotification({
+				surface: NotificationSurface.OWNER,
+				linkHref: "https://example.com",
+			}),
+		);
+
+		expect(safe.linkHref).toBe("/owner/properties/property-1");
+		expect(dashboard.linkHref).toBeNull();
+		expect(external.linkHref).toBeNull();
+	});
 });
+
+function ownerScopeWhere(
+	recipientUserId: string,
+	extra: Record<string, unknown> = {},
+) {
+	const activeOwnerAccess = {
+		owners: { some: { userId: recipientUserId, accessStatus: "ACTIVE" } },
+	};
+
+	return {
+		recipientUserId,
+		surface: NotificationSurface.OWNER,
+		...extra,
+		AND: [
+			{
+				OR: [{ propertyAssetId: null }, { propertyAsset: activeOwnerAccess }],
+			},
+			{
+				OR: [
+					{ propertyEngagementId: null },
+					{ propertyEngagement: { propertyAsset: activeOwnerAccess } },
+				],
+			},
+			{
+				OR: [
+					{ documentRequestId: null },
+					{
+						documentRequest: {
+							propertyEngagement: { propertyAsset: activeOwnerAccess },
+						},
+					},
+				],
+			},
+			{
+				OR: [
+					{ movementId: null },
+					{
+						movement: {
+							propertyEngagement: { propertyAsset: activeOwnerAccess },
+						},
+					},
+				],
+			},
+		],
+	};
+}
 
 function makeNotification(overrides: Partial<Record<string, unknown>> = {}) {
 	return {
