@@ -16,7 +16,17 @@ export type DocumentRequestRecord = Prisma.DocumentRequestGetPayload<{
 }>;
 
 export type DocumentVersionRecord = Prisma.DocumentVersionGetPayload<object> & {
-	document?: { documentRequestId: string } | null;
+	document?: {
+		documentRequestId: string;
+		documentRequest?: {
+			id: string;
+			tenantId: string;
+			requestedByUserId: string | null;
+			title: string;
+			propertyEngagementId: string;
+			propertyEngagement: { propertyAssetId: string };
+		} | null;
+	} | null;
 };
 
 export type ActivityDocumentRequestRecord = Prisma.DocumentRequestGetPayload<{

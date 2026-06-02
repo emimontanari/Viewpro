@@ -15,6 +15,15 @@ export type DocumentOwnerNotificationInput = {
 	documentTitle: string;
 };
 
+export type DocumentUploadedInternalNotificationInput = {
+	tenantId: string;
+	requestedByUserId?: string | null;
+	propertyEngagementId: string;
+	propertyAssetId: string;
+	documentRequestId: string;
+	documentTitle: string;
+};
+
 @Injectable()
 export class NotificationProducerService {
 	private readonly logger = new Logger(NotificationProducerService.name);
@@ -49,6 +58,34 @@ export class NotificationProducerService {
 			type: NotificationType.DOCUMENT_REJECTED,
 			title: "Document rejected",
 		});
+	}
+
+	async notifyDocumentUploaded(
+		input: DocumentUploadedInternalNotificationInput,
+	): Promise<void> {
+		if (!input.requestedByUserId) {
+			return;
+		}
+
+		try {
+			await this.notificationsRepository.createInternal({
+				tenantId: input.tenantId,
+				recipientUserId: input.requestedByUserId,
+				type: NotificationType.DOCUMENT_UPLOADED,
+				title: "Document uploaded",
+				body: input.documentTitle,
+				linkHref: `/dashboard/product/${input.propertyEngagementId}`,
+				propertyEngagementId: input.propertyEngagementId,
+				propertyAssetId: input.propertyAssetId,
+				documentRequestId: input.documentRequestId,
+			});
+		} catch (error) {
+			this.logger.warn(
+				`Failed to create ${NotificationType.DOCUMENT_UPLOADED} internal notification: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
+		}
 	}
 
 	private async createDocumentOwnerNotification(

@@ -28,10 +28,19 @@ const documentRequest = {
   propertyEngagement: { id: 'engagement-1', tenantId: 'tenant-1', propertyAssetId: 'asset-1' },
 }
 
+const documentRequestNotificationMetadata = {
+  id: 'request-1',
+  tenantId: 'tenant-1',
+  requestedByUserId: 'agent-1',
+  title: 'Property deed',
+  propertyEngagementId: 'engagement-1',
+  propertyEngagement: { propertyAssetId: 'asset-1' },
+}
+
 const uploadedVersion = {
   id: 'version-1',
   documentId: 'document-1',
-  document: { documentRequestId: 'request-1' },
+  document: { documentRequestId: 'request-1', documentRequest: documentRequestNotificationMetadata },
   uploadedByUserId: 'owner-1',
   storageKey: 'document-requests/request-1/deed.pdf',
   originalFilename: 'deed.pdf',
@@ -185,7 +194,8 @@ describe('Owner document use cases', () => {
         markVersionUploaded: vi.fn().mockResolvedValue(uploadedVersion),
       }
       const analyticsService = { track: vi.fn().mockResolvedValue({ status: 'persisted' }) }
-      const useCase = new ConfirmOwnerDocumentUploadUseCase(repository as never, analyticsService as never)
+      const notificationProducer = { notifyDocumentUploaded: vi.fn().mockResolvedValue(undefined) }
+      const useCase = new ConfirmOwnerDocumentUploadUseCase(repository as never, analyticsService as never, notificationProducer as never)
 
       const result = await useCase.execute(ownerUser, 'version-1')
 
@@ -198,6 +208,14 @@ describe('Owner document use cases', () => {
         actorUserId: 'owner-1',
         documentRequestId: 'request-1',
       })
+      expect(notificationProducer.notifyDocumentUploaded).toHaveBeenCalledWith({
+        tenantId: 'tenant-1',
+        requestedByUserId: 'agent-1',
+        propertyEngagementId: 'engagement-1',
+        propertyAssetId: 'asset-1',
+        documentRequestId: 'request-1',
+        documentTitle: 'Property deed',
+      })
     })
 
     it('keeps upload confirmation successful when analytics tracking fails', async () => {
@@ -207,19 +225,49 @@ describe('Owner document use cases', () => {
         markVersionUploaded: vi.fn().mockResolvedValue(uploadedVersion),
       }
       const analyticsService = { track: vi.fn().mockRejectedValue(new Error('analytics unavailable')) }
-      const useCase = new ConfirmOwnerDocumentUploadUseCase(repository as never, analyticsService as never)
+      const notificationProducer = { notifyDocumentUploaded: vi.fn().mockResolvedValue(undefined) }
+      const useCase = new ConfirmOwnerDocumentUploadUseCase(repository as never, analyticsService as never, notificationProducer as never)
 
       await expect(useCase.execute(ownerUser, 'version-1')).resolves.toMatchObject({ id: 'version-1' })
     })
 
+    it('keeps upload confirmation successful when notification creation fails', async () => {
+      const pendingVersion = { ...uploadedVersion, status: DocumentVersionStatus.PENDING_UPLOAD }
+      const repository = {
+        findOwnerPendingUploadVersion: vi.fn().mockResolvedValue(pendingVersion),
+        markVersionUploaded: vi.fn().mockResolvedValue(uploadedVersion),
+      }
+      const analyticsService = { track: vi.fn().mockResolvedValue({ status: 'persisted' }) }
+      const notificationProducer = { notifyDocumentUploaded: vi.fn().mockRejectedValue(new Error('notifications unavailable')) }
+      const useCase = new ConfirmOwnerDocumentUploadUseCase(repository as never, analyticsService as never, notificationProducer as never)
+
+      await expect(useCase.execute(ownerUser, 'version-1')).resolves.toMatchObject({ id: 'version-1' })
+    })
+
+    it('skips upload notification when request metadata is incomplete', async () => {
+      const versionWithoutMetadata = { ...uploadedVersion, document: { documentRequestId: 'request-1' } }
+      const pendingVersion = { ...versionWithoutMetadata, status: DocumentVersionStatus.PENDING_UPLOAD }
+      const repository = {
+        findOwnerPendingUploadVersion: vi.fn().mockResolvedValue(pendingVersion),
+        markVersionUploaded: vi.fn().mockResolvedValue(versionWithoutMetadata),
+      }
+      const notificationProducer = { notifyDocumentUploaded: vi.fn().mockResolvedValue(undefined) }
+      const useCase = new ConfirmOwnerDocumentUploadUseCase(repository as never, { track: vi.fn() } as never, notificationProducer as never)
+
+      await expect(useCase.execute(ownerUser, 'version-1')).resolves.toMatchObject({ id: 'version-1' })
+      expect(notificationProducer.notifyDocumentUploaded).not.toHaveBeenCalled()
+    })
+
     it('returns not found for inaccessible or non-pending versions', async () => {
       const repository = { findOwnerPendingUploadVersion: vi.fn().mockResolvedValue(null), markVersionUploaded: vi.fn() }
-      const useCase = new ConfirmOwnerDocumentUploadUseCase(repository as never, { track: vi.fn() } as never)
+      const notificationProducer = { notifyDocumentUploaded: vi.fn() }
+      const useCase = new ConfirmOwnerDocumentUploadUseCase(repository as never, { track: vi.fn() } as never, notificationProducer as never)
 
       await expect(useCase.execute({ id: 'owner-2', email: 'other@example.com' }, 'version-1')).rejects.toThrow(
         new NotFoundException('Document version not found'),
       )
       expect(repository.markVersionUploaded).not.toHaveBeenCalled()
+      expect(notificationProducer.notifyDocumentUploaded).not.toHaveBeenCalled()
     })
   })
 

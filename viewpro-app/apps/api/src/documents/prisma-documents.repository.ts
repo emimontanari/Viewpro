@@ -46,6 +46,24 @@ const activityDocumentRequestInclude = {
   requestedByUser: { select: { id: true, email: true, firstName: true } },
 } satisfies Prisma.DocumentRequestInclude
 
+const documentVersionDocumentSelect = {
+  documentRequestId: true,
+  documentRequest: {
+    select: {
+      id: true,
+      tenantId: true,
+      requestedByUserId: true,
+      title: true,
+      propertyEngagementId: true,
+      propertyEngagement: { select: { propertyAssetId: true } },
+    },
+  },
+} satisfies Prisma.DocumentSelect
+
+const documentVersionDocumentInclude = {
+  document: { select: documentVersionDocumentSelect },
+} satisfies Prisma.DocumentVersionInclude
+
 @Injectable()
 export class PrismaDocumentsRepository implements DocumentsRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
@@ -242,7 +260,7 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
           checksum: input.checksum ?? null,
           status: DocumentVersionStatus.PENDING_UPLOAD,
         },
-        include: { document: { select: { documentRequestId: true } } },
+        include: documentVersionDocumentInclude,
       })
     })
   }
@@ -266,7 +284,7 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
 
       return tx.documentVersion.findUnique({
         where: { id: version.id },
-        include: { document: { select: { documentRequestId: true } } },
+        include: documentVersionDocumentInclude,
       })
     })
   }
@@ -326,7 +344,7 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
         status: DocumentVersionStatus.PENDING_UPLOAD,
         document: { documentRequest: this.buildOwnerRequestWhere({ ownerUserId: input.ownerUserId }) },
       },
-      include: { document: { select: { documentRequestId: true } } },
+      include: documentVersionDocumentInclude,
     })
   }
 
