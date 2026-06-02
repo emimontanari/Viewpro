@@ -1,0 +1,40 @@
+import { Module } from "@nestjs/common";
+import { AuthModule } from "../auth/auth.module";
+import { MembershipsModule } from "../memberships/memberships.module";
+import { PermissionsModule } from "../permissions/permissions.module";
+import { TenantContextModule } from "../tenant-context/tenant-context.module";
+import { NotificationsController } from "./notifications.controller";
+import { NOTIFICATIONS_REPOSITORY } from "./notifications.repository";
+import { PrismaNotificationsRepository } from "./prisma-notifications.repository";
+import { GetUnreadNotificationsCountUseCase } from "./use-cases/get-unread-notifications-count.use-case";
+import { ListNotificationsUseCase } from "./use-cases/list-notifications.use-case";
+import { MarkAllNotificationsReadUseCase } from "./use-cases/mark-all-notifications-read.use-case";
+import { MarkNotificationReadUseCase } from "./use-cases/mark-notification-read.use-case";
+
+@Module({
+	imports: [
+		AuthModule,
+		MembershipsModule,
+		PermissionsModule,
+		TenantContextModule,
+	],
+	controllers: [NotificationsController],
+	providers: [
+		{
+			provide: NOTIFICATIONS_REPOSITORY,
+			useClass: PrismaNotificationsRepository,
+		},
+		ListNotificationsUseCase,
+		GetUnreadNotificationsCountUseCase,
+		MarkNotificationReadUseCase,
+		MarkAllNotificationsReadUseCase,
+	],
+	exports: [
+		NOTIFICATIONS_REPOSITORY,
+		ListNotificationsUseCase,
+		GetUnreadNotificationsCountUseCase,
+		MarkNotificationReadUseCase,
+		MarkAllNotificationsReadUseCase,
+	],
+})
+export class NotificationsModule {}
