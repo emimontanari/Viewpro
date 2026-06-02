@@ -42,6 +42,25 @@ export type MarkAllInternalNotificationsReadInput =
 		readAt?: Date;
 	};
 
+export type OwnerNotificationScope = {
+	recipientUserId: string;
+};
+
+export type ListOwnerNotificationsInput = OwnerNotificationScope & {
+	page: number;
+	pageSize: number;
+	unreadOnly: boolean;
+};
+
+export type MarkOwnerNotificationReadInput = OwnerNotificationScope & {
+	notificationId: string;
+	readAt?: Date;
+};
+
+export type MarkAllOwnerNotificationsReadInput = OwnerNotificationScope & {
+	readAt?: Date;
+};
+
 export type NotificationsRepository = {
 	createInternal(
 		input: CreateInternalNotificationInput,
@@ -59,6 +78,15 @@ export type NotificationsRepository = {
 	markAllInternalRead(
 		input: MarkAllInternalNotificationsReadInput,
 	): Promise<number>;
+	listOwnerForRecipient(input: ListOwnerNotificationsInput): Promise<{
+		items: NotificationRecord[];
+		total: number;
+	}>;
+	countUnreadOwnerForRecipient(input: OwnerNotificationScope): Promise<number>;
+	markOwnerRead(
+		input: MarkOwnerNotificationReadInput,
+	): Promise<NotificationRecord | null>;
+	markAllOwnerRead(input: MarkAllOwnerNotificationsReadInput): Promise<number>;
 };
 
 export type NotificationResponse = {

@@ -3,9 +3,13 @@ import { NotificationSurface, NotificationType } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import type { NotificationsRepository } from "../src/notifications/notifications.repository";
 import { GetUnreadNotificationsCountUseCase } from "../src/notifications/use-cases/get-unread-notifications-count.use-case";
+import { GetUnreadOwnerNotificationsCountUseCase } from "../src/notifications/use-cases/get-unread-owner-notifications-count.use-case";
 import { ListNotificationsUseCase } from "../src/notifications/use-cases/list-notifications.use-case";
+import { ListOwnerNotificationsUseCase } from "../src/notifications/use-cases/list-owner-notifications.use-case";
 import { MarkAllNotificationsReadUseCase } from "../src/notifications/use-cases/mark-all-notifications-read.use-case";
+import { MarkAllOwnerNotificationsReadUseCase } from "../src/notifications/use-cases/mark-all-owner-notifications-read.use-case";
 import { MarkNotificationReadUseCase } from "../src/notifications/use-cases/mark-notification-read.use-case";
+import { MarkOwnerNotificationReadUseCase } from "../src/notifications/use-cases/mark-owner-notification-read.use-case";
 
 describe("Notifications use cases", () => {
 	it("lists current tenant and user internal notifications", async () => {
@@ -131,6 +135,125 @@ describe("Notifications use cases", () => {
 		});
 		expect(result).toEqual({ updatedCount: 2 });
 	});
+
+	it("lists current owner notifications", async () => {
+		const notification = makeNotification({
+			surface: NotificationSurface.OWNER,
+			linkHref: "/owner/properties/property-1",
+			propertyAssetId: "property-1",
+		});
+		const repository = makeRepository({
+			listOwnerForRecipient: vi
+				.fn()
+				.mockResolvedValue({ items: [notification], total: 1 }),
+		});
+		const useCase = new ListOwnerNotificationsUseCase(repository);
+
+		const result = await useCase.execute(makeCurrentUser(), {
+			page: 2,
+			pageSize: 10,
+			unreadOnly: true,
+		});
+
+		expect(repository.listOwnerForRecipient).toHaveBeenCalledWith({
+			recipientUserId: "user-1",
+			page: 2,
+			pageSize: 10,
+			unreadOnly: true,
+		});
+		expect(result).toEqual({
+			items: [
+				expect.objectContaining({
+					id: "notification-1",
+					surface: NotificationSurface.OWNER,
+					linkHref: "/owner/properties/property-1",
+				}),
+			],
+			total: 1,
+			page: 2,
+			pageSize: 10,
+		});
+	});
+
+	it("defaults owner list pagination", async () => {
+		const repository = makeRepository({
+			listOwnerForRecipient: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+		});
+		const useCase = new ListOwnerNotificationsUseCase(repository);
+
+		const result = await useCase.execute(makeCurrentUser(), {});
+
+		expect(repository.listOwnerForRecipient).toHaveBeenCalledWith({
+			recipientUserId: "user-1",
+			page: 1,
+			pageSize: 20,
+			unreadOnly: false,
+		});
+		expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 20 });
+	});
+
+	it("returns unread count for current owner", async () => {
+		const repository = makeRepository({
+			countUnreadOwnerForRecipient: vi.fn().mockResolvedValue(4),
+		});
+		const useCase = new GetUnreadOwnerNotificationsCountUseCase(repository);
+
+		const result = await useCase.execute(makeCurrentUser());
+
+		expect(repository.countUnreadOwnerForRecipient).toHaveBeenCalledWith({
+			recipientUserId: "user-1",
+		});
+		expect(result).toEqual({ unreadCount: 4 });
+	});
+
+	it("marks one current owner notification read", async () => {
+		const notification = makeNotification({
+			surface: NotificationSurface.OWNER,
+			readAt: new Date("2026-06-01T12:00:00.000Z"),
+		});
+		const repository = makeRepository({
+			markOwnerRead: vi.fn().mockResolvedValue(notification),
+		});
+		const useCase = new MarkOwnerNotificationReadUseCase(repository);
+
+		const result = await useCase.execute(makeCurrentUser(), "notification-1");
+
+		expect(repository.markOwnerRead).toHaveBeenCalledWith({
+			recipientUserId: "user-1",
+			notificationId: "notification-1",
+		});
+		expect(result).toEqual(
+			expect.objectContaining({
+				id: "notification-1",
+				readAt: "2026-06-01T12:00:00.000Z",
+			}),
+		);
+	});
+
+	it("throws 404 when marking an inaccessible owner notification read", async () => {
+		const repository = makeRepository({
+			markOwnerRead: vi.fn().mockResolvedValue(null),
+		});
+		const useCase = new MarkOwnerNotificationReadUseCase(repository);
+
+		await expect(useCase.execute(makeCurrentUser(), "missing")).rejects.toThrow(
+			new NotFoundException("Notification not found"),
+		);
+	});
+
+	it("marks all current owner notifications read", async () => {
+		const repository = makeRepository({
+			markAllOwnerRead: vi.fn().mockResolvedValue(2),
+		});
+		const useCase = new MarkAllOwnerNotificationsReadUseCase(repository);
+
+		const result = await useCase.execute(makeCurrentUser());
+
+		expect(repository.markAllOwnerRead).toHaveBeenCalledWith({
+			recipientUserId: "user-1",
+		});
+		expect(result).toEqual({ updatedCount: 2 });
+	});
 });
 
 function makeRepository(
@@ -142,6 +265,10 @@ function makeRepository(
 		countUnreadInternalForRecipient: vi.fn(),
 		markInternalRead: vi.fn(),
 		markAllInternalRead: vi.fn(),
+		listOwnerForRecipient: vi.fn(),
+		countUnreadOwnerForRecipient: vi.fn(),
+		markOwnerRead: vi.fn(),
+		markAllOwnerRead: vi.fn(),
 		...overrides,
 	} as NotificationsRepository;
 }

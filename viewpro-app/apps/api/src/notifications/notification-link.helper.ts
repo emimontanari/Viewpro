@@ -28,3 +28,28 @@ export function sanitizeInternalNotificationLink(input: {
 
 	return null;
 }
+
+export function sanitizeOwnerNotificationLink(input: {
+	linkHref?: string | null;
+	propertyAssetId?: string | null;
+}): string | null {
+	const linkHref = input.linkHref;
+	if (!linkHref || !linkHref.startsWith("/")) {
+		return null;
+	}
+
+	if (linkHref === "/owner") {
+		return linkHref;
+	}
+
+	if (!input.propertyAssetId) {
+		return null;
+	}
+
+	const expectedPropertyLink = `/owner/properties/${input.propertyAssetId}`;
+	if (linkHref === expectedPropertyLink) {
+		return linkHref;
+	}
+
+	return null;
+}
