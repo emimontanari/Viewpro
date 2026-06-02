@@ -3,6 +3,13 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { usePathname, useRouter } from 'next/navigation';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  getOwnerNotifications,
+  getOwnerUnreadNotificationCount,
+  markAllOwnerNotificationsRead,
+  markOwnerNotificationRead
+} from '@/features/owner/api/notifications';
+import { ownerKeys } from '@/features/owner/api/queries';
 import { useActiveTenant } from '@/lib/session-context';
 import { notificationKeys } from '../api/queries';
 import {
@@ -23,6 +30,13 @@ vi.mock('@/lib/session-context', () => ({
   useActiveTenant: vi.fn()
 }));
 
+vi.mock('@/features/owner/api/notifications', () => ({
+  getOwnerNotifications: vi.fn(),
+  getOwnerUnreadNotificationCount: vi.fn(),
+  markAllOwnerNotificationsRead: vi.fn(),
+  markOwnerNotificationRead: vi.fn()
+}));
+
 vi.mock('../api/service', () => ({
   getNotifications: vi.fn(),
   getUnreadNotificationCount: vi.fn(),
@@ -37,6 +51,10 @@ const getNotificationsMock = vi.mocked(getNotifications);
 const getUnreadNotificationCountMock = vi.mocked(getUnreadNotificationCount);
 const markNotificationReadMock = vi.mocked(markNotificationRead);
 const markAllNotificationsReadMock = vi.mocked(markAllNotificationsRead);
+const getOwnerNotificationsMock = vi.mocked(getOwnerNotifications);
+const getOwnerUnreadNotificationCountMock = vi.mocked(getOwnerUnreadNotificationCount);
+const markOwnerNotificationReadMock = vi.mocked(markOwnerNotificationRead);
+const markAllOwnerNotificationsReadMock = vi.mocked(markAllOwnerNotificationsRead);
 const pushMock = vi.fn();
 
 const activeTenantContext = {
@@ -85,6 +103,32 @@ const readNotification: DashboardNotification = {
   readAt: '2026-06-02T11:00:00.000Z'
 };
 
+const unreadOwnerNotification: DashboardNotification = {
+  id: 'owner-notification-1',
+  type: 'DOCUMENT_APPROVED',
+  surface: 'OWNER',
+  title: 'Documento aprobado',
+  body: 'La inmobiliaria aprobó tu documento.',
+  linkHref: '/owner/properties/property-1',
+  readAt: null,
+  createdAt: '2026-06-02T12:00:00.000Z',
+  refs: {
+    propertyEngagementId: 'engagement-1',
+    propertyAssetId: 'property-1',
+    documentRequestId: 'request-1',
+    movementId: null
+  }
+};
+
+const readOwnerNotification: DashboardNotification = {
+  ...unreadOwnerNotification,
+  id: 'owner-notification-2',
+  title: 'Movimiento cargado',
+  body: null,
+  linkHref: null,
+  readAt: '2026-06-02T13:00:00.000Z'
+};
+
 describe('NotificationCenter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -108,6 +152,15 @@ describe('NotificationCenter', () => {
       readAt: '2026-06-02T11:30:00.000Z'
     });
     markAllNotificationsReadMock.mockResolvedValue({ updatedCount: 2 });
+    getOwnerNotificationsMock.mockResolvedValue(
+      notificationsResponse([unreadOwnerNotification, readOwnerNotification])
+    );
+    getOwnerUnreadNotificationCountMock.mockResolvedValue({ unreadCount: 1 });
+    markOwnerNotificationReadMock.mockResolvedValue({
+      ...unreadOwnerNotification,
+      readAt: '2026-06-02T13:30:00.000Z'
+    });
+    markAllOwnerNotificationsReadMock.mockResolvedValue({ updatedCount: 1 });
   });
 
   it('shows the dashboard unread badge and renders API notifications', async () => {
@@ -209,21 +262,116 @@ describe('NotificationCenter', () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 
-  it('keeps owner portal notifications safely empty without dashboard notification fetches', async () => {
+  it('shows owner unread badge and renders owner API notifications without dashboard fetches', async () => {
+    const user = userEvent.setup();
+    usePathnameMock.mockReturnValue('/owner/properties/property-1');
+
+    renderNotificationCenter();
+
+    expect(await screen.findByText('1')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Notifications' }));
+
+    expect(await screen.findByText('Documento aprobado')).toBeInTheDocument();
+    expect(screen.getByText('La inmobiliaria aprobó tu documento.')).toBeInTheDocument();
+    expect(screen.getByText('Movimiento cargado')).toBeInTheDocument();
+    expect(screen.getByText('1 new')).toBeInTheDocument();
+    expect(getOwnerNotificationsMock).toHaveBeenCalledWith({ page: 1, pageSize: 5 });
+    expect(useActiveTenantMock).not.toHaveBeenCalled();
+    expect(getNotificationsMock).not.toHaveBeenCalled();
+    expect(getUnreadNotificationCountMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps the owner empty copy when the owner API returns no notifications', async () => {
+    const user = userEvent.setup();
+    usePathnameMock.mockReturnValue('/owner/properties/property-1');
+    getOwnerNotificationsMock.mockResolvedValueOnce(notificationsResponse([]));
+    getOwnerUnreadNotificationCountMock.mockResolvedValueOnce({ unreadCount: 0 });
+
+    renderNotificationCenter();
+
+    await user.click(screen.getByRole('button', { name: 'Notifications' }));
+
+    expect(await screen.findByText('Sin novedades nuevas')).toBeInTheDocument();
+    expect(screen.queryByText('0 new')).not.toBeInTheDocument();
+    expect(useActiveTenantMock).not.toHaveBeenCalled();
+    expect(getNotificationsMock).not.toHaveBeenCalled();
+    expect(getUnreadNotificationCountMock).not.toHaveBeenCalled();
+  });
+
+  it('marks individual and all owner notifications read through the owner API', async () => {
+    const user = userEvent.setup();
+    usePathnameMock.mockReturnValue('/owner/properties/property-1');
+    const { queryClient } = renderNotificationCenter();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    await user.click(screen.getByRole('button', { name: 'Notifications' }));
+    await user.click(await screen.findByRole('button', { name: 'Mark as read' }));
+
+    await waitFor(() => {
+      expect(markOwnerNotificationReadMock).toHaveBeenCalledWith('owner-notification-1');
+    });
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ownerKeys.notifications({ page: 1, pageSize: 5 })
+      });
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ownerKeys.unreadNotificationsCount()
+    });
+
+    invalidateSpy.mockClear();
+
+    await user.click(screen.getByRole('button', { name: 'Mark all as read' }));
+
+    await waitFor(() => {
+      expect(markAllOwnerNotificationsReadMock).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ownerKeys.notifications({ page: 1, pageSize: 5 })
+      });
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ownerKeys.unreadNotificationsCount()
+    });
+    expect(markNotificationReadMock).not.toHaveBeenCalled();
+    expect(markAllNotificationsReadMock).not.toHaveBeenCalled();
+  });
+
+  it('uses safe backend owner links for owner notification actions', async () => {
     const user = userEvent.setup();
     usePathnameMock.mockReturnValue('/owner/properties/property-1');
 
     renderNotificationCenter();
 
     await user.click(screen.getByRole('button', { name: 'Notifications' }));
+    await user.click(await screen.findByRole('button', { name: 'Abrir' }));
 
-    expect(screen.queryByText('2')).not.toBeInTheDocument();
-    expect(await screen.findByText('Sin novedades nuevas')).toBeInTheDocument();
-    expect(useActiveTenantMock).not.toHaveBeenCalled();
-    expect(getNotificationsMock).not.toHaveBeenCalled();
-    expect(getUnreadNotificationCountMock).not.toHaveBeenCalled();
-    expect(markNotificationReadMock).not.toHaveBeenCalled();
-    expect(markAllNotificationsReadMock).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(markOwnerNotificationReadMock).toHaveBeenCalledWith('owner-notification-1');
+    });
+    expect(pushMock).toHaveBeenCalledWith('/owner/properties/property-1');
+  });
+
+  it('does not render owner actions for unsafe backend links', async () => {
+    const user = userEvent.setup();
+    usePathnameMock.mockReturnValue('/owner/properties/property-1');
+    getOwnerNotificationsMock.mockResolvedValueOnce(
+      notificationsResponse([
+        { ...unreadOwnerNotification, linkHref: '/dashboard/product/engagement-1' },
+        { ...readOwnerNotification, linkHref: 'https://evil.example/owner/properties/property-1' },
+        { ...readOwnerNotification, id: 'owner-notification-3', linkHref: '//evil.example/owner' }
+      ])
+    );
+
+    renderNotificationCenter();
+
+    await user.click(screen.getByRole('button', { name: 'Notifications' }));
+    expect(await screen.findByText('Documento aprobado')).toBeInTheDocument();
+
+    expect(screen.queryByRole('button', { name: 'Abrir' })).not.toBeInTheDocument();
+    expect(pushMock).not.toHaveBeenCalled();
   });
 });
 
