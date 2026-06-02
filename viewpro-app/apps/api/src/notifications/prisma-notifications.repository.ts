@@ -3,6 +3,7 @@ import { NotificationSurface, type Prisma } from "@prisma/client";
 import { PrismaService } from "../database/prisma.service";
 import type {
 	CreateInternalNotificationInput,
+	CreateOwnerNotificationInput,
 	InternalNotificationScope,
 	ListInternalNotificationsInput,
 	ListOwnerNotificationsInput,
@@ -78,6 +79,24 @@ export class PrismaNotificationsRepository implements NotificationsRepository {
 				tenantId: input.tenantId,
 				recipientUserId: input.recipientUserId,
 				surface: NotificationSurface.INTERNAL,
+				type: input.type,
+				title: input.title,
+				body: input.body ?? null,
+				linkHref: input.linkHref ?? null,
+				propertyEngagementId: input.propertyEngagementId ?? null,
+				propertyAssetId: input.propertyAssetId ?? null,
+				documentRequestId: input.documentRequestId ?? null,
+				movementId: input.movementId ?? null,
+			},
+		});
+	}
+
+	createOwner(input: CreateOwnerNotificationInput): Promise<NotificationRecord> {
+		return this.prisma.notification.create({
+			data: {
+				tenantId: input.tenantId ?? null,
+				recipientUserId: input.recipientUserId,
+				surface: NotificationSurface.OWNER,
 				type: input.type,
 				title: input.title,
 				body: input.body ?? null,

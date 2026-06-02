@@ -1,11 +1,12 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common'
 import { AnalyticsActorType, AnalyticsEventName, DocumentRequestStatus, DocumentVersionStatus } from '@prisma/client'
 import { AnalyticsService, type TrackAnalyticsEventInput } from '../../analytics/analytics.service'
+import { NotificationProducerService, type DocumentOwnerNotificationInput } from '../../notifications/notification-producer.service'
 import type { CurrentUser } from '../../auth/types/current-user'
 import type { TenantContext } from '../../tenant-context/tenant-context.types'
 import { mapDocumentRequestResponse, type DocumentRequestResponse } from '../document-response.mapper'
 import type { RejectDocumentRequestDto } from '../dto/reject-document-request.dto'
-import { DOCUMENTS_REPOSITORY, type DocumentsRepository } from '../documents.repository'
+import { DOCUMENTS_REPOSITORY, type DocumentRequestRecord, type DocumentsRepository } from '../documents.repository'
 import { findReviewableDocumentRequest } from './review-document-request'
 
 @Injectable()
@@ -13,7 +14,11 @@ export class RejectDocumentRequestUseCase {
   constructor(
     @Inject(DOCUMENTS_REPOSITORY)
     private readonly documentsRepository: DocumentsRepository,
+    @Inject(AnalyticsService)
     private readonly analyticsService: AnalyticsService,
+    @Optional()
+    @Inject(NotificationProducerService)
+    private readonly notificationProducer?: NotificationProducerService,
   ) {}
 
   async execute(
@@ -50,6 +55,7 @@ export class RejectDocumentRequestUseCase {
       actorUserId: currentUser.id,
       documentRequestId: request.id,
     })
+    await this.notifyDocumentRejected(request)
 
     return mapDocumentRequestResponse(request)
   }
@@ -60,5 +66,28 @@ export class RejectDocumentRequestUseCase {
     } catch {
       // Analytics must not break document rejection.
     }
+  }
+
+  private async notifyDocumentRejected(request: DocumentRequestRecord): Promise<void> {
+    if (!this.notificationProducer) {
+      return
+    }
+
+    try {
+      await this.notificationProducer.notifyDocumentRejected(toDocumentNotificationInput(request))
+    } catch {
+      // Notifications must not break document rejection.
+    }
+  }
+}
+
+function toDocumentNotificationInput(request: DocumentRequestRecord): DocumentOwnerNotificationInput {
+  return {
+    tenantId: request.tenantId,
+    ownerUserId: request.ownerUserId,
+    propertyEngagementId: request.propertyEngagementId,
+    propertyAssetId: request.propertyEngagement.propertyAssetId,
+    documentRequestId: request.id,
+    documentTitle: request.title,
   }
 }
