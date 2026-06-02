@@ -1,5 +1,6 @@
 import { getDocumentRequestsRefetchInterval } from '@/lib/document-request-refresh';
 import { queryOptions } from '@tanstack/react-query';
+import { getOwnerNotifications, getOwnerUnreadNotificationCount } from './notifications';
 import {
   getOwnerDocumentRequests,
   getOwnerEngagementTimeline,
@@ -7,6 +8,7 @@ import {
   getOwnerProperty,
   getOwnerPropertyEngagements
 } from './service';
+import type { OwnerNotificationFilters } from './notifications';
 import type { OwnerDocumentRequestsFilters, OwnerTimelineFilters } from './types';
 
 export const ownerKeys = {
@@ -17,7 +19,10 @@ export const ownerKeys = {
   timeline: (engagementId: string, filters: OwnerTimelineFilters) =>
     [...ownerKeys.all, 'engagements', engagementId, 'timeline', filters] as const,
   documentRequests: (propertyEngagementId: string, filters: OwnerDocumentRequestsFilters = {}) =>
-    [...ownerKeys.all, 'document-requests', propertyEngagementId, filters] as const
+    [...ownerKeys.all, 'document-requests', propertyEngagementId, filters] as const,
+  notifications: (filters: OwnerNotificationFilters = {}) =>
+    [...ownerKeys.all, 'notifications', filters] as const,
+  unreadNotificationsCount: () => [...ownerKeys.all, 'notifications', 'unread-count'] as const
 };
 
 export const ownerPropertiesOptions = () =>
@@ -57,4 +62,16 @@ export const ownerDocumentRequestsOptions = (
     refetchInterval: getDocumentRequestsRefetchInterval,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: 'always'
+  });
+
+export const ownerNotificationsOptions = (filters: OwnerNotificationFilters = {}) =>
+  queryOptions({
+    queryKey: ownerKeys.notifications(filters),
+    queryFn: () => getOwnerNotifications(filters)
+  });
+
+export const ownerUnreadNotificationsCountOptions = () =>
+  queryOptions({
+    queryKey: ownerKeys.unreadNotificationsCount(),
+    queryFn: () => getOwnerUnreadNotificationCount()
   });
