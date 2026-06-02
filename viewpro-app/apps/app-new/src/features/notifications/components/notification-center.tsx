@@ -6,6 +6,15 @@ import { NotificationCard } from '@/components/ui/notification-card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import {
+  markAllOwnerNotificationsRead,
+  markOwnerNotificationRead
+} from '@/features/owner/api/notifications';
+import {
+  ownerKeys,
+  ownerNotificationsOptions,
+  ownerUnreadNotificationsCountOptions
+} from '@/features/owner/api/queries';
 import { useActiveTenant } from '@/lib/session-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter } from 'next/navigation';
@@ -32,12 +41,61 @@ export function NotificationCenter() {
 }
 
 function OwnerNotificationCenter() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const listQuery = useQuery(ownerNotificationsOptions({ page: 1, pageSize: MAX_VISIBLE }));
+  const unreadCountQuery = useQuery(ownerUnreadNotificationsCountOptions());
+
+  const invalidateNotificationQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ownerKeys.notifications({ page: 1, pageSize: MAX_VISIBLE })
+      }),
+      queryClient.invalidateQueries({ queryKey: ownerKeys.unreadNotificationsCount() })
+    ]);
+  };
+
+  const markOneReadMutation = useMutation({
+    mutationFn: (notificationId: string) => markOwnerNotificationRead(notificationId),
+    onSuccess: invalidateNotificationQueries
+  });
+  const markAllReadMutation = useMutation({
+    mutationFn: () => markAllOwnerNotificationsRead(),
+    onSuccess: invalidateNotificationQueries
+  });
+
+  const notifications = listQuery.data?.items.slice(0, MAX_VISIBLE) ?? [];
+  const count = unreadCountQuery.data?.unreadCount ?? 0;
+
+  const handleAction = (notificationId: string, actionId: string) => {
+    if (actionId !== OPEN_ACTION_ID) {
+      return;
+    }
+
+    const notification = notifications.find((item) => item.id === notificationId);
+    const safeHref = getSafeOwnerHref(notification?.linkHref ?? null);
+
+    if (!safeHref) {
+      return;
+    }
+
+    markOneReadMutation.mutate(notificationId);
+    router.push(safeHref);
+  };
+
   return (
     <NotificationPopover
-      count={0}
+      count={count}
       emptyCopy='Sin novedades nuevas'
+      getActions={getOwnerNotificationActions}
       heading='Notificaciones'
-      notifications={[]}
+      isLoading={listQuery.isLoading || unreadCountQuery.isLoading}
+      markAllDisabled={markAllReadMutation.isPending}
+      markOneDisabled={markOneReadMutation.isPending}
+      notifications={notifications}
+      onAction={handleAction}
+      onMarkAllAsRead={() => markAllReadMutation.mutate()}
+      onMarkAsRead={(id) => markOneReadMutation.mutate(id)}
     />
   );
 }
@@ -113,10 +171,18 @@ function DashboardNotificationCenter() {
   );
 }
 
+type NotificationAction = {
+  id: string;
+  label: string;
+  type: 'redirect';
+  style: 'primary';
+};
+
 type NotificationPopoverProps = {
   count: number;
   emptyCopy: string;
   heading: string;
+  getActions?: (notification: DashboardNotification) => NotificationAction[];
   isLoading?: boolean;
   markAllDisabled?: boolean;
   markOneDisabled?: boolean;
@@ -130,6 +196,7 @@ function NotificationPopover({
   count,
   emptyCopy,
   heading,
+  getActions = getDashboardNotificationActions,
   isLoading = false,
   markAllDisabled = false,
   markOneDisabled = false,
@@ -188,7 +255,7 @@ function NotificationPopover({
                   body={notification.body ?? ''}
                   status={notification.readAt ? 'read' : 'unread'}
                   createdAt={notification.createdAt}
-                  actions={getNotificationActions(notification)}
+                  actions={getActions(notification)}
                   onMarkAsRead={markOneDisabled ? undefined : onMarkAsRead}
                   onAction={onAction}
                 />
@@ -210,7 +277,7 @@ function NotificationMessage({ copy }: { copy: string }) {
   );
 }
 
-function getNotificationActions(notification: DashboardNotification) {
+function getDashboardNotificationActions(notification: DashboardNotification) {
   if (!getSafeDashboardHref(notification.linkHref)) {
     return [];
   }
@@ -225,15 +292,38 @@ function getNotificationActions(notification: DashboardNotification) {
   ];
 }
 
+function getOwnerNotificationActions(notification: DashboardNotification) {
+  if (!getSafeOwnerHref(notification.linkHref)) {
+    return [];
+  }
+
+  return [
+    {
+      id: OPEN_ACTION_ID,
+      label: 'Abrir',
+      type: 'redirect' as const,
+      style: 'primary' as const
+    }
+  ];
+}
+
 function getSafeDashboardHref(linkHref: string | null) {
-  if (!linkHref || linkHref.startsWith('//') || !linkHref.startsWith('/dashboard')) {
+  return getSafeRelativeHref(linkHref, '/dashboard');
+}
+
+function getSafeOwnerHref(linkHref: string | null) {
+  return getSafeRelativeHref(linkHref, '/owner');
+}
+
+function getSafeRelativeHref(linkHref: string | null, allowedPrefix: '/dashboard' | '/owner') {
+  if (!linkHref || linkHref.startsWith('//') || !linkHref.startsWith(allowedPrefix)) {
     return null;
   }
 
   try {
     const url = new URL(linkHref, 'https://viewpro.local');
 
-    if (url.origin !== 'https://viewpro.local' || !url.pathname.startsWith('/dashboard')) {
+    if (url.origin !== 'https://viewpro.local' || !url.pathname.startsWith(allowedPrefix)) {
       return null;
     }
 
