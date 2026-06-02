@@ -66,16 +66,56 @@ describe("NotificationProducerService", () => {
 		expect(repository.createOwner).not.toHaveBeenCalled();
 	});
 
+	it("creates an INTERNAL notification when an owner uploads a requested document", async () => {
+		const repository = makeRepository();
+		const producer = new NotificationProducerService(repository);
+
+		await producer.notifyDocumentUploaded(
+			makeDocumentUploadNotificationInput(),
+		);
+
+		expect(repository.createInternal).toHaveBeenCalledWith({
+			tenantId: "tenant-1",
+			recipientUserId: "agent-1",
+			type: NotificationType.DOCUMENT_UPLOADED,
+			title: "Document uploaded",
+			body: "Property deed",
+			linkHref: "/dashboard/product/engagement-1",
+			propertyEngagementId: "engagement-1",
+			propertyAssetId: "property-1",
+			documentRequestId: "request-1",
+		});
+		expect(repository.createOwner).not.toHaveBeenCalled();
+	});
+
+	it("does not create internal upload notifications without a requester", async () => {
+		const repository = makeRepository();
+		const producer = new NotificationProducerService(repository);
+
+		await producer.notifyDocumentUploaded(
+			makeDocumentUploadNotificationInput({ requestedByUserId: null }),
+		);
+
+		expect(repository.createInternal).not.toHaveBeenCalled();
+		expect(repository.createOwner).not.toHaveBeenCalled();
+	});
+
 	it("swallows repository errors", async () => {
 		const repository = makeRepository({
 			createOwner: vi
 				.fn()
 				.mockRejectedValue(new Error("notifications unavailable")),
+			createInternal: vi
+				.fn()
+				.mockRejectedValue(new Error("internal notifications unavailable")),
 		});
 		const producer = new NotificationProducerService(repository);
 
 		await expect(
 			producer.notifyDocumentRequested(makeDocumentNotificationInput()),
+		).resolves.toBeUndefined();
+		await expect(
+			producer.notifyDocumentUploaded(makeDocumentUploadNotificationInput()),
 		).resolves.toBeUndefined();
 	});
 });
@@ -106,6 +146,29 @@ function makeDocumentNotificationInput(
 	return {
 		tenantId: "tenant-1",
 		ownerUserId: "owner-1",
+		propertyEngagementId: "engagement-1",
+		propertyAssetId: "property-1",
+		documentRequestId: "request-1",
+		documentTitle: "Property deed",
+		...overrides,
+	};
+}
+
+type DocumentUploadNotificationInput = {
+	tenantId: string;
+	requestedByUserId?: string | null;
+	propertyEngagementId: string;
+	propertyAssetId: string;
+	documentRequestId: string;
+	documentTitle: string;
+};
+
+function makeDocumentUploadNotificationInput(
+	overrides: Partial<DocumentUploadNotificationInput> = {},
+): DocumentUploadNotificationInput {
+	return {
+		tenantId: "tenant-1",
+		requestedByUserId: "agent-1",
 		propertyEngagementId: "engagement-1",
 		propertyAssetId: "property-1",
 		documentRequestId: "request-1",
