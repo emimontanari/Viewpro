@@ -142,14 +142,21 @@ describe("Movement use cases", () => {
 		const propertyEngagementsRepository = {
 			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
 		};
-		const movementsRepository = { create: vi.fn().mockResolvedValue(movement) };
+		const movementsRepository = {
+			create: vi.fn().mockResolvedValue(movement),
+			listActiveOwnerUserIdsForEngagement: vi
+				.fn()
+				.mockResolvedValue(["owner-1", "owner-2"]),
+		};
 		const analyticsService = {
 			track: vi.fn().mockResolvedValue({ status: "persisted" }),
 		};
+		const notificationProducer = makeNotificationProducer();
 		const useCase = new CreateMovementUseCase(
 			movementsRepository as never,
 			propertyEngagementsRepository as never,
 			analyticsService as never,
+			notificationProducer as never,
 		);
 
 		const result = await useCase.execute(
@@ -205,6 +212,28 @@ describe("Movement use cases", () => {
 				newStatus: PropertyEngagementStatus.INQUIRIES_AND_VISITS,
 			},
 		});
+		expect(
+			movementsRepository.listActiveOwnerUserIdsForEngagement,
+		).toHaveBeenCalledWith({
+			tenantId: "tenant-1",
+			propertyEngagementId: "engagement-1",
+		});
+		expect(
+			notificationProducer.notifyPropertyStatusChanged,
+		).toHaveBeenCalledWith({
+			tenantId: "tenant-1",
+			ownerUserIds: ["owner-1", "owner-2"],
+			propertyEngagementId: "engagement-1",
+			propertyAssetId: "asset-1",
+			movementId: "movement-1",
+			previousStatus: PropertyEngagementStatus.ACTIVE_PUBLICATION,
+			newStatus: PropertyEngagementStatus.INQUIRIES_AND_VISITS,
+		});
+		expect(
+			JSON.stringify(
+				vi.mocked(notificationProducer.notifyPropertyStatusChanged).mock.calls,
+			),
+		).not.toContain("Buyer asked for a visit.");
 	});
 
 	it("does not emit status change analytics when the movement leaves status unchanged", async () => {
@@ -213,14 +242,17 @@ describe("Movement use cases", () => {
 		};
 		const movementsRepository = {
 			create: vi.fn().mockResolvedValue({ ...movement, newStatus: null }),
+			listActiveOwnerUserIdsForEngagement: vi.fn(),
 		};
 		const analyticsService = {
 			track: vi.fn().mockResolvedValue({ status: "persisted" }),
 		};
+		const notificationProducer = makeNotificationProducer();
 		const useCase = new CreateMovementUseCase(
 			movementsRepository as never,
 			propertyEngagementsRepository as never,
 			analyticsService as never,
+			notificationProducer as never,
 		);
 
 		await useCase.execute(managerTenant, currentUser, "engagement-1", {
@@ -237,13 +269,24 @@ describe("Movement use cases", () => {
 			propertyEngagementId: "engagement-1",
 			movementId: "movement-1",
 		});
+		expect(
+			movementsRepository.listActiveOwnerUserIdsForEngagement,
+		).not.toHaveBeenCalled();
+		expect(
+			notificationProducer.notifyPropertyStatusChanged,
+		).not.toHaveBeenCalled();
 	});
 
 	it("keeps movement creation successful when analytics tracking fails", async () => {
 		const propertyEngagementsRepository = {
 			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
 		};
-		const movementsRepository = { create: vi.fn().mockResolvedValue(movement) };
+		const movementsRepository = {
+			create: vi.fn().mockResolvedValue(movement),
+			listActiveOwnerUserIdsForEngagement: vi
+				.fn()
+				.mockResolvedValue(["owner-1"]),
+		};
 		const analyticsService = {
 			track: vi.fn().mockRejectedValue(new Error("analytics unavailable")),
 		};
@@ -251,6 +294,7 @@ describe("Movement use cases", () => {
 			movementsRepository as never,
 			propertyEngagementsRepository as never,
 			analyticsService as never,
+			makeNotificationProducer() as never,
 		);
 
 		const result = await useCase.execute(
@@ -268,6 +312,37 @@ describe("Movement use cases", () => {
 		expect(analyticsService.track).toHaveBeenCalled();
 	});
 
+	it("keeps movement creation successful when status notification fails", async () => {
+		const propertyEngagementsRepository = {
+			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
+		};
+		const movementsRepository = {
+			create: vi.fn().mockResolvedValue(movement),
+			listActiveOwnerUserIdsForEngagement: vi
+				.fn()
+				.mockResolvedValue(["owner-1"]),
+		};
+		const notificationProducer = makeNotificationProducer({
+			notifyPropertyStatusChanged: vi
+				.fn()
+				.mockRejectedValue(new Error("notifications unavailable")),
+		});
+		const useCase = new CreateMovementUseCase(
+			movementsRepository as never,
+			propertyEngagementsRepository as never,
+			{ track: vi.fn().mockResolvedValue({ status: "persisted" }) } as never,
+			notificationProducer as never,
+		);
+
+		await expect(
+			useCase.execute(managerTenant, currentUser, "engagement-1", {
+				type: MovementType.INQUIRY,
+				observation: "Buyer asked for a visit.",
+				newStatus: PropertyEngagementStatus.INQUIRIES_AND_VISITS,
+			}),
+		).resolves.toMatchObject({ id: "movement-1" });
+	});
+
 	it("allows an assigned agent to create a movement using assigned visibility", async () => {
 		const propertyEngagementsRepository = {
 			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
@@ -281,6 +356,7 @@ describe("Movement use cases", () => {
 			movementsRepository as never,
 			propertyEngagementsRepository as never,
 			{ track: vi.fn() } as never,
+			makeNotificationProducer() as never,
 		);
 
 		const result = await useCase.execute(
@@ -317,6 +393,7 @@ describe("Movement use cases", () => {
 			movementsRepository as never,
 			propertyEngagementsRepository as never,
 			analyticsService as never,
+			makeNotificationProducer() as never,
 		);
 
 		await expect(
@@ -345,6 +422,7 @@ describe("Movement use cases", () => {
 			movementsRepository as never,
 			propertyEngagementsRepository as never,
 			{ track: vi.fn() } as never,
+			makeNotificationProducer() as never,
 		);
 
 		await expect(
@@ -368,6 +446,7 @@ describe("Movement use cases", () => {
 			movementsRepository as never,
 			propertyEngagementsRepository as never,
 			{ track: vi.fn() } as never,
+			makeNotificationProducer() as never,
 		);
 
 		await expect(
@@ -396,6 +475,7 @@ describe("Movement use cases", () => {
 			movementsRepository as never,
 			propertyEngagementsRepository as never,
 			{ track: vi.fn() } as never,
+			makeNotificationProducer() as never,
 		);
 
 		await expect(
@@ -482,3 +562,14 @@ describe("Movement use cases", () => {
 		expect(movementsRepository.findMany).not.toHaveBeenCalled();
 	});
 });
+
+function makeNotificationProducer(
+	overrides: Partial<{
+		notifyPropertyStatusChanged: ReturnType<typeof vi.fn>;
+	}> = {},
+) {
+	return {
+		notifyPropertyStatusChanged: vi.fn().mockResolvedValue(undefined),
+		...overrides,
+	};
+}

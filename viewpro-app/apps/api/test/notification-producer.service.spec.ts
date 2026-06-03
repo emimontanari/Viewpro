@@ -1,4 +1,4 @@
-import { NotificationType } from "@prisma/client";
+import { NotificationType, PropertyEngagementStatus } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import { NotificationProducerService } from "../src/notifications/notification-producer.service";
 import type { NotificationsRepository } from "../src/notifications/notifications.repository";
@@ -100,6 +100,67 @@ describe("NotificationProducerService", () => {
 		expect(repository.createOwner).not.toHaveBeenCalled();
 	});
 
+	it("creates OWNER notifications for property status changes without internal movement notes", async () => {
+		const repository = makeRepository();
+		const producer = new NotificationProducerService(repository);
+		const sensitiveObservation =
+			"Owner is angry about an internal pricing strategy.";
+
+		await producer.notifyPropertyStatusChanged({
+			tenantId: "tenant-1",
+			ownerUserIds: ["owner-1", "owner-2", "owner-1"],
+			propertyEngagementId: "engagement-1",
+			propertyAssetId: "property-1",
+			movementId: "movement-1",
+			previousStatus: PropertyEngagementStatus.ACTIVE_PUBLICATION,
+			newStatus: PropertyEngagementStatus.INQUIRIES_AND_VISITS,
+		});
+
+		expect(repository.createOwner).toHaveBeenCalledTimes(2);
+		expect(repository.createOwner).toHaveBeenNthCalledWith(1, {
+			tenantId: "tenant-1",
+			recipientUserId: "owner-1",
+			type: NotificationType.PROPERTY_STATUS_CHANGED,
+			title: "Property status updated",
+			body: "Active publication → Inquiries and visits",
+			linkHref: "/owner/properties/property-1",
+			propertyEngagementId: "engagement-1",
+			propertyAssetId: "property-1",
+			movementId: "movement-1",
+		});
+		expect(repository.createOwner).toHaveBeenNthCalledWith(2, {
+			tenantId: "tenant-1",
+			recipientUserId: "owner-2",
+			type: NotificationType.PROPERTY_STATUS_CHANGED,
+			title: "Property status updated",
+			body: "Active publication → Inquiries and visits",
+			linkHref: "/owner/properties/property-1",
+			propertyEngagementId: "engagement-1",
+			propertyAssetId: "property-1",
+			movementId: "movement-1",
+		});
+		expect(
+			JSON.stringify(vi.mocked(repository.createOwner).mock.calls),
+		).not.toContain(sensitiveObservation);
+	});
+
+	it("skips property status notifications when there are no owner recipients", async () => {
+		const repository = makeRepository();
+		const producer = new NotificationProducerService(repository);
+
+		await producer.notifyPropertyStatusChanged({
+			tenantId: "tenant-1",
+			ownerUserIds: [],
+			propertyEngagementId: "engagement-1",
+			propertyAssetId: "property-1",
+			movementId: "movement-1",
+			previousStatus: null,
+			newStatus: PropertyEngagementStatus.ACTIVE_PUBLICATION,
+		});
+
+		expect(repository.createOwner).not.toHaveBeenCalled();
+	});
+
 	it("swallows repository errors", async () => {
 		const repository = makeRepository({
 			createOwner: vi
@@ -116,6 +177,17 @@ describe("NotificationProducerService", () => {
 		).resolves.toBeUndefined();
 		await expect(
 			producer.notifyDocumentUploaded(makeDocumentUploadNotificationInput()),
+		).resolves.toBeUndefined();
+		await expect(
+			producer.notifyPropertyStatusChanged({
+				tenantId: "tenant-1",
+				ownerUserIds: ["owner-1"],
+				propertyEngagementId: "engagement-1",
+				propertyAssetId: "property-1",
+				movementId: "movement-1",
+				previousStatus: PropertyEngagementStatus.ACTIVE_PUBLICATION,
+				newStatus: PropertyEngagementStatus.INQUIRIES_AND_VISITS,
+			}),
 		).resolves.toBeUndefined();
 	});
 });
