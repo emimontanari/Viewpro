@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundEx
 import { AnalyticsActorType, AnalyticsEventName, MovementType } from '@prisma/client'
 import { AnalyticsService, type TrackAnalyticsEventInput } from '../../analytics/analytics.service'
 import type { CurrentUser } from '../../auth/types/current-user'
+import { NotificationProducerService } from '../../notifications/notification-producer.service'
 import { PERMISSIONS } from '../../permissions/permissions.constants'
 import {
   PROPERTY_ENGAGEMENTS_REPOSITORY,
@@ -23,6 +24,8 @@ export class CreateMovementUseCase {
     private readonly propertyEngagementsRepository: PropertyEngagementsRepository,
     @Inject(AnalyticsService)
     private readonly analyticsService: AnalyticsService,
+    @Inject(NotificationProducerService)
+    private readonly notificationProducer: NotificationProducerService,
   ) {}
 
   async execute(
@@ -97,9 +100,40 @@ export class CreateMovementUseCase {
           newStatus: movement.newStatus,
         },
       })
+      await this.notifyOwnersOfStatusChange({
+        tenantId: tenant.tenantId,
+        propertyEngagementId: engagementId,
+        propertyAssetId: engagement.propertyAssetId,
+        movementId: movement.id,
+        previousStatus: movement.previousStatus,
+        newStatus: movement.newStatus,
+      })
     }
 
     return mapMovement(movement)
+  }
+
+  private async notifyOwnersOfStatusChange(input: {
+    tenantId: string
+    propertyEngagementId: string
+    propertyAssetId: string
+    movementId: string
+    previousStatus?: Parameters<NotificationProducerService['notifyPropertyStatusChanged']>[0]['previousStatus']
+    newStatus: Parameters<NotificationProducerService['notifyPropertyStatusChanged']>[0]['newStatus']
+  }): Promise<void> {
+    try {
+      const ownerUserIds = await this.movementsRepository.listActiveOwnerUserIdsForEngagement({
+        tenantId: input.tenantId,
+        propertyEngagementId: input.propertyEngagementId,
+      })
+
+      await this.notificationProducer.notifyPropertyStatusChanged({
+        ...input,
+        ownerUserIds,
+      })
+    } catch {
+      // Notifications must not break movement creation.
+    }
   }
 
   private async trackAnalytics(input: TrackAnalyticsEventInput): Promise<void> {

@@ -1,8 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { MovementType, PropertyEngagementStatus } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../database/prisma.service";
 import type {
+	ActiveOwnerUsersForEngagementInput,
 	ActivityCountersInput,
 	ActivityFeedCounters,
 	ActivityMovementWithRelations,
@@ -44,7 +45,7 @@ const attentionMovementTypes = new Set<MovementType>([
 
 @Injectable()
 export class PrismaMovementsRepository implements MovementsRepository {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
 	create(input: CreateMovementInput): Promise<MovementWithRelations | null> {
 		return this.prisma.$transaction(async (tx) => {
@@ -124,6 +125,32 @@ export class PrismaMovementsRepository implements MovementsRepository {
 		]);
 
 		return { items, total };
+	}
+
+	async listActiveOwnerUserIdsForEngagement(
+		input: ActiveOwnerUsersForEngagementInput,
+	): Promise<string[]> {
+		const engagement = await this.prisma.propertyEngagement.findFirst({
+			where: { id: input.propertyEngagementId, tenantId: input.tenantId },
+			select: {
+				propertyAsset: {
+					select: {
+						owners: {
+							where: { accessStatus: "ACTIVE", userId: { not: null } },
+							select: { userId: true },
+						},
+					},
+				},
+			},
+		});
+
+		return [
+			...new Set(
+				engagement?.propertyAsset.owners.flatMap(
+					(owner) => owner.userId ?? [],
+				) ?? [],
+			),
+		];
 	}
 
 	async getActivityCounters(

@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { NotificationType } from "@prisma/client";
+import { NotificationType, type PropertyEngagementStatus } from "@prisma/client";
 import {
 	NOTIFICATIONS_REPOSITORY,
 	type CreateOwnerNotificationInput,
@@ -22,6 +22,16 @@ export type DocumentUploadedInternalNotificationInput = {
 	propertyAssetId: string;
 	documentRequestId: string;
 	documentTitle: string;
+};
+
+export type PropertyStatusChangedOwnerNotificationInput = {
+	tenantId: string;
+	ownerUserIds: string[];
+	propertyEngagementId: string;
+	propertyAssetId: string;
+	movementId: string;
+	previousStatus?: PropertyEngagementStatus | null;
+	newStatus: PropertyEngagementStatus;
 };
 
 @Injectable()
@@ -88,6 +98,40 @@ export class NotificationProducerService {
 		}
 	}
 
+	async notifyPropertyStatusChanged(
+		input: PropertyStatusChangedOwnerNotificationInput,
+	): Promise<void> {
+		const recipientUserIds = [...new Set(input.ownerUserIds.filter(Boolean))];
+
+		if (recipientUserIds.length === 0) {
+			return;
+		}
+
+		try {
+			await Promise.all(
+				recipientUserIds.map((recipientUserId) =>
+					this.notificationsRepository.createOwner({
+						tenantId: input.tenantId,
+						recipientUserId,
+						type: NotificationType.PROPERTY_STATUS_CHANGED,
+						title: "Property status updated",
+						body: formatStatusChangeBody(input.previousStatus, input.newStatus),
+						linkHref: `/owner/properties/${input.propertyAssetId}`,
+						propertyEngagementId: input.propertyEngagementId,
+						propertyAssetId: input.propertyAssetId,
+						movementId: input.movementId,
+					}),
+				),
+			);
+		} catch (error) {
+			this.logger.warn(
+				`Failed to create ${NotificationType.PROPERTY_STATUS_CHANGED} owner notification: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
+		}
+	}
+
 	private async createDocumentOwnerNotification(
 		input: DocumentOwnerNotificationInput,
 		config: Pick<CreateOwnerNotificationInput, "type" | "title">,
@@ -116,4 +160,23 @@ export class NotificationProducerService {
 			);
 		}
 	}
+}
+
+function formatStatusChangeBody(
+	previousStatus: PropertyEngagementStatus | null | undefined,
+	newStatus: PropertyEngagementStatus,
+) {
+	const newStatusLabel = formatStatusLabel(newStatus);
+
+	if (!previousStatus) {
+		return `Status changed to ${newStatusLabel}`;
+	}
+
+	return `${formatStatusLabel(previousStatus)} → ${newStatusLabel}`;
+}
+
+function formatStatusLabel(status: PropertyEngagementStatus) {
+	const lowerCaseLabel = status.replaceAll("_", " ").toLowerCase();
+
+	return lowerCaseLabel.charAt(0).toUpperCase() + lowerCaseLabel.slice(1);
 }

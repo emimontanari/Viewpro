@@ -168,6 +168,41 @@ describe("Movements foundation", () => {
 		expect(create).not.toHaveBeenCalled();
 	});
 
+	it("lists active owner user ids for an engagement property", async () => {
+		const findFirst = vi.fn().mockResolvedValue({
+			propertyAsset: {
+				owners: [
+					{ userId: "owner-1" },
+					{ userId: "owner-2" },
+					{ userId: "owner-1" },
+				],
+			},
+		});
+		const repository = new PrismaMovementsRepository({
+			propertyEngagement: { findFirst },
+		} as never);
+
+		await expect(
+			repository.listActiveOwnerUserIdsForEngagement({
+				tenantId: "tenant-1",
+				propertyEngagementId: "engagement-1",
+			}),
+		).resolves.toEqual(["owner-1", "owner-2"]);
+		expect(findFirst).toHaveBeenCalledWith({
+			where: { id: "engagement-1", tenantId: "tenant-1" },
+			select: {
+				propertyAsset: {
+					select: {
+						owners: {
+							where: { accessStatus: "ACTIVE", userId: { not: null } },
+							select: { userId: true },
+						},
+					},
+				},
+			},
+		});
+	});
+
 	it("lists only movements for the requested tenant engagement", async () => {
 		const items = [
 			{
@@ -270,19 +305,17 @@ describe("Movements foundation", () => {
 	it("counts activity summary for the same tenant visibility scope", async () => {
 		const movementCount = vi.fn().mockResolvedValue(2);
 		const propertyEngagementCount = vi.fn().mockResolvedValue(3);
-		const propertyEngagementFindMany = vi
-			.fn()
-			.mockResolvedValue([
-				{ movements: [{ type: MovementType.INQUIRY, nextStep: null }] },
-				{
-					movements: [
-						{ type: MovementType.OFFER_RECEIVED, nextStep: "Call owner" },
-					],
-				},
-				{ movements: [{ type: MovementType.VISIT_COMPLETED, nextStep: "" }] },
-				{ movements: [{ type: MovementType.GENERAL_UPDATE, nextStep: null }] },
-				{ movements: [] },
-			]);
+		const propertyEngagementFindMany = vi.fn().mockResolvedValue([
+			{ movements: [{ type: MovementType.INQUIRY, nextStep: null }] },
+			{
+				movements: [
+					{ type: MovementType.OFFER_RECEIVED, nextStep: "Call owner" },
+				],
+			},
+			{ movements: [{ type: MovementType.VISIT_COMPLETED, nextStep: "" }] },
+			{ movements: [{ type: MovementType.GENERAL_UPDATE, nextStep: null }] },
+			{ movements: [] },
+		]);
 		const repository = new PrismaMovementsRepository({
 			movement: { count: movementCount },
 			propertyEngagement: {

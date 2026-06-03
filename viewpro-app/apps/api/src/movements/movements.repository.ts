@@ -73,6 +73,11 @@ export type ActivityCountersInput = {
 	now: Date;
 };
 
+export type ActiveOwnerUsersForEngagementInput = {
+	tenantId: string;
+	propertyEngagementId: string;
+};
+
 export type MovementsRepository = {
 	create(input: CreateMovementInput): Promise<MovementWithRelations | null>;
 	findMany(
@@ -84,4 +89,7 @@ export type MovementsRepository = {
 	getActivityCounters(
 		input: ActivityCountersInput,
 	): Promise<ActivityFeedCounters>;
+	listActiveOwnerUserIdsForEngagement(
+		input: ActiveOwnerUsersForEngagementInput,
+	): Promise<string[]>;
 };
