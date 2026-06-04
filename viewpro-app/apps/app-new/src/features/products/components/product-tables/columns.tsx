@@ -5,6 +5,11 @@ import type {
   PropertyOperationType,
   PropertyType
 } from '../../api/types';
+import {
+  getProductStatusBadgeTone,
+  propertyEngagementToneByStatus,
+  propertyOperationToneByType
+} from '../status-tones';
 import { OPERATION_TYPE_OPTIONS, PROPERTY_STATUS_OPTIONS, PROPERTY_TYPE_OPTIONS } from './options';
 
 export const columns: ColumnDef<Product>[] = [
@@ -124,39 +129,11 @@ export function formatPrice(value: number | null, currency: string | null) {
 }
 
 export function getStatusTone(value: PropertyEngagementStatus) {
-  const tones: Record<PropertyEngagementStatus, string> = {
-    CAPTURE:
-      'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300',
-    DOCUMENTATION_PENDING:
-      'border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-900/60 dark:bg-orange-950/30 dark:text-orange-300',
-    PUBLICATION_PREPARATION:
-      'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-300',
-    ACTIVE_PUBLICATION:
-      'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300',
-    INQUIRIES_AND_VISITS:
-      'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300',
-    OFFER_NEGOTIATION:
-      'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-900/60 dark:bg-violet-950/30 dark:text-violet-300',
-    RESERVATION_STARTED:
-      'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 dark:border-fuchsia-900/60 dark:bg-fuchsia-950/30 dark:text-fuchsia-300',
-    FINAL_DOCUMENTATION:
-      'border-indigo-200 bg-indigo-50 text-indigo-800 dark:border-indigo-900/60 dark:bg-indigo-950/30 dark:text-indigo-300',
-    CLOSED:
-      'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300',
-    CANCELLED:
-      'border-red-200 bg-red-50 text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300'
-  };
-
-  return tones[value];
+  return getProductStatusBadgeTone(propertyEngagementToneByStatus[value]);
 }
 
 export function getOperationTone(value: PropertyOperationType) {
-  const tones: Record<PropertyOperationType, string> = {
-    SALE: 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300',
-    RENT: 'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-300'
-  };
-
-  return tones[value];
+  return getProductStatusBadgeTone(propertyOperationToneByType[value]);
 }
 
 export function isArchivedProduct(product: Product) {
@@ -164,7 +141,7 @@ export function isArchivedProduct(product: Product) {
 }
 
 export function getArchivedTone() {
-  return 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300';
+  return getProductStatusBadgeTone('neutral');
 }
 
 function hasNumber(value: number | null) {

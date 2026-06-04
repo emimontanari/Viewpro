@@ -51,6 +51,18 @@ describe('PropertyImageCarousel', () => {
     expect(screen.getByText('2 / 2')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Imagen 2 de 2 de Casa demo' })).toBeInTheDocument();
   });
+
+  it('keeps the carousel and thumbnail strip shrinkable inside responsive grids', () => {
+    const { container } = render(
+      <PropertyImageCarousel images={[firstImage, secondImage]} title='Casa demo' />
+    );
+
+    expect(container.firstChild).toHaveClass('min-w-0', 'w-full', 'max-w-full');
+    expect(screen.getByRole('button', { name: 'Ver imagen 1' }).parentElement).toHaveClass(
+      'max-w-full',
+      'overflow-x-auto'
+    );
+  });
 });
 
 describe('ExistingImagesSummary', () => {
