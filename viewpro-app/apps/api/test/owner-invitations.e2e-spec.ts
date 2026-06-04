@@ -5,8 +5,11 @@ import {
 	PropertyType,
 } from "@prisma/client";
 import type { INestApplication } from "@nestjs/common";
+import { argon2id, hash as hashPassword } from "argon2";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { ACCESS_TOKEN_COOKIE } from "../src/auth/auth.constants";
+import { TokenService } from "../src/auth/tokens/token.service";
 import { createApiApp } from "../src/bootstrap/create-app";
 import { PrismaService } from "../src/database/prisma.service";
 import { hashOwnerInvitationToken } from "../src/property-engagements/owner-invitation-token";
@@ -21,6 +24,7 @@ let tokenSequence = 0;
 describe("Owner invitations (e2e)", () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
+	let tokenService: TokenService;
 	let invitationSequence = 0;
 
 	beforeAll(async () => {
@@ -32,6 +36,7 @@ describe("Owner invitations (e2e)", () => {
 		app = await createApiApp();
 		await app.init();
 		prisma = app.get(PrismaService);
+		tokenService = app.get(TokenService);
 	});
 
 	beforeEach(async () => {
@@ -66,6 +71,7 @@ describe("Owner invitations (e2e)", () => {
 		expect(response.body).toEqual({
 			id: invitation.id,
 			email: "invited-owner@example.com",
+			emailRegistered: false,
 			ownerFirstName: "Invited",
 			ownerLastName: "Owner",
 			propertyAssetOwnerId: ownerLink.id,
@@ -82,6 +88,21 @@ describe("Owner invitations (e2e)", () => {
 		expect(JSON.stringify(response.body)).not.toContain(
 			hashOwnerInvitationToken(rawToken),
 		);
+	});
+
+	it("marks invitation metadata when the owner email is already registered", async () => {
+		const token = makeRawToken();
+		await createPendingInvitation(token);
+		await registerOwnerAccount("invited-owner@example.com");
+
+		const response = await request(app.getHttpServer())
+			.get(`/api/owner-invitations/${token}`)
+			.expect(200);
+
+		expect(response.body).toMatchObject({
+			email: "invited-owner@example.com",
+			emailRegistered: true,
+		});
 	});
 
 	it("returns not found for an unknown invitation token", async () => {
@@ -247,17 +268,149 @@ describe("Owner invitations (e2e)", () => {
 		expect(response.body.message).toBe("Owner invitation was already accepted");
 	});
 
-	it("rejects accepting an invitation when the owner email is already registered", async () => {
+	it("lets an existing owner accept an invitation with their password", async () => {
+		const token = makeRawToken();
+		const { invitation, ownerLink, engagement } =
+			await createPendingInvitation(token);
+		const owner = await registerOwnerAccount("invited-owner@example.com");
+
+		const response = await owner.agent
+			.post(`/api/owner-invitations/${token}/accept`)
+			.send({ mode: "login", password: managerPassword })
+			.expect(201);
+
+		expect(response.body).toMatchObject({
+			user: {
+				id: owner.userId,
+				email: "invited-owner@example.com",
+			},
+		});
+		await expect(
+			prisma.user.count({ where: { email: "invited-owner@example.com" } }),
+		).resolves.toBe(1);
+		await expect(
+			prisma.ownerInvitation.count({
+				where: {
+					id: invitation.id,
+					status: OwnerInvitationStatus.ACCEPTED,
+					acceptedAt: { not: null },
+				},
+			}),
+		).resolves.toBe(1);
+		await expect(
+			prisma.propertyAssetOwner.count({
+				where: {
+					id: ownerLink.id,
+					userId: owner.userId,
+					accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+				},
+			}),
+		).resolves.toBe(1);
+
+		const properties = await owner.agent
+			.get("/api/owner/properties")
+			.expect(200);
+		expect(properties.body).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: engagement.body.property.id,
+					title: "Invitation property",
+				}),
+			]),
+		);
+	});
+
+	it("lets a signed-in existing owner accept an invitation for the same email", async () => {
+		const token = makeRawToken();
+		const { ownerLink } = await createPendingInvitation(token);
+		const owner = await registerOwnerAccount("invited-owner@example.com");
+
+		await owner.agent
+			.post(`/api/owner-invitations/${token}/accept`)
+			.set("Cookie", owner.accessCookie)
+			.send({ mode: "current-session" })
+			.expect(201);
+
+		await expect(
+			prisma.user.count({ where: { email: "invited-owner@example.com" } }),
+		).resolves.toBe(1);
+		await expect(
+			prisma.propertyAssetOwner.count({
+				where: {
+					id: ownerLink.id,
+					userId: owner.userId,
+					accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+				},
+			}),
+		).resolves.toBe(1);
+	});
+
+	it("rejects an existing owner login with the wrong password without activating the invitation", async () => {
 		const token = makeRawToken();
 		const { invitation, ownerLink } = await createPendingInvitation(token);
-		await registerTenantSession(
-			"invited-owner@example.com",
-			"Existing Owner Homes",
+		await registerOwnerAccount("invited-owner@example.com");
+
+		const response = await request(app.getHttpServer())
+			.post(`/api/owner-invitations/${token}/accept`)
+			.send({ mode: "login", password: "wrong-password-123" })
+			.expect(401);
+
+		expect(response.body.message).toBe("Invalid email or password");
+		await expect(
+			prisma.ownerInvitation.count({
+				where: { id: invitation.id, status: OwnerInvitationStatus.PENDING },
+			}),
+		).resolves.toBe(1);
+		await expect(
+			prisma.propertyAssetOwner.count({
+				where: {
+					id: ownerLink.id,
+					userId: null,
+					accessStatus: PropertyAssetOwnerAccessStatus.INVITED,
+				},
+			}),
+		).resolves.toBe(1);
+	});
+
+	it("rejects current-session acceptance from a different email without activating the invitation", async () => {
+		const token = makeRawToken();
+		const { invitation, ownerLink } = await createPendingInvitation(token);
+		const wrongOwner = await registerOwnerAccount("wrong-owner@example.com");
+
+		const response = await wrongOwner.agent
+			.post(`/api/owner-invitations/${token}/accept`)
+			.set("Cookie", wrongOwner.accessCookie)
+			.send({ mode: "current-session" })
+			.expect(403);
+
+		expect(response.body.message).toBe(
+			"Owner invitation belongs to another email",
 		);
+		await expect(
+			prisma.ownerInvitation.count({
+				where: { id: invitation.id, status: OwnerInvitationStatus.PENDING },
+			}),
+		).resolves.toBe(1);
+		await expect(
+			prisma.propertyAssetOwner.count({
+				where: {
+					id: ownerLink.id,
+					userId: null,
+					accessStatus: PropertyAssetOwnerAccessStatus.INVITED,
+				},
+			}),
+		).resolves.toBe(1);
+	});
+
+	it("still rejects register-mode acceptance when the owner email is already registered", async () => {
+		const token = makeRawToken();
+		const { invitation, ownerLink } = await createPendingInvitation(token);
+		await registerOwnerAccount("invited-owner@example.com");
 
 		const response = await request(app.getHttpServer())
 			.post(`/api/owner-invitations/${token}/accept`)
 			.send({
+				mode: "register",
 				firstName: "Accepted",
 				lastName: "Owner",
 				password: ownerPassword,
@@ -381,6 +534,27 @@ describe("Owner invitations (e2e)", () => {
 			agent,
 			userId: response.body.user.id as string,
 			tenantId: response.body.memberships[0].tenant.id as string,
+		};
+	}
+
+	async function registerOwnerAccount(email: string) {
+		const user = await prisma.user.create({
+			data: {
+				email: email.toLowerCase(),
+				firstName: "Existing",
+				lastName: "Owner",
+				passwordHash: await hashPassword(managerPassword, { type: argon2id }),
+			},
+		});
+		const accessToken = await tokenService.signAccessToken({
+			sub: user.id,
+			email: user.email,
+		});
+
+		return {
+			agent: request.agent(app.getHttpServer()),
+			accessCookie: `${ACCESS_TOKEN_COOKIE}=${accessToken}`,
+			userId: user.id,
 		};
 	}
 

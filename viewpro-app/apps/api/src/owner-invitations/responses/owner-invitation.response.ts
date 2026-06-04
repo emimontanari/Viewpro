@@ -4,6 +4,7 @@ export type OwnerInvitationResponse = {
 	id: string;
 	propertyAssetOwnerId: string;
 	email: string;
+	emailRegistered: boolean;
 	ownerFirstName: string;
 	ownerLastName: string;
 	property: {
@@ -23,6 +24,7 @@ export function mapOwnerInvitation(
 		id: invitation.id,
 		propertyAssetOwnerId: invitation.propertyAssetOwnerId,
 		email: invitation.email,
+		emailRegistered: invitation.emailRegistered,
 		ownerFirstName: invitation.propertyAssetOwner.ownerFirstName,
 		ownerLastName: invitation.propertyAssetOwner.ownerLastName,
 		property: invitation.propertyAssetOwner.propertyAsset,

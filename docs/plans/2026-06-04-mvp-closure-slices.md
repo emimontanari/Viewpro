@@ -29,7 +29,7 @@ If a task does not move ViewPro closer to a real inmobiliaria operating without 
 | Stage | Status | Evidence summary | Remaining gap |
 | --- | --- | --- | --- |
 | 20 — Documentación end-to-end | Mostly implemented | Owner inbox/upload, internal review, approve/reject/read, version/status/rejection visibility, S3/R2 storage, seeded smoke coverage | Confirm/document activity in Seguimiento and full regression evidence |
-| 21 — Invitaciones propietarios | Mostly implemented | Owner invitation model/token/link, acceptance page, new owner activation, manual link regeneration | Existing owner accepts another agency/property; explicit revoke/resend UX; invited/activated activity evidence |
+| 21 — Invitaciones propietarios | Mostly implemented | Owner invitation model/token/link, acceptance page, new owner activation, existing owner acceptance, manual link regeneration | Explicit revoke/resend UX; invited/activated activity evidence |
 | 22 — Equipo real | Mostly implemented | Real team list, invitations, public acceptance, role update, deactivate, permissions | Trial/user limits and full E2E evidence |
 | 23 — Comunicación | Partially complete | WhatsApp contact fields, owner property/movement contact links, click tracking | UI/config to edit phone/contact priority; final E2E evidence |
 | 24 — Notificaciones reales | Mostly implemented | Internal/owner notification API, BFF, notification center, producers, read/unread | Full seeded E2E proving producers/routing/read state across roles |
@@ -161,29 +161,28 @@ Green validation baseline:
 
 ## Corrected next slice recommendation
 
-### Recommended: Stage 21.5 — Existing owner accepts another agency/property
+### Recommended: Stage 21.6 — Minimal owner invitation management
 
-**Why this next:** Stage 26.0 proved the validation baseline is green and identified the highest product-risk P0 as existing-owner invitation acceptance. Admin remains a major P0, but a real owner can belong to multiple agencies, and the public invitation flow must not fail for an already-registered owner.
+**Why this next:** Stage 21.5 closed the highest product-risk owner onboarding gap: an existing owner can now accept another property/agency invitation. The remaining owner-invitation P0 is manager control over pending links without support/DB work.
 
 ```txt
 Stage: 21
-Slice: 21.5 — Existing owner accepts another agency/property
-Objective: let a global owner account accept a new property/agency invitation without conflict or duplicate user creation.
-Evidence needed: API tests, UI tests, and seeded acceptance proof for an already-registered owner email.
-Do not touch: email delivery, billing, full owner account settings.
-Done: existing owner accepts an invite, gains access to the new property/agency, and no longer receives a registered-email conflict.
-Next slice: 21.6 — Minimal owner invitation management.
+Slice: 21.6 — Minimal owner invitation management
+Objective: give managers a clear way to regenerate/resend-copy and revoke pending owner invite links.
+Evidence needed: API/UI tests for regenerate and revoke; accepted/expired/revoked states remain safe.
+Do not touch: email delivery automation or advanced invitation analytics.
+Done: manager can regenerate/copy a fresh pending link and revoke a pending link without DB/support help.
+Next slice: 25.1 — Admin tenant status write API + audit log.
 ```
 
 ## Recommended sequence from here
 
-1. **Implement Stage 21.5 Existing owner accepts another agency/property.**
-2. **Implement Stage 21.6 Minimal owner invitation management.**
-3. **Implement Stage 25.1 Admin tenant status write API + audit log.**
-4. **Implement Stage 25.2 Admin tenant management UI.**
-5. **Implement Stage 25.3 Tenant limits model/API.**
-6. **Implement Stage 25.4 Tenant limits enforcement.**
-7. **Continue remaining P0/P1 closure:** WhatsApp config, notification E2E, Seguimiento document activity, team/seller evidence, final hardening, deploy checklist, final deck.
+1. **Implement Stage 21.6 Minimal owner invitation management.**
+2. **Implement Stage 25.1 Admin tenant status write API + audit log.**
+3. **Implement Stage 25.2 Admin tenant management UI.**
+4. **Implement Stage 25.3 Tenant limits model/API.**
+5. **Implement Stage 25.4 Tenant limits enforcement.**
+6. **Continue remaining P0/P1 closure:** WhatsApp config, notification E2E, Seguimiento document activity, team/seller evidence, final hardening, deploy checklist, final deck.
 
 ## Backlog outside immediate focus
 
