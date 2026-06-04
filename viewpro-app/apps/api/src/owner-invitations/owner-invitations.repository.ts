@@ -12,6 +12,7 @@ export type OwnerInvitationDetails = {
 	id: string;
 	propertyAssetOwnerId: string;
 	email: string;
+	emailRegistered: boolean;
 	status: OwnerInvitationStatus;
 	expiresAt: Date;
 	acceptedAt: Date | null;
@@ -41,17 +42,28 @@ export type AcceptOwnerInvitationInput = {
 	now: Date;
 };
 
+export type AcceptExistingOwnerInvitationInput = {
+	tokenHash: string;
+	userId: string;
+	now: Date;
+};
+
 export type AcceptOwnerInvitationResult =
 	| { status: "accepted"; user: User }
 	| { status: "notFound" }
 	| { status: "expired" }
 	| { status: "revoked" }
 	| { status: "alreadyAccepted" }
-	| { status: "userAlreadyExists" };
+	| { status: "userAlreadyExists" }
+	| { status: "emailMismatch" };
 
 export type OwnerInvitationsRepository = {
 	findByTokenHash(tokenHash: string): Promise<OwnerInvitationDetails | null>;
+	findUserByEmail(email: string): Promise<User | null>;
 	acceptForNewOwner(
 		input: AcceptOwnerInvitationInput,
+	): Promise<AcceptOwnerInvitationResult>;
+	acceptForExistingOwner(
+		input: AcceptExistingOwnerInvitationInput,
 	): Promise<AcceptOwnerInvitationResult>;
 };

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { argon2id, hash } from "argon2";
@@ -69,6 +69,10 @@ const DEMO_OWNER_USER = {
 	firstName: "Propietario",
 	lastName: "Demo",
 };
+const DEMO_EXISTING_OWNER_INVITATION_TOKEN =
+	"seeded-existing-owner-invitation-token";
+const DEMO_EXISTING_OWNER_INVITED_PROPERTY_TITLE =
+	"Casa luminosa con patio en Los Boulevares";
 const DEMO_AUTH_USERS = [...DEMO_USERS, DEMO_OWNER_USER];
 
 const DEMO_USER_EMAILS = DEMO_AUTH_USERS.map((user) => user.email);
@@ -529,6 +533,7 @@ async function seedDemo(client) {
 	const users = await createDemoUsers(client);
 	const tenant = await createDemoTenant(client, users);
 	const properties = await createDemoProperties(client, tenant, users);
+	await createDemoExistingOwnerInvitation(client, users, properties);
 	const images = await createDemoPropertyImages(client, tenant, properties);
 	const movements = await createDemoMovements(
 		client,
@@ -797,6 +802,39 @@ async function createDemoProperties(client, tenant, users) {
 	return createdProperties;
 }
 
+async function createDemoExistingOwnerInvitation(client, users, properties) {
+	const owner = users.get(DEMO_OWNER_EMAIL);
+	const property = properties.find(
+		(candidate) =>
+			candidate.fixture.title === DEMO_EXISTING_OWNER_INVITED_PROPERTY_TITLE,
+	);
+
+	if (!owner || !property) {
+		return null;
+	}
+
+	const propertyOwner = await client.propertyAssetOwner.create({
+		data: {
+			propertyAssetId: property.asset.id,
+			ownerEmail: owner.email,
+			ownerFirstName: owner.firstName,
+			ownerLastName: owner.lastName,
+			accessStatus: PropertyAssetOwnerAccessStatus.INVITED,
+			isPrimary: false,
+			createdAt: daysAgo(3),
+		},
+	});
+
+	return client.ownerInvitation.create({
+		data: {
+			propertyAssetOwnerId: propertyOwner.id,
+			email: owner.email,
+			tokenHash: hashOwnerInvitationToken(DEMO_EXISTING_OWNER_INVITATION_TOKEN),
+			expiresAt: daysFromNow(14),
+		},
+	});
+}
+
 async function createDemoPropertyImages(client, tenant, properties) {
 	const images = [];
 
@@ -956,7 +994,7 @@ function getUploadsRoot() {
 function getDocumentStorageRoot() {
 	return resolve(
 		process.env.DOCUMENT_STORAGE_LOCAL_ROOT ??
-		join(process.cwd(), ".document-storage"),
+			join(process.cwd(), ".document-storage"),
 	);
 }
 
@@ -965,7 +1003,9 @@ function resolveDocumentStoragePath(storageKey) {
 	const absolutePath = resolve(root, storageKey);
 
 	if (absolutePath !== root && !absolutePath.startsWith(`${root}/`)) {
-		throw new Error(`Refusing to write document fixture outside storage root: ${storageKey}`);
+		throw new Error(
+			`Refusing to write document fixture outside storage root: ${storageKey}`,
+		);
 	}
 
 	return absolutePath;
@@ -1380,7 +1420,8 @@ async function createDocumentReviewAnalyticsEvents(
 				eventName: AnalyticsEventName.DOCUMENT_REJECTED,
 				propertyEngagementId: request.propertyEngagementId,
 				documentRequestId: request.id,
-				occurredAt: request.demoReviewedAt ?? request.reviewedAt ?? request.updatedAt,
+				occurredAt:
+					request.demoReviewedAt ?? request.reviewedAt ?? request.updatedAt,
 			},
 		];
 	});
@@ -1477,6 +1518,16 @@ function daysAgo(days) {
 	const date = new Date();
 	date.setDate(date.getDate() - days);
 	return date;
+}
+
+function daysFromNow(days) {
+	const date = new Date();
+	date.setDate(date.getDate() + days);
+	return date;
+}
+
+function hashOwnerInvitationToken(token) {
+	return createHash("sha256").update(token).digest("hex");
 }
 
 function moneyToCents(amount) {
