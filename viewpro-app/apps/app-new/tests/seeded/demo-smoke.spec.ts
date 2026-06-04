@@ -119,11 +119,11 @@ test('demo owner can upload a requested document', async ({ page }) => {
     mimeType: 'application/pdf',
     buffer: Buffer.from('%PDF-1.4\n% ViewPro seeded owner upload\n', 'utf8')
   });
+  await page.getByRole('button', { name: 'Confirmar carga' }).click();
 
   const uploadedRequest = page.locator('li').filter({ hasText: requestTitle }).first();
-  await expect(uploadedRequest.getByText('Subido', { exact: true })).toBeVisible();
-  await expect(uploadedRequest.getByText('Versión actual del documento')).toBeVisible();
-  await expect(uploadedRequest.getByText('seeded-smoke-document.pdf')).toBeVisible();
+  await expect(uploadedRequest.getByText('En revisión', { exact: true })).toBeVisible();
+  await expect(uploadedRequest.getByText(/Subido el/i)).toBeVisible();
 });
 
 test('demo manager can review a submitted document request', async ({ page }) => {
@@ -149,6 +149,8 @@ test('demo manager can review a submitted document request', async ({ page }) =>
 
   await submittedRequest.getByRole('button', { name: 'Aprobar' }).click();
 
+  await page.getByRole('tab', { name: /Resueltos\s*·\s*2/i }).click();
+  await page.getByRole('button', { name: /Historial\s*2 resueltas/i }).click();
   const reviewedRequest = page.locator('li').filter({ hasText: 'Escritura firmada' }).first();
   await expect(reviewedRequest.getByText('Aprobado', { exact: true })).toBeVisible();
 });
@@ -159,14 +161,15 @@ async function openOwnerPropertyDetail(page: Page) {
   await expect(page.getByRole('heading', { name: 'Tus propiedades' })).toBeVisible();
   await expect(page.getByText('Inmobiliaria vinculada')).toBeVisible();
   await expect(page.getByText(DEMO_TENANT_NAME, { exact: true })).toBeVisible();
-  await expect(page.getByText(OWNER_VISIBLE_PROPERTY_TITLE)).toBeVisible();
+  await expect(
+    page.getByRole('img', { name: `Imagen principal de ${OWNER_VISIBLE_PROPERTY_TITLE}` })
+  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Casa familiar con pileta' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Abrir propiedad' }).first()).toBeVisible();
   await expect(page.getByRole('link', { name: /Ver seguimiento/i }).first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Nueva propiedad' })).toHaveCount(0);
 
-  await page
-    .getByRole('link', { name: /Ver seguimiento/i })
-    .first()
-    .click();
+  await page.getByRole('link', { name: 'Abrir propiedad' }).first().click();
   await expect(page).toHaveURL(/\/owner\/properties\/[a-f0-9-]+$/i);
   await expect(page.getByRole('heading', { name: OWNER_VISIBLE_PROPERTY_TITLE })).toBeVisible();
 }
@@ -179,7 +182,7 @@ async function openAndVerifySignedReadUrl(page: Page, requestItem: Locator) {
   );
   const popupPromise = page.waitForEvent('popup', { timeout: 5_000 }).catch(() => null);
 
-  await requestItem.getByRole('button', { name: 'Abrir documento' }).click();
+  await requestItem.getByRole('button', { name: 'Abrir documento', exact: true }).click();
 
   const readUrlResponse = await readUrlResponsePromise;
   expect(readUrlResponse.ok()).toBe(true);

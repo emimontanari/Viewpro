@@ -78,6 +78,7 @@ export function PendingTeamInvitationsList({
                             size='sm'
                             variant='outline'
                             disabled={isRegenerating || isRevoking}
+                            aria-label={`Regenerar y copiar link para ${invitation.email}`}
                             onClick={() => onRegenerateAndCopy(invitation.invitationId)}
                           >
                             {isRegenerating ? 'Regenerando...' : 'Regenerar y copiar link'}
@@ -87,6 +88,7 @@ export function PendingTeamInvitationsList({
                             size='sm'
                             variant='destructive'
                             disabled={isRegenerating || isRevoking}
+                            aria-label={`Revocar invitación para ${invitation.email}`}
                             onClick={() => onRevoke(invitation.invitationId)}
                           >
                             {isRevoking ? 'Revocando...' : 'Revocar'}

@@ -251,7 +251,7 @@ function uploadBlobWithProgress(
     xhr.open('PUT', url);
     xhr.setRequestHeader('content-type', mimeType);
 
-    xhr.upload.onprogress = (event) => {
+    attachEventListener<ProgressEvent>(xhr.upload, 'progress', (event) => {
       if (event.lengthComputable && event.total > 0) {
         options.onProgress?.({
           loaded: event.loaded,
@@ -262,11 +262,13 @@ function uploadBlobWithProgress(
       }
 
       options.onProgress?.({ loaded: event.loaded, total: 0, percent: 35 });
-    };
+    });
 
-    xhr.onerror = () => reject(new Error('No se pudo subir el documento.'));
-    xhr.ontimeout = () => reject(new Error('La carga del documento tardó demasiado.'));
-    xhr.onload = () => {
+    attachEventListener(xhr, 'error', () => reject(new Error('No se pudo subir el documento.')));
+    attachEventListener(xhr, 'timeout', () =>
+      reject(new Error('La carga del documento tardó demasiado.'))
+    );
+    attachEventListener(xhr, 'load', () => {
       const body = parseJson(xhr.responseText);
 
       if (xhr.status < 200 || xhr.status >= 300) {
@@ -281,10 +283,23 @@ function uploadBlobWithProgress(
           mimeType
         }
       );
-    };
+    });
 
     xhr.send(fileOrBlob);
   });
+}
+
+function attachEventListener<TEvent extends Event = Event>(
+  target: EventTarget | Record<string, unknown>,
+  type: string,
+  listener: (event: TEvent) => void
+) {
+  if ('addEventListener' in target && typeof target.addEventListener === 'function') {
+    target.addEventListener(type, listener as EventListener);
+    return;
+  }
+
+  (target as Record<string, unknown>)[`on${type}`] = listener;
 }
 
 function parseJson(value: string) {
