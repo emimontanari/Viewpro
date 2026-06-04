@@ -8,12 +8,15 @@ import { PrismaService } from '../src/database/prisma.service'
 describe('Owner document endpoints (e2e)', () => {
   let app: INestApplication
   let prisma: PrismaService
+  let previousDocumentStorageDriver: string | undefined
 
   beforeAll(async () => {
+    previousDocumentStorageDriver = process.env.DOCUMENT_STORAGE_DRIVER
     process.env.NODE_ENV = 'test'
     process.env.ACCESS_TOKEN_SECRET = 'test-access-token-secret'
     process.env.COOKIE_DOMAIN = 'localhost'
     process.env.COOKIE_SECURE = 'false'
+    process.env.DOCUMENT_STORAGE_DRIVER = 'fake'
 
     app = await createApiApp()
     await app.init()
@@ -37,6 +40,7 @@ describe('Owner document endpoints (e2e)', () => {
 
   afterAll(async () => {
     await app.close()
+    restoreEnv('DOCUMENT_STORAGE_DRIVER', previousDocumentStorageDriver)
   })
 
   it('lets an owner list and read only requests addressed to them without x-tenant-id', async () => {
@@ -201,6 +205,15 @@ describe('Owner document endpoints (e2e)', () => {
       .post(`/api/property-engagements/${engagementId}/document-requests`)
       .set('x-tenant-id', tenantId)
       .send({ propertyAssetOwnerId, title })
+  }
+
+  function restoreEnv(name: string, value: string | undefined) {
+    if (value === undefined) {
+      delete process.env[name]
+      return
+    }
+
+    process.env[name] = value
   }
 
   async function grantOwnerAccess(

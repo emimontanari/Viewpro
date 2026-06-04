@@ -305,7 +305,7 @@ describe("Admin access (e2e)", () => {
 				documentRequests: 1,
 				analyticsEvents: 2,
 			},
-			lastActivityAt: "2026-05-18T12:00:00.000Z",
+			lastActivityAt: fixture.latestAnalyticsOccurredAt,
 		});
 		expectNoSensitiveFields(response.body);
 	});
@@ -340,7 +340,7 @@ describe("Admin access (e2e)", () => {
 					propertyAssetId: fixture.propertyAssetId,
 					documentRequestId: fixture.documentRequestId,
 					movementId: null,
-					occurredAt: "2026-05-18T12:00:00.000Z",
+					occurredAt: fixture.latestAnalyticsOccurredAt,
 				},
 				{
 					id: fixture.earlierAnalyticsEventId,
@@ -351,7 +351,7 @@ describe("Admin access (e2e)", () => {
 					propertyAssetId: fixture.propertyAssetId,
 					documentRequestId: null,
 					movementId: null,
-					occurredAt: "2026-05-17T12:00:00.000Z",
+					occurredAt: fixture.earlierAnalyticsOccurredAt,
 				},
 			],
 		});
@@ -457,6 +457,12 @@ describe("Admin access (e2e)", () => {
 				status: DocumentRequestStatus.PENDING,
 			},
 		});
+		const latestAnalyticsOccurredAt = new Date(
+			Date.now() - 24 * 60 * 60 * 1000,
+		);
+		const earlierAnalyticsOccurredAt = new Date(
+			Date.now() - 2 * 24 * 60 * 60 * 1000,
+		);
 		const earlierEvent = await prisma.analyticsEvent.create({
 			data: {
 				tenantId: activeTenant.id,
@@ -469,7 +475,7 @@ describe("Admin access (e2e)", () => {
 					storageKey: "private/storage/key",
 					safeCount: 1,
 				},
-				occurredAt: new Date("2026-05-17T12:00:00.000Z"),
+				occurredAt: earlierAnalyticsOccurredAt,
 			},
 		});
 		const latestEvent = await prisma.analyticsEvent.create({
@@ -486,7 +492,7 @@ describe("Admin access (e2e)", () => {
 					checksum: "secret-checksum",
 					readUrl: "https://private-url",
 				},
-				occurredAt: new Date("2026-05-18T12:00:00.000Z"),
+				occurredAt: latestAnalyticsOccurredAt,
 			},
 		});
 
@@ -496,7 +502,9 @@ describe("Admin access (e2e)", () => {
 			engagementId: engagement.id,
 			documentRequestId: documentRequest.id,
 			earlierAnalyticsEventId: earlierEvent.id,
+			earlierAnalyticsOccurredAt: earlierAnalyticsOccurredAt.toISOString(),
 			latestAnalyticsEventId: latestEvent.id,
+			latestAnalyticsOccurredAt: latestAnalyticsOccurredAt.toISOString(),
 		};
 	}
 

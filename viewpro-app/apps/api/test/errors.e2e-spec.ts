@@ -114,10 +114,22 @@ function createMockArgumentsHost(path: string, requestId: string, status = vi.fn
 
 describe('GlobalExceptionFilter production sanitization (e2e)', () => {
   let app: INestApplication
+  let previousDocumentStorageDriver: string | undefined
+  let previousS3Bucket: string | undefined
+  let previousS3AccessKeyId: string | undefined
+  let previousS3SecretAccessKey: string | undefined
 
   beforeAll(async () => {
+    previousDocumentStorageDriver = process.env.DOCUMENT_STORAGE_DRIVER
+    previousS3Bucket = process.env.DOCUMENT_STORAGE_S3_BUCKET
+    previousS3AccessKeyId = process.env.DOCUMENT_STORAGE_S3_ACCESS_KEY_ID
+    previousS3SecretAccessKey = process.env.DOCUMENT_STORAGE_S3_SECRET_ACCESS_KEY
     process.env.NODE_ENV = 'production'
     process.env.CORS_ORIGIN = 'https://app.viewpro.example'
+    process.env.DOCUMENT_STORAGE_DRIVER = 's3'
+    process.env.DOCUMENT_STORAGE_S3_BUCKET = 'test-documents'
+    process.env.DOCUMENT_STORAGE_S3_ACCESS_KEY_ID = 'test-access-key'
+    process.env.DOCUMENT_STORAGE_S3_SECRET_ACCESS_KEY = 'test-secret-key'
 
     app = await createApiApp()
     await app.init()
@@ -127,6 +139,10 @@ describe('GlobalExceptionFilter production sanitization (e2e)', () => {
     await app.close()
     process.env.NODE_ENV = 'test'
     delete process.env.CORS_ORIGIN
+    restoreEnv('DOCUMENT_STORAGE_DRIVER', previousDocumentStorageDriver)
+    restoreEnv('DOCUMENT_STORAGE_S3_BUCKET', previousS3Bucket)
+    restoreEnv('DOCUMENT_STORAGE_S3_ACCESS_KEY_ID', previousS3AccessKeyId)
+    restoreEnv('DOCUMENT_STORAGE_S3_SECRET_ACCESS_KEY', previousS3SecretAccessKey)
   })
 
   it('removes route internals while preserving diagnostic envelope fields', async () => {
@@ -147,3 +163,12 @@ describe('GlobalExceptionFilter production sanitization (e2e)', () => {
     expect(response.headers['x-request-id']).toBe('production-request-id')
   })
 })
+
+function restoreEnv(name: string, value: string | undefined) {
+  if (value === undefined) {
+    delete process.env[name]
+    return
+  }
+
+  process.env[name] = value
+}

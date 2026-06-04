@@ -88,6 +88,8 @@ export function OwnerDocumentUploadDialog({
 
             {isImage && previewUrl ? (
               <div className='overflow-hidden rounded-2xl border bg-muted/20'>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* oxlint-disable-next-line next/no-img-element */}
                 <img
                   src={previewUrl}
                   alt={`Vista previa de ${file.name}`}
