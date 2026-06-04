@@ -1,12 +1,18 @@
 'use client';
 
-import { Icons } from '@/components/icons';
-import { Badge } from '@/components/ui/badge';
+import { Icons, type Icon } from '@/components/icons';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from '@/components/ui/accordion';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { IconHome, IconId, type IconProps } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type ChangeEvent, type ComponentType, useRef, useState } from 'react';
+import { type ChangeEvent, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ownerDocumentRequestsOptions, ownerKeys } from '../api/queries';
 import {
@@ -18,9 +24,9 @@ import {
 import type {
   OwnerDocumentRequest,
   OwnerDocumentRequestStatus,
-  OwnerDocumentVersion,
-  OwnerDocumentVersionStatus
+  OwnerDocumentVersion
 } from '../api/types';
+import { OwnerDocumentStatusBadge, ownerDocumentStatusConfig } from './owner-document-status-badge';
 import { OwnerDocumentUploadDialog, type OwnerUploadPhase } from './owner-document-upload-dialog';
 
 const OWNER_DOCUMENT_FILTERS = { pageSize: 20 };
@@ -32,59 +38,50 @@ const ACCEPTED_UPLOAD_MIME_TYPES = new Set([
   'image/webp'
 ]);
 const ACCEPTED_UPLOAD_INPUT_TYPES = 'application/pdf,image/jpeg,image/png,image/webp';
+const UPLOAD_HELP_TEXT = 'Formatos: JPG, PNG, WebP o PDF · máx. 10 MB.';
 
-const documentStatusLabels: Record<OwnerDocumentRequestStatus, string> = {
-  APPROVED: 'Aprobado',
-  CANCELLED: 'Cancelado',
-  PENDING: 'Pendiente',
-  REJECTED: 'Rechazado',
-  SUBMITTED: 'Subido'
+type OwnerDocumentActionConfig = {
+  primaryReadLabel?: string;
+  primaryUploadLabel?: string;
 };
 
-const documentStatusTones: Record<OwnerDocumentRequestStatus, string> = {
-  APPROVED:
-    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300',
-  CANCELLED:
-    'border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300',
-  PENDING:
-    'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300',
-  REJECTED:
-    'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300',
-  SUBMITTED:
-    'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300'
+type OwnerDocumentLifecycleCopyContext = {
+  agencyName: string;
+  request: OwnerDocumentRequest;
 };
 
-const documentVersionStatusTones: Record<OwnerDocumentVersionStatus, string> = {
-  APPROVED:
-    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300',
-  PENDING_UPLOAD:
-    'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300',
-  REJECTED:
-    'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300',
-  UPLOADED:
-    'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300'
+const ownerDocumentLifecycleCopyConfig: Record<
+  OwnerDocumentRequestStatus,
+  (context: OwnerDocumentLifecycleCopyContext) => string | null
+> = {
+  APPROVED: ({ request }) =>
+    `Aprobado el ${formatUploadDate(request.reviewedAt ?? request.updatedAt)}.`,
+  CANCELLED: () => 'Esta solicitud fue cancelada y ya no requiere acciones.',
+  PENDING: ({ agencyName }) =>
+    `Subí este documento para que ${agencyName} pueda revisar la gestión.`,
+  REJECTED: () => null,
+  SUBMITTED: ({ agencyName }) =>
+    `En revisión por ${agencyName}. Te avisaremos cuando haya una novedad.`
 };
 
-const documentIconChipTones: Record<OwnerDocumentRequestStatus, string> = {
-  APPROVED:
-    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/50 dark:text-emerald-200',
-  CANCELLED:
-    'border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300',
-  PENDING:
-    'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/50 dark:text-amber-200',
-  REJECTED:
-    'border-red-200 bg-red-50 text-red-700 dark:border-red-900/70 dark:bg-red-950/50 dark:text-red-200',
-  SUBMITTED:
-    'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/70 dark:bg-blue-950/50 dark:text-blue-200'
+const ownerDocumentActionConfig: Record<OwnerDocumentRequestStatus, OwnerDocumentActionConfig> = {
+  APPROVED: { primaryReadLabel: 'Abrir documento' },
+  CANCELLED: {},
+  PENDING: { primaryUploadLabel: 'Subir documento' },
+  REJECTED: { primaryUploadLabel: 'Subir nueva versión' },
+  // The API currently accepts owner uploads only for PENDING and REJECTED requests.
+  // Keep SUBMITTED read-only here instead of showing a replacement action that would fail.
+  SUBMITTED: { primaryReadLabel: 'Abrir documento' }
 };
 
-type DocumentIcon = ComponentType<IconProps>;
+type DocumentIcon = Icon;
 
-const documentVersionStatusLabels: Record<OwnerDocumentVersionStatus, string> = {
-  APPROVED: 'Aprobada',
-  PENDING_UPLOAD: 'Pendiente de subida',
-  REJECTED: 'Rechazada',
-  UPLOADED: 'Subida'
+type OwnerDocumentRequestsProps = {
+  /** Agency label shown in card subtitles unless `hideAgencyInDocumentCards` is enabled. */
+  agencyName?: string;
+  /** Hide repeated agency copy inside each card when the surrounding page already shows it. */
+  hideAgencyInDocumentCards?: boolean;
+  propertyEngagementId: string;
 };
 
 type SelectedUpload = {
@@ -95,11 +92,9 @@ type SelectedUpload = {
 
 export function OwnerDocumentRequests({
   agencyName = 'la inmobiliaria',
+  hideAgencyInDocumentCards = false,
   propertyEngagementId
-}: {
-  agencyName?: string;
-  propertyEngagementId: string;
-}) {
+}: OwnerDocumentRequestsProps) {
   const queryClient = useQueryClient();
   const [selectedUpload, setSelectedUpload] = useState<SelectedUpload | null>(null);
   const [fileSelectionError, setFileSelectionError] = useState<string | null>(null);
@@ -237,6 +232,7 @@ export function OwnerDocumentRequests({
                 key={request.id}
                 agencyName={agencyName}
                 request={request}
+                showAgencyInHeader={!hideAgencyInDocumentCards}
                 isUploading={uploadMutation.isPending}
                 isReading={readMutation.isPending}
                 onRead={(versionId) => readMutation.mutate(versionId)}
@@ -268,7 +264,8 @@ function OwnerDocumentRequestItem({
   isUploading,
   onRead,
   onUpload,
-  request
+  request,
+  showAgencyInHeader
 }: {
   agencyName: string;
   isReading: boolean;
@@ -276,16 +273,21 @@ function OwnerDocumentRequestItem({
   onRead: (versionId: string) => void;
   onUpload: (request: OwnerDocumentRequest, file: File) => void;
   request: OwnerDocumentRequest;
+  showAgencyInHeader: boolean;
 }) {
-  const canUpload = request.status === 'PENDING' || request.status === 'REJECTED';
-  const canRead =
-    (request.status === 'SUBMITTED' || request.status === 'APPROVED') && request.currentVersion;
-  const uploadLabel =
-    request.status === 'REJECTED' ? 'Volver a subir documento' : 'Subir documento';
+  const actionConfig = ownerDocumentActionConfig[request.status];
+  const canUpload = Boolean(actionConfig.primaryUploadLabel);
+  const canRead = Boolean(actionConfig.primaryReadLabel && request.currentVersion);
+  const uploadLabel = actionConfig.primaryUploadLabel ?? 'Subir documento';
+  const readLabel = actionConfig.primaryReadLabel ?? 'Abrir documento';
   const currentVersion = request.currentVersion;
   const historicalVersions = getHistoricalVersions(request);
-  const documentTypeLabel = getDocumentTypeLabel(request.title);
-  const HeaderIcon = getDocumentHeaderIcon(request.title);
+  const hasVersionHistory = historicalVersions.length > 0;
+  const lifecycleDescription = getDocumentLifecycleDescription(request, agencyName);
+  const requestDescription = getHelpfulRequestDescription(request);
+  const agencySubtitle = showAgencyInHeader ? `Solicitado por ${agencyName}` : null;
+  // All request cards use one document icon; file previews communicate actual file/category type.
+  const HeaderIcon = Icons.post;
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -308,166 +310,364 @@ function OwnerDocumentRequestItem({
   }
 
   return (
-    <li className='overflow-hidden rounded-xl border bg-background shadow-xs'>
-      <div className='space-y-4 p-4'>
-        <div
-          data-testid='owner-document-card-header'
-          className='flex items-start justify-between gap-3'
-        >
-          <div className='flex min-w-0 items-start gap-3'>
-            <span
-              aria-hidden='true'
-              className={cn(
-                'flex size-11 shrink-0 items-center justify-center rounded-xl border',
-                documentIconChipTones[request.status]
-              )}
-            >
-              <HeaderIcon className='size-5' />
-            </span>
-            <div className='min-w-0 space-y-1'>
-              <h4 className='break-words text-sm font-semibold'>{request.title}</h4>
-              <p className='break-words text-xs text-muted-foreground'>
-                {documentTypeLabel} · Solicitado por {agencyName}
+    <li>
+      <Card className='overflow-visible py-0 shadow-xs'>
+        <CardHeader className='rounded-t-xl border-b bg-muted/10 px-4 py-4'>
+          <div
+            data-testid='owner-document-card-header'
+            className='flex items-start justify-between gap-3'
+          >
+            <div className='flex min-w-0 items-start gap-3'>
+              <span
+                aria-hidden='true'
+                className={cn(
+                  'flex size-11 shrink-0 items-center justify-center rounded-xl border',
+                  ownerDocumentStatusConfig[request.status].iconChipClassName
+                )}
+              >
+                <HeaderIcon className='size-5' />
+              </span>
+              <div className='min-w-0 space-y-1'>
+                <h4 className='break-words text-sm font-semibold'>{request.title}</h4>
+                {agencySubtitle ? (
+                  <p className='truncate text-xs text-muted-foreground' title={agencySubtitle}>
+                    {agencySubtitle}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+            <OwnerDocumentStatusBadge status={request.status} />
+          </div>
+        </CardHeader>
+
+        <CardContent className='space-y-4 px-4 py-4'>
+          {request.status === 'REJECTED' ? <RejectionReasonAlert request={request} /> : null}
+
+          {lifecycleDescription ? (
+            <p className='whitespace-pre-wrap break-words text-sm text-foreground/80'>
+              {lifecycleDescription}
+            </p>
+          ) : null}
+
+          {requestDescription ? (
+            <div className='rounded-lg border bg-muted/20 p-3'>
+              <p className='text-xs font-medium text-foreground'>Qué tiene que incluir</p>
+              <p className='mt-1 whitespace-pre-wrap break-words text-sm text-foreground/90'>
+                {requestDescription}
               </p>
             </div>
-          </div>
-          <Badge
-            variant='outline'
-            className={cn('shrink-0 rounded-md', documentStatusTones[request.status])}
-          >
-            {documentStatusLabels[request.status]}
-          </Badge>
-        </div>
-
-        {request.description ? (
-          <p className='whitespace-pre-wrap break-words text-sm text-muted-foreground'>
-            {request.description}
-          </p>
-        ) : null}
-
-        {currentVersion ? (
-          <DocumentVersionRow label='Versión actual del documento' version={currentVersion} />
-        ) : null}
-
-        {historicalVersions.length > 0 ? (
-          <div className='space-y-2 rounded-lg border border-dashed bg-muted/10 p-3'>
-            <p className='text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase'>
-              Historial de versiones
-            </p>
-            <div className='space-y-2'>
-              {historicalVersions.map((version) => (
-                <DocumentVersionRow
-                  key={version.id}
-                  label='Versión anterior'
-                  rejectionReason={getVersionRejectionReason(version, request)}
-                  version={version}
-                />
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      {request.status === 'REJECTED' && request.rejectionReason ? (
-        <div
-          role='alert'
-          className='flex gap-3 border-t border-red-900/70 bg-[#190b0b] px-4 py-3 text-red-100'
-        >
-          <Icons.warning className='mt-0.5 size-5 shrink-0 text-red-300' />
-          <div className='min-w-0 space-y-1'>
-            <p className='text-[11px] font-semibold tracking-[0.12em] text-red-300 uppercase'>
-              MOTIVO DEL RECHAZO
-            </p>
-            <p className='break-words text-sm'>{request.rejectionReason}</p>
-          </div>
-        </div>
-      ) : null}
-
-      {canUpload || canRead ? (
-        <div className='border-t bg-background p-4'>
-          {canUpload ? (
-            <>
-              <input
-                ref={inputRef}
-                aria-label={`${uploadLabel} archivo`}
-                accept={ACCEPTED_UPLOAD_INPUT_TYPES}
-                className='sr-only'
-                disabled={isUploading}
-                tabIndex={-1}
-                type='file'
-                onChange={handleFileChange}
-              />
-              <Button
-                type='button'
-                className='w-full bg-purple-500 text-white hover:bg-purple-600 dark:bg-purple-500 dark:hover:bg-purple-400'
-                disabled={isUploading}
-                onClick={handleUploadClick}
-              >
-                <Icons.upload className='size-4' />
-                {uploadLabel}
-              </Button>
-            </>
           ) : null}
 
-          {canRead ? (
-            <Button
-              type='button'
-              variant='outline'
-              className='w-full border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-900/70 dark:bg-blue-950/50 dark:text-blue-200 dark:hover:bg-blue-900/60'
-              disabled={isReading}
-              onClick={() => onRead(request.currentVersion!.id)}
+          {currentVersion ? (
+            <DocumentVersionRow
+              displayName={getDocumentDisplayName(currentVersion, request.title)}
+              metadata={getVersionMetadata(
+                currentVersion,
+                hasVersionHistory ? historicalVersions.length + 1 : null
+              )}
+              version={currentVersion}
+            />
+          ) : null}
+
+          {historicalVersions.length > 0 ? (
+            <Accordion
+              type='single'
+              collapsible
+              className='rounded-lg border border-dashed bg-muted/10 px-3'
             >
-              <Icons.externalLink className='size-4' />
-              Abrir documento
-            </Button>
+              <AccordionItem value='document-history' className='border-b-0'>
+                <AccordionTrigger className='py-3 text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase hover:no-underline'>
+                  Ver historial de versiones ({historicalVersions.length})
+                </AccordionTrigger>
+                <AccordionContent className='space-y-2 pb-3'>
+                  {historicalVersions.map((version, index) => (
+                    <DocumentVersionRow
+                      key={version.id}
+                      displayName={getDocumentDisplayName(version, request.title)}
+                      metadata={getVersionMetadata(version, historicalVersions.length - index)}
+                      version={version}
+                    />
+                  ))}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           ) : null}
-        </div>
-      ) : null}
+        </CardContent>
+
+        {canUpload || canRead ? (
+          <CardFooter className='rounded-b-xl border-t bg-muted/10 px-4 py-4'>
+            <div className='w-full space-y-2'>
+              {canUpload ? (
+                <>
+                  <input
+                    ref={inputRef}
+                    aria-label={`${uploadLabel} archivo`}
+                    accept={ACCEPTED_UPLOAD_INPUT_TYPES}
+                    className='sr-only'
+                    disabled={isUploading}
+                    tabIndex={-1}
+                    type='file'
+                    onChange={handleFileChange}
+                  />
+                  <Button
+                    type='button'
+                    className='min-h-11 w-full'
+                    disabled={isUploading}
+                    onClick={handleUploadClick}
+                  >
+                    <Icons.upload className='size-4' />
+                    {uploadLabel}
+                  </Button>
+                  <p className='text-center text-xs text-muted-foreground'>{UPLOAD_HELP_TEXT}</p>
+                </>
+              ) : null}
+
+              {canRead ? (
+                <Button
+                  type='button'
+                  className='min-h-11 w-full'
+                  disabled={isReading}
+                  onClick={() => onRead(request.currentVersion!.id)}
+                >
+                  <Icons.externalLink className='size-4' />
+                  {readLabel}
+                </Button>
+              ) : null}
+            </div>
+          </CardFooter>
+        ) : null}
+      </Card>
     </li>
   );
 }
 
+function RejectionReasonAlert({ request }: { request: OwnerDocumentRequest }) {
+  const copy = getRejectionCopy(request);
+
+  return (
+    <Alert className='border-destructive/30 bg-destructive/10 text-foreground dark:bg-destructive/15'>
+      <Icons.warning className='text-destructive' />
+      <AlertTitle className='text-destructive'>{copy.title}</AlertTitle>
+      <AlertDescription className='text-foreground'>{copy.description}</AlertDescription>
+    </Alert>
+  );
+}
+
 function DocumentVersionRow({
-  label,
-  rejectionReason,
+  displayName,
+  metadata,
   version
 }: {
-  label: string;
-  rejectionReason?: string | null;
+  /** Optional user-facing filename from the backend; falls back to the original filename. */
+  displayName?: string;
+  metadata: string;
   version: OwnerDocumentVersion;
 }) {
-  const FileIcon = getDocumentFileIcon(version.mimeType);
+  const fileName = displayName?.trim() || version.originalFilename;
 
   return (
     <div className='rounded-lg border bg-muted/20 p-3 text-sm'>
-      <div className='flex items-center justify-between gap-3'>
-        <div className='flex min-w-0 items-center gap-3'>
-          <span
-            aria-hidden='true'
-            className='flex size-10 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground'
-          >
-            <FileIcon className='size-5' />
-          </span>
-          <div className='min-w-0'>
-            <p className='break-words font-medium'>{version.originalFilename}</p>
-            <p className='text-xs text-muted-foreground'>{label}</p>
-          </div>
+      <div className='flex min-w-0 items-center gap-3'>
+        <DocumentFilePreview displayName={fileName} version={version} />
+        <div className='min-w-0 flex-1'>
+          <p className='truncate font-medium text-foreground' title={fileName}>
+            {fileName}
+          </p>
+          <p className='mt-1 text-xs text-foreground/75'>{metadata}</p>
+          <p className='mt-1 text-xs text-muted-foreground'>{getFileDetails(version)}</p>
         </div>
-        <Badge
-          variant='outline'
-          className={cn('shrink-0 rounded-md', documentVersionStatusTones[version.status])}
-        >
-          {documentVersionStatusLabels[version.status]}
-        </Badge>
       </div>
-      {rejectionReason ? (
-        <p className='mt-2 flex items-start gap-1.5 text-xs text-red-700 dark:text-red-300'>
-          <Icons.warning className='mt-0.5 size-3.5 shrink-0' />
-          <span className='break-words'>{rejectionReason}</span>
-        </p>
-      ) : null}
     </div>
   );
+}
+
+function DocumentFilePreview({
+  displayName,
+  version
+}: {
+  displayName: string;
+  version: OwnerDocumentVersion;
+}) {
+  const isImage = isImageMimeType(version.mimeType);
+  const previewQuery = useQuery({
+    enabled: isImage,
+    queryKey: [...ownerKeys.all, 'document-version-preview', version.id],
+    queryFn: () => createOwnerDocumentReadUrl(version.id),
+    retry: false,
+    staleTime: 60_000
+  });
+
+  if (isImage && previewQuery.data?.readUrl.url) {
+    return (
+      <div className='size-12 shrink-0 overflow-hidden rounded-lg border bg-muted'>
+        {/* oxlint-disable-next-line next/no-img-element -- owner document thumbnails use signed, short-lived document URLs from the authenticated document storage flow. */}
+        <img
+          src={previewQuery.data.readUrl.url}
+          alt={`Vista previa de ${displayName}`}
+          className='h-full w-full object-cover'
+          loading='lazy'
+        />
+      </div>
+    );
+  }
+
+  const FileIcon = getDocumentFileIcon(version.mimeType);
+
+  return (
+    <span
+      aria-hidden='true'
+      className='flex size-12 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground'
+    >
+      <FileIcon className='size-5' />
+    </span>
+  );
+}
+
+function getRejectionCopy(request: OwnerDocumentRequest) {
+  const fallbackTitle = isDniRequest(request.title) ? 'DNI inválido' : 'Documento rechazado';
+  const fallbackDescription = isDniRequest(request.title)
+    ? 'El archivo no permite validar el DNI del propietario: la imagen debe verse clara, sin recortes ni reflejos.'
+    : 'El archivo no cumple con lo solicitado.';
+  const reason = request.rejectionReason?.trim();
+
+  if (!reason) {
+    return { description: fallbackDescription, title: fallbackTitle };
+  }
+
+  const [rawTitle, ...descriptionParts] = reason.split(':');
+  const title = normalizeRejectionTitle(rawTitle);
+  const description = descriptionParts.join(':').trim();
+
+  if (description) {
+    return { description, title: title || fallbackTitle };
+  }
+
+  if (isShortRejectionTitle(reason)) {
+    return { description: fallbackDescription, title: normalizeRejectionTitle(reason) };
+  }
+
+  return { description: reason, title: fallbackTitle };
+}
+
+function normalizeRejectionTitle(value: string) {
+  const normalized = normalizeSearchText(value);
+
+  if (normalized.includes('dni') && normalized.includes('invalid')) {
+    return 'DNI inválido';
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return '';
+  }
+
+  return `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}`;
+}
+
+function isShortRejectionTitle(value: string) {
+  return value.length <= 80 && !/[.!?]/.test(value);
+}
+
+function isDniRequest(title: string) {
+  const normalizedTitle = normalizeSearchText(title);
+
+  return normalizedTitle.includes('dni') || normalizedTitle.includes('identidad');
+}
+
+function isImageMimeType(mimeType: string) {
+  return mimeType.startsWith('image/');
+}
+
+function formatUploadDate(value: string) {
+  return new Intl.DateTimeFormat('es-AR', {
+    dateStyle: 'medium'
+  }).format(new Date(value));
+}
+
+function getVersionMetadata(version: OwnerDocumentVersion, versionNumber: number | null) {
+  const uploadDate = `Subido el ${formatUploadDate(version.createdAt)}`;
+
+  return versionNumber ? `Versión ${versionNumber} · ${uploadDate}` : uploadDate;
+}
+
+function getDocumentDisplayName(version: OwnerDocumentVersion, documentTitle: string) {
+  if (isDniRequest(documentTitle)) {
+    const fileName = normalizeSearchText(version.originalFilename);
+
+    if (fileName.includes('frente') || fileName.includes('front')) {
+      return 'DNI — frente';
+    }
+
+    if (fileName.includes('dorso') || fileName.includes('reverso') || fileName.includes('back')) {
+      return 'DNI — dorso';
+    }
+  }
+
+  return normalizeDniCasing(documentTitle.trim() || getReadableFileName(version.originalFilename));
+}
+
+function getReadableFileName(fileName: string) {
+  if (isTechnicalFileName(fileName)) {
+    return 'Documento';
+  }
+
+  const nameWithoutExtension = fileName
+    .replace(/\.[^/.]+$/, '')
+    .replace(/[-_]+/g, ' ')
+    .trim();
+
+  return nameWithoutExtension || 'Documento';
+}
+
+function isTechnicalFileName(fileName: string) {
+  const normalizedName = normalizeSearchText(fileName);
+
+  return normalizedName.includes('seeded') || normalizedName.includes('smoke-document');
+}
+
+function getFileDetails(version: OwnerDocumentVersion) {
+  return `${getFileFormatLabel(version.mimeType)} · ${formatFileSize(version.sizeBytes)}`;
+}
+
+function getFileFormatLabel(mimeType: string) {
+  if (mimeType === 'application/pdf') {
+    return 'PDF';
+  }
+
+  if (mimeType === 'image/jpeg') {
+    return 'JPG';
+  }
+
+  if (mimeType === 'image/png') {
+    return 'PNG';
+  }
+
+  if (mimeType === 'image/webp') {
+    return 'WebP';
+  }
+
+  return 'Archivo';
+}
+
+function formatFileSize(sizeBytes: number) {
+  if (sizeBytes < 1024) {
+    return `${sizeBytes} B`;
+  }
+
+  const sizeKb = sizeBytes / 1024;
+
+  if (sizeKb < 1024) {
+    return `${formatCompactNumber(sizeKb)} KB`;
+  }
+
+  return `${formatCompactNumber(sizeKb / 1024)} MB`;
+}
+
+function formatCompactNumber(value: number) {
+  return new Intl.NumberFormat('es-AR', {
+    maximumFractionDigits: value >= 10 ? 0 : 1
+  }).format(value);
 }
 
 function getHistoricalVersions(request: OwnerDocumentRequest) {
@@ -478,40 +678,22 @@ function getHistoricalVersions(request: OwnerDocumentRequest) {
     .toSorted((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
 }
 
-function getVersionRejectionReason(version: OwnerDocumentVersion, request: OwnerDocumentRequest) {
-  if (version.status !== 'REJECTED') {
+function getDocumentLifecycleDescription(request: OwnerDocumentRequest, agencyName: string) {
+  return ownerDocumentLifecycleCopyConfig[request.status]({ agencyName, request });
+}
+
+function getHelpfulRequestDescription(request: OwnerDocumentRequest) {
+  const description = request.description?.trim();
+
+  if (!description || normalizeSearchText(description) === normalizeSearchText(request.title)) {
     return null;
   }
 
-  return request.rejectionReason;
-}
-
-function getDocumentTypeLabel(title: string) {
-  const normalizedTitle = normalizeSearchText(title);
-
-  if (normalizedTitle.includes('dni') || normalizedTitle.includes('identidad')) {
-    return 'DNI';
+  if (isDniRequest(request.title)) {
+    return 'Subí el DNI del propietario, frente y dorso en PDF.';
   }
 
-  if (normalizedTitle.includes('escritura')) {
-    return 'Escritura';
-  }
-
-  return title;
-}
-
-function getDocumentHeaderIcon(title: string): DocumentIcon {
-  const normalizedTitle = normalizeSearchText(title);
-
-  if (normalizedTitle.includes('dni') || normalizedTitle.includes('identidad')) {
-    return IconId;
-  }
-
-  if (normalizedTitle.includes('escritura')) {
-    return IconHome;
-  }
-
-  return Icons.post;
+  return normalizeDniCasing(description);
 }
 
 function getDocumentFileIcon(mimeType: string): DocumentIcon {
@@ -519,11 +701,15 @@ function getDocumentFileIcon(mimeType: string): DocumentIcon {
     return Icons.fileTypePdf;
   }
 
-  if (mimeType.startsWith('image/')) {
+  if (isImageMimeType(mimeType)) {
     return Icons.media;
   }
 
   return Icons.page;
+}
+
+function normalizeDniCasing(value: string) {
+  return value.replace(/\bdni\b/gi, 'DNI');
 }
 
 function normalizeSearchText(value: string) {
