@@ -78,11 +78,15 @@ The final execution plan intentionally excludes:
 ## Next active slice
 
 ```txt
-Stage: 21
-Slice: 21.6 — Minimal owner invitation management
-Objective: give managers a clear way to regenerate/resend-copy and revoke pending owner invite links.
-Evidence needed: API/UI tests for regenerate and revoke; accepted/expired/revoked states remain safe.
-Do not touch: email delivery automation or advanced invitation analytics.
-Done: manager can regenerate/copy a fresh pending link and revoke a pending link without DB/support help.
-Next slice: 25.1 — Admin tenant status write API + audit log.
+Stage: 25
+Slice: 25.1 — Admin tenant status write API + audit log
+Objective: let ViewPro admins activate, suspend, and reactivate tenants without touching DB.
+Evidence needed: API tests, global admin guard tests, tenant guard behavior, and audit record verification.
+Do not touch: billing, limits, large admin UI, owner/team/document UI.
+Done: admin can change tenant status; suspended tenant is blocked by existing guards; every status change is audited.
+Next slice: 25.2 — Admin tenant management UI.
 ```
+
+## Recently completed
+
+- Stage 21.6 — Minimal owner invitation management: backend revoke endpoint, app-new BFF/service, and property owner UI actions for `Regenerar y copiar link` and `Revocar invitación` completed with API/UI evidence.

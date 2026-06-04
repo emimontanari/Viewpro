@@ -236,6 +236,8 @@ Done: manager can regenerate/copy a fresh pending link and revoke a pending link
 Next slice: 25.1.
 ```
 
+Status: completed in `feat/owner-invitation-management` with API revoke coverage, app-new BFF/service tests, and property owner UI tests for regenerate/copy plus explicit revoke. Evidence includes safe handling for pending, active/accepted, expired, already-revoked, unrelated-owner, and regenerate-after-revoke states without exposing raw token/url from the revoke response.
+
 ## Phase 3 — ViewPro Admin operational control
 
 ### Slice 25.1 — Admin tenant status write API + audit log

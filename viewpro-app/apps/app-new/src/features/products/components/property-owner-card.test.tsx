@@ -26,19 +26,45 @@ const activeOwner: PropertyLinkedOwner = {
 };
 
 describe('PropertyOwnerCard', () => {
-  it('renders linked owner summary, initials, detail affordance and copy action', () => {
-    renderPropertyOwnerCard({ owners: [invitedOwner], onCopyInvitationLink: vi.fn() });
+  it('renders linked owner summary, initials, detail affordance and invited owner actions', () => {
+    renderPropertyOwnerCard({
+      owners: [invitedOwner],
+      onCopyInvitationLink: vi.fn(),
+      onRevokeInvitationLink: vi.fn()
+    });
 
     expect(screen.getByText('1 propietario vinculado')).toBeInTheDocument();
     expect(screen.getByText('AO')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ver detalle de Ana Owner' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /copiar invitación/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /regenerar y copiar link/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /revocar invitación/i })).toBeInTheDocument();
   });
 
-  it('does not render copy invitation action for active owners', () => {
-    renderPropertyOwnerCard({ owners: [activeOwner], onCopyInvitationLink: vi.fn() });
+  it('does not render invitation management actions for active owners', () => {
+    renderPropertyOwnerCard({
+      owners: [activeOwner],
+      onCopyInvitationLink: vi.fn(),
+      onRevokeInvitationLink: vi.fn()
+    });
 
-    expect(screen.queryByRole('button', { name: /copiar invitación/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /regenerar y copiar link/i })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /revocar invitación/i })).not.toBeInTheDocument();
+  });
+
+  it('does not render invitation management actions for archived properties', () => {
+    renderPropertyOwnerCard({
+      isArchived: true,
+      owners: [invitedOwner],
+      onCopyInvitationLink: vi.fn(),
+      onRevokeInvitationLink: vi.fn()
+    });
+
+    expect(
+      screen.queryByRole('button', { name: /regenerar y copiar link/i })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /revocar invitación/i })).not.toBeInTheDocument();
   });
 
   it('calls onCopyInvitationLink with the invited owner when clicked', async () => {
@@ -46,7 +72,7 @@ describe('PropertyOwnerCard', () => {
     const onCopyInvitationLink = vi.fn();
     renderPropertyOwnerCard({ owners: [invitedOwner], onCopyInvitationLink });
 
-    await user.click(screen.getByRole('button', { name: /copiar invitación/i }));
+    await user.click(screen.getByRole('button', { name: /regenerar y copiar link/i }));
 
     expect(onCopyInvitationLink).toHaveBeenCalledWith(invitedOwner);
   });
@@ -58,7 +84,21 @@ describe('PropertyOwnerCard', () => {
       onCopyInvitationLink: vi.fn()
     });
 
-    expect(screen.getByRole('button', { name: /copiar invitación/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /regenerar y copiar link/i })).toBeDisabled();
+  });
+
+  it('calls onRevokeInvitationLink with the invited owner when clicked', async () => {
+    const user = userEvent.setup();
+    const onRevokeInvitationLink = vi.fn();
+    renderPropertyOwnerCard({
+      owners: [invitedOwner],
+      onCopyInvitationLink: vi.fn(),
+      onRevokeInvitationLink
+    });
+
+    await user.click(screen.getByRole('button', { name: /revocar invitación/i }));
+
+    expect(onRevokeInvitationLink).toHaveBeenCalledWith(invitedOwner);
   });
 
   it('shows the owner list before the link action', () => {

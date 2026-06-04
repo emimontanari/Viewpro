@@ -802,6 +802,258 @@ describe("Property engagements (e2e)", () => {
     ).resolves.toBeGreaterThanOrEqual(1);
   });
 
+  it("revokes a pending owner invitation link without exposing raw tokens", async () => {
+    const manager = await registerTenantSession(
+      "manager-owner-revoke-link@example.com",
+      "Manager Owner Revoke Link Homes",
+    );
+    const created = await createEngagement(
+      manager.agent,
+      manager.tenantId,
+    ).expect(201);
+    const linkedOwner = await manager.agent
+      .post(`/api/property-engagements/${created.body.id}/owners`)
+      .set("x-tenant-id", manager.tenantId)
+      .send({
+        firstName: "Revoke",
+        lastName: "Owner",
+        email: "revoke-owner@example.com",
+      })
+      .expect(201);
+    const link = await manager.agent
+      .post(
+        `/api/property-engagements/${created.body.id}/owners/${linkedOwner.body.id}/invitation-link`,
+      )
+      .set("x-tenant-id", manager.tenantId)
+      .expect(201);
+
+    const response = await manager.agent
+      .post(
+        `/api/property-engagements/${created.body.id}/owners/${linkedOwner.body.id}/invitation-link/revoke`,
+      )
+      .set("x-tenant-id", manager.tenantId)
+      .expect(201);
+
+    expect(response.body).toEqual({
+      propertyAssetOwnerId: linkedOwner.body.id,
+      revokedInvitationIds: [link.body.invitationId],
+      revokedCount: 1,
+    });
+    expect(response.body).not.toHaveProperty("token");
+    expect(response.body).not.toHaveProperty("tokenHash");
+    expect(response.body).not.toHaveProperty("invitationUrl");
+
+    const token = extractInvitationToken(link.body.invitationUrl);
+    const revokedResponse = await request(app.getHttpServer())
+      .get(`/api/owner-invitations/${token}`)
+      .expect(410);
+    expect(revokedResponse.body.message).toBe(
+      "Owner invitation is no longer available",
+    );
+
+    await expect(
+      prisma.propertyAssetOwner.findUniqueOrThrow({
+        where: { id: linkedOwner.body.id },
+        select: { accessStatus: true },
+      }),
+    ).resolves.toMatchObject({ accessStatus: "INVITED" });
+  });
+
+  it("returns conflict when revoking an active owner invitation link", async () => {
+    const manager = await registerTenantSession(
+      "manager-owner-active-revoke-link@example.com",
+      "Manager Owner Active Revoke Link Homes",
+    );
+    await registerTenantSession(
+      "active-owner-revoke-link@example.com",
+      "Active Owner Revoke Link Homes",
+    );
+    const created = await createEngagement(
+      manager.agent,
+      manager.tenantId,
+    ).expect(201);
+    const linkedOwner = await manager.agent
+      .post(`/api/property-engagements/${created.body.id}/owners`)
+      .set("x-tenant-id", manager.tenantId)
+      .send({
+        firstName: "Active",
+        lastName: "Revoke",
+        email: "active-owner-revoke-link@example.com",
+      })
+      .expect(201);
+
+    const response = await manager.agent
+      .post(
+        `/api/property-engagements/${created.body.id}/owners/${linkedOwner.body.id}/invitation-link/revoke`,
+      )
+      .set("x-tenant-id", manager.tenantId)
+      .expect(409);
+
+    expect(response.body.message).toBe(
+      "Owner invitation link can only be revoked for invited owners",
+    );
+  });
+
+  it("does not revoke owner invitation links for unrelated owner links", async () => {
+    const manager = await registerTenantSession(
+      "manager-owner-unrelated-revoke-link@example.com",
+      "Manager Owner Unrelated Revoke Link Homes",
+    );
+    const firstEngagement = await createEngagement(
+      manager.agent,
+      manager.tenantId,
+    ).expect(201);
+    const secondEngagement = await createEngagement(
+      manager.agent,
+      manager.tenantId,
+    ).expect(201);
+    const secondOwner = await manager.agent
+      .post(`/api/property-engagements/${secondEngagement.body.id}/owners`)
+      .set("x-tenant-id", manager.tenantId)
+      .send({
+        firstName: "Other",
+        lastName: "Revoke",
+        email: "other-owner-revoke-link@example.com",
+      })
+      .expect(201);
+
+    const response = await manager.agent
+      .post(
+        `/api/property-engagements/${firstEngagement.body.id}/owners/${secondOwner.body.id}/invitation-link/revoke`,
+      )
+      .set("x-tenant-id", manager.tenantId)
+      .expect(404);
+
+    expect(response.body.message).toBe("Property owner not found");
+  });
+
+  it("returns conflict when revoking an already revoked owner invitation link", async () => {
+    const manager = await registerTenantSession(
+      "manager-owner-already-revoked-link@example.com",
+      "Manager Owner Already Revoked Homes",
+    );
+    const created = await createEngagement(
+      manager.agent,
+      manager.tenantId,
+    ).expect(201);
+    const linkedOwner = await manager.agent
+      .post(`/api/property-engagements/${created.body.id}/owners`)
+      .set("x-tenant-id", manager.tenantId)
+      .send({
+        firstName: "Already",
+        lastName: "Revoked",
+        email: "already-revoked-owner@example.com",
+      })
+      .expect(201);
+
+    await manager.agent
+      .post(
+        `/api/property-engagements/${created.body.id}/owners/${linkedOwner.body.id}/invitation-link/revoke`,
+      )
+      .set("x-tenant-id", manager.tenantId)
+      .expect(201);
+
+    const response = await manager.agent
+      .post(
+        `/api/property-engagements/${created.body.id}/owners/${linkedOwner.body.id}/invitation-link/revoke`,
+      )
+      .set("x-tenant-id", manager.tenantId)
+      .expect(409);
+
+    expect(response.body.message).toBe(
+      "No pending owner invitation link found",
+    );
+  });
+
+  it("returns conflict when revoking an expired owner invitation link", async () => {
+    const manager = await registerTenantSession(
+      "manager-owner-expired-revoke-link@example.com",
+      "Manager Owner Expired Revoke Homes",
+    );
+    const created = await createEngagement(
+      manager.agent,
+      manager.tenantId,
+    ).expect(201);
+    const linkedOwner = await manager.agent
+      .post(`/api/property-engagements/${created.body.id}/owners`)
+      .set("x-tenant-id", manager.tenantId)
+      .send({
+        firstName: "Expired",
+        lastName: "Owner",
+        email: "expired-revoke-owner@example.com",
+      })
+      .expect(201);
+    await prisma.ownerInvitation.updateMany({
+      where: { propertyAssetOwnerId: linkedOwner.body.id },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
+
+    const response = await manager.agent
+      .post(
+        `/api/property-engagements/${created.body.id}/owners/${linkedOwner.body.id}/invitation-link/revoke`,
+      )
+      .set("x-tenant-id", manager.tenantId)
+      .expect(409);
+
+    expect(response.body.message).toBe(
+      "No pending owner invitation link found",
+    );
+    await expect(
+      prisma.ownerInvitation.count({
+        where: {
+          propertyAssetOwnerId: linkedOwner.body.id,
+          status: OwnerInvitationStatus.PENDING,
+          revokedAt: null,
+        },
+      }),
+    ).resolves.toBe(1);
+  });
+
+  it("regenerates a valid owner invitation link after revoking one", async () => {
+    const manager = await registerTenantSession(
+      "manager-owner-revoke-regenerate-link@example.com",
+      "Manager Owner Revoke Regenerate Homes",
+    );
+    const created = await createEngagement(
+      manager.agent,
+      manager.tenantId,
+    ).expect(201);
+    const linkedOwner = await manager.agent
+      .post(`/api/property-engagements/${created.body.id}/owners`)
+      .set("x-tenant-id", manager.tenantId)
+      .send({
+        firstName: "Regenerate",
+        lastName: "Owner",
+        email: "regenerate-owner@example.com",
+      })
+      .expect(201);
+    const revokedLink = await manager.agent
+      .post(
+        `/api/property-engagements/${created.body.id}/owners/${linkedOwner.body.id}/invitation-link`,
+      )
+      .set("x-tenant-id", manager.tenantId)
+      .expect(201);
+    await manager.agent
+      .post(
+        `/api/property-engagements/${created.body.id}/owners/${linkedOwner.body.id}/invitation-link/revoke`,
+      )
+      .set("x-tenant-id", manager.tenantId)
+      .expect(201);
+
+    const freshLink = await manager.agent
+      .post(
+        `/api/property-engagements/${created.body.id}/owners/${linkedOwner.body.id}/invitation-link`,
+      )
+      .set("x-tenant-id", manager.tenantId)
+      .expect(201);
+
+    expect(freshLink.body.invitationId).not.toBe(revokedLink.body.invitationId);
+    const freshToken = extractInvitationToken(freshLink.body.invitationUrl);
+    await request(app.getHttpServer())
+      .get(`/api/owner-invitations/${freshToken}`)
+      .expect(200);
+  });
+
   it("returns conflict when generating a manual invitation link for an active owner", async () => {
     const manager = await registerTenantSession(
       "manager-owner-active-link@example.com",

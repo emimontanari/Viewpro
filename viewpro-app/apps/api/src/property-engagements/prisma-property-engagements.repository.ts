@@ -15,6 +15,7 @@ import type {
   ListPropertyEngagementsInput,
   PropertyEngagementsRepository,
   PropertyEngagementWithDetails,
+  RevokeOwnerInvitationLinkResult,
   RestorePropertyEngagementInput,
   RestorePropertyEngagementResult,
   UpdatePropertyEngagementInput,
@@ -495,6 +496,70 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
           ...invitation,
           token,
         },
+      }
+    })
+  }
+
+  revokeOwnerInvitationLink(input: {
+    propertyAssetId: string
+    ownerId: string
+    now: Date
+  }): Promise<RevokeOwnerInvitationLinkResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const owner = await tx.propertyAssetOwner.findFirst({
+        where: {
+          id: input.ownerId,
+          propertyAssetId: input.propertyAssetId,
+        },
+        select: {
+          id: true,
+          accessStatus: true,
+        },
+      })
+
+      if (!owner) {
+        return { status: 'ownerNotFound' }
+      }
+
+      if (owner.accessStatus !== PropertyAssetOwnerAccessStatus.INVITED) {
+        return {
+          status: 'ownerNotInvited',
+          accessStatus: owner.accessStatus,
+        }
+      }
+
+      const pendingInvitations = await tx.ownerInvitation.findMany({
+        where: {
+          propertyAssetOwnerId: owner.id,
+          status: OwnerInvitationStatus.PENDING,
+          revokedAt: null,
+          expiresAt: { gt: input.now },
+        },
+        select: { id: true },
+      })
+
+      if (pendingInvitations.length === 0) {
+        return { status: 'noPendingInvitation' }
+      }
+
+      const revokedInvitationIds = pendingInvitations.map((invitation) => invitation.id)
+      await tx.ownerInvitation.updateMany({
+        where: {
+          id: { in: revokedInvitationIds },
+          status: OwnerInvitationStatus.PENDING,
+          revokedAt: null,
+          expiresAt: { gt: input.now },
+        },
+        data: {
+          status: OwnerInvitationStatus.REVOKED,
+          revokedAt: input.now,
+        },
+      })
+
+      return {
+        status: 'revoked',
+        propertyAssetOwnerId: owner.id,
+        revokedInvitationIds,
       }
     })
   }

@@ -161,9 +161,9 @@ Green validation baseline:
 
 ## Corrected next slice recommendation
 
-### Recommended: Stage 21.6 — Minimal owner invitation management
+### Completed: Stage 21.6 — Minimal owner invitation management
 
-**Why this next:** Stage 21.5 closed the highest product-risk owner onboarding gap: an existing owner can now accept another property/agency invitation. The remaining owner-invitation P0 is manager control over pending links without support/DB work.
+Stage 21.6 closed the remaining owner-invitation P0 for manager control over pending links without support/DB work. Managers can regenerate/copy a fresh pending link and explicitly revoke a pending link from the property owner card.
 
 ```txt
 Stage: 21
@@ -177,12 +177,11 @@ Next slice: 25.1 — Admin tenant status write API + audit log.
 
 ## Recommended sequence from here
 
-1. **Implement Stage 21.6 Minimal owner invitation management.**
-2. **Implement Stage 25.1 Admin tenant status write API + audit log.**
-3. **Implement Stage 25.2 Admin tenant management UI.**
-4. **Implement Stage 25.3 Tenant limits model/API.**
-5. **Implement Stage 25.4 Tenant limits enforcement.**
-6. **Continue remaining P0/P1 closure:** WhatsApp config, notification E2E, Seguimiento document activity, team/seller evidence, final hardening, deploy checklist, final deck.
+1. **Implement Stage 25.1 Admin tenant status write API + audit log.**
+2. **Implement Stage 25.2 Admin tenant management UI.**
+3. **Implement Stage 25.3 Tenant limits model/API.**
+4. **Implement Stage 25.4 Tenant limits enforcement.**
+5. **Continue remaining P0/P1 closure:** WhatsApp config, notification E2E, Seguimiento document activity, team/seller evidence, final hardening, deploy checklist, final deck.
 
 ## Backlog outside immediate focus
 

@@ -163,6 +163,19 @@ export type CreateOwnerInvitationLinkResult =
       accessStatus: PropertyAssetOwnerAccessStatus;
     };
 
+export type RevokeOwnerInvitationLinkResult =
+  | {
+      status: "revoked";
+      propertyAssetOwnerId: string;
+      revokedInvitationIds: string[];
+    }
+  | { status: "ownerNotFound" }
+  | {
+      status: "ownerNotInvited";
+      accessStatus: PropertyAssetOwnerAccessStatus;
+    }
+  | { status: "noPendingInvitation" };
+
 export type PropertyEngagementsRepository = {
   createWithAsset(
     input: CreatePropertyEngagementInput,
@@ -219,4 +232,9 @@ export type PropertyEngagementsRepository = {
     propertyAssetId: string;
     ownerId: string;
   }): Promise<CreateOwnerInvitationLinkResult>;
+  revokeOwnerInvitationLink(input: {
+    propertyAssetId: string;
+    ownerId: string;
+    now: Date;
+  }): Promise<RevokeOwnerInvitationLinkResult>;
 };
