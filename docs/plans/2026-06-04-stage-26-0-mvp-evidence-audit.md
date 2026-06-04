@@ -37,7 +37,7 @@ Core API, app-new component/unit tests, strict lint, and seeded E2E all run succ
 | Owner portal read-only | Seeded owner sees property/tabs and no internal actions; API owner portal isolation exists. | PASS evidence | keep regression |
 | Document request/upload/review | Seeded owner upload + manager read/approve passes; API covers request/upload/reject/read-url/isolation. | PASS evidence | keep regression |
 | Document activity in Seguimiento | Seeded smoke checks some document activity text; mixed feed/filter/metadata/seller visibility still needs stronger proof. | PARTIAL | P1 — Slice 20.9 |
-| Owner invitations existing owner + revoke/regenerate | Existing owner public acceptance now has API/UI/seeded evidence; explicit owner revoke/regenerate UX remains incomplete. | PARTIAL | P0 — Slice 21.6 |
+| Owner invitations existing owner + revoke/regenerate | Existing owner public acceptance has API/UI/seeded evidence; Stage 21.6 adds manager regenerate/copy and explicit revoke with API/UI evidence for pending, active/accepted, expired, already-revoked, unrelated-owner, and regenerate-after-revoke states. | PASS evidence | keep regression |
 | Team roles/inactive/invitations | Strong API evidence; app-new/team seeded UI evidence incomplete. | PARTIAL | P1 — Slice 22.6 |
 | WhatsApp config/contact/tracking | Mapping and click tracking tests exist; editable tenant/user phone config not proven. | PARTIAL | P0 — Slices 23.3/23.4 |
 | Notifications producer/routing/read-unread | Producer and API tests exist; full seeded owner/internal routing/read-unread not proven. | PARTIAL | P0 — Slice 24.5 |
@@ -47,19 +47,18 @@ Core API, app-new component/unit tests, strict lint, and seeded E2E all run succ
 
 ## Remaining P0 product gaps
 
-1. **Stage 21.6 — Minimal owner invitation management.**
-2. **Stage 25.1–25.4 — Admin status writes, audit log, limits, and enforcement.**
-3. **Stage 23.3–23.4 — WhatsApp contact configuration and priority/tracking proof.**
-4. **Stage 24.5 — Notification routing/read-unread E2E.**
+1. **Stage 25.1–25.4 — Admin status writes, audit log, limits, and enforcement.**
+2. **Stage 23.3–23.4 — WhatsApp contact configuration and priority/tracking proof.**
+3. **Stage 24.5 — Notification routing/read-unread E2E.**
 
 ## Next selected slice
 
 ```txt
-Stage: 21
-Slice: 21.6 — Minimal owner invitation management
-Objective: give managers a clear way to regenerate/resend-copy and revoke pending owner invite links.
-Evidence needed: API/UI tests for regenerate and revoke; accepted/expired/revoked states remain safe.
-Do not touch: email delivery automation or advanced invitation analytics.
-Done: manager can regenerate/copy a fresh pending link and revoke a pending link without DB/support help.
-Next slice: 25.1 — Admin tenant status write API + audit log.
+Stage: 25
+Slice: 25.1 — Admin tenant status write API + audit log
+Objective: let ViewPro admins activate, suspend, and reactivate tenants without touching DB.
+Evidence needed: API tests, global admin guard tests, tenant guard behavior, and audit record verification.
+Do not touch: billing, limits, large admin UI, owner/team/document UI.
+Done: admin can change tenant status; suspended tenant is blocked by existing guards; every status change is audited.
+Next slice: 25.2 — Admin tenant management UI.
 ```

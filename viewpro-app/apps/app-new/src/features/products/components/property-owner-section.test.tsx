@@ -85,7 +85,7 @@ describe('PropertyOwnerSection', () => {
     vi.stubGlobal('navigator', { clipboard: { writeText } });
     renderPropertyOwnerSection({ owners: [invitedOwner] });
 
-    await user.click(screen.getByRole('button', { name: /copiar invitación/i }));
+    await user.click(screen.getByRole('button', { name: /regenerar y copiar link/i }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -103,7 +103,7 @@ describe('PropertyOwnerSection', () => {
     vi.stubGlobal('navigator', { clipboard: { writeText } });
     renderPropertyOwnerSection({ owners: [invitedOwner] });
 
-    await user.click(screen.getByRole('button', { name: /copiar invitación/i }));
+    await user.click(screen.getByRole('button', { name: /regenerar y copiar link/i }));
 
     expect(await screen.findByText('Copiá este link manualmente:')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: invitationUrl })).toHaveAttribute(
@@ -112,23 +112,57 @@ describe('PropertyOwnerSection', () => {
     );
   });
 
-  it('blocks owner actions while archived', async () => {
-    const user = userEvent.setup();
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    const fetchMock = mockInvitationLinkResponse();
-    vi.stubGlobal('fetch', fetchMock);
-    vi.stubGlobal('navigator', { clipboard: { writeText } });
+  it('hides owner invitation actions while archived', () => {
     renderPropertyOwnerSection({ isArchived: true, owners: [invitedOwner] });
 
     expect(screen.queryByRole('button', { name: /vincular propietario/i })).not.toBeInTheDocument();
     expect(
       screen.getByText('Restaurá la propiedad para vincular propietarios.')
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /regenerar y copiar link/i })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /revocar invitación/i })).not.toBeInTheDocument();
+  });
 
-    await user.click(screen.getByRole('button', { name: /copiar invitación/i }));
+  it('revokes an invited owner invitation link after confirmation', async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockInvitationRevokeResponse();
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
+    renderPropertyOwnerSection({ owners: [invitedOwner] });
 
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(writeText).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: /revocar invitación/i }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/products/product-1/owners/owner-link-1/invitation-link/revoke',
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
+    await expect(
+      screen.findByText('Invitación revocada. Podés regenerar un link nuevo cuando quieras.')
+    ).resolves.toBeInTheDocument();
+  });
+
+  it('keeps the owner card visible and shows revoke errors', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ message: 'No pending owner invitation link found' }), {
+        headers: { 'content-type': 'application/json' },
+        status: 409
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
+    renderPropertyOwnerSection({ owners: [invitedOwner] });
+
+    await user.click(screen.getByRole('button', { name: /revocar invitación/i }));
+
+    await expect(
+      screen.findByText('No pending owner invitation link found')
+    ).resolves.toBeVisible();
+    expect(screen.getByRole('button', { name: 'Ver detalle de Ana Owner' })).toBeInTheDocument();
   });
 });
 
@@ -166,6 +200,22 @@ function createQueryClientWrapper() {
   return function QueryClientWrapper({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
+}
+
+function mockInvitationRevokeResponse() {
+  return vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        propertyAssetOwnerId: invitedOwner.id,
+        revokedInvitationIds: ['invitation-1'],
+        revokedCount: 1
+      }),
+      {
+        headers: { 'content-type': 'application/json' },
+        status: 201
+      }
+    )
+  );
 }
 
 function mockInvitationLinkResponse() {

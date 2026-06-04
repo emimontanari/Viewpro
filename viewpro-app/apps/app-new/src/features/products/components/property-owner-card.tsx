@@ -16,6 +16,7 @@ type PropertyOwnerCardProps = {
   isLinkDisabled: boolean;
   manualInvitationFallback?: ManualInvitationFallback | null;
   onCopyInvitationLink?: (owner: PropertyLinkedOwner) => void;
+  onRevokeInvitationLink?: (owner: PropertyLinkedOwner) => void;
   onLinkOwner: () => void;
   ownerEmail: string | null;
   ownerName: string | null;
@@ -34,6 +35,7 @@ export function PropertyOwnerCard({
   isLinkDisabled,
   manualInvitationFallback = null,
   onCopyInvitationLink,
+  onRevokeInvitationLink,
   onLinkOwner,
   ownerEmail,
   ownerName,
@@ -64,17 +66,34 @@ export function PropertyOwnerCard({
                   // TODO: connect to contact detail navigation when a contact/person route exists.
                   onClick={() => undefined}
                 >
-                  {owner.accessStatus === 'INVITED' && onCopyInvitationLink ? (
-                    <Button
-                      type='button'
-                      size='sm'
-                      variant='outline'
-                      className='h-8 w-fit'
-                      disabled={copyingInvitationOwnerId === owner.id}
-                      onClick={() => onCopyInvitationLink(owner)}
-                    >
-                      Copiar invitación
-                    </Button>
+                  {!isArchived &&
+                  owner.accessStatus === 'INVITED' &&
+                  (onCopyInvitationLink || onRevokeInvitationLink) ? (
+                    <div className='flex flex-wrap gap-2'>
+                      {onCopyInvitationLink ? (
+                        <Button
+                          type='button'
+                          size='sm'
+                          variant='outline'
+                          className='h-8 w-fit'
+                          disabled={copyingInvitationOwnerId === owner.id}
+                          onClick={() => onCopyInvitationLink(owner)}
+                        >
+                          Regenerar y copiar link
+                        </Button>
+                      ) : null}
+                      {onRevokeInvitationLink ? (
+                        <Button
+                          type='button'
+                          size='sm'
+                          variant='destructive'
+                          className='h-8 w-fit'
+                          onClick={() => onRevokeInvitationLink(owner)}
+                        >
+                          Revocar invitación
+                        </Button>
+                      ) : null}
+                    </div>
                   ) : null}
                   {manualInvitationFallback?.ownerId === owner.id ? (
                     <div className='mt-3 rounded-md border border-dashed bg-muted/40 p-2 text-xs'>

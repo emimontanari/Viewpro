@@ -28,6 +28,7 @@ import { ListAssignablePropertyAgentsUseCase } from './use-cases/list-assignable
 import { ListPropertyEngagementsUseCase } from './use-cases/list-property-engagements.use-case'
 import { RemovePropertyAgentUseCase } from './use-cases/remove-property-agent.use-case'
 import { RestorePropertyEngagementUseCase } from './use-cases/restore-property-engagement.use-case'
+import { RevokeOwnerInvitationLinkUseCase } from './use-cases/revoke-owner-invitation-link.use-case'
 import { SetPropertyImagePrimaryUseCase } from './use-cases/set-property-image-primary.use-case'
 import { UpdatePropertyEngagementUseCase } from './use-cases/update-property-engagement.use-case'
 import {
@@ -71,6 +72,8 @@ export class PropertyEngagementsController {
     private readonly linkPropertyOwnerUseCase: LinkPropertyOwnerUseCase,
     @Inject(CreateOwnerInvitationLinkUseCase)
     private readonly createOwnerInvitationLinkUseCase: CreateOwnerInvitationLinkUseCase,
+    @Inject(RevokeOwnerInvitationLinkUseCase)
+    private readonly revokeOwnerInvitationLinkUseCase: RevokeOwnerInvitationLinkUseCase,
     @Inject(UploadPropertyImageUseCase)
     private readonly uploadPropertyImageUseCase: UploadPropertyImageUseCase,
     @Inject(DeletePropertyImageUseCase)
@@ -201,6 +204,17 @@ export class PropertyEngagementsController {
     @Param('ownerId') ownerId: string,
   ) {
     return this.createOwnerInvitationLinkUseCase.execute(tenant, currentUser, id, ownerId)
+  }
+
+  @Post(':id/owners/:ownerId/invitation-link/revoke')
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_CREATE)
+  revokeOwnerInvitationLink(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('id') id: string,
+    @Param('ownerId') ownerId: string,
+  ) {
+    return this.revokeOwnerInvitationLinkUseCase.execute(tenant, currentUser, id, ownerId)
   }
 
   @Post(':id/agents')

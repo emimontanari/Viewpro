@@ -4,7 +4,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { productKeys } from '../api/queries';
-import { createProductOwnerInvitationLink, linkProductOwner } from '../api/service';
+import {
+  createProductOwnerInvitationLink,
+  linkProductOwner,
+  revokeProductOwnerInvitationLink
+} from '../api/service';
 import type { LinkProductOwnerPayload, PropertyLinkedOwner } from '../api/types';
 import { LinkPropertyOwnerDialog } from './link-property-owner-dialog';
 import { PropertyOwnerCard } from './property-owner-card';
@@ -34,6 +38,9 @@ export function PropertyOwnerSection({
   const [copyingInvitationOwnerId, setCopyingInvitationOwnerId] = useState<string | null>(null);
   const [manualInvitationFallback, setManualInvitationFallback] =
     useState<ManualInvitationFallback | null>(null);
+  const [invitationManagementMessage, setInvitationManagementMessage] = useState<string | null>(
+    null
+  );
   const linkOwnerMutation = useMutation({
     mutationFn: (payload: LinkProductOwnerPayload) => linkProductOwner(productId, payload),
     onSuccess: async () => {
@@ -69,6 +76,7 @@ export function PropertyOwnerSection({
 
     setCopyingInvitationOwnerId(owner.id);
     setManualInvitationFallback(null);
+    setInvitationManagementMessage(null);
 
     try {
       const response = await createProductOwnerInvitationLink(productId, owner.id);
@@ -81,11 +89,40 @@ export function PropertyOwnerSection({
         toast.warning('No pudimos copiar automáticamente. Copiá el link manualmente.');
       }
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'No se pudo generar el link de invitación.'
-      );
+      const message =
+        error instanceof Error ? error.message : 'No se pudo generar el link de invitación.';
+      setInvitationManagementMessage(message);
+      toast.error(message);
     } finally {
       setCopyingInvitationOwnerId(null);
+    }
+  }
+
+  async function handleRevokeInvitationLink(owner: PropertyLinkedOwner) {
+    if (isArchived) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      '¿Querés revocar esta invitación? El link actual dejará de funcionar.'
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setManualInvitationFallback(null);
+    setInvitationManagementMessage(null);
+
+    try {
+      await revokeProductOwnerInvitationLink(productId, owner.id);
+      const message = 'Invitación revocada. Podés regenerar un link nuevo cuando quieras.';
+      setInvitationManagementMessage(message);
+      toast.success(message);
+      await queryClient.invalidateQueries({ queryKey: productKeys.all });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo revocar la invitación.';
+      setInvitationManagementMessage(message);
+      toast.error(message);
     }
   }
 
@@ -100,8 +137,12 @@ export function PropertyOwnerSection({
         ownerName={ownerName}
         owners={owners}
         onCopyInvitationLink={handleCopyInvitationLink}
+        onRevokeInvitationLink={handleRevokeInvitationLink}
         onLinkOwner={handleOpenOwnerDialog}
       />
+      {invitationManagementMessage ? (
+        <p className='text-muted-foreground text-sm'>{invitationManagementMessage}</p>
+      ) : null}
       <LinkPropertyOwnerDialog
         open={ownerDialogOpen}
         isSubmitting={linkOwnerMutation.isPending}

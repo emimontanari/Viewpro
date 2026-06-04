@@ -19,6 +19,7 @@ import { ListAssignablePropertyAgentsUseCase } from "./use-cases/list-assignable
 import { ListPropertyEngagementsUseCase } from "./use-cases/list-property-engagements.use-case";
 import { RemovePropertyAgentUseCase } from "./use-cases/remove-property-agent.use-case";
 import { RestorePropertyEngagementUseCase } from "./use-cases/restore-property-engagement.use-case";
+import { RevokeOwnerInvitationLinkUseCase } from "./use-cases/revoke-owner-invitation-link.use-case";
 import { SetPropertyImagePrimaryUseCase } from "./use-cases/set-property-image-primary.use-case";
 import { UpdatePropertyEngagementUseCase } from "./use-cases/update-property-engagement.use-case";
 import { UploadPropertyImageUseCase } from "./use-cases/upload-property-image.use-case";
@@ -35,6 +36,7 @@ const propertyEngagementUseCases = [
   ListAssignablePropertyAgentsUseCase,
   LinkPropertyOwnerUseCase,
   CreateOwnerInvitationLinkUseCase,
+  RevokeOwnerInvitationLinkUseCase,
   UploadPropertyImageUseCase,
   DeletePropertyImageUseCase,
   SetPropertyImagePrimaryUseCase,

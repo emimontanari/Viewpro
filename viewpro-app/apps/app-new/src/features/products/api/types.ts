@@ -96,6 +96,12 @@ export type ProductOwnerInvitationLinkResponse = {
   invitationUrl: string;
 };
 
+export type ProductOwnerInvitationRevokeResponse = {
+  propertyAssetOwnerId: string;
+  revokedInvitationIds: string[];
+  revokedCount: number;
+};
+
 export type ProductDocumentRequestStatus =
   | 'PENDING'
   | 'SUBMITTED'
