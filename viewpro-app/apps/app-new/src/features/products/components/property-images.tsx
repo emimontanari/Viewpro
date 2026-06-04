@@ -76,7 +76,7 @@ export function PropertyImageCarousel({
   }
 
   return (
-    <div className='space-y-3'>
+    <div className='min-w-0 w-full max-w-full space-y-3'>
       <div className='relative min-h-[23rem] w-full overflow-hidden rounded-2xl border bg-muted shadow-xs'>
         <PropertyImagePreview
           key={activeImage.id}
@@ -124,7 +124,7 @@ export function PropertyImageCarousel({
       {hasMultipleImages ? (
         <div
           className={cn(
-            'flex justify-start gap-3 overflow-x-auto pb-1',
+            'flex max-w-full justify-start gap-3 overflow-x-auto pb-1',
             shouldCenterThumbnails ? 'sm:justify-center' : 'sm:justify-start'
           )}
         >
