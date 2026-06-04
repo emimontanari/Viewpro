@@ -77,6 +77,15 @@ describe('OwnerDocumentRequests', () => {
     renderOwnerDocumentRequests();
 
     expect(await screen.findByText('DNI del propietario')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Subí este documento para que ViewPro Demo Inmobiliaria pueda revisar la gestión.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText('Qué tiene que incluir')).toBeInTheDocument();
+    expect(
+      screen.getByText('Subí el DNI del propietario, frente y dorso en PDF.')
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Subir documento' })).toBeInTheDocument();
 
     await user.tab();
@@ -97,8 +106,15 @@ describe('OwnerDocumentRequests', () => {
 
     renderOwnerDocumentRequests();
 
-    expect(await screen.findAllByText('dni.pdf')).toHaveLength(2);
-    expect(screen.getByText('Escritura aprobada')).toBeInTheDocument();
+    expect(await screen.findAllByText('DNI del propietario')).toHaveLength(2);
+    expect(screen.queryByText('dni.pdf')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'En revisión por ViewPro Demo Inmobiliaria. Te avisaremos cuando haya una novedad.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('Escritura aprobada')).toHaveLength(2);
+    expect(screen.getByText('Aprobado el 27 may 2026.')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Abrir documento' })).toHaveLength(2);
     expect(screen.queryByText('Aprobar')).not.toBeInTheDocument();
     expect(screen.queryByText('Rechazar')).not.toBeInTheDocument();
@@ -116,14 +132,60 @@ describe('OwnerDocumentRequests', () => {
 
     renderOwnerDocumentRequests();
 
-    expect(await screen.findByText('MOTIVO DEL RECHAZO')).toBeInTheDocument();
-    expect(
-      screen.getByText('El archivo no corresponde al documento solicitado.')
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Volver a subir documento' })).toHaveClass(
-      'bg-purple-500'
+    const rejectedBadge = await screen.findByRole('status', {
+      name: 'Estado del documento: rechazado. Acción requerida.'
+    });
+    expect(rejectedBadge).toHaveTextContent('Acción requerida');
+    expect(rejectedBadge).toHaveClass('bg-destructive/10', 'text-destructive');
+    expect(screen.getByRole('alert')).not.toHaveClass('text-destructive');
+    expect(rejectedBadge.querySelector('svg')).toBeInTheDocument();
+    expect(screen.getByText('DNI inválido')).toHaveClass('text-destructive');
+    expect(screen.getByText('El archivo no corresponde al documento solicitado.')).toHaveClass(
+      'text-foreground'
     );
+    expect(
+      screen.queryByText(
+        'Subí una nueva versión con las correcciones indicadas para que ViewPro Demo Inmobiliaria pueda revisarla.'
+      )
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Subí el DNI del propietario, frente y dorso en PDF.')
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Subir nueva versión' })).toHaveClass('min-h-11');
+    expect(screen.getByText('Formatos: JPG, PNG, WebP o PDF · máx. 10 MB.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Abrir documento' })).not.toBeInTheDocument();
+  });
+
+  it('does not repeat the title as request instructions', async () => {
+    getOwnerDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([
+        documentRequest({
+          currentVersion: null,
+          description: 'DNI del propietario',
+          status: 'PENDING'
+        })
+      ])
+    );
+
+    renderOwnerDocumentRequests();
+
+    expect(await screen.findAllByText('DNI del propietario')).toHaveLength(1);
+    expect(screen.queryByText('Qué tiene que incluir')).not.toBeInTheDocument();
+  });
+
+  it('shows actionable fallback copy for rejected requests without a backend reason', async () => {
+    getOwnerDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([documentRequest({ status: 'REJECTED', rejectionReason: null })])
+    );
+
+    renderOwnerDocumentRequests();
+
+    expect(await screen.findByText('DNI inválido')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'El archivo no permite validar el DNI del propietario: la imagen debe verse clara, sin recortes ni reflejos.'
+      )
+    ).toBeInTheDocument();
   });
 
   it('opens a confirmation dialog with PDF details and does not upload before confirmation', async () => {
@@ -262,15 +324,36 @@ describe('OwnerDocumentRequests', () => {
     expect(listWrapper).not.toHaveClass('bg-card');
     expect(listWrapper).not.toHaveClass('p-4');
     expect(listWrapper).not.toHaveClass('shadow-xs');
-    expect(card).toHaveClass('border', 'bg-background', 'shadow-xs');
-    expect(card).not.toHaveClass('border-[0.1px]');
-    expect(card).not.toHaveClass('border-[#5a2020]');
+    const documentCard = card.querySelector('[data-slot="card"]');
+    expect(documentCard).toHaveClass('border', 'bg-card', 'shadow-xs');
+    expect(documentCard).not.toHaveClass('border-[0.1px]');
+    expect(documentCard).not.toHaveClass('border-[#5a2020]');
     const header = screen.getByTestId('owner-document-card-header');
     expect(header).toHaveTextContent('DNI del propietario');
-    expect(header).toHaveTextContent('DNI · Solicitado por ViewPro Demo Inmobiliaria');
-    expect(header).toHaveTextContent('Rechazado');
-    expect(screen.getByText('Versión actual del documento')).toBeInTheDocument();
-    expect(screen.getByText('Subida')).toBeInTheDocument();
+    expect(header).toHaveTextContent('Solicitado por ViewPro Demo Inmobiliaria');
+    expect(header).not.toHaveTextContent('DNI ·');
+    expect(header).toHaveTextContent('Acción requerida');
+    expect(screen.queryByText('Versión actual subida')).not.toBeInTheDocument();
+    expect(screen.getByText('Subido el 28 may 2026')).toBeInTheDocument();
+    expect(screen.getByText('PDF · 1 KB')).toBeInTheDocument();
+    expect(screen.queryByText('dni.pdf')).not.toBeInTheDocument();
+    expect(screen.queryByText('Subida')).not.toBeInTheDocument();
+  });
+
+  it('can hide repeated agency subtitles in document card headers', async () => {
+    getOwnerDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([documentRequest({ status: 'PENDING', currentVersion: null })])
+    );
+
+    renderOwnerDocumentRequests({ hideAgencyInDocumentCards: true });
+
+    const header = await screen.findByTestId('owner-document-card-header');
+    expect(header).toHaveTextContent('DNI del propietario');
+    expect(header).not.toHaveTextContent('Solicitado por');
+    expect(header).not.toHaveTextContent('DNI ·');
+    expect(
+      screen.getByText('Subí el DNI del propietario, frente y dorso en PDF.')
+    ).toBeInTheDocument();
   });
 
   it('uses blue submitted state and blue read action for submitted requests', async () => {
@@ -281,8 +364,16 @@ describe('OwnerDocumentRequests', () => {
     renderOwnerDocumentRequests();
 
     expect(await screen.findByRole('listitem')).not.toHaveClass('border-blue-700');
-    expect(screen.getByText('Subido')).toHaveClass('bg-blue-50');
-    expect(screen.getByRole('button', { name: 'Abrir documento' })).toHaveClass('bg-blue-50');
+    const submittedBadge = screen.getByRole('status', {
+      name: 'Estado del documento: en revisión'
+    });
+    expect(submittedBadge).toHaveTextContent('En revisión');
+    expect(submittedBadge).toHaveClass('bg-blue-50');
+    expect(submittedBadge.querySelector('svg')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Abrir documento' })).toHaveClass('min-h-11');
+    expect(
+      screen.queryByRole('button', { name: /Subir nueva versión|Reemplazar/i })
+    ).not.toBeInTheDocument();
   });
 
   it('uses status badges for pending and approved requests', async () => {
@@ -298,11 +389,22 @@ describe('OwnerDocumentRequests', () => {
     const cards = await screen.findAllByRole('listitem');
     expect(cards[0]).not.toHaveClass('border-amber-600');
     expect(cards[1]).not.toHaveClass('border-[#1a4028]');
-    expect(screen.getByText('Pendiente')).toHaveClass('bg-amber-50');
-    expect(screen.getByText('Aprobado')).toHaveClass('bg-emerald-50');
+    const pendingBadge = screen.getByRole('status', {
+      name: 'Estado del documento: pendiente'
+    });
+    const approvedBadge = screen.getByRole('status', {
+      name: 'Estado del documento: aprobado'
+    });
+    expect(pendingBadge).toHaveTextContent('Pendiente');
+    expect(pendingBadge).toHaveClass('bg-amber-50');
+    expect(pendingBadge.querySelector('svg')).toBeInTheDocument();
+    expect(approvedBadge).toHaveTextContent('Aprobado');
+    expect(approvedBadge).toHaveClass('bg-emerald-50');
+    expect(approvedBadge.querySelector('svg')).toBeInTheDocument();
   });
 
-  it('keeps rejected document versions visible with rejection reason after a new upload', async () => {
+  it('keeps rejected document versions collapsed in history after a new upload', async () => {
+    const user = userEvent.setup();
     const rejectedVersion: OwnerDocumentVersion = {
       ...currentVersion,
       id: 'version-rejected',
@@ -340,15 +442,71 @@ describe('OwnerDocumentRequests', () => {
 
     renderOwnerDocumentRequests();
 
-    expect(await screen.findByText('dni-nuevo.pdf')).toBeInTheDocument();
-    expect(screen.getByText('Historial de versiones')).toBeInTheDocument();
-    expect(screen.getByText('dni-rechazado.pdf')).toBeInTheDocument();
-    expect(screen.getByText('Versión anterior')).toBeInTheDocument();
-    expect(screen.getByText('Rechazada')).toHaveClass('bg-red-50');
-    expect(
-      screen.getByText('El documento se ve mal. Subilo con mejor calidad.')
-    ).toBeInTheDocument();
+    expect(await screen.findAllByText('DNI del propietario')).toHaveLength(2);
+    expect(screen.queryByText('dni-nuevo.pdf')).not.toBeInTheDocument();
+    expect(screen.getByText('Versión 2 · Subido el 28 may 2026')).toBeInTheDocument();
+    const historyTrigger = screen.getByRole('button', {
+      name: /Ver historial de versiones \(1\)/i
+    });
+    expect(historyTrigger).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(historyTrigger);
+
+    expect(historyTrigger).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Versión 1 · Subido el 27 may 2026')).toBeInTheDocument();
+    expect(screen.queryByText('Rechazada')).not.toBeInTheDocument();
+    expect(screen.queryByText('dni-rechazado.pdf')).not.toBeInTheDocument();
     expect(screen.queryByText('dni-pendiente.pdf')).not.toBeInTheDocument();
+  });
+
+  it('shows a user-facing file name when the original filename is technical', async () => {
+    getOwnerDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([
+        documentRequest({
+          currentVersion: {
+            ...currentVersion,
+            originalFilename: 'seeded-smoke-document.pdf'
+          }
+        })
+      ])
+    );
+
+    renderOwnerDocumentRequests();
+
+    expect(await screen.findAllByText('DNI del propietario')).toHaveLength(2);
+    expect(screen.queryByText('seeded-smoke-document.pdf')).not.toBeInTheDocument();
+    expect(screen.queryByText('DNI del propietario.pdf')).not.toBeInTheDocument();
+  });
+
+  it('renders a real thumbnail for uploaded image versions', async () => {
+    const imageVersion: OwnerDocumentVersion = {
+      ...currentVersion,
+      id: 'version-image',
+      originalFilename: 'frente-dni.png',
+      mimeType: 'image/png',
+      storageKey: 'document-requests/request-1/frente-dni.png'
+    };
+    const readResponse: OwnerDocumentVersionUrlResponse = {
+      version: imageVersion,
+      readUrl: {
+        url: 'http://localhost:3001/api/document-storage/read/signed-image-token',
+        storageKey: imageVersion.storageKey,
+        expiresInSeconds: 300
+      }
+    };
+    getOwnerDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([documentRequest({ currentVersion: imageVersion })])
+    );
+    createOwnerDocumentReadUrlMock.mockResolvedValueOnce(readResponse);
+
+    renderOwnerDocumentRequests();
+
+    expect(await screen.findByAltText('Vista previa de DNI — frente')).toHaveAttribute(
+      'src',
+      readResponse.readUrl.url
+    );
+    expect(screen.getByText('DNI — frente')).toBeInTheDocument();
+    expect(screen.queryByText('frente-dni.png')).not.toBeInTheDocument();
   });
 
   it('creates a read URL and opens it in a safe new tab', async () => {
@@ -379,7 +537,9 @@ describe('OwnerDocumentRequests', () => {
   });
 });
 
-function renderOwnerDocumentRequests() {
+function renderOwnerDocumentRequests({
+  hideAgencyInDocumentCards = false
+}: { hideAgencyInDocumentCards?: boolean } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
       mutations: { retry: false },
@@ -391,6 +551,7 @@ function renderOwnerDocumentRequests() {
     <QueryClientProvider client={queryClient}>
       <OwnerDocumentRequests
         agencyName='ViewPro Demo Inmobiliaria'
+        hideAgencyInDocumentCards={hideAgencyInDocumentCards}
         propertyEngagementId={propertyEngagementId}
       />
     </QueryClientProvider>
