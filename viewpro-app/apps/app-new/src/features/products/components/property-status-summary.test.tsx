@@ -11,7 +11,7 @@ describe('PropertyStatusSummary', () => {
 
     expect(screen.getByText('Precio publicado')).toBeInTheDocument();
     expect(screen.getByText((text) => text.includes('120.000'))).toBeInTheDocument();
-    expect(screen.getByText('Moneda: ARS')).toBeInTheDocument();
+    expect(screen.getByText('Moneda: ARS')).toHaveClass('text-foreground/70');
     expect(screen.getByText('Estado comercial')).toBeInTheDocument();
     expect(
       screen.getByRole('combobox', { name: 'Cambiar estado de Casa demo' })
@@ -25,6 +25,17 @@ describe('PropertyStatusSummary', () => {
 
     expect(screen.getByText('Sin precio')).toBeInTheDocument();
     expect(screen.getByText('Moneda: ARS')).toBeInTheDocument();
+  });
+
+  it('uses semantic success tone for active publication status', () => {
+    renderPropertyStatusSummary({
+      propertyEngagement: createProduct({ status: 'ACTIVE_PUBLICATION' })
+    });
+
+    expect(screen.getByRole('combobox', { name: 'Cambiar estado de Casa demo' })).toHaveClass(
+      'border-emerald-200',
+      'text-emerald-800'
+    );
   });
 
   it('renders archived details when the property is archived', () => {

@@ -14,6 +14,7 @@ import {
   getStatusLabel,
   getStatusTone
 } from './product-tables/columns';
+import { SectionHeader } from './section-header';
 
 type PropertyDetailHeaderProps = {
   propertyEngagement: Product;
@@ -121,30 +122,48 @@ export function PropertyDetailHeader({
 }
 
 type PropertyReadOnlySectionsProps = {
+  className?: string;
+  density?: 'default' | 'compact';
   propertyEngagement: Product;
 };
 
-export function PropertyReadOnlySections({ propertyEngagement }: PropertyReadOnlySectionsProps) {
+export function PropertyReadOnlySections({
+  className,
+  density = 'default',
+  propertyEngagement
+}: PropertyReadOnlySectionsProps) {
   return (
-    <>
+    <div
+      data-testid='property-read-only-sections'
+      className={cn('space-y-6', density === 'compact' ? 'space-y-4' : null, className)}
+    >
       <section className='space-y-3'>
-        <div>
-          <h3 className='text-base font-semibold'>Información principal</h3>
-          <p className='text-sm text-muted-foreground'>
-            Datos base para identificar y publicar la propiedad.
-          </p>
-        </div>
-        <div className='grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4'>
+        <SectionHeader
+          description='Datos base para identificar y publicar la propiedad.'
+          icon={Icons.info}
+          label='Información principal'
+        />
+        <div
+          data-testid='property-main-info-grid'
+          className='grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-2 xl:grid-cols-4'
+        >
           <ReadOnlyField
+            density={density}
             label='Tipo'
             value={getPropertyTypeLabel(propertyEngagement.property.propertyType)}
           />
           <ReadOnlyField
+            density={density}
             label='Operación'
             value={getOperationTypeLabel(propertyEngagement.operationType)}
           />
-          <ReadOnlyField label='Dirección' value={propertyEngagement.property.addressLine} />
           <ReadOnlyField
+            density={density}
+            label='Dirección'
+            value={propertyEngagement.property.addressLine}
+          />
+          <ReadOnlyField
+            density={density}
             label='Localidad'
             value={`${propertyEngagement.property.city}, ${propertyEngagement.property.province}`}
           />
@@ -152,58 +171,82 @@ export function PropertyReadOnlySections({ propertyEngagement }: PropertyReadOnl
       </section>
 
       <section className='space-y-3'>
-        <div>
-          <h3 className='text-base font-semibold'>Características</h3>
-          <p className='text-sm text-muted-foreground'>
-            Datos físicos registrados para esta propiedad.
-          </p>
-        </div>
-        <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+        <SectionHeader
+          description='Datos físicos registrados para esta propiedad.'
+          icon={Icons.grid}
+          label='Características'
+        />
+        <div
+          data-testid='property-characteristics-grid'
+          className='grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4'
+        >
           <ReadOnlyField
+            density={density}
             label='Superficie total'
             value={formatNumberWithSuffix(propertyEngagement.property.totalAreaSqm, 'm²')}
           />
           <ReadOnlyField
+            density={density}
             label='Superficie cubierta'
             value={formatNumberWithSuffix(propertyEngagement.property.coveredAreaSqm, 'm²')}
           />
           <ReadOnlyField
+            density={density}
             label='Ambientes'
             value={formatOptionalNumber(propertyEngagement.property.rooms)}
           />
           <ReadOnlyField
+            density={density}
             label='Dormitorios'
             value={formatOptionalNumber(propertyEngagement.property.bedrooms)}
           />
           <ReadOnlyField
+            density={density}
             label='Baños'
             value={formatOptionalNumber(propertyEngagement.property.bathrooms)}
           />
           <ReadOnlyField
+            density={density}
             label='Cocheras'
             value={formatOptionalNumber(propertyEngagement.property.garages)}
           />
           <ReadOnlyField
+            density={density}
             label='Antigüedad'
             value={formatNumberWithSuffix(propertyEngagement.property.ageYears, 'años')}
           />
           <ReadOnlyField
+            density={density}
             label='Orientación'
             value={propertyEngagement.property.orientation ?? 'Sin dato'}
           />
         </div>
       </section>
-    </>
+    </div>
   );
 }
 
-function ReadOnlyField({ label, value }: { label: string; value: string }) {
+function ReadOnlyField({
+  density,
+  label,
+  value
+}: {
+  density: 'default' | 'compact';
+  label: string;
+  value: string;
+}) {
   return (
-    <div className='min-w-0 space-y-1 rounded-xl border bg-background p-3 shadow-xs'>
-      <div className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
+    <div
+      data-slot='property-read-only-field'
+      className={cn(
+        'min-w-0 space-y-1 rounded-xl border bg-background shadow-xs',
+        density === 'compact' ? 'p-2 sm:p-2.5' : 'p-2.5 sm:p-3'
+      )}
+    >
+      <div className='text-[0.68rem] font-medium tracking-wide text-muted-foreground uppercase sm:text-xs'>
         {label}
       </div>
-      <div className='break-words text-sm font-medium'>{value}</div>
+      <div className='break-words text-sm leading-snug font-semibold'>{value}</div>
     </div>
   );
 }
