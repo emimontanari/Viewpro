@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { propertyTypeOptions } from '@/features/products/constants/product-options';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import { parseAsString, useQueryState } from 'nuqs';
 import { useEffect } from 'react';
 import {
   ownerDocumentRequestsOptions,
@@ -20,9 +21,18 @@ import { OwnerEngagementCard } from './owner-engagement-card';
 import { OwnerPropertySummary } from './owner-property-summary';
 
 const OWNER_DOCUMENT_PREFETCH_FILTERS = { pageSize: 20 };
+const OWNER_DETAIL_TAB_VALUES = ['summary', 'tracking', 'documents'] as const;
+type OwnerDetailTab = (typeof OWNER_DETAIL_TAB_VALUES)[number];
 
 export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
   const queryClient = useQueryClient();
+  const [tabQueryValue, setTabQueryValue] = useQueryState(
+    'tab',
+    parseAsString
+      .withOptions({ history: 'replace', scroll: false, shallow: true })
+      .withDefault('summary')
+  );
+  const activeTab = getOwnerDetailTab(tabQueryValue);
   const propertyQuery = useQuery(ownerPropertyOptions(propertyId));
   const engagementsQuery = useQuery(ownerPropertyEngagementsOptions(propertyId));
   const firstEngagementId = engagementsQuery.data?.[0]?.id;
@@ -99,7 +109,14 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
         </div>
       </section>
 
-      <Tabs defaultValue='summary' className='space-y-4'>
+      <Tabs
+        value={activeTab}
+        className='space-y-4'
+        onValueChange={(nextValue) => {
+          const nextTab = getOwnerDetailTab(nextValue);
+          void setTabQueryValue(nextTab === 'summary' ? null : nextTab);
+        }}
+      >
         <TabsList className='grid h-auto w-full grid-cols-3 sm:w-fit'>
           <TabsTrigger value='summary'>Resumen</TabsTrigger>
           <TabsTrigger value='tracking'>Seguimiento</TabsTrigger>
@@ -145,6 +162,7 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
           {!isEngagementsLoading && !isEngagementsError && primaryEngagement ? (
             <OwnerDocumentRequests
               agencyName={primaryEngagement.tenant.name}
+              hideAgencyInDocumentCards
               propertyEngagementId={primaryEngagement.id}
             />
           ) : null}
@@ -242,6 +260,12 @@ function OwnerDetailState({ title, description }: { title: string; description: 
       </CardContent>
     </Card>
   );
+}
+
+function getOwnerDetailTab(value: string | null): OwnerDetailTab {
+  return OWNER_DETAIL_TAB_VALUES.includes(value as OwnerDetailTab)
+    ? (value as OwnerDetailTab)
+    : 'summary';
 }
 
 function formatPropertyLocation(property: OwnerProperty) {
