@@ -17,7 +17,7 @@ Core API, app-new component/unit tests, strict lint, and seeded E2E all run succ
 | `cd viewpro-app && DATABASE_URL=postgresql://viewpro:viewpro@localhost:5432/viewpro_test?schema=public APP_PUBLIC_URL=http://localhost:3000 pnpm --filter @viewpro/api test` | PASS | `Test Files 46 passed (46)`, `Tests 497 passed (497)`. |
 | `cd viewpro-app && pnpm --filter next-shadcn-dashboard-starter test` | PASS | `Test Files 70 passed (70)`, `Tests 317 passed (317)`. |
 | `cd viewpro-app && pnpm --filter next-shadcn-dashboard-starter lint:strict` | PASS | `oxlint --deny-warnings` completed without warnings/errors. |
-| `cd viewpro-app && APP_PUBLIC_URL=http://127.0.0.1:3100 VIEWPRO_APP_NEW_SEEDED_E2E_API_PORT=3101 VIEWPRO_APP_NEW_SEEDED_E2E_WEB_PORT=3100 pnpm --filter next-shadcn-dashboard-starter test:seeded` | PASS | `6 passed`. Seed output: 20 properties, 20 images, 57 movements, 17 document requests. |
+| `cd viewpro-app && APP_PUBLIC_URL=http://127.0.0.1:3100 VIEWPRO_APP_NEW_SEEDED_E2E_API_PORT=3101 VIEWPRO_APP_NEW_SEEDED_E2E_WEB_PORT=3100 pnpm --filter next-shadcn-dashboard-starter test:seeded` | PASS | `7 passed`, including existing-owner owner invitation acceptance. Seed output: 20 properties, 20 images, 57 movements, 17 document requests. |
 
 ## Stage 26.0a baseline fixes applied
 
@@ -37,7 +37,7 @@ Core API, app-new component/unit tests, strict lint, and seeded E2E all run succ
 | Owner portal read-only | Seeded owner sees property/tabs and no internal actions; API owner portal isolation exists. | PASS evidence | keep regression |
 | Document request/upload/review | Seeded owner upload + manager read/approve passes; API covers request/upload/reject/read-url/isolation. | PASS evidence | keep regression |
 | Document activity in Seguimiento | Seeded smoke checks some document activity text; mixed feed/filter/metadata/seller visibility still needs stronger proof. | PARTIAL | P1 — Slice 20.9 |
-| Owner invitations existing owner + revoke/regenerate | Existing owner linking and rotate/regenerate evidence exists; public invitation accept for already-registered owner remains a product gap; explicit owner revoke UX remains incomplete. | PARTIAL | P0 — Slices 21.5/21.6 |
+| Owner invitations existing owner + revoke/regenerate | Existing owner public acceptance now has API/UI/seeded evidence; explicit owner revoke/regenerate UX remains incomplete. | PARTIAL | P0 — Slice 21.6 |
 | Team roles/inactive/invitations | Strong API evidence; app-new/team seeded UI evidence incomplete. | PARTIAL | P1 — Slice 22.6 |
 | WhatsApp config/contact/tracking | Mapping and click tracking tests exist; editable tenant/user phone config not proven. | PARTIAL | P0 — Slices 23.3/23.4 |
 | Notifications producer/routing/read-unread | Producer and API tests exist; full seeded owner/internal routing/read-unread not proven. | PARTIAL | P0 — Slice 24.5 |
@@ -47,20 +47,19 @@ Core API, app-new component/unit tests, strict lint, and seeded E2E all run succ
 
 ## Remaining P0 product gaps
 
-1. **Stage 21.5 — Existing owner accepts another agency/property.**
-2. **Stage 21.6 — Minimal owner invitation management.**
-3. **Stage 25.1–25.4 — Admin status writes, audit log, limits, and enforcement.**
-4. **Stage 23.3–23.4 — WhatsApp contact configuration and priority/tracking proof.**
-5. **Stage 24.5 — Notification routing/read-unread E2E.**
+1. **Stage 21.6 — Minimal owner invitation management.**
+2. **Stage 25.1–25.4 — Admin status writes, audit log, limits, and enforcement.**
+3. **Stage 23.3–23.4 — WhatsApp contact configuration and priority/tracking proof.**
+4. **Stage 24.5 — Notification routing/read-unread E2E.**
 
 ## Next selected slice
 
 ```txt
 Stage: 21
-Slice: 21.5 — Existing owner accepts another agency/property
-Objective: let a global owner account accept a new property/agency invitation without conflict or duplicate user creation.
-Evidence needed: API tests, UI tests, and seeded acceptance proof for an already-registered owner email.
-Do not touch: email delivery, billing, full owner account settings.
-Done: existing owner accepts an invite, gains access to the new property/agency, and no longer receives a registered-email conflict.
-Next slice: 21.6 — Minimal owner invitation management.
+Slice: 21.6 — Minimal owner invitation management
+Objective: give managers a clear way to regenerate/resend-copy and revoke pending owner invite links.
+Evidence needed: API/UI tests for regenerate and revoke; accepted/expired/revoked states remain safe.
+Do not touch: email delivery automation or advanced invitation analytics.
+Done: manager can regenerate/copy a fresh pending link and revoke a pending link without DB/support help.
+Next slice: 25.1 — Admin tenant status write API + audit log.
 ```

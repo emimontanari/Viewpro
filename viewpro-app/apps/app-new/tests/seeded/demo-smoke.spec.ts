@@ -6,6 +6,8 @@ const DEMO_TENANT_NAME = 'ViewPro Demo Inmobiliaria';
 const VISIBLE_DEMO_PROPERTY_TITLE = 'Casa compacta en Funes';
 const OWNER_EMAIL = 'propietario.demo@viewpro.local';
 const OWNER_VISIBLE_PROPERTY_TITLE = 'Casa familiar con pileta en Villa Centenario';
+const EXISTING_OWNER_INVITATION_TOKEN = 'seeded-existing-owner-invitation-token';
+const EXISTING_OWNER_INVITED_PROPERTY_TITLE = 'Casa luminosa con patio en Los Boulevares';
 const SELLER_SCENARIOS = [
   {
     email: 'martin.demo@viewpro.local',
@@ -126,6 +128,28 @@ test('demo owner can upload a requested document', async ({ page }) => {
   await expect(uploadedRequest.getByText(/Subido el/i)).toBeVisible();
 });
 
+test('existing demo owner can accept another property invitation', async ({ page }) => {
+  await page.goto(`/owner-invitations/${EXISTING_OWNER_INVITATION_TOKEN}`);
+
+  await expect(page.getByText('Aceptar invitación').first()).toBeVisible();
+  await expect(page.getByText(EXISTING_OWNER_INVITED_PROPERTY_TITLE)).toBeVisible();
+  await expect(page.getByText(OWNER_EMAIL)).toBeVisible();
+  await expect(page.getByText('Este email ya tiene cuenta.')).toBeVisible();
+
+  await page.getByLabel('Contraseña').fill(DEMO_PASSWORD);
+  await page.getByRole('button', { name: 'Aceptar invitación' }).click();
+  await page.waitForURL('**/owner');
+
+  await expect(page.getByRole('heading', { name: 'Tus propiedades' })).toBeVisible();
+  const properties = await page.request.get('/api/owner/properties');
+  expect(properties.ok()).toBe(true);
+  const ownerProperties = (await properties.json()) as OwnerPropertiesResponse;
+
+  expect(ownerProperties.map((property) => property.title)).toEqual(
+    expect.arrayContaining([OWNER_VISIBLE_PROPERTY_TITLE, EXISTING_OWNER_INVITED_PROPERTY_TITLE])
+  );
+});
+
 test('demo manager can review a submitted document request', async ({ page }) => {
   await signIn(page, DEMO_EMAIL);
   await page.goto('/dashboard/product');
@@ -231,3 +255,8 @@ type ProductsResponse = {
   }>;
   total: number;
 };
+
+type OwnerPropertiesResponse = Array<{
+  id: string;
+  title: string;
+}>;

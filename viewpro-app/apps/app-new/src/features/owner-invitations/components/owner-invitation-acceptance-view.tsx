@@ -5,10 +5,11 @@ import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppForm, useFormFields } from '@/components/ui/tanstack-form';
 import { getApiErrorMessage, isApiError } from '@/lib/api-client';
+import { getSessionWithRefresh, type Session } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { InteractiveGridPattern } from '@/features/auth/components/interactive-grid';
 import { acceptOwnerInvitation, getOwnerInvitation } from '../api/service';
@@ -18,9 +19,13 @@ type OwnerInvitationAcceptanceViewProps = {
   token: string;
 };
 
-type AcceptanceValues = {
+type RegisterValues = {
   firstName: string;
   lastName: string;
+  password: string;
+};
+
+type LoginValues = {
   password: string;
 };
 
@@ -30,39 +35,50 @@ type InvitationUiError = {
   showSignInLink?: boolean;
 };
 
-const acceptanceSchema = z.object({
+const registerSchema = z.object({
   firstName: z.string().trim().min(1, 'Ingresá tu nombre.'),
   lastName: z.string(),
   password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.')
 });
 
+const loginSchema = z.object({
+  password: z.string().min(8, 'Ingresá tu contraseña.')
+});
+
 export function OwnerInvitationAcceptanceView({ token }: OwnerInvitationAcceptanceViewProps) {
   const router = useRouter();
   const [invitation, setInvitation] = React.useState<OwnerInvitationResponse | null>(null);
+  const [session, setSession] = React.useState<Session | null>(null);
   const [loadError, setLoadError] = React.useState<unknown>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [submitError, setSubmitError] = React.useState<unknown>(null);
+  const [isAcceptingSession, setIsAcceptingSession] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
 
     setIsLoading(true);
     setInvitation(null);
+    setSession(null);
     setLoadError(null);
     setSubmitError(null);
+    setIsAcceptingSession(false);
 
-    getOwnerInvitation(token)
-      .then((response) => {
-        if (!cancelled) {
-          setInvitation(response);
-          setLoadError(null);
+    Promise.allSettled([getOwnerInvitation(token), getSessionWithRefresh()])
+      .then(([invitationResult, sessionResult]) => {
+        if (cancelled) {
+          return;
         }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setLoadError(error);
+
+        if (invitationResult.status === 'fulfilled') {
+          setInvitation(invitationResult.value);
+          setLoadError(null);
+        } else {
+          setLoadError(invitationResult.reason);
           setInvitation(null);
         }
+
+        setSession(sessionResult.status === 'fulfilled' ? sessionResult.value : null);
       })
       .finally(() => {
         if (!cancelled) {
@@ -74,6 +90,65 @@ export function OwnerInvitationAcceptanceView({ token }: OwnerInvitationAcceptan
       cancelled = true;
     };
   }, [token]);
+
+  async function handleAccepted() {
+    router.push('/owner');
+    router.refresh();
+  }
+
+  async function submitRegister(value: RegisterValues) {
+    setSubmitError(null);
+
+    try {
+      await acceptOwnerInvitation(token, {
+        firstName: value.firstName.trim(),
+        lastName: value.lastName.trim() || undefined,
+        mode: 'register',
+        password: value.password
+      });
+      await handleAccepted();
+    } catch (error) {
+      setSubmitError(error);
+    }
+  }
+
+  async function submitLogin(value: LoginValues) {
+    setSubmitError(null);
+
+    try {
+      await acceptOwnerInvitation(token, { mode: 'login', password: value.password });
+      await handleAccepted();
+    } catch (error) {
+      setSubmitError(error);
+    }
+  }
+
+  async function submitCurrentSession() {
+    if (isAcceptingSession) {
+      return;
+    }
+
+    setSubmitError(null);
+    setIsAcceptingSession(true);
+
+    try {
+      await acceptOwnerInvitation(token, { mode: 'current-session' });
+      await handleAccepted();
+    } catch (error) {
+      setSubmitError(error);
+    } finally {
+      setIsAcceptingSession(false);
+    }
+  }
+
+  const sessionEmail = session?.user.email.toLowerCase() ?? null;
+  const invitationEmail = invitation?.email.toLowerCase() ?? null;
+  const isMatchingSession = Boolean(
+    sessionEmail && invitationEmail && sessionEmail === invitationEmail
+  );
+  const isWrongSession = Boolean(
+    sessionEmail && invitationEmail && sessionEmail !== invitationEmail
+  );
 
   return (
     <div className='relative flex min-h-screen flex-col items-center justify-center overflow-hidden md:grid lg:max-w-none lg:grid-cols-2 lg:px-0'>
@@ -95,44 +170,39 @@ export function OwnerInvitationAcceptanceView({ token }: OwnerInvitationAcceptan
           {isLoading ? <LoadingCard /> : null}
           {!isLoading && loadError ? <InvitationErrorCard error={loadError} /> : null}
           {!isLoading && invitation ? (
-            <AcceptanceCard
-              invitation={invitation}
-              onSubmit={async (value) => {
-                setSubmitError(null);
-
-                try {
-                  await acceptOwnerInvitation(token, {
-                    firstName: value.firstName.trim(),
-                    lastName: value.lastName.trim() || undefined,
-                    password: value.password
-                  });
-                  router.push('/owner');
-                  router.refresh();
-                } catch (error) {
-                  setSubmitError(error);
-                }
-              }}
-              submitError={submitError}
-            />
-          ) : null}
-          {!isLoading && invitation ? (
-            <p className='text-muted-foreground px-8 text-center text-sm'>
-              Al continuar, aceptás nuestros{' '}
-              <Link
-                href='/terms-of-service'
-                className='hover:text-primary underline underline-offset-4'
-              >
-                términos de servicio
-              </Link>{' '}
-              y nuestra{' '}
-              <Link
-                href='/privacy-policy'
-                className='hover:text-primary underline underline-offset-4'
-              >
-                política de privacidad
-              </Link>
-              .
-            </p>
+            <>
+              {isWrongSession ? (
+                <WrongAccountCard
+                  invitation={invitation}
+                  session={session}
+                  submitError={submitError}
+                />
+              ) : null}
+              {!isWrongSession && !invitation.emailRegistered ? (
+                <RegisterCard
+                  invitation={invitation}
+                  onSubmit={submitRegister}
+                  submitError={submitError}
+                />
+              ) : null}
+              {!isWrongSession && invitation.emailRegistered && isMatchingSession ? (
+                <CurrentSessionCard
+                  invitation={invitation}
+                  isSubmitting={isAcceptingSession}
+                  onAccept={submitCurrentSession}
+                  session={session}
+                  submitError={submitError}
+                />
+              ) : null}
+              {!isWrongSession && invitation.emailRegistered && !isMatchingSession ? (
+                <ExistingPasswordCard
+                  invitation={invitation}
+                  onSubmit={submitLogin}
+                  submitError={submitError}
+                />
+              ) : null}
+              <TermsText />
+            </>
           ) : null}
         </div>
       </div>
@@ -216,24 +286,42 @@ function InvitationErrorCard({ error }: { error: unknown }) {
   );
 }
 
-function AcceptanceCard({
+function InvitationSummary({ invitation }: { invitation: OwnerInvitationResponse }) {
+  return (
+    <section className='bg-muted/40 rounded-lg border p-4'>
+      <p className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>
+        Propiedad invitada
+      </p>
+      <h2 className='mt-2 text-lg font-semibold'>{invitation.property.title}</h2>
+      <p className='text-muted-foreground text-sm'>{formatPropertyAddress(invitation)}</p>
+      <div className='mt-4 space-y-1'>
+        <p className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>
+          Email invitado
+        </p>
+        <p className='text-sm font-medium'>{invitation.email}</p>
+      </div>
+    </section>
+  );
+}
+
+function RegisterCard({
   invitation,
   onSubmit,
   submitError
 }: {
   invitation: OwnerInvitationResponse;
-  onSubmit: (value: AcceptanceValues) => Promise<void>;
+  onSubmit: (value: RegisterValues) => Promise<void>;
   submitError: unknown;
 }) {
-  const { FormTextField } = useFormFields<AcceptanceValues>();
+  const { FormTextField } = useFormFields<RegisterValues>();
   const form = useAppForm({
     defaultValues: {
       firstName: invitation.ownerFirstName,
       lastName: invitation.ownerLastName,
       password: ''
-    } as AcceptanceValues,
+    } as RegisterValues,
     validators: {
-      onSubmit: acceptanceSchema
+      onSubmit: registerSchema
     },
     onSubmit: async ({ value }) => {
       await onSubmit(value);
@@ -250,34 +338,10 @@ function AcceptanceCard({
         </p>
       </CardHeader>
       <CardContent className='space-y-6'>
-        <section className='bg-muted/40 rounded-lg border p-4'>
-          <p className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>
-            Propiedad invitada
-          </p>
-          <h2 className='mt-2 text-lg font-semibold'>{invitation.property.title}</h2>
-          <p className='text-muted-foreground text-sm'>{formatPropertyAddress(invitation)}</p>
-          <div className='mt-4 space-y-1'>
-            <p className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>
-              Email invitado
-            </p>
-            <p className='text-sm font-medium'>{invitation.email}</p>
-          </div>
-        </section>
-
+        <InvitationSummary invitation={invitation} />
         <form.AppForm>
           <form.Form className='space-y-6'>
-            {submitUiError ? (
-              <Alert variant='destructive'>
-                <AlertDescription className='space-y-3'>
-                  <span>{submitUiError.description}</span>
-                  {submitUiError.showSignInLink ? (
-                    <Link href='/auth/sign-in' className='block underline underline-offset-4'>
-                      Iniciar sesión
-                    </Link>
-                  ) : null}
-                </AlertDescription>
-              </Alert>
-            ) : null}
+            {submitUiError ? <SubmitErrorAlert error={submitUiError} /> : null}
             <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
               <FormTextField
                 name='firstName'
@@ -303,6 +367,154 @@ function AcceptanceCard({
         </form.AppForm>
       </CardContent>
     </Card>
+  );
+}
+
+function ExistingPasswordCard({
+  invitation,
+  onSubmit,
+  submitError
+}: {
+  invitation: OwnerInvitationResponse;
+  onSubmit: (value: LoginValues) => Promise<void>;
+  submitError: unknown;
+}) {
+  const { FormTextField } = useFormFields<LoginValues>();
+  const form = useAppForm({
+    defaultValues: { password: '' } as LoginValues,
+    validators: {
+      onSubmit: loginSchema
+    },
+    onSubmit: async ({ value }) => {
+      await onSubmit(value);
+    }
+  });
+  const submitUiError = submitError ? getInvitationUiError(submitError) : null;
+
+  return (
+    <Card className='w-full'>
+      <CardHeader>
+        <CardTitle className='text-2xl font-bold'>Aceptar invitación</CardTitle>
+        <p className='text-muted-foreground'>
+          Este email ya tiene cuenta. Ingresá tu contraseña para sumar esta propiedad a tu portal.
+        </p>
+      </CardHeader>
+      <CardContent className='space-y-6'>
+        <InvitationSummary invitation={invitation} />
+        <form.AppForm>
+          <form.Form className='space-y-6'>
+            {submitUiError ? <SubmitErrorAlert error={submitUiError} /> : null}
+            <FormTextField
+              name='password'
+              label='Contraseña'
+              required
+              type='password'
+              placeholder='Tu contraseña actual'
+              validators={{ onBlur: z.string().min(8, 'Ingresá tu contraseña.') }}
+            />
+            <form.SubmitButton className='w-full'>Aceptar invitación</form.SubmitButton>
+          </form.Form>
+        </form.AppForm>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CurrentSessionCard({
+  invitation,
+  isSubmitting,
+  onAccept,
+  session,
+  submitError
+}: {
+  invitation: OwnerInvitationResponse;
+  isSubmitting: boolean;
+  onAccept: () => Promise<void>;
+  session: Session | null;
+  submitError: unknown;
+}) {
+  const submitUiError = submitError ? getInvitationUiError(submitError) : null;
+
+  return (
+    <Card className='w-full'>
+      <CardHeader>
+        <CardTitle className='text-2xl font-bold'>Aceptar invitación</CardTitle>
+        <p className='text-muted-foreground'>
+          Ya estás conectado como {session?.user.email}. Podés aceptar esta invitación directamente.
+        </p>
+      </CardHeader>
+      <CardContent className='space-y-6'>
+        <InvitationSummary invitation={invitation} />
+        {submitUiError ? <SubmitErrorAlert error={submitUiError} /> : null}
+        <Button className='w-full' disabled={isSubmitting} onClick={onAccept} type='button'>
+          {isSubmitting ? 'Aceptando invitación...' : 'Aceptar invitación'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function WrongAccountCard({
+  invitation,
+  session,
+  submitError
+}: {
+  invitation: OwnerInvitationResponse;
+  session: Session | null;
+  submitError: unknown;
+}) {
+  const submitUiError = submitError ? getInvitationUiError(submitError) : null;
+
+  return (
+    <Card className='w-full'>
+      <CardHeader>
+        <CardTitle className='text-2xl font-bold'>Usá el email invitado</CardTitle>
+        <p className='text-muted-foreground'>
+          Esta invitación pertenece a {invitation.email}, pero la sesión actual es{' '}
+          {session?.user.email}.
+        </p>
+      </CardHeader>
+      <CardContent className='space-y-6'>
+        <InvitationSummary invitation={invitation} />
+        <Alert variant='destructive'>
+          <AlertDescription>
+            Cerrá sesión e ingresá con el email invitado para aceptar esta invitación.
+          </AlertDescription>
+        </Alert>
+        {submitUiError ? <SubmitErrorAlert error={submitUiError} /> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SubmitErrorAlert({ error }: { error: InvitationUiError }) {
+  return (
+    <Alert variant='destructive'>
+      <AlertDescription className='space-y-3'>
+        <span>{error.description}</span>
+        {error.showSignInLink ? (
+          <Link href='/auth/sign-in' className='block underline underline-offset-4'>
+            Iniciar sesión
+          </Link>
+        ) : null}
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+function TermsText() {
+  return (
+    <p className='text-muted-foreground px-8 text-center text-sm'>
+      Al continuar, aceptás nuestros{' '}
+      <Link href='/terms-of-service' className='hover:text-primary underline underline-offset-4'>
+        términos de servicio
+      </Link>{' '}
+      y nuestra{' '}
+      <Link href='/privacy-policy' className='hover:text-primary underline underline-offset-4'>
+        política de privacidad
+      </Link>
+      .
+    </p>
   );
 }
 
@@ -351,6 +563,21 @@ function getInvitationUiError(error: unknown): InvitationUiError {
     return {
       title: 'Invitación no disponible',
       description: 'Esta invitación ya no está disponible. Pedí una nueva invitación.'
+    };
+  }
+
+  if (error.status === 401) {
+    return {
+      title: 'No pudimos validar tus credenciales',
+      description: 'Revisá tu contraseña y volvé a intentarlo.'
+    };
+  }
+
+  if (error.status === 403) {
+    return {
+      title: 'Usá el email invitado',
+      description:
+        'Esta invitación pertenece a otro email. Cerrá sesión e ingresá con el email invitado.'
     };
   }
 

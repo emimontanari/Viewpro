@@ -222,6 +222,8 @@ Done: existing owner accepts an invite, gains access to the new property/agency,
 Next slice: 21.6.
 ```
 
+Status: completed with API, UI, and seeded E2E evidence in `feat/owner-existing-invite`.
+
 ### Slice 21.6 — Minimal owner invitation management
 
 ```txt

@@ -6,6 +6,7 @@ const invitation: OwnerInvitationResponse = {
   id: 'invitation-1',
   propertyAssetOwnerId: 'owner-link-1',
   email: 'owner@example.com',
+  emailRegistered: false,
   ownerFirstName: 'Ana',
   ownerLastName: 'García',
   property: {

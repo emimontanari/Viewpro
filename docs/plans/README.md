@@ -79,10 +79,10 @@ The final execution plan intentionally excludes:
 
 ```txt
 Stage: 21
-Slice: 21.5 — Existing owner accepts another agency/property
-Objective: let a global owner account accept a new property/agency invitation without conflict or duplicate user creation.
-Evidence needed: API tests, UI tests, and seeded acceptance proof for an already-registered owner email.
-Do not touch: email delivery, billing, full owner account settings.
-Done: existing owner accepts an invite, gains access to the new property/agency, and no longer receives a registered-email conflict.
-Next slice: 21.6 — Minimal owner invitation management.
+Slice: 21.6 — Minimal owner invitation management
+Objective: give managers a clear way to regenerate/resend-copy and revoke pending owner invite links.
+Evidence needed: API/UI tests for regenerate and revoke; accepted/expired/revoked states remain safe.
+Do not touch: email delivery automation or advanced invitation analytics.
+Done: manager can regenerate/copy a fresh pending link and revoke a pending link without DB/support help.
+Next slice: 25.1 — Admin tenant status write API + audit log.
 ```

@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiError } from '@/lib/api-client';
+import { getSessionWithRefresh, type Session } from '@/lib/session';
 import { acceptOwnerInvitation, getOwnerInvitation } from '../api/service';
 import type { OwnerInvitationResponse } from '../api/types';
 import { OwnerInvitationAcceptanceView } from './owner-invitation-acceptance-view';
@@ -9,6 +10,10 @@ import { OwnerInvitationAcceptanceView } from './owner-invitation-acceptance-vie
 vi.mock('../api/service', () => ({
   acceptOwnerInvitation: vi.fn(),
   getOwnerInvitation: vi.fn()
+}));
+
+vi.mock('@/lib/session', () => ({
+  getSessionWithRefresh: vi.fn()
 }));
 
 const pushMock = vi.fn();
@@ -23,11 +28,13 @@ vi.mock('next/navigation', () => ({
 
 const getOwnerInvitationMock = vi.mocked(getOwnerInvitation);
 const acceptOwnerInvitationMock = vi.mocked(acceptOwnerInvitation);
+const getSessionWithRefreshMock = vi.mocked(getSessionWithRefresh);
 
 const invitation: OwnerInvitationResponse = {
   id: 'invitation-1',
   propertyAssetOwnerId: 'owner-link-1',
   email: 'owner@example.com',
+  emailRegistered: false,
   ownerFirstName: 'Ana',
   ownerLastName: 'García',
   property: {
@@ -40,21 +47,24 @@ const invitation: OwnerInvitationResponse = {
   expiresAt: '2026-06-01T10:00:00.000Z'
 };
 
+const acceptedSession: Session = {
+  user: {
+    id: 'user-1',
+    email: invitation.email,
+    firstName: 'Ana',
+    lastName: 'García',
+    status: 'ACTIVE',
+    globalRole: 'USER'
+  },
+  memberships: []
+};
+
 describe('OwnerInvitationAcceptanceView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getOwnerInvitationMock.mockResolvedValue(invitation);
-    acceptOwnerInvitationMock.mockResolvedValue({
-      user: {
-        id: 'user-1',
-        email: invitation.email,
-        firstName: 'Ana',
-        lastName: 'García',
-        status: 'ACTIVE',
-        globalRole: 'USER'
-      },
-      memberships: []
-    });
+    getSessionWithRefreshMock.mockRejectedValue(apiError(401, 'Authentication required'));
+    acceptOwnerInvitationMock.mockResolvedValue(acceptedSession);
   });
 
   it('renders the valid invitation and prefilled editable owner fields', async () => {
@@ -81,6 +91,7 @@ describe('OwnerInvitationAcceptanceView', () => {
       expect(acceptOwnerInvitationMock).toHaveBeenCalledWith('sensitive-token-1', {
         firstName: 'Anita',
         lastName: 'García',
+        mode: 'register',
         password: validCredential
       });
     });
@@ -89,17 +100,59 @@ describe('OwnerInvitationAcceptanceView', () => {
     expect(refreshMock).toHaveBeenCalled();
   });
 
-  it('shows existing-user guidance with a sign-in link', async () => {
-    getOwnerInvitationMock.mockRejectedValueOnce(
-      apiError(409, 'Owner email is already registered')
-    );
+  it('shows a password form for an existing invited owner without a current session', async () => {
+    getOwnerInvitationMock.mockResolvedValueOnce({ ...invitation, emailRegistered: true });
+    const user = userEvent.setup();
 
     render(<OwnerInvitationAcceptanceView token='token-1' />);
 
-    expect(await screen.findByText(/este email ya está registrado/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: /iniciar sesión/i })).toContainEqual(
-      expect.objectContaining({ href: expect.stringContaining('/auth/sign-in') })
-    );
+    expect(await screen.findByText(/este email ya tiene cuenta/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Nombre *')).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText('Contraseña *'), 'test-credential-123');
+    await user.click(screen.getByRole('button', { name: /Aceptar invitación/ }));
+
+    await waitFor(() => {
+      expect(acceptOwnerInvitationMock).toHaveBeenCalledWith('token-1', {
+        mode: 'login',
+        password: 'test-credential-123'
+      });
+    });
+  });
+
+  it('lets an existing invited owner accept directly from a matching session', async () => {
+    getOwnerInvitationMock.mockResolvedValueOnce({ ...invitation, emailRegistered: true });
+    getSessionWithRefreshMock.mockResolvedValueOnce(acceptedSession);
+    const user = userEvent.setup();
+
+    render(<OwnerInvitationAcceptanceView token='token-1' />);
+
+    expect(
+      await screen.findByText(/ya estás conectado como owner@example.com/i)
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /^Aceptar invitación$/ }));
+
+    await waitFor(() => {
+      expect(acceptOwnerInvitationMock).toHaveBeenCalledWith('token-1', {
+        mode: 'current-session'
+      });
+    });
+    expect(pushMock).toHaveBeenCalledWith('/owner');
+  });
+
+  it('shows a wrong-account warning without accepting the invitation', async () => {
+    getOwnerInvitationMock.mockResolvedValueOnce({ ...invitation, emailRegistered: true });
+    getSessionWithRefreshMock.mockResolvedValueOnce({
+      ...acceptedSession,
+      user: { ...acceptedSession.user, email: 'otra@example.com' }
+    });
+
+    render(<OwnerInvitationAcceptanceView token='token-1' />);
+
+    expect(await screen.findByText(/usá el email invitado/i)).toBeInTheDocument();
+    expect(screen.getByText(/la sesión actual es otra@example.com/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Contraseña *')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Aceptar invitación$/ })).not.toBeInTheDocument();
+    expect(acceptOwnerInvitationMock).not.toHaveBeenCalled();
   });
 
   it('shows expired invitation guidance', async () => {
