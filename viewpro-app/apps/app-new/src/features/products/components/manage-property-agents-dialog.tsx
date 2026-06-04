@@ -13,6 +13,8 @@ import {
 import { Icons } from '@/components/icons';
 import type { AssignableProductAgent, ProductAgent, TenantMemberRole } from '../api/types';
 import { useMemo } from 'react';
+import { EntityCard, getEntityInitials, getLinkedEntityCountCopy } from './entity-card';
+import { SectionHeader } from './section-header';
 
 type ManagePropertyAgentsDialogProps = {
   assignedAgents: ProductAgent[];
@@ -50,49 +52,53 @@ export function PropertyAgentsPanel({
 }: PropertyAgentsPanelProps) {
   return (
     <section className='space-y-3 rounded-xl border bg-muted/20 p-3 sm:p-4'>
-      <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
-        <div className='space-y-1'>
-          <div className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
-            Vendedores
-          </div>
-          <p className='text-sm text-muted-foreground'>
-            {getAssignedAgentsDescription(agents.length)}
-          </p>
-        </div>
-        {isArchived ? null : (
-          <Button
-            type='button'
-            size='sm'
-            variant='outline'
-            disabled={isManageDisabled}
-            className='shrink-0 whitespace-nowrap'
-            onClick={onManage}
-          >
-            <Icons.teams className='size-4' />
-            Gestionar vendedores
-          </Button>
-        )}
-      </div>
+      <SectionHeader
+        description={getAssignedAgentsDescription(agents.length)}
+        icon={Icons.teams}
+        label='Vendedores'
+      />
 
       {agents.length > 0 ? (
         <ul className='space-y-2'>
-          {agents.map((agent) => (
-            <li key={agent.id} className='rounded-lg border bg-background/70 p-3'>
-              <AgentIdentity agent={agent} />
-            </li>
-          ))}
+          {agents.map((agent) => {
+            const displayName = getAgentDisplayName(agent);
+
+            return (
+              <li key={agent.id}>
+                <EntityCard
+                  ariaLabel={`Ver detalle de ${displayName}`}
+                  email={agent.email}
+                  name={displayName}
+                  // TODO: connect to team/contact detail navigation when a person route exists.
+                  onClick={() => undefined}
+                />
+              </li>
+            );
+          })}
         </ul>
       ) : (
-        <div className='rounded-lg border border-dashed bg-background/60 p-3 text-sm text-muted-foreground'>
+        <div className='rounded-lg border border-dashed bg-background/60 p-3 text-sm text-foreground/70'>
           Todavía no hay vendedores asignados.
         </div>
       )}
 
       {isArchived ? (
-        <p className='text-xs leading-5 text-muted-foreground'>
+        <p className='text-xs leading-5 text-foreground/70'>
           Restaurá la propiedad para gestionar vendedores.
         </p>
-      ) : null}
+      ) : (
+        <Button
+          type='button'
+          size='sm'
+          variant='outline'
+          disabled={isManageDisabled}
+          className='w-full whitespace-nowrap'
+          onClick={onManage}
+        >
+          <Icons.teams className='size-4' />
+          Gestionar vendedores
+        </Button>
+      )}
     </section>
   );
 }
@@ -249,7 +255,7 @@ function renderAssignableAgentsState({
   return (
     <div className='space-y-3'>
       <div className='flex flex-col gap-2 rounded-xl border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between'>
-        <p className='text-sm text-muted-foreground'>
+        <p className='text-sm text-foreground/70'>
           {getAvailableAgentsDescription(availableAgents.length)}
         </p>
         <Button
@@ -281,7 +287,7 @@ function renderAssignableAgentsState({
                     {roleLabels[agent.role]}
                   </Badge>
                 </div>
-                <p className='break-all text-sm text-muted-foreground'>{agent.email}</p>
+                <p className='break-all text-sm text-foreground/70'>{agent.email}</p>
               </div>
               <Button
                 type='button'
@@ -313,7 +319,7 @@ function AgentIdentity({ agent }: { agent: ProductAgent }) {
         <p className='truncate text-sm font-medium' title={displayName}>
           {displayName}
         </p>
-        <p className='truncate text-sm text-muted-foreground' title={agent.email}>
+        <p className='truncate text-sm text-foreground/70' title={agent.email}>
           {agent.email}
         </p>
       </div>
@@ -322,15 +328,7 @@ function AgentIdentity({ agent }: { agent: ProductAgent }) {
 }
 
 function getAssignedAgentsDescription(count: number) {
-  if (count === 0) {
-    return 'Sin responsables asignados.';
-  }
-
-  if (count === 1) {
-    return '1 vendedor asignado.';
-  }
-
-  return `${count} vendedores asignados.`;
+  return getLinkedEntityCountCopy(count, 'vendedor asignado', 'vendedores asignados');
 }
 
 function getAvailableAgentsDescription(count: number) {
@@ -354,11 +352,5 @@ function getAgentDisplayName(agent: { email: string; firstName: string | null })
 }
 
 function getAgentInitials(agent: { email: string; firstName: string | null }) {
-  const displayName = getAgentDisplayName(agent);
-  const parts = displayName
-    .split(/\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  return (parts[0]?.slice(0, 2) || agent.email.slice(0, 2)).toUpperCase();
+  return getEntityInitials(getAgentDisplayName(agent), agent.email);
 }

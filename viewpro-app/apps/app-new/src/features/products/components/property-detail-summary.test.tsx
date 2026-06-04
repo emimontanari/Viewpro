@@ -63,15 +63,50 @@ describe('PropertyDetailHeader', () => {
 
 describe('PropertyReadOnlySections', () => {
   it('renders main property information and characteristic values', () => {
-    render(<PropertyReadOnlySections propertyEngagement={propertyEngagement} />);
+    const { container } = render(
+      <PropertyReadOnlySections propertyEngagement={propertyEngagement} />
+    );
 
-    expect(screen.getByText('Información principal')).toBeInTheDocument();
-    expect(screen.getByText('Características')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 3, name: 'Información principal' })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Características' })).toBeInTheDocument();
+    expect(screen.getByTestId('property-main-info-grid')).toHaveClass('grid-cols-2');
+    expect(screen.getByTestId('property-main-info-grid')).not.toHaveClass('grid-cols-1');
+    expect(screen.getByTestId('property-characteristics-grid')).toHaveClass(
+      'grid-cols-2',
+      'sm:grid-cols-3',
+      'lg:grid-cols-4'
+    );
+    expect(container.querySelector('[data-slot="property-read-only-field"]')).toHaveClass(
+      'p-2.5',
+      'sm:p-3'
+    );
     expect(screen.getByText('Av. Siempre Viva 742')).toBeInTheDocument();
     expect(screen.getByText('Springfield, Buenos Aires')).toBeInTheDocument();
     expect(screen.getByText('120 m²')).toBeInTheDocument();
     expect(screen.getByText('95 m²')).toBeInTheDocument();
     expect(screen.getByText('15 años')).toBeInTheDocument();
+  });
+
+  it('supports a compact desktop density for the carousel column', () => {
+    const { container } = render(
+      <PropertyReadOnlySections
+        className='hidden xl:block'
+        density='compact'
+        propertyEngagement={propertyEngagement}
+      />
+    );
+
+    expect(screen.getByTestId('property-read-only-sections')).toHaveClass(
+      'space-y-4',
+      'hidden',
+      'xl:block'
+    );
+    expect(container.querySelector('[data-slot="property-read-only-field"]')).toHaveClass(
+      'p-2',
+      'sm:p-2.5'
+    );
   });
 
   it('renders missing numeric characteristics as Sin dato', () => {

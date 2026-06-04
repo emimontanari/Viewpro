@@ -1,6 +1,8 @@
 import { Icons } from '@/components/icons';
 import type { Product } from '../api/types';
 import { formatDateTime } from '../utils/format-date-time';
+import { SectionHeader } from './section-header';
+import { getProductStatusPanelTone } from './status-tones';
 import { QuickStatusSelect } from './quick-status-select';
 
 type PropertyStatusSummaryProps = {
@@ -15,13 +17,11 @@ export function PropertyStatusSummary({
   return (
     <>
       <div className='rounded-xl border bg-muted/20 p-5'>
-        <div className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
-          Precio publicado
-        </div>
+        <SectionHeader icon={Icons.creditCard} label='Precio publicado' />
         <div className='mt-3 text-4xl font-bold tracking-tight'>
           {formatPrice(propertyEngagement.publishedPriceCents, propertyEngagement.currency)}
         </div>
-        <p className='mt-2 text-xs text-muted-foreground'>
+        <p className='mt-2 text-xs text-foreground/70'>
           Moneda: {propertyEngagement.currency ?? 'ARS'}
         </p>
       </div>
@@ -46,7 +46,7 @@ function ArchivedStatePanel({
   archiveReason: string | null;
 }) {
   return (
-    <div className='space-y-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-200'>
+    <div className={`space-y-3 rounded-xl border p-4 ${getProductStatusPanelTone('neutral')}`}>
       <div className='flex items-center gap-2'>
         <Icons.eyeOff className='size-4' />
         <div className='text-xs font-medium uppercase tracking-wide'>Archivada</div>
@@ -70,14 +70,11 @@ function ArchivedStatePanel({
 function ReadOnlyStatusField({ propertyEngagement }: { propertyEngagement: Product }) {
   return (
     <div className='space-y-3 rounded-xl border bg-muted/20 p-4'>
-      <div>
-        <div className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
-          Estado comercial
-        </div>
-        <p className='mt-1 text-xs text-muted-foreground'>
-          Actualizá el avance sin entrar a edición completa.
-        </p>
-      </div>
+      <SectionHeader
+        description='Actualizá el avance sin entrar a edición completa.'
+        icon={Icons.adjustments}
+        label='Estado comercial'
+      />
       <QuickStatusSelect
         propertyEngagement={propertyEngagement}
         className='h-10 max-w-none rounded-lg px-3 text-sm'

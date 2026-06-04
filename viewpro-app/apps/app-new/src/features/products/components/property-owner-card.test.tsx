@@ -26,9 +26,12 @@ const activeOwner: PropertyLinkedOwner = {
 };
 
 describe('PropertyOwnerCard', () => {
-  it('renders copy invitation action for invited owners', () => {
+  it('renders linked owner summary, initials, detail affordance and copy action', () => {
     renderPropertyOwnerCard({ owners: [invitedOwner], onCopyInvitationLink: vi.fn() });
 
+    expect(screen.getByText('1 propietario vinculado')).toBeInTheDocument();
+    expect(screen.getByText('AO')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ver detalle de Ana Owner' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /copiar invitación/i })).toBeInTheDocument();
   });
 
@@ -56,6 +59,15 @@ describe('PropertyOwnerCard', () => {
     });
 
     expect(screen.getByRole('button', { name: /copiar invitación/i })).toBeDisabled();
+  });
+
+  it('shows the owner list before the link action', () => {
+    renderPropertyOwnerCard({ owners: [activeOwner] });
+
+    const ownerButton = screen.getByRole('button', { name: 'Ver detalle de Ana Owner' });
+    const linkButton = screen.getByRole('button', { name: /vincular propietario/i });
+
+    expect(ownerButton.compareDocumentPosition(linkButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it('renders a temporary manual-copy fallback for the matching owner', () => {
