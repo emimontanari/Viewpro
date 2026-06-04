@@ -158,8 +158,8 @@ function DashboardNotificationCenter() {
   return (
     <NotificationPopover
       count={count}
-      emptyCopy='No notifications yet'
-      heading='Notifications'
+      emptyCopy='Todavía no hay notificaciones'
+      heading='Notificaciones'
       isLoading={listQuery.isLoading || unreadCountQuery.isLoading || isTenantLoading}
       markAllDisabled={markAllReadMutation.isPending}
       markOneDisabled={markOneReadMutation.isPending}
@@ -208,7 +208,12 @@ function NotificationPopover({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button aria-label='Notifications' variant='ghost' size='icon' className='relative h-8 w-8'>
+        <Button
+          aria-label='Notificaciones'
+          variant='ghost'
+          size='icon'
+          className='relative size-11'
+        >
           <Icons.notification className='h-4 w-4' />
           {count > 0 && (
             <span className='bg-destructive text-destructive-foreground absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium'>
@@ -217,36 +222,34 @@ function NotificationPopover({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align='end' className='w-[calc(100vw-2rem)] p-0 sm:w-[380px]' sideOffset={8}>
-        <div className='flex items-center justify-between px-4 py-3'>
-          <h4 className='text-sm font-semibold'>{heading}</h4>
-          <div className='flex items-center gap-2'>
-            {count > 0 && (
-              <span className='bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs'>
-                {count} new
-              </span>
-            )}
-            {count > 0 && onMarkAllAsRead && (
-              <Button
-                variant='ghost'
-                size='sm'
-                className='text-muted-foreground h-auto px-2 py-1 text-xs'
-                disabled={markAllDisabled}
-                onClick={onMarkAllAsRead}
-              >
-                Mark all as read
-              </Button>
-            )}
-          </div>
+      <PopoverContent
+        align='end'
+        collisionPadding={16}
+        className='w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border bg-popover/95 p-0 shadow-sm backdrop-blur sm:w-[380px] sm:max-w-[380px]'
+        sideOffset={8}
+      >
+        <div className='flex items-center justify-between gap-4 px-4 py-3'>
+          <h4 className='min-w-0 text-sm font-semibold'>{heading}</h4>
+          {count > 0 && onMarkAllAsRead ? (
+            <Button
+              variant='ghost'
+              size='sm'
+              className='min-h-11 shrink-0 px-2 text-xs text-primary hover:text-primary/90'
+              disabled={markAllDisabled}
+              onClick={onMarkAllAsRead}
+            >
+              Marcar todas como leídas
+            </Button>
+          ) : null}
         </div>
         <Separator />
-        <ScrollArea className='h-[400px]'>
+        <ScrollArea className='max-h-[min(65vh,28rem)] overflow-hidden'>
           {isLoading ? (
-            <NotificationMessage copy='Cargando notificaciones...' />
+            <NotificationMessage copy='Cargando notificaciones…' />
           ) : notifications.length === 0 ? (
             <NotificationMessage copy={emptyCopy} />
           ) : (
-            <div className='flex flex-col gap-1 p-2'>
+            <div className='bg-muted/30 p-2'>
               {notifications.map((notification) => (
                 <NotificationCard
                   key={notification.id}
@@ -270,9 +273,9 @@ function NotificationPopover({
 
 function NotificationMessage({ copy }: { copy: string }) {
   return (
-    <div className='flex flex-col items-center justify-center py-12'>
-      <Icons.notification className='text-muted-foreground/40 mb-2 h-8 w-8' />
-      <p className='text-muted-foreground text-sm'>{copy}</p>
+    <div className='flex flex-col items-center justify-center px-6 py-12 text-center'>
+      <Icons.notification className='mb-2 h-8 w-8 text-foreground/35' />
+      <p className='text-sm text-foreground/70'>{copy}</p>
     </div>
   );
 }

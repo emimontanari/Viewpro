@@ -169,13 +169,53 @@ describe('NotificationCenter', () => {
     renderNotificationCenter();
 
     expect(await screen.findByText('2')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Notificaciones' })).toHaveClass('size-11');
 
-    await user.click(screen.getByRole('button', { name: 'Notifications' }));
+    await user.click(screen.getByRole('button', { name: 'Notificaciones' }));
 
     expect(await screen.findByText('Documento listo para revisar')).toBeInTheDocument();
+    expect(document.querySelector('[data-slot="popover-content"]')).toHaveClass(
+      'w-[calc(100vw-2rem)]',
+      'max-w-[calc(100vw-2rem)]',
+      'rounded-2xl',
+      'bg-popover/95'
+    );
     expect(screen.getByText('El propietario subió una escritura.')).toBeInTheDocument();
     expect(screen.getByText('Movimiento registrado')).toBeInTheDocument();
-    expect(screen.getByText('2 new')).toBeInTheDocument();
+    expect(screen.getAllByRole('article')[0]).toHaveClass('border-b', 'border-border/60');
+    expect(screen.getAllByRole('article')[0]).not.toHaveClass('rounded-2xl', 'bg-background');
+    expect(
+      screen.getByRole('button', {
+        name: 'Documento listo para revisar: El propietario subió una escritura.'
+      })
+    ).toHaveClass('min-h-12');
+    expect(document.querySelector('[data-slot="notification-row-title"]')).toHaveClass(
+      'truncate',
+      'font-semibold'
+    );
+    expect(document.querySelector('[data-slot="notification-row-copy"]')).toHaveClass(
+      'truncate',
+      'text-xs'
+    );
+    expect(document.querySelector('[data-slot="notification-timestamp"]')).toHaveClass(
+      'shrink-0',
+      'text-xs'
+    );
+    expect(screen.queryByText('Últimas novedades de la cuenta')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Notificaciones' })).toBeInTheDocument();
+    expect(screen.queryByText('Notificaciones · 2 nuevas')).not.toBeInTheDocument();
+    expect(screen.queryByText('2 new')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Abrir' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Marcar como leída' })).toHaveClass(
+      'opacity-100',
+      '[@media(hover:hover)]:opacity-0',
+      '[@media(hover:hover)]:group-hover:opacity-100',
+      '[@media(hover:hover)]:group-focus-within:opacity-100'
+    );
+    expect(screen.getByRole('button', { name: 'Marcar todas como leídas' })).toHaveClass(
+      'min-h-11',
+      'text-primary'
+    );
     expect(getNotificationsMock).toHaveBeenCalledWith({ page: 1, pageSize: 5 });
   });
 
@@ -186,9 +226,9 @@ describe('NotificationCenter', () => {
 
     renderNotificationCenter();
 
-    await user.click(screen.getByRole('button', { name: 'Notifications' }));
+    await user.click(screen.getByRole('button', { name: 'Notificaciones' }));
 
-    expect(await screen.findByText('No notifications yet')).toBeInTheDocument();
+    expect(await screen.findByText('Todavía no hay notificaciones')).toBeInTheDocument();
     expect(screen.queryByText('0 new')).not.toBeInTheDocument();
   });
 
@@ -197,8 +237,8 @@ describe('NotificationCenter', () => {
     const { queryClient } = renderNotificationCenter();
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
-    await user.click(screen.getByRole('button', { name: 'Notifications' }));
-    await user.click(await screen.findByRole('button', { name: 'Mark as read' }));
+    await user.click(screen.getByRole('button', { name: 'Notificaciones' }));
+    await user.click(await screen.findByRole('button', { name: 'Marcar como leída' }));
 
     await waitFor(() => {
       expect(markNotificationReadMock).toHaveBeenCalledWith('notification-1');
@@ -214,7 +254,7 @@ describe('NotificationCenter', () => {
 
     invalidateSpy.mockClear();
 
-    await user.click(screen.getByRole('button', { name: 'Mark all as read' }));
+    await user.click(screen.getByRole('button', { name: 'Marcar todas como leídas' }));
 
     await waitFor(() => {
       expect(markAllNotificationsReadMock).toHaveBeenCalled();
@@ -229,13 +269,18 @@ describe('NotificationCenter', () => {
     });
   });
 
-  it('uses safe backend dashboard links for notification actions', async () => {
+  it('uses safe backend dashboard links for row notification actions', async () => {
     const user = userEvent.setup();
 
     renderNotificationCenter();
 
-    await user.click(screen.getByRole('button', { name: 'Notifications' }));
-    await user.click(await screen.findByRole('button', { name: 'Abrir' }));
+    await user.click(screen.getByRole('button', { name: 'Notificaciones' }));
+    expect(screen.queryByRole('button', { name: 'Abrir' })).not.toBeInTheDocument();
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Documento listo para revisar: El propietario subió una escritura.'
+      })
+    );
 
     await waitFor(() => {
       expect(markNotificationReadMock).toHaveBeenCalledWith('notification-1');
@@ -243,7 +288,21 @@ describe('NotificationCenter', () => {
     expect(pushMock).toHaveBeenCalledWith('/dashboard/product/engagement-1');
   });
 
-  it('does not render actions for unsafe backend links', async () => {
+  it('translates known backend notification titles to Spanish', async () => {
+    const user = userEvent.setup();
+    getNotificationsMock.mockResolvedValueOnce(
+      notificationsResponse([{ ...unreadNotification, title: 'Document uploaded' }])
+    );
+
+    renderNotificationCenter();
+
+    await user.click(screen.getByRole('button', { name: 'Notificaciones' }));
+
+    expect(await screen.findByText('Documento subido')).toBeInTheDocument();
+    expect(screen.queryByText('Document uploaded')).not.toBeInTheDocument();
+  });
+
+  it('does not render row actions for unsafe backend links', async () => {
     const user = userEvent.setup();
     getNotificationsMock.mockResolvedValueOnce(
       notificationsResponse([
@@ -255,10 +314,15 @@ describe('NotificationCenter', () => {
 
     renderNotificationCenter();
 
-    await user.click(screen.getByRole('button', { name: 'Notifications' }));
+    await user.click(screen.getByRole('button', { name: 'Notificaciones' }));
     expect(await screen.findByText('Documento listo para revisar')).toBeInTheDocument();
 
     expect(screen.queryByRole('button', { name: 'Abrir' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', {
+        name: 'Documento listo para revisar: El propietario subió una escritura.'
+      })
+    ).not.toBeInTheDocument();
     expect(pushMock).not.toHaveBeenCalled();
   });
 
@@ -270,12 +334,14 @@ describe('NotificationCenter', () => {
 
     expect(await screen.findByText('1')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Notifications' }));
+    await user.click(screen.getByRole('button', { name: 'Notificaciones' }));
 
     expect(await screen.findByText('Documento aprobado')).toBeInTheDocument();
     expect(screen.getByText('La inmobiliaria aprobó tu documento.')).toBeInTheDocument();
     expect(screen.getByText('Movimiento cargado')).toBeInTheDocument();
-    expect(screen.getByText('1 new')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Notificaciones' })).toBeInTheDocument();
+    expect(screen.queryByText('Notificaciones · 1 nueva')).not.toBeInTheDocument();
+    expect(screen.queryByText('1 new')).not.toBeInTheDocument();
     expect(getOwnerNotificationsMock).toHaveBeenCalledWith({ page: 1, pageSize: 5 });
     expect(useActiveTenantMock).not.toHaveBeenCalled();
     expect(getNotificationsMock).not.toHaveBeenCalled();
@@ -290,7 +356,7 @@ describe('NotificationCenter', () => {
 
     renderNotificationCenter();
 
-    await user.click(screen.getByRole('button', { name: 'Notifications' }));
+    await user.click(screen.getByRole('button', { name: 'Notificaciones' }));
 
     expect(await screen.findByText('Sin novedades nuevas')).toBeInTheDocument();
     expect(screen.queryByText('0 new')).not.toBeInTheDocument();
@@ -305,8 +371,8 @@ describe('NotificationCenter', () => {
     const { queryClient } = renderNotificationCenter();
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
-    await user.click(screen.getByRole('button', { name: 'Notifications' }));
-    await user.click(await screen.findByRole('button', { name: 'Mark as read' }));
+    await user.click(screen.getByRole('button', { name: 'Notificaciones' }));
+    await user.click(await screen.findByRole('button', { name: 'Marcar como leída' }));
 
     await waitFor(() => {
       expect(markOwnerNotificationReadMock).toHaveBeenCalledWith('owner-notification-1');
@@ -322,7 +388,7 @@ describe('NotificationCenter', () => {
 
     invalidateSpy.mockClear();
 
-    await user.click(screen.getByRole('button', { name: 'Mark all as read' }));
+    await user.click(screen.getByRole('button', { name: 'Marcar todas como leídas' }));
 
     await waitFor(() => {
       expect(markAllOwnerNotificationsReadMock).toHaveBeenCalled();
@@ -339,14 +405,19 @@ describe('NotificationCenter', () => {
     expect(markAllNotificationsReadMock).not.toHaveBeenCalled();
   });
 
-  it('uses safe backend owner links for owner notification actions', async () => {
+  it('uses safe backend owner links for owner notification row actions', async () => {
     const user = userEvent.setup();
     usePathnameMock.mockReturnValue('/owner/properties/property-1');
 
     renderNotificationCenter();
 
-    await user.click(screen.getByRole('button', { name: 'Notifications' }));
-    await user.click(await screen.findByRole('button', { name: 'Abrir' }));
+    await user.click(screen.getByRole('button', { name: 'Notificaciones' }));
+    expect(screen.queryByRole('button', { name: 'Abrir' })).not.toBeInTheDocument();
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Documento aprobado: La inmobiliaria aprobó tu documento.'
+      })
+    );
 
     await waitFor(() => {
       expect(markOwnerNotificationReadMock).toHaveBeenCalledWith('owner-notification-1');
@@ -354,7 +425,7 @@ describe('NotificationCenter', () => {
     expect(pushMock).toHaveBeenCalledWith('/owner/properties/property-1');
   });
 
-  it('does not render owner actions for unsafe backend links', async () => {
+  it('does not render owner row actions for unsafe backend links', async () => {
     const user = userEvent.setup();
     usePathnameMock.mockReturnValue('/owner/properties/property-1');
     getOwnerNotificationsMock.mockResolvedValueOnce(
@@ -367,10 +438,15 @@ describe('NotificationCenter', () => {
 
     renderNotificationCenter();
 
-    await user.click(screen.getByRole('button', { name: 'Notifications' }));
+    await user.click(screen.getByRole('button', { name: 'Notificaciones' }));
     expect(await screen.findByText('Documento aprobado')).toBeInTheDocument();
 
     expect(screen.queryByRole('button', { name: 'Abrir' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', {
+        name: 'Documento aprobado: La inmobiliaria aprobó tu documento.'
+      })
+    ).not.toBeInTheDocument();
     expect(pushMock).not.toHaveBeenCalled();
   });
 });

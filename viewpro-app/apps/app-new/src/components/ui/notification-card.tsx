@@ -2,6 +2,8 @@
 
 import type { FC } from 'react';
 import { Icons } from '@/components/icons';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 export type NotificationStatus = 'unread' | 'read' | 'archived';
@@ -37,32 +39,24 @@ const formatDate = (date: string | Date): string => {
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffMins < 1) return 'Ahora';
+  if (diffMins < 60) return `${diffMins} min`;
+  if (diffHours < 24) return `${diffHours} h`;
+  if (diffDays < 7) return `${diffDays} d`;
 
-  return d.toLocaleDateString('en-US', {
+  return d.toLocaleDateString('es-AR', {
     month: 'short',
     day: 'numeric'
   });
 };
 
-const getActionIcon = (actionType: ActionType) => {
-  const iconProps = { size: 12, strokeWidth: 2.5 };
-  switch (actionType) {
-    case 'redirect':
-      return <Icons.externalLink {...iconProps} />;
-    case 'api_call':
-      return <Icons.check {...iconProps} />;
-    case 'workflow':
-      return <Icons.clock {...iconProps} />;
-    case 'modal':
-      return <Icons.alertCircle {...iconProps} />;
-    default:
-      return null;
+function getDisplayTitle(title: string) {
+  if (title === 'Document uploaded') {
+    return 'Documento subido';
   }
-};
+
+  return title;
+}
 
 export const NotificationCard: FC<NotificationCardProps> = ({
   id,
@@ -77,111 +71,108 @@ export const NotificationCard: FC<NotificationCardProps> = ({
   className
 }) => {
   const isUnread = status === 'unread';
+  const displayTitle = getDisplayTitle(title);
+  const bodyCopy = body.trim();
+  const primaryAction = actions.find((action) => !action.executed) ?? actions[0];
+  const isPrimaryActionLoading = primaryAction ? loadingActionId === primaryAction.id : false;
+  const accessibleRowLabel = bodyCopy ? `${displayTitle}: ${bodyCopy}` : displayTitle;
+  const hasPrimaryAction = Boolean(primaryAction && onAction);
 
   return (
-    <div
-      className={cn(
-        'group relative w-full rounded-2xl transition-all',
-        isUnread ? 'bg-muted' : 'bg-muted/40',
-        className
-      )}
-    >
-      <div className='px-4 py-3.5'>
-        <div className='flex items-start justify-between gap-3'>
-          {/* Main content */}
-          <div className='min-w-0 flex-1 space-y-1'>
-            {/* Title with unread indicator */}
-            <div className='flex items-center gap-2'>
-              <h3
-                className={cn(
-                  'text-[15px] leading-tight font-semibold',
-                  isUnread ? 'text-foreground' : 'text-muted-foreground'
-                )}
-              >
-                {title}
-              </h3>
-              {isUnread && <div className='h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-500' />}
-            </div>
-
-            {/* Description */}
-            <p
-              className={cn(
-                'mb-0 text-[13px]',
-                isUnread ? 'text-muted-foreground' : 'text-muted-foreground/60'
-              )}
-            >
-              {body}
-            </p>
+    <article className={cn('group border-b border-border/60 last:border-b-0', className)}>
+      <div className='flex min-h-12 items-center gap-1'>
+        {hasPrimaryAction && primaryAction ? (
+          <button
+            type='button'
+            aria-label={accessibleRowLabel}
+            className='flex min-h-12 min-w-0 flex-1 items-center gap-2 rounded-md px-3 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50'
+            disabled={isPrimaryActionLoading}
+            onClick={() => onAction?.(id, primaryAction.id, primaryAction.type)}
+          >
+            <NotificationRowContent
+              body={bodyCopy}
+              createdAt={createdAt}
+              isUnread={isUnread}
+              title={displayTitle}
+            />
+          </button>
+        ) : (
+          <div className='flex min-h-12 min-w-0 flex-1 items-center gap-2 px-3 py-2'>
+            <NotificationRowContent
+              body={bodyCopy}
+              createdAt={createdAt}
+              isUnread={isUnread}
+              title={displayTitle}
+            />
           </div>
+        )}
 
-          {/* Mark as read button */}
-          {isUnread && onMarkAsRead && (
-            <button
-              type='button'
-              onClick={() => onMarkAsRead(id)}
-              className={cn(
-                'rounded-lg p-1.5 transition-colors',
-                'text-muted-foreground hover:bg-accent hover:text-foreground'
-              )}
-              aria-label='Mark as read'
-            >
-              <Icons.check size={16} />
-            </button>
-          )}
-        </div>
-
-        <div className='mt-3 flex items-end justify-between'>
-          {/* Actions */}
-          {actions.length > 0 && (
-            <div className={cn('flex flex-wrap items-center gap-2', !isUnread && 'opacity-60')}>
-              {actions.map((action) => {
-                const isLoading = loadingActionId === action.id;
-                const isExecuted = action.executed || false;
-                const showLoading = isLoading && action.type !== 'modal';
-
-                return (
-                  <button
-                    key={action.id}
-                    type='button'
-                    disabled={isLoading || isExecuted}
-                    onClick={() => onAction?.(id, action.id, action.type)}
-                    className={cn(
-                      'flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-normal transition',
-                      action.style === 'primary'
-                        ? 'bg-primary/10 text-primary hover:bg-primary/20'
-                        : action.style === 'danger'
-                          ? 'bg-destructive/10 text-destructive hover:bg-destructive/20'
-                          : 'bg-accent text-muted-foreground hover:bg-accent hover:text-foreground',
-                      showLoading && 'opacity-50',
-                      isExecuted && 'cursor-not-allowed opacity-60'
-                    )}
-                  >
-                    {showLoading ? (
-                      <Icons.spinner size={12} className='animate-spin' />
-                    ) : (
-                      <>
-                        <span>{action.label}</span>
-                        {isExecuted ? (
-                          <Icons.check size={12} strokeWidth={2.5} />
-                        ) : (
-                          getActionIcon(action.type)
-                        )}
-                      </>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Timestamp */}
-          {createdAt && (
-            <span className='text-muted-foreground/60 inline-block text-[11px]'>
-              {formatDate(createdAt)}
-            </span>
-          )}
-        </div>
+        {isUnread && onMarkAsRead ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type='button'
+                variant='ghost'
+                size='icon'
+                aria-label='Marcar como leída'
+                className='size-11 shrink-0 text-muted-foreground opacity-100 transition-opacity hover:text-foreground [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100'
+                onClick={() => onMarkAsRead(id)}
+              >
+                <Icons.check className='size-4' />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side='left'>Marcar como leída</TooltipContent>
+          </Tooltip>
+        ) : null}
       </div>
-    </div>
+    </article>
   );
 };
+
+function NotificationRowContent({
+  body,
+  createdAt,
+  isUnread,
+  title
+}: {
+  body: string;
+  createdAt?: string | Date;
+  isUnread: boolean;
+  title: string;
+}) {
+  return (
+    <>
+      <span
+        aria-hidden='true'
+        className={cn(
+          'mt-1.5 size-1.5 shrink-0 self-start rounded-full',
+          isUnread ? 'bg-sky-500' : 'bg-transparent'
+        )}
+      />
+      <span className='min-w-0 flex-1 space-y-0.5'>
+        <span
+          data-slot='notification-row-title'
+          className='block truncate text-sm leading-tight font-semibold text-foreground'
+        >
+          {title}
+        </span>
+        {body ? (
+          <span
+            data-slot='notification-row-copy'
+            className='block truncate text-xs leading-tight text-foreground/70'
+          >
+            {body}
+          </span>
+        ) : null}
+      </span>
+      {createdAt ? (
+        <span
+          className='shrink-0 self-start pt-0.5 text-xs text-muted-foreground'
+          data-slot='notification-timestamp'
+        >
+          {formatDate(createdAt)}
+        </span>
+      ) : null}
+    </>
+  );
+}
