@@ -42,9 +42,11 @@ type OwnerStatusSummaryViewModel = {
   tone: string;
 };
 
+const EMPTY_OWNER_PROPERTIES: OwnerProperty[] = [];
+
 export function OwnerHome() {
   const propertiesQuery = useQuery(ownerPropertiesOptions());
-  const properties = propertiesQuery.data ?? [];
+  const properties = propertiesQuery.data ?? EMPTY_OWNER_PROPERTIES;
   const engagementQueries = useQueries({
     queries: properties.map((property) => ownerPropertyEngagementsOptions(property.id))
   });
@@ -156,40 +158,37 @@ function OwnerAgencySummary({
         aria-hidden='true'
         className='pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5 dark:from-primary/10 dark:to-purple-500/10'
       />
-      <CardContent className='relative flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between'>
+      <CardContent className='relative flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between'>
         <div className='flex min-w-0 items-center gap-4'>
           <span
             aria-hidden='true'
-            className='flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 text-base font-semibold tracking-wide text-white shadow-sm ring-1 ring-white/10'
+            className='flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-base font-semibold tracking-wide text-white shadow-sm ring-1 ring-white/10'
           >
             {initials}
           </span>
           <div className='min-w-0 space-y-1.5'>
-            <p className='text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase'>
+            <p className='text-[10px] font-medium tracking-[0.08em] text-muted-foreground uppercase'>
               Inmobiliaria vinculada
             </p>
-            <div className='flex items-center gap-2'>
+            <div className='flex items-start gap-2'>
               <h2
-                className='truncate text-lg leading-tight font-semibold tracking-tight sm:text-xl'
+                className='line-clamp-2 text-base leading-tight font-semibold tracking-tight'
                 title={agency.name}
               >
                 {agency.name}
               </h2>
               <Icons.badgeCheck
-                className='size-5 shrink-0 text-primary'
+                className='mt-0.5 size-3.5 shrink-0 text-emerald-700 dark:text-emerald-300'
                 aria-label='Inmobiliaria verificada'
               />
             </div>
-            <p className='text-sm text-muted-foreground'>
+            <p className='text-[13.5px] text-muted-foreground'>
               Gestionando {formatPropertyCount(propertyCount)} para vos.
             </p>
           </div>
         </div>
-        <div className='flex shrink-0 items-center gap-2 self-start rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-700 sm:self-auto dark:text-emerald-300'>
-          <span aria-hidden='true' className='relative flex size-1.5 items-center justify-center'>
-            <span className='absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-60' />
-            <span className='relative inline-flex size-1.5 rounded-full bg-emerald-500' />
-          </span>
+        <div className='flex shrink-0 items-center gap-2 self-start text-[12.5px] font-medium text-emerald-700 sm:self-auto dark:text-emerald-300'>
+          <span aria-hidden='true' className='size-1.5 rounded-full bg-emerald-500' />
           Acceso vigente
         </div>
       </CardContent>
@@ -258,9 +257,12 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
   const contactHref = engagement
     ? buildOwnerPropertyWhatsappHref({ contact: engagement.contact, property })
     : null;
-  const contactLabel = contactHref
+  const isContactConfigured = Boolean(contactHref);
+  const contactLabel = isContactConfigured
     ? (engagement?.contact.displayLabel ?? 'Contactar inmobiliaria')
-    : 'Contacto no configurado';
+    : 'Contacto';
+  const propertyLocation = formatPropertyLocation(property);
+  const displayTitle = formatOwnerPropertyTitle(property);
   const handleContactClick = React.useCallback(() => {
     if (!engagement || !contactHref) {
       return;
@@ -275,6 +277,7 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
         <div className='grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)_260px] lg:items-start'>
           <div className='relative overflow-hidden rounded-2xl bg-muted'>
             {primaryImage ? (
+              // oxlint-disable-next-line next/no-img-element -- owner property images come from the authenticated API payload and use the existing local fallback-free card pattern.
               <img
                 src={primaryImage.url}
                 alt={`Imagen principal de ${property.title}`}
@@ -288,6 +291,15 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
                 </div>
               </div>
             )}
+            {statusSummary ? (
+              <Badge
+                variant='secondary'
+                className='absolute left-3 top-3 gap-1.5 bg-background/90 text-emerald-700 backdrop-blur dark:text-emerald-300'
+              >
+                <span aria-hidden='true' className='size-1.5 rounded-full bg-emerald-500' />
+                {statusSummary.label}
+              </Badge>
+            ) : null}
             <Badge
               variant='secondary'
               className='absolute right-3 top-3 bg-background/90 backdrop-blur'
@@ -299,14 +311,12 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
           <div className='min-w-0'>
             <div className='space-y-2'>
               <h2
-                className='truncate text-lg leading-tight font-semibold tracking-tight sm:text-xl lg:text-2xl'
+                className='line-clamp-2 text-lg leading-tight font-semibold tracking-tight sm:text-xl lg:text-2xl'
                 title={property.title}
               >
-                {property.title}
+                {displayTitle}
               </h2>
-              <p className='text-sm text-muted-foreground break-words'>
-                {formatPropertyLocation(property)}
-              </p>
+              <p className='text-sm text-muted-foreground break-words'>{propertyLocation}</p>
             </div>
 
             {statusSummary ? <OwnerStatusSummary status={statusSummary} /> : null}
@@ -321,22 +331,25 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
             </Button>
             <div className='grid grid-cols-3 gap-3 lg:grid-cols-1'>
               <OwnerActionTile
-                href={`/owner/properties/${property.id}`}
+                href={`/owner/properties/${property.id}?tab=tracking`}
                 icon={Icons.trendingUp}
                 label='Seguimiento'
                 ariaLabel='Ver seguimiento'
               />
               <OwnerActionTile
-                href={`/owner/properties/${property.id}`}
+                href={`/owner/properties/${property.id}?tab=documents`}
                 icon={Icons.page}
-                label='Ficha técnica'
-                ariaLabel='Ver ficha técnica'
+                label='Documentación'
+                ariaLabel='Ver documentación'
               />
               <OwnerActionTile
                 href={contactHref}
                 icon={Icons.chat}
                 label={contactLabel}
-                ariaLabel='Contactar inmobiliaria'
+                ariaLabel={
+                  isContactConfigured ? 'Contactar inmobiliaria' : 'Contacto — no configurado'
+                }
+                showUnavailableIndicator={!isContactConfigured}
                 onClick={handleContactClick}
               />
             </div>
@@ -349,25 +362,22 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
 
 function OwnerStatusSummary({ status }: { status: OwnerStatusSummaryViewModel }) {
   return (
-    <div className='mt-[18px] w-full rounded-none border border-neutral-800 bg-neutral-950 p-3'>
+    <div className='mt-[18px] w-full space-y-2'>
       <div className='flex w-full items-center justify-between gap-3'>
-        <span
-          className={cn(
-            'inline-flex h-7 items-center rounded-none border px-2.5 py-1 text-xs leading-4 font-medium',
-            status.tone
-          )}
-        >
-          {status.label}
-        </span>
-        <span className='text-right text-sm leading-5 font-medium text-white'>
+        <span className='text-sm leading-5 text-muted-foreground'>Progreso de gestión</span>
+        <span className='text-right text-sm leading-5 font-medium text-foreground'>
           {status.progress}%
         </span>
       </div>
       <Progress
         value={status.progress}
+        role='progressbar'
         aria-label={`Progreso según etapa: ${status.label} (${status.progress}%)`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={status.progress}
         className={cn(
-          'mt-3 h-[6px] rounded-none bg-[#2b2b2b] [&_[data-slot=progress-indicator]]:rounded-none',
+          'h-[6px] rounded-none bg-muted [&_[data-slot=progress-indicator]]:rounded-none',
           status.progressTone
         )}
       />
@@ -380,26 +390,40 @@ function OwnerActionTile({
   href,
   icon: Icon,
   label,
-  onClick
+  onClick,
+  showUnavailableIndicator = false
 }: {
   ariaLabel: string;
   href: string | null;
   icon: typeof Icons.product;
   label: string;
   onClick?: () => void;
+  showUnavailableIndicator?: boolean;
 }) {
   const content = (
     <>
+      {showUnavailableIndicator ? (
+        <span
+          data-testid='owner-contact-unavailable-indicator'
+          aria-hidden='true'
+          className='absolute right-2 top-2 size-2 rounded-full bg-destructive'
+        />
+      ) : null}
       <Icon className='size-6 text-muted-foreground' aria-hidden='true' />
-      <span className='text-xs sm:text-sm'>{label}</span>
+      <span className='text-xs leading-tight sm:text-sm'>{label}</span>
     </>
   );
 
   if (!href) {
     return (
-      <Button type='button' variant='outline' disabled className='h-20 w-full flex-col gap-2'>
+      <Button
+        type='button'
+        variant='outline'
+        disabled
+        aria-label={ariaLabel}
+        className='relative h-20 w-full flex-col gap-2'
+      >
         {content}
-        <span className='sr-only'>{ariaLabel} no disponible</span>
       </Button>
     );
   }
@@ -524,7 +548,7 @@ function getUniqueAgencies(values: OwnerAgency[]) {
     agencies.set(agency.id, agency);
   }
 
-  return [...agencies.values()].sort((firstAgency, secondAgency) =>
+  return [...agencies.values()].toSorted((firstAgency, secondAgency) =>
     firstAgency.name.localeCompare(secondAgency.name, 'es')
   );
 }
@@ -534,7 +558,56 @@ function formatPropertyCount(count: number) {
 }
 
 function formatPropertyLocation(property: OwnerProperty) {
-  return [property.addressLine, property.city, property.province].filter(Boolean).join(', ');
+  const locationParts = getPropertyLocationParts(property);
+
+  return locationParts
+    .filter((part, index) => index === 0 || !isSameLocationPart(part, locationParts[index - 1]))
+    .join(', ');
+}
+
+function getPropertyLocationParts(property: OwnerProperty) {
+  return [property.addressLine, property.city, property.province]
+    .map((part) => part?.trim())
+    .filter(Boolean);
+}
+
+function formatOwnerPropertyTitle(property: OwnerProperty) {
+  const trimmedTitle = property.title.trim();
+  const lowerTitle = trimmedTitle.toLocaleLowerCase('es');
+  const locationSeparator = ' en ';
+  const separatorIndex = lowerTitle.lastIndexOf(locationSeparator);
+
+  if (separatorIndex === -1) {
+    return trimmedTitle;
+  }
+
+  const titlePrefix = trimmedTitle.slice(0, separatorIndex).trim();
+  const trailingLocation = trimmedTitle.slice(separatorIndex + locationSeparator.length).trim();
+  const locationParts = getPropertyLocationParts(property);
+
+  if (titlePrefix.length >= 8 && isKnownPropertyLocationPart(trailingLocation, locationParts)) {
+    return titlePrefix;
+  }
+
+  return trimmedTitle;
+}
+
+function isKnownPropertyLocationPart(value: string, locationParts: string[]) {
+  const normalizedValue = normalizeLocationPart(value);
+
+  return locationParts.some((part) => normalizeLocationPart(part) === normalizedValue);
+}
+
+function isSameLocationPart(left: string, right?: string) {
+  return normalizeLocationPart(left) === normalizeLocationPart(right ?? '');
+}
+
+function normalizeLocationPart(value: string) {
+  return value
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('es');
 }
 
 function getPropertyTypeLabel(propertyType: string) {
