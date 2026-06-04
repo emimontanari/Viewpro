@@ -369,11 +369,19 @@ function PropertyEngagementDetails({
       </CardHeader>
 
       <CardContent className='space-y-6 p-4 sm:p-6'>
-        <div className='grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)]'>
-          <PropertyImageCarousel
-            images={getCarouselImages(propertyEngagement)}
-            title={propertyEngagement.property.title}
-          />
+        <div className='grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)] xl:items-start'>
+          <div className='min-w-0 space-y-4'>
+            <PropertyImageCarousel
+              images={getCarouselImages(propertyEngagement)}
+              title={propertyEngagement.property.title}
+            />
+
+            <PropertyReadOnlySections
+              className='hidden border-t border-border/40 pt-4 xl:block'
+              density='compact'
+              propertyEngagement={propertyEngagement}
+            />
+          </div>
 
           <aside className='flex flex-col gap-3 rounded-2xl border bg-card p-3 shadow-xs sm:p-4'>
             <PropertyStatusSummary
@@ -398,7 +406,7 @@ function PropertyEngagementDetails({
           </aside>
         </div>
 
-        <PropertyReadOnlySections propertyEngagement={propertyEngagement} />
+        <PropertyReadOnlySections className='xl:hidden' propertyEngagement={propertyEngagement} />
 
         <PropertyMovementHistory
           isError={movements.isError}

@@ -33,13 +33,21 @@ describe('PropertyAgentsSection', () => {
     vi.restoreAllMocks();
   });
 
-  it('opens the agents dialog and loads assignable agents when active', async () => {
+  it('renders assigned seller summary before the manage action and opens the dialog', async () => {
     const user = userEvent.setup();
     const fetchMock = mockAssignableAgentsResponse([availableAgent]);
     vi.stubGlobal('fetch', fetchMock);
     renderPropertyAgentsSection({ agents: [assignedAgent] });
 
-    await user.click(screen.getByRole('button', { name: /gestionar vendedores/i }));
+    expect(screen.getByText('1 vendedor asignado')).toBeInTheDocument();
+    expect(screen.getByText('A')).toBeInTheDocument();
+    const agentButton = screen.getByRole('button', { name: 'Ver detalle de Ana' });
+    const manageButton = screen.getByRole('button', { name: /gestionar vendedores/i });
+    expect(agentButton.compareDocumentPosition(manageButton)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+
+    await user.click(manageButton);
 
     expect(
       await screen.findByRole('dialog', { name: /gestionar vendedores/i })
@@ -56,6 +64,7 @@ describe('PropertyAgentsSection', () => {
     vi.stubGlobal('fetch', fetchMock);
     renderPropertyAgentsSection({ isArchived: true });
 
+    expect(screen.getByText('0 vendedores asignados')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /gestionar vendedores/i })).not.toBeInTheDocument();
     expect(
       screen.getByText('Restaurá la propiedad para gestionar vendedores.')
