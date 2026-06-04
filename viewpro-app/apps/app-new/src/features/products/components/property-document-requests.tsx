@@ -1,29 +1,34 @@
 'use client';
 
-import { Icons } from '@/components/icons';
+import { Icons, type Icon } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { IconFilePlus } from '@tabler/icons-react';
+import { parseAsString, useQueryState } from 'nuqs';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { productDocumentRequestsOptions, productKeys } from '../api/queries';
 import {
   approveProductDocumentRequest,
   createProductDocumentReadUrl,
   createProductDocumentRequest,
   rejectProductDocumentRequest
 } from '../api/service';
-import { productDocumentRequestsOptions, productKeys } from '../api/queries';
 import type {
   CreateProductDocumentRequestPayload,
   ProductDocumentRequest,
   ProductDocumentRequestStatus,
-  ProductDocumentVersionStatus,
+  ProductDocumentVersion,
   PropertyLinkedOwner
 } from '../api/types';
-import { formatDateTime } from '../utils/format-date-time';
 import { CreateDocumentRequestDialog } from './create-document-request-dialog';
 import { RejectDocumentRequestDialog } from './reject-document-request-dialog';
-import { cn } from '@/lib/utils';
-import { useMemo, useState } from 'react';
 
 type PropertyDocumentRequestsProps = {
   isArchived: boolean;
@@ -32,32 +37,61 @@ type PropertyDocumentRequestsProps = {
   tenantId: string;
 };
 
-const documentStatusLabels: Record<ProductDocumentRequestStatus, string> = {
-  APPROVED: 'Aprobado',
-  CANCELLED: 'Cancelado',
-  PENDING: 'Pendiente',
-  REJECTED: 'Rechazado',
-  SUBMITTED: 'Subido'
+type DocumentFilter = 'all' | 'pending' | 'resolved' | 'review';
+
+type DocumentStatusConfig = {
+  badgeClassName: string;
+  icon: Icon;
+  label: string;
 };
 
-const documentStatusTones: Record<ProductDocumentRequestStatus, string> = {
-  APPROVED:
-    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300',
-  CANCELLED:
-    'border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300',
-  PENDING:
-    'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300',
-  REJECTED:
-    'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300',
-  SUBMITTED:
-    'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/50 dark:text-sky-300'
+type DocumentRequestGroup = {
+  emptyCopy: string;
+  items: ProductDocumentRequest[];
+  key: Exclude<DocumentFilter, 'all'>;
+  title: string;
 };
 
-const documentVersionStatusLabels: Record<ProductDocumentVersionStatus, string> = {
-  APPROVED: 'Aprobada',
-  PENDING_UPLOAD: 'Pendiente de subida',
-  REJECTED: 'Rechazada',
-  UPLOADED: 'Subida'
+const EMPTY_DOCUMENT_REQUESTS: ProductDocumentRequest[] = [];
+
+const DOCUMENT_FILTER_OPTIONS = [
+  { key: 'all', label: 'Todos' },
+  { key: 'review', label: 'Por revisar' },
+  { key: 'pending', label: 'Pendientes' },
+  { key: 'resolved', label: 'Resueltos' }
+] satisfies Array<{ key: DocumentFilter; label: string }>;
+
+const documentStatusConfig: Record<ProductDocumentRequestStatus, DocumentStatusConfig> = {
+  APPROVED: {
+    badgeClassName:
+      'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300',
+    icon: Icons.circleCheck,
+    label: 'Aprobado'
+  },
+  CANCELLED: {
+    badgeClassName:
+      'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300',
+    icon: Icons.circleX,
+    label: 'Cancelado'
+  },
+  PENDING: {
+    badgeClassName:
+      'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300',
+    icon: Icons.clock,
+    label: 'Pendiente'
+  },
+  REJECTED: {
+    badgeClassName:
+      'border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/15 dark:text-destructive',
+    icon: Icons.circleX,
+    label: 'Rechazado'
+  },
+  SUBMITTED: {
+    badgeClassName:
+      'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300',
+    icon: Icons.upload,
+    label: 'Subido'
+  }
 };
 
 export function PropertyDocumentRequests({
@@ -69,6 +103,13 @@ export function PropertyDocumentRequests({
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [requestToReject, setRequestToReject] = useState<ProductDocumentRequest | null>(null);
+  const [documentFilter, setDocumentFilter] = useQueryState(
+    'documentos',
+    parseAsString
+      .withOptions({ history: 'replace', scroll: false, shallow: true })
+      .withDefault('all')
+  );
+  const activeFilter = getDocumentFilter(documentFilter);
   const documentRequestsQueryKey = productKeys.documentRequests(productId, tenantId);
   const eligibleOwners = useMemo(() => owners.filter(isEligibleDocumentOwner), [owners]);
   const invitedOwnerCount = useMemo(
@@ -76,6 +117,13 @@ export function PropertyDocumentRequests({
     [eligibleOwners]
   );
   const documentRequestsQuery = useQuery(productDocumentRequestsOptions(productId, tenantId));
+  const documentRequests = documentRequestsQuery.data?.items ?? EMPTY_DOCUMENT_REQUESTS;
+  const groupedRequests = useMemo(
+    () => groupDocumentRequests(documentRequests),
+    [documentRequests]
+  );
+  const filterCounts = useMemo(() => getFilterCounts(groupedRequests), [groupedRequests]);
+  const visibleGroups = getVisibleGroups(groupedRequests, activeFilter);
   const createDocumentRequestMutation = useMutation({
     mutationFn: (payload: CreateProductDocumentRequestPayload) =>
       createProductDocumentRequest(productId, payload),
@@ -144,6 +192,10 @@ export function PropertyDocumentRequests({
     rejectDocumentMutation.mutate({ requestId: requestToReject.id, reason });
   }
 
+  function handleFilterChange(nextFilter: DocumentFilter) {
+    void setDocumentFilter(nextFilter === 'all' ? null : nextFilter);
+  }
+
   return (
     <section className='space-y-3'>
       <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
@@ -155,13 +207,14 @@ export function PropertyDocumentRequests({
         </div>
         <Button
           type='button'
-          variant='secondary'
+          variant='outline'
+          className='border-border/70 bg-transparent hover:bg-muted/40 dark:border-border dark:bg-transparent'
           disabled={
             isArchived || eligibleOwners.length === 0 || createDocumentRequestMutation.isPending
           }
           onClick={handleOpenDialog}
         >
-          <Icons.post className='size-4' />
+          <IconFilePlus className='size-4' />
           Solicitar documento
         </Button>
       </div>
@@ -173,32 +226,41 @@ export function PropertyDocumentRequests({
         linkedOwnerCount={owners.length}
       />
 
-      <div className='rounded-2xl border bg-card p-4 shadow-xs'>
+      <div data-testid='document-request-panel-body' className='space-y-4'>
         {documentRequestsQuery.isLoading ? <DocumentRequestsLoadingState /> : null}
         {documentRequestsQuery.isError ? <DocumentRequestsErrorState /> : null}
         {!documentRequestsQuery.isLoading &&
         !documentRequestsQuery.isError &&
-        (documentRequestsQuery.data?.items.length ?? 0) === 0 ? (
+        documentRequests.length === 0 ? (
           <DocumentRequestsEmptyState />
         ) : null}
         {!documentRequestsQuery.isLoading &&
         !documentRequestsQuery.isError &&
-        (documentRequestsQuery.data?.items.length ?? 0) > 0 ? (
-          <ul className='space-y-3'>
-            {documentRequestsQuery.data?.items.map((request) => (
-              <DocumentRequestItem
-                key={request.id}
-                owners={owners}
-                request={request}
-                isApproving={approveDocumentMutation.isPending}
-                isReading={readDocumentMutation.isPending}
-                isRejecting={rejectDocumentMutation.isPending}
-                onApprove={(requestId) => approveDocumentMutation.mutate(requestId)}
-                onRead={(versionId) => readDocumentMutation.mutate(versionId)}
-                onReject={setRequestToReject}
-              />
-            ))}
-          </ul>
+        documentRequests.length > 0 ? (
+          <div className='space-y-4'>
+            <DocumentRequestFilters
+              activeFilter={activeFilter}
+              counts={filterCounts}
+              onFilterChange={handleFilterChange}
+            />
+            <div
+              data-testid='document-request-results'
+              className='min-h-[28rem] space-y-4 [overflow-anchor:none] sm:min-h-[32rem]'
+            >
+              {visibleGroups.map((group) => (
+                <DocumentRequestSection
+                  key={group.key}
+                  group={group}
+                  isApproving={approveDocumentMutation.isPending}
+                  isReading={readDocumentMutation.isPending}
+                  isRejecting={rejectDocumentMutation.isPending}
+                  onApprove={(requestId) => approveDocumentMutation.mutate(requestId)}
+                  onRead={(versionId) => readDocumentMutation.mutate(versionId)}
+                  onReject={setRequestToReject}
+                />
+              ))}
+            </div>
+          </div>
         ) : null}
       </div>
 
@@ -295,6 +357,183 @@ function DocumentRequestsEmptyState() {
   );
 }
 
+function DocumentRequestFilters({
+  activeFilter,
+  counts,
+  onFilterChange
+}: {
+  activeFilter: DocumentFilter;
+  counts: Record<DocumentFilter, number>;
+  onFilterChange: (filter: DocumentFilter) => void;
+}) {
+  return (
+    <div
+      role='tablist'
+      className='flex flex-wrap gap-3 border-b border-border/40'
+      aria-label='Filtros de solicitudes documentales'
+    >
+      {DOCUMENT_FILTER_OPTIONS.map((filter) => {
+        const count = counts[filter.key];
+        const isActive = activeFilter === filter.key;
+        const isReviewWarning = filter.key === 'review' && isActive && count > 0;
+
+        return (
+          <Button
+            key={filter.key}
+            type='button'
+            role='tab'
+            tabIndex={0}
+            variant='ghost'
+            aria-label={`${filter.label} · ${count}`}
+            aria-selected={isActive}
+            className={cn(
+              'min-h-11 rounded-none border-b-2 px-0 text-sm font-medium hover:bg-transparent',
+              isActive
+                ? 'border-foreground text-foreground'
+                : 'border-transparent text-foreground/70 hover:border-border hover:text-foreground'
+            )}
+            onClick={() => onFilterChange(filter.key)}
+          >
+            <span>{filter.label}</span>
+            <Badge
+              variant='outline'
+              className={cn(
+                'ml-1 size-5 rounded-full p-0 text-[10px]',
+                isReviewWarning
+                  ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300'
+                  : isActive
+                    ? 'border-border bg-background text-foreground'
+                    : 'border-border/70 bg-muted/40 text-foreground/70'
+              )}
+            >
+              {count}
+            </Badge>
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
+function DocumentRequestSection({
+  group,
+  isApproving,
+  isReading,
+  isRejecting,
+  onApprove,
+  onRead,
+  onReject
+}: {
+  group: DocumentRequestGroup;
+  isApproving: boolean;
+  isReading: boolean;
+  isRejecting: boolean;
+  onApprove: (requestId: string) => void;
+  onRead: (versionId: string) => void;
+  onReject: (request: ProductDocumentRequest) => void;
+}) {
+  if (group.key === 'resolved') {
+    return (
+      <Collapsible defaultOpen={false}>
+        <div className='rounded-xl border bg-background/50'>
+          <CollapsibleTrigger asChild>
+            <Button
+              type='button'
+              variant='ghost'
+              className='h-auto w-full justify-between gap-3 rounded-xl px-4 py-3 text-left hover:no-underline'
+            >
+              <span className='flex min-w-0 flex-col items-start gap-0.5'>
+                <span className='font-medium'>{group.title}</span>
+                <span className='text-xs text-muted-foreground'>
+                  {group.items.length} resueltas
+                </span>
+              </span>
+              <Icons.chevronDown className='size-4 text-muted-foreground' />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <DocumentRequestList
+              emptyCopy={group.emptyCopy}
+              isApproving={isApproving}
+              isReading={isReading}
+              isRejecting={isRejecting}
+              items={group.items}
+              onApprove={onApprove}
+              onRead={onRead}
+              onReject={onReject}
+            />
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+    );
+  }
+
+  return (
+    <section className='space-y-2' aria-labelledby={`document-section-${group.key}`}>
+      <div data-testid={`document-section-heading-${group.key}`}>
+        <h4 id={`document-section-${group.key}`} className='text-sm font-semibold'>
+          {group.title}
+        </h4>
+      </div>
+      <DocumentRequestList
+        emptyCopy={group.emptyCopy}
+        isApproving={isApproving}
+        isReading={isReading}
+        isRejecting={isRejecting}
+        items={group.items}
+        onApprove={onApprove}
+        onRead={onRead}
+        onReject={onReject}
+      />
+    </section>
+  );
+}
+
+function DocumentRequestList({
+  emptyCopy,
+  isApproving,
+  isReading,
+  isRejecting,
+  items,
+  onApprove,
+  onRead,
+  onReject
+}: {
+  emptyCopy: string;
+  isApproving: boolean;
+  isReading: boolean;
+  isRejecting: boolean;
+  items: ProductDocumentRequest[];
+  onApprove: (requestId: string) => void;
+  onRead: (versionId: string) => void;
+  onReject: (request: ProductDocumentRequest) => void;
+}) {
+  if (items.length === 0) {
+    return (
+      <p className='rounded-lg border border-dashed p-3 text-sm text-muted-foreground'>
+        {emptyCopy}
+      </p>
+    );
+  }
+
+  return (
+    <ul className='space-y-3 p-0 sm:p-0'>
+      {items.map((request) => (
+        <DocumentRequestItem
+          key={request.id}
+          request={request}
+          isApproving={isApproving}
+          isReading={isReading}
+          isRejecting={isRejecting}
+          onApprove={onApprove}
+          onRead={onRead}
+          onReject={onReject}
+        />
+      ))}
+    </ul>
+  );
+}
+
 function DocumentRequestItem({
   isApproving,
   isReading,
@@ -302,7 +541,6 @@ function DocumentRequestItem({
   onApprove,
   onRead,
   onReject,
-  owners,
   request
 }: {
   isApproving: boolean;
@@ -311,122 +549,402 @@ function DocumentRequestItem({
   onApprove: (requestId: string) => void;
   onRead: (versionId: string) => void;
   onReject: (request: ProductDocumentRequest) => void;
-  owners: PropertyLinkedOwner[];
   request: ProductDocumentRequest;
 }) {
-  const owner = owners.find(
-    (item) =>
-      item.id === request.propertyAssetOwnerId ||
-      (request.propertyAssetOwnerId === null && item.userId === request.ownerUserId)
-  );
-  const ownerName = owner ? getOwnerDisplayName(owner) : 'Propietario';
   const canReview = request.status === 'SUBMITTED' && request.currentVersion !== null;
+  const canOpenDocument = request.currentVersion !== null;
+  const isPassivePending = request.status === 'PENDING';
+  const compactDescription = getCompactDocumentDescription(request);
   const reviewActionsDisabled = isApproving || isReading || isRejecting;
 
   return (
-    <li className='space-y-3 rounded-xl border bg-background p-3'>
-      <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
-        <div className='min-w-0 space-y-1'>
-          <div className='flex flex-wrap items-center gap-2'>
-            <Badge
-              variant='outline'
-              className={cn('rounded-md', documentStatusTones[request.status])}
-            >
-              {documentStatusLabels[request.status]}
-            </Badge>
-            <span className='text-xs text-muted-foreground'>
-              {formatDateTime(request.createdAt)}
-            </span>
+    <li>
+      <Card
+        className={cn(
+          'gap-0 overflow-hidden py-0 shadow-xs',
+          isPassivePending ? 'bg-background/70' : null
+        )}
+      >
+        <CardHeader className={cn('bg-transparent px-5 pb-2', isPassivePending ? 'pt-4' : 'pt-5')}>
+          <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
+            <div className='min-w-0 space-y-1'>
+              <div className='flex flex-wrap items-center gap-2'>
+                <h5 className='break-words text-sm font-semibold'>{request.title}</h5>
+                <DocumentStatusBadge status={request.status} />
+              </div>
+            </div>
+            <p className='shrink-0 text-xs text-foreground/70'>
+              Actualizado {formatCompactDateTime(getRequestChronologyTimestamp(request))}
+            </p>
           </div>
-          <h4 className='break-words text-sm font-semibold'>{request.title}</h4>
-          {request.description ? (
-            <p className='whitespace-pre-wrap break-words text-sm text-muted-foreground'>
-              {request.description}
+        </CardHeader>
+
+        <CardContent
+          className={cn('px-5 pt-2', isPassivePending ? 'space-y-3 pb-4' : 'space-y-5 pb-5')}
+        >
+          {isPassivePending ? (
+            <p
+              data-testid='document-passive-summary'
+              className='truncate text-sm text-foreground/70'
+              title={getPendingDocumentSummary(compactDescription)}
+            >
+              {getPendingDocumentSummary(compactDescription)}
+            </p>
+          ) : compactDescription ? (
+            <p className='truncate text-sm text-foreground/70' title={compactDescription}>
+              {compactDescription}
             </p>
           ) : null}
-        </div>
-        <div className='shrink-0 rounded-lg bg-muted/30 px-3 py-2 text-xs text-muted-foreground'>
-          Para {ownerName}
-        </div>
-      </div>
 
-      {request.rejectionReason ? (
-        <div className='rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300'>
-          <span className='font-medium'>Motivo de rechazo: </span>
-          <span className='break-words'>{request.rejectionReason}</span>
-        </div>
-      ) : null}
+          {request.rejectionReason ? <RejectionReason reason={request.rejectionReason} /> : null}
 
-      {request.currentVersion ? (
-        <div className='flex flex-col gap-3 rounded-lg border bg-muted/20 p-3 text-sm lg:flex-row lg:items-center lg:justify-between'>
-          <div className='min-w-0'>
-            <p className='break-words font-medium'>{request.currentVersion.originalFilename}</p>
-            <p className='text-xs text-muted-foreground'>Versión actual del documento</p>
-          </div>
-          <div className='flex flex-wrap items-center gap-2'>
-            <Badge variant='outline' className='w-fit rounded-md bg-background'>
-              {documentVersionStatusLabels[request.currentVersion.status]}
-            </Badge>
-            {canReview ? (
-              <>
+          {request.currentVersion ? (
+            <DocumentVersionSummary
+              request={request}
+              version={request.currentVersion}
+              isReading={isReading}
+              onRead={onRead}
+            />
+          ) : null}
+
+          {canOpenDocument || canReview ? (
+            <div
+              data-testid={canReview ? 'document-review-action-row' : undefined}
+              className='flex flex-wrap items-center gap-2 border-t border-border/40 pt-3'
+            >
+              {canOpenDocument ? (
                 <Button
                   type='button'
-                  size='sm'
-                  variant='outline'
-                  disabled={reviewActionsDisabled}
+                  variant='ghost'
+                  className='min-h-11 px-2 text-foreground/70 hover:bg-muted/40 hover:text-foreground'
+                  disabled={isReading}
                   onClick={() => onRead(request.currentVersion!.id)}
                 >
                   <Icons.externalLink className='size-4' />
                   Abrir documento
                 </Button>
-                <Button
-                  type='button'
-                  size='sm'
-                  variant='secondary'
-                  disabled={reviewActionsDisabled}
-                  onClick={() => onApprove(request.id)}
-                >
-                  <Icons.check className='size-4' />
-                  Aprobar
-                </Button>
-                <Button
-                  type='button'
-                  size='sm'
-                  variant='destructive'
-                  disabled={reviewActionsDisabled}
-                  onClick={() => onReject(request)}
-                >
-                  <Icons.close className='size-4' />
-                  Rechazar
-                </Button>
-              </>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+              ) : null}
+              {canReview ? (
+                <>
+                  <div className='hidden flex-1 sm:block' />
+                  <div
+                    data-testid='document-review-decision-actions'
+                    className='flex flex-1 flex-wrap justify-end gap-2 sm:flex-none'
+                  >
+                    <Button
+                      type='button'
+                      variant='outline'
+                      className='min-h-11 flex-1 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive sm:flex-none'
+                      disabled={reviewActionsDisabled}
+                      onClick={() => onReject(request)}
+                    >
+                      <Icons.close className='size-4' />
+                      Rechazar
+                    </Button>
+                    <Button
+                      type='button'
+                      className='min-h-11 flex-1 border border-emerald-300 bg-emerald-200 text-emerald-950 hover:bg-emerald-300 dark:border-emerald-300 dark:bg-emerald-300 dark:text-emerald-950 dark:hover:bg-emerald-200 sm:flex-none'
+                      disabled={reviewActionsDisabled}
+                      onClick={() => onApprove(request.id)}
+                    >
+                      <Icons.check className='size-4' />
+                      Aprobar
+                    </Button>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
     </li>
   );
 }
 
-function isEligibleDocumentOwner(owner: PropertyLinkedOwner) {
-  return owner.accessStatus === 'INVITED' || owner.accessStatus === 'ACTIVE';
+function DocumentStatusBadge({ status }: { status: ProductDocumentRequestStatus }) {
+  const config = documentStatusConfig[status];
+  const StatusIcon = config.icon;
+
+  return (
+    <Badge
+      variant='outline'
+      role='status'
+      aria-label={`Estado del documento: ${config.label.toLowerCase()}`}
+      className={cn('w-fit shrink-0 rounded-md', config.badgeClassName)}
+    >
+      <StatusIcon aria-hidden='true' className='size-3' />
+      {config.label}
+    </Badge>
+  );
 }
 
-function getOwnerDisplayName(owner: {
-  email: string;
-  firstName: string | null;
-  lastName?: string | null;
-  ownerFirstName?: string;
-  ownerLastName?: string;
-}) {
-  const snapshotName = [owner.ownerFirstName, owner.ownerLastName]
-    .map((value) => value?.trim())
-    .filter(Boolean)
-    .join(' ');
-  const userName = [owner.firstName, owner.lastName]
-    .map((value) => value?.trim())
-    .filter(Boolean)
-    .join(' ');
+function RejectionReason({ reason }: { reason: string }) {
+  return (
+    <div className='rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm'>
+      <p className='font-medium text-destructive'>Motivo de rechazo</p>
+      <p className='mt-1 break-words text-foreground'>{reason}</p>
+    </div>
+  );
+}
 
-  return snapshotName || userName || owner.email;
+function DocumentVersionSummary({
+  isReading,
+  onRead,
+  request,
+  version
+}: {
+  isReading: boolean;
+  onRead: (versionId: string) => void;
+  request: ProductDocumentRequest;
+  version: ProductDocumentVersion;
+}) {
+  const displayName = getDocumentDisplayName(request, version);
+  const metadata = getVersionMetadata(request, version);
+
+  return (
+    <button
+      type='button'
+      data-testid='document-version-summary'
+      aria-label={`Abrir documento ${displayName}`}
+      className='flex min-h-11 w-fit max-w-full min-w-0 items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-2.5 py-2 text-left text-sm outline-none transition-colors hover:border-border hover:bg-muted/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50'
+      disabled={isReading}
+      onClick={() => onRead(version.id)}
+    >
+      <DocumentVersionPreviewMedia requestTitle={request.title} version={version} />
+      <span className='min-w-0 truncate'>
+        <span className='font-medium text-foreground'>{displayName}</span>
+        <span className='ml-2 text-xs text-foreground/70'>{metadata}</span>
+      </span>
+    </button>
+  );
+}
+
+function DocumentVersionPreviewMedia({
+  requestTitle,
+  version
+}: {
+  requestTitle: string;
+  version: ProductDocumentVersion;
+}) {
+  const isImage = isImageMimeType(version.mimeType);
+  const previewQuery = useQuery({
+    enabled: isImage,
+    queryKey: [...productKeys.all, 'document-version-preview', version.id],
+    queryFn: () => createProductDocumentReadUrl(version.id),
+    retry: false,
+    staleTime: 60_000
+  });
+
+  if (isImage && previewQuery.data?.readUrl.url) {
+    return (
+      <span className='size-8 shrink-0 overflow-hidden rounded-md bg-muted'>
+        {/* oxlint-disable-next-line next/no-img-element -- document thumbnails use signed, short-lived URLs from the authenticated storage flow. */}
+        <img
+          src={previewQuery.data.readUrl.url}
+          alt={`Vista previa de ${requestTitle}`}
+          className='h-full w-full object-cover'
+          loading='lazy'
+        />
+      </span>
+    );
+  }
+
+  const FileIcon = getDocumentFileIcon(version.mimeType);
+
+  return (
+    <span className='flex size-8 shrink-0 items-center justify-center rounded-md bg-background/70 text-foreground/70'>
+      <FileIcon aria-hidden='true' className='size-4' />
+    </span>
+  );
+}
+
+function getCompactDocumentDescription(request: ProductDocumentRequest) {
+  const description = request.description?.trim();
+
+  if (!description) {
+    return null;
+  }
+
+  const escapedTitle = escapeRegExp(request.title.trim());
+
+  if (!escapedTitle) {
+    return description;
+  }
+
+  const redundantSuffix = new RegExp(`\\s*:?\\s*${escapedTitle}\\s*$`, 'i');
+  const compactDescription = description.replace(redundantSuffix, '').trim();
+
+  return compactDescription || null;
+}
+
+function getPendingDocumentSummary(description: string | null) {
+  const statusCopy = 'Esperando que el propietario suba el documento';
+
+  return description ? `${statusCopy} · ${description}` : statusCopy;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function groupDocumentRequests(requests: ProductDocumentRequest[]) {
+  const sortedRequests = requests.toSorted(
+    (left, right) =>
+      Date.parse(getRequestChronologyTimestamp(right)) -
+      Date.parse(getRequestChronologyTimestamp(left))
+  );
+
+  return {
+    pending: sortedRequests.filter((request) => request.status === 'PENDING'),
+    resolved: sortedRequests.filter(
+      (request) => request.status === 'APPROVED' || request.status === 'REJECTED'
+    ),
+    review: sortedRequests.filter((request) => request.status === 'SUBMITTED')
+  } satisfies Record<Exclude<DocumentFilter, 'all'>, ProductDocumentRequest[]>;
+}
+
+function getFilterCounts(groups: Record<Exclude<DocumentFilter, 'all'>, ProductDocumentRequest[]>) {
+  return {
+    all: groups.pending.length + groups.resolved.length + groups.review.length,
+    pending: groups.pending.length,
+    resolved: groups.resolved.length,
+    review: groups.review.length
+  } satisfies Record<DocumentFilter, number>;
+}
+
+function getVisibleGroups(
+  groups: Record<Exclude<DocumentFilter, 'all'>, ProductDocumentRequest[]>,
+  activeFilter: DocumentFilter
+): DocumentRequestGroup[] {
+  const allGroups: DocumentRequestGroup[] = [
+    {
+      emptyCopy: 'No hay documentos subidos para revisar.',
+      items: groups.review,
+      key: 'review',
+      title: 'Requiere tu revisión'
+    },
+    {
+      emptyCopy: 'No hay solicitudes pendientes del propietario.',
+      items: groups.pending,
+      key: 'pending',
+      title: 'Pendientes del propietario'
+    },
+    {
+      emptyCopy: 'Todavía no hay documentos aprobados o rechazados.',
+      items: groups.resolved,
+      key: 'resolved',
+      title: 'Historial'
+    }
+  ];
+
+  return activeFilter === 'all'
+    ? allGroups
+    : allGroups.filter((group) => group.key === activeFilter);
+}
+
+function getDocumentFilter(value: string | null): DocumentFilter {
+  if (value === 'all' || value === 'pending' || value === 'resolved' || value === 'review') {
+    return value;
+  }
+
+  return 'all';
+}
+
+function getRequestChronologyTimestamp(request: ProductDocumentRequest) {
+  return (
+    request.reviewedAt ??
+    request.updatedAt ??
+    request.currentVersion?.createdAt ??
+    request.createdAt
+  );
+}
+
+function getDocumentDisplayName(request: ProductDocumentRequest, version: ProductDocumentVersion) {
+  const title = request.title.trim();
+
+  if (title) {
+    return title;
+  }
+
+  return getReadableFileName(version.originalFilename);
+}
+
+function getReadableFileName(fileName: string) {
+  if (isTechnicalFileName(fileName)) {
+    return 'Documento';
+  }
+
+  const nameWithoutExtension = fileName
+    .replace(/\.[^/.]+$/, '')
+    .replace(/[-_]+/g, ' ')
+    .trim();
+
+  return nameWithoutExtension || 'Documento';
+}
+
+function isTechnicalFileName(fileName: string) {
+  const normalizedName = fileName.toLowerCase();
+
+  return normalizedName.includes('seeded') || normalizedName.includes('smoke-document');
+}
+
+function getVersionMetadata(request: ProductDocumentRequest, version: ProductDocumentVersion) {
+  const versionNumber = getVersionNumber(request, version);
+  const fileFormat = getFileFormatLabel(version.mimeType);
+
+  return versionNumber ? `v${versionNumber} · ${fileFormat}` : fileFormat;
+}
+
+function getVersionNumber(request: ProductDocumentRequest, version: ProductDocumentVersion) {
+  const completedVersions = request.versions
+    .filter((item) => item.status !== 'PENDING_UPLOAD')
+    .toSorted((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt));
+  const index = completedVersions.findIndex((item) => item.id === version.id);
+
+  return index >= 0 ? index + 1 : null;
+}
+
+function isImageMimeType(mimeType: string) {
+  return mimeType.startsWith('image/');
+}
+
+function getDocumentFileIcon(mimeType: string): Icon {
+  if (mimeType === 'application/pdf') {
+    // TODO: replace this fallback with a real first-page PDF thumbnail when preview generation exists.
+    return Icons.fileTypePdf;
+  }
+
+  if (isImageMimeType(mimeType)) {
+    return Icons.media;
+  }
+
+  return Icons.page;
+}
+
+function getFileFormatLabel(mimeType: string) {
+  if (mimeType === 'application/pdf') {
+    return 'PDF';
+  }
+
+  if (mimeType === 'image/jpeg') {
+    return 'JPG';
+  }
+
+  if (mimeType === 'image/png') {
+    return 'PNG';
+  }
+
+  if (mimeType === 'image/webp') {
+    return 'WebP';
+  }
+
+  return 'Archivo';
+}
+
+function formatCompactDateTime(value: string) {
+  return format(new Date(value), 'd MMM · HH:mm', { locale: es });
+}
+
+function isEligibleDocumentOwner(owner: PropertyLinkedOwner) {
+  return owner.accessStatus === 'INVITED' || owner.accessStatus === 'ACTIVE';
 }
