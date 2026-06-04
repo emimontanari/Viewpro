@@ -5,7 +5,8 @@ import {
   propertyStatusOptions,
   propertyTypeOptions
 } from '@/features/products/constants/product-options';
-import type { OwnerEngagement, OwnerProperty, OwnerPropertyImage } from '../api/types';
+import { PropertyImageCarousel } from '@/features/products/components/property-images';
+import type { OwnerEngagement, OwnerProperty } from '../api/types';
 
 export function OwnerPropertySummary({
   engagement,
@@ -18,8 +19,8 @@ export function OwnerPropertySummary({
 
   return (
     <div className='grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]'>
-      <Card className='overflow-hidden'>
-        <PropertyImageGallery property={property} />
+      <Card className='overflow-hidden p-3'>
+        <PropertyImageCarousel images={getOwnerCarouselImages(property)} title={property.title} />
       </Card>
 
       <div className='space-y-5'>
@@ -76,58 +77,12 @@ export function OwnerPropertySummary({
   );
 }
 
-function PropertyImageGallery({ property }: { property: OwnerProperty }) {
-  const primaryImage = property.primaryImage ?? property.images[0] ?? null;
-
-  if (!primaryImage) {
-    return (
-      <div className='flex min-h-[320px] items-center justify-center bg-muted/50 p-8 text-center'>
-        <div>
-          <p className='text-lg font-semibold'>Imagen pendiente</p>
-          <p className='mt-2 max-w-sm text-sm text-muted-foreground'>
-            La inmobiliaria todavía no cargó imágenes para esta propiedad.
-          </p>
-        </div>
-      </div>
-    );
+function getOwnerCarouselImages(property: OwnerProperty) {
+  if (property.images.length > 0) {
+    return property.images;
   }
 
-  return (
-    <div className='space-y-3 p-3'>
-      <div className='overflow-hidden rounded-2xl bg-muted'>
-        <img
-          src={primaryImage.url}
-          alt={`Imagen principal de ${property.title}`}
-          className='aspect-[4/3] w-full object-cover'
-        />
-      </div>
-      {property.images.length > 1 ? (
-        <div className='grid grid-cols-4 gap-2'>
-          {property.images.slice(0, 4).map((image) => (
-            <PropertyThumbnail key={image.id} image={image} propertyTitle={property.title} />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function PropertyThumbnail({
-  image,
-  propertyTitle
-}: {
-  image: OwnerPropertyImage;
-  propertyTitle: string;
-}) {
-  return (
-    <div className='overflow-hidden rounded-xl border bg-muted'>
-      <img
-        src={image.url}
-        alt={`Imagen de ${propertyTitle}`}
-        className='aspect-square w-full object-cover'
-      />
-    </div>
-  );
+  return property.primaryImage ? [property.primaryImage] : [];
 }
 
 function OwnerAgencyTeam({ engagement }: { engagement: OwnerEngagement }) {

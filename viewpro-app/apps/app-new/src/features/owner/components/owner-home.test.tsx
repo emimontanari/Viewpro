@@ -21,6 +21,7 @@ const useQueryMock = vi.mocked(useQuery);
 
 const ownerPropertiesResponse: OwnerPropertiesResponse = [
   buildOwnerProperty({
+    addressLine: 'Villa Centenario',
     id: 'property-1',
     title: 'Casa familiar con pileta en Villa Centenario'
   })
@@ -43,15 +44,108 @@ describe('OwnerHome', () => {
     render(<OwnerHome />);
 
     expect(screen.getByRole('heading', { name: /Tus propiedades/i })).toBeInTheDocument();
-    expect(screen.getByText('Casa familiar con pileta en Villa Centenario')).toBeInTheDocument();
-    expect(screen.getByText('Inmobiliaria vinculada')).toBeInTheDocument();
-    expect(screen.getAllByText('ViewPro Demo Inmobiliaria').length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { name: 'Casa familiar con pileta' })).toHaveClass(
+      'line-clamp-2'
+    );
+    expect(
+      screen.queryByText('Casa familiar con pileta en Villa Centenario')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Villa Centenario, Córdoba')).toBeInTheDocument();
+    expect(screen.getByText('Inmobiliaria vinculada')).toHaveClass(
+      'text-[10px]',
+      'text-muted-foreground',
+      'uppercase'
+    );
+    expect(screen.getByText('VI')).toHaveClass('size-12', 'rounded-xl');
+    expect(screen.getByRole('heading', { name: 'ViewPro Demo Inmobiliaria' })).toHaveClass(
+      'line-clamp-2',
+      'text-base'
+    );
+    expect(screen.getByLabelText('Inmobiliaria verificada')).toHaveClass(
+      'size-3.5',
+      'text-emerald-700',
+      'dark:text-emerald-300'
+    );
+    expect(screen.getByText('Gestionando 1 propiedad para vos.')).toHaveClass(
+      'text-[13.5px]',
+      'text-muted-foreground'
+    );
+    const accessStatus = screen.getByText('Acceso vigente');
+    expect(accessStatus).toHaveClass(
+      'text-[12.5px]',
+      'font-medium',
+      'text-emerald-700',
+      'dark:text-emerald-300'
+    );
+    expect(accessStatus.firstElementChild).toHaveClass('size-1.5', 'bg-emerald-500');
+    expect(accessStatus).not.toHaveClass('rounded-full', 'border', 'bg-emerald-500/10');
     expect(screen.queryByText('Nueva propiedad')).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: /Inmobiliaria/i })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Ver seguimiento/i })).toHaveAttribute(
       'href',
-      '/owner/properties/property-1'
+      '/owner/properties/property-1?tab=tracking'
     );
+    expect(screen.getByRole('link', { name: /Ver documentación/i })).toHaveAttribute(
+      'href',
+      '/owner/properties/property-1?tab=documents'
+    );
+    expect(screen.getByText('Documentación')).toBeInTheDocument();
+    expect(screen.queryByText('Ficha técnica')).not.toBeInTheDocument();
+    expect(screen.getByText('Publicación activa')).toBeInTheDocument();
+    expect(screen.getByText('Progreso de gestión')).toBeInTheDocument();
+    expect(screen.getByText('44%')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: /Progreso según etapa/i })).toHaveAttribute(
+      'aria-valuenow',
+      '44'
+    );
+    expect(screen.getByRole('progressbar', { name: /Progreso según etapa/i })).toHaveAttribute(
+      'aria-valuemin',
+      '0'
+    );
+    expect(screen.getByRole('progressbar', { name: /Progreso según etapa/i })).toHaveAttribute(
+      'aria-valuemax',
+      '100'
+    );
+  });
+
+  it('deduplicates visual location and removes trailing neighborhood from the card title', () => {
+    mockOwnerHomeData(
+      [
+        buildOwnerProperty({
+          addressLine: 'Villa Centenario',
+          city: 'Córdoba',
+          id: 'property-1',
+          province: 'Córdoba',
+          title: 'Casa familiar con pileta en Villa Centenario'
+        })
+      ],
+      [singleAgencyEngagements]
+    );
+
+    render(<OwnerHome />);
+
+    expect(screen.getByRole('heading', { name: 'Casa familiar con pileta' })).toBeInTheDocument();
+    expect(screen.getByText('Villa Centenario, Córdoba')).toBeInTheDocument();
+    expect(screen.queryByText('Villa Centenario, Córdoba, Córdoba')).not.toBeInTheDocument();
+  });
+
+  it('keeps non-location title suffixes visible', () => {
+    mockOwnerHomeData(
+      [
+        buildOwnerProperty({
+          addressLine: 'Villa Centenario',
+          city: 'Córdoba',
+          id: 'property-1',
+          province: 'Córdoba',
+          title: 'Departamento en Venta'
+        })
+      ],
+      [singleAgencyEngagements]
+    );
+
+    render(<OwnerHome />);
+
+    expect(screen.getByRole('heading', { name: 'Departamento en Venta' })).toBeInTheDocument();
   });
 
   it('renders an agency selector and filters properties when the owner has multiple agencies', () => {
@@ -93,10 +187,7 @@ describe('OwnerHome', () => {
     expect(contactLink).toHaveAttribute('rel', 'noopener noreferrer');
     expect(contactLink).toHaveAttribute('href', expect.not.stringContaining('mailto:'));
     expect(contactLink).toHaveAttribute('href', expect.not.stringContaining('+'));
-    expect(contactLink).toHaveAttribute(
-      'href',
-      expect.stringContaining('Av.%20Siempre%20Viva%20123')
-    );
+    expect(contactLink).toHaveAttribute('href', expect.stringContaining('Villa%20Centenario'));
 
     await user.click(contactLink);
 
@@ -119,7 +210,16 @@ describe('OwnerHome', () => {
 
     render(<OwnerHome />);
 
-    expect(screen.getByRole('button', { name: /Contacto no configurado/i })).toBeDisabled();
+    const contactButton = screen.getByRole('button', { name: 'Contacto — no configurado' });
+
+    expect(contactButton).toBeDisabled();
+    expect(contactButton).toHaveClass('h-20', 'w-full');
+    expect(contactButton.parentElement).toHaveClass('grid-cols-3');
+    expect(screen.getByText('Contacto')).toBeInTheDocument();
+    expect(screen.queryByText('Contacto no configurado')).not.toBeInTheDocument();
+    expect(screen.getByTestId('owner-contact-unavailable-indicator')).toHaveClass('bg-destructive');
+    expect(screen.getByRole('link', { name: /Ver seguimiento/i })).toHaveClass('h-20', 'w-full');
+    expect(screen.getByRole('link', { name: /Ver documentación/i })).toHaveClass('h-20', 'w-full');
     expect(screen.queryByRole('link', { name: /Contactar inmobiliaria/i })).not.toBeInTheDocument();
   });
 
@@ -151,13 +251,19 @@ function mockOwnerHomeData(
   );
 }
 
-function buildOwnerProperty(input: { id: string; title: string }) {
+function buildOwnerProperty(input: {
+  addressLine?: string;
+  city?: string;
+  id: string;
+  province?: string;
+  title: string;
+}) {
   return {
     id: input.id,
     title: input.title,
-    addressLine: 'Av. Siempre Viva 123',
-    city: 'Córdoba',
-    province: 'Córdoba',
+    addressLine: input.addressLine ?? 'Av. Siempre Viva 123',
+    city: input.city ?? 'Córdoba',
+    province: input.province ?? 'Córdoba',
     propertyType: 'HOUSE',
     totalAreaSqm: 360,
     coveredAreaSqm: 231,

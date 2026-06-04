@@ -5,11 +5,35 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OwnerEngagementsResponse, OwnerProperty, OwnerTimelineResponse } from '../api/types';
 import { OwnerPropertyDetail } from './owner-property-detail';
 
+const nuqsMockState = vi.hoisted(() => ({ initialTab: undefined as string | undefined }));
+
 vi.mock('./owner-document-requests', () => ({
-  OwnerDocumentRequests: ({ propertyEngagementId }: { propertyEngagementId: string }) => (
-    <div data-testid='owner-document-requests'>Documentos de {propertyEngagementId}</div>
+  OwnerDocumentRequests: ({
+    hideAgencyInDocumentCards,
+    propertyEngagementId
+  }: {
+    hideAgencyInDocumentCards?: boolean;
+    propertyEngagementId: string;
+  }) => (
+    <div data-hide-agency={hideAgencyInDocumentCards} data-testid='owner-document-requests'>
+      Documentos de {propertyEngagementId}
+    </div>
   )
 }));
+
+vi.mock('nuqs', async () => {
+  const React = await import('react');
+
+  return {
+    parseAsString: {
+      withOptions: () => ({
+        withDefault: (defaultValue: string) => ({ defaultValue })
+      })
+    },
+    useQueryState: (_key: string, parser: { defaultValue: string }) =>
+      React.useState(nuqsMockState.initialTab ?? parser.defaultValue)
+  };
+});
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>();
@@ -121,6 +145,7 @@ const timelineResponse: OwnerTimelineResponse = {
 
 describe('OwnerPropertyDetail', () => {
   beforeEach(() => {
+    nuqsMockState.initialTab = undefined;
     useQueryMock.mockReset();
     prefetchQueryMock.mockReset();
     useQueryClientMock.mockReturnValue({ prefetchQuery: prefetchQueryMock } as never);
@@ -128,31 +153,18 @@ describe('OwnerPropertyDetail', () => {
 
   it('renders owner property summary, tabs, status path and read-only timeline', async () => {
     const user = userEvent.setup();
-    useQueryMock
-      .mockReturnValueOnce({ data: ownerProperty, isError: false, isLoading: false } as ReturnType<
-        typeof useQuery
-      >)
-      .mockReturnValueOnce({
-        data: engagementsResponse,
-        isError: false,
-        isLoading: false
-      } as ReturnType<typeof useQuery>)
-      .mockReturnValueOnce({
-        data: timelineResponse,
-        isError: false,
-        isLoading: false
-      } as ReturnType<typeof useQuery>);
+    mockOwnerPropertyDetailQueries({ includeTimeline: true });
 
     render(<OwnerPropertyDetail propertyId='property-1' />);
 
     expect(
       screen.getByRole('heading', { name: /Casa familiar con pileta en Villa Centenario/i })
     ).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Resumen' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Resumen' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tab', { name: 'Seguimiento' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Documentos' })).toBeInTheDocument();
     expect(
-      screen.getByAltText('Imagen principal de Casa familiar con pileta en Villa Centenario')
+      screen.getByAltText('Imagen 1 de 1 de Casa familiar con pileta en Villa Centenario')
     ).toBeInTheDocument();
     expect(screen.getByText('Ficha técnica')).toBeInTheDocument();
     expect(screen.getByText('Superficie cubierta')).toBeInTheDocument();
@@ -173,6 +185,10 @@ describe('OwnerPropertyDetail', () => {
     expect(screen.getByTestId('owner-document-requests')).toHaveTextContent(
       'Documentos de engagement-1'
     );
+    expect(screen.getByTestId('owner-document-requests')).toHaveAttribute(
+      'data-hide-agency',
+      'true'
+    );
     expect(screen.queryByText('Nueva propiedad')).not.toBeInTheDocument();
     expect(screen.queryByText('Editar')).not.toBeInTheDocument();
     expect(screen.queryByText('Crear')).not.toBeInTheDocument();
@@ -183,15 +199,56 @@ describe('OwnerPropertyDetail', () => {
     );
   });
 
+  it('opens tracking directly from the tab query param', () => {
+    nuqsMockState.initialTab = 'tracking';
+    mockOwnerPropertyDetailQueries({ includeTimeline: true });
+
+    render(<OwnerPropertyDetail propertyId='property-1' />);
+
+    expect(screen.getByRole('tab', { name: 'Seguimiento' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByText('Estado de la gestión')).toBeInTheDocument();
+    expect(screen.getByText(/Ingresó una consulta calificada/i)).toBeInTheDocument();
+  });
+
+  it('opens documents directly from the tab query param', () => {
+    nuqsMockState.initialTab = 'documents';
+    mockOwnerPropertyDetailQueries();
+
+    render(<OwnerPropertyDetail propertyId='property-1' />);
+
+    expect(screen.getByRole('tab', { name: 'Documentos' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByTestId('owner-document-requests')).toHaveTextContent(
+      'Documentos de engagement-1'
+    );
+  });
+
+  it('falls back to summary for an invalid tab query param', () => {
+    nuqsMockState.initialTab = 'unknown';
+    mockOwnerPropertyDetailQueries();
+
+    render(<OwnerPropertyDetail propertyId='property-1' />);
+
+    expect(screen.getByRole('tab', { name: 'Resumen' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Ficha técnica')).toBeInTheDocument();
+  });
+
   it('renders property content while engagements are still loading', async () => {
     const user = userEvent.setup();
-    useQueryMock
-      .mockReturnValueOnce({ data: ownerProperty, isError: false, isLoading: false } as ReturnType<
+    useQueryMock.mockImplementation((options: { queryKey?: readonly unknown[] }) => {
+      if (isOwnerEngagementsQuery(options.queryKey)) {
+        return { data: undefined, isError: false, isLoading: true } as ReturnType<typeof useQuery>;
+      }
+
+      return { data: ownerProperty, isError: false, isLoading: false } as ReturnType<
         typeof useQuery
-      >)
-      .mockReturnValueOnce({ data: undefined, isError: false, isLoading: true } as ReturnType<
-        typeof useQuery
-      >);
+      >;
+    });
 
     render(<OwnerPropertyDetail propertyId='property-1' />);
 
@@ -208,3 +265,35 @@ describe('OwnerPropertyDetail', () => {
     expect(screen.getByText('Cargando gestiones activas...')).toBeInTheDocument();
   });
 });
+
+function mockOwnerPropertyDetailQueries({
+  includeTimeline = false
+}: { includeTimeline?: boolean } = {}) {
+  useQueryMock.mockImplementation((options: { queryKey?: readonly unknown[] }) => {
+    if (isOwnerEngagementsQuery(options.queryKey)) {
+      return {
+        data: engagementsResponse,
+        isError: false,
+        isLoading: false
+      } as ReturnType<typeof useQuery>;
+    }
+
+    if (isOwnerTimelineQuery(options.queryKey) && includeTimeline) {
+      return {
+        data: timelineResponse,
+        isError: false,
+        isLoading: false
+      } as ReturnType<typeof useQuery>;
+    }
+
+    return { data: ownerProperty, isError: false, isLoading: false } as ReturnType<typeof useQuery>;
+  });
+}
+
+function isOwnerEngagementsQuery(queryKey: readonly unknown[] | undefined) {
+  return queryKey?.includes('engagements') && queryKey.includes('property-1');
+}
+
+function isOwnerTimelineQuery(queryKey: readonly unknown[] | undefined) {
+  return queryKey?.includes('timeline');
+}
