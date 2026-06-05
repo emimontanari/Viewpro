@@ -189,12 +189,25 @@ Done: admin can change tenant status; suspended tenant is blocked by existing gu
 Next slice: 25.2 — Admin tenant management UI.
 ```
 
+### Completed: Stage 25.2 — Admin tenant management UI
+
+Stage 25.2 exposed the Stage 25.1 status API in `app-new` without creating a separate visual language. ViewPro admins can open `/admin`, see tenant status badges, activate `TRIAL` tenants, suspend `ACTIVE` tenants, and reactivate `SUSPENDED` tenants after confirmation. Admin BFF routes forward auth cookies but explicitly disable `x-tenant-id`, preserving the global admin boundary.
+
+```txt
+Stage: 25
+Slice: 25.2 — Admin tenant management UI
+Objective: expose minimal tenant operations in app-new for ViewPro admins.
+Evidence needed: UI tests for tenant list, status badge, status action confirmation, loading/error states.
+Do not touch: limits, billing, impersonation, private tenant content browsing.
+Done: ViewPro admin can list tenants and activate/suspend/reactivate them from UI.
+Next slice: 25.3 — Tenant limits model and API.
+```
+
 ## Recommended sequence from here
 
-1. **Implement Stage 25.2 Admin tenant management UI.**
-2. **Implement Stage 25.3 Tenant limits model/API.**
-3. **Implement Stage 25.4 Tenant limits enforcement.**
-4. **Continue remaining P0/P1 closure:** WhatsApp config, notification E2E, Seguimiento document activity, team/seller evidence, final hardening, deploy checklist, final deck.
+1. **Implement Stage 25.3 Tenant limits model/API.**
+2. **Implement Stage 25.4 Tenant limits enforcement.**
+3. **Continue remaining P0/P1 closure:** WhatsApp config, notification E2E, Seguimiento document activity, team/seller evidence, final hardening, deploy checklist, final deck.
 
 ## Backlog outside immediate focus
 

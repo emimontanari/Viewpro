@@ -6,13 +6,19 @@ const DEFAULT_API_URL = 'http://localhost:3001/api';
 const API_URL = trimTrailingSlash(process.env.BFF_API_URL ?? DEFAULT_API_URL);
 const BFF_TIMEOUT_MS = 10_000;
 
-export async function bffFetch(path: string, init: RequestInit = {}) {
+type BffFetchOptions = RequestInit & {
+  includeTenantHeader?: boolean;
+};
+
+export async function bffFetch(path: string, init: BffFetchOptions = {}) {
+  const { includeTenantHeader = true, ...requestInit } = init;
   const cookieStore = await cookies();
   const requestHeaders = await headers();
-  const outgoingHeaders = new Headers(init.headers);
+  const outgoingHeaders = new Headers(requestInit.headers);
   const cookieHeader = cookieStore.toString();
-  const selectedTenantId =
-    requestHeaders.get('x-tenant-id') ?? cookieStore.get(SELECTED_TENANT_COOKIE)?.value;
+  const selectedTenantId = includeTenantHeader
+    ? (requestHeaders.get('x-tenant-id') ?? cookieStore.get(SELECTED_TENANT_COOKIE)?.value)
+    : null;
 
   if (cookieHeader) {
     outgoingHeaders.set('cookie', cookieHeader);
@@ -27,7 +33,7 @@ export async function bffFetch(path: string, init: RequestInit = {}) {
 
   try {
     return await fetch(`${API_URL}${normalizePath(path)}`, {
-      ...init,
+      ...requestInit,
       cache: 'no-store',
       credentials: 'include',
       headers: outgoingHeaders,
