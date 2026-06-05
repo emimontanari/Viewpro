@@ -27,11 +27,6 @@ Next slice: 26.0 — MVP evidence audit.
 **Files:**
 
 - Create: `viewpro-app/apps/api/src/tenant-limits/tenant-limit-enforcement.constants.ts`
-- Create: `viewpro-app/apps/api/src/tenant-limits/tenant-limit-enforcement.repository.ts`
-- Create: `viewpro-app/apps/api/src/tenant-limits/prisma-tenant-limit-enforcement.repository.ts`
-- Create: `viewpro-app/apps/api/src/tenant-limits/tenant-limit-enforcement.service.ts`
-- Create: `viewpro-app/apps/api/src/tenant-limits/tenant-limits.module.ts`
-- Modify: `viewpro-app/apps/api/src/app.module.ts` only if feature modules need a shared import from root.
 
 **Steps:**
 
@@ -46,41 +41,16 @@ Next slice: 26.0 — MVP evidence audit.
    export const BYTES_PER_MIB = 1024 * 1024;
    ```
 
-2. Define repository contract for usage reads:
+2. Keep quota enforcement in repository-local transaction helpers for each mutation boundary.
 
-   ```ts
-   export type TenantLimitSnapshot = {
-     maxUsers: number | null;
-     maxActivePropertyEngagements: number | null;
-     maxDocumentsStorageMb: number | null;
-   };
+3. Each helper must:
+   - lock the tenant row with `SELECT id FROM tenants WHERE id = ... FOR UPDATE`;
+   - read the configured nullable limit;
+   - treat `null` as unlimited and `0` as blocking any positive new usage;
+   - count usage using the same transaction client;
+   - throw `ConflictException` with the stable messages above before performing the write.
 
-   export abstract class TenantLimitEnforcementRepository {
-     abstract getLimits(tenantId: string): Promise<TenantLimitSnapshot | null>;
-     abstract countActiveUsers(tenantId: string): Promise<number>;
-     abstract countActivePropertyEngagements(tenantId: string): Promise<number>;
-     abstract sumDocumentStorageBytes(tenantId: string): Promise<number>;
-   }
-   ```
-
-3. Implement Prisma repository counts:
-   - Active users: `tenantMembership.count({ where: { tenantId, status: 'ACTIVE' } })`.
-   - Active property engagements: `propertyEngagement.count({ where: { tenantId, archivedAt: null, status: { notIn: ['CLOSED', 'CANCELLED'] } } })`.
-   - Document storage: sum uploaded/current document version bytes for tenant-owned document requests. Prefer current versions if the schema exposes `Document.currentVersionId`; otherwise document the chosen aggregate in code comments and tests.
-
-4. Implement service methods:
-
-   ```ts
-   assertCanAddTenantUser(tenantId: string): Promise<void>
-   assertCanAddActivePropertyEngagement(tenantId: string): Promise<void>
-   assertCanStoreDocumentBytes(tenantId: string, requestedBytes: number): Promise<void>
-   ```
-
-   Use explicit `limit !== null` checks so `0` blocks correctly.
-
-5. Throw `ConflictException` with the stable messages above.
-
-6. Export the service and repository provider from `TenantLimitsModule`.
+4. Document storage counts existing `DocumentVersion` rows for the tenant, including `PENDING_UPLOAD`, so pending upload URLs reserve capacity and concurrent upload URL requests cannot all pass against the same usage snapshot.
 
 **Verification:**
 
@@ -115,16 +85,16 @@ Expected: pass or only unrelated pre-existing errors. If errors appear in touche
 
    ```bash
    cd viewpro-app
-   pnpm --filter @viewpro/api test -- team-invitations.e2e-spec.ts
+   pnpm --filter @viewpro/api test team-invitations.e2e-spec.ts
    ```
 
-3. Import `TenantLimitsModule` into `TeamModule` if the use case enforces at service level, or inject `TenantLimitEnforcementService` into `PrismaTeamInvitationsRepository` if enforcing inside the transaction.
+3. Add a repository-local transaction helper that locks the tenant row, reads `maxUsers`, counts active memberships, and returns/maps a limit-exceeded result.
 
 4. Enforce before `markInvitationAccepted` and `tenantMembership.create` in:
    - `acceptForNewUser`
    - `acceptForExistingUser`
 
-5. Prefer transaction-safe enforcement. If using a service outside the transaction, document residual race risk and add follow-up note; if practical, add a Prisma transaction helper that reads tenant limits/counts inside the same transaction.
+5. Keep the check inside the same Prisma transaction as invitation acceptance to avoid overbooking seats.
 
 6. Map repository/use-case result to `ConflictException` with the stable user-limit message.
 
@@ -160,10 +130,10 @@ Expected: pass or only unrelated pre-existing errors. If errors appear in touche
 
    ```bash
    cd viewpro-app
-   pnpm --filter @viewpro/api test -- property-engagements.e2e-spec.ts
+   pnpm --filter @viewpro/api test property-engagements.e2e-spec.ts
    ```
 
-3. Inject tenant limit enforcement into `PropertyEngagementsModule`/repository.
+3. Add repository-local transaction helpers that lock the tenant row, read `maxActivePropertyEngagements`, count active engagements, and throw the stable `ConflictException` before writes that increase active count.
 
 4. Enforce before writes that increase active count:
    - before `createWithAsset` creates engagement and asset;
@@ -188,28 +158,29 @@ Expected: pass or only unrelated pre-existing errors. If errors appear in touche
 
 **Steps:**
 
-1. Write failing use-case tests:
+1. Write failing use-case/repository/E2E tests:
    - `maxDocumentsStorageMb: null` allows upload URL creation.
    - `maxDocumentsStorageMb: 0` blocks upload URL creation with `409` and stable message.
-   - current storage plus requested bytes over limit blocks upload URL creation.
+   - current stored/reserved version bytes plus requested bytes over limit blocks upload URL creation.
+   - pending upload versions count as reserved capacity.
    - a request exactly at the limit is allowed.
 
 2. Run targeted tests and confirm failure:
 
    ```bash
    cd viewpro-app
-   pnpm --filter @viewpro/api test -- owner-documents.use-cases.spec.ts
+   pnpm --filter @viewpro/api test owner-documents.use-cases.spec.ts documents.repository.spec.ts owner-documents.e2e-spec.ts
    ```
 
-3. Add repository method for tenant document storage usage if not covered by the shared tenant-limit repository.
+3. Enforce in `PrismaDocumentsRepository.createPendingVersion` so tenant row lock, storage usage aggregate, and pending version creation happen inside one Prisma transaction.
 
-4. Inject `TenantLimitEnforcementService` into `CreateOwnerDocumentUploadUrlUseCase`.
+4. Sum tenant `DocumentVersion.sizeBytes` through `Document -> DocumentRequest -> tenantId`, including `PENDING_UPLOAD` versions as reservations.
 
-5. After the use case resolves the document request and validates owner access/file size, call `assertCanStoreDocumentBytes(request.tenantId, input.sizeBytes)` before creating pending version/upload URL.
+5. Keep `CreateOwnerDocumentUploadUrlUseCase` responsible for owner access, request status, file validation, storage key creation, and signed URL creation; the repository owns transactional quota enforcement for pending version creation.
 
 6. Ensure storage conversion uses `maxDocumentsStorageMb * 1024 * 1024`.
 
-7. Re-run targeted use-case tests and owner document E2E if modified.
+7. Re-run targeted use-case, repository, and owner document E2E tests.
 
 **Expected:** upload URL quota tests pass and existing owner document upload tests remain green.
 
@@ -230,7 +201,7 @@ Expected: pass or only unrelated pre-existing errors. If errors appear in touche
    cd viewpro-app
    pnpm --filter @viewpro/api db:validate
    pnpm --filter @viewpro/api typecheck
-   pnpm --filter @viewpro/api test -- team-invitations.e2e-spec.ts property-engagements.e2e-spec.ts owner-documents.use-cases.spec.ts
+   pnpm --filter @viewpro/api test team-invitations.e2e-spec.ts property-engagements.e2e-spec.ts movements.e2e-spec.ts property-engagements.repository.spec.ts documents.repository.spec.ts owner-documents.use-cases.spec.ts owner-documents.e2e-spec.ts
    ```
 
 3. Run broader API tests if targeted tests touch shared fixtures heavily:

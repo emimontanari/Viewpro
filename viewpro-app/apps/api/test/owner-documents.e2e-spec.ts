@@ -111,6 +111,22 @@ describe('Owner document endpoints (e2e)', () => {
     expect(success.body.uploadUrl.url).toContain('https://fake-documents.local/upload/')
   })
 
+  it('reserves pending upload bytes against the tenant document storage limit', async () => {
+    const { manager, owner, documentRequest } = await setupOwnerDocumentRequest('owner-upload-storage-limit')
+    await prisma.tenant.update({ where: { id: manager.tenantId }, data: { maxDocumentsStorageMb: 1 } })
+
+    await owner.agent
+      .post(`/api/owner/document-requests/${documentRequest.body.id}/upload-url`)
+      .send({ originalFilename: 'deed.pdf', mimeType: 'application/pdf', sizeBytes: 1024 * 1024 })
+      .expect(201)
+    const blocked = await owner.agent
+      .post(`/api/owner/document-requests/${documentRequest.body.id}/upload-url`)
+      .send({ originalFilename: 'deed-extra.pdf', mimeType: 'application/pdf', sizeBytes: 1 })
+      .expect(409)
+
+    expect(blocked.body.message).toBe('Tenant document storage limit exceeded')
+  })
+
   it('confirms an owner upload, submits the request, and returns owner read URLs', async () => {
     const { owner, documentRequest } = await setupOwnerDocumentRequest('owner-upload-confirm')
     const upload = await owner.agent

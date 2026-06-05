@@ -69,10 +69,11 @@ Primary backend boundaries:
 Rules:
 
 - Convert configured MB to bytes with binary MiB semantics: `limitMb * 1024 * 1024`.
-- Compare current stored document usage plus requested upload size.
+- Compare current stored/reserved document version bytes plus requested upload size.
+- Count existing `DocumentVersion` rows for the tenant, including `PENDING_UPLOAD` versions, so issued upload URLs reserve capacity and concurrent requests cannot all pass against the same usage snapshot.
 - `0` blocks any upload because upload size must be at least one byte.
 - `null` remains unlimited.
-- Stage 25.4 uses pre-upload enforcement for better UX; it does not introduce quota reservations or cleanup for abandoned pending uploads.
+- Stage 25.4 uses existing pending upload versions as quota reservations; it does not introduce a separate quota reservation table or cleanup for abandoned pending uploads.
 
 Primary backend boundary:
 
@@ -85,16 +86,15 @@ Repository support:
 
 ## Architecture
 
-Add a small shared tenant-limit enforcement service/repository in the API app so feature use cases can ask clear quota questions without duplicating semantics.
+Keep shared tenant-limit constants for stable errors and put enforcement helpers inside the Prisma repositories that own the relevant writes.
 
 Recommended shape:
 
-- `TenantLimitEnforcementService` exposes methods such as `assertCanAddTenantUser`, `assertCanAddActivePropertyEngagement`, and `assertCanStoreDocumentBytes`.
-- `TenantLimitEnforcementRepository` reads tenant limits and usage counts using Prisma.
-- Race-sensitive write paths call enforcement from inside repository transactions when the write and count must be atomic.
-- Less race-sensitive pre-upload storage checks can call the service at use-case level first, with repository-level helpers for usage counting.
+- Shared constants define quota error messages and `BYTES_PER_MIB`.
+- Race-sensitive write paths lock the tenant row, read the configured limit and current usage, then perform the mutation inside the same Prisma transaction.
+- Team invitation acceptance, active engagement creation/restore/reactivation, and document pending-version creation all couple the quota check with the write.
 
-This keeps controllers thin, preserves NestJS DI boundaries, and keeps enforcement near the write boundary rather than in app-new/BFF code.
+This keeps controllers thin and keeps enforcement at the backend mutation boundary rather than in app-new/BFF code.
 
 ## Error handling
 
@@ -119,7 +119,7 @@ API tests should prove both allowed and blocked mutations:
 - Terminal and archived engagements do not count as active.
 - `maxDocumentsStorageMb = null` allows upload URL creation.
 - `maxDocumentsStorageMb = 0` blocks upload URL creation.
-- Current usage plus requested size over limit blocks upload URL creation.
+- Current stored/reserved version bytes plus requested size over limit blocks upload URL creation.
 
 Keep tests focused on API/domain behavior. UI changes are out of scope unless error propagation breaks.
 
@@ -129,5 +129,5 @@ Keep tests focused on API/domain behavior. UI changes are out of scope unless er
 - No Stripe or external billing providers.
 - No runtime auth changes.
 - No app-new admin UI redesign.
-- No quota reservations or pending-upload expiry system.
+- No separate quota reservation table or pending-upload expiry system.
 - No deletion or forced cleanup for tenants already above configured limits.

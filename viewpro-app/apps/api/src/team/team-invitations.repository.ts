@@ -79,7 +79,8 @@ export type AcceptTeamInvitationResult =
 	| { status: "alreadyMember" }
 	| { status: "userAlreadyExists" }
 	| { status: "userNotFound" }
-	| { status: "emailMismatch" };
+	| { status: "emailMismatch" }
+	| { status: "tenantUserLimitExceeded" };
 
 export type TeamInvitationsRepository = {
 	createPendingInvitation(

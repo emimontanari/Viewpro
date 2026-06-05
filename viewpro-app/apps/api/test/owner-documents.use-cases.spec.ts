@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common'
 import { AnalyticsActorType, AnalyticsEventName, DocumentRequestStatus, DocumentVersionStatus } from '@prisma/client'
 import { describe, expect, it, vi } from 'vitest'
 import { ConfirmOwnerDocumentUploadUseCase } from '../src/documents/use-cases/confirm-owner-document-upload.use-case'
@@ -153,6 +153,51 @@ describe('Owner document use cases', () => {
       await expect(
         useCase.execute(ownerUser, 'request-1', { originalFilename: 'photo.png', mimeType: 'image/png', sizeBytes: 2048 }),
       ).resolves.toMatchObject({ request: { status: DocumentRequestStatus.REJECTED } })
+    })
+
+    it('propagates tenant document storage limit conflicts from transactional pending version creation', async () => {
+      const repository = {
+        findOwnerRequestDetail: vi.fn().mockResolvedValue(documentRequest),
+        createPendingVersion: vi.fn().mockRejectedValue(new ConflictException('Tenant document storage limit exceeded')),
+      }
+      const storage = { createUploadUrl: vi.fn() }
+      const useCase = new CreateOwnerDocumentUploadUrlUseCase(repository as never, storage as never)
+
+      await expect(
+        useCase.execute(ownerUser, 'request-1', {
+          originalFilename: 'deed.pdf',
+          mimeType: 'application/pdf',
+          sizeBytes: 1024,
+        }),
+      ).rejects.toThrow(new ConflictException('Tenant document storage limit exceeded'))
+      expect(repository.createPendingVersion).toHaveBeenCalledWith({
+        documentRequestId: 'request-1',
+        uploadedByUserId: 'owner-1',
+        storageKey: 'document-requests/request-1/deed.pdf',
+        originalFilename: 'deed.pdf',
+        mimeType: 'application/pdf',
+        sizeBytes: 1024,
+        checksum: undefined,
+      })
+      expect(storage.createUploadUrl).not.toHaveBeenCalled()
+    })
+
+    it('allows an upload URL when requested bytes exactly fit the storage limit', async () => {
+      const pendingVersion = { ...uploadedVersion, status: DocumentVersionStatus.PENDING_UPLOAD, sizeBytes: 1024 }
+      const repository = {
+        findOwnerRequestDetail: vi.fn().mockResolvedValue(documentRequest),
+        createPendingVersion: vi.fn().mockResolvedValue(pendingVersion),
+      }
+      const storage = { createUploadUrl: vi.fn().mockResolvedValue({ url: 'https://storage.example/upload', storageKey: uploadedVersion.storageKey, expiresInSeconds: 600 }) }
+      const useCase = new CreateOwnerDocumentUploadUrlUseCase(repository as never, storage as never)
+
+      await expect(
+        useCase.execute(ownerUser, 'request-1', {
+          originalFilename: 'deed.pdf',
+          mimeType: 'application/pdf',
+          sizeBytes: 1024,
+        }),
+      ).resolves.toMatchObject({ version: { id: 'version-1' } })
     })
 
     it('rejects invalid MIME types and files over 10 MB', async () => {

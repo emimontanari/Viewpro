@@ -19,6 +19,7 @@ import { PASSWORD_HASHER } from '../../auth/security/password-hasher'
 import type { RefreshTokenRepository } from '../../auth/tokens/refresh-token.repository'
 import { REFRESH_TOKEN_REPOSITORY } from '../../auth/tokens/refresh-token.repository'
 import { TokenService } from '../../auth/tokens/token.service'
+import { TENANT_USER_LIMIT_EXCEEDED_MESSAGE } from '../../tenant-limits/tenant-limit-enforcement.constants'
 import type { CurrentUser } from '../../auth/types/current-user'
 import type { AuthSessionResult } from '../../auth/use-cases/register-tenant.use-case'
 import { normalizeEmail } from '../../auth/utils/slugify'
@@ -208,6 +209,10 @@ export class AcceptTeamInvitationUseCase {
 
     if (result.status === 'emailMismatch') {
       throw new ForbiddenException('Team invitation belongs to another email')
+    }
+
+    if (result.status === 'tenantUserLimitExceeded') {
+      throw new ConflictException(TENANT_USER_LIMIT_EXCEEDED_MESSAGE)
     }
 
     throw new UnauthorizedException('Authentication required')
