@@ -175,13 +175,26 @@ Done: manager can regenerate/copy a fresh pending link and revoke a pending link
 Next slice: 25.1 — Admin tenant status write API + audit log.
 ```
 
+### Completed: Stage 25.1 — Admin tenant status write API + audit log
+
+Stage 25.1 closed the first ViewPro Admin operational control gap. ViewPro admins can now set tenants to `ACTIVE` or `SUSPENDED` through an admin-only backend endpoint. Real status changes write a `TENANT_STATUS_CHANGED` audit event atomically with the update, same-status writes are idempotent without duplicate audit, suspended tenants are blocked by the existing tenant guard, and concurrent duplicate writes are serialized by a tenant row lock.
+
+```txt
+Stage: 25
+Slice: 25.1 — Admin tenant status write API + audit log
+Objective: let ViewPro admins activate, suspend, and reactivate tenants without touching DB.
+Evidence needed: API tests, global admin guard tests, tenant guard behavior, and audit record verification.
+Do not touch: billing, limits, large admin UI, owner/team/document UI.
+Done: admin can change tenant status; suspended tenant is blocked by existing guards; every status change is audited.
+Next slice: 25.2 — Admin tenant management UI.
+```
+
 ## Recommended sequence from here
 
-1. **Implement Stage 25.1 Admin tenant status write API + audit log.**
-2. **Implement Stage 25.2 Admin tenant management UI.**
-3. **Implement Stage 25.3 Tenant limits model/API.**
-4. **Implement Stage 25.4 Tenant limits enforcement.**
-5. **Continue remaining P0/P1 closure:** WhatsApp config, notification E2E, Seguimiento document activity, team/seller evidence, final hardening, deploy checklist, final deck.
+1. **Implement Stage 25.2 Admin tenant management UI.**
+2. **Implement Stage 25.3 Tenant limits model/API.**
+3. **Implement Stage 25.4 Tenant limits enforcement.**
+4. **Continue remaining P0/P1 closure:** WhatsApp config, notification E2E, Seguimiento document activity, team/seller evidence, final hardening, deploy checklist, final deck.
 
 ## Backlog outside immediate focus
 

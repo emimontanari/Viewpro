@@ -79,14 +79,15 @@ The final execution plan intentionally excludes:
 
 ```txt
 Stage: 25
-Slice: 25.1 — Admin tenant status write API + audit log
-Objective: let ViewPro admins activate, suspend, and reactivate tenants without touching DB.
-Evidence needed: API tests, global admin guard tests, tenant guard behavior, and audit record verification.
-Do not touch: billing, limits, large admin UI, owner/team/document UI.
-Done: admin can change tenant status; suspended tenant is blocked by existing guards; every status change is audited.
-Next slice: 25.2 — Admin tenant management UI.
+Slice: 25.2 — Admin tenant management UI
+Objective: expose minimal tenant operations in app-new for ViewPro admins.
+Evidence needed: UI tests for tenant list, status badge, status action confirmation, loading/error states.
+Do not touch: limits, billing, impersonation, private tenant content browsing.
+Done: ViewPro admin can list tenants and activate/suspend/reactivate them from UI.
+Next slice: 25.3 — Tenant limits model and API.
 ```
 
 ## Recently completed
 
+- Stage 25.1 — Admin tenant status write API + audit log: backend admin status endpoint, atomic `TENANT_STATUS_CHANGED` audit, global admin authorization, tenant guard proof, and concurrent duplicate-write protection completed with API evidence.
 - Stage 21.6 — Minimal owner invitation management: backend revoke endpoint, app-new BFF/service, and property owner UI actions for `Regenerar y copiar link` and `Revocar invitación` completed with API/UI evidence.
