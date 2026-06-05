@@ -123,6 +123,43 @@ describe('Movements (e2e)', () => {
     ).resolves.toEqual({ status: PropertyEngagementStatus.INQUIRIES_AND_VISITS })
   })
 
+  it('blocks reactivating a terminal engagement when the active engagement limit is reached', async () => {
+    const manager = await registerTenantSession('manager-reactivation-limit@example.com', 'Reactivation Limit Homes')
+    const closedEngagement = await createEngagement(manager.agent, manager.tenantId, {
+      title: 'Closed Reactivation Property',
+    }).expect(201)
+    await createEngagement(manager.agent, manager.tenantId, {
+      title: 'Existing Active Property',
+    }).expect(201)
+    await prisma.propertyEngagement.update({
+      where: { id: closedEngagement.body.id },
+      data: { status: PropertyEngagementStatus.CLOSED },
+    })
+    await prisma.tenant.update({
+      where: { id: manager.tenantId },
+      data: { maxActivePropertyEngagements: 1 },
+    })
+
+    const response = await createMovement(manager.agent, manager.tenantId, closedEngagement.body.id, {
+      type: MovementType.STATUS_CHANGE,
+      observation: 'Reopen publication after closure.',
+      newStatus: PropertyEngagementStatus.ACTIVE_PUBLICATION,
+    }).expect(409)
+
+    expect(response.body.message).toBe('Tenant active property engagement limit exceeded')
+    await expect(
+      prisma.movement.count({
+        where: { propertyEngagementId: closedEngagement.body.id },
+      }),
+    ).resolves.toBe(0)
+    await expect(
+      prisma.propertyEngagement.findUnique({
+        where: { id: closedEngagement.body.id },
+        select: { status: true },
+      }),
+    ).resolves.toEqual({ status: PropertyEngagementStatus.CLOSED })
+  })
+
   it('returns timeline movements for the requested tenant engagement only', async () => {
     const manager = await registerTenantSession('manager-timeline@example.com', 'Timeline Homes')
     const firstEngagement = await createEngagement(manager.agent, manager.tenantId, { title: 'Timeline Property' }).expect(201)

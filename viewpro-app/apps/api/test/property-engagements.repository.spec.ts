@@ -483,6 +483,7 @@ describe("Property engagements foundation", () => {
 		const findFirst = vi.fn().mockResolvedValue({
 			id: "engagement-1",
 			archivedAt: new Date("2026-01-05T00:00:00.000Z"),
+			status: PropertyEngagementStatus.CAPTURE,
 		});
 		const updateMany = vi.fn().mockResolvedValue({ count: 1 });
 		const findUniqueOrThrow = vi.fn().mockResolvedValue(restoredEngagement);
@@ -509,7 +510,7 @@ describe("Property engagements foundation", () => {
 		expect(transaction).toHaveBeenCalledOnce();
 		expect(findFirst).toHaveBeenCalledWith({
 			where: { id: "engagement-1", tenantId: "tenant-1" },
-			select: { id: true, archivedAt: true },
+			select: { id: true, archivedAt: true, status: true },
 		});
 		expect(updateMany).toHaveBeenCalledWith({
 			where: { id: "engagement-1", archivedAt: { not: null } },

@@ -1,7 +1,8 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { ConflictException, Inject, Injectable } from "@nestjs/common";
 import { MovementType, PropertyEngagementStatus } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../database/prisma.service";
+import { TENANT_ACTIVE_PROPERTY_ENGAGEMENT_LIMIT_EXCEEDED_MESSAGE } from "../tenant-limits/tenant-limit-enforcement.constants";
 import type {
 	ActiveOwnerUsersForEngagementInput,
 	ActivityCountersInput,
@@ -33,7 +34,7 @@ const activityMovementInclude = {
 	},
 } satisfies Prisma.MovementInclude;
 
-const inactiveEngagementStatuses = [
+const inactiveEngagementStatuses: PropertyEngagementStatus[] = [
 	PropertyEngagementStatus.CLOSED,
 	PropertyEngagementStatus.CANCELLED,
 ];
@@ -42,6 +43,58 @@ const attentionMovementTypes = new Set<MovementType>([
 	MovementType.VISIT_COMPLETED,
 	MovementType.OFFER_RECEIVED,
 ]);
+
+async function ensureActivePropertyEngagementCapacity(
+	tx: Prisma.TransactionClient,
+	tenantId: string,
+): Promise<void> {
+	await lockTenantRow(tx, tenantId);
+
+	const tenant = await tx.tenant.findUnique({
+		where: { id: tenantId },
+		select: { maxActivePropertyEngagements: true },
+	});
+
+	if (!tenant || tenant.maxActivePropertyEngagements === null) {
+		return;
+	}
+
+	const activeEngagements = await tx.propertyEngagement.count({
+		where: {
+			tenantId,
+			archivedAt: null,
+			status: { notIn: inactiveEngagementStatuses },
+		},
+	});
+
+	if (activeEngagements >= tenant.maxActivePropertyEngagements) {
+		throw new ConflictException(
+			TENANT_ACTIVE_PROPERTY_ENGAGEMENT_LIMIT_EXCEEDED_MESSAGE,
+		);
+	}
+}
+
+async function lockTenantRow(
+	tx: Prisma.TransactionClient,
+	tenantId: string,
+): Promise<void> {
+	if (typeof tx.$queryRaw !== "function") {
+		return;
+	}
+
+	await tx.$queryRaw`SELECT id FROM tenants WHERE id = ${tenantId} FOR UPDATE`;
+}
+
+function wouldReactivateEngagement(
+	previousStatus: PropertyEngagementStatus,
+	newStatus?: PropertyEngagementStatus,
+): boolean {
+	return Boolean(
+		newStatus &&
+			inactiveEngagementStatuses.includes(previousStatus) &&
+			!inactiveEngagementStatuses.includes(newStatus),
+	);
+}
 
 @Injectable()
 export class PrismaMovementsRepository implements MovementsRepository {
@@ -55,6 +108,10 @@ export class PrismaMovementsRepository implements MovementsRepository {
 
 			if (!engagement) {
 				return null;
+			}
+
+			if (wouldReactivateEngagement(engagement.status, input.newStatus)) {
+				await ensureActivePropertyEngagementCapacity(tx, input.tenantId);
 			}
 
 			const movement = await tx.movement.create({

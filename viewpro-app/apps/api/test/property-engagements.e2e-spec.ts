@@ -1,6 +1,7 @@
 import {
   OwnerInvitationStatus,
   PropertyAssetOwnerAccessStatus,
+  PropertyEngagementStatus,
   PropertyOperationType,
   PropertyType,
   TenantRole,
@@ -104,6 +105,119 @@ describe("Property engagements (e2e)", () => {
         where: { tenantId: manager.tenantId },
       }),
     ).resolves.toBe(1);
+  });
+
+  it("blocks creating an active engagement when the tenant active engagement limit is zero", async () => {
+    const manager = await registerTenantSession(
+      "manager-active-limit-zero@example.com",
+      "Manager Active Limit Zero",
+    );
+    await prisma.tenant.update({
+      where: { id: manager.tenantId },
+      data: { maxActivePropertyEngagements: 0 },
+    });
+
+    const response = await createEngagement(manager.agent, manager.tenantId, {
+      title: "Blocked Active Limit Property",
+    }).expect(409);
+
+    expect(response.body.message).toBe(
+      "Tenant active property engagement limit exceeded",
+    );
+    await expect(
+      prisma.propertyEngagement.count({
+        where: { tenantId: manager.tenantId },
+      }),
+    ).resolves.toBe(0);
+  });
+
+  it("does not count closed or archived engagements against active engagement limits", async () => {
+    const manager = await registerTenantSession(
+      "manager-active-limit-inactive@example.com",
+      "Manager Active Limit Inactive",
+    );
+    const closed = await createEngagement(manager.agent, manager.tenantId, {
+      title: "Closed Limit Property",
+    }).expect(201);
+    const archived = await createEngagement(manager.agent, manager.tenantId, {
+      title: "Archived Limit Property",
+    }).expect(201);
+    await prisma.propertyEngagement.update({
+      where: { id: closed.body.id },
+      data: { status: PropertyEngagementStatus.CLOSED },
+    });
+    await manager.agent
+      .post(`/api/property-engagements/${archived.body.id}/archive`)
+      .set("x-tenant-id", manager.tenantId)
+      .send({ reason: "Quota fixture" })
+      .expect(201);
+    await prisma.tenant.update({
+      where: { id: manager.tenantId },
+      data: { maxActivePropertyEngagements: 1 },
+    });
+
+    const response = await createEngagement(manager.agent, manager.tenantId, {
+      title: "Allowed Active Limit Property",
+    }).expect(201);
+
+    expect(response.body.property.title).toBe("Allowed Active Limit Property");
+    await expect(
+      prisma.propertyEngagement.count({
+        where: {
+          tenantId: manager.tenantId,
+          archivedAt: null,
+          status: {
+            notIn: [
+              PropertyEngagementStatus.CLOSED,
+              PropertyEngagementStatus.CANCELLED,
+            ],
+          },
+        },
+      }),
+    ).resolves.toBe(1);
+  });
+
+  it("blocks restoring an archived active engagement when the active engagement limit is reached", async () => {
+    const manager = await registerTenantSession(
+      "manager-active-limit-restore@example.com",
+      "Manager Active Limit Restore",
+    );
+    const active = await createEngagement(manager.agent, manager.tenantId, {
+      title: "Current Active Limit Property",
+    }).expect(201);
+    const archived = await createEngagement(manager.agent, manager.tenantId, {
+      title: "Archived Restore Limit Property",
+    }).expect(201);
+    await manager.agent
+      .post(`/api/property-engagements/${archived.body.id}/archive`)
+      .set("x-tenant-id", manager.tenantId)
+      .send({ reason: "Quota fixture" })
+      .expect(201);
+    await prisma.tenant.update({
+      where: { id: manager.tenantId },
+      data: { maxActivePropertyEngagements: 1 },
+    });
+
+    const response = await manager.agent
+      .post(`/api/property-engagements/${archived.body.id}/restore`)
+      .set("x-tenant-id", manager.tenantId)
+      .expect(409);
+
+    expect(response.body.message).toBe(
+      "Tenant active property engagement limit exceeded",
+    );
+    await expect(
+      prisma.propertyEngagement.findUnique({
+        where: { id: archived.body.id },
+        select: { archivedAt: true },
+      }),
+    ).resolves.toEqual({ archivedAt: expect.any(Date) });
+    await expect(
+      prisma.propertyEngagement.findUnique({
+        where: { id: active.body.id },
+        select: { archivedAt: true },
+      }),
+    ).resolves.toEqual({ archivedAt: null });
   });
 
   it("rejects property engagement endpoints without x-tenant-id", async () => {

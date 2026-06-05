@@ -6,11 +6,11 @@ This index prevents roadmap drift during final MVP execution.
 
 Read these first, in order:
 
-| Priority | Document | Purpose |
-| --- | --- | --- |
-| 1 | `docs/plans/2026-06-04-final-mvp-execution-plan.md` | Current execution plan, priority gates, phases, PR slicing, and scope exclusions. |
-| 2 | `docs/plans/2026-06-04-mvp-closure-slices.md` | Audited status for Stages 20–26 and corrected gap summary. |
-| 3 | `docs/plans/2026-05-28-mvp-product-final-like-roadmap-design.md` | Original product-final-like roadmap. Use when validating intent, not execution order. |
+| Priority | Document                                                         | Purpose                                                                               |
+| -------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 1        | `docs/plans/2026-06-04-final-mvp-execution-plan.md`              | Current execution plan, priority gates, phases, PR slicing, and scope exclusions.     |
+| 2        | `docs/plans/2026-06-04-mvp-closure-slices.md`                    | Audited status for Stages 20–26 and corrected gap summary.                            |
+| 3        | `docs/plans/2026-05-28-mvp-product-final-like-roadmap-design.md` | Original product-final-like roadmap. Use when validating intent, not execution order. |
 
 ## Current execution rule
 
@@ -78,17 +78,18 @@ The final execution plan intentionally excludes:
 ## Next active slice
 
 ```txt
-Stage: 25
-Slice: 25.4 — Tenant limits enforcement
-Objective: enforce configured pilot limits for users/team, active property engagements, and documents/storage at mutation boundaries.
-Evidence needed: API tests for allowed/blocked mutations, admin limit configuration checks, safe default behavior, and no regression to existing tenant workflows.
-Do not touch: billing, paid plans, Stripe, or external billing providers.
-Done: tenant limits are enforced consistently with clear errors and existing allowed flows still pass.
-Next slice: 26.0 — MVP evidence audit.
+Stage: 26
+Slice: 26.0 — MVP evidence audit
+Objective: verify the final MVP end-to-end against canonical pilot readiness gates and collect reproducible evidence.
+Evidence needed: seeded API/app-new/owner/admin flows, tenant isolation checks, hardening checklist, and deploy-readiness notes.
+Do not touch: new product scope, billing, paid plans, Stripe, or external billing providers.
+Done: MVP evidence is complete, reproducible, and ready for pilot handoff.
+Next slice: pilot handoff or fixes discovered by the audit.
 ```
 
 ## Recently completed
 
+- Stage 25.4 — Tenant limits enforcement: backend mutation boundaries now enforce configured user/team, active property engagement, and document storage limits with API evidence.
 - Stage 25.3 — Tenant limits model and API: tenant limit schema/migration, admin read/write API, safe defaults, and global admin authorization evidence completed.
 - Stage 25.2 — Admin tenant management UI: app-new `/admin` surface, admin BFF routes without `x-tenant-id`, tenant status badges/actions, confirmation dialog, Spanish loading/error/success states, and pnpm UI/service evidence completed.
 - Stage 25.1 — Admin tenant status write API + audit log: backend admin status endpoint, atomic `TENANT_STATUS_CHANGED` audit, global admin authorization, tenant guard proof, and concurrent duplicate-write protection completed with API evidence.

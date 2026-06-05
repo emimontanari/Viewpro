@@ -239,7 +239,7 @@ describe("Documents repository foundation", () => {
 		);
 	});
 
-	it("creates a pending document version with storage metadata", async () => {
+	it("creates a pending document version after checking tenant storage quota in the transaction", async () => {
 		const createdDocument = {
 			id: "document-1",
 			documentRequestId: "request-1",
@@ -248,10 +248,23 @@ describe("Documents repository foundation", () => {
 			id: "version-1",
 			storageKey: "documents/request-1/version-1.pdf",
 		};
+		const documentRequestFindUnique = vi
+			.fn()
+			.mockResolvedValue({ tenantId: "tenant-1" });
+		const tenantFindUnique = vi
+			.fn()
+			.mockResolvedValue({ maxDocumentsStorageMb: 1 });
+		const aggregate = vi
+			.fn()
+			.mockResolvedValue({ _sum: { sizeBytes: 1024 * 1024 - 1024 } });
+		const create = vi.fn().mockResolvedValue(createdVersion);
 		const transaction = vi.fn(async (callback) =>
 			callback({
+				$queryRaw: vi.fn(),
+				documentRequest: { findUnique: documentRequestFindUnique },
+				tenant: { findUnique: tenantFindUnique },
 				document: { upsert: vi.fn().mockResolvedValue(createdDocument) },
-				documentVersion: { create: vi.fn().mockResolvedValue(createdVersion) },
+				documentVersion: { aggregate, create },
 			}),
 		);
 		const repository = new PrismaDocumentsRepository({
@@ -270,5 +283,49 @@ describe("Documents repository foundation", () => {
 
 		expect(result).toBe(createdVersion);
 		expect(transaction).toHaveBeenCalledOnce();
+		expect(documentRequestFindUnique).toHaveBeenCalledWith({
+			where: { id: "request-1" },
+			select: { tenantId: true },
+		});
+		expect(aggregate).toHaveBeenCalledWith({
+			where: { document: { documentRequest: { tenantId: "tenant-1" } } },
+			_sum: { sizeBytes: true },
+		});
+		expect(aggregate.mock.invocationCallOrder[0]).toBeLessThan(
+			create.mock.invocationCallOrder[0],
+		);
+	});
+
+	it("blocks pending document version creation when reserved storage would exceed the tenant limit", async () => {
+		const create = vi.fn();
+		const transaction = vi.fn(async (callback) =>
+			callback({
+				$queryRaw: vi.fn(),
+				documentRequest: {
+					findUnique: vi.fn().mockResolvedValue({ tenantId: "tenant-1" }),
+				},
+				tenant: { findUnique: vi.fn().mockResolvedValue({ maxDocumentsStorageMb: 1 }) },
+				documentVersion: {
+					aggregate: vi.fn().mockResolvedValue({ _sum: { sizeBytes: 1024 * 1024 } }),
+					create,
+				},
+				document: { upsert: vi.fn() },
+			}),
+		);
+		const repository = new PrismaDocumentsRepository({
+			$transaction: transaction,
+		} as never);
+
+		await expect(
+			repository.createPendingVersion({
+				documentRequestId: "request-1",
+				uploadedByUserId: "owner-1",
+				storageKey: "documents/request-1/version-1.pdf",
+				originalFilename: "deed.pdf",
+				mimeType: "application/pdf",
+				sizeBytes: 1,
+			}),
+		).rejects.toThrow("Tenant document storage limit exceeded");
+		expect(create).not.toHaveBeenCalled();
 	});
 });

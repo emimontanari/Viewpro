@@ -1,7 +1,14 @@
-import { Inject, Injectable } from '@nestjs/common'
-import { MovementSource, MovementType, OwnerInvitationStatus, PropertyAssetOwnerAccessStatus } from '@prisma/client'
+import { ConflictException, Inject, Injectable } from '@nestjs/common'
+import {
+  MovementSource,
+  MovementType,
+  OwnerInvitationStatus,
+  PropertyAssetOwnerAccessStatus,
+  PropertyEngagementStatus,
+} from '@prisma/client'
 import type { Prisma, PropertyAssetImage } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
+import { TENANT_ACTIVE_PROPERTY_ENGAGEMENT_LIMIT_EXCEEDED_MESSAGE } from '../tenant-limits/tenant-limit-enforcement.constants'
 import { createOwnerInvitationToken } from './owner-invitation-token'
 import type {
   ArchivePropertyEngagementInput,
@@ -35,6 +42,11 @@ const propertyOwnerSelect = {
   user: { select: { id: true, email: true, firstName: true, lastName: true } },
 } satisfies Prisma.PropertyAssetOwnerSelect
 
+const inactiveEngagementStatuses: PropertyEngagementStatus[] = [
+  PropertyEngagementStatus.CLOSED,
+  PropertyEngagementStatus.CANCELLED,
+]
+
 const propertyEngagementInclude = {
   propertyAsset: {
     include: {
@@ -51,12 +63,55 @@ const propertyEngagementInclude = {
   createdBy: true,
 } satisfies Prisma.PropertyEngagementInclude
 
+async function ensureActivePropertyEngagementCapacity(tx: Prisma.TransactionClient, tenantId: string): Promise<void> {
+  await lockTenantRow(tx, tenantId)
+
+  if (!tx.tenant) {
+    return
+  }
+
+  const tenant = await tx.tenant.findUnique({
+    where: { id: tenantId },
+    select: { maxActivePropertyEngagements: true },
+  })
+
+  if (!tenant || tenant.maxActivePropertyEngagements === null) {
+    return
+  }
+
+  const activeEngagements = await tx.propertyEngagement.count({
+    where: {
+      tenantId,
+      archivedAt: null,
+      status: { notIn: inactiveEngagementStatuses },
+    },
+  })
+
+  if (activeEngagements >= tenant.maxActivePropertyEngagements) {
+    throw new ConflictException(TENANT_ACTIVE_PROPERTY_ENGAGEMENT_LIMIT_EXCEEDED_MESSAGE)
+  }
+}
+
+async function lockTenantRow(tx: Prisma.TransactionClient, tenantId: string): Promise<void> {
+  if (typeof tx.$queryRaw !== 'function') {
+    return
+  }
+
+  await tx.$queryRaw`SELECT id FROM tenants WHERE id = ${tenantId} FOR UPDATE`
+}
+
+function isActiveEngagementStatus(status: PropertyEngagementStatus): boolean {
+  return !inactiveEngagementStatuses.includes(status)
+}
+
 @Injectable()
 export class PrismaPropertyEngagementsRepository implements PropertyEngagementsRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   createWithAsset(input: CreatePropertyEngagementInput): Promise<PropertyEngagementWithDetails> {
     return this.prisma.$transaction(async (tx) => {
+      await ensureActivePropertyEngagementCapacity(tx, input.tenantId)
+
       const propertyAsset = await tx.propertyAsset.create({ data: input.propertyAsset })
 
       return tx.propertyEngagement.create({
@@ -101,7 +156,6 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
       include: propertyEngagementInclude,
     })
   }
-
 
   updateForTenant(input: UpdatePropertyEngagementInput): Promise<PropertyEngagementWithDetails | null> {
     return this.prisma.$transaction(async (tx) => {
@@ -187,7 +241,7 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.propertyEngagement.findFirst({
         where: this.buildTenantVisibilityWhere(input),
-        select: { id: true, archivedAt: true },
+        select: { id: true, archivedAt: true, status: true },
       })
 
       if (!existing) {
@@ -196,6 +250,10 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
 
       if (!existing.archivedAt) {
         return { status: 'notArchived' }
+      }
+
+      if (isActiveEngagementStatus(existing.status)) {
+        await ensureActivePropertyEngagementCapacity(tx, input.tenantId)
       }
 
       const restoredResult = await tx.propertyEngagement.updateMany({

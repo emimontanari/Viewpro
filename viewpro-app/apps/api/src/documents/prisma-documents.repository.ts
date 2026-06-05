@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import {
   DocumentRequestStatus,
   DocumentVersionStatus,
@@ -7,6 +7,10 @@ import {
   type Prisma,
 } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
+import {
+  BYTES_PER_MIB,
+  TENANT_DOCUMENT_STORAGE_LIMIT_EXCEEDED_MESSAGE,
+} from '../tenant-limits/tenant-limit-enforcement.constants'
 import type {
   ActivityDocumentRequestRecord,
   CreateDocumentRequestInput,
@@ -23,6 +27,42 @@ import type {
 } from './documents.repository'
 
 const inactiveEngagementStatuses = [PropertyEngagementStatus.CLOSED, PropertyEngagementStatus.CANCELLED]
+
+async function ensureTenantDocumentStorageCapacity(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  requestedBytes: number,
+): Promise<void> {
+  await lockTenantRow(tx, tenantId)
+
+  const tenant = await tx.tenant.findUnique({
+    where: { id: tenantId },
+    select: { maxDocumentsStorageMb: true },
+  })
+
+  if (!tenant || tenant.maxDocumentsStorageMb === null) {
+    return
+  }
+
+  const currentStorage = await tx.documentVersion.aggregate({
+    where: { document: { documentRequest: { tenantId } } },
+    _sum: { sizeBytes: true },
+  })
+  const currentStorageBytes = currentStorage._sum.sizeBytes ?? 0
+  const maxStorageBytes = tenant.maxDocumentsStorageMb * BYTES_PER_MIB
+
+  if (currentStorageBytes + requestedBytes > maxStorageBytes) {
+    throw new ConflictException(TENANT_DOCUMENT_STORAGE_LIMIT_EXCEEDED_MESSAGE)
+  }
+}
+
+async function lockTenantRow(tx: Prisma.TransactionClient, tenantId: string): Promise<void> {
+  if (typeof tx.$queryRaw !== 'function') {
+    return
+  }
+
+  await tx.$queryRaw`SELECT id FROM tenants WHERE id = ${tenantId} FOR UPDATE`
+}
 
 export const documentRequestInclude = {
   document: { include: { currentVersion: true, versions: true } },
@@ -243,6 +283,17 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
 
   createPendingVersion(input: CreatePendingDocumentVersionInput): Promise<DocumentVersionRecord> {
     return this.prisma.$transaction(async (tx) => {
+      const documentRequest = await tx.documentRequest.findUnique({
+        where: { id: input.documentRequestId },
+        select: { tenantId: true },
+      })
+
+      if (!documentRequest) {
+        throw new NotFoundException('Document request not found')
+      }
+
+      await ensureTenantDocumentStorageCapacity(tx, documentRequest.tenantId, input.sizeBytes)
+
       const document = await tx.document.upsert({
         where: { documentRequestId: input.documentRequestId },
         create: { documentRequestId: input.documentRequestId },

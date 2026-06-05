@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { TeamInvitationStatus, UserStatus, type Prisma } from '@prisma/client'
+import { TeamInvitationStatus, TenantMembershipStatus, UserStatus, type Prisma } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import { createTeamInvitationToken } from './team-invitation-token'
 import type {
@@ -226,6 +226,11 @@ export class PrismaTeamInvitationsRepository implements TeamInvitationsRepositor
           return { status: 'userAlreadyExists' }
         }
 
+        const quotaResult = await ensureTenantUserCapacity(tx, invitation.tenantId)
+        if (quotaResult.status !== 'allowed') {
+          return quotaResult
+        }
+
         const acceptResult = await markInvitationAccepted(tx, invitation.id, now)
         if (acceptResult.status !== 'accepted') {
           return acceptResult
@@ -295,6 +300,11 @@ export class PrismaTeamInvitationsRepository implements TeamInvitationsRepositor
           return { status: 'alreadyMember' }
         }
 
+        const quotaResult = await ensureTenantUserCapacity(tx, invitation.tenantId)
+        if (quotaResult.status !== 'allowed') {
+          return quotaResult
+        }
+
         const acceptResult = await markInvitationAccepted(tx, invitation.id, now)
         if (acceptResult.status !== 'accepted') {
           return acceptResult
@@ -317,6 +327,40 @@ export class PrismaTeamInvitationsRepository implements TeamInvitationsRepositor
       throw error
     }
   }
+}
+
+async function ensureTenantUserCapacity(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+): Promise<{ status: 'allowed' } | { status: 'tenantUserLimitExceeded' }> {
+  await lockTenantRow(tx, tenantId)
+
+  if (!tx.tenant || !tx.tenantMembership) {
+    return { status: 'allowed' }
+  }
+
+  const tenant = await tx.tenant.findUnique({
+    where: { id: tenantId },
+    select: { maxUsers: true },
+  })
+
+  if (!tenant || tenant.maxUsers === null) {
+    return { status: 'allowed' }
+  }
+
+  const activeUsers = await tx.tenantMembership.count({
+    where: { tenantId, status: TenantMembershipStatus.ACTIVE },
+  })
+
+  return activeUsers >= tenant.maxUsers ? { status: 'tenantUserLimitExceeded' } : { status: 'allowed' }
+}
+
+async function lockTenantRow(tx: Prisma.TransactionClient, tenantId: string): Promise<void> {
+  if (typeof tx.$queryRaw !== 'function') {
+    return
+  }
+
+  await tx.$queryRaw`SELECT id FROM tenants WHERE id = ${tenantId} FOR UPDATE`
 }
 
 async function createFreshInvitation(

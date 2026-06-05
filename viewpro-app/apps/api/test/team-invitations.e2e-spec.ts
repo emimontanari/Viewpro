@@ -1,4 +1,8 @@
-import { TeamInvitationStatus, TenantRole } from "@prisma/client";
+import {
+	TeamInvitationStatus,
+	TenantMembershipStatus,
+	TenantRole,
+} from "@prisma/client";
 import type { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -289,6 +293,107 @@ describe("Team invitation acceptance (e2e)", () => {
 				},
 			}),
 		).resolves.toBe(1);
+	});
+
+	it("blocks register-mode acceptance when the tenant user limit is zero", async () => {
+		const { token, principal, invitationId } = await createTeamInvitation(
+			"user-limit-zero@example.com",
+			TenantRole.AGENT,
+		);
+		await prisma.tenant.update({
+			where: { id: principal.tenantId },
+			data: { maxUsers: 0 },
+		});
+
+		const response = await request(app.getHttpServer())
+			.post(`/api/team-invitations/${token}/accept`)
+			.send({
+				mode: "register",
+				firstName: "Limit",
+				password: invitedPassword,
+			})
+			.expect(409);
+
+		expect(response.body.message).toBe("Tenant user limit exceeded");
+		await expect(
+			prisma.teamInvitation.findUnique({ where: { id: invitationId } }),
+		).resolves.toMatchObject({ status: TeamInvitationStatus.PENDING });
+		await expect(
+			prisma.user.findUnique({
+				where: { email: "user-limit-zero@example.com" },
+			}),
+		).resolves.toBeNull();
+	});
+
+	it("blocks existing-user acceptance when active memberships are at the tenant user limit", async () => {
+		const existing = await registerTenantSession(
+			"user-limit-existing@example.com",
+			"User Limit Existing Other",
+		);
+		const { token, principal } = await createTeamInvitation(
+			"user-limit-existing@example.com",
+			TenantRole.MANAGER,
+		);
+		await prisma.tenant.update({
+			where: { id: principal.tenantId },
+			data: { maxUsers: 1 },
+		});
+
+		const response = await request(app.getHttpServer())
+			.post(`/api/team-invitations/${token}/accept`)
+			.send({ mode: "login", password: managerPassword })
+			.expect(409);
+
+		expect(response.body.message).toBe("Tenant user limit exceeded");
+		await expect(
+			prisma.tenantMembership.count({
+				where: { userId: existing.userId, tenantId: principal.tenantId },
+			}),
+		).resolves.toBe(0);
+	});
+
+	it("does not count deactivated memberships against the tenant user limit", async () => {
+		const inactive = await registerTenantSession(
+			"user-limit-inactive@example.com",
+			"User Limit Inactive Other",
+		);
+		const { token, principal } = await createTeamInvitation(
+			"user-limit-active-seat@example.com",
+			TenantRole.AGENT,
+		);
+		await prisma.tenant.update({
+			where: { id: principal.tenantId },
+			data: { maxUsers: 2 },
+		});
+		await prisma.tenantMembership.create({
+			data: {
+				userId: inactive.userId,
+				tenantId: principal.tenantId,
+				role: TenantRole.AGENT,
+				status: TenantMembershipStatus.DEACTIVATED,
+				deactivatedAt: new Date(),
+				deactivatedByUserId: principal.userId,
+			},
+		});
+
+		const response = await request(app.getHttpServer())
+			.post(`/api/team-invitations/${token}/accept`)
+			.send({
+				mode: "register",
+				firstName: "Active",
+				password: invitedPassword,
+			})
+			.expect(201);
+
+		expect(response.body.user.email).toBe("user-limit-active-seat@example.com");
+		await expect(
+			prisma.tenantMembership.count({
+				where: {
+					tenantId: principal.tenantId,
+					status: TenantMembershipStatus.ACTIVE,
+				},
+			}),
+		).resolves.toBe(2);
 	});
 
 	it("rejects register-mode acceptance for an existing global user", async () => {
