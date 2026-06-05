@@ -7,7 +7,7 @@ Stage: 25
 Slice: 25.3 — Tenant limits model and API
 Objective: configure pilot limits for users/team, active property engagements, and documents/storage.
 Evidence needed: schema/migration review, API tests, admin permission tests, default-limit behavior.
-Do not touch: billing, paid plans, Stripe, Clerk Billing.
+Do not touch: billing, paid plans, Stripe, external billing providers.
 Done: tenant limits are persisted, readable, editable by ViewPro admin, and have safe defaults.
 Next slice: 25.4 — Tenant limits enforcement.
 ```
@@ -85,7 +85,7 @@ Extend app-new `/admin` tenant management:
 
 ## Explicit non-goals
 
-- No billing, paid plans, Stripe, or Clerk Billing.
+- No billing, paid plans, Stripe, or external billing providers.
 - No enforcement yet. Stage 25.4 will block writes when a configured limit is exceeded.
 - No tenant self-service settings.
 - No admin access to private tenant document content.
