@@ -4,6 +4,7 @@ import {
   getAdminSummary,
   listAdminActivity,
   listAdminTenants,
+  updateAdminTenantLimits,
   updateAdminTenantStatus
 } from './service';
 
@@ -30,6 +31,11 @@ const tenantsResponse = {
       name: 'Costa Norte Propiedades',
       slug: 'costa-norte',
       status: 'ACTIVE',
+      limits: {
+        maxUsers: null,
+        maxActivePropertyEngagements: null,
+        maxDocumentsStorageMb: null
+      },
       createdAt: '2026-05-01T10:00:00.000Z',
       updatedAt: '2026-05-02T10:00:00.000Z',
       counts: {
@@ -61,6 +67,22 @@ const activityResponse = {
       occurredAt: '2026-06-04T10:00:00.000Z'
     }
   ]
+};
+
+const limitsUpdateResponse = {
+  tenantId: 'tenant-1',
+  previousLimits: {
+    maxUsers: null,
+    maxActivePropertyEngagements: null,
+    maxDocumentsStorageMb: null
+  },
+  limits: {
+    maxUsers: 12,
+    maxActivePropertyEngagements: null,
+    maxDocumentsStorageMb: 2048
+  },
+  unchanged: false,
+  updatedAt: '2026-06-04T10:00:00.000Z'
 };
 
 const statusUpdateResponse = {
@@ -121,6 +143,31 @@ describe('admin API service', () => {
       expect.objectContaining({
         cache: 'no-store',
         credentials: 'include',
+        signal: expect.any(AbortSignal)
+      })
+    );
+  });
+
+  it('updates tenant limits with a PATCH JSON payload', async () => {
+    const fetchMock = mockFetchSequence(limitsUpdateResponse);
+    const payload = {
+      maxUsers: 12,
+      maxActivePropertyEngagements: null,
+      maxDocumentsStorageMb: 2048
+    };
+
+    await expect(updateAdminTenantLimits('tenant 1', payload)).resolves.toEqual(
+      limitsUpdateResponse
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/admin/tenants/tenant%201/limits',
+      expect.objectContaining({
+        body: JSON.stringify(payload),
+        cache: 'no-store',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        method: 'PATCH',
         signal: expect.any(AbortSignal)
       })
     );

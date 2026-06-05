@@ -148,6 +148,7 @@ enum AnalyticsEventName {
   DOCUMENT_REJECTED
   WHATSAPP_CONTACT_CLICKED
   TENANT_STATUS_CHANGED
+  TENANT_LIMITS_UPDATED
 }
 
 model User {
@@ -185,13 +186,16 @@ model User {
 }
 
 model Tenant {
-  id            String       @id @default(uuid())
-  name          String
-  slug          String       @unique
-  status        TenantStatus @default(TRIAL)
-  whatsappPhone String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                           String       @id @default(uuid())
+  name                         String
+  slug                         String       @unique
+  status                       TenantStatus @default(TRIAL)
+  whatsappPhone                String?
+  maxUsers                     Int?
+  maxActivePropertyEngagements Int?
+  maxDocumentsStorageMb        Int?
+  createdAt                    DateTime     @default(now())
+  updatedAt                    DateTime     @updatedAt
 
   memberships TenantMembership[]
 

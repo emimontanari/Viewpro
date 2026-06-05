@@ -296,6 +296,11 @@ describe("Admin access (e2e)", () => {
 			name: "Active Realty",
 			slug: "active-realty",
 			status: TenantStatus.ACTIVE,
+			limits: {
+				maxUsers: null,
+				maxActivePropertyEngagements: null,
+				maxDocumentsStorageMb: null,
+			},
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
 			counts: {
@@ -358,6 +363,188 @@ describe("Admin access (e2e)", () => {
 		expectNoSensitiveFields(response.body);
 	});
 
+	it("rejects unauthenticated tenant limit writes with 401", async () => {
+		const response = await request(app.getHttpServer())
+			.patch("/api/admin/tenants/tenant-1/limits")
+			.send(createTenantLimitsPayload({ maxUsers: 10 }))
+			.expect(401);
+
+		expect(response.body.message).toBe("Authentication required");
+	});
+
+	it("rejects USER tenant limit writes with 403 even with x-tenant-id", async () => {
+		const { agent, tenantId } = await registerTenantSession(
+			"limits-user@example.com",
+			"Limits User Homes",
+		);
+
+		const response = await agent
+			.patch(`/api/admin/tenants/${tenantId}/limits`)
+			.set("x-tenant-id", tenantId)
+			.send(createTenantLimitsPayload({ maxUsers: 10 }))
+			.expect(403);
+
+		expect(response.body.message).toBe("ViewPro admin access required");
+	});
+
+	it("allows VIEWPRO_ADMIN to update tenant limits with an audit record", async () => {
+		const { agent: adminAgent, userId: adminUserId } =
+			await registerTenantSession(
+				"limits-admin@example.com",
+				"Limits Admin Homes",
+			);
+		await prisma.user.update({
+			where: { id: adminUserId },
+			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
+		});
+		const target = await registerTenantSession(
+			"limits-target@example.com",
+			"Limits Target Homes",
+		);
+		const payload = createTenantLimitsPayload({
+			maxUsers: 12,
+			maxActivePropertyEngagements: null,
+			maxDocumentsStorageMb: 2048,
+		});
+
+		const response = await adminAgent
+			.patch(`/api/admin/tenants/${target.tenantId}/limits`)
+			.send(payload)
+			.expect(200);
+
+		expect(response.body).toEqual({
+			tenantId: target.tenantId,
+			previousLimits: {
+				maxUsers: null,
+				maxActivePropertyEngagements: null,
+				maxDocumentsStorageMb: null,
+			},
+			limits: payload,
+			unchanged: false,
+			updatedAt: expect.any(String),
+		});
+		expectNoSensitiveFields(response.body);
+		await expectTenantLimits(target.tenantId, payload);
+
+		const auditEvents = await prisma.analyticsEvent.findMany({
+			where: {
+				tenantId: target.tenantId,
+				eventName: AnalyticsEventName.TENANT_LIMITS_UPDATED,
+			},
+		});
+		expect(auditEvents).toHaveLength(1);
+		expect(auditEvents[0]).toMatchObject({
+			tenantId: target.tenantId,
+			actorUserId: adminUserId,
+			actorType: AnalyticsActorType.INTERNAL_USER,
+			eventName: AnalyticsEventName.TENANT_LIMITS_UPDATED,
+		});
+		expect(auditEvents[0]?.metadata).toEqual({
+			previousLimits: {
+				maxUsers: null,
+				maxActivePropertyEngagements: null,
+				maxDocumentsStorageMb: null,
+			},
+			newLimits: payload,
+		});
+	});
+
+	it("returns unchanged without creating audit when tenant limits match current limits", async () => {
+		const { agent: adminAgent, userId: adminUserId } =
+			await registerTenantSession(
+				"limits-idempotent-admin@example.com",
+				"Limits Idempotent Admin Homes",
+			);
+		await prisma.user.update({
+			where: { id: adminUserId },
+			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
+		});
+		const target = await registerTenantSession(
+			"limits-idempotent-target@example.com",
+			"Limits Idempotent Target Homes",
+		);
+		const limits = createTenantLimitsPayload({
+			maxUsers: 8,
+			maxActivePropertyEngagements: 20,
+			maxDocumentsStorageMb: null,
+		});
+		await prisma.tenant.update({
+			where: { id: target.tenantId },
+			data: limits,
+		});
+
+		const response = await adminAgent
+			.patch(`/api/admin/tenants/${target.tenantId}/limits`)
+			.send(limits)
+			.expect(200);
+
+		expect(response.body).toEqual({
+			tenantId: target.tenantId,
+			previousLimits: limits,
+			limits,
+			unchanged: true,
+			updatedAt: expect.any(String),
+		});
+		await expect(
+			prisma.analyticsEvent.count({
+				where: {
+					tenantId: target.tenantId,
+					eventName: AnalyticsEventName.TENANT_LIMITS_UPDATED,
+				},
+			}),
+		).resolves.toBe(0);
+	});
+
+	it("rejects unsupported tenant limits with 400", async () => {
+		const { agent: adminAgent, userId: adminUserId } =
+			await registerTenantSession(
+				"limits-invalid-admin@example.com",
+				"Limits Invalid Admin Homes",
+			);
+		await prisma.user.update({
+			where: { id: adminUserId },
+			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
+		});
+		const target = await registerTenantSession(
+			"limits-invalid-target@example.com",
+			"Limits Invalid Target Homes",
+		);
+		const invalidOverrides: Record<string, unknown>[] = [
+			{ maxUsers: -1 },
+			{ maxActivePropertyEngagements: -1 },
+			{ maxDocumentsStorageMb: -1 },
+			{ maxUsers: 1.5 },
+			{ maxUsers: "10" },
+			{ maxUsers: "" },
+			{ maxUsers: "not-a-number" },
+		];
+
+		for (const override of invalidOverrides) {
+			await adminAgent
+				.patch(`/api/admin/tenants/${target.tenantId}/limits`)
+				.send(createInvalidTenantLimitsPayload(override))
+				.expect(400);
+		}
+	});
+
+	it("returns 404 when updating unknown tenant limits", async () => {
+		const { agent: adminAgent, userId: adminUserId } =
+			await registerTenantSession(
+				"limits-not-found-admin@example.com",
+				"Limits Not Found Admin Homes",
+			);
+		await prisma.user.update({
+			where: { id: adminUserId },
+			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
+		});
+
+		const response = await adminAgent
+			.patch("/api/admin/tenants/00000000-0000-4000-8000-000000000000/limits")
+			.send(createTenantLimitsPayload({ maxUsers: 5 }))
+			.expect(404);
+
+		expect(response.body.message).toBe("Tenant not found");
+	});
 
 	it("rejects unauthenticated tenant status writes with 401", async () => {
 		const response = await request(app.getHttpServer())
@@ -384,10 +571,11 @@ describe("Admin access (e2e)", () => {
 	});
 
 	it("allows VIEWPRO_ADMIN to suspend and reactivate a tenant with atomic audit records", async () => {
-		const { agent: adminAgent, userId: adminUserId } = await registerTenantSession(
-			"status-admin@example.com",
-			"Status Admin Homes",
-		);
+		const { agent: adminAgent, userId: adminUserId } =
+			await registerTenantSession(
+				"status-admin@example.com",
+				"Status Admin Homes",
+			);
 		await prisma.user.update({
 			where: { id: adminUserId },
 			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
@@ -463,10 +651,11 @@ describe("Admin access (e2e)", () => {
 	});
 
 	it("returns unchanged without creating audit when target status matches current status", async () => {
-		const { agent: adminAgent, userId: adminUserId } = await registerTenantSession(
-			"status-idempotent-admin@example.com",
-			"Status Idempotent Admin Homes",
-		);
+		const { agent: adminAgent, userId: adminUserId } =
+			await registerTenantSession(
+				"status-idempotent-admin@example.com",
+				"Status Idempotent Admin Homes",
+			);
 		await prisma.user.update({
 			where: { id: adminUserId },
 			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
@@ -502,10 +691,11 @@ describe("Admin access (e2e)", () => {
 	});
 
 	it("allows VIEWPRO_ADMIN to activate a trial tenant with an audit record", async () => {
-		const { agent: adminAgent, userId: adminUserId } = await registerTenantSession(
-			"status-activate-admin@example.com",
-			"Status Activate Admin Homes",
-		);
+		const { agent: adminAgent, userId: adminUserId } =
+			await registerTenantSession(
+				"status-activate-admin@example.com",
+				"Status Activate Admin Homes",
+			);
 		await prisma.user.update({
 			where: { id: adminUserId },
 			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
@@ -548,10 +738,11 @@ describe("Admin access (e2e)", () => {
 	});
 
 	it("creates one audit event when duplicate status writes race", async () => {
-		const { agent: adminAgent, userId: adminUserId } = await registerTenantSession(
-			"status-race-admin@example.com",
-			"Status Race Admin Homes",
-		);
+		const { agent: adminAgent, userId: adminUserId } =
+			await registerTenantSession(
+				"status-race-admin@example.com",
+				"Status Race Admin Homes",
+			);
 		await prisma.user.update({
 			where: { id: adminUserId },
 			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
@@ -608,34 +799,37 @@ describe("Admin access (e2e)", () => {
 		});
 	});
 
-	it.each([TenantStatus.TRIAL, TenantStatus.CANCELLED, "NOT_A_STATUS"])(
-		"rejects unsupported tenant status %s with 400",
-		async (status) => {
-			const { agent: adminAgent, userId: adminUserId } = await registerTenantSession(
+	it.each([
+		TenantStatus.TRIAL,
+		TenantStatus.CANCELLED,
+		"NOT_A_STATUS",
+	])("rejects unsupported tenant status %s with 400", async (status) => {
+		const { agent: adminAgent, userId: adminUserId } =
+			await registerTenantSession(
 				`status-invalid-${status.toLowerCase()}@example.com`,
 				"Status Invalid Admin Homes",
 			);
-			await prisma.user.update({
-				where: { id: adminUserId },
-				data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
-			});
-			const target = await registerTenantSession(
-				`status-invalid-target-${status.toLowerCase()}@example.com`,
-				`Status Invalid Target ${status}`,
-			);
+		await prisma.user.update({
+			where: { id: adminUserId },
+			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
+		});
+		const target = await registerTenantSession(
+			`status-invalid-target-${status.toLowerCase()}@example.com`,
+			`Status Invalid Target ${status}`,
+		);
 
-			await adminAgent
-				.patch(`/api/admin/tenants/${target.tenantId}/status`)
-				.send({ status })
-				.expect(400);
-		},
-	);
+		await adminAgent
+			.patch(`/api/admin/tenants/${target.tenantId}/status`)
+			.send({ status })
+			.expect(400);
+	});
 
 	it("returns 404 when updating an unknown tenant status", async () => {
-		const { agent: adminAgent, userId: adminUserId } = await registerTenantSession(
-			"status-not-found-admin@example.com",
-			"Status Not Found Admin Homes",
-		);
+		const { agent: adminAgent, userId: adminUserId } =
+			await registerTenantSession(
+				"status-not-found-admin@example.com",
+				"Status Not Found Admin Homes",
+			);
 		await prisma.user.update({
 			where: { id: adminUserId },
 			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
@@ -649,10 +843,55 @@ describe("Admin access (e2e)", () => {
 		expect(response.body.message).toBe("Tenant not found");
 	});
 
+	type TenantLimitsPayload = {
+		maxUsers: number | null;
+		maxActivePropertyEngagements: number | null;
+		maxDocumentsStorageMb: number | null;
+	};
+
+	function createTenantLimitsPayload(
+		override: Partial<TenantLimitsPayload>,
+	): TenantLimitsPayload {
+		return {
+			maxUsers: null,
+			maxActivePropertyEngagements: null,
+			maxDocumentsStorageMb: null,
+			...override,
+		};
+	}
+
+	function createInvalidTenantLimitsPayload(
+		override: Record<string, unknown>,
+	): Record<string, unknown> {
+		return {
+			maxUsers: null,
+			maxActivePropertyEngagements: null,
+			maxDocumentsStorageMb: null,
+			...override,
+		};
+	}
+
 	async function expectTenantStatus(tenantId: string, status: TenantStatus) {
-		const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
+		const tenant = await prisma.tenant.findUniqueOrThrow({
+			where: { id: tenantId },
+		});
 
 		expect(tenant.status).toBe(status);
+	}
+
+	async function expectTenantLimits(
+		tenantId: string,
+		limits: TenantLimitsPayload,
+	) {
+		const tenant = await prisma.tenant.findUniqueOrThrow({
+			where: { id: tenantId },
+		});
+
+		expect({
+			maxUsers: tenant.maxUsers,
+			maxActivePropertyEngagements: tenant.maxActivePropertyEngagements,
+			maxDocumentsStorageMb: tenant.maxDocumentsStorageMb,
+		}).toEqual(limits);
 	}
 
 	async function registerTenantSession(email: string, tenantName: string) {

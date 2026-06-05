@@ -1,6 +1,12 @@
 export type AdminTenantStatus = 'TRIAL' | 'ACTIVE' | 'SUSPENDED' | 'CANCELLED';
 export type AdminTenantStatusAction = 'ACTIVE' | 'SUSPENDED';
 
+export type AdminTenantLimits = {
+  maxUsers: number | null;
+  maxActivePropertyEngagements: number | null;
+  maxDocumentsStorageMb: number | null;
+};
+
 export type AdminSummary = {
   totals: {
     tenants: number;
@@ -19,6 +25,7 @@ export type AdminTenant = {
   name: string;
   slug: string;
   status: AdminTenantStatus;
+  limits: AdminTenantLimits;
   createdAt: string;
   updatedAt: string;
   counts: {
@@ -68,6 +75,16 @@ export type ListAdminActivityInput = {
   pageSize: number;
   tenantId?: string;
 };
+
+export type AdminTenantLimitsUpdateResponse = {
+  tenantId: string;
+  previousLimits: AdminTenantLimits;
+  limits: AdminTenantLimits;
+  unchanged: boolean;
+  updatedAt: string;
+};
+
+export type UpdateAdminTenantLimitsPayload = AdminTenantLimits;
 
 export type AdminTenantStatusUpdateResponse = {
   tenantId: string;
