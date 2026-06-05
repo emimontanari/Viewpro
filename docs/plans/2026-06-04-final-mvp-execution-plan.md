@@ -35,12 +35,15 @@ ViewPro is pilot-ready when a real estate agency can:
 | `docs/plans/2026-06-04-mvp-closure-slices.md` | Audited stage status and gap summary. |
 | This file | Final execution order and gates. |
 
-## Historical or non-canonical sources
+## Supporting and historical sources
 
-These docs can provide context, but must not override the final plan without explicit review:
+These current app-new docs can supplement the final plan, but must not override the final plan without explicit review:
 
-- `viewpro-app/apps/app-new/docs/clerk_setup.md` — starter/template-oriented.
-- `viewpro-app/apps/app-new/docs/nav-rbac.md` — Clerk/client-side assumptions, not security source of truth.
+- `viewpro-app/apps/app-new/docs/auth.md` — ViewPro API-backed auth/session model.
+- `viewpro-app/apps/app-new/docs/nav-rbac.md` — navigation filtering and security boundaries.
+
+These historical docs can provide context, but are not current execution sources of truth:
+
 - older `apps/web` frontend docs — historical after app-new became the active surface.
 - Stage 0–11 docs — useful history, not current execution plan.
 - untracked Stage 24 docs — promote unique decisions here or archive; do not keep as floating source of truth.
@@ -124,7 +127,7 @@ These notification decisions were promoted from the untracked Stage 24 design ar
 - document download flows;
 - realtime notifications via SSE/WebSockets/polling;
 - WhatsApp Business API;
-- billing/Stripe/Clerk Billing;
+- billing/Stripe/external billing providers;
 - buyers/renters as product users;
 - native mobile app;
 - AI/chat/marketplace.
@@ -170,7 +173,7 @@ Slice: 0.3 — Canonical docs classification
 Objective: prevent stale template/historical docs from driving future work.
 Evidence needed: short docs index that marks canonical, historical, and archived docs.
 Do not touch: product code.
-Done: final plan and closure plan are marked canonical; stale app-new Clerk/Billing docs are demoted or annotated.
+Done: final plan and closure plan are marked canonical; stale app-new template auth/billing docs are demoted or annotated.
 Next slice: 26.0.
 ```
 
@@ -275,7 +278,7 @@ Stage: 25
 Slice: 25.3 — Tenant limits model and API
 Objective: configure pilot limits for users/team, active property engagements, and documents/storage.
 Evidence needed: schema/migration review, API tests, admin permission tests, default-limit behavior.
-Do not touch: billing, paid plans, Stripe, Clerk Billing.
+Do not touch: billing, paid plans, Stripe, external billing providers.
 Done: tenant limits are persisted, readable, editable by ViewPro admin, and have safe defaults.
 Next slice: 25.4.
 ```

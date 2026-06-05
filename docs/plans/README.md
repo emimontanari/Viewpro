@@ -41,15 +41,15 @@ Use them to answer questions such as:
 
 Do not use them to restart the roadmap or re-open completed refactors without a failing functional test.
 
-## Historical app-new docs
+## Current app-new docs
 
-These app-new docs are starter/template context and are **not** security or product source of truth for the final MVP:
+These app-new docs are the active app-new references for auth, navigation, and feature work:
 
-- `viewpro-app/apps/app-new/docs/clerk_setup.md`
+- `viewpro-app/apps/app-new/docs/auth.md`
 - `viewpro-app/apps/app-new/docs/nav-rbac.md`
-- older `apps/web` frontend planning docs that predate app-new as the active surface
+- older `apps/web` frontend planning docs remain historical because they predate app-new as the active surface
 
-Security, routing, permissions, and owner/dashboard separation must be verified from current code, tests, and the canonical final MVP plan.
+Security, routing, permissions, and owner/dashboard separation must be verified from current code, tests, active app-new docs, and the canonical final MVP plan.
 
 ## Completed work not to reopen by default
 
@@ -64,7 +64,7 @@ Do not reopen these unless a functional regression is proven:
 
 The final execution plan intentionally excludes:
 
-- billing/Stripe/Clerk Billing;
+- billing/Stripe/external billing providers;
 - WhatsApp Business API;
 - realtime notifications;
 - AI/chat/marketplace;
@@ -79,16 +79,17 @@ The final execution plan intentionally excludes:
 
 ```txt
 Stage: 25
-Slice: 25.3 — Tenant limits model and API
-Objective: configure pilot limits for users/team, active property engagements, and documents/storage.
-Evidence needed: schema/migration review, API tests, admin permission tests, default-limit behavior.
-Do not touch: billing, paid plans, Stripe, Clerk Billing.
-Done: tenant limits are persisted, readable, editable by ViewPro admin, and have safe defaults.
-Next slice: 25.4 — Tenant limits enforcement.
+Slice: 25.4 — Tenant limits enforcement
+Objective: enforce configured pilot limits for users/team, active property engagements, and documents/storage at mutation boundaries.
+Evidence needed: API tests for allowed/blocked mutations, admin limit configuration checks, safe default behavior, and no regression to existing tenant workflows.
+Do not touch: billing, paid plans, Stripe, or external billing providers.
+Done: tenant limits are enforced consistently with clear errors and existing allowed flows still pass.
+Next slice: 26.0 — MVP evidence audit.
 ```
 
 ## Recently completed
 
+- Stage 25.3 — Tenant limits model and API: tenant limit schema/migration, admin read/write API, safe defaults, and global admin authorization evidence completed.
 - Stage 25.2 — Admin tenant management UI: app-new `/admin` surface, admin BFF routes without `x-tenant-id`, tenant status badges/actions, confirmation dialog, Spanish loading/error/success states, and pnpm UI/service evidence completed.
 - Stage 25.1 — Admin tenant status write API + audit log: backend admin status endpoint, atomic `TENANT_STATUS_CHANGED` audit, global admin authorization, tenant guard proof, and concurrent duplicate-write protection completed with API evidence.
 - Stage 21.6 — Minimal owner invitation management: backend revoke endpoint, app-new BFF/service, and property owner UI actions for `Regenerar y copiar link` and `Revocar invitación` completed with API/UI evidence.

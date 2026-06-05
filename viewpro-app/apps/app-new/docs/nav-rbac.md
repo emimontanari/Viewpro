@@ -1,179 +1,65 @@
-# Simplified Navigation RBAC System
+# Navigation Filtering and Access Boundaries
 
-## Overview
+Navigation filtering in app-new is a UX convenience. It is not an authorization layer.
 
-This document explains the fully client-side RBAC (Role-Based Access Control) system for navigation items.
+## Source of truth
 
-**Key Insight**: Navigation visibility is UX only, not security. We can check everything client-side using Clerk's hooks!
+The active tenant membership comes from `SessionProvider` in `src/lib/session-context.tsx`.
 
-## Architecture
+`src/hooks/use-nav.ts` builds an access context from that membership:
 
-### Core Files
-
-1. **`src/hooks/use-nav.ts`** - Single hook that handles all filtering logic (fully client-side)
-2. **`src/types/index.ts`** - Type definitions with `access` property
-
-### Why Client-Side?
-
-- **Navigation visibility is UX only** - Users can't bypass security by seeing/hiding nav items
-- **Clerk provides all data client-side** - `useOrganization()` gives us `membership.permissions` and `membership.role`
-- **Zero server calls** - Instant filtering, no loading states, no UI flashing
-- **Better performance** - No network latency, no async complexity
-
-**Note**: For actual security (API routes, server actions, page protection), always use server-side checks.
-
-## Performance Characteristics
-
-### All Checks Are Synchronous
-
-✅ **requireOrg**: Client-side check using `useOrganization()`  
-✅ **permission**: Client-side check using `membership.permissions` array  
-✅ **role**: Client-side check using `membership.role`  
-⚠️ **plan/feature**: Requires server-side check (see below)
-
-### Zero Server Calls
-
-- All navigation filtering happens synchronously
-- No loading states
-- No UI flashing
-- Instant results
-
-## Usage
-
-### In `nav-config.ts`
-
-```typescript
+```ts
 {
-  title: 'Teams',
-  url: '/dashboard/workspaces/team',
-  icon: 'userPen',
-  // Simple: requireOrg (client-side check, instant)
+  hasOrg: Boolean(activeMembership),
+  permissions: activeMembership?.permissions ?? [],
+  role: activeMembership?.role
+}
+```
+
+Then it filters `src/config/nav-config.ts` items.
+
+## Supported nav access flags
+
+| Flag         | Meaning                                                           |
+| ------------ | ----------------------------------------------------------------- |
+| `requireOrg` | Requires an active tenant membership.                             |
+| `permission` | Requires the active membership to include that permission string. |
+| `role`       | Requires the active membership role to match exactly.             |
+
+Example:
+
+```ts
+{
+  title: 'Equipo',
+  url: '/dashboard/users',
+  icon: 'teams',
   access: { requireOrg: true }
 }
-
-{
-  title: 'Admin Panel',
-  url: '/dashboard/admin',
-  icon: 'settings',
-  // All client-side checks - instant!
-  access: {
-    requireOrg: true,
-    permission: 'org:admin:manage',  // Client-side from membership.permissions
-    role: 'admin'  // Client-side from membership.role
-}
 ```
 
-### In Components
+## Security rule
 
-```typescript
-import { useFilteredNavItems } from '@/hooks/use-nav';
+Do not rely on hidden navigation for security.
 
-function MyComponent() {
-  const filteredItems = useFilteredNavItems(navItems);
-  // filteredItems is automatically filtered based on RBAC
-}
-```
+A user can still call URLs directly, so protected behavior must be enforced by:
 
-### Plan/Feature Checks
+- API guards and use cases;
+- BFF route checks;
+- tenant ownership/access checks;
+- owner-surface access checks;
+- global admin guards for `/admin` operations.
 
-Plans and features require Clerk's `has()` function which is server-side only. Options:
+## Current role surfaces
 
-1. **Store in organization metadata** (recommended for navigation):
+| Surface                    | UX signal                              | Security source                   |
+| -------------------------- | -------------------------------------- | --------------------------------- |
+| Dashboard tenant workspace | active tenant membership               | API tenant guards and permissions |
+| Owner portal               | authenticated owner session            | owner API access checks           |
+| ViewPro Admin              | `globalRole === 'VIEWPRO_ADMIN'` in UI | backend `GlobalAdminGuard`        |
 
-   ```typescript
-   // In your organization setup
-   organization.publicMetadata.plan = 'pro';
+## Do not add
 
-   // In nav-config.ts
-   access: {
-     requireOrg: true,
-     // Check metadata instead of plan
-   }
-   ```
-
-2. **Show item, protect at page level** (current approach):
-   - Navigation item is shown
-   - Page component checks server-side and redirects/shows error if needed
-
-3. **Use server action** (if you really need it):
-   - Only for navigation items that absolutely need plan/feature checks
-   - Most navigation items won't need this
-
-## Scalability
-
-### Adding New Items
-
-Just add to `nav-config.ts`:
-
-```typescript
-{
-  title: 'New Feature',
-  url: '/dashboard/new',
-  icon: 'star',
-  access: { plan: 'pro' }  // That's it!
-}
-```
-
-The system automatically:
-
-- Filters it in sidebar
-- Filters it in kbar
-- Handles async checks if needed
-- Handles sync checks immediately
-
-### Adding New Access Types
-
-1. Add to `PermissionCheck` interface in `src/app/actions/rbac.ts`
-2. Add check logic in `checkAccess()` function
-3. Update `use-nav.ts` to handle the new type
-
-## Comparison: Before vs After
-
-### Before (Overcomplicated)
-
-- 4 files with complex logic
-- Multiple hooks and utilities
-- Unclear data flow
-- Potential for bugs
-
-### After (Simplified)
-
-- 1 main hook file
-- Clear, linear logic
-- Easy to understand
-- Easy to maintain
-
-## Best Practices
-
-1. **Use `requireOrg: true` for simple cases** - It's instant and requires no server call
-2. **Combine checks when possible** - `{ requireOrg: true, permission: '...' }` is more efficient than separate checks
-3. **Avoid unnecessary checks** - Don't add `access` if the item should always be visible
-
-## Migration from Old System
-
-The old `visible` function still works for backward compatibility:
-
-```typescript
-// Old way (still works)
-visible: (context) => !!context?.organization;
-
-// New way (recommended)
-access: {
-  requireOrg: true;
-}
-```
-
-## Future Improvements
-
-Potential optimizations if needed:
-
-1. Cache permission checks (e.g., React Query)
-2. Prefetch permissions on app load
-3. Optimistic UI updates
-
-But for now, the current implementation is:
-
-- ✅ Simple
-- ✅ Fast
-- ✅ Scalable
-- ✅ Maintainable
+- Third-party template auth client hooks.
+- Third-party organization assumptions.
+- Billing/plan checks in navigation.
+- Security decisions that only run in React components.

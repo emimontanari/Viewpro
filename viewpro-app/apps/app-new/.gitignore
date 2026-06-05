@@ -21,6 +21,7 @@ pnpm-lock.yaml
 # misc
 .DS_Store
 *.pem
+**/.tmp/keyless.json
 
 # debug
 npm-debug.log*
@@ -39,9 +40,6 @@ yarn-error.log*
 next-env.d.ts
 
 .idea/
-# clerk configuration (can include secrets)
-/.clerk/
-
 
 # cursor 
 .cursorrules
