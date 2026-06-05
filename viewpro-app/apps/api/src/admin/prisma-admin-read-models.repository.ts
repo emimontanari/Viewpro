@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { PropertyEngagementStatus, TenantStatus } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import type {
@@ -15,7 +15,7 @@ const INACTIVE_ENGAGEMENT_STATUSES = [PropertyEngagementStatus.CLOSED, PropertyE
 
 @Injectable()
 export class PrismaAdminReadModelsRepository implements AdminReadModelsRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async getSummary(input: { recentActivityFrom: Date }): Promise<AdminSummaryRecord> {
     const [tenants, activeTenants, users, activeEngagements, documentRequests, analyticsEvents, recentActivityCount] =
@@ -52,6 +52,9 @@ export class PrismaAdminReadModelsRepository implements AdminReadModelsRepositor
           name: true,
           slug: true,
           status: true,
+          maxUsers: true,
+          maxActivePropertyEngagements: true,
+          maxDocumentsStorageMb: true,
           createdAt: true,
           updatedAt: true,
           _count: {

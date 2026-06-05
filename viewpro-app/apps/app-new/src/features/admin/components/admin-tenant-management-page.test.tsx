@@ -3,7 +3,11 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { toast } from 'sonner';
-import { getAdminDashboardData, updateAdminTenantStatus } from '@/features/admin/api/service';
+import {
+  getAdminDashboardData,
+  updateAdminTenantLimits,
+  updateAdminTenantStatus
+} from '@/features/admin/api/service';
 import type { AdminDashboardData, AdminTenant } from '@/features/admin/api/types';
 import type { Session } from '@/lib/session';
 import { useSession } from '@/lib/session-context';
@@ -11,6 +15,7 @@ import { AdminTenantManagementPage } from './admin-tenant-management-page';
 
 vi.mock('@/features/admin/api/service', () => ({
   getAdminDashboardData: vi.fn(),
+  updateAdminTenantLimits: vi.fn(),
   updateAdminTenantStatus: vi.fn()
 }));
 
@@ -27,6 +32,7 @@ vi.mock('sonner', () => ({
 }));
 
 const getAdminDashboardDataMock = vi.mocked(getAdminDashboardData);
+const updateAdminTenantLimitsMock = vi.mocked(updateAdminTenantLimits);
 const updateAdminTenantStatusMock = vi.mocked(updateAdminTenantStatus);
 const useSessionMock = vi.mocked(useSession);
 const toastMock = vi.mocked(toast);
@@ -61,7 +67,12 @@ const activeTenant = createTenant({
   id: 'tenant-active',
   name: 'Costa Norte',
   slug: 'costa-norte',
-  status: 'ACTIVE'
+  status: 'ACTIVE',
+  limits: {
+    maxUsers: 12,
+    maxActivePropertyEngagements: null,
+    maxDocumentsStorageMb: 2048
+  }
 });
 const suspendedTenant = createTenant({
   id: 'tenant-suspended',
@@ -120,6 +131,17 @@ describe('AdminTenantManagementPage', () => {
     vi.clearAllMocks();
     useSessionMock.mockReturnValue(createSessionContext(adminSession));
     getAdminDashboardDataMock.mockResolvedValue(dashboardData);
+    updateAdminTenantLimitsMock.mockResolvedValue({
+      tenantId: 'tenant-active',
+      previousLimits: activeTenant.limits,
+      limits: {
+        maxUsers: 20,
+        maxActivePropertyEngagements: 30,
+        maxDocumentsStorageMb: null
+      },
+      unchanged: false,
+      updatedAt: '2026-06-04T10:00:00.000Z'
+    });
     updateAdminTenantStatusMock.mockResolvedValue({
       tenantId: 'tenant-active',
       previousStatus: 'ACTIVE',
@@ -170,6 +192,46 @@ describe('AdminTenantManagementPage', () => {
     expect(screen.getByText('Activo')).toBeInTheDocument();
     expect(screen.getByText('Suspendido')).toBeInTheDocument();
     expect(screen.getByText('Cancelado')).toBeInTheDocument();
+    expect(screen.getAllByText('Usuarios').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Publicaciones activas').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Storage documentos').length).toBeGreaterThan(0);
+    expect(screen.getByText('2.048 MB')).toBeInTheDocument();
+    expect(screen.getAllByText('Sin límite').length).toBeGreaterThan(0);
+  });
+
+  it('edits tenant limits from the existing admin table', async () => {
+    const user = userEvent.setup();
+    renderAdminPage();
+
+    const activeRow = (await screen.findByText('Costa Norte')).closest('tr')!;
+    await user.click(within(activeRow).getByRole('button', { name: 'Editar límites' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Editar límites de Costa Norte' });
+    const usersInput = within(dialog).getByLabelText('Usuarios');
+    const activePublicationsInput = within(dialog).getByLabelText('Publicaciones activas');
+    const storageInput = within(dialog).getByLabelText('Storage documentos (MB)');
+
+    expect(usersInput).toHaveValue(12);
+    expect(activePublicationsInput).toHaveValue(null);
+    expect(storageInput).toHaveValue(2048);
+
+    await user.clear(usersInput);
+    await user.type(usersInput, '20');
+    await user.type(activePublicationsInput, '30');
+    await user.clear(storageInput);
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar límites' }));
+
+    await waitFor(() => {
+      expect(updateAdminTenantLimitsMock).toHaveBeenCalledWith('tenant-active', {
+        maxUsers: 20,
+        maxActivePropertyEngagements: 30,
+        maxDocumentsStorageMb: null
+      });
+    });
+    expect(toastMock.success).toHaveBeenCalledWith('Límites del tenant actualizados.');
+    await waitFor(() => {
+      expect(getAdminDashboardDataMock).toHaveBeenCalledTimes(2);
+    });
   });
 
   it('opens confirmation before activating a trial tenant', async () => {
@@ -230,9 +292,11 @@ describe('AdminTenantManagementPage', () => {
   it('does not expose a status action for cancelled tenants', async () => {
     renderAdminPage();
 
-    const cancelledRow = await screen.findByText('Cancelada SA');
-    expect(within(cancelledRow.closest('tr')!).queryByRole('button')).not.toBeInTheDocument();
-    expect(within(cancelledRow.closest('tr')!).getByText('Sin acción')).toBeInTheDocument();
+    const cancelledRow = (await screen.findByText('Cancelada SA')).closest('tr')!;
+    expect(
+      within(cancelledRow).queryByRole('button', { name: 'Cancelar tenant' })
+    ).not.toBeInTheDocument();
+    expect(within(cancelledRow).getByText('Sin acción')).toBeInTheDocument();
   });
 
   it('shows unchanged and mutation error feedback in Spanish', async () => {
@@ -306,9 +370,16 @@ function createSessionContext(
   };
 }
 
-function createTenant(input: Pick<AdminTenant, 'id' | 'name' | 'slug' | 'status'>): AdminTenant {
+function createTenant(
+  input: Pick<AdminTenant, 'id' | 'name' | 'slug' | 'status'> & Partial<Pick<AdminTenant, 'limits'>>
+): AdminTenant {
   return {
     ...input,
+    limits: input.limits ?? {
+      maxUsers: null,
+      maxActivePropertyEngagements: null,
+      maxDocumentsStorageMb: null
+    },
     createdAt: '2026-05-01T10:00:00.000Z',
     updatedAt: '2026-05-02T10:00:00.000Z',
     counts: {

@@ -2,10 +2,12 @@ import type {
   AdminActivityListResponse,
   AdminDashboardData,
   AdminSummary,
+  AdminTenantLimitsUpdateResponse,
   AdminTenantStatusUpdateResponse,
   AdminTenantsResponse,
   ListAdminActivityInput,
   ListAdminTenantsInput,
+  UpdateAdminTenantLimitsPayload,
   UpdateAdminTenantStatusPayload
 } from './types';
 
@@ -57,6 +59,20 @@ export function updateAdminTenantStatus(
 ): Promise<AdminTenantStatusUpdateResponse> {
   return apiFetchJson<AdminTenantStatusUpdateResponse>(
     `${ADMIN_API_PATH}/tenants/${encodeURIComponent(tenantId)}/status`,
+    {
+      body: JSON.stringify(payload),
+      headers: { 'content-type': 'application/json' },
+      method: 'PATCH'
+    }
+  );
+}
+
+export function updateAdminTenantLimits(
+  tenantId: string,
+  payload: UpdateAdminTenantLimitsPayload
+): Promise<AdminTenantLimitsUpdateResponse> {
+  return apiFetchJson<AdminTenantLimitsUpdateResponse>(
+    `${ADMIN_API_PATH}/tenants/${encodeURIComponent(tenantId)}/limits`,
     {
       body: JSON.stringify(payload),
       headers: { 'content-type': 'application/json' },
