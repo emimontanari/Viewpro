@@ -79,15 +79,16 @@ The final execution plan intentionally excludes:
 
 ```txt
 Stage: 25
-Slice: 25.2 — Admin tenant management UI
-Objective: expose minimal tenant operations in app-new for ViewPro admins.
-Evidence needed: UI tests for tenant list, status badge, status action confirmation, loading/error states.
-Do not touch: limits, billing, impersonation, private tenant content browsing.
-Done: ViewPro admin can list tenants and activate/suspend/reactivate them from UI.
-Next slice: 25.3 — Tenant limits model and API.
+Slice: 25.3 — Tenant limits model and API
+Objective: configure pilot limits for users/team, active property engagements, and documents/storage.
+Evidence needed: schema/migration review, API tests, admin permission tests, default-limit behavior.
+Do not touch: billing, paid plans, Stripe, Clerk Billing.
+Done: tenant limits are persisted, readable, editable by ViewPro admin, and have safe defaults.
+Next slice: 25.4 — Tenant limits enforcement.
 ```
 
 ## Recently completed
 
+- Stage 25.2 — Admin tenant management UI: app-new `/admin` surface, admin BFF routes without `x-tenant-id`, tenant status badges/actions, confirmation dialog, Spanish loading/error/success states, and pnpm UI/service evidence completed.
 - Stage 25.1 — Admin tenant status write API + audit log: backend admin status endpoint, atomic `TENANT_STATUS_CHANGED` audit, global admin authorization, tenant guard proof, and concurrent duplicate-write protection completed with API evidence.
 - Stage 21.6 — Minimal owner invitation management: backend revoke endpoint, app-new BFF/service, and property owner UI actions for `Regenerar y copiar link` and `Revocar invitación` completed with API/UI evidence.

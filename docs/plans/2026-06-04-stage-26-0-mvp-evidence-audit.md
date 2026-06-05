@@ -41,13 +41,13 @@ Core API, app-new component/unit tests, strict lint, and seeded E2E all run succ
 | Team roles/inactive/invitations | Strong API evidence; app-new/team seeded UI evidence incomplete. | PARTIAL | P1 — Slice 22.6 |
 | WhatsApp config/contact/tracking | Mapping and click tracking tests exist; editable tenant/user phone config not proven. | PARTIAL | P0 — Slices 23.3/23.4 |
 | Notifications producer/routing/read-unread | Producer and API tests exist; full seeded owner/internal routing/read-unread not proven. | PARTIAL | P0 — Slice 24.5 |
-| Admin status/limits | Admin read-only exists; Stage 25.1 adds status write API, atomic audit, tenant guard proof, and concurrent duplicate-write protection. Admin UI, limits, and enforcement pending. | PARTIAL | P0 — Slices 25.2–25.4 |
+| Admin status/limits | Admin read-only exists; Stage 25.1 adds status write API, atomic audit, tenant guard proof, and concurrent duplicate-write protection; Stage 25.2 adds app-new status UI and admin BFF routes without tenant-header forwarding. Limits and enforcement pending. | PARTIAL | P0 — Slices 25.3–25.4 |
 | Tenant loading/no-tenant/stale tenant | API tenant-context tests exist; app-new global no-tenant/stale/loading evidence incomplete. | PARTIAL | P1 |
 | Security/isolation | Strong API evidence; seeded UI covers core seller/owner paths; final isolation regression still needed. | API PASS / UI PARTIAL | P1 — Slice 26.4 |
 
 ## Remaining P0 product gaps
 
-1. **Stage 25.2–25.4 — Admin status UI, limits, and enforcement.**
+1. **Stage 25.3–25.4 — Admin limits model/API and enforcement.**
 2. **Stage 23.3–23.4 — WhatsApp contact configuration and priority/tracking proof.**
 3. **Stage 24.5 — Notification routing/read-unread E2E.**
 
@@ -55,10 +55,10 @@ Core API, app-new component/unit tests, strict lint, and seeded E2E all run succ
 
 ```txt
 Stage: 25
-Slice: 25.2 — Admin tenant management UI
-Objective: expose minimal tenant operations in app-new for ViewPro admins.
-Evidence needed: UI tests for tenant list, status badge, status action confirmation, loading/error states.
-Do not touch: limits, billing, impersonation, private tenant content browsing.
-Done: ViewPro admin can list tenants and activate/suspend/reactivate them from UI.
-Next slice: 25.3 — Tenant limits model and API.
+Slice: 25.3 — Tenant limits model and API
+Objective: configure pilot limits for users/team, active property engagements, and documents/storage.
+Evidence needed: schema/migration review, API tests, admin permission tests, default-limit behavior.
+Do not touch: billing, paid plans, Stripe, Clerk Billing.
+Done: tenant limits are persisted, readable, editable by ViewPro admin, and have safe defaults.
+Next slice: 25.4 — Tenant limits enforcement.
 ```

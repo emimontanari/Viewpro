@@ -266,6 +266,8 @@ Done: ViewPro admin can list tenants and activate/suspend/reactivate them from U
 Next slice: 25.3.
 ```
 
+Status: completed in `feat/admin-tenant-management-ui` with app-new `/admin` UI, admin BFF routes that disable tenant header forwarding, status badges/actions for `TRIAL`, `ACTIVE`, and `SUSPENDED`, confirmation dialog, Spanish loading/error/success states, and pnpm UI/service/type/lint evidence.
+
 ### Slice 25.3 — Tenant limits model and API
 
 ```txt
