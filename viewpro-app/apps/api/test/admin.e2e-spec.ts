@@ -358,6 +358,303 @@ describe("Admin access (e2e)", () => {
 		expectNoSensitiveFields(response.body);
 	});
 
+
+	it("rejects unauthenticated tenant status writes with 401", async () => {
+		const response = await request(app.getHttpServer())
+			.patch("/api/admin/tenants/tenant-1/status")
+			.send({ status: TenantStatus.SUSPENDED })
+			.expect(401);
+
+		expect(response.body.message).toBe("Authentication required");
+	});
+
+	it("rejects USER tenant status writes with 403 even with x-tenant-id", async () => {
+		const { agent, tenantId } = await registerTenantSession(
+			"status-user@example.com",
+			"Status User Homes",
+		);
+
+		const response = await agent
+			.patch(`/api/admin/tenants/${tenantId}/status`)
+			.set("x-tenant-id", tenantId)
+			.send({ status: TenantStatus.SUSPENDED })
+			.expect(403);
+
+		expect(response.body.message).toBe("ViewPro admin access required");
+	});
+
+	it("allows VIEWPRO_ADMIN to suspend and reactivate a tenant with atomic audit records", async () => {
+		const { agent: adminAgent, userId: adminUserId } = await registerTenantSession(
+			"status-admin@example.com",
+			"Status Admin Homes",
+		);
+		await prisma.user.update({
+			where: { id: adminUserId },
+			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
+		});
+		const target = await registerTenantSession(
+			"status-target@example.com",
+			"Status Target Homes",
+		);
+		const auditEventName = AnalyticsEventName.TENANT_STATUS_CHANGED;
+
+		const suspendResponse = await adminAgent
+			.patch(`/api/admin/tenants/${target.tenantId}/status`)
+			.send({ status: TenantStatus.SUSPENDED })
+			.expect(200);
+
+		expect(suspendResponse.body).toEqual({
+			tenantId: target.tenantId,
+			previousStatus: TenantStatus.TRIAL,
+			status: TenantStatus.SUSPENDED,
+			unchanged: false,
+			updatedAt: expect.any(String),
+		});
+		expectNoSensitiveFields(suspendResponse.body);
+		await expectTenantStatus(target.tenantId, TenantStatus.SUSPENDED);
+		const blockedResponse = await target.agent
+			.get("/api/tenant-context/demo/view")
+			.set("x-tenant-id", target.tenantId)
+			.expect(403);
+		expect(blockedResponse.body.message).toBe("Tenant is not active");
+
+		const suspendAudit = await prisma.analyticsEvent.findMany({
+			where: { tenantId: target.tenantId, eventName: auditEventName },
+		});
+		expect(suspendAudit).toHaveLength(1);
+		expect(suspendAudit[0]).toMatchObject({
+			tenantId: target.tenantId,
+			actorUserId: adminUserId,
+			actorType: AnalyticsActorType.INTERNAL_USER,
+			eventName: auditEventName,
+		});
+		expect(suspendAudit[0]?.metadata).toEqual({
+			previousStatus: TenantStatus.TRIAL,
+			newStatus: TenantStatus.SUSPENDED,
+		});
+
+		const reactivateResponse = await adminAgent
+			.patch(`/api/admin/tenants/${target.tenantId}/status`)
+			.send({ status: TenantStatus.ACTIVE })
+			.expect(200);
+
+		expect(reactivateResponse.body).toEqual({
+			tenantId: target.tenantId,
+			previousStatus: TenantStatus.SUSPENDED,
+			status: TenantStatus.ACTIVE,
+			unchanged: false,
+			updatedAt: expect.any(String),
+		});
+		await expectTenantStatus(target.tenantId, TenantStatus.ACTIVE);
+		await target.agent
+			.get("/api/tenant-context/demo/view")
+			.set("x-tenant-id", target.tenantId)
+			.expect(200);
+
+		const auditEvents = await prisma.analyticsEvent.findMany({
+			where: { tenantId: target.tenantId, eventName: auditEventName },
+			orderBy: { occurredAt: "asc" },
+		});
+		expect(auditEvents).toHaveLength(2);
+		expect(auditEvents[1]?.metadata).toEqual({
+			previousStatus: TenantStatus.SUSPENDED,
+			newStatus: TenantStatus.ACTIVE,
+		});
+	});
+
+	it("returns unchanged without creating audit when target status matches current status", async () => {
+		const { agent: adminAgent, userId: adminUserId } = await registerTenantSession(
+			"status-idempotent-admin@example.com",
+			"Status Idempotent Admin Homes",
+		);
+		await prisma.user.update({
+			where: { id: adminUserId },
+			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
+		});
+		const target = await registerTenantSession(
+			"status-idempotent-target@example.com",
+			"Status Idempotent Target Homes",
+		);
+		await prisma.tenant.update({
+			where: { id: target.tenantId },
+			data: { status: TenantStatus.ACTIVE },
+		});
+		const auditEventName = AnalyticsEventName.TENANT_STATUS_CHANGED;
+
+		const response = await adminAgent
+			.patch(`/api/admin/tenants/${target.tenantId}/status`)
+			.send({ status: TenantStatus.ACTIVE })
+			.expect(200);
+
+		expect(response.body).toEqual({
+			tenantId: target.tenantId,
+			previousStatus: TenantStatus.ACTIVE,
+			status: TenantStatus.ACTIVE,
+			unchanged: true,
+			updatedAt: expect.any(String),
+		});
+		await expectTenantStatus(target.tenantId, TenantStatus.ACTIVE);
+		await expect(
+			prisma.analyticsEvent.count({
+				where: { tenantId: target.tenantId, eventName: auditEventName },
+			}),
+		).resolves.toBe(0);
+	});
+
+	it("allows VIEWPRO_ADMIN to activate a trial tenant with an audit record", async () => {
+		const { agent: adminAgent, userId: adminUserId } = await registerTenantSession(
+			"status-activate-admin@example.com",
+			"Status Activate Admin Homes",
+		);
+		await prisma.user.update({
+			where: { id: adminUserId },
+			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
+		});
+		const target = await registerTenantSession(
+			"status-activate-target@example.com",
+			"Status Activate Target Homes",
+		);
+
+		const response = await adminAgent
+			.patch(`/api/admin/tenants/${target.tenantId}/status`)
+			.send({ status: TenantStatus.ACTIVE })
+			.expect(200);
+
+		expect(response.body).toEqual({
+			tenantId: target.tenantId,
+			previousStatus: TenantStatus.TRIAL,
+			status: TenantStatus.ACTIVE,
+			unchanged: false,
+			updatedAt: expect.any(String),
+		});
+		await expectTenantStatus(target.tenantId, TenantStatus.ACTIVE);
+		const auditEvents = await prisma.analyticsEvent.findMany({
+			where: {
+				tenantId: target.tenantId,
+				eventName: AnalyticsEventName.TENANT_STATUS_CHANGED,
+			},
+		});
+		expect(auditEvents).toHaveLength(1);
+		expect(auditEvents[0]).toMatchObject({
+			tenantId: target.tenantId,
+			actorUserId: adminUserId,
+			actorType: AnalyticsActorType.INTERNAL_USER,
+			eventName: AnalyticsEventName.TENANT_STATUS_CHANGED,
+		});
+		expect(auditEvents[0]?.metadata).toEqual({
+			previousStatus: TenantStatus.TRIAL,
+			newStatus: TenantStatus.ACTIVE,
+		});
+	});
+
+	it("creates one audit event when duplicate status writes race", async () => {
+		const { agent: adminAgent, userId: adminUserId } = await registerTenantSession(
+			"status-race-admin@example.com",
+			"Status Race Admin Homes",
+		);
+		await prisma.user.update({
+			where: { id: adminUserId },
+			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
+		});
+		const target = await registerTenantSession(
+			"status-race-target@example.com",
+			"Status Race Target Homes",
+		);
+
+		const [firstResponse, secondResponse] = await Promise.all([
+			adminAgent
+				.patch(`/api/admin/tenants/${target.tenantId}/status`)
+				.send({ status: TenantStatus.SUSPENDED }),
+			adminAgent
+				.patch(`/api/admin/tenants/${target.tenantId}/status`)
+				.send({ status: TenantStatus.SUSPENDED }),
+		]);
+
+		expect(firstResponse.status).toBe(200);
+		expect(secondResponse.status).toBe(200);
+		expect([firstResponse.body, secondResponse.body]).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					tenantId: target.tenantId,
+					previousStatus: TenantStatus.TRIAL,
+					status: TenantStatus.SUSPENDED,
+					unchanged: false,
+				}),
+				expect.objectContaining({
+					tenantId: target.tenantId,
+					previousStatus: TenantStatus.SUSPENDED,
+					status: TenantStatus.SUSPENDED,
+					unchanged: true,
+				}),
+			]),
+		);
+		await expectTenantStatus(target.tenantId, TenantStatus.SUSPENDED);
+		const auditEvents = await prisma.analyticsEvent.findMany({
+			where: {
+				tenantId: target.tenantId,
+				eventName: AnalyticsEventName.TENANT_STATUS_CHANGED,
+			},
+		});
+		expect(auditEvents).toHaveLength(1);
+		expect(auditEvents[0]).toMatchObject({
+			tenantId: target.tenantId,
+			actorUserId: adminUserId,
+			actorType: AnalyticsActorType.INTERNAL_USER,
+			eventName: AnalyticsEventName.TENANT_STATUS_CHANGED,
+		});
+		expect(auditEvents[0]?.metadata).toEqual({
+			previousStatus: TenantStatus.TRIAL,
+			newStatus: TenantStatus.SUSPENDED,
+		});
+	});
+
+	it.each([TenantStatus.TRIAL, TenantStatus.CANCELLED, "NOT_A_STATUS"])(
+		"rejects unsupported tenant status %s with 400",
+		async (status) => {
+			const { agent: adminAgent, userId: adminUserId } = await registerTenantSession(
+				`status-invalid-${status.toLowerCase()}@example.com`,
+				"Status Invalid Admin Homes",
+			);
+			await prisma.user.update({
+				where: { id: adminUserId },
+				data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
+			});
+			const target = await registerTenantSession(
+				`status-invalid-target-${status.toLowerCase()}@example.com`,
+				`Status Invalid Target ${status}`,
+			);
+
+			await adminAgent
+				.patch(`/api/admin/tenants/${target.tenantId}/status`)
+				.send({ status })
+				.expect(400);
+		},
+	);
+
+	it("returns 404 when updating an unknown tenant status", async () => {
+		const { agent: adminAgent, userId: adminUserId } = await registerTenantSession(
+			"status-not-found-admin@example.com",
+			"Status Not Found Admin Homes",
+		);
+		await prisma.user.update({
+			where: { id: adminUserId },
+			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
+		});
+
+		const response = await adminAgent
+			.patch("/api/admin/tenants/00000000-0000-4000-8000-000000000000/status")
+			.send({ status: TenantStatus.SUSPENDED })
+			.expect(404);
+
+		expect(response.body.message).toBe("Tenant not found");
+	});
+
+	async function expectTenantStatus(tenantId: string, status: TenantStatus) {
+		const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
+
+		expect(tenant.status).toBe(status);
+	}
+
 	async function registerTenantSession(email: string, tenantName: string) {
 		const agent = request.agent(app.getHttpServer());
 		const response = await agent

@@ -41,13 +41,13 @@ Core API, app-new component/unit tests, strict lint, and seeded E2E all run succ
 | Team roles/inactive/invitations | Strong API evidence; app-new/team seeded UI evidence incomplete. | PARTIAL | P1 — Slice 22.6 |
 | WhatsApp config/contact/tracking | Mapping and click tracking tests exist; editable tenant/user phone config not proven. | PARTIAL | P0 — Slices 23.3/23.4 |
 | Notifications producer/routing/read-unread | Producer and API tests exist; full seeded owner/internal routing/read-unread not proven. | PARTIAL | P0 — Slice 24.5 |
-| Admin status/limits | Admin read-only exists; status writes, audit, limits, enforcement pending. | GAP | P0 — Slices 25.1–25.4 |
+| Admin status/limits | Admin read-only exists; Stage 25.1 adds status write API, atomic audit, tenant guard proof, and concurrent duplicate-write protection. Admin UI, limits, and enforcement pending. | PARTIAL | P0 — Slices 25.2–25.4 |
 | Tenant loading/no-tenant/stale tenant | API tenant-context tests exist; app-new global no-tenant/stale/loading evidence incomplete. | PARTIAL | P1 |
 | Security/isolation | Strong API evidence; seeded UI covers core seller/owner paths; final isolation regression still needed. | API PASS / UI PARTIAL | P1 — Slice 26.4 |
 
 ## Remaining P0 product gaps
 
-1. **Stage 25.1–25.4 — Admin status writes, audit log, limits, and enforcement.**
+1. **Stage 25.2–25.4 — Admin status UI, limits, and enforcement.**
 2. **Stage 23.3–23.4 — WhatsApp contact configuration and priority/tracking proof.**
 3. **Stage 24.5 — Notification routing/read-unread E2E.**
 
@@ -55,10 +55,10 @@ Core API, app-new component/unit tests, strict lint, and seeded E2E all run succ
 
 ```txt
 Stage: 25
-Slice: 25.1 — Admin tenant status write API + audit log
-Objective: let ViewPro admins activate, suspend, and reactivate tenants without touching DB.
-Evidence needed: API tests, global admin guard tests, tenant guard behavior, and audit record verification.
-Do not touch: billing, limits, large admin UI, owner/team/document UI.
-Done: admin can change tenant status; suspended tenant is blocked by existing guards; every status change is audited.
-Next slice: 25.2 — Admin tenant management UI.
+Slice: 25.2 — Admin tenant management UI
+Objective: expose minimal tenant operations in app-new for ViewPro admins.
+Evidence needed: UI tests for tenant list, status badge, status action confirmation, loading/error states.
+Do not touch: limits, billing, impersonation, private tenant content browsing.
+Done: ViewPro admin can list tenants and activate/suspend/reactivate them from UI.
+Next slice: 25.3 — Tenant limits model and API.
 ```

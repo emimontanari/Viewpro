@@ -252,6 +252,8 @@ Done: admin can change tenant status; suspended tenant is blocked by existing gu
 Next slice: 25.2.
 ```
 
+Status: completed in `feat/admin-tenant-status-audit` with API evidence for admin-only authorization, `ACTIVE`/`SUSPENDED` policy, `TRIAL -> ACTIVE`, suspension/reactivation, same-status idempotency, unknown tenant handling, tenant guard enforcement, atomic `TENANT_STATUS_CHANGED` audit, and concurrent duplicate-write protection.
+
 ### Slice 25.2 — Admin tenant management UI
 
 ```txt
