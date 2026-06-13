@@ -9,8 +9,9 @@ Read these first, in order:
 | Priority | Document                                                         | Purpose                                                                               |
 | -------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | 1        | `docs/plans/2026-06-04-final-mvp-execution-plan.md`              | Current execution plan, priority gates, phases, PR slicing, and scope exclusions.     |
-| 2        | `docs/plans/2026-06-04-mvp-closure-slices.md`                    | Audited status for Stages 20–26 and corrected gap summary.                            |
-| 3        | `docs/plans/2026-05-28-mvp-product-final-like-roadmap-design.md` | Original product-final-like roadmap. Use when validating intent, not execution order. |
+| 2        | `docs/plans/2026-06-08-stage-26-0-mvp-evidence-audit.md`         | Active Stage 26.0 audit doc and evidence checklist.                                   |
+| 3        | `docs/plans/2026-06-04-mvp-closure-slices.md`                    | Audited status for Stages 20–26 and corrected gap summary.                            |
+| 4        | `docs/plans/2026-05-28-mvp-product-final-like-roadmap-design.md` | Original product-final-like roadmap. Use when validating intent, not execution order. |
 
 ## Current execution rule
 
@@ -86,6 +87,10 @@ Do not touch: new product scope, billing, paid plans, Stripe, or external billin
 Done: MVP evidence is complete, reproducible, and ready for pilot handoff.
 Next slice: pilot handoff or fixes discovered by the audit.
 ```
+
+## Active work
+
+- Stage 26.0 — MVP evidence audit: active branch `chore/stage-26-0-mvp-evidence-audit`, issue #134, and audit checklist in `docs/plans/2026-06-08-stage-26-0-mvp-evidence-audit.md`.
 
 ## Recently completed
 
