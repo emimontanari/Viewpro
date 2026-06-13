@@ -29,7 +29,11 @@ const managerTenant: TenantContext = {
 	tenantStatus: TenantStatus.ACTIVE,
 	membershipId: "membership-1",
 	role: TenantRole.PRINCIPAL_MANAGER,
-	permissions: [PERMISSIONS.ENGAGEMENTS_VIEW_ALL, PERMISSIONS.MOVEMENTS_CREATE],
+	permissions: [
+		PERMISSIONS.ENGAGEMENTS_VIEW_ALL,
+		PERMISSIONS.ENGAGEMENTS_CREATE,
+		PERMISSIONS.MOVEMENTS_CREATE,
+	],
 	userStatus: UserStatus.ACTIVE,
 };
 

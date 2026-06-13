@@ -98,6 +98,32 @@ describe('Movements (e2e)', () => {
     await expect(prisma.movement.count()).resolves.toBe(0)
   })
 
+  it('rejects official status changes by an agent on an assigned engagement', async () => {
+    const manager = await registerTenantSession('manager-agent-status-denied@example.com', 'Agent Status Denied Homes')
+    const agent = await registerTenantSession('agent-status-denied@example.com', 'Agent Status Denied Temporary')
+    await addTenantAgent(agent.userId, manager.tenantId)
+    const engagement = await createEngagement(manager.agent, manager.tenantId, {
+      title: 'Assigned Status Denied Property',
+    }).expect(201)
+    await assignAgent(manager.agent, manager.tenantId, engagement.body.id, agent.userId).expect(201)
+    await prisma.propertyEngagement.update({
+      where: { id: engagement.body.id },
+      data: { status: PropertyEngagementStatus.ACTIVE_PUBLICATION },
+    })
+
+    const response = await createMovement(agent.agent, manager.tenantId, engagement.body.id, {
+      type: MovementType.STATUS_CHANGE,
+      observation: 'Seller should not change official state.',
+      newStatus: PropertyEngagementStatus.INQUIRIES_AND_VISITS,
+    }).expect(403)
+
+    expect(response.body.message).toBe('Insufficient permissions')
+    await expect(
+      prisma.propertyEngagement.findUnique({ where: { id: engagement.body.id }, select: { status: true } }),
+    ).resolves.toEqual({ status: PropertyEngagementStatus.ACTIVE_PUBLICATION })
+    await expect(prisma.movement.count({ where: { propertyEngagementId: engagement.body.id } })).resolves.toBe(0)
+  })
+
   it('updates engagement status when a movement provides newStatus', async () => {
     const manager = await registerTenantSession('manager-status-movement@example.com', 'Status Movement Homes')
     const engagement = await createEngagement(manager.agent, manager.tenantId, {

@@ -9,6 +9,17 @@ export type AuthUser = {
   globalRole: 'USER' | 'VIEWPRO_ADMIN';
 };
 
+export const TENANT_PERMISSIONS = {
+  DOCUMENTS_REQUEST: 'documents.request',
+  DOCUMENTS_REVIEW_OWN: 'documents.review_own',
+  DOCUMENTS_VIEW_ALL: 'documents.view_all',
+  ENGAGEMENTS_CREATE: 'engagements.create',
+  ENGAGEMENTS_VIEW_ALL: 'engagements.view_all',
+  MOVEMENTS_CREATE: 'movements.create'
+} as const;
+
+export type TenantPermission = (typeof TENANT_PERMISSIONS)[keyof typeof TENANT_PERMISSIONS];
+
 export type TenantMembership = {
   id: string;
   role: string;
@@ -121,4 +132,22 @@ export function getUserStatusLabel(status: string | null | undefined) {
 
 export function getSingleMembership(session: Session | null | undefined) {
   return session?.memberships.length === 1 ? session.memberships[0] : null;
+}
+
+export function hasTenantPermission(
+  membership: TenantMembership | null | undefined,
+  permission: TenantPermission
+) {
+  return Boolean(membership?.permissions.includes(permission));
+}
+
+export function canManagePropertyEngagements(membership: TenantMembership | null | undefined) {
+  return hasTenantPermission(membership, TENANT_PERMISSIONS.ENGAGEMENTS_CREATE);
+}
+
+export function canReviewTenantDocuments(membership: TenantMembership | null | undefined) {
+  return (
+    hasTenantPermission(membership, TENANT_PERMISSIONS.DOCUMENTS_VIEW_ALL) ||
+    hasTenantPermission(membership, TENANT_PERMISSIONS.DOCUMENTS_REVIEW_OWN)
+  );
 }

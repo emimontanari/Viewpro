@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
+import { canManagePropertyEngagements } from '@/lib/session';
 import { useActiveTenant } from '@/lib/session-context';
 import { cn } from '@/lib/utils';
 import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -49,7 +50,7 @@ const DEFAULT_ARCHIVE_FILTER: PropertyArchiveFilter = 'active';
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 export function ProductTable() {
-  const { activeTenantId, isTenantLoading } = useActiveTenant();
+  const { activeMembership, activeTenantId, isTenantLoading } = useActiveTenant();
   const [params, setParams] = useQueryStates({
     page: parseAsInteger.withDefault(1),
     perPage: parseAsInteger.withDefault(10),
@@ -97,6 +98,7 @@ export function ProductTable() {
     Number(Boolean(params.status)) +
     Number(Boolean(params.operationType)) +
     Number(hasArchiveFilter);
+  const canManageProperties = canManagePropertyEngagements(activeMembership);
 
   const setFilter = (key: 'operationType' | 'status', value: string) => {
     void setParams({
@@ -172,11 +174,16 @@ export function ProductTable() {
         onArchiveFilterChange={setArchiveFilter}
         onClearFilters={clearFilters}
         onFilterChange={setFilter}
+        canManageProperties={canManageProperties}
         onPageSizeChange={setPageSize}
       />
 
       {rows.length === 0 ? (
-        <PropertyTableEmptyState hasFilters={hasFilters} onClearFilters={clearFilters} />
+        <PropertyTableEmptyState
+          canManageProperties={canManageProperties}
+          hasFilters={hasFilters}
+          onClearFilters={clearFilters}
+        />
       ) : (
         <>
           <div className='hidden min-w-0 overflow-hidden rounded-2xl border bg-background shadow-xs md:block'>
@@ -206,7 +213,11 @@ export function ProductTable() {
               </TableHeader>
               <TableBody>
                 {rows.map((row) => (
-                  <PropertyTableRow key={row.id} propertyEngagement={row.original} />
+                  <PropertyTableRow
+                    key={row.id}
+                    canManageProperties={canManageProperties}
+                    propertyEngagement={row.original}
+                  />
                 ))}
               </TableBody>
             </Table>
@@ -214,7 +225,11 @@ export function ProductTable() {
 
           <div className='grid gap-3 md:hidden'>
             {rows.map((row) => (
-              <PropertyMobileCard key={row.id} propertyEngagement={row.original} />
+              <PropertyMobileCard
+                key={row.id}
+                canManageProperties={canManageProperties}
+                propertyEngagement={row.original}
+              />
             ))}
           </div>
         </>
@@ -236,6 +251,7 @@ export function ProductTable() {
 function PropertyTableToolbar({
   activeFilterCount,
   archivedFilter,
+  canManageProperties,
   hasFilters,
   isFetching,
   operationType,
@@ -250,6 +266,7 @@ function PropertyTableToolbar({
 }: {
   activeFilterCount: number;
   archivedFilter: PropertyArchiveFilter;
+  canManageProperties: boolean;
   hasFilters: boolean;
   isFetching: boolean;
   operationType: string | null;
@@ -294,11 +311,13 @@ function PropertyTableToolbar({
           </div>
 
           <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
-            <Button asChild size='sm' className='sm:hidden'>
-              <Link href='/dashboard/product/new'>
-                <Icons.add className='size-4' /> Nueva propiedad
-              </Link>
-            </Button>
+            {canManageProperties ? (
+              <Button asChild size='sm' className='sm:hidden'>
+                <Link href='/dashboard/product/new'>
+                  <Icons.add className='size-4' /> Nueva propiedad
+                </Link>
+              </Button>
+            ) : null}
             <FilterSelect
               allLabel='Todas las operaciones'
               label='Operación'
@@ -458,7 +477,13 @@ function getOptionLabel(options: Array<{ value: string; label: string }>, value:
   return value ? options.find((option) => option.value === value)?.label : undefined;
 }
 
-function PropertyTableRow({ propertyEngagement }: { propertyEngagement: Product }) {
+function PropertyTableRow({
+  canManageProperties,
+  propertyEngagement
+}: {
+  canManageProperties: boolean;
+  propertyEngagement: Product;
+}) {
   const agent = getAgentSummary(propertyEngagement);
 
   return (
@@ -483,7 +508,10 @@ function PropertyTableRow({ propertyEngagement }: { propertyEngagement: Product 
         </div>
       </TableCell>
       <TableCell className='px-3 py-3'>
-        <QuickStatusSelect propertyEngagement={propertyEngagement} />
+        <QuickStatusSelect
+          canUpdateStatus={canManageProperties}
+          propertyEngagement={propertyEngagement}
+        />
       </TableCell>
       <TableCell className='whitespace-nowrap px-3 py-3 font-medium'>
         {formatPrice(propertyEngagement.publishedPriceCents, propertyEngagement.currency)}
@@ -498,13 +526,19 @@ function PropertyTableRow({ propertyEngagement }: { propertyEngagement: Product 
         </div>
       </TableCell>
       <TableCell className='px-3 py-3 text-right'>
-        <CellAction data={propertyEngagement} />
+        <CellAction canManageProperties={canManageProperties} data={propertyEngagement} />
       </TableCell>
     </TableRow>
   );
 }
 
-function PropertyMobileCard({ propertyEngagement }: { propertyEngagement: Product }) {
+function PropertyMobileCard({
+  canManageProperties,
+  propertyEngagement
+}: {
+  canManageProperties: boolean;
+  propertyEngagement: Product;
+}) {
   const agent = getAgentSummary(propertyEngagement);
 
   return (
@@ -512,7 +546,7 @@ function PropertyMobileCard({ propertyEngagement }: { propertyEngagement: Produc
       <div className='p-4'>
         <div className='flex items-start justify-between gap-3'>
           <PropertyIdentity propertyEngagement={propertyEngagement} compact />
-          <CellAction data={propertyEngagement} />
+          <CellAction canManageProperties={canManageProperties} data={propertyEngagement} />
         </div>
 
         <div className='mt-4 flex flex-wrap gap-2'>
@@ -525,7 +559,11 @@ function PropertyMobileCard({ propertyEngagement }: { propertyEngagement: Produc
           <Badge variant='outline'>
             {getPropertyTypeLabel(propertyEngagement.property.propertyType)}
           </Badge>
-          <QuickStatusSelect propertyEngagement={propertyEngagement} size='compact' />
+          <QuickStatusSelect
+            canUpdateStatus={canManageProperties}
+            propertyEngagement={propertyEngagement}
+            size='compact'
+          />
         </div>
 
         <div className='mt-4 grid grid-cols-2 gap-3 text-sm'>
@@ -698,9 +736,11 @@ function PropertyTablePagination({
 }
 
 function PropertyTableEmptyState({
+  canManageProperties,
   hasFilters,
   onClearFilters
 }: {
+  canManageProperties: boolean;
   hasFilters: boolean;
   onClearFilters: () => void;
 }) {
@@ -713,7 +753,9 @@ function PropertyTableEmptyState({
       <p className='mx-auto mt-2 max-w-md text-sm text-muted-foreground'>
         {hasFilters
           ? 'Los filtros actuales no tienen resultados. Probá limpiarlos para volver al inventario completo.'
-          : 'Creá la primera propiedad para empezar a gestionar captación, publicación y seguimiento.'}
+          : canManageProperties
+            ? 'Creá la primera propiedad para empezar a gestionar captación, publicación y seguimiento.'
+            : 'Cuando tengas propiedades asignadas van a aparecer acá para seguimiento.'}
       </p>
       <div className='mt-5 flex flex-col justify-center gap-2 sm:flex-row'>
         {hasFilters ? (
@@ -721,11 +763,13 @@ function PropertyTableEmptyState({
             Limpiar filtros
           </Button>
         ) : null}
-        <Button asChild>
-          <Link href='/dashboard/product/new'>
-            <Icons.add className='size-4' /> Nueva propiedad
-          </Link>
-        </Button>
+        {canManageProperties ? (
+          <Button asChild>
+            <Link href='/dashboard/product/new'>
+              <Icons.add className='size-4' /> Nueva propiedad
+            </Link>
+          </Button>
+        ) : null}
       </div>
     </div>
   );

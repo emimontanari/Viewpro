@@ -114,17 +114,20 @@ function createMockArgumentsHost(path: string, requestId: string, status = vi.fn
 
 describe('GlobalExceptionFilter production sanitization (e2e)', () => {
   let app: INestApplication
+  let previousAppPublicUrl: string | undefined
   let previousDocumentStorageDriver: string | undefined
   let previousS3Bucket: string | undefined
   let previousS3AccessKeyId: string | undefined
   let previousS3SecretAccessKey: string | undefined
 
   beforeAll(async () => {
+    previousAppPublicUrl = process.env.APP_PUBLIC_URL
     previousDocumentStorageDriver = process.env.DOCUMENT_STORAGE_DRIVER
     previousS3Bucket = process.env.DOCUMENT_STORAGE_S3_BUCKET
     previousS3AccessKeyId = process.env.DOCUMENT_STORAGE_S3_ACCESS_KEY_ID
     previousS3SecretAccessKey = process.env.DOCUMENT_STORAGE_S3_SECRET_ACCESS_KEY
     process.env.NODE_ENV = 'production'
+    process.env.APP_PUBLIC_URL = 'https://app.viewpro.example'
     process.env.CORS_ORIGIN = 'https://app.viewpro.example'
     process.env.DOCUMENT_STORAGE_DRIVER = 's3'
     process.env.DOCUMENT_STORAGE_S3_BUCKET = 'test-documents'
@@ -138,6 +141,7 @@ describe('GlobalExceptionFilter production sanitization (e2e)', () => {
   afterAll(async () => {
     await app.close()
     process.env.NODE_ENV = 'test'
+    restoreEnv('APP_PUBLIC_URL', previousAppPublicUrl)
     delete process.env.CORS_ORIGIN
     restoreEnv('DOCUMENT_STORAGE_DRIVER', previousDocumentStorageDriver)
     restoreEnv('DOCUMENT_STORAGE_S3_BUCKET', previousS3Bucket)

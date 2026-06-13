@@ -125,6 +125,17 @@ describe('PropertyOwnerSection', () => {
     expect(screen.queryByRole('button', { name: /revocar invitación/i })).not.toBeInTheDocument();
   });
 
+  it('hides owner management actions when owner management is not permitted', () => {
+    renderPropertyOwnerSection({ canManageOwners: false, owners: [invitedOwner] });
+
+    expect(screen.getByRole('button', { name: 'Ver detalle de Ana Owner' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /vincular propietario/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /regenerar y copiar link/i })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /revocar invitación/i })).not.toBeInTheDocument();
+  });
+
   it('revokes an invited owner invitation link after confirmation', async () => {
     const user = userEvent.setup();
     const fetchMock = mockInvitationRevokeResponse();
@@ -167,11 +178,13 @@ describe('PropertyOwnerSection', () => {
 });
 
 function renderPropertyOwnerSection({
+  canManageOwners = true,
   isArchived = false,
   ownerEmail = null,
   ownerName = null,
   owners = []
 }: {
+  canManageOwners?: boolean;
   isArchived?: boolean;
   ownerEmail?: string | null;
   ownerName?: string | null;
@@ -179,6 +192,7 @@ function renderPropertyOwnerSection({
 } = {}) {
   return render(
     <PropertyOwnerSection
+      canManageOwners={canManageOwners}
       isArchived={isArchived}
       ownerEmail={ownerEmail}
       ownerName={ownerName}

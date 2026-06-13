@@ -107,7 +107,16 @@ describe("Documents repository foundation", () => {
 				gte: new Date("2026-05-20T00:00:00.000Z"),
 				lte: new Date("2026-05-22T00:00:00.000Z"),
 			},
-			requestedByUserId: "agent-1",
+			requestedByUserId: "agent-2",
+			propertyEngagement: {
+				tenantId: "tenant-1",
+				agents: {
+					some: {
+						tenantId: "tenant-1",
+						agentUserId: "agent-1",
+					},
+				},
+			},
 		};
 		expect(findMany).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -160,7 +169,7 @@ describe("Documents repository foundation", () => {
 		});
 	});
 
-	it("lists only requesting-seller-visible requests for non-manager viewers", async () => {
+	it("lists only assigned-property requests for non-manager viewers", async () => {
 		const findMany = vi
 			.fn()
 			.mockResolvedValue([{ id: "request-1", requestedByUserId: "agent-1" }]);
@@ -179,12 +188,23 @@ describe("Documents repository foundation", () => {
 
 		expect(findMany).toHaveBeenCalledWith(
 			expect.objectContaining({
-				where: { tenantId: "tenant-1", requestedByUserId: "agent-1" },
+				where: {
+					tenantId: "tenant-1",
+					propertyEngagement: {
+						tenantId: "tenant-1",
+						agents: {
+							some: {
+								tenantId: "tenant-1",
+								agentUserId: "agent-1",
+							},
+						},
+					},
+				},
 			}),
 		);
 	});
 
-	it("combines property engagement filtering with requesting-seller visibility", async () => {
+	it("combines property engagement filtering with assigned-property visibility", async () => {
 		const findMany = vi
 			.fn()
 			.mockResolvedValue([{ id: "request-1", requestedByUserId: "agent-1" }]);
@@ -207,13 +227,21 @@ describe("Documents repository foundation", () => {
 				where: {
 					tenantId: "tenant-1",
 					propertyEngagementId: "engagement-1",
-					requestedByUserId: "agent-1",
+					propertyEngagement: {
+						tenantId: "tenant-1",
+						agents: {
+							some: {
+								tenantId: "tenant-1",
+								agentUserId: "agent-1",
+							},
+						},
+					},
 				},
 			}),
 		);
 	});
 
-	it("hides peer seller requests in internal detail queries", async () => {
+	it("scopes seller internal detail queries to assigned properties", async () => {
 		const findFirst = vi.fn().mockResolvedValue(null);
 		const repository = new PrismaDocumentsRepository({
 			documentRequest: { findFirst },
@@ -233,7 +261,15 @@ describe("Documents repository foundation", () => {
 				where: {
 					id: "request-1",
 					tenantId: "tenant-1",
-					requestedByUserId: "agent-2",
+					propertyEngagement: {
+						tenantId: "tenant-1",
+						agents: {
+							some: {
+								tenantId: "tenant-1",
+								agentUserId: "agent-2",
+							},
+						},
+					},
 				},
 			}),
 		);

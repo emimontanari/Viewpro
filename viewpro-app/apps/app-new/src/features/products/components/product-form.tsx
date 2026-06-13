@@ -49,6 +49,13 @@ import {
   toUpdatePayload
 } from './product-form-mappers';
 import { isArchivedProduct } from './product-tables/columns';
+import {
+  canManagePropertyEngagements,
+  canReviewTenantDocuments,
+  hasTenantPermission,
+  TENANT_PERMISSIONS
+} from '@/lib/session';
+import { useActiveTenant } from '@/lib/session-context';
 
 type ProductFormMode = 'create' | 'detail' | 'edit';
 
@@ -77,6 +84,7 @@ function PropertyEngagementEditor({
   mode: ProductFormMode;
   pageTitle: string;
 }) {
+  const { activeMembership, isTenantLoading } = useActiveTenant();
   const router = useRouter();
   const queryClient = useQueryClient();
   const isEditMode = mode === 'edit' && Boolean(initialData);
@@ -191,6 +199,14 @@ function PropertyEngagementEditor({
 
   const { FormSelectField } = useFormFields<ProductFormValues>();
 
+  if (isTenantLoading) {
+    return <PropertyPermissionNotice title='Validando permisos' />;
+  }
+
+  if (!canManagePropertyEngagements(activeMembership)) {
+    return <PropertyPermissionNotice title='No tenés permiso para administrar propiedades' />;
+  }
+
   return (
     <Card className='mx-auto w-full overflow-hidden'>
       <CardHeader className='border-b bg-muted/20'>
@@ -298,6 +314,24 @@ function PropertyEngagementEditor({
   );
 }
 
+function PropertyPermissionNotice({ title }: { title: string }) {
+  return (
+    <Card className='mx-auto w-full overflow-hidden'>
+      <CardHeader className='border-b bg-muted/20'>
+        <CardTitle className='text-left text-2xl font-bold'>{title}</CardTitle>
+        <CardDescription>
+          Podés volver al listado y consultar las propiedades que tengas asignadas.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className='p-4 sm:p-6'>
+        <Button asChild variant='outline'>
+          <Link href='/dashboard/product'>Volver al listado</Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 function preventAccidentalEnterSubmit(event: React.KeyboardEvent<HTMLFormElement>) {
   if (event.key !== 'Enter' || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
     return;
@@ -326,9 +360,14 @@ function PropertyEngagementDetails({
   propertyEngagement: Product;
   pageTitle: string;
 }) {
+  const { activeMembership } = useActiveTenant();
   const router = useRouter();
   const queryClient = useQueryClient();
   const isArchived = isArchivedProduct(propertyEngagement);
+  const canManageProperties = canManagePropertyEngagements(activeMembership);
+  const canCreateMovements = hasTenantPermission(activeMembership, TENANT_PERMISSIONS.MOVEMENTS_CREATE);
+  const canRequestDocuments = hasTenantPermission(activeMembership, TENANT_PERMISSIONS.DOCUMENTS_REQUEST);
+  const canReviewDocuments = canReviewTenantDocuments(activeMembership);
   const movements = usePropertyMovementsController({
     isArchived,
     productId: propertyEngagement.id,
@@ -356,6 +395,9 @@ function PropertyEngagementDetails({
     <Card className='mx-auto w-full overflow-hidden'>
       <CardHeader className='border-b bg-muted/20'>
         <PropertyDetailHeader
+          canAddMovement={canCreateMovements}
+          canEdit={canManageProperties}
+          canRestore={canManageProperties}
           isAddingMovement={movements.isCreatingMovement}
           isArchived={isArchived}
           isRestoring={restoreMutation.isPending}
@@ -385,11 +427,13 @@ function PropertyEngagementDetails({
 
           <aside className='flex flex-col gap-3 rounded-2xl border bg-card p-3 shadow-xs sm:p-4'>
             <PropertyStatusSummary
+              canUpdateStatus={canManageProperties}
               isArchived={isArchived}
               propertyEngagement={propertyEngagement}
             />
 
             <PropertyOwnerSection
+              canManageOwners={canManageProperties}
               isArchived={isArchived}
               ownerEmail={propertyEngagement.property.ownerEmail}
               ownerName={propertyEngagement.property.ownerName}
@@ -399,6 +443,7 @@ function PropertyEngagementDetails({
 
             <PropertyAgentsSection
               agents={propertyEngagement.agents}
+              canManageAgents={canManageProperties}
               isArchived={isArchived}
               productId={propertyEngagement.id}
               tenantId={propertyEngagement.tenantId}
@@ -415,6 +460,8 @@ function PropertyEngagementDetails({
         />
 
         <PropertyDocumentRequests
+          canRequestDocuments={canRequestDocuments}
+          canReviewDocuments={canReviewDocuments}
           isArchived={isArchived}
           owners={propertyEngagement.property.owners}
           productId={propertyEngagement.id}
@@ -422,6 +469,7 @@ function PropertyEngagementDetails({
         />
       </CardContent>
       <CreatePropertyMovementDialog
+        canUpdateStatus={canManageProperties}
         open={movements.dialogOpen}
         isSubmitting={movements.isCreatingMovement}
         onOpenChange={movements.setDialogOpen}
