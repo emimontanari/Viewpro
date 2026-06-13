@@ -22,6 +22,27 @@ describe('nav config', () => {
     );
   });
 
+  it('does not link to removed template route URLs', () => {
+    const navUrls = navItems.map((item) => item.url);
+    const removedRoutes = [
+      '/dashboard/chat',
+      '/dashboard/kanban',
+      '/dashboard/forms',
+      '/dashboard/forms/basic',
+      '/dashboard/forms/advanced',
+      '/dashboard/forms/multi-step',
+      '/dashboard/forms/sheet-form',
+      '/dashboard/elements',
+      '/dashboard/elements/icons',
+      '/dashboard/react-query',
+      '/dashboard/exclusive'
+    ];
+
+    for (const route of removedRoutes) {
+      expect(navUrls).not.toContain(route);
+    }
+  });
+
   it('uses product-facing Spanish labels for the main workspace areas', () => {
     expect(navTitles).toEqual(
       expect.arrayContaining(['Inicio', 'Propiedades', 'Seguimiento', 'Inmobiliarias', 'Equipo'])
