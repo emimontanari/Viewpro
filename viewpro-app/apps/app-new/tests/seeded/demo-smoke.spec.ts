@@ -82,6 +82,29 @@ for (const scenario of SELLER_SCENARIOS) {
         item.agents.some((agent) => agent.email === scenario.email)
       )
     ).toBe(true);
+
+    await page.goto('/dashboard/product');
+    await expect(page.getByRole('heading', { name: 'Propiedades' }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Nueva propiedad' })).toHaveCount(0);
+    await expect(page.getByRole('combobox', { name: /Cambiar estado de/i })).toHaveCount(0);
+    await expect(page.getByText(scenario.expectedAssignedTitle).first()).toBeVisible();
+
+    const assignedRow = page
+      .getByRole('row')
+      .filter({ hasText: scenario.expectedAssignedTitle })
+      .first();
+    await assignedRow.getByRole('button', { name: 'Abrir menú' }).click();
+    await expect(page.getByRole('menuitem', { name: /Ver detalle/i })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: /Editar/i })).toHaveCount(0);
+    await expect(page.getByRole('menuitem', { name: /Archivar|Restaurar/i })).toHaveCount(0);
+    await page.getByRole('menuitem', { name: /Ver detalle/i }).click();
+
+    await expect(page).toHaveURL(/\/dashboard\/product\/[a-f0-9-]+$/i);
+    await expect(page.getByRole('button', { name: /Editar propiedad/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Gestionar vendedores/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Vincular propietario/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Solicitar documento/i })).toHaveCount(0);
+    await expect(page.getByRole('combobox', { name: /Cambiar estado de/i })).toHaveCount(0);
   });
 }
 

@@ -38,6 +38,17 @@ describe('PropertyStatusSummary', () => {
     );
   });
 
+  it('renders status as read-only when status updates are not permitted', () => {
+    renderPropertyStatusSummary({
+      canUpdateStatus: false,
+      propertyEngagement: createProduct({ status: 'ACTIVE_PUBLICATION' })
+    });
+
+    expect(screen.queryByRole('combobox', { name: 'Cambiar estado de Casa demo' })).not.toBeInTheDocument();
+    expect(screen.getByText('Publicación activa')).toHaveClass('border-emerald-200', 'text-emerald-800');
+    expect(screen.getByText('Estado oficial de la gestión.')).toBeInTheDocument();
+  });
+
   it('renders archived details when the property is archived', () => {
     renderPropertyStatusSummary({
       isArchived: true,
@@ -61,14 +72,20 @@ describe('PropertyStatusSummary', () => {
 });
 
 function renderPropertyStatusSummary({
+  canUpdateStatus = true,
   isArchived = false,
   propertyEngagement = createProduct()
 }: {
+  canUpdateStatus?: boolean;
   isArchived?: boolean;
   propertyEngagement?: Product;
 } = {}) {
   return render(
-    <PropertyStatusSummary isArchived={isArchived} propertyEngagement={propertyEngagement} />,
+    <PropertyStatusSummary
+      canUpdateStatus={canUpdateStatus}
+      isArchived={isArchived}
+      propertyEngagement={propertyEngagement}
+    />,
     { wrapper: createQueryClientWrapper() }
   );
 }

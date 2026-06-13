@@ -33,6 +33,7 @@ type ManagePropertyAgentsDialogProps = {
 
 type PropertyAgentsPanelProps = {
   agents: ProductAgent[];
+  canManageAgents?: boolean;
   isArchived: boolean;
   isManageDisabled: boolean;
   onManage: () => void;
@@ -46,6 +47,7 @@ const roleLabels: Record<TenantMemberRole, string> = {
 
 export function PropertyAgentsPanel({
   agents,
+  canManageAgents = true,
   isArchived,
   isManageDisabled,
   onManage
@@ -86,7 +88,7 @@ export function PropertyAgentsPanel({
         <p className='text-xs leading-5 text-foreground/70'>
           Restaurá la propiedad para gestionar vendedores.
         </p>
-      ) : (
+      ) : canManageAgents ? (
         <Button
           type='button'
           size='sm'
@@ -98,7 +100,7 @@ export function PropertyAgentsPanel({
           <Icons.teams className='size-4' />
           Gestionar vendedores
         </Button>
-      )}
+      ) : null}
     </section>
   );
 }

@@ -6,11 +6,13 @@ import { getProductStatusPanelTone } from './status-tones';
 import { QuickStatusSelect } from './quick-status-select';
 
 type PropertyStatusSummaryProps = {
+  canUpdateStatus?: boolean;
   isArchived: boolean;
   propertyEngagement: Product;
 };
 
 export function PropertyStatusSummary({
+  canUpdateStatus = true,
   isArchived,
   propertyEngagement
 }: PropertyStatusSummaryProps) {
@@ -26,7 +28,10 @@ export function PropertyStatusSummary({
         </p>
       </div>
 
-      <ReadOnlyStatusField propertyEngagement={propertyEngagement} />
+      <ReadOnlyStatusField
+        canUpdateStatus={canUpdateStatus}
+        propertyEngagement={propertyEngagement}
+      />
 
       {isArchived ? (
         <ArchivedStatePanel
@@ -67,15 +72,26 @@ function ArchivedStatePanel({
   );
 }
 
-function ReadOnlyStatusField({ propertyEngagement }: { propertyEngagement: Product }) {
+function ReadOnlyStatusField({
+  canUpdateStatus,
+  propertyEngagement
+}: {
+  canUpdateStatus: boolean;
+  propertyEngagement: Product;
+}) {
   return (
     <div className='space-y-3 rounded-xl border bg-muted/20 p-4'>
       <SectionHeader
-        description='Actualizá el avance sin entrar a edición completa.'
+        description={
+          canUpdateStatus
+            ? 'Actualizá el avance sin entrar a edición completa.'
+            : 'Estado oficial de la gestión.'
+        }
         icon={Icons.adjustments}
         label='Estado comercial'
       />
       <QuickStatusSelect
+        canUpdateStatus={canUpdateStatus}
         propertyEngagement={propertyEngagement}
         className='h-10 max-w-none rounded-lg px-3 text-sm'
       />

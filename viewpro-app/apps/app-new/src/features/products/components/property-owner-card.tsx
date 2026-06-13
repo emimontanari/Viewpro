@@ -11,6 +11,7 @@ type ManualInvitationFallback = {
 };
 
 type PropertyOwnerCardProps = {
+  canManageOwners?: boolean;
   copyingInvitationOwnerId?: string | null;
   isArchived: boolean;
   isLinkDisabled: boolean;
@@ -30,6 +31,7 @@ const ownerStatusLabels: Record<PropertyOwnerAccessStatus, string> = {
 };
 
 export function PropertyOwnerCard({
+  canManageOwners = true,
   copyingInvitationOwnerId = null,
   isArchived,
   isLinkDisabled,
@@ -67,6 +69,7 @@ export function PropertyOwnerCard({
                   onClick={() => undefined}
                 >
                   {!isArchived &&
+                  canManageOwners &&
                   owner.accessStatus === 'INVITED' &&
                   (onCopyInvitationLink || onRevokeInvitationLink) ? (
                     <div className='flex flex-wrap gap-2'>
@@ -119,7 +122,7 @@ export function PropertyOwnerCard({
         <p className='text-xs leading-5 text-foreground/70'>
           Restaurá la propiedad para vincular propietarios.
         </p>
-      ) : (
+      ) : canManageOwners ? (
         <Button
           type='button'
           size='sm'
@@ -131,7 +134,7 @@ export function PropertyOwnerCard({
           <Icons.userPen className='size-4' />
           Vincular propietario
         </Button>
-      )}
+      ) : null}
     </section>
   );
 }

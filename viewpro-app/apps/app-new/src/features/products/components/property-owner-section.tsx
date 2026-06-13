@@ -19,6 +19,7 @@ type ManualInvitationFallback = {
 };
 
 type PropertyOwnerSectionProps = {
+  canManageOwners?: boolean;
   isArchived: boolean;
   ownerEmail: string | null;
   ownerName: string | null;
@@ -27,6 +28,7 @@ type PropertyOwnerSectionProps = {
 };
 
 export function PropertyOwnerSection({
+  canManageOwners = true,
   isArchived,
   ownerEmail,
   ownerName,
@@ -54,7 +56,7 @@ export function PropertyOwnerSection({
   });
 
   function handleOpenOwnerDialog() {
-    if (isArchived || linkOwnerMutation.isPending) {
+    if (isArchived || !canManageOwners || linkOwnerMutation.isPending) {
       return;
     }
 
@@ -62,7 +64,7 @@ export function PropertyOwnerSection({
   }
 
   function handleLinkOwner(payload: LinkProductOwnerPayload) {
-    if (isArchived || linkOwnerMutation.isPending) {
+    if (isArchived || !canManageOwners || linkOwnerMutation.isPending) {
       return;
     }
 
@@ -70,7 +72,7 @@ export function PropertyOwnerSection({
   }
 
   async function handleCopyInvitationLink(owner: PropertyLinkedOwner) {
-    if (isArchived || copyingInvitationOwnerId) {
+    if (isArchived || !canManageOwners || copyingInvitationOwnerId) {
       return;
     }
 
@@ -99,7 +101,7 @@ export function PropertyOwnerSection({
   }
 
   async function handleRevokeInvitationLink(owner: PropertyLinkedOwner) {
-    if (isArchived) {
+    if (isArchived || !canManageOwners) {
       return;
     }
 
@@ -129,6 +131,7 @@ export function PropertyOwnerSection({
   return (
     <>
       <PropertyOwnerCard
+        canManageOwners={canManageOwners}
         copyingInvitationOwnerId={copyingInvitationOwnerId}
         isArchived={isArchived}
         isLinkDisabled={linkOwnerMutation.isPending}

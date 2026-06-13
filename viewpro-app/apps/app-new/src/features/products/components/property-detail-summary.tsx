@@ -19,6 +19,9 @@ import { SectionHeader } from './section-header';
 type PropertyDetailHeaderProps = {
   propertyEngagement: Product;
   pageTitle: string;
+  canAddMovement?: boolean;
+  canEdit?: boolean;
+  canRestore?: boolean;
   isArchived: boolean;
   isRestoring: boolean;
   isAddingMovement: boolean;
@@ -31,6 +34,9 @@ type PropertyDetailHeaderProps = {
 export function PropertyDetailHeader({
   propertyEngagement,
   pageTitle,
+  canAddMovement = true,
+  canEdit = true,
+  canRestore = true,
   isArchived,
   isRestoring,
   isAddingMovement,
@@ -87,21 +93,25 @@ export function PropertyDetailHeader({
         </Button>
         {isArchived ? (
           <>
-            <Button
-              type='button'
-              variant='secondary'
-              disabled={isRestoring}
-              isLoading={isRestoring}
-              onClick={onRestore}
-            >
-              <Icons.check className='mr-2 size-4' />
-              Restaurar propiedad
-            </Button>
+            {canRestore ? (
+              <Button
+                type='button'
+                variant='secondary'
+                disabled={isRestoring}
+                isLoading={isRestoring}
+                onClick={onRestore}
+              >
+                <Icons.check className='mr-2 size-4' />
+                Restaurar propiedad
+              </Button>
+            ) : null}
             <p className='max-w-56 text-xs leading-5 text-muted-foreground'>
-              Restaurá la propiedad para agregar actualizaciones.
+              {canRestore
+                ? 'Restaurá la propiedad para agregar actualizaciones.'
+                : 'La propiedad está archivada. Pedile a un manager que la restaure.'}
             </p>
           </>
-        ) : (
+        ) : canAddMovement ? (
           <Button
             type='button'
             variant='secondary'
@@ -111,11 +121,13 @@ export function PropertyDetailHeader({
             <Icons.add className='mr-2 size-4' />
             Agregar actualización
           </Button>
-        )}
-        <Button type='button' onClick={onEdit}>
-          <Icons.edit className='mr-2 size-4' />
-          Editar propiedad
-        </Button>
+        ) : null}
+        {canEdit ? (
+          <Button type='button' onClick={onEdit}>
+            <Icons.edit className='mr-2 size-4' />
+            Editar propiedad
+          </Button>
+        ) : null}
       </div>
     </div>
   );

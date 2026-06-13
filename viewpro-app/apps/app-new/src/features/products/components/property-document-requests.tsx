@@ -31,6 +31,8 @@ import { CreateDocumentRequestDialog } from './create-document-request-dialog';
 import { RejectDocumentRequestDialog } from './reject-document-request-dialog';
 
 type PropertyDocumentRequestsProps = {
+  canRequestDocuments?: boolean;
+  canReviewDocuments?: boolean;
   isArchived: boolean;
   owners: PropertyLinkedOwner[];
   productId: string;
@@ -95,6 +97,8 @@ const documentStatusConfig: Record<ProductDocumentRequestStatus, DocumentStatusC
 };
 
 export function PropertyDocumentRequests({
+  canRequestDocuments = true,
+  canReviewDocuments = true,
   isArchived,
   owners,
   productId,
@@ -169,7 +173,12 @@ export function PropertyDocumentRequests({
   });
 
   function handleOpenDialog() {
-    if (isArchived || eligibleOwners.length === 0 || createDocumentRequestMutation.isPending) {
+    if (
+      isArchived ||
+      !canRequestDocuments ||
+      eligibleOwners.length === 0 ||
+      createDocumentRequestMutation.isPending
+    ) {
       return;
     }
 
@@ -177,7 +186,7 @@ export function PropertyDocumentRequests({
   }
 
   function handleSubmit(payload: CreateProductDocumentRequestPayload) {
-    if (isArchived || createDocumentRequestMutation.isPending) {
+    if (isArchived || !canRequestDocuments || createDocumentRequestMutation.isPending) {
       return;
     }
 
@@ -205,21 +214,24 @@ export function PropertyDocumentRequests({
             Solicitudes documentales asociadas a esta propiedad.
           </p>
         </div>
-        <Button
-          type='button'
-          variant='outline'
-          className='border-border/70 bg-transparent hover:bg-muted/40 dark:border-border dark:bg-transparent'
-          disabled={
-            isArchived || eligibleOwners.length === 0 || createDocumentRequestMutation.isPending
-          }
-          onClick={handleOpenDialog}
-        >
-          <IconFilePlus className='size-4' />
-          Solicitar documento
-        </Button>
+        {canRequestDocuments ? (
+          <Button
+            type='button'
+            variant='outline'
+            className='border-border/70 bg-transparent hover:bg-muted/40 dark:border-border dark:bg-transparent'
+            disabled={
+              isArchived || eligibleOwners.length === 0 || createDocumentRequestMutation.isPending
+            }
+            onClick={handleOpenDialog}
+          >
+            <IconFilePlus className='size-4' />
+            Solicitar documento
+          </Button>
+        ) : null}
       </div>
 
       <DocumentRequestHint
+        canRequestDocuments={canRequestDocuments}
         isArchived={isArchived}
         eligibleOwnerCount={eligibleOwners.length}
         invitedOwnerCount={invitedOwnerCount}
@@ -251,6 +263,7 @@ export function PropertyDocumentRequests({
                 <DocumentRequestSection
                   key={group.key}
                   group={group}
+                  canReviewDocuments={canReviewDocuments}
                   isApproving={approveDocumentMutation.isPending}
                   isReading={readDocumentMutation.isPending}
                   isRejecting={rejectDocumentMutation.isPending}
@@ -287,16 +300,22 @@ export function PropertyDocumentRequests({
 }
 
 function DocumentRequestHint({
+  canRequestDocuments,
   eligibleOwnerCount,
   invitedOwnerCount,
   isArchived,
   linkedOwnerCount
 }: {
+  canRequestDocuments: boolean;
   eligibleOwnerCount: number;
   invitedOwnerCount: number;
   isArchived: boolean;
   linkedOwnerCount: number;
 }) {
+  if (!canRequestDocuments) {
+    return null;
+  }
+
   if (isArchived) {
     return (
       <p className='rounded-xl border border-dashed bg-muted/20 p-3 text-sm text-muted-foreground'>
@@ -416,6 +435,7 @@ function DocumentRequestFilters({
 }
 
 function DocumentRequestSection({
+  canReviewDocuments,
   group,
   isApproving,
   isReading,
@@ -424,6 +444,7 @@ function DocumentRequestSection({
   onRead,
   onReject
 }: {
+  canReviewDocuments: boolean;
   group: DocumentRequestGroup;
   isApproving: boolean;
   isReading: boolean;
@@ -453,6 +474,7 @@ function DocumentRequestSection({
           </CollapsibleTrigger>
           <CollapsibleContent>
             <DocumentRequestList
+              canReviewDocuments={canReviewDocuments}
               emptyCopy={group.emptyCopy}
               isApproving={isApproving}
               isReading={isReading}
@@ -476,6 +498,7 @@ function DocumentRequestSection({
         </h4>
       </div>
       <DocumentRequestList
+        canReviewDocuments={canReviewDocuments}
         emptyCopy={group.emptyCopy}
         isApproving={isApproving}
         isReading={isReading}
@@ -490,6 +513,7 @@ function DocumentRequestSection({
 }
 
 function DocumentRequestList({
+  canReviewDocuments,
   emptyCopy,
   isApproving,
   isReading,
@@ -499,6 +523,7 @@ function DocumentRequestList({
   onRead,
   onReject
 }: {
+  canReviewDocuments: boolean;
   emptyCopy: string;
   isApproving: boolean;
   isReading: boolean;
@@ -521,6 +546,7 @@ function DocumentRequestList({
       {items.map((request) => (
         <DocumentRequestItem
           key={request.id}
+          canReviewDocuments={canReviewDocuments}
           request={request}
           isApproving={isApproving}
           isReading={isReading}
@@ -535,6 +561,7 @@ function DocumentRequestList({
 }
 
 function DocumentRequestItem({
+  canReviewDocuments,
   isApproving,
   isReading,
   isRejecting,
@@ -543,6 +570,7 @@ function DocumentRequestItem({
   onReject,
   request
 }: {
+  canReviewDocuments: boolean;
   isApproving: boolean;
   isReading: boolean;
   isRejecting: boolean;
@@ -551,7 +579,8 @@ function DocumentRequestItem({
   onReject: (request: ProductDocumentRequest) => void;
   request: ProductDocumentRequest;
 }) {
-  const canReview = request.status === 'SUBMITTED' && request.currentVersion !== null;
+  const canReview =
+    canReviewDocuments && request.status === 'SUBMITTED' && request.currentVersion !== null;
   const canOpenDocument = request.currentVersion !== null;
   const isPassivePending = request.status === 'PENDING';
   const compactDescription = getCompactDocumentDescription(request);

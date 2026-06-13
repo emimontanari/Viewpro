@@ -72,6 +72,16 @@ describe('PropertyAgentsSection', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('hides management controls when seller management is not permitted', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    renderPropertyAgentsSection({ agents: [assignedAgent], canManageAgents: false });
+
+    expect(screen.getByText('1 vendedor asignado')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /gestionar vendedores/i })).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('assigns one available agent through the BFF', async () => {
     const user = userEvent.setup();
     const fetchMock = mockProductAgentsFetch([availableAgent]);
@@ -141,16 +151,19 @@ describe('PropertyAgentsSection', () => {
 
 function renderPropertyAgentsSection({
   agents = [],
+  canManageAgents = true,
   isArchived = false,
   tenantId = 'tenant-1'
 }: {
   agents?: ProductAgent[];
+  canManageAgents?: boolean;
   isArchived?: boolean;
   tenantId?: string | null;
 } = {}) {
   return render(
     <PropertyAgentsSection
       agents={agents}
+      canManageAgents={canManageAgents}
       isArchived={isArchived}
       productId='product-1'
       tenantId={tenantId}

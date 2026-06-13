@@ -314,6 +314,71 @@ describe("Analytics reports (e2e)", () => {
 		).not.toContain("movement");
 	});
 
+	it("scopes seller activity feed to assigned properties", async () => {
+		const manager = await registerTenantSession(
+			"analytics-seller-feed-manager@example.com",
+			"Analytics Seller Feed Homes",
+		);
+		const seller = await registerTenantSession(
+			"analytics-seller-feed-agent@example.com",
+			"Analytics Seller Feed Agent Temporary",
+		);
+		await addTenantAgent(seller.userId, manager.tenantId);
+		const assigned = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Assigned Feed Property",
+		}).expect(201);
+		const unassigned = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Unassigned Feed Property",
+		}).expect(201);
+		await assignAgent(manager.agent, manager.tenantId, assigned.body.id, seller.userId).expect(201);
+		const assignedOwner = await grantInvitedOwner(assigned.body.property.id, {
+			email: "assigned-feed-owner@example.com",
+			firstName: "Assigned",
+			lastName: "Owner",
+		});
+		const unassignedOwner = await grantInvitedOwner(unassigned.body.property.id, {
+			email: "unassigned-feed-owner@example.com",
+			firstName: "Unassigned",
+			lastName: "Owner",
+		});
+		const assignedMovement = await createMovement(manager.agent, manager.tenantId, assigned.body.id, {
+			type: MovementType.GENERAL_UPDATE,
+			observation: "Assigned feed movement.",
+		}).expect(201);
+		const unassignedMovement = await createMovement(manager.agent, manager.tenantId, unassigned.body.id, {
+			type: MovementType.GENERAL_UPDATE,
+			observation: "Unassigned feed movement.",
+		}).expect(201);
+		const assignedDocument = await manager.agent
+			.post(`/api/property-engagements/${assigned.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ propertyAssetOwnerId: assignedOwner.id, title: "Assigned escritura" })
+			.expect(201);
+		const unassignedDocument = await manager.agent
+			.post(`/api/property-engagements/${unassigned.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ propertyAssetOwnerId: unassignedOwner.id, title: "Unassigned escritura" })
+			.expect(201);
+
+		const response = await seller.agent
+			.get("/api/analytics/activity-feed?page=1&pageSize=20")
+			.set("x-tenant-id", manager.tenantId)
+			.expect(200);
+		const itemIds = response.body.items.map((item: { id: string }) => item.id);
+		const documentIds = response.body.items.flatMap((item: { documentRequestId?: string }) =>
+			item.documentRequestId ? [item.documentRequestId] : [],
+		);
+		const propertyIds = response.body.items.map((item: { propertyEngagementId: string }) => item.propertyEngagementId);
+
+		expect(response.body.total).toBe(2);
+		expect(itemIds).toContain(assignedMovement.body.id);
+		expect(itemIds).not.toContain(unassignedMovement.body.id);
+		expect(documentIds).toContain(assignedDocument.body.id);
+		expect(documentIds).not.toContain(unassignedDocument.body.id);
+		expect(propertyIds).toEqual(expect.arrayContaining([assigned.body.id]));
+		expect(propertyIds).not.toContain(unassigned.body.id);
+	});
+
 	it("returns dashboard summary with default seven-day range and tenant-scoped rankings", async () => {
 		const manager = await registerTenantSession(
 			"analytics-dashboard-summary@example.com",
@@ -568,6 +633,10 @@ describe("Analytics reports (e2e)", () => {
 		return prisma.tenantMembership.create({
 			data: { userId, tenantId, role: TenantRole.AGENT },
 		});
+	}
+
+	function assignAgent(agent: TestAgent, tenantId: string, engagementId: string, agentUserId: string) {
+		return agent.post(`/api/property-engagements/${engagementId}/agents`).set("x-tenant-id", tenantId).send({ agentUserId });
 	}
 
 	async function grantInvitedOwner(

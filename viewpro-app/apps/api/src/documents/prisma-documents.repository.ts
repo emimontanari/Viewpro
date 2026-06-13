@@ -437,14 +437,14 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
       tenantId: input.tenantId,
       ...(Object.keys(createdAt).length > 0 ? { createdAt } : {}),
       ...(input.requestedByUserId ? { requestedByUserId: input.requestedByUserId } : {}),
-      ...(input.canViewAll ? {} : { requestedByUserId: input.viewerUserId }),
+      ...(input.canViewAll
+        ? {}
+        : {
+            propertyEngagement: this.buildAssignedDocumentEngagementWhere(input),
+          }),
       ...(input.activeEngagementsOnly
         ? {
-            propertyEngagement: {
-              tenantId: input.tenantId,
-              archivedAt: null,
-              status: { notIn: inactiveEngagementStatuses },
-            },
+            propertyEngagement: this.buildActiveDocumentEngagementWhere(input),
           }
         : {}),
     }
@@ -463,7 +463,7 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
     }
 
     if (!input.canViewAll) {
-      where.requestedByUserId = input.viewerUserId
+      where.propertyEngagement = this.buildAssignedDocumentEngagementWhere(input)
     }
 
     return where
@@ -473,10 +473,38 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
     const where: Prisma.DocumentRequestWhereInput = { tenantId: input.tenantId }
 
     if (!input.canViewAll) {
-      where.requestedByUserId = input.viewerUserId
+      where.propertyEngagement = this.buildAssignedDocumentEngagementWhere(input)
     }
 
     return where
+  }
+
+  private buildAssignedDocumentEngagementWhere(input: {
+    tenantId: string
+    viewerUserId: string
+  }): Prisma.PropertyEngagementWhereInput {
+    return {
+      tenantId: input.tenantId,
+      agents: {
+        some: {
+          tenantId: input.tenantId,
+          agentUserId: input.viewerUserId,
+        },
+      },
+    }
+  }
+
+  private buildActiveDocumentEngagementWhere(input: {
+    tenantId: string
+    viewerUserId: string
+    canViewAll: boolean
+  }): Prisma.PropertyEngagementWhereInput {
+    return {
+      tenantId: input.tenantId,
+      archivedAt: null,
+      status: { notIn: inactiveEngagementStatuses },
+      ...(input.canViewAll ? {} : this.buildAssignedDocumentEngagementWhere(input)),
+    }
   }
 
   private buildDocumentRequestOwnerWhere(input: {
