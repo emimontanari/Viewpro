@@ -2,14 +2,16 @@
 
 Monorepo técnico de ViewPro. Este directorio contiene las apps y paquetes ejecutables; la documentación de producto y arquitectura queda en el repo raíz bajo `docs/`.
 
-## Stack inicial
+## Stack actual
 
 - Monorepo con pnpm workspaces
 - Turborepo
-- `apps/web`: Next.js
+- `apps/app-new`: Next.js app activa
 - `apps/api`: NestJS
 - `packages/contracts`: contrato OpenAPI/tipos
 - `packages/config`: configuración compartida mínima
+
+`apps/web` fue el frontend legacy inicial y ya no forma parte del workspace activo.
 
 ## Comandos
 
@@ -205,7 +207,7 @@ El bucket S3/R2 necesita CORS para uploads directos desde el navegador: permitir
 
 ## Apps
 
-- Web: http://localhost:3000
+- App web activa (`apps/app-new`): http://localhost:3000
 - API health: http://localhost:3001/api/health
 - API docs: http://localhost:3001/api/docs
 
