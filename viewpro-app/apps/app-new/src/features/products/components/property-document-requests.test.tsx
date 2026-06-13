@@ -463,6 +463,28 @@ describe('PropertyDocumentRequests', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(createProductDocumentRequestMock).not.toHaveBeenCalled();
   });
+
+  it('hides document request creation controls when creation is not permitted', async () => {
+    getProductDocumentRequestsMock.mockResolvedValueOnce(documentRequestsResponse([]));
+
+    renderPropertyDocumentRequests({ canRequestDocuments: false });
+
+    expect(await screen.findByRole('heading', { name: 'Documentos' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Solicitar documento' })).not.toBeInTheDocument();
+    expect(createProductDocumentRequestMock).not.toHaveBeenCalled();
+  });
+
+  it('hides document review decisions when review is not permitted', async () => {
+    getProductDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([documentRequest({ status: 'SUBMITTED' })])
+    );
+
+    renderPropertyDocumentRequests({ canReviewDocuments: false });
+
+    expect(await screen.findByRole('button', { name: 'Abrir documento' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Aprobar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rechazar' })).not.toBeInTheDocument();
+  });
 });
 
 function renderPropertyDocumentRequests(

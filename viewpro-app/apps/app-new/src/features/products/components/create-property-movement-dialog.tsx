@@ -43,11 +43,13 @@ type CreateProductMovementDialogState = {
 type MovementFormErrors = Partial<Record<keyof CreateProductMovementValues, string>>;
 
 export function CreatePropertyMovementDialog({
+  canUpdateStatus = true,
   isSubmitting,
   onOpenChange,
   onSubmit,
   open
 }: {
+  canUpdateStatus?: boolean;
   isSubmitting: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: ProductMovementMutationPayload) => void;
@@ -69,7 +71,8 @@ export function CreatePropertyMovementDialog({
     event.preventDefault();
 
     const parsed = createProductMovementSchema.safeParse({
-      newStatus: values.newStatus === NO_STATUS_CHANGE ? undefined : values.newStatus,
+      newStatus:
+        canUpdateStatus && values.newStatus !== NO_STATUS_CHANGE ? values.newStatus : undefined,
       nextStep: values.nextStep,
       observation: values.observation,
       type: values.type
@@ -163,39 +166,41 @@ export function CreatePropertyMovementDialog({
             <FieldError>{errors.nextStep}</FieldError>
           </Field>
 
-          <Field>
-            <FieldLabel htmlFor='movement-new-status'>Actualizar estado</FieldLabel>
-            <Select
-              value={values.newStatus}
-              disabled={isSubmitting}
-              onValueChange={(value) =>
-                setValues((current) => ({
-                  ...current,
-                  newStatus: value as CreateProductMovementDialogState['newStatus']
-                }))
-              }
-            >
-              <SelectTrigger
-                id='movement-new-status'
-                className='w-full'
-                aria-invalid={!!errors.newStatus}
+          {canUpdateStatus ? (
+            <Field>
+              <FieldLabel htmlFor='movement-new-status'>Actualizar estado</FieldLabel>
+              <Select
+                value={values.newStatus}
+                disabled={isSubmitting}
+                onValueChange={(value) =>
+                  setValues((current) => ({
+                    ...current,
+                    newStatus: value as CreateProductMovementDialogState['newStatus']
+                  }))
+                }
               >
-                <SelectValue placeholder='Sin cambio de estado' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NO_STATUS_CHANGE}>Sin cambio de estado</SelectItem>
-                {propertyStatusOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FieldDescription>
-              Dejalo sin cambio si esta actualización no modifica el estado de la gestión.
-            </FieldDescription>
-            <FieldError>{errors.newStatus}</FieldError>
-          </Field>
+                <SelectTrigger
+                  id='movement-new-status'
+                  className='w-full'
+                  aria-invalid={!!errors.newStatus}
+                >
+                  <SelectValue placeholder='Sin cambio de estado' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_STATUS_CHANGE}>Sin cambio de estado</SelectItem>
+                  {propertyStatusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldDescription>
+                Dejalo sin cambio si esta actualización no modifica el estado de la gestión.
+              </FieldDescription>
+              <FieldError>{errors.newStatus}</FieldError>
+            </Field>
+          ) : null}
         </form>
 
         <DialogFooter>

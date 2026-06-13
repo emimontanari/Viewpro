@@ -10,6 +10,7 @@ import { ManagePropertyAgentsDialog, PropertyAgentsPanel } from './manage-proper
 
 type PropertyAgentsSectionProps = {
   agents: ProductAgent[];
+  canManageAgents?: boolean;
   isArchived: boolean;
   productId: string;
   tenantId: string | null;
@@ -17,6 +18,7 @@ type PropertyAgentsSectionProps = {
 
 export function PropertyAgentsSection({
   agents,
+  canManageAgents = true,
   isArchived,
   productId,
   tenantId
@@ -27,7 +29,7 @@ export function PropertyAgentsSection({
   const [removingAgentId, setRemovingAgentId] = useState<string | null>(null);
   const assignableAgentsQuery = useQuery({
     ...assignableProductAgentsOptions(tenantId),
-    enabled: agentsDialogOpen && !isArchived
+    enabled: agentsDialogOpen && canManageAgents && !isArchived
   });
   const assignAgentMutation = useMutation({
     mutationFn: (agentUserId: string) => assignProductAgent(productId, { agentUserId }),
@@ -97,7 +99,7 @@ export function PropertyAgentsSection({
   });
 
   function handleOpenAgentsDialog() {
-    if (isArchived) {
+    if (isArchived || !canManageAgents) {
       return;
     }
 
@@ -107,6 +109,7 @@ export function PropertyAgentsSection({
   function handleAssignAgent(agentUserId: string) {
     if (
       isArchived ||
+      !canManageAgents ||
       assignAgentMutation.isPending ||
       removeAgentMutation.isPending ||
       assignAllAgentsMutation.isPending
@@ -120,6 +123,7 @@ export function PropertyAgentsSection({
   function handleAssignAllAgents(agentUserIds: string[]) {
     if (
       isArchived ||
+      !canManageAgents ||
       agentUserIds.length === 0 ||
       assignAgentMutation.isPending ||
       removeAgentMutation.isPending ||
@@ -134,6 +138,7 @@ export function PropertyAgentsSection({
   function handleRemoveAgent(agentId: string) {
     if (
       isArchived ||
+      !canManageAgents ||
       assignAgentMutation.isPending ||
       removeAgentMutation.isPending ||
       assignAllAgentsMutation.isPending
@@ -148,6 +153,7 @@ export function PropertyAgentsSection({
     <>
       <PropertyAgentsPanel
         agents={agents}
+        canManageAgents={canManageAgents}
         isArchived={isArchived}
         isManageDisabled={
           assignAgentMutation.isPending ||

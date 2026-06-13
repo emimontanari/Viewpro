@@ -59,6 +59,27 @@ describe('PropertyDetailHeader', () => {
 
     expect(onRestore).toHaveBeenCalledTimes(1);
   });
+
+  it('hides edit and movement actions when they are not permitted', () => {
+    renderPropertyDetailHeader({ canAddMovement: false, canEdit: false });
+
+    expect(screen.getByRole('button', { name: 'Volver al listado' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /agregar actualización/i })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /editar propiedad/i })).not.toBeInTheDocument();
+  });
+
+  it('hides restore action for archived properties when restore is not permitted', () => {
+    renderPropertyDetailHeader({
+      canRestore: false,
+      isArchived: true,
+      propertyEngagement: createProduct({ archivedAt: '2026-05-29T12:00:00.000Z' })
+    });
+
+    expect(screen.queryByRole('button', { name: /restaurar propiedad/i })).not.toBeInTheDocument();
+    expect(screen.getByText('La propiedad está archivada. Pedile a un manager que la restaure.')).toBeInTheDocument();
+  });
 });
 
 describe('PropertyReadOnlySections', () => {

@@ -17,10 +17,11 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 interface CellActionProps {
+  canManageProperties?: boolean;
   data: Product;
 }
 
-export function CellAction({ data }: CellActionProps) {
+export function CellAction({ canManageProperties = true, data }: CellActionProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const isArchived = Boolean(data.archivedAt);
@@ -58,17 +59,21 @@ export function CellAction({ data }: CellActionProps) {
         <DropdownMenuItem onClick={() => router.push(`/dashboard/product/${data.id}`)}>
           <Icons.page className='mr-2 h-4 w-4' /> Ver detalle
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push(`/dashboard/product/${data.id}/edit`)}>
-          <Icons.edit className='mr-2 h-4 w-4' /> Editar
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled={lifecycleMutation.isPending} onClick={handleLifecycleAction}>
-          {lifecycleMutation.isPending ? (
-            <Icons.spinner className='mr-2 h-4 w-4 animate-spin' />
-          ) : (
-            <LifecycleIcon className='mr-2 h-4 w-4' />
-          )}
-          {lifecycleMutation.isPending ? 'Guardando...' : lifecycleLabel}
-        </DropdownMenuItem>
+        {canManageProperties ? (
+          <>
+            <DropdownMenuItem onClick={() => router.push(`/dashboard/product/${data.id}/edit`)}>
+              <Icons.edit className='mr-2 h-4 w-4' /> Editar
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={lifecycleMutation.isPending} onClick={handleLifecycleAction}>
+              {lifecycleMutation.isPending ? (
+                <Icons.spinner className='mr-2 h-4 w-4 animate-spin' />
+              ) : (
+                <LifecycleIcon className='mr-2 h-4 w-4' />
+              )}
+              {lifecycleMutation.isPending ? 'Guardando...' : lifecycleLabel}
+            </DropdownMenuItem>
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

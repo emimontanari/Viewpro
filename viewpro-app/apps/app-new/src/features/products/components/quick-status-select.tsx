@@ -1,5 +1,6 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -17,10 +18,12 @@ import { PROPERTY_STATUS_OPTIONS } from './product-tables/options';
 import { getStatusLabel, getStatusTone } from './product-tables/columns';
 
 export function QuickStatusSelect({
+  canUpdateStatus = true,
   className,
   propertyEngagement,
   size = 'default'
 }: {
+  canUpdateStatus?: boolean;
   className?: string;
   propertyEngagement: Product;
   size?: 'default' | 'compact';
@@ -54,6 +57,22 @@ export function QuickStatusSelect({
   const compact = size === 'compact';
   const displayStatus =
     mutation.isPending && mutation.variables ? mutation.variables : propertyEngagement.status;
+
+  if (!canUpdateStatus) {
+    return (
+      <Badge
+        variant='outline'
+        className={cn(
+          'h-8 min-h-0 w-fit gap-2 rounded-md border px-2.5 py-1 text-xs font-medium shadow-xs',
+          compact ? 'max-w-52' : 'max-w-60',
+          getStatusTone(displayStatus),
+          className
+        )}
+      >
+        {getStatusLabel(displayStatus)}
+      </Badge>
+    );
+  }
 
   return (
     <Select value={displayStatus} disabled={mutation.isPending} onValueChange={handleStatusChange}>

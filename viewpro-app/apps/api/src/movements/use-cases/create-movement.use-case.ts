@@ -49,6 +49,10 @@ export class CreateMovementUseCase {
       throw new BadRequestException('Lifecycle movements must be created through property lifecycle actions')
     }
 
+    if (input.newStatus && !tenant.permissions.includes(PERMISSIONS.ENGAGEMENTS_CREATE)) {
+      throw new ForbiddenException('Insufficient permissions')
+    }
+
     const engagement = await this.propertyEngagementsRepository.findByIdForTenant({
       tenantId: tenant.tenantId,
       engagementId,
