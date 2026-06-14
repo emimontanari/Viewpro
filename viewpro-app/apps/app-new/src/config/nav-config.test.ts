@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { navGroups, ownerNavGroups } from './nav-config';
 
@@ -41,6 +42,25 @@ describe('nav config', () => {
     for (const route of removedRoutes) {
       expect(navUrls).not.toContain(route);
     }
+  });
+
+  it('does not expose billing in the default dashboard navigation', () => {
+    const navUrls = navItems.map((item) => item.url);
+    const navShortcuts = navItems.flatMap((item) => item.shortcut?.join(' ') ?? []);
+
+    expect(navTitles).not.toContain('Facturación');
+    expect(navUrls).not.toContain('/dashboard/billing');
+    expect(navShortcuts).not.toContain('b b');
+  });
+
+  it('does not keep hard-coded billing links in account dropdown menus', () => {
+    const appSidebarSource = readFileSync('src/components/layout/app-sidebar.tsx', 'utf8');
+    const userNavSource = readFileSync('src/components/layout/user-nav.tsx', 'utf8');
+
+    expect(appSidebarSource).not.toContain('/dashboard/billing');
+    expect(appSidebarSource).not.toContain('Facturación');
+    expect(userNavSource).not.toContain('/dashboard/billing');
+    expect(userNavSource).not.toContain('Facturación');
   });
 
   it('uses product-facing Spanish labels for the main workspace areas', () => {
