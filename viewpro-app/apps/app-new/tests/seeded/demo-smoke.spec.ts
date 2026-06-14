@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const DEMO_EMAIL = 'demo@viewpro.local';
+const DEMO_ADMIN_EMAIL = 'admin.demo@viewpro.local';
 const DEMO_PASSWORD = process.env.VIEWPRO_DEMO_PASSWORD ?? 'viewpro-demo-local';
 const DEMO_TENANT_NAME = 'ViewPro Demo Inmobiliaria';
 const VISIBLE_DEMO_PROPERTY_TITLE = 'Casa compacta en Funes';
@@ -173,6 +174,106 @@ test('existing demo owner can accept another property invitation', async ({ page
   );
 });
 
+test('demo manager sees seeded internal notifications', async ({ page }) => {
+  await signIn(page, DEMO_EMAIL);
+
+  const internalNotifications = await getJson<NotificationsResponse>(
+    page,
+    '/api/notifications?page=1&pageSize=10'
+  );
+  expect(internalNotifications.items).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ title: 'Document uploaded', readAt: null }),
+      expect.objectContaining({ title: 'Movement created' })
+    ])
+  );
+  for (const notification of internalNotifications.items) {
+    expect(notification.linkHref).toBeTruthy();
+    expect(notification.linkHref).toMatch(/^\/dashboard\//);
+    expect(notification.linkHref).not.toMatch(/^https?:\/\//);
+  }
+  const internalUnread = await getJson<UnreadNotificationsCountResponse>(
+    page,
+    '/api/notifications/unread-count'
+  );
+  expect(internalUnread.unreadCount).toBeGreaterThanOrEqual(1);
+});
+
+test('demo owner sees seeded notifications, images and contacts', async ({ page }) => {
+  await signIn(page, OWNER_EMAIL, '/owner');
+
+  const ownerNotifications = await getJson<NotificationsResponse>(
+    page,
+    '/api/owner/notifications?page=1&pageSize=10'
+  );
+  expect(ownerNotifications.items).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ title: 'Document requested', readAt: null }),
+      expect.objectContaining({ title: 'Document rejected' })
+    ])
+  );
+  for (const notification of ownerNotifications.items) {
+    expect(notification.linkHref).toBeTruthy();
+    expect(notification.linkHref).toMatch(/^\/owner\//);
+    expect(notification.linkHref).not.toMatch(/^\/dashboard\//);
+  }
+  const ownerUnread = await getJson<UnreadNotificationsCountResponse>(
+    page,
+    '/api/owner/notifications/unread-count'
+  );
+  expect(ownerUnread.unreadCount).toBeGreaterThanOrEqual(1);
+
+  const ownerProperties = await getJson<OwnerPropertiesResponse>(page, '/api/owner/properties');
+  const ownerProperty = ownerProperties.find(
+    (property) => property.title === OWNER_VISIBLE_PROPERTY_TITLE
+  );
+  expect(ownerProperty?.primaryImage).toBeTruthy();
+  const ownerEngagements = await getJson<OwnerEngagementResponse[]>(
+    page,
+    `/api/owner/properties/${ownerProperty!.id}/engagements`
+  );
+  expect(ownerEngagements[0]?.contact).toEqual(
+    expect.objectContaining({
+      available: true,
+      targetType: 'tenant',
+      displayLabel: 'Contactar inmobiliaria',
+      whatsappPhone: '+5493510000000'
+    })
+  );
+  const ownerTimeline = await getJson<OwnerTimelineResponse>(
+    page,
+    `/api/owner/engagements/${ownerEngagements[0]!.id}/timeline?page=1&pageSize=20&order=desc`
+  );
+  expect(ownerTimeline.items.some((item) => item.contact.whatsappPhone === '+5493511111111')).toBe(
+    true
+  );
+  expect(ownerTimeline.items.some((item) => !item.contact.available)).toBe(true);
+});
+
+test('viewpro admin can inspect seeded tenant limits', async ({ page }) => {
+  await signIn(page, DEMO_ADMIN_EMAIL, '/owner');
+  await page.goto('/admin');
+
+  await expect(page.getByRole('heading', { name: 'Admin ViewPro' })).toBeVisible();
+  const adminTenants = await getJson<AdminTenantsResponse>(
+    page,
+    '/api/admin/tenants?page=1&pageSize=10'
+  );
+  const demoTenant = adminTenants.items.find(
+    (tenant) => tenant.slug === 'viewpro-demo-inmobiliaria'
+  );
+  expect(demoTenant).toEqual(
+    expect.objectContaining({
+      status: 'ACTIVE',
+      limits: {
+        maxUsers: 12,
+        maxActivePropertyEngagements: 25,
+        maxDocumentsStorageMb: 512
+      }
+    })
+  );
+});
+
 test('demo manager can review a submitted document request', async ({ page }) => {
   await signIn(page, DEMO_EMAIL);
   await page.goto('/dashboard/product');
@@ -246,7 +347,9 @@ async function openAndVerifySignedReadUrl(page: Page, requestItem: Locator) {
 }
 
 async function signIn(page: Page, email: string, redirectPath = '/dashboard') {
+  await page.context().clearCookies();
   await page.goto(`/auth/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`);
+  await page.evaluate(() => localStorage.clear());
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Contraseña').fill(DEMO_PASSWORD);
   await page.getByRole('button', { name: 'Entrar' }).click();
@@ -259,6 +362,14 @@ async function getAssignedProducts(page: Page) {
   expect(response.ok()).toBe(true);
 
   return (await response.json()) as ProductsResponse;
+}
+
+async function getJson<TResponse>(page: Page, url: string) {
+  const response = await page.request.get(url);
+
+  expect(response.ok(), `${url} should return OK`).toBe(true);
+
+  return (await response.json()) as TResponse;
 }
 
 async function getProductByTitle(page: Page, title: string) {
@@ -282,4 +393,48 @@ type ProductsResponse = {
 type OwnerPropertiesResponse = Array<{
   id: string;
   title: string;
+  primaryImage: unknown | null;
 }>;
+
+type NotificationsResponse = {
+  items: Array<{
+    title: string;
+    linkHref: string | null;
+    readAt: string | null;
+  }>;
+};
+
+type UnreadNotificationsCountResponse = {
+  unreadCount: number;
+};
+
+type OwnerEngagementResponse = {
+  id: string;
+  contact: {
+    available: boolean;
+    targetType: 'tenant';
+    displayLabel: string;
+    whatsappPhone?: string;
+  };
+};
+
+type OwnerTimelineResponse = {
+  items: Array<{
+    contact: {
+      available: boolean;
+      whatsappPhone?: string;
+    };
+  }>;
+};
+
+type AdminTenantsResponse = {
+  items: Array<{
+    slug: string;
+    status: string;
+    limits: {
+      maxUsers: number | null;
+      maxActivePropertyEngagements: number | null;
+      maxDocumentsStorageMb: number | null;
+    };
+  }>;
+};

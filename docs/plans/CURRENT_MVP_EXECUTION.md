@@ -1,8 +1,8 @@
 # Current MVP Execution Handoff
 
-**Current answer:** Stage 26.2 — Deterministic seed contract is the next canonical implementation slice, after a quick validation that merged PR #138 seller-permission guards and PR #140 Stage 26.1 route cleanup still hold on the working branch.
+**Current answer:** Stage 26.2 — Deterministic seed contract is in progress. Implementation and OpenSpec artifacts are complete on `feat/stage-26-2-deterministic-seed-contract`, but DB-backed seed/E2E verification is blocked because no Postgres/Docker service is available on `localhost:5432`.
 
-If either validation fails, that failed behavior becomes the current slice through SDD/OpenSpec; Stage 26.2 stays next until the regression is fixed or explicitly reprioritized.
+All previous gates passed: PR #142 consolidated the MVP execution handoff and PR #144 removed the billing route for pilot users.
 
 ## Source precedence
 
@@ -22,10 +22,10 @@ Unsupported completed/current/next claims are not execution directives. Future p
 | --- | --- | --- | --- |
 | Canonical | Final MVP gates/order/non-goals remain authoritative. | Final MVP execution plan. | Keep as stable plan. |
 | Evidence overlay | Stage 26.0 audit records pilot-readiness gaps. | Stage 26 audit doc. | Use as evidence/correction context. |
-| Validate before next | PR #138 seller-permission guards are merged on `develop`. | Merged PR #138 + audit findings. | Re-check seller guards before Stage 26.2 product work. |
-| Validate before next | PR #140 Stage 26.1 route cleanup is merged on `develop`. | Merged PR #140 + Slice 26.1 contract. | Re-check starter/template routes are not exposed. |
-| Current control plane | Shared handoff and agent pointers exist. | `openspec/changes/consolidate-mvp-master-plan/`. | Keep docs-only; not product approval. |
-| Next | Stage 26.2 — Deterministic seed contract. | Final MVP plan + this handoff. | Start Stage 26.2 SDD/OpenSpec after validation passes. |
+| Completed | PR #142 merged MVP execution handoff to `develop`. | `openspec/changes/consolidate-mvp-master-plan/` + merge commit `a08d318`. | Keep as control-plane baseline. |
+| Completed | PR #144 removed billing route for pilot users. | `openspec/changes/stage-26-1-billing-route-cleanup/` + merge commit `3a7ded3`. | No further action. |
+| In progress | Stage 26.2 — Deterministic seed contract. | `openspec/changes/stage-26-2-deterministic-seed-contract/` + branch `feat/stage-26-2-deterministic-seed-contract`. | Complete DB-backed verification and fresh review before PR. |
+| Next | Stage 26.3 — Full seeded E2E. | Final MVP plan + this handoff. | Start after 26.2 is merged. |
 
 ## Quick validation gate before Stage 26.2
 

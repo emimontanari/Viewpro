@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { argon2id, hash } from "argon2";
@@ -13,6 +13,8 @@ import {
 	InterestLevel,
 	MovementSource,
 	MovementType,
+	NotificationSurface,
+	NotificationType,
 	PrismaClient,
 	PropertyAssetOwnerAccessStatus,
 	PropertyEngagementStatus,
@@ -35,8 +37,22 @@ const DEMO_TENANT_SLUG = "viewpro-demo-inmobiliaria";
 const DEMO_TENANT_NAME = "ViewPro Demo Inmobiliaria";
 const DEMO_TENANT_WHATSAPP_PHONE =
 	process.env.VIEWPRO_DEMO_TENANT_WHATSAPP_PHONE ?? "+5493510000000";
+const DEMO_TENANT_LIMITS = {
+	maxUsers: 12,
+	maxActivePropertyEngagements: 25,
+	maxDocumentsStorageMb: 512,
+};
+const DEMO_NOW = new Date(
+	process.env.VIEWPRO_DEMO_NOW ?? "2026-06-01T12:00:00.000Z",
+);
 const DEMO_PASSWORD =
 	process.env.VIEWPRO_DEMO_PASSWORD ?? buildDefaultDemoPassword();
+const DEMO_ADMIN_USER = {
+	email: "admin.demo@viewpro.local",
+	firstName: "Admin",
+	lastName: "ViewPro",
+	globalRole: GlobalRole.VIEWPRO_ADMIN,
+};
 const DEMO_USERS = [
 	{
 		email: "demo@viewpro.local",
@@ -55,6 +71,7 @@ const DEMO_USERS = [
 		firstName: "Martín",
 		lastName: "Demo",
 		role: TenantRole.AGENT,
+		whatsappPhone: "+5493511111111",
 	},
 	{
 		email: "lucia.demo@viewpro.local",
@@ -73,7 +90,7 @@ const DEMO_EXISTING_OWNER_INVITATION_TOKEN =
 	"seeded-existing-owner-invitation-token";
 const DEMO_EXISTING_OWNER_INVITED_PROPERTY_TITLE =
 	"Casa luminosa con patio en Los Boulevares";
-const DEMO_AUTH_USERS = [...DEMO_USERS, DEMO_OWNER_USER];
+const DEMO_AUTH_USERS = [...DEMO_USERS, DEMO_OWNER_USER, DEMO_ADMIN_USER];
 
 const DEMO_USER_EMAILS = DEMO_AUTH_USERS.map((user) => user.email);
 const DOCUMENT_TITLES = [
@@ -86,76 +103,11 @@ const DOCUMENT_TITLES = [
 ];
 const DOCUMENT_STORAGE_PREFIX = "document-requests";
 const PROPERTY_IMAGES_STORAGE_PREFIX = "property-images";
-const DEMO_IMAGE_DOWNLOAD_TIMEOUT_MS = 10_000;
-const DEMO_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
-const ALLOWED_PROPERTY_IMAGE_MIME_TYPES = new Set([
-	"image/jpeg",
-	"image/png",
-	"image/webp",
-]);
-const DEMO_PROPERTY_IMAGE_URLS = [
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/58/54/42/87/720x532/2037832325.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/57/89/72/91/720x532/2019918989.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/55/13/87/27/720x532/1949085025.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/56/58/29/19/720x532/1984602211.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/58/90/52/92/720x532/2047521926.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/58/95/74/26/720x532/2048834734.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/58/90/42/88/720x532/2047495125.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/56/75/53/85/720x532/1989404810.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/58/74/85/42/720x532/2043397315.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/58/78/43/07/720x532/2044355302.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/58/45/53/68/720x532/2035382892.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/58/98/99/61/720x532/2049638075.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/52/51/98/72/720x532/1885545456.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/58/90/74/70/720x532/2047574905.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/58/77/26/29/720x532/2044067568.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/58/81/69/19/720x532/2045191369.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/58/50/27/18/720x532/2036680501.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/58/06/36/24/720x532/2051566893.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/57/45/69/62/720x532/2008689362.jpg?isFirstImage=true",
-	],
-	[
-		"https://imgar.zonapropcdn.com/avisos/1/00/57/40/27/14/720x532/2047394923.jpg?isFirstImage=true",
-	],
-];
-
+const DEMO_IMAGE_BUFFER = Buffer.from(
+	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+	"base64",
+);
+const DEMO_IMAGES_PER_PROPERTY = 1;
 const DEMO_PROPERTIES = [
 	{
 		title: "Casa familiar con pileta en Villa Centenario",
@@ -547,6 +499,15 @@ async function seedDemo(client) {
 		users,
 		properties,
 	);
+	const notifications = await createDemoNotifications(
+		client,
+		tenant,
+		users,
+		properties,
+		movements,
+		documentRequests,
+	);
+	const adminEvents = await createDemoAdminAuditEvents(client, tenant, users);
 
 	return {
 		tenant,
@@ -554,6 +515,8 @@ async function seedDemo(client) {
 		imagesCount: images.length,
 		movementsCount: movements.length,
 		documentRequestsCount: documentRequests.length,
+		notificationsCount: notifications.length,
+		adminEventsCount: adminEvents.length,
 	};
 }
 
@@ -583,6 +546,9 @@ async function resetDemoTenant(client) {
 		await removeDemoDocumentFiles(client, existingTenant.id);
 
 		await client.$transaction([
+			client.notification.deleteMany({
+				where: { tenantId: existingTenant.id },
+			}),
 			client.analyticsEvent.deleteMany({
 				where: { tenantId: existingTenant.id },
 			}),
@@ -647,6 +613,7 @@ async function deleteUnreferencedDemoUsers(client, demoUserIds) {
 			client.documentVersion.count({ where: { uploadedByUserId: userId } }),
 			client.propertyAssetImage.count({ where: { uploadedByUserId: userId } }),
 			client.analyticsEvent.count({ where: { actorUserId: userId } }),
+			client.notification.count({ where: { recipientUserId: userId } }),
 		]);
 
 		if (references.every((count) => count === 0)) {
@@ -667,16 +634,19 @@ async function createDemoUsers(client) {
 				passwordHash,
 				firstName: user.firstName,
 				lastName: user.lastName,
+				whatsappPhone: user.whatsappPhone ?? null,
 				status: UserStatus.ACTIVE,
-				globalRole: GlobalRole.USER,
-				emailVerifiedAt: new Date(),
+				globalRole: user.globalRole ?? GlobalRole.USER,
+				emailVerifiedAt: DEMO_NOW,
 			},
 			update: {
 				passwordHash,
 				firstName: user.firstName,
 				lastName: user.lastName,
+				whatsappPhone: user.whatsappPhone ?? null,
 				status: UserStatus.ACTIVE,
-				emailVerifiedAt: new Date(),
+				globalRole: user.globalRole ?? GlobalRole.USER,
+				emailVerifiedAt: DEMO_NOW,
 			},
 		});
 		users.set(user.email, { ...created, role: user.role });
@@ -695,6 +665,7 @@ async function createDemoTenant(client, users) {
 				slug: DEMO_TENANT_SLUG,
 				status: TenantStatus.ACTIVE,
 				whatsappPhone: DEMO_TENANT_WHATSAPP_PHONE,
+				...DEMO_TENANT_LIMITS,
 				memberships: {
 					create: DEMO_USERS.map((user) => ({
 						userId: users.get(user.email).id,
@@ -839,109 +810,44 @@ async function createDemoPropertyImages(client, tenant, properties) {
 	const images = [];
 
 	for (const [propertyIndex, property] of properties.entries()) {
-		const imageUrls = DEMO_PROPERTY_IMAGE_URLS[propertyIndex] ?? [];
+		for (
+			let imageIndex = 0;
+			imageIndex < DEMO_IMAGES_PER_PROPERTY;
+			imageIndex += 1
+		) {
+			const imageId = `demo-property-image-${propertyIndex + 1}-${
+				imageIndex + 1
+			}`;
+			const originalFilename = `demo-property-${propertyIndex + 1}-${
+				imageIndex + 1
+			}.png`;
+			const storageKey = [
+				PROPERTY_IMAGES_STORAGE_PREFIX,
+				tenant.id,
+				property.asset.id,
+				`${imageId}.png`,
+			].join("/");
 
-		for (const [imageIndex, imageUrl] of imageUrls.entries()) {
-			try {
-				const downloadedImage = await downloadDemoImage(imageUrl);
-				const imageId = randomUUID();
-				const extension = getExtensionForMimeType(downloadedImage.mimeType);
-				const originalFilename = `demo-property-${propertyIndex + 1}-${
-					imageIndex + 1
-				}${extension}`;
-				const storageKey = [
-					PROPERTY_IMAGES_STORAGE_PREFIX,
-					tenant.id,
-					property.asset.id,
-					`${imageId}${extension}`,
-				].join("/");
-
-				await writeDemoImageFile(storageKey, downloadedImage.buffer);
-				images.push(
-					await client.propertyAssetImage.create({
-						data: {
-							id: imageId,
-							propertyAssetId: property.asset.id,
-							uploadedByUserId: tenant.manager.id,
-							storageKey,
-							originalFilename,
-							mimeType: downloadedImage.mimeType,
-							sizeBytes: downloadedImage.buffer.byteLength,
-							isPrimary: imageIndex === 0,
-							createdAt: daysAgo(Math.max(1, propertyIndex % 12)),
-						},
-					}),
-				);
-			} catch (error) {
-				console.warn(
-					`Skipping demo image for property ${propertyIndex + 1}: ${getErrorMessage(
-						error,
-					)}`,
-				);
-			}
+			await writeDemoImageFile(storageKey, DEMO_IMAGE_BUFFER);
+			images.push(
+				await client.propertyAssetImage.create({
+					data: {
+						id: imageId,
+						propertyAssetId: property.asset.id,
+						uploadedByUserId: tenant.manager.id,
+						storageKey,
+						originalFilename,
+						mimeType: "image/png",
+						sizeBytes: DEMO_IMAGE_BUFFER.byteLength,
+						isPrimary: imageIndex === 0,
+						createdAt: daysAgo(Math.max(1, propertyIndex % 12)),
+					},
+				}),
+			);
 		}
 	}
 
 	return images;
-}
-
-async function downloadDemoImage(imageUrl) {
-	const controller = new AbortController();
-	const timeoutId = setTimeout(
-		() => controller.abort(),
-		DEMO_IMAGE_DOWNLOAD_TIMEOUT_MS,
-	);
-
-	try {
-		const response = await fetch(imageUrl, { signal: controller.signal });
-
-		if (!response.ok) {
-			throw new Error(`HTTP ${response.status}`);
-		}
-
-		const mimeType = getImageMimeType(
-			imageUrl,
-			response.headers.get("content-type"),
-		);
-
-		if (!ALLOWED_PROPERTY_IMAGE_MIME_TYPES.has(mimeType)) {
-			throw new Error(`Unsupported image type ${mimeType}`);
-		}
-
-		const contentLength = Number(response.headers.get("content-length") ?? 0);
-
-		if (contentLength > DEMO_IMAGE_MAX_BYTES) {
-			throw new Error("Image is larger than 5 MB");
-		}
-
-		const buffer = await readBoundedResponseBuffer(response);
-
-		return { buffer, mimeType };
-	} finally {
-		clearTimeout(timeoutId);
-	}
-}
-
-async function readBoundedResponseBuffer(response) {
-	if (!response.body) {
-		throw new Error("Image response body is empty");
-	}
-
-	const chunks = [];
-	let totalBytes = 0;
-
-	for await (const chunk of response.body) {
-		const bufferChunk = Buffer.from(chunk);
-		totalBytes += bufferChunk.byteLength;
-
-		if (totalBytes > DEMO_IMAGE_MAX_BYTES) {
-			throw new Error("Image is larger than 5 MB");
-		}
-
-		chunks.push(bufferChunk);
-	}
-
-	return Buffer.concat(chunks, totalBytes);
 }
 
 async function writeDemoImageFile(storageKey, buffer) {
@@ -1016,40 +922,6 @@ function isLocalDocumentStorageConfigured() {
 		process.env.DOCUMENT_STORAGE_DRIVER === "local" ||
 		Boolean(process.env.DOCUMENT_STORAGE_LOCAL_ROOT)
 	);
-}
-
-function getImageMimeType(imageUrl, contentType) {
-	const mimeType = contentType?.split(";")[0]?.trim().toLowerCase();
-
-	if (mimeType) {
-		return mimeType;
-	}
-
-	const pathname = new URL(imageUrl).pathname.toLowerCase();
-
-	if (pathname.endsWith(".png")) {
-		return "image/png";
-	}
-
-	if (pathname.endsWith(".webp")) {
-		return "image/webp";
-	}
-
-	return "image/jpeg";
-}
-
-function getExtensionForMimeType(mimeType) {
-	const extensionsByMimeType = {
-		"image/jpeg": ".jpg",
-		"image/png": ".png",
-		"image/webp": ".webp",
-	};
-
-	return extensionsByMimeType[mimeType] ?? ".bin";
-}
-
-function getErrorMessage(error) {
-	return error instanceof Error ? error.message : String(error);
 }
 
 async function createDemoMovements(client, tenant, users, properties) {
@@ -1429,6 +1301,128 @@ async function createDocumentReviewAnalyticsEvents(
 	await client.analyticsEvent.createMany({ data: events });
 }
 
+async function createDemoNotifications(
+	client,
+	tenant,
+	users,
+	properties,
+	movements,
+	documentRequests,
+) {
+	const owner = users.get(DEMO_OWNER_EMAIL);
+	const manager = users.get("demo@viewpro.local");
+	const ownerProperty = properties[0];
+	const submittedDocument = documentRequests.find(
+		(request) => request.title === "Escritura firmada",
+	);
+	const rejectedDocument = documentRequests.find(
+		(request) => request.title === "DNI del propietario observado",
+	);
+	const statusMovement = movements.find(
+		(movement) => movement.type === MovementType.STATUS_CHANGE,
+	);
+
+	if (!owner || !manager || !ownerProperty || !submittedDocument) {
+		return [];
+	}
+
+	const notifications = [
+		{
+			tenantId: tenant.id,
+			recipientUserId: owner.id,
+			surface: NotificationSurface.OWNER,
+			type: NotificationType.DOCUMENT_REQUESTED,
+			title: "Document requested",
+			body: "Escritura firmada",
+			linkHref: `/owner/properties/${ownerProperty.asset.id}`,
+			propertyEngagementId: ownerProperty.engagement.id,
+			propertyAssetId: ownerProperty.asset.id,
+			documentRequestId: submittedDocument.id,
+			readAt: null,
+			createdAt: daysAgo(5),
+		},
+		{
+			tenantId: tenant.id,
+			recipientUserId: owner.id,
+			surface: NotificationSurface.OWNER,
+			type: NotificationType.DOCUMENT_REJECTED,
+			title: "Document rejected",
+			body: "DNI del propietario observado",
+			linkHref: `/owner/properties/${ownerProperty.asset.id}`,
+			propertyEngagementId: ownerProperty.engagement.id,
+			propertyAssetId: ownerProperty.asset.id,
+			documentRequestId: rejectedDocument?.id ?? null,
+			readAt: daysAgo(2),
+			createdAt: daysAgo(4),
+		},
+		{
+			tenantId: tenant.id,
+			recipientUserId: manager.id,
+			surface: NotificationSurface.INTERNAL,
+			type: NotificationType.DOCUMENT_UPLOADED,
+			title: "Document uploaded",
+			body: "Escritura firmada",
+			linkHref: `/dashboard/product/${ownerProperty.engagement.id}`,
+			propertyEngagementId: ownerProperty.engagement.id,
+			propertyAssetId: ownerProperty.asset.id,
+			documentRequestId: submittedDocument.id,
+			readAt: null,
+			createdAt: daysAgo(3),
+		},
+		{
+			tenantId: tenant.id,
+			recipientUserId: manager.id,
+			surface: NotificationSurface.INTERNAL,
+			type: NotificationType.MOVEMENT_CREATED,
+			title: "Movement created",
+			body: ownerProperty.fixture.title,
+			linkHref: `/dashboard/product/${ownerProperty.engagement.id}`,
+			propertyEngagementId: ownerProperty.engagement.id,
+			propertyAssetId: ownerProperty.asset.id,
+			movementId: statusMovement?.id ?? null,
+			readAt: daysAgo(1),
+			createdAt: daysAgo(2),
+		},
+	];
+
+	return Promise.all(
+		notifications.map((notification) =>
+			client.notification.create({ data: notification }),
+		),
+	);
+}
+
+async function createDemoAdminAuditEvents(client, tenant, users) {
+	const admin = users.get(DEMO_ADMIN_USER.email);
+
+	if (!admin) {
+		return [];
+	}
+
+	const events = [
+		{
+			tenantId: tenant.id,
+			actorUserId: admin.id,
+			actorType: AnalyticsActorType.INTERNAL_USER,
+			eventName: AnalyticsEventName.TENANT_STATUS_CHANGED,
+			metadata: { from: TenantStatus.TRIAL, to: TenantStatus.ACTIVE },
+			occurredAt: daysAgo(6),
+		},
+		{
+			tenantId: tenant.id,
+			actorUserId: admin.id,
+			actorType: AnalyticsActorType.INTERNAL_USER,
+			eventName: AnalyticsEventName.TENANT_LIMITS_UPDATED,
+			metadata: DEMO_TENANT_LIMITS,
+			occurredAt: daysAgo(5),
+		},
+	];
+
+	return Promise.all(
+		events.map((event) => client.analyticsEvent.create({ data: event })),
+	);
+}
+
 async function writeDemoDocumentFileIfEnabled(storageKey, buffer, metadata) {
 	if (!isLocalDocumentStorageConfigured()) {
 		return;
@@ -1515,13 +1509,13 @@ function buildDefaultDemoPassword() {
 }
 
 function daysAgo(days) {
-	const date = new Date();
+	const date = new Date(DEMO_NOW);
 	date.setDate(date.getDate() - days);
 	return date;
 }
 
 function daysFromNow(days) {
-	const date = new Date();
+	const date = new Date(DEMO_NOW);
 	date.setDate(date.getDate() + days);
 	return date;
 }
@@ -1535,11 +1529,30 @@ function moneyToCents(amount) {
 }
 
 function printSummary(result) {
+	const passwordSummary = process.env.VIEWPRO_DEMO_PASSWORD
+		? "<VIEWPRO_DEMO_PASSWORD>"
+		: DEMO_PASSWORD;
+
 	console.log(`Seeded ${result.tenant.name}`);
-	console.log("Login: demo@viewpro.local");
-	console.log(`Password: ${DEMO_PASSWORD}`);
+	console.log(`Tenant slug: ${result.tenant.slug}`);
+	console.log("Scope: canonical demo tenant and demo users only");
+	console.log(`Tenant status: ${result.tenant.status}`);
+	console.log(
+		`Tenant limits: users=${result.tenant.maxUsers}, activeEngagements=${result.tenant.maxActivePropertyEngagements}, documentsMb=${result.tenant.maxDocumentsStorageMb}`,
+	);
+	console.log("Logins:");
+	console.log(`- Manager: demo@viewpro.local / ${passwordSummary}`);
+	console.log(`- Seller: martin.demo@viewpro.local / ${passwordSummary}`);
+	console.log(`- Owner: ${DEMO_OWNER_EMAIL} / ${passwordSummary}`);
+	console.log(`- ViewPro admin: ${DEMO_ADMIN_USER.email} / ${passwordSummary}`);
 	console.log(`Properties: ${result.propertiesCount}`);
 	console.log(`Images: ${result.imagesCount}`);
+	console.log("Image assets: deterministic local PNG fixtures");
 	console.log(`Movements: ${result.movementsCount}`);
 	console.log(`Document requests: ${result.documentRequestsCount}`);
+	console.log(`Notifications: ${result.notificationsCount}`);
+	console.log(`Admin audit events: ${result.adminEventsCount}`);
+	console.log(
+		"Contact fixtures: tenant WhatsApp, Martín seller WhatsApp, Sofía no-config movement contact",
+	);
 }
