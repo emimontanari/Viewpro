@@ -103,11 +103,59 @@ const DOCUMENT_TITLES = [
 ];
 const DOCUMENT_STORAGE_PREFIX = "document-requests";
 const PROPERTY_IMAGES_STORAGE_PREFIX = "property-images";
-const DEMO_IMAGE_BUFFER = Buffer.from(
+const DEMO_IMAGE_PLACEHOLDER_BUFFER = Buffer.from(
 	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
 	"base64",
 );
-const DEMO_IMAGES_PER_PROPERTY = 1;
+const DEMO_IMAGES_PER_PROPERTY = 3;
+const DEMO_PROPERTY_FIXTURES_DIR = join(scriptDir, "fixtures", "properties");
+const DEMO_PROPERTY_IMAGE_MAP = loadDemoPropertyImageMap();
+
+function loadDemoPropertyImageMap() {
+	const mapPath = join(scriptDir, "fixtures", "property-image-map.json");
+	if (!existsSync(mapPath)) {
+		return new Map();
+	}
+	const raw = JSON.parse(readFileSync(mapPath, "utf8"));
+	const entries = (raw.mappings ?? []).map((entry) => [
+		entry.seedIndex,
+		entry.postingId,
+	]);
+	return new Map(entries);
+}
+
+function getDemoImageBuffer(seedIndex, imageIndex) {
+	const postingId = DEMO_PROPERTY_IMAGE_MAP.get(seedIndex);
+	if (!postingId) {
+		return DEMO_IMAGE_PLACEHOLDER_BUFFER;
+	}
+	const fixturePath = join(
+		DEMO_PROPERTY_FIXTURES_DIR,
+		postingId,
+		`${imageIndex}.jpg`,
+	);
+	if (!existsSync(fixturePath)) {
+		return DEMO_IMAGE_PLACEHOLDER_BUFFER;
+	}
+	return readFileSync(fixturePath);
+}
+
+function getDemoImageMime(seedIndex, imageIndex) {
+	const postingId = DEMO_PROPERTY_IMAGE_MAP.get(seedIndex);
+	if (!postingId) return "image/png";
+	const fixturePath = join(
+		DEMO_PROPERTY_FIXTURES_DIR,
+		postingId,
+		`${imageIndex}.jpg`,
+	);
+	return existsSync(fixturePath) ? "image/jpeg" : "image/png";
+}
+
+function getDemoImageExtension(seedIndex, imageIndex) {
+	return getDemoImageMime(seedIndex, imageIndex) === "image/jpeg"
+		? "jpg"
+		: "png";
+}
 const DEMO_PROPERTIES = [
 	{
 		title: "Casa familiar con pileta en Villa Centenario",
@@ -815,20 +863,23 @@ async function createDemoPropertyImages(client, tenant, properties) {
 			imageIndex < DEMO_IMAGES_PER_PROPERTY;
 			imageIndex += 1
 		) {
+			const buffer = getDemoImageBuffer(propertyIndex, imageIndex);
+			const mimeType = getDemoImageMime(propertyIndex, imageIndex);
+			const extension = getDemoImageExtension(propertyIndex, imageIndex);
 			const imageId = `demo-property-image-${propertyIndex + 1}-${
 				imageIndex + 1
 			}`;
 			const originalFilename = `demo-property-${propertyIndex + 1}-${
 				imageIndex + 1
-			}.png`;
+			}.${extension}`;
 			const storageKey = [
 				PROPERTY_IMAGES_STORAGE_PREFIX,
 				tenant.id,
 				property.asset.id,
-				`${imageId}.png`,
+				`${imageId}.${extension}`,
 			].join("/");
 
-			await writeDemoImageFile(storageKey, DEMO_IMAGE_BUFFER);
+			await writeDemoImageFile(storageKey, buffer);
 			images.push(
 				await client.propertyAssetImage.create({
 					data: {
@@ -837,8 +888,8 @@ async function createDemoPropertyImages(client, tenant, properties) {
 						uploadedByUserId: tenant.manager.id,
 						storageKey,
 						originalFilename,
-						mimeType: "image/png",
-						sizeBytes: DEMO_IMAGE_BUFFER.byteLength,
+						mimeType,
+						sizeBytes: buffer.byteLength,
 						isPrimary: imageIndex === 0,
 						createdAt: daysAgo(Math.max(1, propertyIndex % 12)),
 					},
@@ -1547,7 +1598,9 @@ function printSummary(result) {
 	console.log(`- ViewPro admin: ${DEMO_ADMIN_USER.email} / ${passwordSummary}`);
 	console.log(`Properties: ${result.propertiesCount}`);
 	console.log(`Images: ${result.imagesCount}`);
-	console.log("Image assets: deterministic local PNG fixtures");
+	console.log(
+		"Image assets: deterministic local fixtures (real JPG photos when mapped, 1x1 PNG placeholder otherwise)",
+	);
 	console.log(`Movements: ${result.movementsCount}`);
 	console.log(`Document requests: ${result.documentRequestsCount}`);
 	console.log(`Notifications: ${result.notificationsCount}`);

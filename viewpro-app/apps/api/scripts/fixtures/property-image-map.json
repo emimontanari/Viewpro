@@ -1,0 +1,28 @@
+{
+  "_documentation": "Maps DEMO_PROPERTIES index in seed-demo.mjs to a Zonaprop posting_id whose first 3 images are downloaded as fixtures. Source: scripts/fixtures/zonaprop-source.json. Properties without a mapping fall back to the 1x1 placeholder buffer.",
+  "mappings": [
+    { "seedIndex": 0, "seedTitle": "Casa familiar con pileta en Villa Centenario", "postingId": "58544287" },
+    { "seedIndex": 1, "seedTitle": "Casa luminosa con patio en Los Boulevares", "postingId": "57897291" },
+    { "seedIndex": 2, "seedTitle": "Casa premium en Cerro de las Rosas", "postingId": "55138727" },
+    { "seedIndex": 3, "seedTitle": "Casa en barrio privado Pilara", "postingId": "56582919" },
+    { "seedIndex": 4, "seedTitle": "Casa con galería en La Lomada", "postingId": "58905292" },
+    { "seedIndex": 5, "seedTitle": "Casa moderna en El Cantón Norte", "postingId": "58957426" },
+    { "seedIndex": 6, "seedTitle": "Casa para refaccionar en Mapuche", "postingId": "58904288" },
+    { "seedIndex": 7, "seedTitle": "Dúplex apto crédito en Villa Cabrera", "postingId": "56755385" },
+    { "seedIndex": 8, "seedTitle": "Casa con jardín en Villa Catalina", "postingId": "58748542" },
+    { "seedIndex": 9, "seedTitle": "Casa de diseño en Los Olivares", "postingId": "58784307" },
+    { "seedIndex": 10, "seedTitle": "Housing a estrenar en La Carolina", "postingId": "57402714" },
+    { "seedIndex": 11, "seedTitle": "Casa quinta en barrio Freixas", "postingId": "58989961" },
+    { "seedIndex": 12, "seedTitle": "Casa en Barrio Puerto El Cantón", "postingId": "58907470" },
+    { "seedIndex": 13, "seedTitle": "Casa amplia en Los Laureles", "postingId": "58772629" },
+    { "seedIndex": 14, "seedTitle": "Casa de categoría en Farm Club", "postingId": "58816919" },
+    { "seedIndex": 18, "seedTitle": "PH reciclado en San Fernando", "postingId": "58502718" },
+    { "seedIndex": 19, "seedTitle": "Casa compacta en Funes", "postingId": "58063624" }
+  ],
+  "unmatched": [
+    { "seedIndex": 15, "seedTitle": "Departamento con balcón en Nueva Córdoba", "reason": "no apartment in source JSON" },
+    { "seedIndex": 16, "seedTitle": "Lote residencial en zona norte", "reason": "no land listing in source JSON" },
+    { "seedIndex": 17, "seedTitle": "Local comercial sobre avenida", "reason": "no commercial in source JSON" }
+  ],
+  "imagesPerProperty": 3
+}
