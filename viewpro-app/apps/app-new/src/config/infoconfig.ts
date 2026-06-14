@@ -78,54 +78,6 @@ export const teamInfoContent: InfobarContent = {
   ]
 };
 
-export const billingInfoContent: InfobarContent = {
-  title: 'Facturación y planes',
-  sections: [
-    {
-      title: 'Resumen',
-      description:
-        'Esta página permitirá administrar la suscripción y los límites de uso de tu inmobiliaria.',
-      links: []
-    },
-    {
-      title: 'Planes disponibles',
-      description:
-        'Próximamente vas a poder ver y elegir planes desde esta sección.',
-      links: []
-    },
-    {
-      title: 'Funciones del plan',
-      description:
-        'Cada plan podrá habilitar funciones específicas dentro de ViewPro.',
-      links: []
-    },
-    {
-      title: 'Acceso',
-      description:
-        'Algunas secciones podrán depender del plan contratado.',
-      links: []
-    },
-    {
-      title: 'Costos',
-      description:
-        'Los detalles comerciales se definirán antes de habilitar la facturación dentro del producto.',
-      links: []
-    },
-    {
-      title: 'Configuración',
-      description:
-        'La configuración de facturación se completará en una próxima etapa.',
-      links: []
-    },
-    {
-      title: 'Estado',
-      description:
-        'La facturación todavía no está disponible en esta versión.',
-      links: []
-    }
-  ]
-};
-
 export const productInfoContent: InfobarContent = {
   title: 'Propiedades',
   sections: [

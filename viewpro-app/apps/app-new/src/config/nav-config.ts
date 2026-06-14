@@ -75,15 +75,6 @@ export const navGroups: NavGroup[] = [
         shortcut: ['m', 'm'],
         isActive: false,
         items: []
-      },
-      {
-        title: 'Facturación',
-        url: '/dashboard/billing',
-        icon: 'billing',
-        shortcut: ['b', 'b'],
-        isActive: false,
-        items: [],
-        access: { requireOrg: true }
       }
     ]
   }
