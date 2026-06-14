@@ -6,16 +6,19 @@ This index prevents roadmap drift during final MVP execution.
 
 Read these first, in order:
 
-| Priority | Document                                                         | Purpose                                                                               |
-| -------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| 1        | `docs/plans/2026-06-04-final-mvp-execution-plan.md`              | Current execution plan, priority gates, phases, PR slicing, and scope exclusions.     |
-| 2        | `docs/plans/2026-06-08-stage-26-0-mvp-evidence-audit.md`         | Active Stage 26.0 audit doc and evidence checklist.                                   |
-| 3        | `docs/plans/2026-06-04-mvp-closure-slices.md`                    | Audited status for Stages 20–26 and corrected gap summary.                            |
-| 4        | `docs/plans/2026-05-28-mvp-product-final-like-roadmap-design.md` | Original product-final-like roadmap. Use when validating intent, not execution order. |
+| Priority | Document                                                         | Purpose                                                                                           |
+| -------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| 1        | `docs/plans/CURRENT_MVP_EXECUTION.md`                            | Current handoff for mutable completed/current/next MVP status and the validation gate.             |
+| 2        | `docs/plans/2026-06-04-final-mvp-execution-plan.md`              | Canonical MVP gates, execution order, non-goals, PR slicing, and slice template.                   |
+| 3        | `docs/plans/2026-06-08-stage-26-0-mvp-evidence-audit.md`         | Active evidence overlay and correction log for Stage 26 findings.                                  |
+| 4        | `docs/plans/2026-06-04-mvp-closure-slices.md`                    | Audited status for Stages 20–26 and corrected gap summary.                                        |
+| 5        | `docs/plans/2026-05-28-mvp-product-final-like-roadmap-design.md` | Original product-final-like roadmap. Use when validating intent, not execution order.             |
 
 ## Current execution rule
 
-Every new task must declare:
+Start with `docs/plans/CURRENT_MVP_EXECUTION.md`. It owns the current completed/current/next status ledger, source precedence, and the validation gate before any product work resumes.
+
+Every new task must still declare:
 
 ```txt
 Stage:
@@ -27,7 +30,7 @@ Done:
 Next slice:
 ```
 
-If a request does not map to the current final MVP execution plan, treat it as backlog unless the user explicitly reprioritizes it.
+If a request does not map to the current handoff and final MVP execution plan, treat it as backlog unless the user explicitly reprioritizes it. Future product/source changes must use SDD/OpenSpec before code changes.
 
 ## Historical planning docs
 
@@ -76,26 +79,11 @@ The final execution plan intentionally excludes:
 - admin access to private tenant document content;
 - UI polish without a failing functional/evidence gate.
 
-## Next active slice
+## Active execution handoff
 
-```txt
-Stage: 26
-Slice: 26.0 — MVP evidence audit
-Objective: verify the final MVP end-to-end against canonical pilot readiness gates and collect reproducible evidence.
-Evidence needed: seeded API/app-new/owner/admin flows, tenant isolation checks, hardening checklist, and deploy-readiness notes.
-Do not touch: new product scope, billing, paid plans, Stripe, or external billing providers.
-Done: MVP evidence is complete, reproducible, and ready for pilot handoff.
-Next slice: pilot handoff or fixes discovered by the audit.
-```
+The current execution handoff is `docs/plans/CURRENT_MVP_EXECUTION.md`. Read it for the status ledger, quick-validation gate, and implementation-slice selection. This README is an index, not the mutable status ledger.
 
-## Active work
+## Control-plane record
 
-- Stage 26.0 — MVP evidence audit: active branch `chore/stage-26-0-mvp-evidence-audit`, issue #134, and audit checklist in `docs/plans/2026-06-08-stage-26-0-mvp-evidence-audit.md`.
-
-## Recently completed
-
-- Stage 25.4 — Tenant limits enforcement: backend mutation boundaries now enforce configured user/team, active property engagement, and document storage limits with API evidence.
-- Stage 25.3 — Tenant limits model and API: tenant limit schema/migration, admin read/write API, safe defaults, and global admin authorization evidence completed.
-- Stage 25.2 — Admin tenant management UI: app-new `/admin` surface, admin BFF routes without `x-tenant-id`, tenant status badges/actions, confirmation dialog, Spanish loading/error/success states, and pnpm UI/service evidence completed.
-- Stage 25.1 — Admin tenant status write API + audit log: backend admin status endpoint, atomic `TENANT_STATUS_CHANGED` audit, global admin authorization, tenant guard proof, and concurrent duplicate-write protection completed with API evidence.
-- Stage 21.6 — Minimal owner invitation management: backend revoke endpoint, app-new BFF/service, and property owner UI actions for `Regenerar y copiar link` and `Revocar invitación` completed with API/UI evidence.
+- `openspec/changes/consolidate-mvp-master-plan/` records the docs/control-plane consolidation that created the shared handoff and agent pointers.
+- Completed/current/next MVP status belongs in `docs/plans/CURRENT_MVP_EXECUTION.md`, not in this README.

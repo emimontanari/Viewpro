@@ -1,0 +1,57 @@
+version: 1
+project:
+  name: ViewPro
+  repo_root: /Users/emimontanari/Work/Apps/Viewpro
+  workspace: viewpro-app
+  summary: Multi-tenant real-estate SaaS for agencies, owners, sellers, documents, notifications, WhatsApp contact data, and ViewPro admin controls.
+  stack:
+    api: NestJS 11, Prisma 6, PostgreSQL, Vitest/Supertest
+    app_new: Next.js 16, React 19, Tailwind 4, Vitest, Playwright seeded E2E
+    package_manager: pnpm@10.13.1
+
+preferences:
+  execution_mode: auto-controlled
+  artifact_store: [repo-docs, openspec]
+  pr_strategy: auto-forecast
+  review_budget_changed_lines: 400
+
+source_of_truth:
+  current_handoff: docs/plans/CURRENT_MVP_EXECUTION.md
+  canonical_order: docs/plans/2026-06-04-final-mvp-execution-plan.md
+  evidence_overlay: docs/plans/2026-06-08-stage-26-0-mvp-evidence-audit.md
+  historical_rule: Older dated docs are context only unless promoted by the handoff, index, or accepted OpenSpec change.
+  skill_registry: .atl/skill-registry.md
+
+sdd:
+  strict_tdd: true
+  changes_dir: openspec/changes
+  specs_dir: openspec/specs
+  slice_template:
+    [Stage, Slice, Objective, Evidence needed, Do not touch, Done, Next slice]
+  phase_rules:
+    proposal: Define intent, scope, affected areas, risks, rollback, and success criteria.
+    spec: Requirements must be testable and trace to canonical docs or explicit decisions.
+    design: Identify target files, validation, rollout, non-goals, and risks.
+    tasks: Include review workload forecast and verifiable checkboxes.
+    apply: No product/source changes without accepted SDD artifacts; record RED/GREEN evidence when strict TDD applies.
+    verify: Record exact commands, results, skipped checks, blockers, and residual risks.
+
+testing:
+  cwd: viewpro-app
+  docs_only:
+    - git status --short
+    - git diff --check
+  api:
+    - pnpm --filter @viewpro/api db:validate
+    - pnpm --filter @viewpro/api typecheck
+    - pnpm --filter @viewpro/api test
+  app_new:
+    - pnpm --filter next-shadcn-dashboard-starter test
+    - pnpm --filter next-shadcn-dashboard-starter lint:strict
+    - pnpm --filter next-shadcn-dashboard-starter test:seeded
+  database_safety: API tests are destructive; use viewpro_test or another DATABASE_URL clearly marked as test.
+
+risk_controls:
+  - Do not commit secrets, .env files, database dumps, or document bytes.
+  - Future product changes must preserve tenant isolation and owner/internal separation.
+  - Do not reopen completed work without a failing functional or evidence gate.
