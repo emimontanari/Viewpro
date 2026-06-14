@@ -9,10 +9,11 @@ Read these first, in order:
 | Priority | Document                                                         | Purpose                                                                                           |
 | -------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | 1        | `docs/plans/CURRENT_MVP_EXECUTION.md`                            | Current handoff for mutable completed/current/next MVP status and the validation gate.             |
-| 2        | `docs/plans/2026-06-04-final-mvp-execution-plan.md`              | Canonical MVP gates, execution order, non-goals, PR slicing, and slice template.                   |
-| 3        | `docs/plans/2026-06-08-stage-26-0-mvp-evidence-audit.md`         | Active evidence overlay and correction log for Stage 26 findings.                                  |
-| 4        | `docs/plans/2026-06-04-mvp-closure-slices.md`                    | Audited status for Stages 20–26 and corrected gap summary.                                        |
-| 5        | `docs/plans/2026-05-28-mvp-product-final-like-roadmap-design.md` | Original product-final-like roadmap. Use when validating intent, not execution order.             |
+| 2        | `docs/plans/2026-06-14-mvp-execution-plan-revision.md`           | **Active execution plan.** Adopts Stage 26.0 audit sub-slices and surfaces the open product decisions. |
+| 3        | `docs/plans/2026-06-04-final-mvp-execution-plan.md`              | Canonical anchor for MVP gates, non-goals, PR slicing, and slice template. Historical, never rewritten. |
+| 4        | `docs/plans/2026-06-08-stage-26-0-mvp-evidence-audit.md`         | Evidence overlay and origin of the adopted sub-slices.                                            |
+| 5        | `docs/plans/2026-06-04-mvp-closure-slices.md`                    | Audited status for Stages 20–26 and corrected gap summary.                                        |
+| 6        | `docs/plans/2026-05-28-mvp-product-final-like-roadmap-design.md` | Original product-final-like roadmap. Use when validating intent, not execution order.             |
 
 ## Current execution rule
 
@@ -86,4 +87,6 @@ The current execution handoff is `docs/plans/CURRENT_MVP_EXECUTION.md`. Read it 
 ## Control-plane record
 
 - `openspec/changes/consolidate-mvp-master-plan/` records the docs/control-plane consolidation that created the shared handoff and agent pointers.
+- `openspec/changes/mvp-plan-reorder/` records the 2026-06-14 reorder that adopted the Stage 26.0 audit sub-slices into the active execution order without rewriting the canonical plan or the audit.
+- Adopted sub-slice stubs live under `openspec/changes/22-8-seller-permission-hotfix/`, `20-10-state-authority-decision/`, `20-11-seguimiento-filter-corrections/`, `20-12-document-duplicate-guard/`, `23-5-owner-contact-cta-semantics/`, `21-7-transactional-invitation-email/`, `26-5a-inmoview-domain-handoff/`, and `26-6a-inmoview-copy-pass/`. Each carries an explicit `Status:` line and references the open product decision it depends on.
 - Completed/current/next MVP status belongs in `docs/plans/CURRENT_MVP_EXECUTION.md`, not in this README.
