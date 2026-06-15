@@ -12,6 +12,7 @@ import { MembershipsModule } from './memberships/memberships.module'
 import { MovementsModule } from './movements/movements.module'
 import { MovementOutcomeLabelsModule } from './movement-outcome-labels/movement-outcome-labels.module'
 import { NotificationsModule } from './notifications/notifications.module'
+import { StatusChangeRequestsModule } from './status-change-requests/status-change-requests.module'
 import { ObservabilityModule } from './observability/observability.module'
 import { OwnerInvitationsModule } from './owner-invitations/owner-invitations.module'
 import { OwnerPortalModule } from './owner-portal/owner-portal.module'
@@ -45,6 +46,7 @@ import { UsersModule } from './users/users.module'
     PropertyEngagementsModule,
     MovementsModule,
     MovementOutcomeLabelsModule,
+    StatusChangeRequestsModule,
     OwnerPortalModule,
     OwnerInvitationsModule,
     DocumentsModule,
