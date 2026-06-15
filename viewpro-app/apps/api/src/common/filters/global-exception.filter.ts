@@ -7,6 +7,7 @@ type HttpExceptionBody = {
   error?: string
   message?: string | string[]
   statusCode?: number
+  errorCode?: string
 }
 
 @Catch()
@@ -35,6 +36,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       statusCode,
       error: body?.error ?? (statusCode === 500 ? 'Internal Server Error' : 'Error'),
       message: this.resolveMessage(statusCode, body?.message, exceptionResponse),
+      ...(body?.errorCode ? { errorCode: body.errorCode } : {}),
       path: request.url,
       timestamp: new Date().toISOString(),
       requestId: request.requestId,
