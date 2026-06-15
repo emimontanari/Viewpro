@@ -28,8 +28,8 @@ Next slice: 26.5 — Staging/deploy checklist.
 
 ### Spec deltas required
 
-- **B-1 vs canonical 404**: The proposal proposes 404 for cross-tenant resource lookups. The `TenantMembershipGuard` currently returns **403** when the requesting user has no membership in the x-tenant-id tenant, before the DB is queried. This is the existing confirmed behavior from `tenant-membership.guard.ts`. The design phase MUST decide: (a) accept 403 at the guard layer for cross-tenant, or (b) introduce a 404 shim at the use-case layer for cross-tenant lookups. This spec documents today's 403 and flags it for design decision.
-- **B-7 vs canonical 404**: `CreateStatusChangeRequestUseCase` throws `ForbiddenException(NOT_ASSIGNED_TO_ENGAGEMENT)` → 403, not 404. The proposal states 404 for unassigned sellers. The design phase MUST confirm whether this stays 403 (existing guard) or changes. The proposal's "Do not touch: the API 403 guard" clause suggests 403 is intentional for B-7.
+- **B-1**: Design accepted 403 as canonical for cross-tenant. Reason: guard fires pre-DB-lookup → no existence leak. See design.md §I1.
+- **B-7**: Design accepted 403 as canonical for SCR unassigned. Aligns with proposal's API 403 guard preservation. See design.md §I2.
 
 ---
 
@@ -230,8 +230,8 @@ Every negative-path test MUST assert ALL of:
 
 | ID | Route | Current behaviour | Minimum acceptable surface |
 |----|-------|------------------|---------------------------|
-| MUI-1 | `/dashboard/product/{unassigned_engagement_id}` for a seller | Unknown — no seeded negative test today; likely renders blank or loading spinner | Reuse generic 404 page or show "No tenés acceso a esta propiedad." text. Decision needed in design phase. |
-| MUI-2 | `/owner/properties/{unowned_property_id}` for an owner | Unknown — no seeded negative test today; likely renders blank or redirect to `/owner` | Reuse generic 404 page or redirect to `/owner`. Decision needed in design phase. |
+| MUI-1 | `/dashboard/product/{unassigned_engagement_id}` for a seller | Unknown — no seeded negative test today; likely renders blank or loading spinner | Resolved: reuse `notFound()` → existing `src/app/not-found.tsx`. See design.md §MUI-1. |
+| MUI-2 | `/owner/properties/{unowned_property_id}` for an owner | Unknown — no seeded negative test today; likely renders blank or redirect to `/owner` | Resolved: reuse existing `OwnerDetailState` empty/error block in `owner-property-detail.tsx`. See design.md §MUI-2. |
 
 ---
 

@@ -30,6 +30,9 @@ Run with: `pnpm --filter next-shadcn-dashboard-starter test:seeded`
 | `owner WhatsApp click POSTs a tracking event`                | WhatsApp contact link priority + tracking           | FR-17..FR-19  | demo-smoke.spec.ts     |
 | `tenant engagement limit blocks creation with a clear UI error` | Tenant suspended/limit behavior                 | FR-20..FR-22  | demo-smoke.spec.ts     |
 
+| `isolation: seller direct deep-link to unassigned property is denied` | Seller unassigned (UI denial) | S-5, B-2 | FB-1 / Coverage matrix — Seller unassigned | FR-3 (UI) | demo-smoke.spec.ts |
+| `isolation: owner direct deep-link to unowned property is denied`      | Owner unauthorised (UI denial) | S-7, B-3 | JD-2 / Coverage matrix — Owner unauthorised | FR-6 (UI) | demo-smoke.spec.ts |
+
 ## Notes
 
 - Baseline tests (rows marked `(baseline)`) existed before Stage 26.3.
@@ -37,3 +40,5 @@ Run with: `pnpm --filter next-shadcn-dashboard-starter test:seeded`
 - T13 (engagement creation) runs after Test 1's `'20 gestiones'` assertion — serial order is required.
 - T20 (tenant limit) must be last — it has an `afterEach` that restores `maxActivePropertyEngagements = 25`.
 - If T20's `afterEach` fails (e.g. hard process kill), run `pnpm demo:seed` to restore the tenant limit.
+- Stage 26.4 (isolation block): U-1 must use `signInSellerWithTenantContext` (not the plain `signIn`) to ensure the active tenant context is established before navigating to a deep link — otherwise `MissingTenantState` renders instead of the denial surface.
+- U-2 requires the isolation tenant seed fixture (slug: `viewpro-isolation-tenant`). Run `pnpm demo:seed` to ensure both tenants are seeded before running the isolation block.

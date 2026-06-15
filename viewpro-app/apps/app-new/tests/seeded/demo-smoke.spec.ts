@@ -23,6 +23,7 @@ import {
   getJson,
   getAssignedProducts,
   getProductByTitle,
+  signInSellerWithTenantContext,
   type ProductsResponse
 } from './_helpers';
 
@@ -1125,4 +1126,120 @@ test('tenant engagement limit blocks creation with a clear UI error', async ({ p
   await expect(page.getByLabel('Título')).toBeEditable();
 
   // Cleanup is handled by the afterEach hook above (restores maxActivePropertyEngagements to 25).
+});
+
+// ---------------------------------------------------------------------------
+// Stage 26.4 — Isolation block (U-1, U-2)
+//
+// Audit-row trace:
+//   U-1 / S-5  — B-2 (FB-1 / Coverage matrix — Seller unassigned)
+//   U-2 / S-7  — B-3 (JD-2 / Coverage matrix — Owner unauthorised)
+//
+// ORDERING: These tests may run after T20. They are independent of each other.
+// IMPORTANT: U-1 must establish active tenant context before navigating to any
+//   product deep link — see signInSellerWithTenantContext in _helpers.ts.
+// ---------------------------------------------------------------------------
+
+// Isolation tenant constants (Stage 26.4 seed fixture)
+const ISOLATION_MANAGER_EMAIL = 'manager.isolation@viewpro.local';
+const ISOLATION_PROPERTY_TITLE = 'Propiedad isolation';
+
+/**
+ * Signs in as the isolation manager and returns the isolation engagement ID and
+ * the isolation asset ID, both required for the isolation UI tests.
+ * The isolation manager belongs only to the isolation tenant, so the session
+ * context auto-selects it, and /api/products returns the 1 isolation engagement.
+ */
+async function getIsolationIds(page: Page, demoPassword: string): Promise<{
+  isolationEngagementId: string;
+  isolationAssetId: string;
+}> {
+  await page.context().clearCookies();
+  await page.goto('/auth/sign-in');
+  await page.evaluate(() => localStorage.clear());
+  await page.getByLabel('Email').fill(ISOLATION_MANAGER_EMAIL);
+  await page.getByLabel('Contraseña').fill(demoPassword);
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await page.waitForURL('**/dashboard');
+
+  // Fetch the isolation engagement list (only 1 row)
+  const isolationProducts = await getJson<ProductsResponse>(page, '/api/products?limit=10');
+  expect(
+    isolationProducts.total,
+    'Isolation tenant must have exactly 1 engagement'
+  ).toBe(1);
+  const isolationEngagement = isolationProducts.items[0]!;
+  const isolationEngagementId = isolationEngagement.id;
+
+  // Fetch the isolation asset ID from the engagement detail
+  const engDetail = await getJson<{ property: { id: string } }>(
+    page,
+    `/api/products/${isolationEngagementId}`
+  );
+  const isolationAssetId = engDetail.property.id;
+
+  return { isolationEngagementId, isolationAssetId };
+}
+
+test.describe('isolation', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  // U-1 / S-5 — B-2 (Seller unassigned denial, UI surface)
+  // Seller navigates to an engagement in the demo tenant they are NOT assigned to.
+  // Expected: the product error state renders "No se pudo cargar la propiedad."
+  // and the property title is absent (no data leak).
+  test('isolation: seller direct deep-link to unassigned property is denied', async ({ page }) => {
+    // Step 1: sign in as manager first to fetch the unassigned product ID via API.
+    // "Casa con jardín en Villa Catalina" is known to be unassigned for martin.
+    const unassignedTitle = 'Casa con jardín en Villa Catalina';
+    await signIn(page, DEMO_EMAIL);
+    const unassignedProduct = await getProductByTitle(page, unassignedTitle);
+    const unassignedEngagementId = unassignedProduct.id;
+
+    // Step 2: sign in as martin with active tenant context established first.
+    // signInSellerWithTenantContext navigates to /dashboard/product and waits for the
+    // product list heading — ensuring the tenant context is resolved in localStorage before
+    // any deep-link navigation. Without this step, MissingTenantState may render instead.
+    await signInSellerWithTenantContext(page, 'martin.demo@viewpro.local', DEMO_PASSWORD);
+
+    // Step 3: navigate directly to the unassigned engagement deep link.
+    await page.goto(`/dashboard/product/${unassignedEngagementId}`);
+
+    // Assertion 1: the Next.js not-found page renders.
+    // When the API returns 404 with allowedErrorStatuses=[404] in the service, the BFF
+    // returns the error body as data. product-view-page.tsx detects !isPropertyEngagement(product)
+    // and calls notFound() → src/app/not-found.tsx renders.
+    // Design MUI-1 resolution: reuse notFound() → existing src/app/not-found.tsx.
+    await expect(
+      page.getByText("Something's missing").first()
+    ).toBeVisible({ timeout: 15_000 });
+
+    // Assertion 2: the property title does NOT appear (no data leak).
+    await expect(page.getByText(unassignedTitle)).toHaveCount(0);
+  });
+
+  // U-2 / S-7 — B-3 (Owner unauthorised access, UI surface)
+  // Owner navigates to an asset in the isolation tenant they do NOT own.
+  // Expected: OwnerDetailState renders "No pudimos cargar esta propiedad."
+  // and the isolation property title is absent (no data leak).
+  test('isolation: owner direct deep-link to unowned property is denied', async ({ page }) => {
+    // Fetch isolation IDs as the isolation manager first, then switch to demo owner
+    const { isolationAssetId } = await getIsolationIds(page, DEMO_PASSWORD);
+
+    // Sign in as the demo owner
+    await signIn(page, OWNER_EMAIL, '/owner');
+    await expect(page.getByRole('heading', { name: 'Tus propiedades' })).toBeVisible();
+
+    // Navigate directly to the isolation asset deep link
+    await page.goto(`/owner/properties/${isolationAssetId}`);
+
+    // Assertion 1: OwnerDetailState renders the empty/error block
+    // (owner-property-detail.tsx:54-61 renders this when propertyQuery.isError)
+    await expect(
+      page.getByText('No pudimos cargar esta propiedad').first()
+    ).toBeVisible({ timeout: 10_000 });
+
+    // Assertion 2: the isolation property title does NOT appear (no data leak)
+    await expect(page.getByText(ISOLATION_PROPERTY_TITLE)).toHaveCount(0);
+  });
 });

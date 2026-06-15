@@ -4,6 +4,11 @@
  * Extracted in Stage 26.3 commit A. Rules:
  *   - Only extract functions with ≥ 3 callers across the suite.
  *   - signIn, openOwnerPropertyDetail, and openAndVerifySignedReadUrl stay inline in demo-smoke.spec.ts.
+ *
+ * Stage 26.4 additions:
+ *   - signInSellerWithTenantContext: signs in a seller and waits for the active tenant to be set.
+ *     IMPORTANT: must establish active tenant context (demo tenant) before navigating to any
+ *     product deep link; without it, MissingTenantState renders instead of the denial surface.
  */
 
 import { expect, type Page } from '@playwright/test';
@@ -90,4 +95,46 @@ export async function openManagerPropertyDetail(page: Page, title: string): Prom
  */
 export async function assertFeedContains(page: Page, regex: RegExp): Promise<void> {
   await expect(page.locator('[data-testid="movement-feed"], ul, ol').getByText(regex).first()).toBeVisible({ timeout: 10_000 });
+}
+
+// ---------------------------------------------------------------------------
+// Stage 26.4 — Isolation block helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Signs in a seller and ensures the demo tenant is the active context before
+ * navigating to any product deep link.
+ *
+ * IMPORTANT: must select the active tenant (demo tenant) before navigating to
+ * any product deep link, otherwise MissingTenantState renders instead of the
+ * 404/denial surface.
+ *
+ * Strategy: sign in with redirect to /dashboard, which triggers the session
+ * context auto-select of `memberships[0]` (the only/primary demo tenant).
+ * Wait for the products heading to confirm the tenant context is resolved
+ * before any deep-link navigation.
+ *
+ * @param page - Playwright Page instance
+ * @param email - Seller email (e.g. 'martin.demo@viewpro.local')
+ * @param demoPassword - Demo password string
+ */
+export async function signInSellerWithTenantContext(
+  page: Page,
+  email: string,
+  demoPassword: string
+): Promise<void> {
+  await page.context().clearCookies();
+  await page.goto(`/auth/sign-in?redirect_url=${encodeURIComponent('/dashboard/product')}`);
+  await page.evaluate(() => localStorage.clear());
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Contraseña').fill(demoPassword);
+  await page.getByRole('button', { name: 'Entrar' }).click();
+
+  // Wait for the product list to render — confirms the active tenant context is set.
+  // Without this, a deep-link navigation to /dashboard/product/:id may render
+  // MissingTenantState before the session context hydrates.
+  await page.waitForURL('**/dashboard/product');
+  await expect(page.getByRole('heading', { name: 'Propiedades' }).first()).toBeVisible({
+    timeout: 15_000
+  });
 }
