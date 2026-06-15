@@ -49,6 +49,13 @@ export const navGroups: NavGroup[] = [
         items: []
       },
       {
+        title: 'Solicitudes de estado',
+        url: '/dashboard/status-change-requests',
+        icon: 'trendingUp',
+        isActive: false,
+        items: []
+      },
+      {
         title: 'Inmobiliarias',
         url: '/dashboard/workspaces',
         icon: 'workspace',

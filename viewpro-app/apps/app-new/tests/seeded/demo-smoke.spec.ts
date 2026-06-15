@@ -372,6 +372,127 @@ test('demo manager can review a submitted document request', async ({ page }) =>
   await expect(reviewedRequest.getByText('Aprobado', { exact: true })).toBeVisible();
 });
 
+const MARTIN_EMAIL = 'martin.demo@viewpro.local';
+const MAPUCHE_PROPERTY_TITLE = 'Casa para refaccionar en Mapuche';
+const MAPUCHE_PROPERTY_TITLE_SHORT = 'Mapuche';
+
+test('manager can approve a pending status change request from the bandeja (T-34)', async ({
+  page
+}) => {
+  // The seed already creates a PENDING request from martin on the Mapuche property.
+  // Manager logs in and approves it from the bandeja.
+  await signIn(page, DEMO_EMAIL);
+
+  await page.goto('/dashboard/status-change-requests');
+  await expect(page.getByRole('heading', { name: 'Solicitudes de cambio de estado' })).toBeVisible();
+
+  // Bandeja should show the seeded PENDING request for Mapuche
+  await expect(page.getByText(MAPUCHE_PROPERTY_TITLE).first()).toBeVisible({ timeout: 10_000 });
+
+  // Approve it
+  const mapucheRow = page
+    .getByRole('row')
+    .filter({ hasText: MAPUCHE_PROPERTY_TITLE_SHORT })
+    .first();
+  await mapucheRow.getByRole('button', { name: /Aprobar/i }).click();
+
+  // Toast appears
+  await expect(page.getByText(/Aprobada|Aprobado|status actualizado|ACTIVE_PUBLICATION/i).first()).toBeVisible({
+    timeout: 10_000
+  });
+
+  // The row disappears from the bandeja (optimistic or after invalidation)
+  await expect(
+    page.getByRole('row').filter({ hasText: MAPUCHE_PROPERTY_TITLE_SHORT })
+  ).toHaveCount(0, { timeout: 10_000 });
+
+  // Navigate to the Mapuche property and assert the status badge changed
+  const products = await getJson<ProductsResponse>(page, '/api/products?limit=50');
+  const mapucheProduct = products.items.find((item) =>
+    item.property.title.includes(MAPUCHE_PROPERTY_TITLE_SHORT)
+  );
+  if (mapucheProduct) {
+    await page.goto(`/dashboard/product/${mapucheProduct.id}`);
+    await expect(page.getByText('ACTIVE_PUBLICATION').first()).toBeVisible({ timeout: 10_000 });
+  }
+});
+
+test('manager can reject a status change request from the bandeja (T-34)', async ({ page }) => {
+  // After the approve test the Mapuche PENDING is gone. We need martin to create a new one.
+  await signIn(page, MARTIN_EMAIL);
+
+  // Find Mapuche and create a new request
+  const products = await getAssignedProducts(page);
+  const mapucheProduct = products.items.find((item) =>
+    item.property.title.includes(MAPUCHE_PROPERTY_TITLE_SHORT)
+  );
+  expect(mapucheProduct, 'Mapuche property should be assigned to martin').toBeTruthy();
+  const mapucheId = mapucheProduct!.id;
+
+  await page.goto(`/dashboard/product/${mapucheId}`);
+  await expect(page.getByText('Detalle de propiedad')).toBeVisible();
+
+  // Open the request dialog — the "Solicitar cambio de estado" button is visible for sellers
+  const requestButton = page.getByRole('button', { name: /Solicitar cambio de estado/i });
+  await expect(requestButton).toBeVisible({ timeout: 10_000 });
+  await requestButton.click();
+
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  // The seller sees a dialog — can't fully drive Radix Select in Playwright easily
+  // so we verify the dialog opened and close it (functional verification via API)
+  const closeButton = page.getByRole('button', { name: /Cancelar/i });
+  if (await closeButton.isVisible()) {
+    await closeButton.click();
+  }
+
+  // Create the request via API directly to set up the reject test
+  const createResponse = await page.request.post(
+    `/api/products/${mapucheId}/status-change-requests`,
+    {
+      data: {
+        targetStatus: 'DOCUMENTATION_PENDING',
+        currentStatusSnapshot: 'ACTIVE_PUBLICATION',
+        requestNote: 'Documentación lista'
+      }
+    }
+  );
+  // 201 or 409 if request already exists (from a parallel test run)
+  expect(
+    createResponse.status() === 201 || createResponse.status() === 409,
+    `Expected 201 or 409 but got ${createResponse.status()}`
+  ).toBe(true);
+
+  // Manager logs in and rejects it
+  await signIn(page, DEMO_EMAIL);
+  await page.goto('/dashboard/status-change-requests');
+  await expect(page.getByRole('heading', { name: 'Solicitudes de cambio de estado' })).toBeVisible();
+  await expect(page.getByText(MAPUCHE_PROPERTY_TITLE).first()).toBeVisible({ timeout: 10_000 });
+
+  const mapucheRow = page
+    .getByRole('row')
+    .filter({ hasText: MAPUCHE_PROPERTY_TITLE_SHORT })
+    .first();
+  await mapucheRow.getByRole('button', { name: /Rechazar/i }).click();
+
+  // Reject dialog opens
+  const rejectDialog = page.getByRole('dialog');
+  await expect(rejectDialog).toBeVisible({ timeout: 5_000 });
+
+  await rejectDialog.getByLabel(/Motivo del rechazo/i).fill('Documentación incompleta');
+  await rejectDialog.getByRole('button', { name: /Rechazar/i }).click();
+
+  // Toast success
+  await expect(page.getByText(/Solicitud rechazada|rechazada/i).first()).toBeVisible({
+    timeout: 10_000
+  });
+
+  // Row disappears from bandeja
+  await expect(
+    page.getByRole('row').filter({ hasText: MAPUCHE_PROPERTY_TITLE_SHORT })
+  ).toHaveCount(0, { timeout: 10_000 });
+});
+
 async function openOwnerPropertyDetail(page: Page) {
   await signIn(page, OWNER_EMAIL, '/owner');
 
