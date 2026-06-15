@@ -66,7 +66,7 @@
 
 ### Area 4 — Label Management API
 
-**FR-12** `POST /tenants/me/movement-outcome-labels` creates a custom label. Only users with role `seller` or `manager` on the tenant are authorized. `owner` and `viewpro_admin` receive 403.
+**FR-12** `POST /tenants/me/movement-outcome-labels` creates a custom label. Only users with `TenantRole.AGENT`, `MANAGER`, or `PRINCIPAL_MANAGER` are authorized. Users with no `TenantMembership` (e.g. `PropertyAssetOwner` via invitation) or with only global `VIEWPRO_ADMIN` and no `TenantMembership` receive 403.
 *Trace: proposal § Custom-label rules — Who can create; proposal § Scope — API*
 
 **FR-13** Creating a label with a name that already exists for the same tenant (case-insensitive) MUST return the existing active record (HTTP 200) instead of an error. If the matching record is soft-deleted, a new record MUST be created.
@@ -100,7 +100,7 @@
 **FR-21** Selecting `+ Add label` MUST open an inline form (within the same modal/panel) with a text input (max 40 chars) and an optional color picker. Submitting the inline form calls the create-label endpoint, then selects the new label and closes the inline form without closing the movement form.
 *Trace: proposal § Scope — UI inline creation*
 
-**FR-22** The `+ Add label` inline form MUST NOT be accessible to `owner` or `viewpro_admin` roles. For those roles the combobox still shows built-in outcomes and existing custom labels (read-only list), but the add-label action is hidden.
+**FR-22** The `+ Add label` inline form MUST NOT be accessible to sessions where the user holds no `TenantMembership` (e.g. `PropertyAssetOwner` via invitation) or holds only global `VIEWPRO_ADMIN` with no `TenantMembership`. For those sessions the combobox still shows built-in outcomes and existing custom labels (read-only list), but the add-label action is hidden.
 *Trace: proposal § Custom-label rules — Who can create*
 
 ### Area 7 — Movement Feed UI
@@ -144,7 +144,7 @@
 | S-6 | Outcome never moves property status | Engagement with status `CAPTURE` | POST create-movement with any `outcome` value | `PropertyEngagement.status` remains `CAPTURE`; no `STATUS_CHANGE` movement is created |
 | S-7 | Cross-tenant label access denied | Seller belongs to Tenant A | GET `/tenants/me/movement-outcome-labels` with session of Tenant A | Only Tenant A labels returned; Tenant B labels are never present |
 | S-8 | Cross-tenant label FK rejected | Seller on Tenant A | POST create-movement with `customLabelId` belonging to Tenant B | 422 Unprocessable Entity |
-| S-9 | Owner cannot create label | Auth'd owner visiting the movement form | Submits `+ Add label` inline form (UI hidden, but also tested at API) | UI hides the action; direct POST to API returns 403 |
+| S-9 | Non-member cannot create label | Session with no `TenantMembership` or with only global `VIEWPRO_ADMIN` and no `TenantMembership` | Submits `+ Add label` inline form (UI hidden, but also tested at API) | UI hides the action; direct POST to API returns 403 |
 | S-10 | 40-char label cap enforced | Seller | POST create-label with `label` length 41 | 422 with validation error |
 | S-11 | Label name collision with built-in | Seller | POST create-label with `label = "EN_CAPTACION"` (any casing) | 422 — name collides with a built-in outcome |
 | S-12 | Duplicate label returns existing | Label "Espera doc" active for tenant | POST create-label with `label = "Espera doc"` | HTTP 200 + same record returned; no duplicate row |

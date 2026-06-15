@@ -58,7 +58,7 @@ This slice ships the second responsibility.
 
 ## Custom-label rules
 
-- **Who can create:** any user with seller or manager role on the tenant. Owners and the global ViewPro admin cannot create labels.
+- **Who can create:** any user with `TenantRole.AGENT`, `MANAGER`, or `PRINCIPAL_MANAGER` on the tenant. Users with no `TenantMembership` (e.g. `PropertyAssetOwner` via invitation) and the global `VIEWPRO_ADMIN` without a `TenantMembership` cannot create labels.
 - **Scope:** per tenant. Labels are shared across the inmobiliaria; sellers see every active label of their tenant.
 - **Naming:** label string trimmed, max length 40 characters, must not collide with the built-in enum names (case-insensitive) and must be unique per tenant.
 - **Color:** optional CSS hex (`#RRGGBB`); ignored on the API side beyond storage and validated on the BFF.
