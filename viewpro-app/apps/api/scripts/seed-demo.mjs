@@ -25,6 +25,12 @@ import {
 	UserStatus,
 } from "@prisma/client";
 
+const DEMO_OUTCOME_LABELS = [
+	{ label: "Esperando documentos", color: "#3B82F6" },
+	{ label: "En negociación avanzada", color: "#F59E0B" },
+	{ label: "Propietario no responde", color: "#EF4444" },
+];
+
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const apiRoot = resolve(scriptDir, "..");
 const workspaceRoot = resolve(apiRoot, "../..");
@@ -556,6 +562,7 @@ async function seedDemo(client) {
 		documentRequests,
 	);
 	const adminEvents = await createDemoAdminAuditEvents(client, tenant, users);
+	const outcomeLabels = await createDemoOutcomeLabels(client, tenant, users);
 
 	return {
 		tenant,
@@ -565,6 +572,7 @@ async function seedDemo(client) {
 		documentRequestsCount: documentRequests.length,
 		notificationsCount: notifications.length,
 		adminEventsCount: adminEvents.length,
+		outcomeLabelsCount: outcomeLabels.length,
 	};
 }
 
@@ -607,6 +615,9 @@ async function resetDemoTenant(client) {
 				where: { tenantId: existingTenant.id },
 			}),
 			client.movement.deleteMany({ where: { tenantId: existingTenant.id } }),
+			client.tenantMovementOutcomeLabel.deleteMany({
+				where: { tenantId: existingTenant.id },
+			}),
 			client.propertyAgent.deleteMany({
 				where: { tenantId: existingTenant.id },
 			}),
@@ -1579,6 +1590,37 @@ function moneyToCents(amount) {
 	return Math.round(amount * 100);
 }
 
+async function createDemoOutcomeLabels(client, tenant, users) {
+	const agent = users.get("martin.demo@viewpro.local");
+	const labels = [];
+
+	for (const labelDef of DEMO_OUTCOME_LABELS) {
+		const label = await client.tenantMovementOutcomeLabel.upsert({
+			where: {
+				tenant_movement_outcome_labels_active_tenant_label_key: undefined,
+				// Prisma does not support partial unique index in where clause;
+				// use a findFirst + create/update pattern for idempotency instead.
+				id: `demo-label-${tenant.id}-${labelDef.label.replace(/\s+/g, "-").toLowerCase()}`,
+			},
+			create: {
+				id: `demo-label-${tenant.id}-${labelDef.label.replace(/\s+/g, "-").toLowerCase()}`,
+				tenantId: tenant.id,
+				label: labelDef.label,
+				color: labelDef.color,
+				createdByUserId: agent.id,
+			},
+			update: {
+				label: labelDef.label,
+				color: labelDef.color,
+				deletedAt: null,
+			},
+		});
+		labels.push(label);
+	}
+
+	return labels;
+}
+
 function printSummary(result) {
 	const passwordSummary = process.env.VIEWPRO_DEMO_PASSWORD
 		? "<VIEWPRO_DEMO_PASSWORD>"
@@ -1605,6 +1647,7 @@ function printSummary(result) {
 	console.log(`Document requests: ${result.documentRequestsCount}`);
 	console.log(`Notifications: ${result.notificationsCount}`);
 	console.log(`Admin audit events: ${result.adminEventsCount}`);
+	console.log(`Custom outcome labels: ${result.outcomeLabelsCount}`);
 	console.log(
 		"Contact fixtures: tenant WhatsApp, Martín seller WhatsApp, Sofía no-config movement contact",
 	);
