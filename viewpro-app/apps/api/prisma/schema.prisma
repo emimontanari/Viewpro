@@ -116,6 +116,19 @@ enum InterestLevel {
   HIGH
 }
 
+enum MovementBuiltInOutcome {
+  EN_CAPTACION
+  DOCUMENTACION_PENDIENTE
+  PREPARANDO_PUBLICACION
+  PUBLICACION_ACTIVA
+  CONSULTAS_Y_VISITAS
+  NEGOCIACION_OFERTA
+  RESERVA_INICIADA
+  DOCUMENTACION_FINAL
+  CERRADO
+  CANCELADO
+}
+
 enum DocumentRequestStatus {
   PENDING
   SUBMITTED
@@ -179,8 +192,9 @@ model User {
   reviewedDocumentRequests    DocumentRequest[]  @relation("DocumentRequestReviewer")
   uploadedDocumentVersions    DocumentVersion[]
   uploadedPropertyImages      PropertyAssetImage[]
-  sentTeamInvitations         TeamInvitation[]
-  notifications               Notification[]
+  sentTeamInvitations              TeamInvitation[]
+  notifications                    Notification[]
+  createdMovementOutcomeLabels     TenantMovementOutcomeLabel[]
 
   @@map("users")
 }
@@ -199,12 +213,13 @@ model Tenant {
 
   memberships TenantMembership[]
 
-  propertyEngagements PropertyEngagement[]
-  propertyAgents      PropertyAgent[]
-  movements           Movement[]
-  documentRequests    DocumentRequest[]
-  teamInvitations     TeamInvitation[]
-  notifications       Notification[]
+  propertyEngagements  PropertyEngagement[]
+  propertyAgents       PropertyAgent[]
+  movements            Movement[]
+  documentRequests     DocumentRequest[]
+  teamInvitations      TeamInvitation[]
+  notifications        Notification[]
+  movementOutcomeLabels TenantMovementOutcomeLabel[]
 
   @@map("tenants")
 }
@@ -347,6 +362,27 @@ model TeamInvitation {
   @@map("team_invitations")
 }
 
+model TenantMovementOutcomeLabel {
+  id              String    @id @default(uuid())
+  tenantId        String
+  label           String    // trimmed, max 40 chars (app-level), unique per tenant via partial index
+  color           String?   // CSS hex #RRGGBB, validated at application layer
+  createdByUserId String
+  createdAt       DateTime  @default(now())
+  deletedAt       DateTime?
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User       @relation(fields: [createdByUserId], references: [id])
+  movements Movement[] @relation("MovementCustomOutcomeLabel")
+
+  // NOTE: a partial unique index on (tenantId, label) WHERE deletedAt IS NULL is added
+  // via raw SQL in the migration (Prisma cannot express partial unique indexes natively).
+  // Do NOT add @@unique([tenantId, label]) here as it would conflict with the partial index.
+  @@index([tenantId, deletedAt])
+  @@index([createdByUserId])
+  @@map("tenant_movement_outcome_labels")
+}
+
 model PropertyAssetImage {
   id                 String   @id @default(uuid())
   propertyAssetId    String
@@ -432,15 +468,19 @@ model Movement {
   visitCount           Int?
   offerAmountCents     Int?
   interestLevel        InterestLevel?
+  builtInOutcome       MovementBuiltInOutcome?
+  customOutcomeLabelId String?
   createdAt            DateTime                  @default(now())
 
-  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  propertyEngagement PropertyEngagement @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)
-  createdBy          User               @relation(fields: [createdByUserId], references: [id])
-  notifications      Notification[]
+  tenant              Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyEngagement  PropertyEngagement          @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)
+  createdBy           User                        @relation(fields: [createdByUserId], references: [id])
+  customOutcomeLabel  TenantMovementOutcomeLabel? @relation("MovementCustomOutcomeLabel", fields: [customOutcomeLabelId], references: [id], onDelete: Restrict)
+  notifications       Notification[]
 
   @@index([tenantId, propertyEngagementId, createdAt])
   @@index([createdByUserId])
+  @@index([customOutcomeLabelId])
   @@map("movements")
 }
 
