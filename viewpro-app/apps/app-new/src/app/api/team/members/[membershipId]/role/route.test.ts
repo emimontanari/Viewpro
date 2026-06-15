@@ -16,7 +16,7 @@ const memberResponse = {
   membershipId: 'membership-1',
   userId: 'user-1',
   email: 'agente@example.com',
-  firstName: 'Agente',
+  firstName: 'Vendedor',
   lastName: null,
   userStatus: 'ACTIVE',
   role: 'MANAGER',

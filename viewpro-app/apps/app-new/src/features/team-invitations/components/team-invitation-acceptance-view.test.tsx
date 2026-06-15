@@ -82,7 +82,7 @@ describe('TeamInvitationAcceptanceView', () => {
 
     expect(await screen.findByText('Inmobiliaria Norte')).toBeInTheDocument();
     expect(screen.getByText('agente@example.com')).toBeInTheDocument();
-    expect(screen.getByText('Agente')).toBeInTheDocument();
+    expect(screen.getByText('Vendedor')).toBeInTheDocument();
     expect(screen.getByLabelText('Nombre *')).toBeInTheDocument();
     expect(screen.getByLabelText('Contraseña *')).toBeInTheDocument();
   });

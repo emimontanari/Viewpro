@@ -206,7 +206,7 @@ export function ProductTable() {
                     Propietario
                   </TableHead>
                   <TableHead className='hidden w-36 px-3 py-3 text-xs uppercase tracking-wide text-muted-foreground 2xl:table-cell'>
-                    Agente
+                    Vendedor
                   </TableHead>
                   <TableHead className='w-12 px-3 py-3' />
                 </TableRow>
@@ -571,7 +571,7 @@ function PropertyMobileCard({
             label='Precio'
             value={formatPrice(propertyEngagement.publishedPriceCents, propertyEngagement.currency)}
           />
-          <PropertyMetric label='Agente' value={agent.label} mutedValue={agent.detail} />
+          <PropertyMetric label='Vendedor' value={agent.label} mutedValue={agent.detail} />
           <PropertyMetric
             label='Propietario'
             value={propertyEngagement.property.ownerName ?? 'Sin nombre'}

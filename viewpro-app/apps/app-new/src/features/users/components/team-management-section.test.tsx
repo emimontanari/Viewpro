@@ -272,12 +272,12 @@ describe('TeamManagementSection', () => {
     const user = userEvent.setup();
     renderTeamManagementSection();
 
-    await user.click(screen.getByRole('button', { name: /hacer manager/i }));
+    await user.click(screen.getByRole('button', { name: /hacer encargado/i }));
 
     await waitFor(() => {
       expect(updateTeamMemberRoleMock).toHaveBeenCalledWith('membership-1', { role: 'MANAGER' });
     });
-    expect(await screen.findByText('Manager')).toBeInTheDocument();
+    expect(await screen.findByText('Encargado')).toBeInTheDocument();
     expect(toastMock.success).toHaveBeenCalledWith('Rol actualizado.');
   });
 
@@ -291,7 +291,7 @@ describe('TeamManagementSection', () => {
       expect(deactivateTeamMemberMock).toHaveBeenCalledWith('membership-1');
     });
     expect(await screen.findByText('Desactivado')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /hacer manager/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /hacer encargado/i })).not.toBeInTheDocument();
     expect(toastMock.success).toHaveBeenCalledWith('Acceso desactivado.');
   });
 
@@ -315,7 +315,7 @@ describe('TeamManagementSection', () => {
 
     expect(screen.queryByRole('button', { name: /invitar miembro/i })).not.toBeInTheDocument();
     expect(screen.queryByText('agente@example.com')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /hacer manager/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /hacer encargado/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /desactivar acceso/i })).not.toBeInTheDocument();
   });
 
@@ -324,12 +324,12 @@ describe('TeamManagementSection', () => {
     updateTeamMemberRoleMock.mockRejectedValueOnce(new Error('No autorizado'));
     renderTeamManagementSection();
 
-    await user.click(screen.getByRole('button', { name: /hacer manager/i }));
+    await user.click(screen.getByRole('button', { name: /hacer encargado/i }));
 
     await waitFor(() => {
       expect(toastMock.error).toHaveBeenCalledWith('No autorizado');
     });
-    expect(screen.getAllByText('Agente').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Vendedor').length).toBeGreaterThan(0);
   });
 
   it('shows API errors without a manual link', async () => {

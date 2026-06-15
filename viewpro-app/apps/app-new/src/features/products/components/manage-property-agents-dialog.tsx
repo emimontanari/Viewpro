@@ -41,7 +41,7 @@ type PropertyAgentsPanelProps = {
 
 const roleLabels: Record<TenantMemberRole, string> = {
   AGENT: 'Vendedor',
-  MANAGER: 'Manager',
+  MANAGER: 'Encargado',
   PRINCIPAL_MANAGER: 'Titular'
 };
 

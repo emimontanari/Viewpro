@@ -621,5 +621,5 @@ function getInvitationUiError(error: unknown): InvitationUiError {
 }
 
 function getRoleLabel(role: TeamInvitationResponse['role']) {
-  return role === 'MANAGER' ? 'Manager' : 'Agente';
+  return role === 'MANAGER' ? 'Encargado' : 'Vendedor';
 }

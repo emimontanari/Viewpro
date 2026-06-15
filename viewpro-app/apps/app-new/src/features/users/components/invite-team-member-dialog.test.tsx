@@ -56,7 +56,7 @@ describe('InviteTeamMemberDialog', () => {
 
     await user.type(screen.getByLabelText(/email/i), ' AGENTE@Example.COM ');
     await user.click(screen.getByRole('combobox', { name: /rol/i }));
-    await user.click(screen.getByRole('option', { name: /manager/i }));
+    await user.click(screen.getByRole('option', { name: /encargado/i }));
     await user.click(screen.getByRole('button', { name: /crear invitación/i }));
 
     expect(props.onSubmit).toHaveBeenCalledWith({

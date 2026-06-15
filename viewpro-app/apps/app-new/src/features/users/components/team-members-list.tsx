@@ -121,18 +121,18 @@ function formatName(member: User) {
 
 function formatRole(role: User['role']) {
   if (role === 'PRINCIPAL_MANAGER') {
-    return 'Principal manager';
+    return 'Encargado principal';
   }
 
   if (role === 'MANAGER') {
-    return 'Manager';
+    return 'Encargado';
   }
 
-  return 'Agente';
+  return 'Vendedor';
 }
 
 function formatRoleAction(role: TeamInvitationRole) {
-  return role === 'MANAGER' ? 'Hacer manager' : 'Hacer agente';
+  return role === 'MANAGER' ? 'Hacer encargado' : 'Hacer vendedor';
 }
 
 function getNextAssignableRole(role: User['role']): TeamInvitationRole | null {
