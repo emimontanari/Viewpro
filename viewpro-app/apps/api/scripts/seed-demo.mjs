@@ -1324,10 +1324,13 @@ async function createDemoDocumentReviewStates(
 	if (boulevaresProperty && owner && requester) {
 		// Find the secondary propertyAssetOwner record for propietario.demo on Los Boulevares.
 		// This record is created by createDemoExistingOwnerInvitation with isPrimary: false.
+		// Note: the invitation owner record has userId=null (set to ACTIVE only after acceptance),
+		// so we query by ownerEmail, not userId.
 		const secondaryOwnerRecord = await client.propertyAssetOwner.findFirst({
 			where: {
 				propertyAssetId: boulevaresProperty.asset.id,
-				userId: owner.id,
+				ownerEmail: owner.email,
+				isPrimary: false,
 			},
 		});
 		if (secondaryOwnerRecord) {

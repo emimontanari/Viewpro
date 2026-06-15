@@ -23,7 +23,6 @@ import {
   getJson,
   getAssignedProducts,
   getProductByTitle,
-  openManagerPropertyDetail,
   type ProductsResponse
 } from './_helpers';
 
@@ -560,6 +559,7 @@ async function signIn(page: Page, email: string, redirectPath = '/dashboard') {
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Contraseña').fill(DEMO_PASSWORD);
   await page.getByRole('button', { name: 'Entrar' }).click();
+
   await page.waitForURL(`**${redirectPath}`);
 }
 
@@ -605,6 +605,7 @@ type OwnerTimelineResponse = {
 
 type AdminTenantsResponse = {
   items: Array<{
+    id: string;
     slug: string;
     status: string;
     limits: {
@@ -614,3 +615,514 @@ type AdminTenantsResponse = {
     };
   }>;
 };
+
+// ---------------------------------------------------------------------------
+// Stage 26.3 — New tests (T13..T20) covering audit gaps G-1..G-7
+// ORDERING: T13 MUST run after Test 1 (asserts '20 gestiones en total').
+//           T14 depends on T13 (new engagement). T15 depends on T14 (martin assigned).
+//           T20 MUST be last — has afterEach that restores maxActivePropertyEngagements.
+// ---------------------------------------------------------------------------
+
+// Track the title of the engagement created in T13 so T14 and T15 can reference it.
+let newEngagementTitle = '';
+
+// T13 — G-1 (FR-1..FR-4): Manager creates a new property engagement through the UI.
+// ORDERING: must run after Test 1 which asserts the 20-engagement count (Risk #4 mitigation).
+test('manager can create a new property engagement through the UI', async ({ page }) => {
+  await signIn(page, DEMO_EMAIL);
+  await page.goto('/dashboard/product');
+
+  // Snapshot the current total before creation.
+  const beforeTotal = (await getJson<ProductsResponse>(page, '/api/products?limit=50')).total;
+
+  // Click "Nueva propiedad" link.
+  await page.getByRole('link', { name: 'Nueva propiedad' }).click();
+  await expect(page).toHaveURL(/\/dashboard\/product\/new$/i);
+
+  // Generate a unique title so T14/T15 can find it.
+  newEngagementTitle = `Smoke test engagement ${Date.now()}`;
+
+  // Fill required fields.
+  await page.getByLabel('Título').fill(newEngagementTitle);
+  await page.getByLabel('Dirección').fill('Calle Smoke Test 123');
+  await page.getByLabel('Ciudad').fill('Córdoba');
+  await page.getByLabel('Provincia').fill('Córdoba');
+
+  // Tipo de propiedad combobox.
+  await page.getByRole('combobox', { name: /Tipo de propiedad/i }).click();
+  await page.getByRole('option', { name: 'Casa' }).click();
+
+  // Operación combobox.
+  await page.getByRole('combobox', { name: /Operación/i }).click();
+  await page.getByRole('option', { name: 'Venta' }).click();
+
+  // Moneda combobox.
+  await page.getByRole('combobox', { name: /Moneda/i }).click();
+  await page.getByRole('option', { name: 'USD' }).click();
+
+  // Submit.
+  await page.getByRole('button', { name: 'Crear propiedad' }).click();
+  await page.waitForURL('**/dashboard/product', { timeout: 15_000 });
+
+  // Assertion 1: total increased by 1.
+  const afterTotal = (await getJson<ProductsResponse>(page, '/api/products?limit=50')).total;
+  expect(afterTotal).toBe(beforeTotal + 1);
+
+  // Assertion 2: new property title visible in the table.
+  await expect(page.getByText(newEngagementTitle).first()).toBeVisible({ timeout: 10_000 });
+
+  // Assertion 3: navigate to the new property detail page and verify title + initial status.
+  const newProduct = await getProductByTitle(page, newEngagementTitle);
+  await page.goto(`/dashboard/product/${newProduct.id}`);
+  await expect(page.getByText(newEngagementTitle).first()).toBeVisible();
+  await expect(page.getByText('Detalle de propiedad')).toBeVisible();
+
+  // Assertion 4 (FR-4): martin was not assigned at creation; his product list must not include it.
+  // We sign in as martin in the same page (then signIn restores manager context isn't needed here
+  // since T14 will sign in freshly). Martin's assigned list is verified at the API level.
+  await signIn(page, 'martin.demo@viewpro.local');
+  const martinProducts = await getJson<ProductsResponse>(page, '/api/products?limit=50');
+  const martinTitles = martinProducts.items.map((item) => item.property.title);
+  expect(martinTitles).not.toContain(newEngagementTitle);
+});
+
+// T14 — G-2 (FR-5..FR-6): Manager assigns martin to the new engagement via Gestionar vendedores.
+test('manager can assign martin to the new engagement via Gestionar vendedores', async ({
+  page
+}) => {
+  await signIn(page, DEMO_EMAIL);
+
+  // Navigate to the engagement created in T13.
+  const newProduct = await getProductByTitle(page, newEngagementTitle);
+  await page.goto(`/dashboard/product/${newProduct.id}`);
+  await expect(page.getByText('Detalle de propiedad')).toBeVisible();
+
+  // Open Gestionar vendedores dialog.
+  await page.getByRole('button', { name: /Gestionar vendedores/i }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible({ timeout: 10_000 });
+
+  // Wait for the "Disponibles para asignar" section and martin's row to appear.
+  await expect(dialog.getByText(/Disponibles para asignar/i)).toBeVisible({ timeout: 10_000 });
+  const martinAvailableRow = dialog
+    .locator('section')
+    .filter({ hasText: /Disponibles para asignar/i })
+    .locator('li')
+    .filter({ hasText: 'martin.demo@viewpro.local' })
+    .first();
+  await expect(martinAvailableRow).toBeVisible({ timeout: 10_000 });
+  await martinAvailableRow.getByRole('button', { name: /Asignar/i }).click();
+
+  // Wait for assignment to complete: martin should appear in "Asignados actualmente".
+  const martinAssignedRow = dialog
+    .locator('section')
+    .filter({ hasText: /Asignados actualmente/i })
+    .locator('li')
+    .filter({ hasText: 'martin.demo@viewpro.local' })
+    .first();
+  await expect(martinAssignedRow).toBeVisible({ timeout: 10_000 });
+
+  // Close dialog via the X button or Escape.
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+
+  // Assertion: martin's product list now includes the new engagement.
+  await signIn(page, 'martin.demo@viewpro.local');
+  const martinProducts = await getJson<ProductsResponse>(page, '/api/products?limit=50');
+  const martinTitles = martinProducts.items.map((item) => item.property.title);
+  expect(martinTitles).toContain(newEngagementTitle);
+});
+
+// T15 — G-2 (FR-7): Manager removes martin's assignment via Gestionar vendedores.
+test("manager can remove martin's assignment via Gestionar vendedores", async ({ page }) => {
+  await signIn(page, DEMO_EMAIL);
+
+  const newProduct = await getProductByTitle(page, newEngagementTitle);
+  await page.goto(`/dashboard/product/${newProduct.id}`);
+  await expect(page.getByText('Detalle de propiedad')).toBeVisible();
+
+  // Open Gestionar vendedores dialog.
+  await page.getByRole('button', { name: /Gestionar vendedores/i }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible({ timeout: 10_000 });
+
+  // In "Asignados actualmente" find martin and click Quitar.
+  const martinAssignedRow = dialog
+    .locator('section')
+    .filter({ hasText: /Asignados actualmente/i })
+    .locator('li')
+    .filter({ hasText: 'martin.demo@viewpro.local' })
+    .first();
+  await expect(martinAssignedRow).toBeVisible({ timeout: 10_000 });
+  await martinAssignedRow.getByRole('button', { name: /Quitar/i }).click();
+
+  // Wait for removal to complete: martin should appear in "Disponibles para asignar".
+  const martinAvailableRow = dialog
+    .locator('section')
+    .filter({ hasText: /Disponibles para asignar/i })
+    .locator('li')
+    .filter({ hasText: 'martin.demo@viewpro.local' })
+    .first();
+  await expect(martinAvailableRow).toBeVisible({ timeout: 10_000 });
+
+  // Close dialog.
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+
+  // Assertion: martin's product list no longer includes the new engagement.
+  await signIn(page, 'martin.demo@viewpro.local');
+  const martinProductsAfter = await getJson<ProductsResponse>(page, '/api/products?limit=50');
+  const martinTitlesAfter = martinProductsAfter.items.map((item) => item.property.title);
+  expect(martinTitlesAfter).not.toContain(newEngagementTitle);
+});
+
+// T16 — G-3 (FR-8..FR-10): Manager creates a plain movement without an outcome label.
+test('manager can create a plain movement without an outcome label', async ({ page }) => {
+  await signIn(page, DEMO_EMAIL);
+
+  // Navigate directly using the API to get the product ID, avoiding table pagination issues.
+  const movementProduct = await getProductByTitle(page, VISIBLE_DEMO_PROPERTY_TITLE);
+  await page.goto(`/dashboard/product/${movementProduct.id}`);
+  await expect(page.getByText('Detalle de propiedad')).toBeVisible();
+
+  // Snapshot the current engagement status (FR-10 invariant).
+  const productId = movementProduct.id;
+  const engagementBefore = await getJson<{ status: string }>(page, `/api/products/${productId}`);
+  const statusBefore = engagementBefore.status;
+
+  // Open "Agregar actualización" dialog.
+  await page.getByRole('button', { name: /Agregar actualización/i }).click();
+  await expect(page.getByRole('dialog', { name: /Agregar actualización/i })).toBeVisible();
+
+  // Do NOT select any outcome. Only fill Observación.
+  const observationText = 'Actualización smoke test sin resultado.';
+  await page.getByLabel('Observación').fill(observationText);
+  await page.getByRole('button', { name: /Guardar actualización/i }).click();
+
+  // Assertion 1: dialog closes.
+  await expect(page.getByRole('dialog', { name: /Agregar actualización/i })).not.toBeVisible({
+    timeout: 10_000
+  });
+
+  // Assertion 2: new movement entry is visible in the feed.
+  await expect(page.getByText(observationText).first()).toBeVisible({ timeout: 10_000 });
+
+  // Assertion 3: no outcome chip from any seeded label or the custom 'Smoke test label'.
+  const outcomeLabels = [
+    'Esperando documentos',
+    'En negociación avanzada',
+    'Propietario no responde',
+    'Consultas y visitas',
+    'Smoke test label'
+  ];
+  for (const label of outcomeLabels) {
+    // Just check the observation-text row does NOT contain a chip.
+    // The page may have chips from other movements — we only assert the new one has none.
+    const newMovementRow = page.locator('li, article, [role="listitem"]').filter({ hasText: observationText }).first();
+    await expect(newMovementRow.getByText(label)).toHaveCount(0);
+  }
+
+  // Assertion 4 (FR-10): engagement status must be unchanged.
+  const engagementAfter = await getJson<{ status: string }>(page, `/api/products/${productId}`);
+  expect(engagementAfter.status).toBe(statusBefore);
+});
+
+// T17 — G-4 (FR-11..FR-13): Manager creates a document request through the UI.
+test('manager can create a document request through the UI', async ({ page }) => {
+  await signIn(page, DEMO_EMAIL);
+
+  // Navigate directly to property index 0 (Villa Centenario) which has propietario.demo linked.
+  // Use API to get the product ID to avoid table pagination issues.
+  const villaProduct = await getProductByTitle(page, OWNER_VISIBLE_PROPERTY_TITLE);
+  await page.goto(`/dashboard/product/${villaProduct.id}`);
+  await expect(page.getByText('Detalle de propiedad')).toBeVisible();
+
+  // Click "Solicitar documento".
+  await page.getByRole('button', { name: /Solicitar documento/i }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible({ timeout: 10_000 });
+
+  // Select the owner (Propietario select is required).
+  // The dialog renders a Select with label "Propietario".
+  const ownerSelect = dialog.getByRole('combobox');
+  await expect(ownerSelect).toBeVisible({ timeout: 10_000 });
+  await ownerSelect.click();
+  // Select the first option available (propietario.demo is the only linked owner on Villa Centenario).
+  const firstOption = page.getByRole('option').first();
+  await expect(firstOption).toBeVisible({ timeout: 5_000 });
+  await firstOption.click();
+
+  // Fill the document title (label: "Documento solicitado").
+  const requestTitle = 'Constancia adicional smoke test';
+  await dialog.getByLabel(/Documento solicitado/i).fill(requestTitle);
+
+  // Submit.
+  await dialog.getByRole('button', { name: /Solicitar documento/i }).click();
+
+  // Assertion 1: dialog closes.
+  await expect(dialog).not.toBeVisible({ timeout: 10_000 });
+
+  // Assertion 2: document list shows new entry with "Pendiente" badge.
+  await expect(
+    page.locator('li').filter({ hasText: requestTitle }).filter({ has: page.getByText('Pendiente', { exact: true }) }).first()
+  ).toBeVisible({ timeout: 10_000 });
+
+  // Assertion 3 (FR-13): owner receives a DOCUMENT_REQUESTED notification.
+  // Sign in as owner and check notifications.
+  await signIn(page, OWNER_EMAIL, '/owner');
+  const ownerNotifications = await getJson<NotificationsResponse>(
+    page,
+    '/api/owner/notifications?page=1&pageSize=10'
+  );
+  expect(ownerNotifications.items).toEqual(
+    expect.arrayContaining([expect.objectContaining({ title: 'Document requested' })])
+  );
+});
+
+// T18a — G-5 (FR-14..FR-15): Manager rejects an uploaded document request with a reason.
+// Pre-condition: Stage 26.3 Commit B added a SUBMITTED fixture 'Constancia de servicios
+// pendiente de revisión' on property index 1 (Los Boulevares).
+test('manager can reject an uploaded document request with a reason', async ({ page }) => {
+  await signIn(page, DEMO_EMAIL);
+
+  // Navigate directly to property index 1 (Los Boulevares) using API to get the ID.
+  const boulevaresProduct = await getProductByTitle(page, EXISTING_OWNER_INVITED_PROPERTY_TITLE);
+  await page.goto(`/dashboard/product/${boulevaresProduct.id}`);
+  await expect(page.getByText('Detalle de propiedad')).toBeVisible();
+
+  // Find the document row with the seeded SUBMITTED fixture.
+  const submittedFixtureTitle = 'Constancia de servicios pendiente de revisión';
+  const documentRow = page
+    .locator('li')
+    .filter({ hasText: submittedFixtureTitle })
+    .filter({ has: page.getByText('Subido', { exact: true }) })
+    .first();
+  await expect(documentRow).toBeVisible({ timeout: 10_000 });
+
+  // Click "Rechazar".
+  await documentRow.getByRole('button', { name: 'Rechazar' }).click();
+  const rejectDialog = page.getByRole('dialog');
+  await expect(rejectDialog).toBeVisible({ timeout: 5_000 });
+
+  // Fill rejection reason.
+  const rejectionReason = 'Falta firma del titular en página 2';
+  await rejectDialog.getByLabel(/Motivo de rechazo/i).fill(rejectionReason);
+  await rejectDialog.getByRole('button', { name: /Rechazar documento/i }).click();
+
+  // Assertion 1: toast "Documento rechazado" appears.
+  await expect(page.getByText(/Documento rechazado/i).first()).toBeVisible({ timeout: 10_000 });
+
+  // Assertion 2: document row badge transitions to "Rechazado".
+  // After rejection the row moves to the "Resueltos" tab. The tab has a count badge.
+  // We also need to expand the "Historial" accordion within the Resueltos tab.
+  const resolutosTab = page.getByRole('tab', { name: /Resueltos/i });
+  await resolutosTab.click();
+  // Expand the Historial accordion (shows collapsed resolved items).
+  const historialButton = page.getByRole('button', { name: /Historial\s*\d+\s*resueltas/i });
+  await expect(historialButton).toBeVisible({ timeout: 10_000 });
+  await historialButton.click();
+  const rejectedRow = page
+    .locator('li')
+    .filter({ hasText: submittedFixtureTitle })
+    .first();
+  await expect(rejectedRow.getByText('Rechazado', { exact: true })).toBeVisible({ timeout: 10_000 });
+
+  // Assertion 3: rejection reason visible.
+  await expect(rejectedRow.getByText(rejectionReason)).toBeVisible({ timeout: 10_000 });
+
+  // Assertion 4 (FR-16): owner receives a DOCUMENT_REJECTED notification.
+  await signIn(page, OWNER_EMAIL, '/owner');
+  const ownerNotifications = await getJson<NotificationsResponse>(
+    page,
+    '/api/owner/notifications?page=1&pageSize=10'
+  );
+  expect(ownerNotifications.items).toEqual(
+    expect.arrayContaining([expect.objectContaining({ title: 'Document rejected' })])
+  );
+});
+
+// T18b — G-5 (FR-16): Owner sees rejection reason and re-upload option.
+// Pre-condition: T18a completed (document is now REJECTED on Los Boulevares).
+test('owner sees rejection reason and re-upload action on the rejected document', async ({
+  page
+}) => {
+  // Sign in as owner — propietario.demo is linked to Los Boulevares via the existing invitation
+  // which Test 6 accepted. After acceptance, they can see the Los Boulevares property.
+  await signIn(page, OWNER_EMAIL, '/owner');
+
+  // Find the Los Boulevares property in owner portal.
+  const ownerProperties = await getJson<OwnerPropertiesResponse>(page, '/api/owner/properties');
+  const boulevaresProperty = ownerProperties.find(
+    (property) => property.title === EXISTING_OWNER_INVITED_PROPERTY_TITLE
+  );
+  expect(boulevaresProperty, `Expected ${EXISTING_OWNER_INVITED_PROPERTY_TITLE} in owner properties`).toBeTruthy();
+
+  // Navigate to the property with the documents tab active.
+  await page.goto(`/owner/properties/${boulevaresProperty!.id}?tab=documents`);
+  await expect(page.getByRole('tab', { name: 'Documentos' })).toBeVisible({ timeout: 10_000 });
+
+  const submittedFixtureTitle = 'Constancia de servicios pendiente de revisión';
+  const rejectionReason = 'Falta firma del titular en página 2';
+
+  // Assertion 1: entry shows the rejected state.
+  // Owner portal uses "Acción requerida" badge label for REJECTED status (not "Rechazado").
+  // The accessible status label includes "rechazado" text in the ARIA role.
+  const rejectedEntry = page.locator('li').filter({ hasText: submittedFixtureTitle }).first();
+  await expect(rejectedEntry).toBeVisible({ timeout: 10_000 });
+  // Check either the visible badge text or the accessible label.
+  await expect(
+    rejectedEntry.getByText('Acción requerida', { exact: true })
+  ).toBeVisible({ timeout: 10_000 });
+
+  // Assertion 2: rejection reason text is visible.
+  await expect(rejectedEntry.getByText(rejectionReason)).toBeVisible({ timeout: 10_000 });
+
+  // Assertion 3: re-upload button is visible ("Subir nueva versión" for REJECTED state).
+  // Use exact:true to avoid matching the hidden <input type="file"> with aria-label "Subir nueva versión archivo".
+  await expect(
+    rejectedEntry.getByRole('button', { name: 'Subir nueva versión', exact: true })
+  ).toBeVisible({ timeout: 10_000 });
+});
+
+// T19b — G-6 (FR-19): Owner WhatsApp click POSTs a tracking event.
+// Pre-condition: T-1 confirmed onClick={handleContactClick} is wired in owner-home.tsx.
+test('owner WhatsApp click POSTs a tracking event', async ({ page }) => {
+  await signIn(page, OWNER_EMAIL, '/owner');
+
+  // Intercept the tracking endpoint BEFORE clicking.
+  let trackingHits = 0;
+  await page.route('**/api/owner/engagements/*/whatsapp-contact-click', (route) => {
+    trackingHits++;
+    return route.continue();
+  });
+
+  // Find the WhatsApp anchor (rendered on /owner by OwnerPropertyCard).
+  const whatsappAnchor = page.locator('a[href*="wa.me"]').first();
+  await expect(whatsappAnchor).toBeVisible({ timeout: 10_000 });
+
+  // Click with Meta modifier (or new-tab handling) to avoid navigating away.
+  // Use waitForEvent('popup') to absorb the new-tab open and close it.
+  const popupPromise = page.waitForEvent('popup', { timeout: 5_000 }).catch(() => null);
+  await whatsappAnchor.click({ modifiers: ['Meta'] });
+  const popup = await popupPromise;
+  await popup?.close();
+
+  // Wait briefly for the tracking POST to complete.
+  await page.waitForTimeout(500);
+
+  // Assertion: tracking endpoint was called at least once.
+  expect(trackingHits).toBeGreaterThanOrEqual(1);
+});
+
+// T20 — G-7 (FR-20..FR-22): Tenant engagement limit blocks creation with a clear UI error.
+// MUST BE LAST — has afterEach that restores maxActivePropertyEngagements to 25.
+// NEXT-RESEED FALLBACK: if afterEach fails (e.g. hard kill), run 'pnpm demo:seed' to restore.
+// The afterEach is scoped so it only runs for this test (guard on test title).
+// Allowed duration: 12–15s (exceeds 10s soft budget — R4: admin PATCH + sign-in switch required).
+const KNOWN_LIMITS = { maxActivePropertyEngagements: 25 };
+let t20TenantId = '';
+
+test.afterEach(async ({ page }, testInfo) => {
+  if (!testInfo.title.includes('tenant engagement limit blocks creation')) {
+    return;
+  }
+  if (!t20TenantId) {
+    return;
+  }
+  try {
+    // Admin users redirect to /owner after login; navigate to /admin before making admin API calls.
+    await signIn(page, DEMO_ADMIN_EMAIL, '/owner');
+    await page.goto('/admin');
+    // All three limit fields are required by the BFF validation.
+    await page.request.patch(`/api/admin/tenants/${t20TenantId}/limits`, {
+      data: {
+        maxUsers: 12,
+        maxActivePropertyEngagements: KNOWN_LIMITS.maxActivePropertyEngagements,
+        maxDocumentsStorageMb: 512
+      }
+    });
+  } catch (err) {
+    console.warn(
+      'T20 afterEach restore failed — run pnpm demo:seed to restore the tenant limit.',
+      err
+    );
+  }
+});
+
+test('tenant engagement limit blocks creation with a clear UI error', async ({ page }) => {
+  // Step 1: get admin context and find tenant ID.
+  // Admin users redirect to /owner after login; navigate explicitly to /admin.
+  await signIn(page, DEMO_ADMIN_EMAIL, '/owner');
+  await page.goto('/admin');
+  const adminTenants = await getJson<AdminTenantsResponse>(
+    page,
+    '/api/admin/tenants?page=1&pageSize=10'
+  );
+  const demoTenant = adminTenants.items.find(
+    (tenant) => tenant.slug === 'viewpro-demo-inmobiliaria'
+  );
+  expect(demoTenant, 'Expected viewpro-demo-inmobiliaria tenant to exist').toBeTruthy();
+  t20TenantId = demoTenant!.id;
+
+  // Step 2: snapshot the current limit (should be 25 from seed).
+  const snapshotLimit = demoTenant!.limits.maxActivePropertyEngagements ?? 25;
+  expect(snapshotLimit).toBe(KNOWN_LIMITS.maxActivePropertyEngagements);
+
+  // Step 3: count active engagements (as manager — the products endpoint scopes by role).
+  // We use the admin session here since the admin can also view all products via a manager session.
+  // Actually we need to sign in as manager to get the correct product count.
+  await signIn(page, DEMO_EMAIL);
+  const currentProducts = await getJson<ProductsResponse>(page, '/api/products?limit=50');
+  const activeCount = currentProducts.total;
+
+  // Step 4: lower the limit to the current active count (prevents any new creation).
+  // Admin redirects to /owner after login; navigate explicitly then patch via API.
+  // The PATCH requires all three limit fields (any omitted field fails validation).
+  await signIn(page, DEMO_ADMIN_EMAIL, '/owner');
+  await page.goto('/admin');
+  const patchResp = await page.request.patch(`/api/admin/tenants/${t20TenantId}/limits`, {
+    data: {
+      maxUsers: demoTenant!.limits.maxUsers,
+      maxActivePropertyEngagements: activeCount,
+      maxDocumentsStorageMb: demoTenant!.limits.maxDocumentsStorageMb
+    }
+  });
+  expect(
+    patchResp.ok(),
+    `Expected PATCH to succeed, got ${patchResp.status()}: ${await patchResp.text().catch(() => '')}`
+  ).toBe(true);
+
+  // Step 5: sign in as manager and attempt to create a new engagement.
+  await signIn(page, DEMO_EMAIL);
+  await page.goto('/dashboard/product/new');
+
+  const timestamp = Date.now();
+  await page.getByLabel('Título').fill(`Limite test ${timestamp}`);
+  await page.getByLabel('Dirección').fill('Calle Límite 1');
+  await page.getByLabel('Ciudad').fill('Córdoba');
+  await page.getByLabel('Provincia').fill('Córdoba');
+  await page.getByRole('combobox', { name: /Tipo de propiedad/i }).click();
+  await page.getByRole('option', { name: 'Casa' }).click();
+  await page.getByRole('combobox', { name: /Operación/i }).click();
+  await page.getByRole('option', { name: 'Venta' }).click();
+  await page.getByRole('combobox', { name: /Moneda/i }).click();
+  await page.getByRole('option', { name: 'USD' }).click();
+  await page.getByRole('button', { name: 'Crear propiedad' }).click();
+
+  // Assertion 1: toast shows limit-exceeded message (Stage 26.3 MUI-1).
+  await expect(
+    page.getByText(/Alcanzaste el límite de propiedades activas/i).first()
+  ).toBeVisible({ timeout: 10_000 });
+
+  // Assertion 2: URL remains on /dashboard/product/new (no redirect on error).
+  expect(page.url()).toContain('/dashboard/product/new');
+
+  // Assertion 3 (FR-21): total is unchanged — no new engagement was created.
+  const afterProducts = await getJson<ProductsResponse>(page, '/api/products?limit=50');
+  expect(afterProducts.total).toBe(activeCount);
+
+  // Assertion 4 (FR-22): form remains interactive (title input is still editable).
+  await expect(page.getByLabel('Título')).toBeEditable();
+
+  // Cleanup is handled by the afterEach hook above (restores maxActivePropertyEngagements to 25).
+});
