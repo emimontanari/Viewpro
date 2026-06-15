@@ -1492,6 +1492,25 @@ async function createDemoStatusChangeRequests(client, tenant, users, properties)
 
 	const requests = [];
 
+	// Ensure martin is a PropertyAgent on Mapuche (index 6) so the API assignment check passes.
+	// The property's primary seller is sofia (index 6 % 3 = 0), but martin is also co-assigned here.
+	await client.propertyAgent.upsert({
+		where: {
+			propertyEngagementId_agentUserId: {
+				agentUserId: martin.id,
+				propertyEngagementId: mapucheProperty.engagement.id,
+			},
+		},
+		create: {
+			tenantId: tenant.id,
+			agentUserId: martin.id,
+			propertyEngagementId: mapucheProperty.engagement.id,
+			assignedByUserId: manager.id,
+			assignedAt: daysAgo(5),
+		},
+		update: {},
+	});
+
 	// Fixture 1 — PENDING
 	const pendingRequest = await client.statusChangeRequest.create({
 		data: {

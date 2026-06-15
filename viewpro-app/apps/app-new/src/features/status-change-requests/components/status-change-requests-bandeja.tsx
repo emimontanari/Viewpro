@@ -30,7 +30,10 @@ export function StatusChangeRequestsBandeja({
     );
   }
 
-  if (requests.length === 0) {
+  // Filter to PENDING only — optimistic updates may leave RESOLVED items in the cache
+  const pendingRequests = requests.filter((r) => r.status === 'PENDING');
+
+  if (pendingRequests.length === 0) {
     return (
       <div className='text-muted-foreground py-8 text-center text-sm'>
         No hay solicitudes pendientes.
@@ -63,7 +66,7 @@ export function StatusChangeRequestsBandeja({
             </tr>
           </thead>
           <tbody>
-            {requests.map((request) => (
+            {pendingRequests.map((request) => (
               <BandejaRow
                 key={request.id}
                 request={request}

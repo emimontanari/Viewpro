@@ -193,6 +193,8 @@ export function useRejectStatusChangeRequest() {
     },
 
     onSuccess: (_data, { engagementId }) => {
+      // Invalidate both the bandeja and the per-engagement list after rejection
+      queryClient.invalidateQueries({ queryKey: statusChangeRequestKeys.pendingBandeja() });
       queryClient.invalidateQueries({
         queryKey: statusChangeRequestKeys.byEngagement(engagementId)
       });
