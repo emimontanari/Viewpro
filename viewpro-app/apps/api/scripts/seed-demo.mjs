@@ -872,7 +872,11 @@ async function createDemoExistingOwnerInvitation(client, users, properties) {
 			propertyAssetOwnerId: propertyOwner.id,
 			email: owner.email,
 			tokenHash: hashOwnerInvitationToken(DEMO_EXISTING_OWNER_INVITATION_TOKEN),
-			expiresAt: daysFromNow(14),
+			// expiresAt is anchored to DEMO_NOW (frozen at 2026-06-01) for seed determinism,
+			// but the API checks expiry against wall-clock time. A 14-day window made the
+			// fixture expire on 2026-06-15 and broke the seeded smoke. Use a 10-year window
+			// so the demo invitation remains accept-able regardless of when the seed last ran.
+			expiresAt: daysFromNow(3650),
 		},
 	});
 }
