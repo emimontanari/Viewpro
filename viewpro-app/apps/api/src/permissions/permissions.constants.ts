@@ -7,6 +7,7 @@ export const PERMISSIONS = {
   ENGAGEMENTS_VIEW_ASSIGNED: 'engagements.view_assigned',
   ENGAGEMENTS_CREATE: 'engagements.create',
   MOVEMENTS_CREATE: 'movements.create',
+  MOVEMENTS_OUTCOME_LABELS_MANAGE: 'movements.outcome_labels.manage',
   DOCUMENTS_VIEW_ALL: 'documents.view_all',
   DOCUMENTS_REQUEST: 'documents.request',
   DOCUMENTS_REVIEW_OWN: 'documents.review_own',

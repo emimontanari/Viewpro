@@ -17,10 +17,12 @@ import type {
 
 const movementInclude = {
 	createdBy: true,
+	customOutcomeLabel: true,
 } satisfies Prisma.MovementInclude;
 
 const activityMovementInclude = {
 	createdBy: { select: { id: true, email: true, firstName: true } },
+	customOutcomeLabel: true,
 	propertyEngagement: {
 		include: {
 			propertyAsset: true,
@@ -121,13 +123,15 @@ export class PrismaMovementsRepository implements MovementsRepository {
 					createdByUserId: input.createdByUserId,
 					type: input.type,
 					observation: input.observation,
-					nextStep: input.nextStep,
+					nextStep: input.nextStep ?? null,
 					previousStatus: input.newStatus ? engagement.status : null,
 					newStatus: input.newStatus ?? null,
-					interestCount: input.interestCount,
-					visitCount: input.visitCount,
-					offerAmountCents: input.offerAmountCents,
-					interestLevel: input.interestLevel,
+					interestCount: input.interestCount ?? null,
+					visitCount: input.visitCount ?? null,
+					offerAmountCents: input.offerAmountCents ?? null,
+					interestLevel: input.interestLevel ?? null,
+					builtInOutcome: input.builtInOutcome ?? null,
+					customOutcomeLabelId: input.customOutcomeLabelId ?? null,
 				},
 				include: movementInclude,
 			});

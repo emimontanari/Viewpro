@@ -17,6 +17,17 @@ export function mapMovement(movement: MovementWithRelations) {
     visitCount: movement.visitCount,
     offerAmountCents: movement.offerAmountCents,
     interestLevel: movement.interestLevel,
+    builtInOutcome: movement.builtInOutcome ?? null,
+    customOutcomeLabel: movement.customOutcomeLabel
+      ? {
+          id: movement.customOutcomeLabel.id,
+          label: movement.customOutcomeLabel.label,
+          color: movement.customOutcomeLabel.color,
+          deletedAt: movement.customOutcomeLabel.deletedAt
+            ? movement.customOutcomeLabel.deletedAt.toISOString()
+            : null,
+        }
+      : null,
     createdBy: {
       id: movement.createdBy.id,
       email: movement.createdBy.email,

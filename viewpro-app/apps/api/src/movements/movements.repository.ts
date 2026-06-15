@@ -1,5 +1,6 @@
 import type {
 	Movement,
+	MovementBuiltInOutcome,
 	Prisma,
 	PropertyEngagementStatus,
 } from "@prisma/client";
@@ -7,12 +8,13 @@ import type {
 export const MOVEMENTS_REPOSITORY = Symbol("MOVEMENTS_REPOSITORY");
 
 export type MovementWithRelations = Prisma.MovementGetPayload<{
-	include: { createdBy: true };
+	include: { createdBy: true; customOutcomeLabel: true };
 }>;
 
 export type ActivityMovementWithRelations = Prisma.MovementGetPayload<{
 	include: {
 		createdBy: { select: { id: true; email: true; firstName: true } };
+		customOutcomeLabel: true;
 		propertyEngagement: {
 			include: {
 				propertyAsset: true;
@@ -38,12 +40,14 @@ export type CreateMovementInput = {
 	createdByUserId: string;
 	type: Movement["type"];
 	observation: string;
-	nextStep?: string;
+	nextStep?: string | null;
 	newStatus?: PropertyEngagementStatus;
-	interestCount?: number;
-	visitCount?: number;
-	offerAmountCents?: number;
-	interestLevel?: Movement["interestLevel"];
+	interestCount?: number | null;
+	visitCount?: number | null;
+	offerAmountCents?: number | null;
+	interestLevel?: Movement["interestLevel"] | null;
+	builtInOutcome?: MovementBuiltInOutcome | null;
+	customOutcomeLabelId?: string | null;
 };
 
 export type ListMovementsInput = {

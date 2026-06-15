@@ -1,7 +1,18 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common'
 import { AnalyticsActorType, AnalyticsEventName, MovementType } from '@prisma/client'
 import { AnalyticsService, type TrackAnalyticsEventInput } from '../../analytics/analytics.service'
 import type { CurrentUser } from '../../auth/types/current-user'
+import {
+  MOVEMENT_OUTCOME_LABELS_REPOSITORY,
+  type MovementOutcomeLabelsRepository,
+} from '../../movement-outcome-labels/movement-outcome-labels.repository'
 import { NotificationProducerService } from '../../notifications/notification-producer.service'
 import { PERMISSIONS } from '../../permissions/permissions.constants'
 import {
@@ -12,6 +23,7 @@ import type { TenantContext } from '../../tenant-context/tenant-context.types'
 import type { CreateMovementDto } from '../dto/create-movement.dto'
 import { MOVEMENTS_REPOSITORY, type MovementsRepository } from '../movements.repository'
 import { mapMovement, type MovementResponse } from '../responses/movement.response'
+import { buildMovementCreatePayload } from './build-movement-create-payload'
 
 const lifecycleMovementTypes = new Set<MovementType>([MovementType.ARCHIVED, MovementType.RESTORED])
 
@@ -26,6 +38,8 @@ export class CreateMovementUseCase {
     private readonly analyticsService: AnalyticsService,
     @Inject(NotificationProducerService)
     private readonly notificationProducer: NotificationProducerService,
+    @Inject(MOVEMENT_OUTCOME_LABELS_REPOSITORY)
+    private readonly labelsRepository: MovementOutcomeLabelsRepository,
   ) {}
 
   async execute(
@@ -64,18 +78,33 @@ export class CreateMovementUseCase {
       throw new NotFoundException('Property engagement not found')
     }
 
-    const movement = await this.movementsRepository.create({
+    // FR-10: validate customLabelId belongs to this tenant and is not soft-deleted
+    if (input.outcome && 'customLabelId' in input.outcome) {
+      const label = await this.labelsRepository.findByIdForTenant({
+        id: input.outcome.customLabelId,
+        tenantId: tenant.tenantId,
+      })
+      if (!label || label.deletedAt !== null) {
+        throw new UnprocessableEntityException({
+          errorCode: 'OUTCOME_LABEL_NOT_FOUND',
+          message: 'Custom outcome label not found, deleted, or does not belong to your tenant',
+        })
+      }
+    }
+
+    // Build deterministic payload using the pure builder (R1 strategy — FR-11)
+    const { movementData, statusUpdate } = buildMovementCreatePayload({
       tenantId: tenant.tenantId,
       propertyEngagementId: engagementId,
       createdByUserId: currentUser.id,
-      type: input.type,
-      observation: input.observation,
-      nextStep: input.nextStep,
-      newStatus: input.newStatus,
-      interestCount: input.interestCount,
-      visitCount: input.visitCount,
-      offerAmountCents: input.offerAmountCents,
-      interestLevel: input.interestLevel,
+      engagementCurrentStatus: engagement.status,
+      dto: input,
+    })
+
+    const movement = await this.movementsRepository.create({
+      ...movementData,
+      type: movementData.type as MovementType,
+      newStatus: statusUpdate?.newStatus,
     })
 
     if (!movement) {
