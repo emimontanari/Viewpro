@@ -20,6 +20,7 @@ import {
 	PropertyEngagementStatus,
 	PropertyOperationType,
 	PropertyType,
+	StatusChangeRequestStatus,
 	TenantRole,
 	TenantStatus,
 	UserStatus,
@@ -553,6 +554,12 @@ async function seedDemo(client) {
 		users,
 		properties,
 	);
+	const statusChangeRequests = await createDemoStatusChangeRequests(
+		client,
+		tenant,
+		users,
+		properties,
+	);
 	const notifications = await createDemoNotifications(
 		client,
 		tenant,
@@ -570,6 +577,7 @@ async function seedDemo(client) {
 		imagesCount: images.length,
 		movementsCount: movements.length,
 		documentRequestsCount: documentRequests.length,
+		statusChangeRequestsCount: statusChangeRequests.length,
 		notificationsCount: notifications.length,
 		adminEventsCount: adminEvents.length,
 		outcomeLabelsCount: outcomeLabels.length,
@@ -612,6 +620,10 @@ async function resetDemoTenant(client) {
 				where: { documentRequest: { tenantId: existingTenant.id } },
 			}),
 			client.documentRequest.deleteMany({
+				where: { tenantId: existingTenant.id },
+			}),
+			// status change requests must be deleted before engagements (FK constraint)
+			client.statusChangeRequest.deleteMany({
 				where: { tenantId: existingTenant.id },
 			}),
 			client.movement.deleteMany({ where: { tenantId: existingTenant.id } }),
@@ -1454,6 +1466,102 @@ async function createDemoNotifications(
 	);
 }
 
+/**
+ * Creates 2 demo status change requests:
+ * 1. PENDING — martin.demo requests CAPTURE → ACTIVE_PUBLICATION on property index 6 (Mapuche).
+ * 2. RESOLVED (approved, historic) — martin.demo requested INQUIRIES_AND_VISITS → OFFER_NEGOTIATION
+ *    on property index 1 (Los Boulevares), resolved by demo@viewpro.local.
+ *    A corresponding STATUS_CHANGE movement is inserted for the resolved request.
+ */
+async function createDemoStatusChangeRequests(client, tenant, users, properties) {
+	const martin = users.get("martin.demo@viewpro.local");
+	const manager = users.get("demo@viewpro.local");
+
+	if (!martin || !manager) {
+		return [];
+	}
+
+	// Index 6: Casa para refaccionar en Mapuche — status CAPTURE
+	const mapucheProperty = properties[6];
+	// Index 1: Casa luminosa con patio en Los Boulevares — status INQUIRIES_AND_VISITS
+	const boulevaresProperty = properties[1];
+
+	if (!mapucheProperty || !boulevaresProperty) {
+		return [];
+	}
+
+	const requests = [];
+
+	// Ensure martin is a PropertyAgent on Mapuche (index 6) so the API assignment check passes.
+	// The property's primary seller is sofia (index 6 % 3 = 0), but martin is also co-assigned here.
+	await client.propertyAgent.upsert({
+		where: {
+			propertyEngagementId_agentUserId: {
+				agentUserId: martin.id,
+				propertyEngagementId: mapucheProperty.engagement.id,
+			},
+		},
+		create: {
+			tenantId: tenant.id,
+			agentUserId: martin.id,
+			propertyEngagementId: mapucheProperty.engagement.id,
+			assignedByUserId: manager.id,
+			assignedAt: daysAgo(5),
+		},
+		update: {},
+	});
+
+	// Fixture 1 — PENDING
+	const pendingRequest = await client.statusChangeRequest.create({
+		data: {
+			tenantId: tenant.id,
+			propertyEngagementId: mapucheProperty.engagement.id,
+			requestedByUserId: martin.id,
+			targetStatus: PropertyEngagementStatus.ACTIVE_PUBLICATION,
+			currentStatusSnapshot: PropertyEngagementStatus.CAPTURE,
+			requestNote: "Listo para publicar",
+			status: StatusChangeRequestStatus.PENDING,
+			createdAt: daysAgo(2),
+		},
+	});
+	requests.push(pendingRequest);
+
+	// Fixture 2 — RESOLVED (approved, historic)
+	const resolvedAt = daysAgo(13);
+	const resolvedRequest = await client.statusChangeRequest.create({
+		data: {
+			tenantId: tenant.id,
+			propertyEngagementId: boulevaresProperty.engagement.id,
+			requestedByUserId: martin.id,
+			targetStatus: PropertyEngagementStatus.OFFER_NEGOTIATION,
+			currentStatusSnapshot: PropertyEngagementStatus.INQUIRIES_AND_VISITS,
+			requestNote: "Hay una oferta en evaluación",
+			status: StatusChangeRequestStatus.RESOLVED,
+			resolvedByUserId: manager.id,
+			resolvedAt,
+			createdAt: daysAgo(15),
+		},
+	});
+	requests.push(resolvedRequest);
+
+	// Insert corresponding STATUS_CHANGE movement for the approved request
+	await client.movement.create({
+		data: {
+			tenantId: tenant.id,
+			propertyEngagementId: boulevaresProperty.engagement.id,
+			createdByUserId: martin.id,
+			type: MovementType.STATUS_CHANGE,
+			observation: "State change approved",
+			previousStatus: PropertyEngagementStatus.INQUIRIES_AND_VISITS,
+			newStatus: PropertyEngagementStatus.OFFER_NEGOTIATION,
+			source: MovementSource.SYSTEM,
+			createdAt: resolvedAt,
+		},
+	});
+
+	return requests;
+}
+
 async function createDemoAdminAuditEvents(client, tenant, users) {
 	const admin = users.get(DEMO_ADMIN_USER.email);
 
@@ -1645,6 +1753,7 @@ function printSummary(result) {
 	);
 	console.log(`Movements: ${result.movementsCount}`);
 	console.log(`Document requests: ${result.documentRequestsCount}`);
+	console.log(`Status change requests: ${result.statusChangeRequestsCount}`);
 	console.log(`Notifications: ${result.notificationsCount}`);
 	console.log(`Admin audit events: ${result.adminEventsCount}`);
 	console.log(`Custom outcome labels: ${result.outcomeLabelsCount}`);

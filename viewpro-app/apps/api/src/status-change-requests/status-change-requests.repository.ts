@@ -1,4 +1,9 @@
-import type { Prisma, StatusChangeRequest } from '@prisma/client'
+import type { Prisma, PropertyAsset, StatusChangeRequest } from '@prisma/client'
+
+/** StatusChangeRequest enriched with the engagement's property title. */
+export type StatusChangeRequestWithPropertyTitle = StatusChangeRequest & {
+  propertyEngagement: { propertyAsset: Pick<PropertyAsset, 'title'> }
+}
 
 export const STATUS_CHANGE_REQUESTS_REPOSITORY = Symbol('STATUS_CHANGE_REQUESTS_REPOSITORY')
 
@@ -46,7 +51,7 @@ export type StatusChangeRequestsRepository = {
   findByIdForTenant(input: FindByIdForTenantInput): Promise<StatusChangeRequest | null>
   findActivePendingByEngagement(input: FindActivePendingByEngagementInput): Promise<StatusChangeRequest | null>
   listByEngagementForTenant(input: ListByEngagementForTenantInput): Promise<StatusChangeRequest[]>
-  listPendingForTenant(input: ListPendingForTenantInput): Promise<StatusChangeRequest[]>
+  listPendingForTenant(input: ListPendingForTenantInput): Promise<StatusChangeRequestWithPropertyTitle[]>
   /**
    * Marks a request RESOLVED. Called inside the approve/reject transactions.
    * The tx client is passed in so the caller controls the transaction boundary.

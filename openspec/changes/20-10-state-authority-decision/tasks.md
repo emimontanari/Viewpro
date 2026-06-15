@@ -160,36 +160,36 @@ Chain strategy: stacked-to-main
 
 ## Phase 10 — BFF routes (PR 2)
 
-- [ ] **T-24** Create BFF route `apps/app-new/src/app/api/products/[id]/status-change-requests/route.ts` — `POST` and `GET` handlers using `bffFetch` + `proxyJsonResponse`, mirroring `apps/app-new/src/app/api/products/[id]/movements/route.ts`. _(depends on PR 1 merged)_
-- [ ] **T-25** Create BFF route `apps/app-new/src/app/api/tenants/me/status-change-requests/route.ts` — `GET` handler; forwards query string. _(depends on T-24)_
-- [ ] **T-26** Create BFF routes `apps/app-new/src/app/api/status-change-requests/[id]/approve/route.ts` and `apps/app-new/src/app/api/status-change-requests/[id]/reject/route.ts` — `PATCH` handlers; approve passes empty body, reject forwards JSON body. _(depends on T-25)_
-- [ ] **T-27** Create `apps/app-new/src/features/status-change-requests/api/types.ts` with `createStatusChangeRequestSchema` and `rejectStatusChangeRequestSchema` zod validators per design §"Zod validators".
-- [ ] **T-28** Create `apps/app-new/src/features/status-change-requests/api/queries.ts` with `statusChangeRequestKeys` query key factory and TanStack Query hooks: `useStatusChangeRequestsByEngagement`, `usePendingStatusChangeRequests`.
-- [ ] **T-29** Create mutation hooks: `useCreateStatusChangeRequest` (optimistic prepend to `byEngagement`), `useApproveStatusChangeRequest` (optimistic RESOLVED in `pendingBandeja` + `byEngagement`, invalidates engagement detail + movements list), `useRejectStatusChangeRequest` (optimistic RESOLVED, invalidates `byEngagement` only). _(depends on T-27, T-28)_
+- [x] **T-24** Create BFF route `apps/app-new/src/app/api/products/[id]/status-change-requests/route.ts` — `POST` and `GET` handlers using `bffFetch` + `proxyJsonResponse`, mirroring `apps/app-new/src/app/api/products/[id]/movements/route.ts`. _(depends on PR 1 merged)_
+- [x] **T-25** Create BFF route `apps/app-new/src/app/api/tenants/me/status-change-requests/route.ts` — `GET` handler; forwards query string. _(depends on T-24)_
+- [x] **T-26** Create BFF routes `apps/app-new/src/app/api/status-change-requests/[id]/approve/route.ts` and `apps/app-new/src/app/api/status-change-requests/[id]/reject/route.ts` — `PATCH` handlers; approve passes empty body, reject forwards JSON body. _(depends on T-25)_
+- [x] **T-27** Create `apps/app-new/src/features/status-change-requests/api/types.ts` with `createStatusChangeRequestSchema` and `rejectStatusChangeRequestSchema` zod validators per design §"Zod validators".
+- [x] **T-28** Create `apps/app-new/src/features/status-change-requests/api/queries.ts` with `statusChangeRequestKeys` query key factory and TanStack Query hooks: `useStatusChangeRequestsByEngagement`, `usePendingStatusChangeRequests`.
+- [x] **T-29** Create mutation hooks: `useCreateStatusChangeRequest` (optimistic prepend to `byEngagement`), `useApproveStatusChangeRequest` (optimistic RESOLVED in `pendingBandeja` + `byEngagement`, invalidates engagement detail + movements list), `useRejectStatusChangeRequest` (optimistic RESOLVED, invalidates `byEngagement` only). _(depends on T-27, T-28)_
 
 ---
 
 ## Phase 11 — UI components (PR 2)
 
-- [ ] **T-30** Create `apps/app-new/src/app/dashboard/status-change-requests/page.tsx` — manager bandeja page using `PageContainer`, `DataTable` of `PendingRequestRow` records, empty state "No pending status change requests.". Each row: property title linked to `/dashboard/product/:id`, current status chip → target status chip, requester name, time ago, request note (truncated), Approve + Reject buttons. _(depends on T-29)_
-- [ ] **T-31** Add 200-cap banner to the bandeja page: when `data.length >= 200`, render a `<Banner>` with copy "Showing the 200 oldest pending requests. Approve or reject some to see more." Write RTL test in `apps/app-new/tests/unit/status-change-requests-bandeja.spec.tsx` asserting the banner appears when response length = 200 and is absent when < 200. _(issue #5 — depends on T-30)_
-- [ ] **T-32** Create `apps/app-new/src/features/status-change-requests/components/PendingRequestCard.tsx` — manager-only inline card on property detail showing "current → target" diff, requester, request note, Approve + Reject buttons. Approve opens inline confirmation; Reject opens a modal with required `resolutionComment` textarea (1–1000 chars). _(depends on T-29)_
-- [ ] **T-33** Create `apps/app-new/src/features/status-change-requests/components/RequestStatusChangeDialog.tsx` — seller-only modal triggered by "Request status change" button. Fields: `targetStatus` dropdown (excluding current status), `requestNote` textarea (optional, max 1000). On success: close modal + show pending notice with `role="status"` + `aria-live="polite"`. Remove the seller's previous direct status edit control from the property detail page. _(depends on T-29)_
-- [ ] **T-34** Add pending chip to the existing `StatusBadge` component: when `pendingRequest` prop is present, render a secondary chip with screen-reader copy `"Pending approval"`. Visible to both seller and manager views.
-- [ ] **T-35** Add resolution toasts: seller success `"Status change request submitted"`, manager approve `"Approved · status updated to <target>"`, manager reject `"Request rejected"`, race 409 stale `"The property status changed since this request was created. Please review."`, race 409 already-resolved `"This request was already resolved."`. _(depends on T-32)_
+- [x] **T-30** Create `apps/app-new/src/app/dashboard/status-change-requests/page.tsx` — manager bandeja page using `PageContainer`, `DataTable` of `PendingRequestRow` records, empty state "No pending status change requests.". Each row: property title linked to `/dashboard/product/:id`, current status chip → target status chip, requester name, time ago, request note (truncated), Approve + Reject buttons. _(depends on T-29)_
+- [x] **T-31** Add 200-cap banner to the bandeja page: when `data.length >= 200`, render a `<Banner>` with copy "Showing the 200 oldest pending requests. Approve or reject some to see more." Write RTL test in `apps/app-new/tests/unit/status-change-requests-bandeja.spec.tsx` asserting the banner appears when response length = 200 and is absent when < 200. _(issue #5 — depends on T-30)_
+- [x] **T-32** Create `apps/app-new/src/features/status-change-requests/components/PendingRequestCard.tsx` — manager-only inline card on property detail showing "current → target" diff, requester, request note, Approve + Reject buttons. Approve opens inline confirmation; Reject opens a modal with required `resolutionComment` textarea (1–1000 chars). _(depends on T-29)_
+- [x] **T-33** Create `apps/app-new/src/features/status-change-requests/components/RequestStatusChangeDialog.tsx` — seller-only modal triggered by "Request status change" button. Fields: `targetStatus` dropdown (excluding current status), `requestNote` textarea (optional, max 1000). On success: close modal + show pending notice with `role="status"` + `aria-live="polite"`. Remove the seller's previous direct status edit control from the property detail page. _(depends on T-29)_
+- [x] **T-34** Add pending chip to the existing `StatusBadge` component: when `pendingRequest` prop is present, render a secondary chip with screen-reader copy `"Pending approval"`. Visible to both seller and manager views.
+- [x] **T-35** Add resolution toasts: seller success `"Status change request submitted"`, manager approve `"Approved · status updated to <target>"`, manager reject `"Request rejected"`, race 409 stale `"The property status changed since this request was created. Please review."`, race 409 already-resolved `"This request was already resolved."`. _(depends on T-32)_
 
 ---
 
 ## Phase 12 — Accessibility pass (PR 2)
 
-- [ ] **T-36** Bandeja: each table row is `<tr>` with `aria-label="{propertyTitle} to {targetStatus}, requested by {requesterName}"`. Approve/Reject buttons tab-reachable; reject modal traps focus and returns to triggering button on close. Live region `aria-live="polite"` announces optimistic resolution.
-- [ ] **T-37** Property detail seller card: confirm `role="status"` or `aria-live="polite"` on the pending notice. Verify keyboard nav: tab to "Request status change" button, Enter opens dialog, Tab through dialog fields, Esc closes without submit.
+- [x] **T-36** Bandeja: each table row is `<tr>` with `aria-label="{propertyTitle} to {targetStatus}, requested by {requesterName}"`. Approve/Reject buttons tab-reachable; reject modal traps focus and returns to triggering button on close. Live region `aria-live="polite"` announces optimistic resolution.
+- [x] **T-37** Property detail seller card: confirm `role="status"` or `aria-live="polite"` on the pending notice. Verify keyboard nav: tab to "Request status change" button, Enter opens dialog, Tab through dialog fields, Esc closes without submit.
 
 ---
 
 ## Phase 13 — Seed update (PR 2)
 
-- [ ] **T-38** Extend `apps/api/scripts/seed-demo.mjs`:
+- [x] **T-38** Extend `apps/api/scripts/seed-demo.mjs`:
   - Add `createDemoStatusChangeRequests(client, tenant, users, properties)` function
   - Fixture 1 — PENDING: `martin.demo` requests `CAPTURE → ACTIVE_PUBLICATION` on property index 6 ("Casa para refaccionar en Mapuche", current status `CAPTURE`), `requestNote = "Listo para publicar"`; `createdAt = daysAgo(2)`
   - Fixture 2 — RESOLVED (historic approved): `martin.demo` requested `INQUIRIES_AND_VISITS → OFFER_NEGOTIATION` on property index 1, `createdAt = daysAgo(15)`, `resolvedAt = daysAgo(13)`, `resolvedByUserId = demo@viewpro.local`, plus corresponding `STATUS_CHANGE` movement with `source = SYSTEM` on the same property
@@ -202,7 +202,7 @@ Chain strategy: stacked-to-main
 
 ## Phase 14 — Playwright seeded smoke (PR 2)
 
-- [ ] **T-39** Extend `apps/app-new/tests/seeded/demo-smoke.spec.ts` with:
+- [x] **T-39** Extend `apps/app-new/tests/seeded/demo-smoke.spec.ts` with:
   - Happy path: authenticate as `martin.demo`, open property "Casa para refaccionar en Mapuche", click "Request status change", submit `targetStatus = ACTIVE_PUBLICATION`, assert toast "Status change request submitted" and pending chip visible
   - Manager approve path: authenticate as `demo@viewpro.local`, navigate to `/dashboard/status-change-requests`, find the pending row for "Mapuche", click Approve, confirm, assert toast "Approved · status updated to ACTIVE_PUBLICATION", assert bandeja row disappears
   - Reject path: seed a second PENDING request (or re-seed), manager clicks Reject, enters `resolutionComment = "Documentación incompleta"`, confirms, asserts toast "Request rejected"

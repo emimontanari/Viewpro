@@ -5,7 +5,10 @@ import {
   STATUS_CHANGE_REQUESTS_REPOSITORY,
   type StatusChangeRequestsRepository,
 } from '../status-change-requests.repository'
-import { mapStatusChangeRequest, type StatusChangeRequestResponse } from '../responses/status-change-request.response'
+import {
+  mapStatusChangeRequestWithTitle,
+  type StatusChangeRequestBandejaResponse,
+} from '../responses/status-change-request.response'
 
 @Injectable()
 export class ListTenantPendingStatusChangeRequestsUseCase {
@@ -17,7 +20,7 @@ export class ListTenantPendingStatusChangeRequestsUseCase {
   async execute(
     tenant: TenantContext,
     query: ListStatusChangeRequestsQuery,
-  ): Promise<StatusChangeRequestResponse[]> {
+  ): Promise<StatusChangeRequestBandejaResponse[]> {
     // R4: hard cap of 200 records, default 200 when omitted.
     const take = query.take ?? 200
 
@@ -27,6 +30,6 @@ export class ListTenantPendingStatusChangeRequestsUseCase {
       take,
     })
 
-    return records.map(mapStatusChangeRequest)
+    return records.map(mapStatusChangeRequestWithTitle)
   }
 }

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import type { Prisma, StatusChangeRequest } from '@prisma/client'
+import type { Prisma, PropertyAsset, StatusChangeRequest } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import type {
   CreatePendingInput,
@@ -59,7 +59,9 @@ export class PrismaStatusChangeRequestsRepository implements StatusChangeRequest
     })
   }
 
-  async listPendingForTenant(input: ListPendingForTenantInput): Promise<StatusChangeRequest[]> {
+  async listPendingForTenant(
+    input: ListPendingForTenantInput,
+  ): Promise<(StatusChangeRequest & { propertyEngagement: { propertyAsset: Pick<PropertyAsset, 'title'> } })[]> {
     return this.prisma.statusChangeRequest.findMany({
       where: {
         tenantId: input.tenantId,
@@ -67,7 +69,12 @@ export class PrismaStatusChangeRequestsRepository implements StatusChangeRequest
       },
       orderBy: { createdAt: 'asc' },
       take: input.take,
-    })
+      include: {
+        propertyEngagement: {
+          select: { propertyAsset: { select: { title: true } } },
+        },
+      },
+    }) as unknown as (StatusChangeRequest & { propertyEngagement: { propertyAsset: Pick<PropertyAsset, 'title'> } })[]
   }
 
   async resolveInTransaction(

@@ -13,7 +13,8 @@ const SELLER_SCENARIOS = [
   {
     email: 'martin.demo@viewpro.local',
     expectedAssignedTitle: 'Casa compacta en Funes',
-    expectedTotal: 7,
+    // martin has 7 default assignments + Mapuche (co-assigned in status change request seed fixture)
+    expectedTotal: 8,
     unassignedTitle: 'Casa con jardín en Villa Catalina'
   },
   {
@@ -370,6 +371,109 @@ test('demo manager can review a submitted document request', async ({ page }) =>
   await page.getByRole('button', { name: /Historial\s*2 resueltas/i }).click();
   const reviewedRequest = page.locator('li').filter({ hasText: 'Escritura firmada' }).first();
   await expect(reviewedRequest.getByText('Aprobado', { exact: true })).toBeVisible();
+});
+
+const MARTIN_EMAIL = 'martin.demo@viewpro.local';
+const MAPUCHE_PROPERTY_TITLE = 'Casa para refaccionar en Mapuche';
+const MAPUCHE_PROPERTY_TITLE_SHORT = 'Mapuche';
+
+/**
+ * T-34 reject path: manager rejects the seeded PENDING Mapuche request.
+ * Runs first so it can use the seeded PENDING without needing to create a new one.
+ */
+test('manager can reject a pending status change request from the bandeja (T-34 reject)', async ({
+  page
+}) => {
+  await signIn(page, DEMO_EMAIL);
+  await page.goto('/dashboard/status-change-requests');
+  await expect(page.getByRole('heading', { name: 'Solicitudes de cambio de estado' })).toBeVisible();
+
+  // Seeded PENDING request for Mapuche should appear
+  await expect(page.getByText(MAPUCHE_PROPERTY_TITLE).first()).toBeVisible({ timeout: 10_000 });
+
+  const mapucheRow = page
+    .getByRole('row')
+    .filter({ hasText: MAPUCHE_PROPERTY_TITLE_SHORT })
+    .first();
+  await mapucheRow.getByRole('button', { name: /Rechazar/i }).click();
+
+  // Reject dialog opens
+  const rejectDialog = page.getByRole('dialog');
+  await expect(rejectDialog).toBeVisible({ timeout: 5_000 });
+
+  await rejectDialog.getByLabel(/Motivo del rechazo/i).fill('Documentación incompleta');
+  await rejectDialog.getByRole('button', { name: /Rechazar/i }).click();
+
+  // Toast success
+  await expect(page.getByText(/Solicitud rechazada|rechazada/i).first()).toBeVisible({
+    timeout: 10_000
+  });
+
+  // Row disappears from bandeja
+  await expect(
+    page.getByRole('row').filter({ hasText: MAPUCHE_PROPERTY_TITLE_SHORT })
+  ).toHaveCount(0, { timeout: 10_000 });
+});
+
+/**
+ * T-34 approve path: martin creates a new status change request, manager approves it.
+ * Runs after the reject test (which cleared the seeded PENDING).
+ */
+test('manager can approve a new status change request from the bandeja (T-34 approve)', async ({
+  page
+}) => {
+  // Sign in as martin (seller) and create a new status change request via API
+  await signIn(page, MARTIN_EMAIL);
+
+  // Use the products list to find the Mapuche engagement ID
+  const products = await getAssignedProducts(page);
+  const mapucheProduct = products.items.find((item) =>
+    item.property.title.includes(MAPUCHE_PROPERTY_TITLE_SHORT)
+  );
+  expect(mapucheProduct, `Mapuche should be in martin's assigned products`).toBeTruthy();
+  const mapucheId = mapucheProduct!.id;
+
+  // After the reject test the Mapuche status is still CAPTURE (reject doesn't change status).
+  const createResp = await page.request.post(`/api/products/${mapucheId}/status-change-requests`, {
+    data: {
+      targetStatus: 'ACTIVE_PUBLICATION',
+      currentStatusSnapshot: 'CAPTURE',
+      requestNote: 'Listo para publicar ahora'
+    }
+  });
+  expect(
+    createResp.status() === 201 || createResp.status() === 409,
+    `Expected 201/409 creating request, got ${createResp.status()}`
+  ).toBe(true);
+
+  // Switch to manager session
+  await signIn(page, DEMO_EMAIL);
+  await page.goto('/dashboard/status-change-requests');
+  await expect(page.getByRole('heading', { name: 'Solicitudes de cambio de estado' })).toBeVisible();
+
+  // The new PENDING request for Mapuche should appear
+  await expect(page.getByText(MAPUCHE_PROPERTY_TITLE).first()).toBeVisible({ timeout: 10_000 });
+
+  // Approve it
+  const mapucheRow = page
+    .getByRole('row')
+    .filter({ hasText: MAPUCHE_PROPERTY_TITLE_SHORT })
+    .first();
+  await mapucheRow.getByRole('button', { name: /Aprobar/i }).click();
+
+  // Toast appears
+  await expect(page.getByText(/Aprobada|Aprobado|actualizado/i).first()).toBeVisible({
+    timeout: 10_000
+  });
+
+  // The row disappears from the bandeja
+  await expect(
+    page.getByRole('row').filter({ hasText: MAPUCHE_PROPERTY_TITLE_SHORT })
+  ).toHaveCount(0, { timeout: 10_000 });
+
+  // Navigate to Mapuche property and verify status badge shows "Publicación activa"
+  await page.goto(`/dashboard/product/${mapucheId}`);
+  await expect(page.getByText('Publicación activa').first()).toBeVisible({ timeout: 10_000 });
 });
 
 async function openOwnerPropertyDetail(page: Page) {
