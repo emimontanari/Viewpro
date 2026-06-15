@@ -91,6 +91,14 @@ enum NotificationType {
   DOCUMENT_REJECTED
   PROPERTY_STATUS_CHANGED
   MOVEMENT_CREATED
+  STATUS_CHANGE_REQUESTED
+  STATUS_CHANGE_APPROVED
+  STATUS_CHANGE_REJECTED
+}
+
+enum StatusChangeRequestStatus {
+  PENDING
+  RESOLVED
 }
 
 enum MovementType {
@@ -196,6 +204,9 @@ model User {
   notifications                    Notification[]
   createdMovementOutcomeLabels     TenantMovementOutcomeLabel[]
 
+  statusChangeRequestsRequested StatusChangeRequest[] @relation("StatusChangeRequestRequestedBy")
+  statusChangeRequestsResolved  StatusChangeRequest[] @relation("StatusChangeRequestResolvedBy")
+
   @@map("users")
 }
 
@@ -220,6 +231,7 @@ model Tenant {
   teamInvitations      TeamInvitation[]
   notifications        Notification[]
   movementOutcomeLabels TenantMovementOutcomeLabel[]
+  statusChangeRequests  StatusChangeRequest[]
 
   @@map("tenants")
 }
@@ -422,10 +434,11 @@ model PropertyEngagement {
   propertyAsset    PropertyAsset     @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
   createdBy        User              @relation(fields: [createdByUserId], references: [id])
   archivedBy       User?             @relation("PropertyEngagementArchivedBy", fields: [archivedByUserId], references: [id])
-  agents           PropertyAgent[]
-  movements        Movement[]
-  documentRequests DocumentRequest[]
-  notifications    Notification[]
+  agents               PropertyAgent[]
+  movements            Movement[]
+  documentRequests     DocumentRequest[]
+  notifications        Notification[]
+  statusChangeRequests StatusChangeRequest[]
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, archivedAt, createdAt])
@@ -604,4 +617,33 @@ model AnalyticsEvent {
   @@index([propertyEngagementId, occurredAt])
   @@index([actorUserId, occurredAt])
   @@map("analytics_events")
+}
+
+model StatusChangeRequest {
+  id                    String                    @id @default(uuid())
+  tenantId              String
+  propertyEngagementId  String
+  requestedByUserId     String
+  targetStatus          PropertyEngagementStatus
+  currentStatusSnapshot PropertyEngagementStatus
+  requestNote           String?                   // app-validated max 1000
+  status                StatusChangeRequestStatus @default(PENDING)
+  resolvedByUserId      String?
+  resolvedAt            DateTime?
+  resolutionComment     String?                   // app-validated max 1000
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyEngagement PropertyEngagement @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)
+  requestedByUser    User               @relation("StatusChangeRequestRequestedBy", fields: [requestedByUserId], references: [id])
+  resolvedByUser     User?              @relation("StatusChangeRequestResolvedBy", fields: [resolvedByUserId], references: [id])
+
+  // NOTE: a partial unique index on (propertyEngagementId) WHERE status='PENDING'
+  // is added via raw SQL in the migration (see T-6 / R2 strategy). Do NOT add @@unique here.
+  @@index([tenantId, status, createdAt])
+  @@index([propertyEngagementId, status])
+  @@index([requestedByUserId])
+  @@index([resolvedByUserId])
+  @@map("status_change_requests")
 }

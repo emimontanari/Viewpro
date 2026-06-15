@@ -28,17 +28,17 @@ Chain strategy: stacked-to-main
 
 ## Phase 1 — Pre-implementation checks (no code changes)
 
-- [ ] **T-1** Verify schema vocabulary: run `rg "PRINCIPAL_MANAGER|MANAGER|AGENT" apps/api/prisma/schema.prisma` and confirm role names match FR-4/FR-9/FR-11; note any drift. _(done: no changes needed if names match)_
-- [ ] **T-2** Confirm `MovementSource.SYSTEM` exists: run `rg "SYSTEM" apps/api/prisma/schema.prisma`; enum value already present at line 110 — no migration addition required. Document finding in PR description.
-- [ ] **T-3** Validate 400 vs 422 mapping: cross-check every `errorCode` in spec §Area 5 against the design's HTTP mapping table (§"400 vs 422 mapping"); record any mismatch in PR description before coding.
+- [x] **T-1** Verify schema vocabulary: run `rg "PRINCIPAL_MANAGER|MANAGER|AGENT" apps/api/prisma/schema.prisma` and confirm role names match FR-4/FR-9/FR-11; note any drift. _(done: no changes needed if names match)_
+- [x] **T-2** Confirm `MovementSource.SYSTEM` exists: run `rg "SYSTEM" apps/api/prisma/schema.prisma`; enum value already present at line 110 — no migration addition required. Document finding in PR description.
+- [x] **T-3** Validate 400 vs 422 mapping: cross-check every `errorCode` in spec §Area 5 against the design's HTTP mapping table (§"400 vs 422 mapping"); record any mismatch in PR description before coding.
 
 ---
 
 ## Phase 2 — Schema & migration (PR 1)
 
-- [ ] **T-4** Add `StatusChangeRequestStatus` enum and `StatusChangeRequest` model to `apps/api/prisma/schema.prisma`, including all 4 `@@index` directives, 3 relation backrefs (`Tenant`, `User×2`, `PropertyEngagement`), and `@@map("status_change_requests")`. Add backrefs to `Tenant`, `User`, and `PropertyEngagement` models.
-- [ ] **T-5** Add 3 new `NotificationType` values to schema: `STATUS_CHANGE_REQUESTED`, `STATUS_CHANGE_APPROVED`, `STATUS_CHANGE_REJECTED`. Run `prisma migrate dev --name add_status_change_requests`. Then inspect the generated migration SQL and verify the `ALTER TYPE "NotificationType" ADD VALUE` appears as 3 separate statements. If Prisma coalesced them into fewer, split them manually before committing.
-- [ ] **T-6** Append the partial unique index block at the bottom of the generated migration, after all Prisma-generated blocks, using the same manually-managed header comment template as `20260615003659_add_movement_outcomes/migration.sql`:
+- [x] **T-4** Add `StatusChangeRequestStatus` enum and `StatusChangeRequest` model to `apps/api/prisma/schema.prisma`, including all 4 `@@index` directives, 3 relation backrefs (`Tenant`, `User×2`, `PropertyEngagement`), and `@@map("status_change_requests")`. Add backrefs to `Tenant`, `User`, and `PropertyEngagement` models.
+- [x] **T-5** Add 3 new `NotificationType` values to schema: `STATUS_CHANGE_REQUESTED`, `STATUS_CHANGE_APPROVED`, `STATUS_CHANGE_REJECTED`. Run `prisma migrate dev --name add_status_change_requests`. Then inspect the generated migration SQL and verify the `ALTER TYPE "NotificationType" ADD VALUE` appears as 3 separate statements. If Prisma coalesced them into fewer, split them manually before committing.
+- [x] **T-6** Append the partial unique index block at the bottom of the generated migration, after all Prisma-generated blocks, using the same manually-managed header comment template as `20260615003659_add_movement_outcomes/migration.sql`:
   ```sql
   CREATE UNIQUE INDEX "status_change_requests_pending_engagement_key"
     ON "status_change_requests" ("propertyEngagementId")
@@ -50,14 +50,14 @@ Chain strategy: stacked-to-main
 
 ## Phase 3 — Constants & helpers (PR 1)
 
-- [ ] **T-7** Create `apps/api/src/status-change-requests/constants/db.ts` exporting `STATUS_CHANGE_REQUEST_PENDING_UNIQUE_CONSTRAINT = 'status_change_requests_pending_engagement_key'`. Verify with `rg "status_change_requests_pending_engagement_key" apps/api` that exactly 2 hits exist after T-10 is done: the constant definition and the migration comment.
-- [ ] **T-8** Create `apps/api/src/status-change-requests/helpers/is-partial-unique-violation.ts` exporting `isPartialUniqueViolation(error: unknown, constraintName: string): boolean`. Must check both `meta.constraint === constraintName` and `Array.isArray(meta.target) && meta.target.includes(...)`. Write unit test in `apps/api/src/status-change-requests/helpers/is-partial-unique-violation.spec.ts` covering both P2002 meta shapes (constraint string form and target array form) and a non-P2002 error. _(depends on T-7)_
+- [x] **T-7** Create `apps/api/src/status-change-requests/constants/db.ts` exporting `STATUS_CHANGE_REQUEST_PENDING_UNIQUE_CONSTRAINT = 'status_change_requests_pending_engagement_key'`. Verify with `rg "status_change_requests_pending_engagement_key" apps/api` that exactly 2 hits exist after T-10 is done: the constant definition and the migration comment.
+- [x] **T-8** Create `apps/api/src/status-change-requests/helpers/is-partial-unique-violation.ts` exporting `isPartialUniqueViolation(error: unknown, constraintName: string): boolean`. Must check both `meta.constraint === constraintName` and `Array.isArray(meta.target) && meta.target.includes(...)`. Write unit test in `apps/api/src/status-change-requests/helpers/is-partial-unique-violation.spec.ts` covering both P2002 meta shapes (constraint string form and target array form) and a non-P2002 error. _(depends on T-7)_
 
 ---
 
 ## Phase 4 — Nest module skeleton (PR 1)
 
-- [ ] **T-9** Scaffold the `status-change-requests` Nest module at `apps/api/src/status-change-requests/`:
+- [x] **T-9** Scaffold the `status-change-requests` Nest module at `apps/api/src/status-change-requests/`:
   - `status-change-requests.module.ts` — imports listed in design §A1
   - `status-change-requests.controller.ts` — 5 route stubs with guards (`AuthGuard`, `TenantMembershipGuard`, `PermissionGuard`) per design endpoint catalog; no use-case calls yet
   - `status-change-requests.repository.ts` — interface + DI token with all 6 methods from design §A4
@@ -70,7 +70,7 @@ Chain strategy: stacked-to-main
 
 ## Phase 5 — Use cases (PR 1)
 
-- [ ] **T-10** Implement `use-cases/create-status-change-request.use-case.ts`:
+- [x] **T-10** Implement `use-cases/create-status-change-request.use-case.ts`:
   - Assignment check (FR-3): seller must be in `PropertyAgent` for the engagement
   - Archived engagement guard (FR-24): `422 ENGAGEMENT_ARCHIVED`
   - Same-status guard (FR-6): `422 TARGET_STATUS_SAME_AS_CURRENT`
@@ -78,7 +78,7 @@ Chain strategy: stacked-to-main
   - After commit, call `notificationProducer.notifyStatusChangeRequested` with recipient list = all active managers MINUS the requester
   - Audit log line: `[StatusChangeRequest] {id} → CREATED by {userId} at {timestamp}`
   - _(depends on T-8, T-9)_
-- [ ] **T-11** Implement `use-cases/approve-status-change-request.use-case.ts` following the 10-step transaction sequence from design §"Approval transaction design":
+- [x] **T-11** Implement `use-cases/approve-status-change-request.use-case.ts` following the 10-step transaction sequence from design §"Approval transaction design":
   1. `$queryRaw FOR UPDATE` lock
   2. Prisma reload
   3. Self-approval guard (FR-16): `403 SELF_APPROVAL_FORBIDDEN` — add JSDoc above the identity check explaining `currentUser.id` stability assumption and referencing FR-16 / R5 (issue #6)
@@ -92,18 +92,18 @@ Chain strategy: stacked-to-main
   - Post-transaction: analytics event (`PROPERTY_STATUS_CHANGED`, FR-17) + `notificationProducer.notifyStatusChangeApproved` — both best-effort / `catch(() => {})`
   - Audit log: `[StatusChangeRequest] {id} → RESOLVED (approved) by {userId}`
   - _(depends on T-9)_
-- [ ] **T-12** Implement `use-cases/reject-status-change-request.use-case.ts`:
+- [x] **T-12** Implement `use-cases/reject-status-change-request.use-case.ts`:
   - Same lock + reload + self-rejection guard + already-resolved guard as T-11 (steps 1–4)
   - No status mutation, no movement insert
   - Set `status = RESOLVED`, `resolvedByUserId`, `resolvedAt`, `resolutionComment`
   - Post-transaction: `notificationProducer.notifyStatusChangeRejected` best-effort
   - Audit log: `[StatusChangeRequest] {id} → RESOLVED (rejected) by {userId}`
   - _(depends on T-9)_
-- [ ] **T-13** Implement `use-cases/list-tenant-pending-status-change-requests.use-case.ts`:
+- [x] **T-13** Implement `use-cases/list-tenant-pending-status-change-requests.use-case.ts`:
   - Query `repo.listPendingForTenant({ tenantId, take: query.take ?? 200 })` (hard cap 200 — R4)
   - Sort by `createdAt ASC` per spec FR-9
   - _(depends on T-9)_
-- [ ] **T-14** Implement `use-cases/list-engagement-status-change-requests.use-case.ts`:
+- [x] **T-14** Implement `use-cases/list-engagement-status-change-requests.use-case.ts`:
   - Query `repo.listByEngagementForTenant({ engagementId, tenantId })` sort `createdAt DESC`
   - Visibility check: manager OR assigned seller (FR-8/FR-3)
   - _(depends on T-9)_
@@ -112,29 +112,29 @@ Chain strategy: stacked-to-main
 
 ## Phase 6 — Notification producer (PR 1)
 
-- [ ] **T-15** Add 3 methods to `NotificationProducerService`:
+- [x] **T-15** Add 3 methods to `NotificationProducerService`:
   - `notifyStatusChangeRequested` — recipients = active managers MINUS requester (query with `userId: { not: requestedByUserId }` per design §"Producer call sites"); `linkHref = /dashboard/status-change-requests`
   - `notifyStatusChangeApproved` — recipient = `requestedByUserId`; `linkHref = /dashboard/product/:propertyEngagementId`
   - `notifyStatusChangeRejected` — recipient = `requestedByUserId`; body includes `resolutionComment`
   - All 3 wrapped in `try/catch` with `Logger.warn` (FR-30)
   - _(depends on T-5 for enum values)_
-- [ ] **T-16** Extend `SAFE_INTERNAL_LINKS` set in `apps/api/src/notifications/notification-link.helper.ts` by adding `/dashboard/status-change-requests` (R3). Add corresponding unit test cases to `apps/api/test/notifications.repository.spec.ts`: assert the new path is returned unchanged, and `/owner/...` remains null. _(depends on T-5)_
-- [ ] **T-17** Write focused unit test in `apps/api/src/status-change-requests/use-cases/create-status-change-request.use-case.spec.ts` verifying that when the requester also holds a manager membership, they are excluded from the `STATUS_CHANGE_REQUESTED` notification recipient list (issue #7). Stub `tenantMembership.findMany` to return a list that includes the requester's userId; assert the notification producer is called with a recipient array that does not contain that userId.
+- [x] **T-16** Extend `SAFE_INTERNAL_LINKS` set in `apps/api/src/notifications/notification-link.helper.ts` by adding `/dashboard/status-change-requests` (R3). Add corresponding unit test cases to `apps/api/test/notifications.repository.spec.ts`: assert the new path is returned unchanged, and `/owner/...` remains null. _(depends on T-5)_
+- [x] **T-17** Write focused unit test in `apps/api/src/status-change-requests/use-cases/create-status-change-request.use-case.spec.ts` verifying that when the requester also holds a manager membership, they are excluded from the `STATUS_CHANGE_REQUESTED` notification recipient list (issue #7). Stub `tenantMembership.findMany` to return a list that includes the requester's userId; assert the notification producer is called with a recipient array that does not contain that userId.
 
 ---
 
 ## Phase 7 — Unit tests RED → GREEN (PR 1, strict TDD)
 
-- [ ] **T-18** Write RED unit tests for `create-status-change-request.use-case.spec.ts` covering: assignment check (FR-3), archived engagement (FR-24), same-status guard (FR-6), duplicate PENDING → 409 with `meta.constraint` shape, duplicate PENDING → 409 with `meta.target` array shape (both P2002 meta variants from T-8). Run tests; all must fail before implementation in T-10.
-- [ ] **T-19** Write RED unit tests for `approve-status-change-request.use-case.spec.ts` covering: self-approval guard (S-6, FR-16), already-resolved guard (FR-15), stale-state guard (S-7, FR-14), happy path (S-2). Run tests; all must fail before T-11.
-- [ ] **T-20** Write RED unit tests for `reject-status-change-request.use-case.spec.ts` covering: missing `resolutionComment` → 400 (S-4), self-rejection (FR-20), already-resolved, happy path (S-3). Run tests; all must fail before T-12.
-- [ ] **T-21** Wire controller to use cases in `status-change-requests.controller.ts`. Run all unit tests GREEN. _(depends on T-10–T-14, T-18–T-20)_
+- [x] **T-18** Write RED unit tests for `create-status-change-request.use-case.spec.ts` covering: assignment check (FR-3), archived engagement (FR-24), same-status guard (FR-6), duplicate PENDING → 409 with `meta.constraint` shape, duplicate PENDING → 409 with `meta.target` array shape (both P2002 meta variants from T-8). Run tests; all must fail before implementation in T-10.
+- [x] **T-19** Write RED unit tests for `approve-status-change-request.use-case.spec.ts` covering: self-approval guard (S-6, FR-16), already-resolved guard (FR-15), stale-state guard (S-7, FR-14), happy path (S-2). Run tests; all must fail before T-11.
+- [x] **T-20** Write RED unit tests for `reject-status-change-request.use-case.spec.ts` covering: missing `resolutionComment` → 400 (S-4), self-rejection (FR-20), already-resolved, happy path (S-3). Run tests; all must fail before T-12.
+- [x] **T-21** Wire controller to use cases in `status-change-requests.controller.ts`. Run all unit tests GREEN. _(depends on T-10–T-14, T-18–T-20)_
 
 ---
 
 ## Phase 8 — Integration tests (PR 1)
 
-- [ ] **T-22** Integration test suite `apps/api/test/status-change-requests.e2e-spec.ts` covering all 14 spec scenarios:
+- [x] **T-22** Integration test suite `apps/api/test/status-change-requests.e2e-spec.ts` covering all 14 spec scenarios:
   - S-1 create happy path (201 + notification to managers)
   - S-2 approve full transaction (status update + movement + resolved request + analytics)
   - S-3 reject with comment
@@ -154,7 +154,7 @@ Chain strategy: stacked-to-main
 
 ## Phase 9 — Guard preservation verification (PR 1)
 
-- [ ] **T-23** Explicit gate: re-run the integration test from S-13 and confirm `POST /property-engagements/:id/movements` with `type=STATUS_CHANGE, newStatus=ACTIVE_PUBLICATION` by a seller still returns `403 "Insufficient permissions"`. Assert `apps/api/src/movements/use-cases/create-movement.use-case.ts` lines 66–68 are unchanged. Document in PR description: "Gate G1 preserved — seller direct STATUS_CHANGE blocked."
+- [x] **T-23** Explicit gate: re-run the integration test from S-13 and confirm `POST /property-engagements/:id/movements` with `type=STATUS_CHANGE, newStatus=ACTIVE_PUBLICATION` by a seller still returns `403 "Insufficient permissions"`. Assert `apps/api/src/movements/use-cases/create-movement.use-case.ts` lines 66–68 are unchanged. Document in PR description: "Gate G1 preserved — seller direct STATUS_CHANGE blocked."
 
 ---
 

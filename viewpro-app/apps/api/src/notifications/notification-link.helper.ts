@@ -2,6 +2,7 @@ const SAFE_INTERNAL_LINKS = new Set([
 	"/dashboard",
 	"/dashboard/seguimiento",
 	"/dashboard/users",
+	"/dashboard/status-change-requests", // Stage 20.10 — manager bandeja link
 ]);
 
 export function sanitizeInternalNotificationLink(input: {

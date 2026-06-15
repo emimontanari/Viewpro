@@ -34,6 +34,31 @@ export type PropertyStatusChangedOwnerNotificationInput = {
 	newStatus: PropertyEngagementStatus;
 };
 
+export type StatusChangeRequestedNotificationInput = {
+	tenantId: string;
+	/** Resolved manager userIds (requester already excluded by caller). */
+	recipientUserIds: string[];
+	propertyEngagementId: string;
+	targetStatus: string;
+	requestedByUserId: string;
+};
+
+export type StatusChangeApprovedNotificationInput = {
+	tenantId: string;
+	/** Original requesting seller. */
+	recipientUserId: string;
+	propertyEngagementId: string;
+	targetStatus: string;
+};
+
+export type StatusChangeRejectedNotificationInput = {
+	tenantId: string;
+	/** Original requesting seller. */
+	recipientUserId: string;
+	propertyEngagementId: string;
+	resolutionComment: string;
+};
+
 @Injectable()
 export class NotificationProducerService {
 	private readonly logger = new Logger(NotificationProducerService.name);
@@ -126,6 +151,95 @@ export class NotificationProducerService {
 		} catch (error) {
 			this.logger.warn(
 				`Failed to create ${NotificationType.PROPERTY_STATUS_CHANGED} owner notification: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
+		}
+	}
+
+	/**
+	 * Notifies all active managers in the tenant when a seller creates a
+	 * status change request (FR-26). Requester must already be excluded from
+	 * `recipientUserIds` by the caller (design §Producer call sites, issue #7).
+	 */
+	async notifyStatusChangeRequested(
+		input: StatusChangeRequestedNotificationInput,
+	): Promise<void> {
+		const uniqueRecipients = [...new Set(input.recipientUserIds)].filter(Boolean);
+		if (uniqueRecipients.length === 0) {
+			return;
+		}
+
+		try {
+			await Promise.all(
+				uniqueRecipients.map((recipientUserId) =>
+					this.notificationsRepository.createInternal({
+						tenantId: input.tenantId,
+						recipientUserId,
+						type: NotificationType.STATUS_CHANGE_REQUESTED,
+						title: "New status change request",
+						body: `Requested status: ${input.targetStatus}`,
+						linkHref: "/dashboard/status-change-requests",
+						propertyEngagementId: input.propertyEngagementId,
+					}),
+				),
+			);
+		} catch (error) {
+			this.logger.warn(
+				`Failed to create ${NotificationType.STATUS_CHANGE_REQUESTED} notification: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
+		}
+	}
+
+	/**
+	 * Notifies the original requesting seller when their request is approved
+	 * (FR-27). Called after the approval transaction commits (FR-30).
+	 */
+	async notifyStatusChangeApproved(
+		input: StatusChangeApprovedNotificationInput,
+	): Promise<void> {
+		try {
+			await this.notificationsRepository.createInternal({
+				tenantId: input.tenantId,
+				recipientUserId: input.recipientUserId,
+				type: NotificationType.STATUS_CHANGE_APPROVED,
+				title: "Status change approved",
+				body: `Your status change to ${input.targetStatus} has been approved.`,
+				linkHref: `/dashboard/product/${input.propertyEngagementId}`,
+				propertyEngagementId: input.propertyEngagementId,
+			});
+		} catch (error) {
+			this.logger.warn(
+				`Failed to create ${NotificationType.STATUS_CHANGE_APPROVED} notification: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
+		}
+	}
+
+	/**
+	 * Notifies the original requesting seller when their request is rejected,
+	 * including the manager's resolution comment in the body (FR-28).
+	 * Called after the rejection transaction commits (FR-30).
+	 */
+	async notifyStatusChangeRejected(
+		input: StatusChangeRejectedNotificationInput,
+	): Promise<void> {
+		try {
+			await this.notificationsRepository.createInternal({
+				tenantId: input.tenantId,
+				recipientUserId: input.recipientUserId,
+				type: NotificationType.STATUS_CHANGE_REJECTED,
+				title: "Status change rejected",
+				body: input.resolutionComment,
+				linkHref: `/dashboard/product/${input.propertyEngagementId}`,
+				propertyEngagementId: input.propertyEngagementId,
+			});
+		} catch (error) {
+			this.logger.warn(
+				`Failed to create ${NotificationType.STATUS_CHANGE_REJECTED} notification: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
 			);
