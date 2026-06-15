@@ -1,4 +1,31 @@
+/**
+ * Seeded smoke suite — audit-row trace (Stage 26.3)
+ *
+ * | Block                       | Tests                                           | Audit row                                         |
+ * |-----------------------------|-------------------------------------------------|---------------------------------------------------|
+ * | Manager workflow            | T01, T11, T13, T16, T17, T18a                   | Manager creates / opens / requests / rejects       |
+ * | Seller workflow             | T02–T03, T10                                    | Seller assigned visibility, movement w/ chip       |
+ * | Owner workflow              | T04–T05, T06, T18b, T19a                        | Owner reads, uploads, WhatsApp link                |
+ * | Notifications + admin       | T07–T09                                         | Internal + owner notifications, admin limits       |
+ * | Status change requests      | T12, T13 (approve)                              | Approve + reject paths                             |
+ * | Engagement management       | T14 (assign), T15 (unassign)                    | Manager assigns / unassigns seller                 |
+ * | WhatsApp + tracking         | T19b                                            | WhatsApp click tracking                            |
+ * | Tenant limits               | T20                                             | Limit exceeded UI error                            |
+ *
+ * ORDERING: Tests run serially (fullyParallel: false, workers: 1).
+ * T13 (engagement creation) MUST run after T01 which asserts '20 gestiones'.
+ * T14 (assign) MUST run after T13. T15 (unassign) MUST run after T14.
+ * T18a (reject) MUST run after seed fixture exists (Stage 26.3 Commit B).
+ * T20 (limit) MUST be last — it has an afterEach that restores the tenant limit.
+ */
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import {
+  getJson,
+  getAssignedProducts,
+  getProductByTitle,
+  openManagerPropertyDetail,
+  type ProductsResponse
+} from './_helpers';
 
 const DEMO_EMAIL = 'demo@viewpro.local';
 const DEMO_ADMIN_EMAIL = 'admin.demo@viewpro.local';
@@ -249,6 +276,13 @@ test('demo owner sees seeded notifications, images and contacts', async ({ page 
     true
   );
   expect(ownerTimeline.items.some((item) => !item.contact.available)).toBe(true);
+
+  // T19a (Stage 26.3 S-9, FR-17..FR-18) — WhatsApp anchor href wired to tenant phone.
+  // The owner is already on /owner where the OwnerPropertyCard renders the WhatsApp CTA.
+  const ownerWhatsappAnchor = page.locator('a[href*="wa.me"]').first();
+  await expect(ownerWhatsappAnchor).toBeVisible({ timeout: 10_000 });
+  const whatsappHref = await ownerWhatsappAnchor.getAttribute('href');
+  expect(whatsappHref).toContain('5493510000000');
 });
 
 test('viewpro admin can inspect seeded tenant limits', async ({ page }) => {
@@ -529,39 +563,8 @@ async function signIn(page: Page, email: string, redirectPath = '/dashboard') {
   await page.waitForURL(`**${redirectPath}`);
 }
 
-async function getAssignedProducts(page: Page) {
-  const response = await page.request.get('/api/products?limit=50');
-
-  expect(response.ok()).toBe(true);
-
-  return (await response.json()) as ProductsResponse;
-}
-
-async function getJson<TResponse>(page: Page, url: string) {
-  const response = await page.request.get(url);
-
-  expect(response.ok(), `${url} should return OK`).toBe(true);
-
-  return (await response.json()) as TResponse;
-}
-
-async function getProductByTitle(page: Page, title: string) {
-  const products = await getAssignedProducts(page);
-  const product = products.items.find((item) => item.property.title === title);
-
-  expect(product, `Expected seeded property “${title}” to exist`).toBeTruthy();
-
-  return product!;
-}
-
-type ProductsResponse = {
-  items: Array<{
-    id: string;
-    agents: Array<{ email: string }>;
-    property: { title: string };
-  }>;
-  total: number;
-};
+// getAssignedProducts, getJson, getProductByTitle are imported from ./_helpers
+// ProductsResponse type is also imported from ./_helpers
 
 type OwnerPropertiesResponse = Array<{
   id: string;
