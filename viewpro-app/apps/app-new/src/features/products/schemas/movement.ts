@@ -1,6 +1,10 @@
 import * as z from 'zod';
 import { manualMovementTypes } from '../constants/movement-options';
 
+export const labelColorSchema = z
+  .string()
+  .regex(/^#[0-9A-Fa-f]{6}$/, 'Color debe ser un código hex de 6 dígitos (ej: #FF5733).');
+
 export const createProductMovementSchema = z.object({
   type: z.enum(manualMovementTypes, {
     message: 'Seleccioná un tipo de actualización.'
