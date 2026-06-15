@@ -112,11 +112,11 @@ export function MovementOutcomeCombobox({ value, onChange, canCreateLabel, disab
           >
             Sugeridos
           </div>
-          <ul role='listbox' aria-label='Resultados sugeridos'>
+          <div role='listbox' aria-label='Resultados sugeridos'>
             {movementBuiltInOutcomeOptions.map((opt) => {
               const encoded = encodeValue({ type: 'builtIn', value: opt.value });
               return (
-                <li key={opt.value} role='option' aria-selected={value === encoded}>
+                <div key={opt.value} role='option' aria-selected={value === encoded}>
                   <button
                     type='button'
                     className={cn(
@@ -132,10 +132,10 @@ export function MovementOutcomeCombobox({ value, onChange, canCreateLabel, disab
                     )}
                     {opt.label}
                   </button>
-                </li>
+                </div>
               );
             })}
-          </ul>
+          </div>
 
           {/* Section: Custom tenant labels */}
           {customLabels.length > 0 ? (
@@ -146,11 +146,11 @@ export function MovementOutcomeCombobox({ value, onChange, canCreateLabel, disab
               >
                 De tu inmobiliaria
               </div>
-              <ul role='listbox' aria-label='Etiquetas de la inmobiliaria'>
+              <div role='listbox' aria-label='Etiquetas de la inmobiliaria'>
                 {customLabels.map((label) => {
                   const encoded = encodeValue({ type: 'custom', labelId: label.id });
                   return (
-                    <li key={label.id} role='option' aria-selected={value === encoded}>
+                    <div key={label.id} role='option' aria-selected={value === encoded}>
                       <button
                         type='button'
                         className={cn(
@@ -173,10 +173,10 @@ export function MovementOutcomeCombobox({ value, onChange, canCreateLabel, disab
                         ) : null}
                         {label.label}
                       </button>
-                    </li>
+                    </div>
                   );
                 })}
-              </ul>
+              </div>
             </>
           ) : null}
 

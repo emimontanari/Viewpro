@@ -65,7 +65,6 @@ export function MovementOutcomeCreateLabelForm({ onCreated, onCancel, cancelRef 
           name='label'
           maxLength={40}
           placeholder='Ej: Llamado Cuenta Madre'
-          autoFocus
           disabled={mutation.isPending}
           aria-required='true'
         />
