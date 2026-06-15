@@ -122,7 +122,12 @@
 **FR-27** The create-movement endpoint already enforces tenant membership (existing guard, not changed); this slice does not loosen that guard.
 *Trace: proposal § Scope — API note*
 
-### Area 9 — Backwards Compatibility
+### Area 9 — Request Constraints
+
+**FR-30** A `CreateMovement` request MUST NOT carry both `outcome` and `newStatus` simultaneously. When both are present, the API MUST reject the request with 422 Unprocessable Entity and error code `OUTCOME_BOTH_PROVIDED`. This constraint is enforced at the use-case layer via a custom validator on `CreateMovementDto`.
+*Trace: design § Spec deltas required — #2; design § Error envelope — OUTCOME_BOTH_PROVIDED*
+
+### Area 10 — Backwards Compatibility
 
 **FR-28** `outcome` is optional everywhere. Existing movements without an outcome continue to render without a chip and remain valid.
 *Trace: proposal § Safety constraints — Backwards compatibility*

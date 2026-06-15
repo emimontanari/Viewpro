@@ -485,6 +485,22 @@ These deltas are blocking only insofar as the tasks file should reference them; 
 
 ---
 
+## HTTP Error Code Convention
+
+Format/syntax errors produced by `class-validator` (via the global `ValidationPipe`) return **HTTP 400 Bad Request**. Semantic/domain errors checked at the use-case or service layer return **HTTP 422 Unprocessable Entity**.
+
+| `errorCode` | HTTP | Layer | Meaning |
+|---|---|---|---|
+| _(class-validator rejects)_ | 400 | DTO / ValidationPipe | Invalid format: wrong type, max-length, bad regex |
+| `LABEL_NAME_TOO_LONG` | 400 | DTO validator | Label exceeds 40 characters (caught by `@Length`) |
+| `LABEL_COLOR_INVALID` | 400 | DTO validator | `color` does not match `^#[0-9A-Fa-f]{6}$` (caught by `@Matches`) |
+| `OUTCOME_BOTH_PROVIDED` | 422 | Use case / custom validator | Both `builtIn` and `customLabelId` present, or both `outcome` and `newStatus` present |
+| `OUTCOME_LABEL_NOT_FOUND` | 422 | Use case | `customLabelId` missing, soft-deleted, or cross-tenant |
+| `LABEL_NAME_COLLIDES_BUILTIN` | 422 | Use case | Label string matches a `MovementBuiltInOutcome` value (case-insensitive) |
+| `LABEL_ALREADY_DELETED` | 409 | Use case | DELETE on a label with `deletedAt != null` |
+
+This convention MUST be applied consistently across DTOs, use-case exceptions, and integration test assertions.
+
 ## Non-goals
 
 Inherited from proposal § Out of scope, plus:
