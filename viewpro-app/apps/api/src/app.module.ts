@@ -10,6 +10,7 @@ import { DocumentsModule } from './documents/documents.module'
 import { HealthModule } from './health/health.module'
 import { MembershipsModule } from './memberships/memberships.module'
 import { MovementsModule } from './movements/movements.module'
+import { MovementOutcomeLabelsModule } from './movement-outcome-labels/movement-outcome-labels.module'
 import { NotificationsModule } from './notifications/notifications.module'
 import { ObservabilityModule } from './observability/observability.module'
 import { OwnerInvitationsModule } from './owner-invitations/owner-invitations.module'
@@ -43,6 +44,7 @@ import { UsersModule } from './users/users.module'
     TeamModule,
     PropertyEngagementsModule,
     MovementsModule,
+    MovementOutcomeLabelsModule,
     OwnerPortalModule,
     OwnerInvitationsModule,
     DocumentsModule,
