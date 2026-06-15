@@ -195,6 +195,19 @@ function PropertyEngagementEditor({
         return;
       }
 
+      // Stage 26.3 MUI-1: map the backend limit-exceeded message to a user-readable toast.
+      // Backend constant: TENANT_ACTIVE_PROPERTY_ENGAGEMENT_LIMIT_EXCEEDED_MESSAGE
+      // Source: apps/api/src/tenant-limits/tenant-limit-enforcement.constants.ts
+      if (
+        error instanceof Error &&
+        error.message.toLowerCase().includes('tenant active property engagement limit exceeded')
+      ) {
+        toast.error(
+          'Alcanzaste el límite de propiedades activas del plan. Archivá una propiedad o contactá a soporte.'
+        );
+        return;
+      }
+
       toast.error(isEditMode ? 'No se pudo editar la propiedad' : 'No se pudo crear la propiedad');
     }
   });
