@@ -8,9 +8,11 @@
 
 import type {
   AssignableProductAgentsResponse,
+  CreateLabelPayload,
   CreateProductDocumentRequestPayload,
   LinkProductOwnerPayload,
   LinkProductOwnerResponse,
+  MovementOutcomeLabelDto,
   Product,
   ProductAgentAssignmentPayload,
   ProductByIdResponse,
@@ -280,6 +282,47 @@ export async function deleteProduct(id: string) {
   });
 
   return parseJsonResponse(response);
+}
+
+// ============================================================
+// Movement Outcome Labels — BFF client helpers
+// ============================================================
+
+const MOVEMENT_OUTCOME_LABELS_API_PATH = '/api/tenants/me/movement-outcome-labels';
+
+export async function listMovementOutcomeLabels(params: {
+  activeOnly?: boolean;
+} = {}): Promise<MovementOutcomeLabelDto[]> {
+  const searchParams = new URLSearchParams();
+  if (params.activeOnly !== undefined) {
+    searchParams.set('activeOnly', String(params.activeOnly));
+  }
+  const query = searchParams.toString();
+  const response = await apiFetch(
+    `${MOVEMENT_OUTCOME_LABELS_API_PATH}${query ? `?${query}` : ''}`
+  );
+  return parseJsonResponse<MovementOutcomeLabelDto[]>(response);
+}
+
+export async function createMovementOutcomeLabel(
+  data: CreateLabelPayload
+): Promise<MovementOutcomeLabelDto> {
+  const response = await apiFetch(MOVEMENT_OUTCOME_LABELS_API_PATH, {
+    body: JSON.stringify(data),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST'
+  });
+  return parseJsonResponse<MovementOutcomeLabelDto>(response);
+}
+
+export async function deleteMovementOutcomeLabel(labelId: string): Promise<void> {
+  const response = await apiFetch(`${MOVEMENT_OUTCOME_LABELS_API_PATH}/${labelId}`, {
+    method: 'DELETE'
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => undefined);
+    throw new Error(getErrorMessage(body, 'No se pudo eliminar la etiqueta.'));
+  }
 }
 
 function buildProductsUrl(filters: ProductFilters) {
