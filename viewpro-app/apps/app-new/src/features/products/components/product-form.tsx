@@ -56,6 +56,18 @@ import {
   TENANT_PERMISSIONS
 } from '@/lib/session';
 import { useActiveTenant } from '@/lib/session-context';
+import { useStatusChangeRequestsByEngagement, useApproveStatusChangeRequest, useRejectStatusChangeRequest } from '@/features/status-change-requests/api/queries';
+import { PendingRequestCard } from '@/features/status-change-requests/components/pending-request-card';
+import { RequestStatusChangeDialog } from '@/features/status-change-requests/components/request-status-change-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 type ProductFormMode = 'create' | 'detail' | 'edit';
 
@@ -383,6 +395,56 @@ function PropertyEngagementDetails({
       toast.error(error instanceof Error ? error.message : 'No se pudo restaurar la propiedad');
     }
   });
+
+  // Status change requests (T-26, T-28)
+  const statusChangeRequestsQuery = useStatusChangeRequestsByEngagement(propertyEngagement.id);
+  const pendingRequest = statusChangeRequestsQuery.data?.find((r) => r.status === 'PENDING');
+  const hasPendingStatusRequest = Boolean(pendingRequest);
+  const approveMutation = useApproveStatusChangeRequest();
+  const rejectMutation = useRejectStatusChangeRequest();
+  const [rejectFromDetail, setRejectFromDetail] = useState<{
+    open: boolean;
+    requestId: string;
+  }>({ open: false, requestId: '' });
+  const [rejectComment, setRejectComment] = useState('');
+
+  async function handleApproveFromDetail(requestId: string) {
+    try {
+      const result = await approveMutation.mutateAsync({
+        requestId,
+        engagementId: propertyEngagement.id
+      });
+      await queryClient.invalidateQueries({ queryKey: productKeys.detail(propertyEngagement.id) });
+      toast.success(`Aprobada · estado actualizado a ${result.targetStatus}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('SUPERSEDED') || message.includes('changed')) {
+        toast.error(
+          'El estado cambió desde que se creó la solicitud. Revisá antes de aprobar.'
+        );
+      } else {
+        toast.error('No se pudo aprobar la solicitud.');
+      }
+    }
+  }
+
+  async function handleRejectFromDetailSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!rejectComment.trim()) return;
+    try {
+      await rejectMutation.mutateAsync({
+        requestId: rejectFromDetail.requestId,
+        engagementId: propertyEngagement.id,
+        payload: { resolutionComment: rejectComment.trim() }
+      });
+      toast.success('Solicitud rechazada');
+      setRejectFromDetail({ open: false, requestId: '' });
+      setRejectComment('');
+    } catch {
+      toast.error('No se pudo rechazar la solicitud.');
+    }
+  }
+
   function handleRestoreProperty() {
     if (restoreMutation.isPending) {
       return;
@@ -392,6 +454,7 @@ function PropertyEngagementDetails({
   }
 
   return (
+    <>
     <Card className='mx-auto w-full overflow-hidden'>
       <CardHeader className='border-b bg-muted/20'>
         <PropertyDetailHeader
@@ -401,6 +464,7 @@ function PropertyEngagementDetails({
           isAddingMovement={movements.isCreatingMovement}
           isArchived={isArchived}
           isRestoring={restoreMutation.isPending}
+          hasPendingStatusRequest={hasPendingStatusRequest}
           pageTitle={pageTitle}
           propertyEngagement={propertyEngagement}
           onAddMovement={() => movements.setDialogOpen(true)}
@@ -426,6 +490,29 @@ function PropertyEngagementDetails({
           </div>
 
           <aside className='flex flex-col gap-3 rounded-2xl border bg-card p-3 shadow-xs sm:p-4'>
+            {/* T-28: Pending chip + T-26: Manager PendingRequestCard */}
+            {!isArchived && pendingRequest && canManageProperties && (
+              <PendingRequestCard
+                request={pendingRequest}
+                propertyTitle={propertyEngagement.property.title}
+                requesterName={pendingRequest.requestedByUserId}
+                onApprove={handleApproveFromDetail}
+                onReject={(requestId) => setRejectFromDetail({ open: true, requestId })}
+              />
+            )}
+            {/* T-27: Seller-only RequestStatusChangeDialog */}
+            {!isArchived && canCreateMovements && !canManageProperties && (
+              <RequestStatusChangeDialog
+                engagementId={propertyEngagement.id}
+                currentStatus={propertyEngagement.status}
+                onSuccess={() =>
+                  queryClient.invalidateQueries({
+                    queryKey: productKeys.detail(propertyEngagement.id)
+                  })
+                }
+              />
+            )}
+
             <PropertyStatusSummary
               canUpdateStatus={canManageProperties}
               isArchived={isArchived}
@@ -476,6 +563,58 @@ function PropertyEngagementDetails({
         onSubmit={movements.handleCreateMovement}
       />
     </Card>
+
+    {/* T-26: Reject dialog for manager on property detail */}
+    <Dialog
+      open={rejectFromDetail.open}
+      onOpenChange={(open) => {
+        if (!open) {
+          setRejectFromDetail({ open: false, requestId: '' });
+          setRejectComment('');
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Rechazar solicitud</DialogTitle>
+          <DialogDescription>
+            Indicá el motivo del rechazo. El vendedor recibirá esta información.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleRejectFromDetailSubmit} className='flex flex-col gap-4'>
+          <div className='flex flex-col gap-1.5'>
+            <Label htmlFor='detail-resolution-comment'>Motivo del rechazo</Label>
+            <Textarea
+              id='detail-resolution-comment'
+              value={rejectComment}
+              onChange={(e) => setRejectComment(e.target.value)}
+              placeholder='Ej: Documentación incompleta...'
+              maxLength={1000}
+              rows={4}
+              required
+              aria-required='true'
+            />
+          </div>
+          <div className='flex justify-end gap-2'>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => setRejectFromDetail({ open: false, requestId: '' })}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type='submit'
+              variant='destructive'
+              disabled={!rejectComment.trim() || rejectMutation.isPending}
+            >
+              {rejectMutation.isPending ? 'Rechazando...' : 'Rechazar'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 

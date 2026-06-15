@@ -25,6 +25,7 @@ type PropertyDetailHeaderProps = {
   isArchived: boolean;
   isRestoring: boolean;
   isAddingMovement: boolean;
+  hasPendingStatusRequest?: boolean;
   onBackToList: () => void;
   onRestore: () => void;
   onAddMovement: () => void;
@@ -40,6 +41,7 @@ export function PropertyDetailHeader({
   isArchived,
   isRestoring,
   isAddingMovement,
+  hasPendingStatusRequest = false,
   onBackToList,
   onRestore,
   onAddMovement,
@@ -67,6 +69,15 @@ export function PropertyDetailHeader({
           <Badge variant='outline' className='rounded-full bg-background/70'>
             {getPropertyTypeLabel(propertyEngagement.property.propertyType)}
           </Badge>
+          {hasPendingStatusRequest && !isArchived ? (
+            <Badge
+              variant='outline'
+              className='rounded-full border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300'
+              aria-label={`Estado: ${getStatusLabel(propertyEngagement.status)}, con solicitud de cambio pendiente`}
+            >
+              Solicitud pendiente
+            </Badge>
+          ) : null}
           {isArchived ? (
             <Badge variant='outline' className={cn('rounded-full', getArchivedTone())}>
               Archivada
