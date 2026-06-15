@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRef, type FormEvent } from 'react';
+import { type FormEvent } from 'react';
 import { createMovementOutcomeLabel } from '../api/service';
 import type { MovementOutcomeLabelDto } from '../api/types';
 import { movementOutcomeLabelsKeys } from '../api/queries';
@@ -25,7 +25,6 @@ type Props = {
  */
 export function MovementOutcomeCreateLabelForm({ onCreated, onCancel, cancelRef }: Props) {
   const queryClient = useQueryClient();
-  const labelRef = useRef<HTMLInputElement>(null);
 
   const mutation = useMutation({
     mutationFn: (data: { label: string; color?: string }) =>
@@ -64,7 +63,6 @@ export function MovementOutcomeCreateLabelForm({ onCreated, onCancel, cancelRef 
         <Input
           id='new-label-name'
           name='label'
-          ref={labelRef}
           maxLength={40}
           placeholder='Ej: Llamado Cuenta Madre'
           autoFocus
