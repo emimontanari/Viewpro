@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 import { AnalyticsCoreModule } from '../analytics/analytics-core.module'
 import { AuthModule } from '../auth/auth.module'
 import { MembershipsModule } from '../memberships/memberships.module'
+import { MovementOutcomeLabelsModule } from '../movement-outcome-labels/movement-outcome-labels.module'
 import { NotificationsModule } from '../notifications/notifications.module'
 import { PermissionsModule } from '../permissions/permissions.module'
 import { PropertyEngagementsModule } from '../property-engagements/property-engagements.module'
@@ -15,7 +16,16 @@ import { ListMovementsUseCase } from './use-cases/list-movements.use-case'
 const movementUseCases = [CreateMovementUseCase, ListMovementsUseCase]
 
 @Module({
-  imports: [AnalyticsCoreModule, AuthModule, MembershipsModule, NotificationsModule, PermissionsModule, TenantContextModule, PropertyEngagementsModule],
+  imports: [
+    AnalyticsCoreModule,
+    AuthModule,
+    MembershipsModule,
+    MovementOutcomeLabelsModule,
+    NotificationsModule,
+    PermissionsModule,
+    TenantContextModule,
+    PropertyEngagementsModule,
+  ],
   controllers: [MovementsController],
   providers: [{ provide: MOVEMENTS_REPOSITORY, useClass: PrismaMovementsRepository }, ...movementUseCases],
   exports: [MOVEMENTS_REPOSITORY, ...movementUseCases],

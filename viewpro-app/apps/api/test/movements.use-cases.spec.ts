@@ -101,6 +101,9 @@ const movement = {
 	visitCount: 1,
 	offerAmountCents: 25000000,
 	interestLevel: InterestLevel.HIGH,
+	builtInOutcome: null,
+	customOutcomeLabelId: null,
+	customOutcomeLabel: null,
 	createdAt: new Date("2026-02-01T10:00:00.000Z"),
 	createdBy: {
 		id: "user-1",
@@ -113,6 +116,14 @@ const movement = {
 		createdAt: new Date("2026-01-01T00:00:00.000Z"),
 		updatedAt: new Date("2026-01-02T00:00:00.000Z"),
 	},
+};
+
+const mockLabelsRepository = {
+	findByIdForTenant: vi.fn().mockResolvedValue(null),
+	create: vi.fn(),
+	findMany: vi.fn(),
+	findActive: vi.fn(),
+	softDelete: vi.fn(),
 };
 
 describe("Movement response mapper", () => {
@@ -131,6 +142,8 @@ describe("Movement response mapper", () => {
 			visitCount: 1,
 			offerAmountCents: 25000000,
 			interestLevel: InterestLevel.HIGH,
+			builtInOutcome: null,
+			customOutcomeLabel: null,
 			createdBy: {
 				id: "user-1",
 				email: "user@example.com",
@@ -161,6 +174,7 @@ describe("Movement use cases", () => {
 			propertyEngagementsRepository as never,
 			analyticsService as never,
 			notificationProducer as never,
+			mockLabelsRepository as never,
 		);
 
 		const result = await useCase.execute(
@@ -183,19 +197,19 @@ describe("Movement use cases", () => {
 			userId: "user-1",
 			canViewAll: true,
 		});
-		expect(movementsRepository.create).toHaveBeenCalledWith({
-			tenantId: "tenant-1",
-			propertyEngagementId: "engagement-1",
-			createdByUserId: "user-1",
-			type: MovementType.INQUIRY,
-			observation: "Buyer asked for a visit.",
-			nextStep: undefined,
-			newStatus: PropertyEngagementStatus.INQUIRIES_AND_VISITS,
-			interestCount: undefined,
-			visitCount: undefined,
-			offerAmountCents: undefined,
-			interestLevel: undefined,
-		});
+		// The builder produces the full payload including outcome fields (null in this case)
+		expect(movementsRepository.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tenantId: "tenant-1",
+				propertyEngagementId: "engagement-1",
+				createdByUserId: "user-1",
+				type: MovementType.INQUIRY,
+				observation: "Buyer asked for a visit.",
+				newStatus: PropertyEngagementStatus.INQUIRIES_AND_VISITS,
+				builtInOutcome: null,
+				customOutcomeLabelId: null,
+			}),
+		);
 		expect(analyticsService.track).toHaveBeenCalledWith({
 			eventName: AnalyticsEventName.MOVEMENT_CREATED,
 			actorType: AnalyticsActorType.INTERNAL_USER,
@@ -257,6 +271,7 @@ describe("Movement use cases", () => {
 			propertyEngagementsRepository as never,
 			analyticsService as never,
 			notificationProducer as never,
+			mockLabelsRepository as never,
 		);
 
 		await useCase.execute(managerTenant, currentUser, "engagement-1", {
@@ -299,6 +314,7 @@ describe("Movement use cases", () => {
 			propertyEngagementsRepository as never,
 			analyticsService as never,
 			makeNotificationProducer() as never,
+			mockLabelsRepository as never,
 		);
 
 		const result = await useCase.execute(
@@ -336,6 +352,7 @@ describe("Movement use cases", () => {
 			propertyEngagementsRepository as never,
 			{ track: vi.fn().mockResolvedValue({ status: "persisted" }) } as never,
 			notificationProducer as never,
+			mockLabelsRepository as never,
 		);
 
 		await expect(
@@ -361,6 +378,7 @@ describe("Movement use cases", () => {
 			propertyEngagementsRepository as never,
 			{ track: vi.fn() } as never,
 			makeNotificationProducer() as never,
+			mockLabelsRepository as never,
 		);
 
 		const result = await useCase.execute(
@@ -398,6 +416,7 @@ describe("Movement use cases", () => {
 			propertyEngagementsRepository as never,
 			analyticsService as never,
 			makeNotificationProducer() as never,
+			mockLabelsRepository as never,
 		);
 
 		await expect(
@@ -427,6 +446,7 @@ describe("Movement use cases", () => {
 			propertyEngagementsRepository as never,
 			{ track: vi.fn() } as never,
 			makeNotificationProducer() as never,
+			mockLabelsRepository as never,
 		);
 
 		await expect(
@@ -451,6 +471,7 @@ describe("Movement use cases", () => {
 			propertyEngagementsRepository as never,
 			{ track: vi.fn() } as never,
 			makeNotificationProducer() as never,
+			mockLabelsRepository as never,
 		);
 
 		await expect(
@@ -480,6 +501,7 @@ describe("Movement use cases", () => {
 			propertyEngagementsRepository as never,
 			{ track: vi.fn() } as never,
 			makeNotificationProducer() as never,
+			mockLabelsRepository as never,
 		);
 
 		await expect(
@@ -542,6 +564,112 @@ describe("Movement use cases", () => {
 			pageSize: 10,
 			order: "asc",
 		});
+	});
+
+	// ─── T-9: outcome cross-tenant FK validation ──────────────────────────────
+
+	it("rejects movement with customLabelId belonging to a different tenant with 422 (S-8, FR-10)", async () => {
+		const propertyEngagementsRepository = {
+			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
+		};
+		const movementsRepository = { create: vi.fn() };
+		// findByIdForTenant returns null — label not found in this tenant
+		const labelsRepo = {
+			...mockLabelsRepository,
+			findByIdForTenant: vi.fn().mockResolvedValue(null),
+		};
+		const useCase = new CreateMovementUseCase(
+			movementsRepository as never,
+			propertyEngagementsRepository as never,
+			{ track: vi.fn() } as never,
+			makeNotificationProducer() as never,
+			labelsRepo as never,
+		);
+
+		const { UnprocessableEntityException } = await import("@nestjs/common");
+		await expect(
+			useCase.execute(managerTenant, currentUser, "engagement-1", {
+				type: MovementType.GENERAL_UPDATE,
+				observation: "Cross-tenant label attempt.",
+				outcome: { customLabelId: "label-from-another-tenant" },
+			}),
+		).rejects.toThrow(UnprocessableEntityException);
+		expect(movementsRepository.create).not.toHaveBeenCalled();
+	});
+
+	it("rejects movement with soft-deleted customLabelId with 422 (FR-10)", async () => {
+		const propertyEngagementsRepository = {
+			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
+		};
+		const movementsRepository = { create: vi.fn() };
+		const labelsRepo = {
+			...mockLabelsRepository,
+			findByIdForTenant: vi.fn().mockResolvedValue({
+				id: "label-1",
+				tenantId: "tenant-1",
+				label: "Deleted label",
+				color: null,
+				createdByUserId: "user-1",
+				createdAt: new Date(),
+				deletedAt: new Date(), // soft-deleted
+			}),
+		};
+		const useCase = new CreateMovementUseCase(
+			movementsRepository as never,
+			propertyEngagementsRepository as never,
+			{ track: vi.fn() } as never,
+			makeNotificationProducer() as never,
+			labelsRepo as never,
+		);
+
+		const { UnprocessableEntityException } = await import("@nestjs/common");
+		await expect(
+			useCase.execute(managerTenant, currentUser, "engagement-1", {
+				type: MovementType.GENERAL_UPDATE,
+				observation: "Using a deleted label.",
+				outcome: { customLabelId: "label-1" },
+			}),
+		).rejects.toThrow(UnprocessableEntityException);
+		expect(movementsRepository.create).not.toHaveBeenCalled();
+	});
+
+	it("creates movement with builtIn outcome and null statusUpdate (S-1, FR-11)", async () => {
+		const { MovementBuiltInOutcome } = await import("@prisma/client");
+		const movementWithOutcome = {
+			...movement,
+			builtInOutcome: MovementBuiltInOutcome.EN_CAPTACION,
+			newStatus: null,
+			previousStatus: null,
+		};
+		const propertyEngagementsRepository = {
+			findByIdForTenant: vi.fn().mockResolvedValue(engagement),
+		};
+		const movementsRepository = {
+			create: vi.fn().mockResolvedValue(movementWithOutcome),
+		};
+		const useCase = new CreateMovementUseCase(
+			movementsRepository as never,
+			propertyEngagementsRepository as never,
+			{ track: vi.fn() } as never,
+			makeNotificationProducer() as never,
+			mockLabelsRepository as never,
+		);
+
+		const result = await useCase.execute(managerTenant, currentUser, "engagement-1", {
+			type: MovementType.GENERAL_UPDATE,
+			observation: "Setting built-in outcome.",
+			outcome: { builtIn: MovementBuiltInOutcome.EN_CAPTACION },
+		});
+
+		expect(result.builtInOutcome).toBe(MovementBuiltInOutcome.EN_CAPTACION);
+		expect(result.newStatus).toBeNull();
+		// Movement create was called with builtInOutcome and null customOutcomeLabelId
+		expect(movementsRepository.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				builtInOutcome: MovementBuiltInOutcome.EN_CAPTACION,
+				customOutcomeLabelId: null,
+			}),
+		);
 	});
 
 	it("rejects movement lists when neither engagement view permission is present", async () => {
