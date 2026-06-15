@@ -1226,6 +1226,7 @@ async function createDemoDocumentReviewStates(
 		return [];
 	}
 
+	// Property index 0 (Villa Centenario) — the two original fixtures.
 	const fixtures = [
 		{
 			title: "Escritura firmada",
@@ -1314,6 +1315,92 @@ async function createDemoDocumentReviewStates(
 			demoUploadedAt: fixture.uploadedAt,
 			demoReviewedAt: fixture.reviewedAt ?? null,
 		});
+	}
+
+	// NEW (Stage 26.3) — Property index 1 (Los Boulevares): SUBMITTED fixture for the
+	// document-rejection test (T18a/T18b). Uses propietario.demo@viewpro.local via the
+	// secondary propertyAssetOwner created by createDemoExistingOwnerInvitation.
+	const boulevaresProperty = properties[1];
+	if (boulevaresProperty && owner && requester) {
+		// Find the secondary propertyAssetOwner record for propietario.demo on Los Boulevares.
+		// This record is created by createDemoExistingOwnerInvitation with isPrimary: false.
+		const secondaryOwnerRecord = await client.propertyAssetOwner.findFirst({
+			where: {
+				propertyAssetId: boulevaresProperty.asset.id,
+				userId: owner.id,
+			},
+		});
+		if (secondaryOwnerRecord) {
+			const submittedFixture = {
+				title: "Constancia de servicios pendiente de revisión",
+				description: "Documento demo cargado para test de rechazo manager.",
+				status: DocumentRequestStatus.SUBMITTED,
+				versionStatus: DocumentVersionStatus.UPLOADED,
+				originalFilename: "servicios-pendientes-demo.pdf",
+				body: Buffer.from(
+					"%PDF-1.4\n% ViewPro stage 26.3 reject fixture\n",
+					"utf8",
+				),
+				createdAt: daysAgo(2),
+				uploadedAt: daysAgo(1),
+			};
+			const submittedRequest = await client.documentRequest.create({
+				data: {
+					tenantId: tenant.id,
+					propertyEngagementId: boulevaresProperty.engagement.id,
+					propertyAssetOwnerId: secondaryOwnerRecord.id,
+					ownerUserId: owner.id,
+					requestedByUserId: requester.id,
+					title: submittedFixture.title,
+					description: submittedFixture.description,
+					status: submittedFixture.status,
+					reviewedByUserId: null,
+					reviewedAt: null,
+					rejectionReason: null,
+					createdAt: submittedFixture.createdAt,
+					updatedAt: submittedFixture.uploadedAt,
+				},
+			});
+			const submittedStorageKey = [
+				DOCUMENT_STORAGE_PREFIX,
+				tenant.id,
+				submittedRequest.id,
+				submittedFixture.originalFilename,
+			].join("/");
+			const submittedDocument = await client.document.create({
+				data: { documentRequestId: submittedRequest.id },
+			});
+			const submittedVersion = await client.documentVersion.create({
+				data: {
+					documentId: submittedDocument.id,
+					uploadedByUserId: owner.id,
+					storageKey: submittedStorageKey,
+					originalFilename: submittedFixture.originalFilename,
+					mimeType: "application/pdf",
+					sizeBytes: submittedFixture.body.byteLength,
+					checksum: `demo:submitted:${submittedRequest.id}`,
+					status: submittedFixture.versionStatus,
+					createdAt: submittedFixture.uploadedAt,
+				},
+			});
+			await client.document.update({
+				where: { id: submittedDocument.id },
+				data: { currentVersionId: submittedVersion.id },
+			});
+			await writeDemoDocumentFileIfEnabled(
+				submittedStorageKey,
+				submittedFixture.body,
+				{
+					mimeType: "application/pdf",
+					sizeBytes: submittedFixture.body.byteLength,
+				},
+			);
+			requests.push({
+				...submittedRequest,
+				demoUploadedAt: submittedFixture.uploadedAt,
+				demoReviewedAt: null,
+			});
+		}
 	}
 
 	return requests;
@@ -1756,7 +1843,7 @@ function printSummary(result) {
 		"Image assets: deterministic local fixtures (real JPG photos when mapped, 1x1 PNG placeholder otherwise)",
 	);
 	console.log(`Movements: ${result.movementsCount}`);
-	console.log(`Document requests: ${result.documentRequestsCount}`);
+	console.log(`Document requests: ${result.documentRequestsCount} (includes Stage 26.3 SUBMITTED fixture on Los Boulevares)`);
 	console.log(`Status change requests: ${result.statusChangeRequestsCount}`);
 	console.log(`Notifications: ${result.notificationsCount}`);
 	console.log(`Admin audit events: ${result.adminEventsCount}`);
