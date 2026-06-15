@@ -2,8 +2,10 @@ import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/icons';
 import type { ProductMovement } from '../api/types';
 import { getMovementTypeLabel } from '../constants/movement-options';
+import { getBuiltInOutcomeLabel } from '../constants/movement-outcome-options';
 import { formatDateTime } from '../utils/format-date-time';
 import { getStatusLabel } from './product-tables/columns';
+import { MovementOutcomeChip } from './movement-outcome-chip';
 
 export function PropertyMovementHistory({
   isError,
@@ -85,6 +87,20 @@ function MovementHistoryItem({ movement }: { movement: ProductMovement }) {
             <Badge variant='outline' className='rounded-full bg-muted/40'>
               {getMovementTypeLabel(movement.type)}
             </Badge>
+            {movement.builtInOutcome ? (
+              <MovementOutcomeChip
+                label={getBuiltInOutcomeLabel(movement.builtInOutcome)}
+                color={null}
+                deletedAt={null}
+              />
+            ) : null}
+            {movement.customOutcomeLabel ? (
+              <MovementOutcomeChip
+                label={movement.customOutcomeLabel.label}
+                color={movement.customOutcomeLabel.color}
+                deletedAt={movement.customOutcomeLabel.deletedAt}
+              />
+            ) : null}
             {statusChange ? (
               <span className='text-xs font-medium text-muted-foreground'>{statusChange}</span>
             ) : null}

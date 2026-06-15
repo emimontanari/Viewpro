@@ -262,6 +262,8 @@ export type ProductMovement = {
   visitCount: number | null;
   offerAmountCents: number | null;
   interestLevel: ProductMovementInterestLevel | null;
+  builtInOutcome: MovementBuiltInOutcome | null;
+  customOutcomeLabel: ProductMovementCustomOutcomeLabel | null;
   createdBy: {
     id: string;
     email: string;
@@ -305,9 +307,48 @@ export type ProductStatusMutationPayload = {
   status: PropertyEngagementStatus;
 };
 
+export type MovementBuiltInOutcome =
+  | 'EN_CAPTACION'
+  | 'DOCUMENTACION_PENDIENTE'
+  | 'PREPARANDO_PUBLICACION'
+  | 'PUBLICACION_ACTIVA'
+  | 'CONSULTAS_Y_VISITAS'
+  | 'NEGOCIACION_OFERTA'
+  | 'RESERVA_INICIADA'
+  | 'DOCUMENTACION_FINAL'
+  | 'CERRADO'
+  | 'CANCELADO';
+
+export type MovementOutcome =
+  | { builtIn: MovementBuiltInOutcome }
+  | { customLabelId: string };
+
+export type MovementOutcomeLabelDto = {
+  id: string;
+  tenantId: string;
+  label: string;
+  color: string | null;
+  createdByUserId: string;
+  createdAt: string;
+  deletedAt: string | null;
+};
+
+export type CreateLabelPayload = {
+  label: string;
+  color?: string;
+};
+
 export type ProductMovementMutationPayload = {
   type: ManualProductMovementType;
   observation: string;
   nextStep?: string;
   newStatus?: PropertyEngagementStatus;
+  outcome?: MovementOutcome;
+};
+
+export type ProductMovementCustomOutcomeLabel = {
+  id: string;
+  label: string;
+  color: string | null;
+  deletedAt: string | null;
 };

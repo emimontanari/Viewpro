@@ -4,7 +4,8 @@ import {
   getAssignableProductAgents,
   getProductDocumentRequests,
   getProducts,
-  getProductById
+  getProductById,
+  listMovementOutcomeLabels
 } from './service';
 import type { Product, ProductFilters } from './types';
 
@@ -48,4 +49,16 @@ export const assignableProductAgentsOptions = (tenantId?: string | null) =>
   queryOptions({
     queryKey: productKeys.assignableAgents(tenantId),
     queryFn: getAssignableProductAgents
+  });
+
+export const movementOutcomeLabelsKeys = {
+  all: ['movement-outcome-labels'] as const,
+  list: (params: { activeOnly: boolean }) =>
+    [...movementOutcomeLabelsKeys.all, 'list', params] as const
+};
+
+export const movementOutcomeLabelsOptions = (params: { activeOnly: boolean } = { activeOnly: true }) =>
+  queryOptions({
+    queryKey: movementOutcomeLabelsKeys.list(params),
+    queryFn: () => listMovementOutcomeLabels(params)
   });
