@@ -25,8 +25,8 @@ const INITIAL_FORM: CreateTeamInvitationPayload = {
 };
 
 const ROLE_OPTIONS: Array<{ label: string; value: TeamInvitationRole }> = [
-  { label: 'Agente', value: 'AGENT' },
-  { label: 'Manager', value: 'MANAGER' }
+  { label: 'Vendedor', value: 'AGENT' },
+  { label: 'Encargado', value: 'MANAGER' }
 ];
 
 type FieldErrors = Partial<Record<keyof CreateTeamInvitationPayload, string>>;

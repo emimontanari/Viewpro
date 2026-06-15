@@ -38,8 +38,8 @@ describe('PendingTeamInvitationsList', () => {
 
     expect(screen.getByText('agente@example.com')).toBeInTheDocument();
     expect(screen.getByText('manager@example.com')).toBeInTheDocument();
-    expect(screen.getByText('Agente')).toBeInTheDocument();
-    expect(screen.getByText('Manager')).toBeInTheDocument();
+    expect(screen.getByText('Vendedor')).toBeInTheDocument();
+    expect(screen.getByText('Encargado')).toBeInTheDocument();
     expect(screen.getByText('14 jun 2026')).toBeInTheDocument();
   });
 

@@ -108,7 +108,7 @@ export function PendingTeamInvitationsList({
 }
 
 function formatRole(role: PendingTeamInvitation['role']) {
-  return role === 'MANAGER' ? 'Manager' : 'Agente';
+  return role === 'MANAGER' ? 'Encargado' : 'Vendedor';
 }
 
 function formatDate(value: string) {

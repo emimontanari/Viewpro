@@ -66,7 +66,7 @@ describe('TeamMembersList', () => {
     render(<TeamMembersList members={[member]} />);
 
     expect(screen.queryByRole('columnheader', { name: 'Acciones' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /hacer agente/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /hacer vendedor/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /desactivar acceso/i })).not.toBeInTheDocument();
   });
 
@@ -82,14 +82,14 @@ describe('TeamMembersList', () => {
     expect(screen.getByText('principal@example.com')).toBeInTheDocument();
     expect(screen.getByText('baja@example.com')).toBeInTheDocument();
     expect(screen.getByText('Desactivado')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /hacer manager/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /hacer encargado/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /desactivar acceso/i })).not.toBeInTheDocument();
   });
 
   it('does not show self-deactivation but still allows role update for manageable self rows', () => {
     render(<TeamMembersList canManageTeam currentMembershipId='membership-1' members={[member]} />);
 
-    expect(screen.getByRole('button', { name: /hacer agente/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /hacer vendedor/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /desactivar acceso/i })).not.toBeInTheDocument();
   });
 
@@ -108,7 +108,7 @@ describe('TeamMembersList', () => {
       />
     );
 
-    await user.click(screen.getByRole('button', { name: /hacer agente/i }));
+    await user.click(screen.getByRole('button', { name: /hacer vendedor/i }));
     await user.click(screen.getByRole('button', { name: /desactivar acceso/i }));
 
     expect(onUpdateRole).toHaveBeenCalledWith('membership-1', 'AGENT');
