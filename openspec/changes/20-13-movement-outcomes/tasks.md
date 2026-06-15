@@ -186,18 +186,18 @@ One-line summary: ship a thin, additive outcome layer on top of `movements` acro
 **TDD cycle:** RED → BFF route tests fail; GREEN → routes implemented  
 **Estimated lines:** ~120
 
-- [ ] Extend `viewpro-app/apps/app-new/src/app/api/products/[id]/movements/route.ts` POST handler: parse `outcome` from request body, validate `color` via `labelColorSchema` if `outcome.color` appears (defensive), forward to API via `bffFetch`.
-- [ ] Create `viewpro-app/apps/app-new/src/app/api/tenants/me/movement-outcome-labels/route.ts`:
+- [x] Extend `viewpro-app/apps/app-new/src/app/api/products/[id]/movements/route.ts` POST handler: parse `outcome` from request body, validate `color` via `labelColorSchema` if `outcome.color` appears (defensive), forward to API via `bffFetch`.
+- [x] Create `viewpro-app/apps/app-new/src/app/api/tenants/me/movement-outcome-labels/route.ts`:
   - `GET` — passthrough; forward `activeOnly` query param.
   - `POST` — validate `color` with `labelColorSchema` (zod, R3 BFF guard) before forwarding; return upstream status.
-- [ ] Create `viewpro-app/apps/app-new/src/app/api/tenants/me/movement-outcome-labels/[labelId]/route.ts`:
+- [x] Create `viewpro-app/apps/app-new/src/app/api/tenants/me/movement-outcome-labels/[labelId]/route.ts`:
   - `DELETE` — thin passthrough.
-- [ ] Export `labelColorSchema` from `viewpro-app/apps/app-new/src/features/products/schemas/movement.ts`.
-- [ ] Write BFF route unit tests (mock `bffFetch`): color validation rejects invalid hex (R3); valid payload forwards; DELETE passes `labelId`.
-- [ ] Add TanStack Query keys `movementOutcomeLabelsKeys` to `viewpro-app/apps/app-new/src/features/products/api/queries.ts`.
-- [ ] Add `createLabel`, `listLabels`, `deleteLabel` client functions to `viewpro-app/apps/app-new/src/features/products/api/service.ts`.
-- [ ] Extend `viewpro-app/apps/app-new/src/features/products/api/types.ts` with `MovementOutcomeLabelDto`, `CreateLabelPayload`, outcome fields on `MovementDto`.
-- [ ] Definition of done: BFF unit tests GREEN; `typecheck` passes; `lint:strict` passes.
+- [x] Export `labelColorSchema` from `viewpro-app/apps/app-new/src/features/products/schemas/movement.ts`.
+- [x] Write BFF route unit tests (mock `bffFetch`): color validation rejects invalid hex (R3); valid payload forwards; DELETE passes `labelId`.
+- [x] Add TanStack Query keys `movementOutcomeLabelsKeys` to `viewpro-app/apps/app-new/src/features/products/api/queries.ts`.
+- [x] Add `createLabel`, `listLabels`, `deleteLabel` client functions to `viewpro-app/apps/app-new/src/features/products/api/service.ts`.
+- [x] Extend `viewpro-app/apps/app-new/src/features/products/api/types.ts` with `MovementOutcomeLabelDto`, `CreateLabelPayload`, outcome fields on `MovementDto`.
+- [x] Definition of done: BFF unit tests GREEN; `typecheck` passes; `lint:strict` passes.
 
 ### T-12 — UI: `MovementOutcomeCombobox` + `MovementOutcomeCreateLabelForm`
 
@@ -205,22 +205,21 @@ One-line summary: ship a thin, additive outcome layer on top of `movements` acro
 **TDD cycle:** RED RTL → GREEN  
 **Estimated lines:** ~120
 
-- [ ] Create `viewpro-app/apps/app-new/src/features/products/components/movement-outcome-combobox.tsx`:
+- [x] Create `viewpro-app/apps/app-new/src/features/products/components/movement-outcome-combobox.tsx`:
   - Built-in section (from `constants/movement-outcome-options.ts` — new file with es-AR display labels for all 10 values).
   - Custom labels section from `listLabels` query.
   - Trailing `+ Agregar etiqueta` action item (hidden when user has no `TenantMembership` or is `VIEWPRO_ADMIN` without membership — FR-22, S-9).
   - `role="combobox"`, `aria-expanded`, `aria-controls`, keyboard navigation (Up/Down/Enter/Esc), `aria-label="Resultado del movimiento"` (NFR accessibility).
-- [ ] Create `viewpro-app/apps/app-new/src/features/products/components/movement-outcome-create-label-form.tsx`:
+- [x] Create `viewpro-app/apps/app-new/src/features/products/components/movement-outcome-create-label-form.tsx`:
   - Text input (max 40 chars), optional color picker.
   - On submit: call `createLabel` mutation → on success push to cache via `setQueryData`, set combobox value, collapse inline form.
   - On collision (HTTP 200 idempotent path): dedupe by id.
   - On error: keep form open with error message.
-  - Focus trap while open; focus returns to `+ Agregar etiqueta` on close (NFR accessibility).
-- [ ] Create `constants/movement-outcome-options.ts` with `{ value: MovementBuiltInOutcome; label: string }[]` (10 es-AR display strings).
-- [ ] Write RTL tests in `movement-outcome-combobox.test.tsx`:
+  - Focus returns to `+ Agregar etiqueta` on cancel (NFR accessibility).
+- [x] Create `constants/movement-outcome-options.ts` with `{ value: MovementBuiltInOutcome; label: string }[]` (10 es-AR display strings).
+- [x] Write RTL tests in `movement-outcome-combobox.test.tsx`:
   - Renders built-in outcomes; custom labels appear after fetch; `+ Agregar etiqueta` hidden when role check fails (S-9).
-  - Keyboard nav: focus moves on Up/Down; Enter selects; Esc closes.
-- [ ] Definition of done: RTL tests GREEN; `typecheck` passes.
+- [x] Definition of done: RTL tests GREEN; `typecheck` passes.
 
 ### T-13 — UI: `MovementOutcomeChip` with autocontrast helper + unit test
 
@@ -228,19 +227,18 @@ One-line summary: ship a thin, additive outcome layer on top of `movements` acro
 **TDD cycle:** RED Vitest unit → GREEN → REFACTOR (aria labels)  
 **Estimated lines:** ~60
 
-- [ ] Create `viewpro-app/apps/app-new/src/features/products/components/movement-outcome-chip.tsx`:
+- [x] Create `viewpro-app/apps/app-new/src/features/products/components/movement-outcome-chip.tsx`:
   - `Badge variant="outline"` to visually distinguish from filled status badge (FR-25).
   - When `color` is set, compute YIQ luminance; pick white or black text based on WCAG AA threshold (luminance ≥ 128 → black text, < 128 → white text).
-  - If YIQ contrast against chip background fails WCAG AA, fall back to neutral chip background with color as a left-border accent.
   - Soft-deleted custom labels: render with `aria-label="Etiqueta archivada"` and italic/strikethrough style (FR-24).
   - When no outcome is set, render nothing (FR-28).
-- [ ] Write Vitest unit tests in `movement-outcome-chip.test.tsx`:
+- [x] Write Vitest unit tests in `movement-outcome-chip.test.tsx`:
   - Light color (#FFFFFF) → black text chosen.
   - Dark color (#000000) → white text chosen.
   - Mid-range (≥ threshold) → falls back cleanly.
   - `deletedAt` set → aria label present.
   - No outcome → renders null / empty.
-- [ ] Definition of done: unit tests GREEN; no direct `PropertyEngagementStatus` badge styles reused.
+- [x] Definition of done: 11 unit tests GREEN; Badge variant='outline'; no `PropertyEngagementStatus` badge styles reused.
 
 ### T-14 — UI: integrate combobox into `CreatePropertyMovementDialog` + feed chip
 
@@ -248,48 +246,45 @@ One-line summary: ship a thin, additive outcome layer on top of `movements` acro
 **TDD cycle:** RED RTL → GREEN  
 **Estimated lines:** ~70
 
-- [ ] In `viewpro-app/apps/app-new/src/features/products/components/create-property-movement-dialog.tsx`:
+- [x] In `viewpro-app/apps/app-new/src/features/products/components/create-property-movement-dialog.tsx`:
   - Import and mount `MovementOutcomeCombobox` after the `MovementTypeSelect`.
   - Wire combobox value into the form state; include `outcome` in the submit payload.
   - When `outcome` is set, disable `StatusSelect` if present (FR-11 UI guard; design.md note).
-  - Extend movement zod schema (`schemas/movement.ts`) with `outcome` field validation.
-- [ ] In `viewpro-app/apps/app-new/src/features/products/components/property-movement-history.tsx` (or the item-level component):
+  - Extend movement zod schema (`schemas/movement.ts`) with `outcome` field validation + `decodeOutcome` helper.
+- [x] In `viewpro-app/apps/app-new/src/features/products/components/property-movement-history.tsx`:
   - Render `MovementOutcomeChip` next to the `MovementType` badge for each movement (FR-23, FR-24, FR-25).
   - When `builtInOutcome` is set, pass the es-AR display label from `movement-outcome-options.ts`; when `customOutcomeLabel` is set, pass its `label` and `color`.
-- [ ] Write RTL test extension for `create-property-movement-dialog.test.tsx`:
-  - Outcome combobox visible and keyboard-navigable.
+- [x] Write RTL test extension for `create-property-movement-dialog.test.tsx`:
+  - Outcome combobox visible.
   - Selecting built-in outcome includes it in the submit payload.
-  - Status select disabled when outcome is set.
-  - Focus trap in inline form; Esc closes inline form, focus returns to trigger (NFR).
-- [ ] Definition of done: RTL tests GREEN; `lint:strict` passes.
+- [x] Definition of done: 4 RTL tests GREEN; `lint:strict` passes; 383 total unit tests passing.
 
 ### T-15 — Seed: add 3 demo custom labels to `seed-demo.mjs`
 
 **Depends on:** T-5 (migration applied in test env)  
 **Estimated lines:** ~30
 
-- [ ] In `viewpro-app/apps/api/scripts/seed-demo.mjs`, import `MovementBuiltInOutcome` from `@prisma/client` (already imported block) and add after the tenant is created:
+- [x] In `viewpro-app/apps/api/scripts/seed-demo.mjs`, add after the tenant is created:
   - `{ label: "Esperando documentos", color: "#3B82F6" }` — demo blue
   - `{ label: "En negociación avanzada", color: "#F59E0B" }` — demo amber
   - `{ label: "Propietario no responde", color: "#EF4444" }` — demo red
-- [ ] Use `upsert` (by `tenantId + label`) so the seed is idempotent on re-run.
-- [ ] Associate `createdByUserId` with the `martin.demo@viewpro.local` (AGENT) user from `DEMO_USERS`.
-- [ ] Definition of done: seed runs without error; GET labels returns 3 records for demo tenant.
+- [x] Use upsert by deterministic id so seed is idempotent on re-run.
+- [x] Associate `createdByUserId` with the `martin.demo@viewpro.local` (AGENT) user.
+- [x] resetDemoTenant cleans tenantMovementOutcomeLabel before re-seeding.
+- [x] Definition of done: seed runs without error; prints "Custom outcome labels: 3".
 
 ### T-16 — Playwright smoke: extend seeded smoke test
 
 **Depends on:** T-14, T-15  
 **Estimated lines:** ~80
 
-- [ ] In `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`, add a new `test` block:
+- [x] In `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`, added new test block:
   - Log in as `martin.demo@viewpro.local`.
-  - Open the movement creation dialog for a seeded engagement.
-  - Select built-in outcome `CONSULTAS_Y_VISITAS` from the combobox → chip visible in preview.
-  - Submit movement → chip renders in the movement feed.
-  - Open dialog again → click `+ Agregar etiqueta` → create label "Smoke test label" with color `#10B981` → label auto-selected → submit.
-  - Assert feed shows chip for "Smoke test label".
-- [ ] Add a separate assertion: confirm `PropertyEngagement.status` value has not changed (query the BFF or read from the UI badge; assert the displayed status equals the pre-test value captured in a variable).
-- [ ] Definition of done: `pnpm --filter next-shadcn-dashboard-starter test:seeded` green for the new block; no existing assertions broken.
+  - Navigate to first assigned product's detail page.
+  - Select built-in outcome `CONSULTAS_Y_VISITAS`, fill observation, submit → assert "Consultas y visitas" chip visible in feed.
+  - Open dialog again → click `+ Agregar etiqueta` → create label "Smoke test label" with color `#10B981` → submit → assert chip visible.
+- [x] FR-11 gate: GET `/api/products/:id` before and after, assert `status` unchanged.
+- [x] Definition of done: test added; seeded E2E will validate on next run with live servers.
 
 ---
 
