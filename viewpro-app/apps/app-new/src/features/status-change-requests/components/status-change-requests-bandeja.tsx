@@ -83,12 +83,12 @@ function BandejaRow({
   onApprove,
   onReject
 }: {
-  request: StatusChangeRequest & { propertyTitle?: string; requesterName?: string };
+  request: StatusChangeRequest;
   onApprove: (requestId: string, engagementId: string) => void;
   onReject: (requestId: string, engagementId: string) => void;
 }) {
   const propertyTitle = request.propertyTitle ?? request.propertyEngagementId;
-  const requesterName = request.requesterName ?? request.requestedByUserId;
+  const requesterName = request.requestedByUserId;
   const timeAgo = formatTimeAgo(request.createdAt);
 
   return (

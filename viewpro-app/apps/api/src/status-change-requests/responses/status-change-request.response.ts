@@ -1,6 +1,7 @@
 import type { StatusChangeRequest } from '@prisma/client'
 
 export type StatusChangeRequestResponse = ReturnType<typeof mapStatusChangeRequest>
+export type StatusChangeRequestBandejaResponse = ReturnType<typeof mapStatusChangeRequestWithTitle>
 
 export function mapStatusChangeRequest(record: StatusChangeRequest): {
   id: string
@@ -31,5 +32,20 @@ export function mapStatusChangeRequest(record: StatusChangeRequest): {
     resolutionComment: record.resolutionComment ?? null,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
+  }
+}
+
+/**
+ * Mapper for the manager bandeja list — includes the property asset title
+ * so the UI can display it without an additional request.
+ */
+export function mapStatusChangeRequestWithTitle(
+  record: StatusChangeRequest & {
+    propertyEngagement: { propertyAsset: { title: string } }
+  },
+): ReturnType<typeof mapStatusChangeRequest> & { propertyTitle: string } {
+  return {
+    ...mapStatusChangeRequest(record),
+    propertyTitle: record.propertyEngagement.propertyAsset.title,
   }
 }

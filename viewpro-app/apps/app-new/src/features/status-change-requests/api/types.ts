@@ -45,4 +45,6 @@ export type StatusChangeRequest = {
   resolutionComment: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Included by the bandeja endpoint only. */
+  propertyTitle?: string;
 };
