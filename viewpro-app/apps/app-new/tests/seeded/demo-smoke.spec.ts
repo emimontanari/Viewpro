@@ -274,6 +274,75 @@ test('viewpro admin can inspect seeded tenant limits', async ({ page }) => {
   );
 });
 
+test('seller can create movements with outcomes and chip appears in feed (FR-11 invariant gate)', async ({
+  page
+}) => {
+  const MARTIN_EMAIL = 'martin.demo@viewpro.local';
+  await signIn(page, MARTIN_EMAIL);
+
+  // Find a property assigned to martin.
+  const products = await getAssignedProducts(page);
+  const product = products.items[0];
+  expect(product, 'Expected at least one assigned product for martin').toBeTruthy();
+  const productId = product!.id;
+
+  // Navigate to the product detail page.
+  await page.goto(`/dashboard/product/${productId}`);
+  await expect(page).toHaveURL(/\/dashboard\/product\/[a-f0-9-]+$/i);
+  await expect(page.getByText('Detalle de propiedad')).toBeVisible();
+
+  // Capture the current engagement status before creating any movements.
+  const engagementBefore = await getJson<{ status: string }>(
+    page,
+    `/api/products/${productId}`
+  );
+  const statusBefore = engagementBefore.status;
+
+  // --- Movement 1: built-in outcome ---
+  await page.getByRole('button', { name: /Agregar actualización/i }).click();
+  await expect(page.getByRole('dialog', { name: /Agregar actualización/i })).toBeVisible();
+
+  // Select built-in outcome CONSULTAS_Y_VISITAS.
+  await page.getByRole('combobox', { name: /resultado del movimiento/i }).click();
+  await page.getByText('Consultas y visitas').click();
+
+  // Fill observation (required).
+  await page.getByLabel('Observación').fill('Primer movimiento con resultado built-in de smoke test.');
+  await page.getByRole('button', { name: /Guardar actualización/i }).click();
+
+  // Wait for dialog to close and chip to appear in feed.
+  await expect(page.getByRole('dialog', { name: /Agregar actualización/i })).not.toBeVisible();
+  await expect(page.getByText('Consultas y visitas').first()).toBeVisible({ timeout: 10_000 });
+
+  // --- Movement 2: custom label created inline ---
+  await page.getByRole('button', { name: /Agregar actualización/i }).click();
+  await expect(page.getByRole('dialog', { name: /Agregar actualización/i })).toBeVisible();
+
+  // Open combobox and click "+ Agregar etiqueta".
+  await page.getByRole('combobox', { name: /resultado del movimiento/i }).click();
+  await page.getByText(/\+ Agregar etiqueta/i).click();
+
+  // Fill the inline create-label form.
+  await page.getByLabel('Nombre').fill('Smoke test label');
+  await page.getByLabel(/Color de la etiqueta/i).fill('#10B981');
+  await page.getByRole('button', { name: /Crear etiqueta/i }).click();
+
+  // Fill observation for the second movement.
+  await page.getByLabel('Observación').fill('Segundo movimiento con etiqueta personalizada de smoke test.');
+  await page.getByRole('button', { name: /Guardar actualización/i }).click();
+
+  // Wait for dialog to close and custom label chip to appear in feed.
+  await expect(page.getByRole('dialog', { name: /Agregar actualización/i })).not.toBeVisible();
+  await expect(page.getByText('Smoke test label').first()).toBeVisible({ timeout: 10_000 });
+
+  // FR-11 invariant: property engagement status must not have changed.
+  const engagementAfter = await getJson<{ status: string }>(
+    page,
+    `/api/products/${productId}`
+  );
+  expect(engagementAfter.status).toBe(statusBefore);
+});
+
 test('demo manager can review a submitted document request', async ({ page }) => {
   await signIn(page, DEMO_EMAIL);
   await page.goto('/dashboard/product');
