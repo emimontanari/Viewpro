@@ -42,6 +42,15 @@ loadEnvFile(resolve(process.cwd(), ".env"));
 
 const DEMO_TENANT_SLUG = "viewpro-demo-inmobiliaria";
 const DEMO_TENANT_NAME = "ViewPro Demo Inmobiliaria";
+
+// ---------------------------------------------------------------------------
+// Stage 26.4 — Isolation tenant constants
+// ---------------------------------------------------------------------------
+const DEMO_ISOLATION_TENANT_SLUG = "viewpro-isolation-tenant";
+const DEMO_ISOLATION_TENANT_NAME = "ViewPro Isolation Tenant";
+const DEMO_ISOLATION_MANAGER_EMAIL = "manager.isolation@viewpro.local";
+const DEMO_ISOLATION_OWNER_EMAIL = "propietario.isolation@viewpro.local";
+const DEMO_ISOLATION_PROPERTY_TITLE = "Propiedad isolation";
 const DEMO_TENANT_WHATSAPP_PHONE =
 	process.env.VIEWPRO_DEMO_TENANT_WHATSAPP_PHONE ?? "+5493510000000";
 const DEMO_TENANT_LIMITS = {
@@ -536,7 +545,15 @@ try {
 }
 
 async function seedDemo(client) {
-	await resetDemoTenant(client);
+	// Reset both tenants before seeding (FK-safe order, idempotent).
+	// Isolation tenant reset first so its users are cleaned up before the demo tenant users.
+	await resetTenantBySlug(client, DEMO_ISOLATION_TENANT_SLUG, [
+		DEMO_ISOLATION_MANAGER_EMAIL,
+		DEMO_ISOLATION_OWNER_EMAIL,
+	]);
+	await resetTenantBySlug(client, DEMO_TENANT_SLUG, DEMO_USER_EMAILS);
+
+	// Seed demo tenant (canonical)
 	const users = await createDemoUsers(client);
 	const tenant = await createDemoTenant(client, users);
 	const properties = await createDemoProperties(client, tenant, users);
@@ -571,6 +588,25 @@ async function seedDemo(client) {
 	const adminEvents = await createDemoAdminAuditEvents(client, tenant, users);
 	const outcomeLabels = await createDemoOutcomeLabels(client, tenant, users);
 
+	// Seed isolation tenant (Stage 26.4 — negative security tests)
+	const isolationResult = await seedIsolationTenant(client);
+
+	// T-5 sanity assertion: log engagement counts per tenant
+	const demoEngagementCount = await client.propertyEngagement.count({
+		where: { tenantId: tenant.id },
+	});
+	const isolationEngagementCount = await client.propertyEngagement.count({
+		where: { tenantId: isolationResult.tenant.id },
+	});
+	console.log(`Demo tenant engagements: ${demoEngagementCount} (expected 20)`);
+	console.log(`Isolation tenant engagements: ${isolationEngagementCount} (expected 1)`);
+	if (demoEngagementCount !== 20) {
+		throw new Error(`Demo tenant engagement count mismatch: expected 20, got ${demoEngagementCount}`);
+	}
+	if (isolationEngagementCount !== 1) {
+		throw new Error(`Isolation tenant engagement count mismatch: expected 1, got ${isolationEngagementCount}`);
+	}
+
 	return {
 		tenant,
 		propertiesCount: properties.length,
@@ -581,20 +617,38 @@ async function seedDemo(client) {
 		notificationsCount: notifications.length,
 		adminEventsCount: adminEvents.length,
 		outcomeLabelsCount: outcomeLabels.length,
+		isolationResult,
 	};
 }
 
-async function resetDemoTenant(client) {
+/**
+ * Resets a tenant and all its data in FK-safe deletion order.
+ * Safe to call when the tenant does not exist (no-op).
+ * Covers: notifications → analyticsEvent → document → documentRequest →
+ *   statusChangeRequest → movement → tenantMovementOutcomeLabel →
+ *   propertyAgent → propertyEngagement → propertyAssetOwner →
+ *   propertyAssetImage → propertyAsset → tenantMembership → tenant.
+ *
+ * Also removes seeded users that are no longer referenced anywhere.
+ *
+ * @param {import('@prisma/client').PrismaClient} client
+ * @param {string} slug  Tenant slug to reset.
+ * @param {string[]} [knownUserEmails]  If provided, unreferenced users in this list are deleted after tenant removal.
+ */
+async function resetTenantBySlug(client, slug, knownUserEmails = []) {
 	const existingTenant = await client.tenant.findUnique({
-		where: { slug: DEMO_TENANT_SLUG },
+		where: { slug },
 		select: { id: true },
 	});
 
-	const existingDemoUsers = await client.user.findMany({
-		where: { email: { in: DEMO_USER_EMAILS } },
-		select: { id: true, email: true },
-	});
-	const demoUserIds = existingDemoUsers.map((user) => user.id);
+	let knownUserIds = [];
+	if (knownUserEmails.length > 0) {
+		const existingUsers = await client.user.findMany({
+			where: { email: { in: knownUserEmails } },
+			select: { id: true, email: true },
+		});
+		knownUserIds = existingUsers.map((user) => user.id);
+	}
 
 	if (existingTenant) {
 		const engagements = await client.propertyEngagement.findMany({
@@ -606,8 +660,11 @@ async function resetDemoTenant(client) {
 			...new Set(engagements.map((engagement) => engagement.propertyAssetId)),
 		];
 
-		await removeDemoImageFiles(existingTenant.id);
-		await removeDemoDocumentFiles(client, existingTenant.id);
+		// Remove image and document files for the demo tenant only (isolation tenant has none)
+		if (slug === DEMO_TENANT_SLUG) {
+			await removeDemoImageFiles(existingTenant.id);
+			await removeDemoDocumentFiles(client, existingTenant.id);
+		}
 
 		await client.$transaction([
 			client.notification.deleteMany({
@@ -663,7 +720,9 @@ async function resetDemoTenant(client) {
 		]);
 	}
 
-	await deleteUnreferencedDemoUsers(client, demoUserIds);
+	if (knownUserIds.length > 0) {
+		await deleteUnreferencedDemoUsers(client, knownUserIds);
+	}
 }
 
 async function deleteUnreferencedDemoUsers(client, demoUserIds) {
@@ -691,6 +750,144 @@ async function deleteUnreferencedDemoUsers(client, demoUserIds) {
 			await client.user.delete({ where: { id: userId } });
 		}
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Stage 26.4 — Isolation tenant seeder
+// ---------------------------------------------------------------------------
+
+/**
+ * Seeds the minimal isolation tenant fixture used by security-isolation.e2e-spec.ts.
+ *
+ * Shape:
+ *   - 1 Tenant (slug: viewpro-isolation-tenant)
+ *   - 1 manager User (manager.isolation@viewpro.local, role PRINCIPAL_MANAGER)
+ *   - 1 owner User (propietario.isolation@viewpro.local)
+ *   - 1 PropertyAsset (title: "Propiedad isolation")
+ *   - 1 PropertyEngagement (status: CAPTURE)
+ *   - 1 PropertyAssetOwnerAccess (ownerUserId = isolation owner, status ACTIVE)
+ *
+ * No agents, movements, notifications, or documents are created.
+ * The isolation tenant title is used to assert it does NOT appear in cross-tenant
+ * response bodies.
+ *
+ * @param {import('@prisma/client').PrismaClient} client
+ */
+async function seedIsolationTenant(client) {
+	const passwordHash = await hash(DEMO_PASSWORD, { type: argon2id });
+
+	// Create isolation users
+	const isolationManager = await client.user.upsert({
+		where: { email: DEMO_ISOLATION_MANAGER_EMAIL },
+		create: {
+			email: DEMO_ISOLATION_MANAGER_EMAIL,
+			passwordHash,
+			firstName: "Iso",
+			lastName: "Manager",
+			status: UserStatus.ACTIVE,
+			globalRole: GlobalRole.USER,
+			emailVerifiedAt: DEMO_NOW,
+		},
+		update: {
+			passwordHash,
+			firstName: "Iso",
+			lastName: "Manager",
+			status: UserStatus.ACTIVE,
+			globalRole: GlobalRole.USER,
+			emailVerifiedAt: DEMO_NOW,
+		},
+	});
+
+	const isolationOwner = await client.user.upsert({
+		where: { email: DEMO_ISOLATION_OWNER_EMAIL },
+		create: {
+			email: DEMO_ISOLATION_OWNER_EMAIL,
+			passwordHash,
+			firstName: "Iso",
+			lastName: "Propietario",
+			status: UserStatus.ACTIVE,
+			globalRole: GlobalRole.USER,
+			emailVerifiedAt: DEMO_NOW,
+		},
+		update: {
+			passwordHash,
+			firstName: "Iso",
+			lastName: "Propietario",
+			status: UserStatus.ACTIVE,
+			globalRole: GlobalRole.USER,
+			emailVerifiedAt: DEMO_NOW,
+		},
+	});
+
+	// Create isolation tenant with the manager as the only member
+	const tenant = await client.tenant.create({
+		data: {
+			name: DEMO_ISOLATION_TENANT_NAME,
+			slug: DEMO_ISOLATION_TENANT_SLUG,
+			status: TenantStatus.ACTIVE,
+			maxUsers: 5,
+			maxActivePropertyEngagements: 5,
+			maxDocumentsStorageMb: 64,
+			memberships: {
+				create: [
+					{
+						userId: isolationManager.id,
+						role: TenantRole.PRINCIPAL_MANAGER,
+					},
+				],
+			},
+		},
+	});
+
+	// Create a minimal property asset + engagement (no images, no agents, no documents)
+	const asset = await client.propertyAsset.create({
+		data: {
+			title: DEMO_ISOLATION_PROPERTY_TITLE,
+			addressLine: "Aislamiento 1",
+			city: "Córdoba",
+			province: "Córdoba",
+			propertyType: PropertyType.HOUSE,
+			ownerName: `${isolationOwner.firstName} ${isolationOwner.lastName}`,
+			ownerEmail: DEMO_ISOLATION_OWNER_EMAIL,
+			createdByUserId: isolationManager.id,
+			createdAt: daysAgo(5),
+		},
+	});
+
+	// Link isolation owner to the asset (ACTIVE access — used by B-3 tests)
+	await client.propertyAssetOwner.create({
+		data: {
+			propertyAssetId: asset.id,
+			ownerEmail: DEMO_ISOLATION_OWNER_EMAIL,
+			ownerFirstName: isolationOwner.firstName,
+			ownerLastName: isolationOwner.lastName,
+			userId: isolationOwner.id,
+			isPrimary: true,
+			accessStatus: PropertyAssetOwnerAccessStatus.ACTIVE,
+			createdAt: daysAgo(4),
+		},
+	});
+
+	const engagement = await client.propertyEngagement.create({
+		data: {
+			tenantId: tenant.id,
+			propertyAssetId: asset.id,
+			operationType: PropertyOperationType.SALE,
+			status: PropertyEngagementStatus.CAPTURE,
+			publishedPriceCents: moneyToCents(1),
+			currency: "USD",
+			createdByUserId: isolationManager.id,
+			createdAt: daysAgo(4),
+		},
+	});
+
+	return {
+		tenant,
+		manager: isolationManager,
+		owner: isolationOwner,
+		asset,
+		engagement,
+	};
 }
 
 async function createDemoUsers(client) {
@@ -1854,4 +2051,14 @@ function printSummary(result) {
 	console.log(
 		"Contact fixtures: tenant WhatsApp, Martín seller WhatsApp, Sofía no-config movement contact",
 	);
+	// Stage 26.4 — isolation tenant summary
+	if (result.isolationResult) {
+		console.log("---");
+		console.log(`Isolation tenant: ${result.isolationResult.tenant.name} (slug: ${DEMO_ISOLATION_TENANT_SLUG})`);
+		console.log("Isolation tenant: 1 manager, 1 property");
+		console.log(`- Isolation manager: ${DEMO_ISOLATION_MANAGER_EMAIL} / ${passwordSummary}`);
+		console.log(`- Isolation owner: ${DEMO_ISOLATION_OWNER_EMAIL} / ${passwordSummary}`);
+		console.log(`- Isolation engagement id: ${result.isolationResult.engagement.id}`);
+		console.log(`- Isolation asset id: ${result.isolationResult.asset.id}`);
+	}
 }
