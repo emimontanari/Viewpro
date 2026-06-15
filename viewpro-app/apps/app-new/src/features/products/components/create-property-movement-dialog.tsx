@@ -21,15 +21,21 @@ import { Textarea } from '@/components/ui/textarea';
 import type { ProductMovementMutationPayload, PropertyEngagementStatus } from '../api/types';
 import { manualMovementTypeOptions } from '../constants/movement-options';
 import { propertyStatusOptions } from '../constants/product-options';
-import { createProductMovementSchema, type CreateProductMovementValues } from '../schemas/movement';
+import {
+  createProductMovementSchema,
+  decodeOutcome,
+  type CreateProductMovementValues
+} from '../schemas/movement';
 import { useEffect, useState, type FormEvent } from 'react';
 import type { z } from 'zod';
+import { MovementOutcomeCombobox } from './movement-outcome-combobox';
 
 const NO_STATUS_CHANGE = 'NO_STATUS_CHANGE';
 const INITIAL_VALUES: CreateProductMovementDialogState = {
   newStatus: NO_STATUS_CHANGE,
   nextStep: '',
   observation: '',
+  outcome: null,
   type: 'GENERAL_UPDATE'
 };
 
@@ -38,17 +44,20 @@ type CreateProductMovementDialogState = {
   observation: string;
   nextStep: string;
   newStatus: PropertyEngagementStatus | typeof NO_STATUS_CHANGE;
+  outcome: string | null;
 };
 
 type MovementFormErrors = Partial<Record<keyof CreateProductMovementValues, string>>;
 
 export function CreatePropertyMovementDialog({
+  canCreateLabel = true,
   canUpdateStatus = true,
   isSubmitting,
   onOpenChange,
   onSubmit,
   open
 }: {
+  canCreateLabel?: boolean;
   canUpdateStatus?: boolean;
   isSubmitting: boolean;
   onOpenChange: (open: boolean) => void;
@@ -75,6 +84,7 @@ export function CreatePropertyMovementDialog({
         canUpdateStatus && values.newStatus !== NO_STATUS_CHANGE ? values.newStatus : undefined,
       nextStep: values.nextStep,
       observation: values.observation,
+      outcome: values.outcome ?? undefined,
       type: values.type
     });
 
@@ -84,7 +94,13 @@ export function CreatePropertyMovementDialog({
     }
 
     setErrors({});
-    onSubmit(parsed.data);
+    onSubmit({
+      type: parsed.data.type,
+      observation: parsed.data.observation,
+      nextStep: parsed.data.nextStep,
+      newStatus: parsed.data.newStatus,
+      outcome: decodeOutcome(parsed.data.outcome)
+    });
   }
 
   return (
@@ -122,6 +138,19 @@ export function CreatePropertyMovementDialog({
               </SelectContent>
             </Select>
             <FieldError>{errors.type}</FieldError>
+          </Field>
+
+          <Field>
+            <FieldLabel>Resultado del movimiento</FieldLabel>
+            <MovementOutcomeCombobox
+              value={values.outcome}
+              onChange={(encoded) => setValues((current) => ({ ...current, outcome: encoded }))}
+              canCreateLabel={canCreateLabel}
+              disabled={isSubmitting}
+            />
+            <FieldDescription>
+              Opcional: etiquetá el resultado de esta actualización.
+            </FieldDescription>
           </Field>
 
           <Field>
@@ -171,7 +200,7 @@ export function CreatePropertyMovementDialog({
               <FieldLabel htmlFor='movement-new-status'>Actualizar estado</FieldLabel>
               <Select
                 value={values.newStatus}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !!values.outcome}
                 onValueChange={(value) =>
                   setValues((current) => ({
                     ...current,
@@ -197,6 +226,7 @@ export function CreatePropertyMovementDialog({
               </Select>
               <FieldDescription>
                 Dejalo sin cambio si esta actualización no modifica el estado de la gestión.
+                {values.outcome ? ' Deshabilitado cuando hay un resultado seleccionado.' : ''}
               </FieldDescription>
               <FieldError>{errors.newStatus}</FieldError>
             </Field>
