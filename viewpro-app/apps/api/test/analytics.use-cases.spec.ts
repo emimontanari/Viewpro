@@ -694,6 +694,313 @@ describe("Activity feed use case", () => {
 		expect(errors.map((e) => e.property)).not.toContain("dateFrom");
 		expect(errors.map((e) => e.property)).not.toContain("dateTo");
 	});
+
+	// S-12 (FR-7, FR-8): mapper produces correct documentRequest.status and currentVersion.status
+	// for all 5 doc statuses. PENDING is already covered above; this it.each covers the other 4.
+	it.each([
+		[
+			"SUBMITTED",
+			"UPLOADED",
+			{
+				document: {
+					currentVersion: {
+						id: "version-submitted",
+						originalFilename: "submitted.pdf",
+						status: "UPLOADED",
+						createdAt: new Date("2026-05-22T10:00:00.000Z"),
+					},
+				},
+				reviewedByUserId: null,
+				rejectionReason: null,
+			},
+		],
+		[
+			"APPROVED",
+			"APPROVED",
+			{
+				document: {
+					currentVersion: {
+						id: "version-approved",
+						originalFilename: "approved.pdf",
+						status: "APPROVED",
+						createdAt: new Date("2026-05-22T10:00:00.000Z"),
+					},
+				},
+				reviewedByUserId: "reviewer-1",
+				rejectionReason: null,
+			},
+		],
+		[
+			"REJECTED",
+			"REJECTED",
+			{
+				document: {
+					currentVersion: {
+						id: "version-rejected",
+						originalFilename: "rejected.pdf",
+						status: "REJECTED",
+						createdAt: new Date("2026-05-22T10:00:00.000Z"),
+					},
+				},
+				reviewedByUserId: "reviewer-1",
+				rejectionReason: "Documento ilegible",
+			},
+		],
+		[
+			"CANCELLED",
+			null,
+			{
+				document: null,
+				reviewedByUserId: null,
+				rejectionReason: null,
+			},
+		],
+	] as const)(
+		"maps document_request status=%s to correct shape (S-12)",
+		async (docStatus, expectedVersionStatus, overrides) => {
+			const documentRequest = {
+				id: "document-request-1",
+				tenantId: "tenant-1",
+				propertyEngagementId: "engagement-1",
+				propertyAssetOwnerId: "owner-link-1",
+				ownerUserId: null,
+				requestedByUserId: "seller-1",
+				title: "DNI del propietario",
+				description: "Frente y dorso.",
+				status: docStatus,
+				reviewedAt: null,
+				createdAt: new Date("2026-05-22T11:00:00.000Z"),
+				updatedAt: new Date("2026-05-22T11:00:00.000Z"),
+				propertyAssetOwner: {
+					id: "owner-link-1",
+					propertyAssetId: "asset-1",
+					userId: null,
+					ownerEmail: "owner@example.com",
+					ownerFirstName: "Owner",
+					ownerLastName: "Demo",
+					isPrimary: true,
+					accessStatus: "INVITED",
+					createdAt: new Date("2026-05-22T09:00:00.000Z"),
+					updatedAt: new Date("2026-05-22T09:00:00.000Z"),
+				},
+				propertyEngagement: activityMovement.propertyEngagement,
+				requestedByUser: {
+					id: "seller-1",
+					email: "seller@example.com",
+					firstName: "Seller",
+				},
+				...overrides,
+			};
+
+			const movementsRepository = {
+				findManyByTenant: vi
+					.fn()
+					.mockResolvedValue({ items: [], total: 0 }),
+				getActivityCounters: vi
+					.fn()
+					.mockResolvedValue({ todayCount: 0, staleCount: 0, attentionCount: 0 }),
+			};
+			const documentsRepository = {
+				listActivityRequests: vi
+					.fn()
+					.mockResolvedValue({ items: [documentRequest], total: 1 }),
+			};
+			const useCase = new ListActivityFeedUseCase(
+				movementsRepository as never,
+				documentsRepository as never,
+			);
+
+			const result = await useCase.execute(
+				{
+					...managerTenant,
+					permissions: [
+						...managerTenant.permissions,
+						PERMISSIONS.DOCUMENTS_VIEW_ALL,
+					],
+				},
+				currentUser,
+				{ page: 1, pageSize: 10, kind: "document_request" },
+			);
+
+			expect(result.items[0]).toMatchObject({
+				kind: "document_request",
+				documentRequest: {
+					status: docStatus,
+					currentVersion:
+						expectedVersionStatus === null
+							? null
+							: expect.objectContaining({ status: expectedVersionStatus }),
+				},
+			});
+		},
+	);
+
+	// S-13 (FR-9): mixed-kind feed sorts by createdAt desc, ties broken by id desc.
+	it("mixed-kind feed sorts by createdAt desc with id tie-break (S-13)", async () => {
+		const makeDocRequest = (id: string, createdAt: Date) => ({
+			id,
+			tenantId: "tenant-1",
+			propertyEngagementId: "engagement-1",
+			propertyAssetOwnerId: "owner-link-1",
+			ownerUserId: null,
+			requestedByUserId: "seller-1",
+			title: "DNI del propietario",
+			description: "Frente y dorso.",
+			status: "PENDING",
+			reviewedByUserId: null,
+			reviewedAt: null,
+			rejectionReason: null,
+			createdAt,
+			updatedAt: createdAt,
+			document: null,
+			propertyAssetOwner: {
+				id: "owner-link-1",
+				propertyAssetId: "asset-1",
+				userId: null,
+				ownerEmail: "owner@example.com",
+				ownerFirstName: "Owner",
+				ownerLastName: "Demo",
+				isPrimary: true,
+				accessStatus: "INVITED",
+				createdAt: new Date("2026-05-22T09:00:00.000Z"),
+				updatedAt: new Date("2026-05-22T09:00:00.000Z"),
+			},
+			propertyEngagement: activityMovement.propertyEngagement,
+			requestedByUser: {
+				id: "seller-1",
+				email: "seller@example.com",
+				firstName: "Seller",
+			},
+		});
+
+		const docEarly = makeDocRequest(
+			"doc-early",
+			new Date("2026-05-22T11:00:00.000Z"),
+		);
+		const docLate = makeDocRequest(
+			"doc-late",
+			new Date("2026-05-22T12:00:00.000Z"),
+		);
+
+		const movementMid = {
+			...activityMovement,
+			createdAt: new Date("2026-05-22T11:30:00.000Z"),
+		};
+
+		const movementsRepository = {
+			findManyByTenant: vi
+				.fn()
+				.mockResolvedValue({ items: [movementMid], total: 1 }),
+			getActivityCounters: vi
+				.fn()
+				.mockResolvedValue({ todayCount: 0, staleCount: 0, attentionCount: 0 }),
+		};
+		const documentsRepository = {
+			listActivityRequests: vi
+				.fn()
+				.mockResolvedValue({ items: [docEarly, docLate], total: 2 }),
+		};
+		const useCase = new ListActivityFeedUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		const result = await useCase.execute(
+			{
+				...managerTenant,
+				permissions: [
+					...managerTenant.permissions,
+					PERMISSIONS.DOCUMENTS_VIEW_ALL,
+				],
+			},
+			currentUser,
+			{ page: 1, pageSize: 10, kind: "all" },
+		);
+
+		// Primary sort: createdAt desc
+		expect(result.items[0].createdAt).toBe("2026-05-22T12:00:00.000Z"); // docLate
+		expect(result.items[1].createdAt).toBe("2026-05-22T11:30:00.000Z"); // movementMid
+		expect(result.items[2].createdAt).toBe("2026-05-22T11:00:00.000Z"); // docEarly
+	});
+
+	// S-13 tie-break: same createdAt, id desc (z-id before a-id)
+	it("tie-breaks same-createdAt items by id desc (S-13 tie-break)", async () => {
+		const sameTime = new Date("2026-05-22T11:00:00.000Z");
+
+		const makeDocRequest = (id: string) => ({
+			id,
+			tenantId: "tenant-1",
+			propertyEngagementId: "engagement-1",
+			propertyAssetOwnerId: "owner-link-1",
+			ownerUserId: null,
+			requestedByUserId: "seller-1",
+			title: "DNI del propietario",
+			description: "Frente y dorso.",
+			status: "PENDING",
+			reviewedByUserId: null,
+			reviewedAt: null,
+			rejectionReason: null,
+			createdAt: sameTime,
+			updatedAt: sameTime,
+			document: null,
+			propertyAssetOwner: {
+				id: "owner-link-1",
+				propertyAssetId: "asset-1",
+				userId: null,
+				ownerEmail: "owner@example.com",
+				ownerFirstName: "Owner",
+				ownerLastName: "Demo",
+				isPrimary: true,
+				accessStatus: "INVITED",
+				createdAt: new Date("2026-05-22T09:00:00.000Z"),
+				updatedAt: new Date("2026-05-22T09:00:00.000Z"),
+			},
+			propertyEngagement: activityMovement.propertyEngagement,
+			requestedByUser: {
+				id: "seller-1",
+				email: "seller@example.com",
+				firstName: "Seller",
+			},
+		});
+
+		const movementsRepository = {
+			findManyByTenant: vi
+				.fn()
+				.mockResolvedValue({ items: [], total: 0 }),
+			getActivityCounters: vi
+				.fn()
+				.mockResolvedValue({ todayCount: 0, staleCount: 0, attentionCount: 0 }),
+		};
+		const documentsRepository = {
+			listActivityRequests: vi
+				.fn()
+				.mockResolvedValue({
+					items: [makeDocRequest("a-id"), makeDocRequest("z-id")],
+					total: 2,
+				}),
+		};
+		const useCase = new ListActivityFeedUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		const result = await useCase.execute(
+			{
+				...managerTenant,
+				permissions: [
+					...managerTenant.permissions,
+					PERMISSIONS.DOCUMENTS_VIEW_ALL,
+				],
+			},
+			currentUser,
+			{ page: 1, pageSize: 10, kind: "all" },
+		);
+
+		// The mapper prefixes id with "document-request:" — assert on the documentRequestId field
+		// which carries the raw id, confirming z-id sorts before a-id (id desc tie-break).
+		expect(result.items[0]).toMatchObject({ documentRequestId: "z-id" });
+		expect(result.items[1]).toMatchObject({ documentRequestId: "a-id" });
+	});
 });
 
 describe("Dashboard summary use case", () => {
