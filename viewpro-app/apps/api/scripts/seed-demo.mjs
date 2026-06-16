@@ -1850,6 +1850,23 @@ async function createDemoStatusChangeRequests(client, tenant, users, properties)
 		},
 	});
 
+	// Stage 20.11 S-8 fixture: manager-authored movement on Boulevares (Martin's assigned property).
+	// Purpose: proves Bug 2 fix — filtering by Responsable=Martín must return this movement
+	// even though it was created by the manager (not by Martín).
+	// Under the old broken code (createdByUserId filter), this movement would be HIDDEN.
+	// Under the fixed code (assignedAgentUserId filter), it APPEARS because Martín is assigned.
+	await client.movement.create({
+		data: {
+			tenantId: tenant.id,
+			propertyEngagementId: boulevaresProperty.engagement.id,
+			createdByUserId: manager.id,
+			type: MovementType.GENERAL_UPDATE,
+			observation: "Manager note on Boulevares",
+			source: MovementSource.MANUAL,
+			createdAt: daysAgo(0), // seed clock day (DEMO_NOW = 2026-06-01)
+		},
+	});
+
 	return requests;
 }
 
@@ -2042,7 +2059,7 @@ function printSummary(result) {
 	console.log(
 		"Image assets: deterministic local fixtures (real JPG photos when mapped, 1x1 PNG placeholder otherwise)",
 	);
-	console.log(`Movements: ${result.movementsCount}`);
+	console.log(`Movements: ${result.movementsCount} (Stage 26.2 base + Stage 20.11 S-8 manager-authored movement on Boulevares)`);
 	console.log(`Document requests: ${result.documentRequestsCount} (includes Stage 26.3 SUBMITTED fixture on Los Boulevares)`);
 	console.log(`Status change requests: ${result.statusChangeRequestsCount}`);
 	console.log(`Notifications: ${result.notificationsCount}`);

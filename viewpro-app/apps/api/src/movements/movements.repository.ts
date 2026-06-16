@@ -66,6 +66,8 @@ export type ListTenantMovementsInput = {
 	pageSize: number;
 	type?: Movement["type"];
 	createdByUserId?: string;
+	/** Filter movements to engagements where this user is an assigned PropertyAgent. */
+	assignedAgentUserId?: string;
 	from?: Date;
 	to?: Date;
 };

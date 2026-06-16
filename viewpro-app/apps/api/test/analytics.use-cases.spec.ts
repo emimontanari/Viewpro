@@ -18,6 +18,7 @@ import { GetDashboardSummaryUseCase } from "../src/analytics/use-cases/get-dashb
 import { ListActivityFeedUseCase } from "../src/analytics/use-cases/list-activity-feed.use-case";
 import { PERMISSIONS } from "../src/permissions/permissions.constants";
 import type { TenantContext } from "../src/tenant-context/tenant-context.types";
+import { BUSINESS_TIMEZONE } from "../src/common/date/business-tz";
 
 const managerTenant: TenantContext = {
 	tenantId: "tenant-1",
@@ -159,8 +160,10 @@ describe("Activity feed use case", () => {
 				pageSize: 5,
 				type: MovementType.INQUIRY,
 				sellerId: "seller-1",
-				dateFrom: "2026-05-20T00:00:00.000Z",
-				dateTo: "2026-05-22T00:00:00.000Z",
+				// Use date-only strings (what the UI sends); the use case converts
+				// them to timezone-aware UTC boundaries via the business-tz helper.
+				dateFrom: "2026-05-20",
+				dateTo: "2026-05-22",
 			},
 			now,
 		);
@@ -206,9 +209,12 @@ describe("Activity feed use case", () => {
 			page: 2,
 			pageSize: 5,
 			type: MovementType.INQUIRY,
-			createdByUserId: "seller-1",
-			from: new Date("2026-05-20T00:00:00.000Z"),
-			to: new Date("2026-05-22T00:00:00.000Z"),
+			// sellerId is now wired to assignedAgentUserId (Bug 2 fix, FR-4/FR-6)
+			assignedAgentUserId: "seller-1",
+			// from = start-of-day on 2026-05-20 in Buenos Aires (UTC-3) = 03:00Z
+			from: new Date("2026-05-20T03:00:00.000Z"),
+			// to = exclusive end of 2026-05-22 = start of 2026-05-23 in Buenos Aires = 03:00Z
+			to: new Date("2026-05-23T03:00:00.000Z"),
 		});
 		expect(movementsRepository.getActivityCounters).toHaveBeenCalledWith({
 			tenantId: "tenant-1",
@@ -301,7 +307,8 @@ describe("Activity feed use case", () => {
 			canViewAll: true,
 			page: 1,
 			pageSize: 10,
-			requestedByUserId: undefined,
+			// sellerId not set → assignedAgentUserId is undefined (Bug 2 fix, FR-5/FR-6)
+			assignedAgentUserId: undefined,
 			from: undefined,
 			to: undefined,
 		});
@@ -350,7 +357,8 @@ describe("Activity feed use case", () => {
 			page: 1,
 			pageSize: 10,
 			type: undefined,
-			createdByUserId: undefined,
+			// sellerId not set → assignedAgentUserId is undefined (Bug 2 fix, FR-4/FR-6)
+			assignedAgentUserId: undefined,
 			from: undefined,
 			to: undefined,
 		});
@@ -434,7 +442,8 @@ describe("Activity feed use case", () => {
 			canViewAll: true,
 			page: 1,
 			pageSize: 10,
-			requestedByUserId: undefined,
+			// sellerId not set → assignedAgentUserId is undefined (Bug 2 fix, FR-5/FR-6)
+			assignedAgentUserId: undefined,
 			from: undefined,
 			to: undefined,
 		});
@@ -487,6 +496,203 @@ describe("Activity feed use case", () => {
 				new ListActivityFeedQuery(),
 			),
 		).rejects.toBeInstanceOf(ForbiddenException);
+	});
+
+	// S-1 (FR-1, FR-3): date-only dateFrom is parsed as start-of-day in business timezone
+	it("parses date-only dateFrom as start-of-day in BUSINESS_TIMEZONE (S-1)", async () => {
+		const movementsRepository = {
+			findManyByTenant: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+			getActivityCounters: vi
+				.fn()
+				.mockResolvedValue({ todayCount: 0, staleCount: 0, attentionCount: 0 }),
+		};
+		const documentsRepository = {
+			listActivityRequests: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+		};
+		const useCase = new ListActivityFeedUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		await useCase.execute(managerTenant, currentUser, {
+			dateFrom: "2026-06-15",
+		});
+
+		expect(movementsRepository.findManyByTenant).toHaveBeenCalledWith(
+			expect.objectContaining({
+				// Buenos Aires midnight (UTC-3) = 2026-06-15T03:00:00.000Z
+				from: new Date("2026-06-15T03:00:00.000Z"),
+				to: undefined,
+			}),
+		);
+		// Verify it is NOT the broken UTC midnight
+		const callArgs = movementsRepository.findManyByTenant.mock.calls[0][0];
+		expect(callArgs.from.toISOString()).not.toBe("2026-06-15T00:00:00.000Z");
+	});
+
+	// S-2 (FR-2, FR-3): date-only dateTo is parsed as exclusive next-day boundary
+	it("parses date-only dateTo as exclusive next-day 03:00Z in BUSINESS_TIMEZONE (S-2)", async () => {
+		const movementsRepository = {
+			findManyByTenant: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+			getActivityCounters: vi
+				.fn()
+				.mockResolvedValue({ todayCount: 0, staleCount: 0, attentionCount: 0 }),
+		};
+		const documentsRepository = {
+			listActivityRequests: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+		};
+		const useCase = new ListActivityFeedUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		await useCase.execute(managerTenant, currentUser, {
+			dateTo: "2026-06-15",
+		});
+
+		expect(movementsRepository.findManyByTenant).toHaveBeenCalledWith(
+			expect.objectContaining({
+				from: undefined,
+				// Exclusive end of June 15 in BA = start of June 16 = 2026-06-16T03:00:00.000Z
+				to: new Date("2026-06-16T03:00:00.000Z"),
+			}),
+		);
+	});
+
+	// S-3 (FR-1, FR-2, FR-3): same dateFrom and dateTo produces a non-empty range (not collapsed)
+	it("same-day range is non-empty: dateFrom = dateTo (S-3)", async () => {
+		const movementsRepository = {
+			findManyByTenant: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+			getActivityCounters: vi
+				.fn()
+				.mockResolvedValue({ todayCount: 0, staleCount: 0, attentionCount: 0 }),
+		};
+		const documentsRepository = {
+			listActivityRequests: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+		};
+		const useCase = new ListActivityFeedUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		await useCase.execute(managerTenant, currentUser, {
+			dateFrom: "2026-06-15",
+			dateTo: "2026-06-15",
+		});
+
+		const callArgs = movementsRepository.findManyByTenant.mock.calls[0][0];
+		const from = callArgs.from as Date;
+		const to = callArgs.to as Date;
+
+		// Range must be non-empty: from < to
+		expect(to.getTime()).toBeGreaterThan(from.getTime());
+		// Correct boundaries
+		expect(from).toEqual(new Date("2026-06-15T03:00:00.000Z"));
+		expect(to).toEqual(new Date("2026-06-16T03:00:00.000Z"));
+	});
+
+	// S-4 (FR-4, FR-6): sellerId is wired to assignedAgentUserId on movements repo, NOT createdByUserId
+	it("wires sellerId to assignedAgentUserId on movements repo (S-4)", async () => {
+		const movementsRepository = {
+			findManyByTenant: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+			getActivityCounters: vi
+				.fn()
+				.mockResolvedValue({ todayCount: 0, staleCount: 0, attentionCount: 0 }),
+		};
+		const documentsRepository = {
+			listActivityRequests: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+		};
+		const useCase = new ListActivityFeedUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		await useCase.execute(managerTenant, currentUser, { sellerId: "seller-a" });
+
+		expect(movementsRepository.findManyByTenant).toHaveBeenCalledWith(
+			expect.objectContaining({ assignedAgentUserId: "seller-a" }),
+		);
+		expect(movementsRepository.findManyByTenant).not.toHaveBeenCalledWith(
+			expect.objectContaining({ createdByUserId: "seller-a" }),
+		);
+	});
+
+	// S-5 (FR-5, FR-6): sellerId is wired to assignedAgentUserId on documents repo, NOT requestedByUserId
+	it("wires sellerId to assignedAgentUserId on documents repo (S-5)", async () => {
+		const movementsRepository = {
+			findManyByTenant: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+			getActivityCounters: vi
+				.fn()
+				.mockResolvedValue({ todayCount: 0, staleCount: 0, attentionCount: 0 }),
+		};
+		const documentsRepository = {
+			listActivityRequests: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+		};
+		const useCase = new ListActivityFeedUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		await useCase.execute(
+			{
+				...managerTenant,
+				permissions: [
+					...managerTenant.permissions,
+					PERMISSIONS.DOCUMENTS_VIEW_ALL,
+				],
+			},
+			currentUser,
+			{ sellerId: "seller-a" },
+		);
+
+		expect(documentsRepository.listActivityRequests).toHaveBeenCalledWith(
+			expect.objectContaining({ assignedAgentUserId: "seller-a" }),
+		);
+		expect(documentsRepository.listActivityRequests).not.toHaveBeenCalledWith(
+			expect.objectContaining({ requestedByUserId: "seller-a" }),
+		);
+	});
+
+	// S-7 (FR-7, FR-8): date-only input spy records the 03:00Z boundary, not T00:00:00.000Z
+	it("date-only input spy records 03:00Z from helper, not UTC midnight (S-7)", async () => {
+		const movementsRepository = {
+			findManyByTenant: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+			getActivityCounters: vi
+				.fn()
+				.mockResolvedValue({ todayCount: 0, staleCount: 0, attentionCount: 0 }),
+		};
+		const documentsRepository = {
+			listActivityRequests: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+		};
+		const useCase = new ListActivityFeedUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		// Pass a date-only string (no T suffix) — this is what the UI sends
+		await useCase.execute(managerTenant, currentUser, {
+			dateFrom: "2026-06-15",
+		});
+
+		const callArgs = movementsRepository.findManyByTenant.mock.calls[0][0];
+		const from = callArgs.from as Date;
+
+		// Must be 03:00Z (Buenos Aires midnight), NOT 00:00Z (broken UTC midnight)
+		expect(from.toISOString()).toBe("2026-06-15T03:00:00.000Z");
+		expect(from.toISOString()).not.toBe("2026-06-15T00:00:00.000Z");
+		// Explicit timezone check: the helper uses BUSINESS_TIMEZONE
+		expect(BUSINESS_TIMEZONE).toBe("America/Argentina/Buenos_Aires");
+	});
+
+	// R4 verification: @IsISO8601() accepts date-only YYYY-MM-DD strings
+	it("@IsISO8601 accepts date-only YYYY-MM-DD for dateFrom and dateTo (R4)", async () => {
+		const query = Object.assign(new ListActivityFeedQuery(), {
+			dateFrom: "2026-06-15",
+			dateTo: "2026-06-15",
+		});
+		const errors = await validate(query);
+		expect(errors.map((e) => e.property)).not.toContain("dateFrom");
+		expect(errors.map((e) => e.property)).not.toContain("dateTo");
 	});
 });
 

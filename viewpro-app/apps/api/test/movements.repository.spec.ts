@@ -287,7 +287,8 @@ describe("Movements foundation", () => {
 			tenantId: "tenant-1",
 			type: MovementType.INQUIRY,
 			createdByUserId: "seller-1",
-			createdAt: { gte: from, lte: to },
+			// `lt` (exclusive end) per R2 — do NOT revert to `lte`
+			createdAt: { gte: from, lt: to },
 			propertyEngagement: expectedEngagementWhere,
 		};
 
@@ -300,6 +301,79 @@ describe("Movements foundation", () => {
 			}),
 		);
 		expect(count).toHaveBeenCalledWith({ where: expectedWhere });
+	});
+
+	// T-13 (R-D1): when both viewer-scoping and assignedAgentUserId are set,
+	// two independent agents.some EXISTS subqueries must appear in the WHERE (not collapsed into one).
+	it("uses agents.some AND clause for assignedAgentUserId alongside viewer scoping (R-D1)", async () => {
+		const findMany = vi.fn().mockResolvedValue([]);
+		const count = vi.fn().mockResolvedValue(0);
+		const repository = new PrismaMovementsRepository({
+			movement: { findMany, count },
+		} as never);
+		const from = new Date("2026-06-15T03:00:00.000Z");
+		const to = new Date("2026-06-16T03:00:00.000Z");
+
+		await repository.findManyByTenant({
+			tenantId: "tenant-1",
+			userId: "manager-1",
+			canViewAll: false, // triggers viewer-scoping agents.some clause
+			page: 1,
+			pageSize: 10,
+			assignedAgentUserId: "seller-a",
+			from,
+			to,
+		});
+
+		const call = findMany.mock.calls[0][0] as { where: Record<string, unknown> };
+		const engagementWhere = call.where.propertyEngagement as Record<string, unknown>;
+
+		// The AND array must contain the responsable-scoping clause
+		expect(engagementWhere.AND).toEqual(
+			expect.arrayContaining([
+				{ agents: { some: { tenantId: "tenant-1", agentUserId: "seller-a" } } },
+			]),
+		);
+
+		// The viewer-scoping clause must still be present at top level of the engagement WHERE
+		// (via agents property inherited from the base engagement where)
+		expect(engagementWhere.agents).toEqual({
+			some: { tenantId: "tenant-1", agentUserId: "manager-1" },
+		});
+
+		// Verify lt is used (exclusive end per R2)
+		const movementWhere = call.where as { createdAt?: { gte?: Date; lt?: Date } };
+		expect(movementWhere.createdAt?.lt).toEqual(to);
+		expect(movementWhere.createdAt?.gte).toEqual(from);
+	});
+
+	// T-13 (R-D1, canViewAll=true): when canViewAll is true, only the assignedAgentUserId
+	// clause appears (no viewer-scoping), directly on propertyEngagement.
+	it("places assignedAgentUserId clause directly on propertyEngagement when canViewAll (R-D1)", async () => {
+		const findMany = vi.fn().mockResolvedValue([]);
+		const count = vi.fn().mockResolvedValue(0);
+		const repository = new PrismaMovementsRepository({
+			movement: { findMany, count },
+		} as never);
+
+		await repository.findManyByTenant({
+			tenantId: "tenant-1",
+			userId: "manager-1",
+			canViewAll: true,
+			page: 1,
+			pageSize: 10,
+			assignedAgentUserId: "seller-a",
+		});
+
+		const call = findMany.mock.calls[0][0] as { where: Record<string, unknown> };
+		const engagementWhere = call.where.propertyEngagement as Record<string, unknown>;
+
+		// With canViewAll=true, the AND clause contains only the responsable filter
+		expect(engagementWhere.AND).toEqual(
+			expect.arrayContaining([
+				{ agents: { some: { tenantId: "tenant-1", agentUserId: "seller-a" } } },
+			]),
+		);
 	});
 
 	it("counts activity summary for the same tenant visibility scope", async () => {

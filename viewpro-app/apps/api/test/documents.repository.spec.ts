@@ -105,7 +105,8 @@ describe("Documents repository foundation", () => {
 			tenantId: "tenant-1",
 			createdAt: {
 				gte: new Date("2026-05-20T00:00:00.000Z"),
-				lte: new Date("2026-05-22T00:00:00.000Z"),
+				// `lt` (exclusive end) per R2 — do NOT revert to `lte`
+				lt: new Date("2026-05-22T00:00:00.000Z"),
 			},
 			requestedByUserId: "agent-2",
 			propertyEngagement: {
@@ -128,6 +129,76 @@ describe("Documents repository foundation", () => {
 			}),
 		);
 		expect(count).toHaveBeenCalledWith({ where: expectedWhere });
+	});
+
+	// T-13 (R-D1): when assignedAgentUserId is set alongside viewer scoping (canViewAll=false),
+	// the WHERE must contain two independent agents.some EXISTS clauses via AND.
+	it("uses agents.some AND clause for assignedAgentUserId alongside viewer scoping (R-D1)", async () => {
+		const findMany = vi.fn().mockResolvedValue([]);
+		const count = vi.fn().mockResolvedValue(0);
+		const repository = new PrismaDocumentsRepository({
+			documentRequest: { findMany, count },
+		} as never);
+		const from = new Date("2026-06-15T03:00:00.000Z");
+		const to = new Date("2026-06-16T03:00:00.000Z");
+
+		await repository.listActivityRequests({
+			tenantId: "tenant-1",
+			viewerUserId: "manager-1",
+			canViewAll: false, // triggers viewer-scoping agents.some clause
+			page: 1,
+			pageSize: 10,
+			assignedAgentUserId: "seller-a",
+			from,
+			to,
+		});
+
+		const call = findMany.mock.calls[0][0] as { where: Record<string, unknown> };
+		const engagementWhere = call.where.propertyEngagement as Record<string, unknown>;
+
+		// The AND array must contain the responsable-scoping clause
+		expect(engagementWhere.AND).toEqual(
+			expect.arrayContaining([
+				{ agents: { some: { tenantId: "tenant-1", agentUserId: "seller-a" } } },
+			]),
+		);
+
+		// The viewer-scoping agents.some must still be present on the engagement WHERE
+		expect(engagementWhere.agents).toEqual({
+			some: { tenantId: "tenant-1", agentUserId: "manager-1" },
+		});
+
+		// Verify lt is used (exclusive end per R2)
+		const docWhere = call.where as { createdAt?: { gte?: Date; lt?: Date } };
+		expect(docWhere.createdAt?.lt).toEqual(to);
+		expect(docWhere.createdAt?.gte).toEqual(from);
+	});
+
+	// T-13 (R-D1, canViewAll=true): when canViewAll=true and assignedAgentUserId is set,
+	// the propertyEngagement filter only contains the assignedAgentUserId clause.
+	it("places assignedAgentUserId clause on propertyEngagement when canViewAll (R-D1)", async () => {
+		const findMany = vi.fn().mockResolvedValue([]);
+		const count = vi.fn().mockResolvedValue(0);
+		const repository = new PrismaDocumentsRepository({
+			documentRequest: { findMany, count },
+		} as never);
+
+		await repository.listActivityRequests({
+			tenantId: "tenant-1",
+			viewerUserId: "manager-1",
+			canViewAll: true,
+			page: 1,
+			pageSize: 10,
+			assignedAgentUserId: "seller-a",
+		});
+
+		const call = findMany.mock.calls[0][0] as { where: Record<string, unknown> };
+		const engagementWhere = call.where.propertyEngagement as Record<string, unknown>;
+
+		// canViewAll=true and no activeEngagementsOnly: only the assigned-agent filter
+		expect(engagementWhere).toEqual({
+			agents: { some: { tenantId: "tenant-1", agentUserId: "seller-a" } },
+		});
 	});
 
 	it("filters internal requests by property engagement and status", async () => {

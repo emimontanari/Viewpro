@@ -430,23 +430,61 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
     }
 
     if (input.to) {
-      createdAt.lte = input.to
+      // Use `lt` (exclusive end) — paired with parseBusinessDayExclusiveEnd.
+      // Do NOT change to `lte`: that would re-introduce the millisecond-boundary
+      // edge case that the exclusive-end design intentionally avoids (R2).
+      createdAt.lt = input.to
+    }
+
+    // Determine base propertyEngagement filter based on visibility/active flags.
+    let propertyEngagementBase: Prisma.PropertyEngagementWhereInput | undefined
+
+    if (input.activeEngagementsOnly) {
+      propertyEngagementBase = this.buildActiveDocumentEngagementWhere(input)
+    } else if (!input.canViewAll) {
+      propertyEngagementBase = this.buildAssignedDocumentEngagementWhere(input)
+    }
+
+    // When assignedAgentUserId is set, compose an additional independent agents.some clause
+    // via Prisma AND so both the viewer-scoping EXISTS and the responsable-scoping EXISTS
+    // are emitted as two independent SQL subqueries on PropertyAgent (R-D1).
+    let propertyEngagement: Prisma.PropertyEngagementWhereInput | undefined
+
+    if (input.assignedAgentUserId) {
+      const assignedClause: Prisma.PropertyEngagementWhereInput = {
+        agents: {
+          some: {
+            tenantId: input.tenantId,
+            agentUserId: input.assignedAgentUserId,
+          },
+        },
+      }
+
+      if (propertyEngagementBase) {
+        propertyEngagement = {
+          ...propertyEngagementBase,
+          AND: [
+            ...(Array.isArray(propertyEngagementBase.AND)
+              ? propertyEngagementBase.AND
+              : propertyEngagementBase.AND
+                ? [propertyEngagementBase.AND]
+                : []),
+            assignedClause,
+          ],
+        }
+      } else {
+        // canViewAll = true and no activeEngagementsOnly: only apply the assigned-agent filter
+        propertyEngagement = assignedClause
+      }
+    } else {
+      propertyEngagement = propertyEngagementBase
     }
 
     return {
       tenantId: input.tenantId,
       ...(Object.keys(createdAt).length > 0 ? { createdAt } : {}),
       ...(input.requestedByUserId ? { requestedByUserId: input.requestedByUserId } : {}),
-      ...(input.canViewAll
-        ? {}
-        : {
-            propertyEngagement: this.buildAssignedDocumentEngagementWhere(input),
-          }),
-      ...(input.activeEngagementsOnly
-        ? {
-            propertyEngagement: this.buildActiveDocumentEngagementWhere(input),
-          }
-        : {}),
+      ...(propertyEngagement ? { propertyEngagement } : {}),
     }
   }
 

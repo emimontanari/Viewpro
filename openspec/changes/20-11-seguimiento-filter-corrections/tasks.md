@@ -28,37 +28,37 @@ Chain strategy: size-exception
 
 ## Phase 1: Pre-implementation Audit
 
-- [ ] **T-1** — Run `rg "date-fns|dayjs|luxon" viewpro-app/apps/api/package.json viewpro-app/apps/api/package-lock.json 2>/dev/null` to confirm the API package has zero date-lib dependency. Done when: output is empty or confirms absence. If a lib is found, surface the delta before proceeding.
-- [ ] **T-2** — Run `rg "findManyByTenant|listActivityRequests" viewpro-app/apps/api/src --include="*.ts" -l` to enumerate all callers. Done when: confirmed `list-activity-feed.use-case.ts` is the only production caller that passes `createdByUserId`/`requestedByUserId` to the filter path, and `get-dashboard-summary.use-case.ts` does NOT.
+- [x] **T-1** — Run `rg "date-fns|dayjs|luxon" viewpro-app/apps/api/package.json viewpro-app/apps/api/package-lock.json 2>/dev/null` to confirm the API package has zero date-lib dependency. Done when: output is empty or confirms absence. If a lib is found, surface the delta before proceeding.
+- [x] **T-2** — Run `rg "findManyByTenant|listActivityRequests" viewpro-app/apps/api/src --include="*.ts" -l` to enumerate all callers. Done when: confirmed `list-activity-feed.use-case.ts` is the only production caller that passes `createdByUserId`/`requestedByUserId` to the filter path, and `get-dashboard-summary.use-case.ts` does NOT.
 
 ---
 
 ## Phase 2: Date Helper — Commit A
 
-- [ ] **T-3** — Create `viewpro-app/apps/api/src/common/date/business-tz.ts`. Exports: `BUSINESS_TIMEZONE`, `parseBusinessDayStart(input, timezone?)`, `parseBusinessDayExclusiveEnd(input, timezone?)`. Uses native `Intl.DateTimeFormat` only (no new dependency). JSDoc on `parseBusinessDayExclusiveEnd` must state: "exclusive end — paired with Prisma `lt`. Do NOT change to `lte`." Done when: file exists with exported symbols.
-- [ ] **T-4 (RED)** — Create `viewpro-app/apps/api/src/common/date/business-tz.spec.ts` with failing tests BEFORE implementing the body:
+- [x] **T-3** — Create `viewpro-app/apps/api/src/common/date/business-tz.ts`. Exports: `BUSINESS_TIMEZONE`, `parseBusinessDayStart(input, timezone?)`, `parseBusinessDayExclusiveEnd(input, timezone?)`. Uses native `Intl.DateTimeFormat` only (no new dependency). JSDoc on `parseBusinessDayExclusiveEnd` must state: "exclusive end — paired with Prisma `lt`. Do NOT change to `lte`." Done when: file exists with exported symbols.
+- [x] **T-4 (RED)** — Create `viewpro-app/apps/api/src/common/date/business-tz.spec.ts` with failing tests BEFORE implementing the body:
   - `parseBusinessDayStart('2026-06-15', 'America/Argentina/Buenos_Aires')` → `new Date('2026-06-15T03:00:00.000Z')` (covers FR-1, FR-3)
   - `parseBusinessDayExclusiveEnd('2026-06-15', 'America/Argentina/Buenos_Aires')` → `new Date('2026-06-16T03:00:00.000Z')` (covers FR-2, FR-3)
   - invalid input (no `T` suffix required — date-only `'2026-06-15'` is valid; non-date string throws or returns null) (covers NFR-1)
   Done when: `pnpm --filter @viewpro/api test` shows these 3 cases RED.
-- [ ] **T-5 (GREEN)** — Implement `business-tz.ts` body using the R3 algorithm. Done when: `pnpm --filter @viewpro/api test` shows `business-tz.spec.ts` GREEN and full suite stays GREEN (R-D5 baseline confirmed).
+- [x] **T-5 (GREEN)** — Implement `business-tz.ts` body using the R3 algorithm. Done when: `pnpm --filter @viewpro/api test` shows `business-tz.spec.ts` GREEN and full suite stays GREEN (R-D5 baseline confirmed).
 
 ---
 
 ## Phase 3: Repository Signatures + Prisma WHERE — Commit B
 
-- [ ] **T-6 (RED)** — In `viewpro-app/apps/api/test/analytics.use-cases.spec.ts`, add failing test for S-1: call `useCase.execute(...)` with `{ dateFrom: '2026-06-15' }`, assert spy on `movementsRepository.findManyByTenant` received `from: new Date('2026-06-15T03:00:00.000Z')`. Done when: test is RED (current code passes a raw `Date('2026-06-15')` which is wrong).
-- [ ] **T-7** — In `viewpro-app/apps/api/src/movements/movements.repository.ts`, add `assignedAgentUserId?: string` to `ListTenantMovementsInput`. Keep `createdByUserId?: string` intact. Done when: TypeScript compiles with no new errors.
-- [ ] **T-8** — In `viewpro-app/apps/api/src/documents/documents.repository.ts`, add `assignedAgentUserId?: string` to `ListActivityDocumentRequestsInput`. Keep `requestedByUserId?: string` intact. Done when: TypeScript compiles with no new errors.
-- [ ] **T-9** — In `viewpro-app/apps/api/src/movements/prisma-movements.repository.ts` (`buildTenantActivityMovementWhere`): when `assignedAgentUserId` is set, merge via `AND: [...existingAND, { agents: { some: { tenantId, agentUserId: assignedAgentUserId } } }]` (R-D1 pattern from design AD-3). Change `createdAt.lte` → `createdAt.lt` for `dateTo` (R2). Done when: no compilation errors and T-12 passes.
-- [ ] **T-10** — In `viewpro-app/apps/api/src/documents/prisma-documents.repository.ts` (`buildActivityRequestWhere`): same `AND` merge pattern for `assignedAgentUserId`. Change `createdAt.lte` → `createdAt.lt` for `dateTo`. Done when: no compilation errors and T-12 documents equivalent passes.
-- [ ] **T-11** — In `viewpro-app/apps/api/src/analytics/use-cases/list-activity-feed.use-case.ts`: replace `new Date(query.dateFrom)` / `new Date(query.dateTo)` with `parseBusinessDayStart` / `parseBusinessDayExclusiveEnd`. Replace `createdByUserId: query.sellerId` → `assignedAgentUserId: query.sellerId` and `requestedByUserId: query.sellerId` → `assignedAgentUserId: query.sellerId`. Done when: T-6 goes GREEN and existing tests still compile.
+- [x] **T-6 (RED)** — In `viewpro-app/apps/api/test/analytics.use-cases.spec.ts`, add failing test for S-1: call `useCase.execute(...)` with `{ dateFrom: '2026-06-15' }`, assert spy on `movementsRepository.findManyByTenant` received `from: new Date('2026-06-15T03:00:00.000Z')`. Done when: test is RED (current code passes a raw `Date('2026-06-15')` which is wrong).
+- [x] **T-7** — In `viewpro-app/apps/api/src/movements/movements.repository.ts`, add `assignedAgentUserId?: string` to `ListTenantMovementsInput`. Keep `createdByUserId?: string` intact. Done when: TypeScript compiles with no new errors.
+- [x] **T-8** — In `viewpro-app/apps/api/src/documents/documents.repository.ts`, add `assignedAgentUserId?: string` to `ListActivityDocumentRequestsInput`. Keep `requestedByUserId?: string` intact. Done when: TypeScript compiles with no new errors.
+- [x] **T-9** — In `viewpro-app/apps/api/src/movements/prisma-movements.repository.ts` (`buildTenantActivityMovementWhere`): when `assignedAgentUserId` is set, merge via `AND: [...existingAND, { agents: { some: { tenantId, agentUserId: assignedAgentUserId } } }]` (R-D1 pattern from design AD-3). Change `createdAt.lte` → `createdAt.lt` for `dateTo` (R2). Done when: no compilation errors and T-12 passes.
+- [x] **T-10** — In `viewpro-app/apps/api/src/documents/prisma-documents.repository.ts` (`buildActivityRequestWhere`): same `AND` merge pattern for `assignedAgentUserId`. Change `createdAt.lte` → `createdAt.lt` for `dateTo`. Done when: no compilation errors and T-12 documents equivalent passes.
+- [x] **T-11** — In `viewpro-app/apps/api/src/analytics/use-cases/list-activity-feed.use-case.ts`: replace `new Date(query.dateFrom)` / `new Date(query.dateTo)` with `parseBusinessDayStart` / `parseBusinessDayExclusiveEnd`. Replace `createdByUserId: query.sellerId` → `assignedAgentUserId: query.sellerId` and `requestedByUserId: query.sellerId` → `assignedAgentUserId: query.sellerId`. Done when: T-6 goes GREEN and existing tests still compile.
 
 ---
 
 ## Phase 4: Use-Case + Repository Tests — Commit B (continued)
 
-- [ ] **T-12 (RED→GREEN)** — In `viewpro-app/apps/api/test/analytics.use-cases.spec.ts`, add/extend tests for S-1..S-7:
+- [x] **T-12 (RED→GREEN)** — In `viewpro-app/apps/api/test/analytics.use-cases.spec.ts`, add/extend tests for S-1..S-7:
   - S-1: `dateFrom` date-only → spy receives `from: new Date('2026-06-15T03:00:00.000Z')` (covers FR-1, FR-3)
   - S-2: `dateTo` date-only → spy receives `to: new Date('2026-06-16T03:00:00.000Z')` (covers FR-2, FR-3)
   - S-3: `dateFrom = dateTo = '2026-06-15'` → non-empty range, no collapsed filter (covers FR-1, FR-2)
@@ -68,10 +68,10 @@ Chain strategy: size-exception
   - S-7: date-only spy records `from = new Date('2026-06-15T03:00:00.000Z')`, not `T00:00:00.000Z` (covers FR-7, FR-8)
   - Update existing `createdByUserId` / `requestedByUserId` assertions to `assignedAgentUserId` (test refactor noted in design backward-compat audit).
   Done when: all S-1..S-7 GREEN.
-- [ ] **T-13 (R-D1 test)** — In `viewpro-app/apps/api/test/movements.repository.spec.ts`, add test: `findManyByTenant` with `{ canViewAll: false, assignedAgentUserId: 'seller-a' }` → assert the Prisma `findMany` call receives `propertyEngagement: { AND: [{ agents: { some: { agentUserId: currentUserId } } }, { agents: { some: { agentUserId: 'seller-a' } } }] }`. Done when: verifies two independent EXISTS subqueries, not a single collapsed `some({ agentUserId: both })`. Also add equivalent test in `viewpro-app/apps/api/test/documents.repository.spec.ts`.
-- [ ] **T-14 (DTO test)** — Add test in `viewpro-app/apps/api/src/analytics/dto/list-activity-feed.query.spec.ts` (create if absent): `validate(Object.assign(new ListActivityFeedQuery(), { dateFrom: '2026-06-15', dateTo: '2026-06-15' }))` → errors array does not contain `dateFrom` or `dateTo` (covers R4, FR-7). Done when: GREEN confirms `@IsISO8601()` accepts date-only strings.
-- [ ] **T-15 (R-D5 check)** — Run `cd viewpro-app && pnpm --filter @viewpro/api test` after T-7..T-11 land. Confirm `getDashboardSummaryUseCase` suite is GREEN (dashboard uses `from`/`to` as `Date` instants, not date-only strings — not affected by the helper or signature change). Done when: suite output shows zero failures in dashboard-related describes.
-- [ ] **T-16 (integration test RED→GREEN)** — Extend `viewpro-app/apps/api/test/analytics.e2e-spec.ts`:
+- [x] **T-13 (R-D1 test)** — In `viewpro-app/apps/api/test/movements.repository.spec.ts`, add test: `findManyByTenant` with `{ canViewAll: false, assignedAgentUserId: 'seller-a' }` → assert the Prisma `findMany` call receives `propertyEngagement: { AND: [{ agents: { some: { agentUserId: currentUserId } } }, { agents: { some: { agentUserId: 'seller-a' } } }] }`. Done when: verifies two independent EXISTS subqueries, not a single collapsed `some({ agentUserId: both })`. Also add equivalent test in `viewpro-app/apps/api/test/documents.repository.spec.ts`.
+- [x] **T-14 (DTO test)** — Add test in `viewpro-app/apps/api/src/analytics/dto/list-activity-feed.query.spec.ts` (create if absent): `validate(Object.assign(new ListActivityFeedQuery(), { dateFrom: '2026-06-15', dateTo: '2026-06-15' }))` → errors array does not contain `dateFrom` or `dateTo` (covers R4, FR-7). Done when: GREEN confirms `@IsISO8601()` accepts date-only strings.
+- [x] **T-15 (R-D5 check)** — Run `cd viewpro-app && pnpm --filter @viewpro/api test` after T-7..T-11 land. Confirm `getDashboardSummaryUseCase` suite is GREEN (dashboard uses `from`/`to` as `Date` instants, not date-only strings — not affected by the helper or signature change). Done when: suite output shows zero failures in dashboard-related describes.
+- [x] **T-16 (integration test RED→GREEN)** — Extend `viewpro-app/apps/api/test/analytics.e2e-spec.ts`:
   - S-4 variant: real Postgres, seed a manager-created movement on a seller-assigned engagement, filter by `sellerId`, assert movement appears in response.
   - S-5 variant: same for a manager-requested document.
   - S-6 variant: assert other-seller items excluded.
@@ -81,14 +81,14 @@ Chain strategy: size-exception
 
 ## Phase 5: Seed + Smoke — Commit C
 
-- [ ] **T-17 (pre-seed audit)** — Run `rg -n "count\|length\|toHaveLength\|toEqual.*\d+" viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts viewpro-app/apps/api/test/*.e2e-spec.ts` to list all literal count assertions that could shift when the new manager-authored movement on Boulevares is added. List affected lines in `apply-progress.md` before touching the seed. Done when: list is complete.
-- [ ] **T-18** — Update `viewpro-app/apps/api/scripts/seed-demo.mjs`:
+- [x] **T-17 (pre-seed audit)** — Run `rg -n "count\|length\|toHaveLength\|toEqual.*\d+" viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts viewpro-app/apps/api/test/*.e2e-spec.ts` to list all literal count assertions that could shift when the new manager-authored movement on Boulevares is added. List affected lines in `apply-progress.md` before touching the seed. Done when: list is complete.
+- [x] **T-18** — Update `viewpro-app/apps/api/scripts/seed-demo.mjs`:
   - Add ONE manager-created movement on Boulevares in `createStatusChangeRequestFixtures` (type: `GENERAL_UPDATE`, `createdByUserId: manager.id`, `daysAgo()` within seed-clock window).
   - Flip the ONE document request on Boulevares (`requestedByUserId: martin.id` at line ~1810) to `requestedByUserId: manager.id`.
   - In the same commit, update any count assertions identified in T-17 to their new expected values.
   Done when: seed file saved, count assertions updated, no assertion is stale.
-- [ ] **T-19** — Run `cd viewpro-app && pnpm --filter @viewpro/api demo:seed` and confirm exit 0 with no Prisma errors. Done when: clean seed run confirmed.
-- [ ] **T-20 (smoke test)** — Add test in `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts` covering S-8:
+- [x] **T-19** — Run `cd viewpro-app && pnpm --filter @viewpro/api demo:seed` and confirm exit 0 with no Prisma errors. Done when: clean seed run confirmed.
+- [x] **T-20 (smoke test)** — Add test in `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts` covering S-8:
   - Sign in as manager.
   - Navigate to `/dashboard/seguimiento`.
   - Apply `dateFrom = <seed-clock-day>` and `dateTo = <seed-clock-day>` in both date pickers.
@@ -101,10 +101,10 @@ Chain strategy: size-exception
 
 ## Phase 6: Verification Pass
 
-- [ ] **T-N1** — `cd viewpro-app && pnpm --filter @viewpro/api db:validate && pnpm --filter @viewpro/api typecheck && pnpm --filter @viewpro/api test` — all GREEN. Done when: zero failures, zero type errors.
-- [ ] **T-N2** — `cd viewpro-app && pnpm --filter next-shadcn-dashboard-starter test` — GREEN at 403 baseline. Done when: no new failures.
-- [ ] **T-N3** — `cd viewpro-app && APP_PUBLIC_URL=... pnpm --filter next-shadcn-dashboard-starter test:seeded` — GREEN with ≥ 25 tests (24 baseline + 1 new S-8 smoke). Done when: count ≥ 25.
-- [ ] **T-N4 (sanity inversion)** — Temporarily revert `parseBusinessDayStart` call in `list-activity-feed.use-case.ts` (reintroduce `new Date(query.dateFrom)`). Confirm at least one of T-12 S-1/S-2/S-3 FAILs. Restore. Confirm GREEN. Document which test caught the regression in `apply-progress.md`. Done when: inversion confirmed and reverted.
+- [x] **T-N1** — `cd viewpro-app && pnpm --filter @viewpro/api db:validate && pnpm --filter @viewpro/api typecheck && pnpm --filter @viewpro/api test` — all GREEN. Done when: zero failures, zero type errors.
+- [x] **T-N2** — `cd viewpro-app && pnpm --filter next-shadcn-dashboard-starter test` — GREEN at 403 baseline. Done when: no new failures.
+- [x] **T-N3** — `cd viewpro-app && APP_PUBLIC_URL=... pnpm --filter next-shadcn-dashboard-starter test:seeded` — GREEN with ≥ 25 tests (24 baseline + 1 new S-8 smoke). Done when: count ≥ 25.
+- [x] **T-N4 (sanity inversion)** — Temporarily revert `parseBusinessDayStart` call in `list-activity-feed.use-case.ts` (reintroduce `new Date(query.dateFrom)`). Confirm at least one of T-12 S-1/S-2/S-3 FAILs. Restore. Confirm GREEN. Document which test caught the regression in `apply-progress.md`. Done when: inversion confirmed and reverted.
 
 ---
 
