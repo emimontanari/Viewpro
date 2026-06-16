@@ -1129,6 +1129,54 @@ test('tenant engagement limit blocks creation with a clear UI error', async ({ p
 });
 
 // ---------------------------------------------------------------------------
+// Stage 20.11 — S-8: Seguimiento filter smoke (date + Responsable = Martín)
+//
+// Pre-conditions (seeded by Stage 20.11 S-8 fixture in seed-demo.mjs):
+//   - Martín is assigned to Los Boulevares (index 1).
+//   - A manager-authored movement ("Manager note on Boulevares") was created at
+//     DEMO_NOW (2026-06-01T12:00:00Z) on Boulevares — i.e. on the seed-clock day.
+//
+// Under the old broken code (createdByUserId filter), filtering by Responsable=Martín
+// would HIDE that movement because it was created by the manager.
+// Under the fixed code (assignedAgentUserId filter), it APPEARS because Martín is assigned.
+//
+// The seed-clock date is 2026-06-01 — used for both dateFrom and dateTo to scope the feed
+// to that single day. The manager-authored movement must appear; Sofia/Lucía items must not.
+// ---------------------------------------------------------------------------
+
+// Seed clock anchor — must match DEMO_NOW in seed-demo.mjs
+const SEED_CLOCK_DATE = '2026-06-01';
+const BOULEVARES_PROPERTY_TITLE = 'Casa luminosa con patio en Los Boulevares';
+
+test('Seguimiento filter smoke: date=seed-clock-day + Responsable=Martín shows Boulevares movement (S-8)', async ({
+  page
+}) => {
+  await signIn(page, DEMO_EMAIL);
+  await page.goto('/dashboard/seguimiento');
+  await expect(page.getByRole('heading', { name: 'Seguimiento' })).toBeVisible();
+
+  // Apply date filter: both from and to set to the seed-clock day
+  await page.locator('#activity-date-from').fill(SEED_CLOCK_DATE);
+  await page.locator('#activity-date-to').fill(SEED_CLOCK_DATE);
+
+  // Apply Responsable = Martín
+  await page.getByRole('combobox', { name: /Responsable/i }).click();
+  await page.getByRole('option', { name: /Martín/i }).click();
+
+  // Wait for feed to reload
+  await page.waitForTimeout(600);
+
+  // Assert: the manager-authored movement on Boulevares is visible in the feed
+  // The feed shows property titles alongside movements
+  await expect(page.getByText(BOULEVARES_PROPERTY_TITLE).first()).toBeVisible({ timeout: 10_000 });
+
+  // Assert: no items from properties assigned only to Sofía or Lucía appear
+  // (Casa con jardín en Villa Catalina is Lucía's only, not Martín's)
+  const LUCIAS_ONLY_TITLE = 'Casa con jardín en Villa Catalina';
+  await expect(page.getByText(LUCIAS_ONLY_TITLE)).toHaveCount(0);
+});
+
+// ---------------------------------------------------------------------------
 // Stage 26.4 — Isolation block (U-1, U-2)
 //
 // Audit-row trace:
