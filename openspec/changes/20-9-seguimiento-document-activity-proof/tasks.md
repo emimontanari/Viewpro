@@ -100,15 +100,15 @@
 
 ## Phase 3 — Use case test additions (single commit, parallel with Phase 2 after T-1 completes)
 
-**T-19** — In `apps/api/test/analytics.use-cases.spec.ts`, add an `it.each` test block covering SUBMITTED, APPROVED, REJECTED, and CANCELLED doc statuses (PENDING already exists at line ~369). For each status, construct a fixture overriding `status` and the `document`/`documents` relation per design §3.2 (SUBMITTED→UPLOADED version, APPROVED→APPROVED version + `reviewedByUserId`, REJECTED→REJECTED version + `rejectionReason`, CANCELLED→null document). Assert mapped shape: `kind: 'document_request'`, `documentRequest.status`, `currentVersion.status` (or null). Done-when: `it.each` 4 cases all GREEN.
+**[x] T-19** — In `apps/api/test/analytics.use-cases.spec.ts`, add an `it.each` test block covering SUBMITTED, APPROVED, REJECTED, and CANCELLED doc statuses (PENDING already exists at line ~369). For each status, construct a fixture overriding `status` and the `document`/`documents` relation per design §3.2 (SUBMITTED→UPLOADED version, APPROVED→APPROVED version + `reviewedByUserId`, REJECTED→REJECTED version + `rejectionReason`, CANCELLED→null document). Assert mapped shape: `kind: 'document_request'`, `documentRequest.status`, `currentVersion.status` (or null). Done-when: `it.each` 4 cases all GREEN.
 - Satisfies: FR-7, FR-8, S-12.
 - Depends on: T-1 (to confirm sort behavior before writing sort test).
 
-**T-20** — Add mixed-kind sort test S-13 in `analytics.use-cases.spec.ts`: 1 movement at `2026-05-22T11:30:00Z` + 1 doc at `2026-05-22T11:00:00Z` + 1 doc at `2026-05-22T12:00:00Z`. Call `execute` with `kind: 'all'`. Assert `result.items[0].createdAt === '2026-05-22T12:00:00Z'`, `[1].createdAt === '2026-05-22T11:30:00Z'`, `[2].createdAt === '2026-05-22T11:00:00Z'`. Add tie-break sub-case (two items, same `createdAt`, IDs `'a-id'` and `'z-id'`) asserting order matches the direction confirmed in T-1. Done-when: test passes.
+**[x] T-20** — Add mixed-kind sort test S-13 in `analytics.use-cases.spec.ts`: 1 movement at `2026-05-22T11:30:00Z` + 1 doc at `2026-05-22T11:00:00Z` + 1 doc at `2026-05-22T12:00:00Z`. Call `execute` with `kind: 'all'`. Assert `result.items[0].createdAt === '2026-05-22T12:00:00Z'`, `[1].createdAt === '2026-05-22T11:30:00Z'`, `[2].createdAt === '2026-05-22T11:00:00Z'`. Add tie-break sub-case (two items, same `createdAt`, IDs `'a-id'` and `'z-id'`) asserting order matches the direction confirmed in T-1. Done-when: test passes.
 - Satisfies: FR-9, S-13.
 - Depends on: T-1.
 
-**T-21** — Run `pnpm @viewpro/api test` and confirm API tests GREEN (baseline 671+ + 2 new). Done-when: exit 0.
+**[x] T-21** — Run `pnpm @viewpro/api test` and confirm API tests GREEN (baseline 671+ + 2 new). Done-when: exit 0.
 - Satisfies: quality gate before commit.
 - Depends on: T-19, T-20.
 
@@ -196,8 +196,8 @@
 | Edge: null documentRequest | T-16 | [x] |
 | Edge: blank property.title | T-16 | [x] |
 | Edge: owner name precedence (3 cases) | T-17 | [x] |
-| S-12 mapper shape for all 5 doc statuses | T-19 | [ ] |
-| S-13 mixed-kind sort + id tie-break | T-20 | [ ] |
+| S-12 mapper shape for all 5 doc statuses | T-19 | [x] |
+| S-13 mixed-kind sort + id tie-break | T-20 | [x] |
 | S-14 APPROVED seed fixture present | T-23 | [ ] |
 | CANCELLED seed fixture present | T-24 | [ ] |
 | Seed log accurate | T-25 | [ ] |

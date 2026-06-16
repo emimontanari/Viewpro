@@ -184,9 +184,44 @@ Tasks T-4 through T-18. All 16 tests written and GREEN.
 
 **GREEN** — `pnpm --filter next-shadcn-dashboard-starter test -- --run` exits 0. 82 test files, 419 tests, 0 failures.
 
-## Phase 3 — Use case test additions (pending)
+## Phase 3 — Use case test additions (DONE)
 
-Tasks T-19 through T-21. Not started.
+Tasks T-19 through T-21. All 6 new tests written and GREEN.
+
+### Fixture shape decisions
+
+**T-19 — `it.each` over 4 statuses (S-12)**
+
+Reused the PENDING fixture shape from lines 369-403 as the base. The key field is `document` on the request object:
+- SUBMITTED → `document: { currentVersion: { id, originalFilename, status: 'UPLOADED', createdAt: Date } }`
+- APPROVED → same shape + `reviewedByUserId: 'reviewer-1'`
+- REJECTED → same shape with `status: 'REJECTED'` + `rejectionReason: 'Documento ilegible'`
+- CANCELLED → `document: null` (no version row)
+
+Mapper at `activity-feed.response.ts:67`: `const currentVersion = request.document?.currentVersion ?? null` — confirmed that `document: null` produces `currentVersion: null` in the mapped output.
+
+Assertion used `expect.objectContaining({ status: expectedVersionStatus })` for present versions and literal `null` for CANCELLED.
+
+**T-20 — Mixed-kind sort + tie-break (S-13)**
+
+Implemented as two separate `it()` tests for clarity:
+1. `"mixed-kind feed sorts by createdAt desc with id tie-break (S-13)"` — 3 items (2 docs + 1 movement), asserts `items[0].createdAt === '2026-05-22T12:00:00.000Z'`, `items[1].createdAt === '2026-05-22T11:30:00.000Z'`, `items[2].createdAt === '2026-05-22T11:00:00.000Z'`.
+2. `"tie-breaks same-createdAt items by id desc (S-13 tie-break)"` — 2 doc requests with same `createdAt`, IDs `'a-id'` and `'z-id'`. Asserts via `documentRequestId` field (the mapper assigns `id: "document-request:${request.id}"` but exposes `documentRequestId: request.id`). Confirms `z-id` before `a-id` (id-DESC).
+
+Note: The mapped `id` field is `"document-request:z-id"` etc (prefixed), but the tie-break comparator uses `right.id.localeCompare(left.id)` — `"document-request:z-id"` > `"document-request:a-id"` lexicographically, so `z-id` still sorts first. Assertion uses `documentRequestId` for readability.
+
+### Test count
+
+| Metric | Value |
+|---|---|
+| Baseline before Phase 3 | 659 (actual; tasks said 671 but that was an estimate) |
+| New tests added | 6 (4 from `it.each` + 2 sort/tiebreak) |
+| Total after Phase 3 | 665 |
+| Test files | 57 |
+
+### Gate result
+
+**GREEN** — `pnpm --filter @viewpro/api test -- --run` exits 0. 57 test files, 665 tests, 0 failures.
 
 ## Phase 4 — Seed additions (pending)
 
