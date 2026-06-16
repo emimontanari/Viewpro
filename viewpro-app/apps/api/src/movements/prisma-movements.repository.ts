@@ -272,8 +272,39 @@ export class PrismaMovementsRepository implements MovementsRepository {
 		}
 
 		if (input.to) {
-			createdAt.lte = input.to;
+			// Use `lt` (exclusive end) — paired with parseBusinessDayExclusiveEnd.
+			// Do NOT change to `lte`: that would re-introduce the millisecond-boundary
+			// edge case that the exclusive-end design intentionally avoids (R2).
+			createdAt.lt = input.to;
 		}
+
+		// Build the base engagement visibility WHERE clause.
+		const baseEngagementWhere = this.buildActivityEngagementWhere(input);
+
+		// When assignedAgentUserId is set, add a SECOND independent agents.some clause
+		// via Prisma AND so both the viewer-scoping EXISTS and the responsable-scoping
+		// EXISTS are emitted as two independent SQL subqueries on PropertyAgent (R-D1).
+		const engagementWhere: Prisma.PropertyEngagementWhereInput =
+			input.assignedAgentUserId
+				? {
+						...baseEngagementWhere,
+						AND: [
+							...(Array.isArray(baseEngagementWhere.AND)
+								? baseEngagementWhere.AND
+								: baseEngagementWhere.AND
+									? [baseEngagementWhere.AND]
+									: []),
+							{
+								agents: {
+									some: {
+										tenantId: input.tenantId,
+										agentUserId: input.assignedAgentUserId,
+									},
+								},
+							},
+						],
+					}
+				: baseEngagementWhere;
 
 		return {
 			tenantId: input.tenantId,
@@ -282,7 +313,7 @@ export class PrismaMovementsRepository implements MovementsRepository {
 				? { createdByUserId: input.createdByUserId }
 				: {}),
 			...(Object.keys(createdAt).length > 0 ? { createdAt } : {}),
-			propertyEngagement: this.buildActivityEngagementWhere(input),
+			propertyEngagement: engagementWhere,
 		};
 	}
 

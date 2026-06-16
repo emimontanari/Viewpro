@@ -90,6 +90,8 @@ export type ListActivityDocumentRequestsInput = {
 	page: number;
 	pageSize: number;
 	requestedByUserId?: string;
+	/** Filter document requests to engagements where this user is an assigned PropertyAgent. */
+	assignedAgentUserId?: string;
 	from?: Date;
 	to?: Date;
 	activeEngagementsOnly?: boolean;

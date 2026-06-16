@@ -561,6 +561,157 @@ describe("Analytics reports (e2e)", () => {
 			.expect(400);
 	});
 
+	// S-4 (FR-4, FR-6): activity feed returns manager-created movement on seller-assigned property
+	// when filtered by sellerId — proving the assignedAgentUserId semantic.
+	it("feed returns manager-created movement on seller-assigned engagement when sellerId filter set (S-4)", async () => {
+		const manager = await registerTenantSession(
+			"analytics-seller-id-s4-manager@example.com",
+			"Analytics Seller ID S4 Homes",
+		);
+		const seller = await registerTenantSession(
+			"analytics-seller-id-s4-seller@example.com",
+			"Analytics Seller ID S4 Temp",
+		);
+		await addTenantAgent(seller.userId, manager.tenantId);
+
+		// Create engagement and assign the seller
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "S4 Assigned Property",
+		}).expect(201);
+		await assignAgent(manager.agent, manager.tenantId, engagement.body.id, seller.userId).expect(201);
+
+		// Manager creates movement on the seller-assigned engagement
+		const managerMovement = await createMovement(
+			manager.agent,
+			manager.tenantId,
+			engagement.body.id,
+			{
+				type: MovementType.GENERAL_UPDATE,
+				observation: "Manager note on seller-assigned property (S4).",
+			},
+		).expect(201);
+
+		// Create another engagement NOT assigned to seller, with a movement — should be excluded
+		const otherEngagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "S4 Unassigned Property",
+		}).expect(201);
+		await createMovement(manager.agent, manager.tenantId, otherEngagement.body.id, {
+			type: MovementType.GENERAL_UPDATE,
+			observation: "Movement on unassigned property — must not appear.",
+		}).expect(201);
+
+		const response = await manager.agent
+			.get(`/api/analytics/activity-feed?page=1&pageSize=20&sellerId=${seller.userId}`)
+			.set("x-tenant-id", manager.tenantId)
+			.expect(200);
+
+		const movementIds = response.body.items
+			.filter((item: { kind: string }) => item.kind === "movement")
+			.map((item: { id: string }) => item.id);
+
+		// Manager-created movement on assigned property MUST appear
+		expect(movementIds).toContain(managerMovement.body.id);
+		// Items from the unassigned engagement must not appear
+		expect(
+			response.body.items.map((item: { propertyEngagementId: string }) => item.propertyEngagementId),
+		).not.toContain(otherEngagement.body.id);
+	});
+
+	// S-5 (FR-5, FR-6): activity feed returns manager-requested document on seller-assigned property.
+	it("feed returns manager-requested document on seller-assigned engagement when sellerId filter set (S-5)", async () => {
+		const manager = await registerTenantSession(
+			"analytics-seller-id-s5-manager@example.com",
+			"Analytics Seller ID S5 Homes",
+		);
+		const seller = await registerTenantSession(
+			"analytics-seller-id-s5-seller@example.com",
+			"Analytics Seller ID S5 Temp",
+		);
+		await addTenantAgent(seller.userId, manager.tenantId);
+
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "S5 Assigned Property",
+		}).expect(201);
+		await assignAgent(manager.agent, manager.tenantId, engagement.body.id, seller.userId).expect(201);
+
+		const ownerLink = await grantInvitedOwner(engagement.body.property.id, {
+			email: "analytics-s5-owner@example.com",
+			firstName: "S5",
+			lastName: "Owner",
+		});
+
+		const docRequest = await manager.agent
+			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ propertyAssetOwnerId: ownerLink.id, title: "S5 Doc Request" })
+			.expect(201);
+
+		const response = await manager.agent
+			.get(`/api/analytics/activity-feed?page=1&pageSize=20&sellerId=${seller.userId}`)
+			.set("x-tenant-id", manager.tenantId)
+			.expect(200);
+
+		const docIds = response.body.items
+			.filter((item: { kind: string }) => item.kind === "document_request")
+			.map((item: { documentRequestId: string }) => item.documentRequestId);
+
+		expect(docIds).toContain(docRequest.body.id);
+	});
+
+	// S-6 (FR-4, FR-5): cross-seller isolation — seller B items must not appear when filtering by seller A.
+	it("feed excludes other-seller items when filtering by sellerId (S-6)", async () => {
+		const manager = await registerTenantSession(
+			"analytics-seller-id-s6-manager@example.com",
+			"Analytics Seller ID S6 Homes",
+		);
+		const sellerA = await registerTenantSession(
+			"analytics-seller-id-s6-seller-a@example.com",
+			"Analytics Seller ID S6 A Temp",
+		);
+		const sellerB = await registerTenantSession(
+			"analytics-seller-id-s6-seller-b@example.com",
+			"Analytics Seller ID S6 B Temp",
+		);
+		await addTenantAgent(sellerA.userId, manager.tenantId);
+		await addTenantAgent(sellerB.userId, manager.tenantId);
+
+		// Engagement A: only seller A assigned
+		const engagementA = await createEngagement(manager.agent, manager.tenantId, {
+			title: "S6 Property A",
+		}).expect(201);
+		await assignAgent(manager.agent, manager.tenantId, engagementA.body.id, sellerA.userId).expect(201);
+
+		// Engagement B: only seller B assigned
+		const engagementB = await createEngagement(manager.agent, manager.tenantId, {
+			title: "S6 Property B",
+		}).expect(201);
+		await assignAgent(manager.agent, manager.tenantId, engagementB.body.id, sellerB.userId).expect(201);
+
+		// Movement on A
+		const movementA = await createMovement(manager.agent, manager.tenantId, engagementA.body.id, {
+			type: MovementType.GENERAL_UPDATE,
+			observation: "Movement on A — must appear for seller A filter.",
+		}).expect(201);
+
+		// Movement on B
+		const movementB = await createMovement(manager.agent, manager.tenantId, engagementB.body.id, {
+			type: MovementType.GENERAL_UPDATE,
+			observation: "Movement on B — must NOT appear for seller A filter.",
+		}).expect(201);
+
+		const response = await manager.agent
+			.get(`/api/analytics/activity-feed?page=1&pageSize=20&sellerId=${sellerA.userId}`)
+			.set("x-tenant-id", manager.tenantId)
+			.expect(200);
+
+		const movementIds = response.body.items
+			.filter((item: { kind: string }) => item.kind === "movement")
+			.map((item: { id: string }) => item.id);
+
+		expect(movementIds).toContain(movementA.body.id);
+		expect(movementIds).not.toContain(movementB.body.id);
+	});
+
 	it("rejects agent access to aggregate pilot reports", async () => {
 		const manager = await registerTenantSession(
 			"analytics-manager-access@example.com",

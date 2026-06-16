@@ -1,5 +1,6 @@
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common'
 import type { CurrentUser } from '../../auth/types/current-user'
+import { parseBusinessDayStart, parseBusinessDayExclusiveEnd } from '../../common/date/business-tz'
 import { DOCUMENTS_REPOSITORY, type DocumentsRepository } from '../../documents/documents.repository'
 import { MOVEMENTS_REPOSITORY, type ActivityFeedCounters, type MovementsRepository } from '../../movements/movements.repository'
 import { PERMISSIONS } from '../../permissions/permissions.constants'
@@ -44,8 +45,11 @@ export class ListActivityFeedUseCase {
     const page = query.page ?? 1
     const pageSize = query.pageSize ?? 20
     const queryKind = query.kind ?? 'all'
-    const from = query.dateFrom ? new Date(query.dateFrom) : undefined
-    const to = query.dateTo ? new Date(query.dateTo) : undefined
+    // Parse date-only strings as start/exclusive-end of day in the business timezone.
+    // exclusive end — paired with Prisma `lt`. Do NOT change to `lte`: it would
+    // re-introduce the millisecond-boundary edge case (R2, design.md).
+    const from = query.dateFrom ? parseBusinessDayStart(query.dateFrom) : undefined
+    const to = query.dateTo ? parseBusinessDayExclusiveEnd(query.dateTo) : undefined
     const takeForMerge = page * pageSize
     const movementOnly = queryKind === 'movement' || (queryKind === 'all' && Boolean(query.type))
     const documentOnly = queryKind === 'document_request'
@@ -65,7 +69,10 @@ export class ListActivityFeedUseCase {
             page: movementOnly ? page : 1,
             pageSize: movementOnly ? pageSize : takeForMerge,
             type: query.type,
-            createdByUserId: query.sellerId,
+            // assignedAgentUserId: scopes to engagements where this user is assigned (Bug 2 fix).
+            // createdByUserId is intentionally NOT wired here; it remains available on the type
+            // for other callers that may need the row-creator semantic in the future.
+            assignedAgentUserId: query.sellerId,
             from,
             to,
           })
@@ -77,7 +84,8 @@ export class ListActivityFeedUseCase {
             canViewAll: canViewAllDocuments,
             page: documentOnly ? page : 1,
             pageSize: documentOnly ? pageSize : takeForMerge,
-            requestedByUserId: query.sellerId,
+            // assignedAgentUserId: scopes to engagements where this user is assigned (Bug 2 fix).
+            assignedAgentUserId: query.sellerId,
             from,
             to,
           })
