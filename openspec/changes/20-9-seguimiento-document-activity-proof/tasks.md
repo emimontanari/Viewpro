@@ -116,27 +116,27 @@
 
 ## Phase 4 — Seed additions (single commit, after Phase 3 quality gate)
 
-**T-22** — In `apps/api/scripts/seed-demo.mjs`, extend the `reviewedByUserId` conditional inside `createDemoDocumentReviewStates` from REJECTED-only to REJECTED-or-APPROVED per design §3.3 diff. Done-when: conditional updated; file compiles (`node --check`).
+**[x] T-22** — In `apps/api/scripts/seed-demo.mjs`, extend the `reviewedByUserId` conditional inside `createDemoDocumentReviewStates` from REJECTED-only to REJECTED-or-APPROVED per design §3.3 diff. Done-when: conditional updated; file compiles (`node --check`).
 - Satisfies: design D1 APPROVED fixture requirement (risk 3 mitigation).
 - Depends on: T-21.
 
-**T-23** — Add APPROVED doc fixture to the Villa Centenario fixtures array inside `createDemoDocumentReviewStates`: title `'Boleto de compra-venta aprobado'`, status `APPROVED`, version `APPROVED`, filename `boleto-compraventa-aprobado-demo.pdf`, anchored at `daysAgo(4)` / `daysAgo(3)` / `daysAgo(2)`. Done-when: fixture block added; no syntax errors.
+**[x] T-23** — Add APPROVED doc fixture to the Villa Centenario fixtures array inside `createDemoDocumentReviewStates`: title `'Boleto de compra-venta aprobado'`, status `APPROVED`, version `APPROVED`, filename `boleto-compraventa-aprobado-demo.pdf`, anchored at `daysAgo(4)` / `daysAgo(3)` / `daysAgo(2)`. Done-when: fixture block added; no syntax errors.
 - Satisfies: FR-10, S-14.
 - Depends on: T-22.
 
-**T-24** — Add CANCELLED doc fixture as a separate `client.documentRequest.create` block after the fixtures loop on Villa Centenario: title `'Plano municipal (solicitud cancelada)'`, status `CANCELLED`, no version row, requester `martin.demo@viewpro.local`, anchored at `daysAgo(12)`. Done-when: block added; no syntax errors.
+**[x] T-24** — Add CANCELLED doc fixture as a separate `client.documentRequest.create` block after the fixtures loop on Villa Centenario: title `'Plano municipal (solicitud cancelada)'`, status `CANCELLED`, no version row, requester `martin.demo@viewpro.local`, anchored at `daysAgo(12)`. Done-when: block added; no syntax errors.
 - Satisfies: FR-10 (lifecycle coverage), design D1.
 - Depends on: T-22.
 
-**T-25** — Update the seed summary log line at ~line 2063 atomically: append `+ Stage 20.9 APPROVED and CANCELLED fixtures on Villa Centenario` to the existing comment string. Done-when: log line updated; count is driven by `result.documentRequestsCount` (dynamic, not hardcoded).
+**[x] T-25** — Update the seed summary log line at ~line 2063 atomically: append `+ Stage 20.9 APPROVED and CANCELLED fixtures on Villa Centenario` to the existing comment string. Done-when: log line updated; count is driven by `result.documentRequestsCount` (dynamic, not hardcoded).
 - Satisfies: FR-11, design D1 seed-log honesty.
 - Depends on: T-23, T-24.
 
-**T-26** — Run `pnpm demo:seed` and confirm: exit 0, the `Document requests:` log line prints the new total, no unexpected Prisma errors. Done-when: seed log output is accurate.
+**[x] T-26** — Run `pnpm demo:seed` and confirm: exit 0, the `Document requests:` log line prints the new total, no unexpected Prisma errors. Done-when: seed log output is accurate.
 - Satisfies: FR-11, S-14.
 - Depends on: T-25.
 
-**T-27** — Re-run T-2 audit assertions post-seed: confirm no count assertions shifted unexpectedly. If any test assertion now references a stale count, update it atomically in this commit. Done-when: T-2 hit list re-confirmed clean, or updated tests re-run GREEN.
+**[x] T-27** — Re-run T-2 audit assertions post-seed: confirm no count assertions shifted unexpectedly. If any test assertion now references a stale count, update it atomically in this commit. Done-when: T-2 hit list re-confirmed clean, or updated tests re-run GREEN.
 - Satisfies: spec §Non-Functional Notes pre-audit contract.
 - Depends on: T-26.
 
@@ -198,14 +198,14 @@
 | Edge: owner name precedence (3 cases) | T-17 | [x] |
 | S-12 mapper shape for all 5 doc statuses | T-19 | [x] |
 | S-13 mixed-kind sort + id tie-break | T-20 | [x] |
-| S-14 APPROVED seed fixture present | T-23 | [ ] |
-| CANCELLED seed fixture present | T-24 | [ ] |
-| Seed log accurate | T-25 | [ ] |
+| S-14 APPROVED seed fixture present | T-23 | [x] |
+| CANCELLED seed fixture present | T-24 | [x] |
+| Seed log accurate | T-25 | [x] |
 | S-15 doc card renders in smoke | T-28 | [ ] |
 | S-16 Documentos filter scopes to doc cards | T-29 | [ ] |
 | No new dependency introduced | all | [ ] |
 | No UI production component changed | all | [ ] |
-| Seed log honesty preserved | T-25 | [ ] |
+| Seed log honesty preserved | T-25 | [x] |
 
 ---
 

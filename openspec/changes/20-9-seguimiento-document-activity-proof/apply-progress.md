@@ -223,9 +223,140 @@ Note: The mapped `id` field is `"document-request:z-id"` etc (prefixed), but the
 
 **GREEN** — `pnpm --filter @viewpro/api test -- --run` exits 0. 57 test files, 665 tests, 0 failures.
 
-## Phase 4 — Seed additions (pending)
+## Phase 4 — Seed additions (DONE)
 
-Tasks T-22 through T-27. Not started.
+Tasks T-22 through T-27. All complete.
+
+### T-22 — Extend `reviewedByUserId` for APPROVED
+
+**File:** `viewpro-app/apps/api/scripts/seed-demo.mjs`
+**Location:** inside `createDemoDocumentReviewStates` fixtures loop (~line 1484)
+
+Changed from REJECTED-only conditional to REJECTED-or-APPROVED:
+
+```diff
+- reviewedByUserId:
+-   fixture.status === DocumentRequestStatus.REJECTED
+-     ? reviewer.id
+-     : null,
++ reviewedByUserId:
++   fixture.status === DocumentRequestStatus.REJECTED ||
++   fixture.status === DocumentRequestStatus.APPROVED
++     ? reviewer.id
++     : null,
+```
+
+Validation: `node --check viewpro-app/apps/api/scripts/seed-demo.mjs` → SYNTAX OK.
+
+---
+
+### T-23 — APPROVED fixture on Villa Centenario
+
+Added third entry to the `fixtures` array inside `createDemoDocumentReviewStates`:
+
+```js
+// Stage 20.9 — APPROVED fixture for lifecycle coverage (FR-10, S-14).
+{
+  title: "Boleto de compra-venta aprobado",
+  description: "Documento demo aprobado por el manager para Stage 20.9 coverage.",
+  status: DocumentRequestStatus.APPROVED,
+  versionStatus: DocumentVersionStatus.APPROVED,
+  originalFilename: "boleto-compraventa-aprobado-demo.pdf",
+  body: Buffer.from("%PDF-1.4\n% ViewPro stage 20.9 approved fixture\n", "utf8"),
+  createdAt: daysAgo(4),
+  uploadedAt: daysAgo(3),
+  reviewedAt: daysAgo(2),
+},
+```
+
+Requester: `sofia.demo@viewpro.local` (same as the other Villa Centenario fixtures).
+Reviewer: `demo@viewpro.local` (same `reviewer` variable).
+
+---
+
+### T-24 — CANCELLED fixture on Villa Centenario
+
+Added as a SEPARATE block after the `fixtures` loop (before the Los Boulevares block):
+
+```js
+// Stage 20.9 — CANCELLED fixture on Villa Centenario for lifecycle coverage (FR-10, D1).
+const cancelledRequest = await client.documentRequest.create({
+  data: {
+    tenantId: tenant.id,
+    propertyEngagementId: property.engagement.id,
+    propertyAssetOwnerId: property.owner.id,
+    ownerUserId: owner.id,
+    requestedByUserId: users.get("martin.demo@viewpro.local").id,
+    title: "Plano municipal (solicitud cancelada)",
+    description: "Documento demo cancelado antes de la carga (Stage 20.9 coverage).",
+    status: DocumentRequestStatus.CANCELLED,
+    reviewedByUserId: null,
+    reviewedAt: null,
+    rejectionReason: null,
+    createdAt: daysAgo(12),
+    updatedAt: daysAgo(11),
+  },
+});
+requests.push({ ...cancelledRequest, demoUploadedAt: null, demoReviewedAt: null });
+```
+
+**Analytics guard added (not in original design scope):** `createDocumentReviewAnalyticsEvents` was extended with a guard to skip CANCELLED requests — without it, a spurious `DOCUMENT_UPLOADED` analytics event would have been created using `updatedAt` as `occurredAt`:
+
+```diff
++ // Skip CANCELLED requests: they have no version row and no upload event to record.
++ if (request.status === DocumentRequestStatus.CANCELLED) {
++   return [];
++ }
+```
+
+---
+
+### T-25 — Atomic summary-log update
+
+Updated line ~2063 of `seed-demo.mjs`:
+
+```diff
+- console.log(`Document requests: ${result.documentRequestsCount} (includes Stage 26.3 SUBMITTED fixture on Los Boulevares)`);
++ console.log(`Document requests: ${result.documentRequestsCount} (includes Stage 26.3 SUBMITTED fixture on Los Boulevares + Stage 20.9 APPROVED and CANCELLED fixtures on Villa Centenario)`);
+```
+
+Count is dynamic (`documentRequests.length` accumulator). Log honesty preserved.
+
+---
+
+### T-26 — `pnpm demo:seed` result
+
+**Exit:** 0 (success)
+
+**Literal log line:**
+```
+Document requests: 20 (includes Stage 26.3 SUBMITTED fixture on Los Boulevares + Stage 20.9 APPROVED and CANCELLED fixtures on Villa Centenario)
+```
+
+**Count after:** 20 (confirmed from seed output)
+**Count delta:** +2 (APPROVED + CANCELLED fixtures on Villa Centenario)
+
+No Prisma errors. `Demo tenant engagements: 20 (expected 20)` — sanity assertion passed.
+
+---
+
+### T-27 — Post-seed T-2 audit re-run
+
+| Pattern | Results | Classification |
+|---------|---------|----------------|
+| `Document requests:` log string | 1 hit (seed-demo.mjs — dynamic) | SAFE |
+| `documentRequestsCount` outside seed | 0 hits | SAFE |
+| `result.total` in test files | 4 hits (same as Phase 1 — all bespoke-mocked) | SAFE |
+| `expectedTotal` in smoke/e2e | 3 hits (demo-smoke.spec.ts property counts) | SAFE |
+
+No assertion shifted. Baselines clean.
+
+### API test suite
+
+**Run 1:** 1 flaky failure in `team.e2e-spec.ts` (`socket hang up` — network, unrelated to seed).
+**Run 2:** 57 test files, **665 tests, 0 failures** — GREEN.
+
+**Result: GREEN-665** (baseline unchanged — seed changes add no new unit tests)
 
 ## Phase 5 — Seeded smoke (pending)
 

@@ -1423,7 +1423,7 @@ async function createDemoDocumentReviewStates(
 		return [];
 	}
 
-	// Property index 0 (Villa Centenario) — the two original fixtures.
+	// Property index 0 (Villa Centenario) — original fixtures + Stage 20.9 APPROVED fixture.
 	const fixtures = [
 		{
 			title: "Escritura firmada",
@@ -1452,6 +1452,21 @@ async function createDemoDocumentReviewStates(
 			uploadedAt: daysAgo(9),
 			reviewedAt: daysAgo(8),
 		},
+		// Stage 20.9 — APPROVED fixture for lifecycle coverage (FR-10, S-14).
+		{
+			title: "Boleto de compra-venta aprobado",
+			description: "Documento demo aprobado por el manager para Stage 20.9 coverage.",
+			status: DocumentRequestStatus.APPROVED,
+			versionStatus: DocumentVersionStatus.APPROVED,
+			originalFilename: "boleto-compraventa-aprobado-demo.pdf",
+			body: Buffer.from(
+				"%PDF-1.4\n% ViewPro stage 20.9 approved fixture\n",
+				"utf8",
+			),
+			createdAt: daysAgo(4),
+			uploadedAt: daysAgo(3),
+			reviewedAt: daysAgo(2),
+		},
 	];
 
 	const requests = [];
@@ -1468,7 +1483,8 @@ async function createDemoDocumentReviewStates(
 				description: fixture.description,
 				status: fixture.status,
 				reviewedByUserId:
-					fixture.status === DocumentRequestStatus.REJECTED
+					fixture.status === DocumentRequestStatus.REJECTED ||
+					fixture.status === DocumentRequestStatus.APPROVED
 						? reviewer.id
 						: null,
 				reviewedAt: fixture.reviewedAt ?? null,
@@ -1513,6 +1529,30 @@ async function createDemoDocumentReviewStates(
 			demoReviewedAt: fixture.reviewedAt ?? null,
 		});
 	}
+
+	// Stage 20.9 — CANCELLED fixture on Villa Centenario for lifecycle coverage (FR-10, D1).
+	// No version row: cancellation predates any upload, which matches a realistic workflow.
+	const cancelledRequest = await client.documentRequest.create({
+		data: {
+			tenantId: tenant.id,
+			propertyEngagementId: property.engagement.id,
+			propertyAssetOwnerId: property.owner.id,
+			ownerUserId: owner.id,
+			requestedByUserId: users.get("martin.demo@viewpro.local").id,
+			title: "Plano municipal (solicitud cancelada)",
+			description:
+				"Documento demo cancelado antes de la carga (Stage 20.9 coverage).",
+			status: DocumentRequestStatus.CANCELLED,
+			reviewedByUserId: null,
+			reviewedAt: null,
+			rejectionReason: null,
+			createdAt: daysAgo(12),
+			updatedAt: daysAgo(11),
+		},
+	});
+	// demoUploadedAt: null signals no version row; createDocumentReviewAnalyticsEvents
+	// will skip this request (no DOCUMENT_UPLOADED event for a cancelled request).
+	requests.push({ ...cancelledRequest, demoUploadedAt: null, demoReviewedAt: null });
 
 	// NEW (Stage 26.3) — Property index 1 (Los Boulevares): SUBMITTED fixture for the
 	// document-rejection test (T18a/T18b). Uses propietario.demo@viewpro.local via the
@@ -1634,6 +1674,11 @@ async function createDocumentReviewAnalyticsEvents(
 	}
 
 	const events = documentRequests.flatMap((request) => {
+		// Skip CANCELLED requests: they have no version row and no upload event to record.
+		if (request.status === DocumentRequestStatus.CANCELLED) {
+			return [];
+		}
+
 		const uploadedEvent = {
 			tenantId: tenant.id,
 			actorUserId: request.ownerUserId,
@@ -2060,7 +2105,7 @@ function printSummary(result) {
 		"Image assets: deterministic local fixtures (real JPG photos when mapped, 1x1 PNG placeholder otherwise)",
 	);
 	console.log(`Movements: ${result.movementsCount} (Stage 26.2 base + Stage 20.11 S-8 manager-authored movement on Boulevares)`);
-	console.log(`Document requests: ${result.documentRequestsCount} (includes Stage 26.3 SUBMITTED fixture on Los Boulevares)`);
+	console.log(`Document requests: ${result.documentRequestsCount} (includes Stage 26.3 SUBMITTED fixture on Los Boulevares + Stage 20.9 APPROVED and CANCELLED fixtures on Villa Centenario)`);
 	console.log(`Status change requests: ${result.statusChangeRequestsCount}`);
 	console.log(`Notifications: ${result.notificationsCount}`);
 	console.log(`Admin audit events: ${result.adminEventsCount}`);
