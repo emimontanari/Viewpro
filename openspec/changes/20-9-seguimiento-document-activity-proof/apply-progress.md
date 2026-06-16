@@ -451,9 +451,103 @@ Test breakdown (all GREEN):
 
 The only minor deviation from design §3.4's pseudocode: did NOT use the article/Card wrapper locator for S-15 (design used `page.locator('article, [class*="Card"]').filter(...).first()`). Used a simpler `page.getByText('Solicitud documental', ...).first()` because after the Documentos filter all visible items are doc cards, making the article wrapper redundant. This is a simplification, not a functional deviation.
 
-## Phase 6 — Verification gates (pending)
+## Phase 6 — Verification gates (DONE)
 
-Tasks T-N1 through T-N5. Not started.
+Tasks T-N1 through T-N5. All gates GREEN.
+
+### Pre-run fix: lint warning in test file
+
+Before the gates could pass, `pnpm --filter next-shadcn-dashboard-starter lint:strict` reported a `unicorn/consistent-function-scoping` warning (treated as error under `--deny-warnings`) for `getVersionSection` defined inside the `describe` block in `activity-document-request-feed-item.test.tsx`. Fixed by moving the function to module scope (outside the `describe`). No functional change to test logic.
+
+**File modified:** `viewpro-app/apps/app-new/src/features/activity/components/activity-document-request-feed-item.test.tsx` — moved `getVersionSection` from inside `describe` to module scope (line ~159 area).
+
+---
+
+### T-N1 — Schema + typecheck + API tests
+
+| Check | Command | Result |
+|---|---|---|
+| `pnpm db:validate` | `pnpm --filter @viewpro/api db:validate` | GREEN — "The schema at prisma/schema.prisma is valid" |
+| `pnpm typecheck` | `turbo typecheck` | GREEN — 2/4 packages typechecked (api + contracts); app-new has no typecheck script (confirmed) |
+| API tests | `pnpm --filter @viewpro/api test` | GREEN-665 — 57 files, 665 tests, 0 failures |
+
+**Gate T-N1: GREEN**
+
+---
+
+### T-N2 — App-new lint + unit tests
+
+| Check | Command | Result |
+|---|---|---|
+| `lint:strict` | `pnpm --filter next-shadcn-dashboard-starter lint:strict` | GREEN — 0 warnings/errors after `getVersionSection` fix |
+| Unit tests | `pnpm --filter next-shadcn-dashboard-starter test -- --run` | GREEN-419 — 82 files, 419 tests, 0 failures |
+
+**Gate T-N2: GREEN**
+
+---
+
+### T-N3 — Demo seed
+
+| Check | Result |
+|---|---|
+| Exit code | 0 |
+| Log line | `Document requests: 20 (includes Stage 26.3 SUBMITTED fixture on Los Boulevares + Stage 20.9 APPROVED and CANCELLED fixtures on Villa Centenario)` |
+| Count | 20 (count 18 baseline + 2 new fixtures) |
+
+**Gate T-N3: GREEN**
+
+---
+
+### T-N4 — Seeded smoke tests
+
+| Check | Result |
+|---|---|
+| Command | `pnpm --filter next-shadcn-dashboard-starter test:seeded` |
+| Exit code | 0 |
+| Tests passed | 27/27 |
+| S-15 | PASS — doc card renders with stable structure |
+| S-16 | PASS — Documentos filter shows only doc cards |
+| Owner-portal Test 5 | PASS — no leakage from doc activity rows |
+
+**Gate T-N4: GREEN-27**
+
+---
+
+### T-N5 — Sanity inversion (S-5 proves real regression catch)
+
+**Step 1 — Mutate:** Changed `CANCELLED: 'Cancelada'` to `CANCELLED: 'WRONG_LABEL'` in `activity-document-request-feed-item.tsx` (line 22, `documentStatusLabels` map).
+
+**Step 2 — RED run:** `pnpm --filter next-shadcn-dashboard-starter test -- --run activity-document-request-feed-item.test`
+- Result: **1 test FAILED** — `renders CANCELLED status badge with muted tone (S-5)`
+- Error: `Unable to find an element with the text: Cancelada` — DOM showed `WRONG_LABEL` badge instead.
+- All other 15 tests in the file: PASSED.
+- Exit code: 1
+
+**Step 3 — Restore:** Reverted `CANCELLED: 'WRONG_LABEL'` back to `CANCELLED: 'Cancelada'`.
+
+**Step 4 — GREEN run:** Same command.
+- Result: 82 files, 419 tests, 0 failures. Exit code: 0.
+
+**Verification:** File read confirms `'Cancelada'` is restored at line 22.
+
+**Gate T-N5: CONFIRMED (RED-then-GREEN)**
+
+---
+
+### Phase 6 summary
+
+| Gate | Result |
+|---|---|
+| `db:validate` | GREEN |
+| `typecheck` | GREEN |
+| API tests | GREEN-665 |
+| `lint:strict` (app-new) | GREEN (after test file scope fix) |
+| App-new unit tests | GREEN-419 |
+| `demo:seed` | GREEN |
+| Seeded smoke tests | GREEN-27 |
+| Sanity inversion T-N5 | CONFIRMED (RED-then-GREEN) |
+
+**Stage 20.9 ready for PR — all gates GREEN**
 
 ---
 

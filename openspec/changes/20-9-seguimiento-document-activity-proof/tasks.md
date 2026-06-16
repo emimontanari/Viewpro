@@ -160,19 +160,19 @@
 
 ## Phase 6 — Verification gates (after all phases, before PR)
 
-**T-N1** — Run `pnpm db:validate` + `pnpm typecheck` + `pnpm @viewpro/api test`. All exit 0. Done-when: no type or schema errors; API test count ≥ 673.
+**[x] T-N1** — Run `pnpm db:validate` + `pnpm typecheck` + `pnpm @viewpro/api test`. All exit 0. Done-when: no type or schema errors; API test count ≥ 673.
 - Depends on: T-27.
 
-**T-N2** — Run `pnpm app-new lint:strict` + `pnpm app-new test`. All exit 0. App-new test count ≥ 419 (403 baseline + 16 new). Done-when: no lint errors, no test failures.
+**[x] T-N2** — Run `pnpm app-new lint:strict` + `pnpm app-new test`. All exit 0. App-new test count ≥ 419 (403 baseline + 16 new). Done-when: no lint errors, no test failures.
 - Depends on: T-18.
 
-**T-N3** — Run `pnpm demo:seed`. Confirm exit 0 and log output includes `APPROVED and CANCELLED fixtures on Villa Centenario`. Done-when: log is accurate and human-readable.
+**[x] T-N3** — Run `pnpm demo:seed`. Confirm exit 0 and log output includes `APPROVED and CANCELLED fixtures on Villa Centenario`. Done-when: log is accurate and human-readable.
 - Depends on: T-26.
 
-**T-N4** — Run `pnpm test:seeded`. Confirm ≥27/27 GREEN. Done-when: exit 0 with ≥27 passed.
+**[x] T-N4** — Run `pnpm test:seeded`. Confirm ≥27/27 GREEN. Done-when: exit 0 with ≥27 passed.
 - Depends on: T-30.
 
-**T-N5** — Sanity inversion: temporarily change `documentStatusLabels.CANCELLED` to `'WRONG_LABEL'` in the source; run S-5 test; confirm it FAILS. Restore the original value; confirm GREEN. Done-when: failure confirmed then restored and GREEN.
+**[x] T-N5** — Sanity inversion: temporarily change `documentStatusLabels.CANCELLED` to `'WRONG_LABEL'` in the source; run S-5 test; confirm it FAILS. Restore the original value; confirm GREEN. Done-when: failure confirmed then restored and GREEN.
 - Satisfies: test integrity verification; proves tests catch real regressions.
 - Depends on: T-9.
 
