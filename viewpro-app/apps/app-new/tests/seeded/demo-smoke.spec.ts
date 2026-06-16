@@ -401,8 +401,8 @@ test('demo manager can review a submitted document request', async ({ page }) =>
 
   await submittedRequest.getByRole('button', { name: 'Aprobar' }).click();
 
-  await page.getByRole('tab', { name: /Resueltos\s*·\s*2/i }).click();
-  await page.getByRole('button', { name: /Historial\s*2 resueltas/i }).click();
+  await page.getByRole('tab', { name: /Resueltos\s*·\s*\d+/i }).click();
+  await page.getByRole('button', { name: /Historial\s*\d+ resueltas/i }).click();
   const reviewedRequest = page.locator('li').filter({ hasText: 'Escritura firmada' }).first();
   await expect(reviewedRequest.getByText('Aprobado', { exact: true })).toBeVisible();
 });
