@@ -20,15 +20,15 @@
 
 ## Phase 1 — Pre-implementation audit (sequential, must complete before Phase 2–5)
 
-**T-1** — Read `compareActivityItems` (or the sort comparator) in `list-activity-feed.use-case.ts`; confirm tie-break direction (id desc vs asc). If the implementation uses id-asc, scope S-13 to the actual behavior and flag as a verify-phase finding. Done-when: tie-break direction is documented in apply-progress.
+**[x] T-1** — Read `compareActivityItems` (or the sort comparator) in `list-activity-feed.use-case.ts`; confirm tie-break direction (id desc vs asc). If the implementation uses id-asc, scope S-13 to the actual behavior and flag as a verify-phase finding. Done-when: tie-break direction is documented in apply-progress.
 - Satisfies: FR-9 risk mitigation (design §10, risk 2).
 - Depends on: nothing.
 
-**T-2** — `rg` for count-coupled literals: search for `Document requests:`, `documentRequestsCount`, `result.total`, `expectedTotal` across `apps/api/test/` and `apps/app-new/tests/`. Confirm no assertion ties to a hardcoded doc-request total that will shift with the APPROVED/CANCELLED seed additions. Document findings in apply-progress. Done-when: list is empty or each hit is confirmed safe.
+**[x] T-2** — `rg` for count-coupled literals: search for `Document requests:`, `documentRequestsCount`, `result.total`, `expectedTotal` across `apps/api/test/` and `apps/app-new/tests/`. Confirm no assertion ties to a hardcoded doc-request total that will shift with the APPROVED/CANCELLED seed additions. Document findings in apply-progress. Done-when: list is empty or each hit is confirmed safe.
 - Satisfies: spec §Non-Functional Notes (pre-audit), FR-11 risk.
 - Depends on: nothing.
 
-**T-3** — Open `apps/app-new/src/features/activity/components/` and find an existing test that imports `next/link` (e.g. `activity-feed.test.tsx`, `activity-filters.test.tsx`). Confirm `next/link` compiles and renders a real `<a>` in JSDOM with no extra vitest config. If no sibling uses `next/link`, add a minimal `mock('next/link', ...)` passthrough at the top of the new test file plan. Done-when: the approach for `next/link` in JSDOM is confirmed and documented in apply-progress.
+**[x] T-3** — Open `apps/app-new/src/features/activity/components/` and find an existing test that imports `next/link` (e.g. `activity-feed.test.tsx`, `activity-filters.test.tsx`). Confirm `next/link` compiles and renders a real `<a>` in JSDOM with no extra vitest config. If no sibling uses `next/link`, add a minimal `mock('next/link', ...)` passthrough at the top of the new test file plan. Done-when: the approach for `next/link` in JSDOM is confirmed and documented in apply-progress.
 - Satisfies: design §3.1 No mock requirements, risk 1.
 - Depends on: nothing.
 
