@@ -1,0 +1,423 @@
+# Apply Progress — Stage 23.3 Tenant WhatsApp Contact Configuration
+
+## Phase 1 — Pre-implementation audit (DONE)
+
+Completed 2026-06-16. No code was written in this phase. All audits are read-only.
+
+---
+
+### Audit 1: TENANT_PERMISSIONS consumers
+
+All consumers located in `viewpro-app/apps/app-new/src/`:
+
+| File | Line | Usage | Classification |
+|------|------|-------|----------------|
+| `src/lib/session.ts` | 12 | Declaration: `export const TENANT_PERMISSIONS = { ... }` | DEFINITION |
+| `src/lib/session.ts` | 21 | `(typeof TENANT_PERMISSIONS)[keyof typeof TENANT_PERMISSIONS]` — derives union type | SAFE |
+| `src/lib/session.ts` | 145 | `hasTenantPermission(membership, TENANT_PERMISSIONS.ENGAGEMENTS_CREATE)` — reads one key | SAFE |
+| `src/lib/session.ts` | 150–151 | `hasTenantPermission(membership, TENANT_PERMISSIONS.DOCUMENTS_VIEW_ALL)` etc. — reads specific keys | SAFE |
+| `src/features/products/components/product-form.tsx` | 56 | Import of `TENANT_PERMISSIONS` | — |
+| `src/features/products/components/product-form.tsx` | 393 | `hasTenantPermission(activeMembership, TENANT_PERMISSIONS.MOVEMENTS_CREATE)` | SAFE |
+| `src/features/products/components/product-form.tsx` | 394 | `hasTenantPermission(activeMembership, TENANT_PERMISSIONS.DOCUMENTS_REQUEST)` | SAFE |
+| `src/features/products/components/product-tables/product-table.test.tsx` | 2 | Import of `TENANT_PERMISSIONS, TenantMembership` | — |
+| `src/features/products/components/product-tables/product-table.test.tsx` | 46 | `createMembership({ permissions: [TENANT_PERMISSIONS.ENGAGEMENTS_CREATE] })` — uses a specific key | SAFE |
+| `src/features/products/components/product-tables/product-table.test.tsx` | 90 | `permissions.includes(TENANT_PERMISSIONS.ENGAGEMENTS_CREATE)` — reads specific key | SAFE |
+
+**Finding:** Zero consumers iterate over `TENANT_PERMISSIONS` as a collection (e.g. `Object.values(TENANT_PERMISSIONS)`, `Object.keys(...)`, or `for...in` loops). Every usage accesses a named key directly via `hasTenantPermission(membership, TENANT_PERMISSIONS.SOME_KEY)` or uses the derived `TenantPermission` union type. Adding `TENANT_MANAGE_SETTINGS` to the constant is fully additive and safe — no consumer will silently include the new key.
+
+**AT-RISK count:** 0
+
+---
+
+### Audit 2: tenant.manage_settings / TENANT_MANAGE_SETTINGS consumers
+
+| File | Line | Context |
+|------|------|---------|
+| `viewpro-app/apps/api/src/permissions/permissions.constants.ts` | 3 | `TENANT_MANAGE_SETTINGS: 'tenant.manage_settings'` — declaration |
+| `viewpro-app/apps/api/src/tenant-context/tenant-context-demo.controller.ts` | 22 | `@RequirePermissions(PERMISSIONS.TENANT_MANAGE_SETTINGS)` — only production-adjacent use |
+
+**Verified facts:**
+
+1. `TENANT_MANAGE_SETTINGS` exists at `permissions.constants.ts:3`. ✓
+2. `PRINCIPAL_MANAGER` has it via `ALL_MVP_PERMISSIONS = Object.values(PERMISSIONS)` at `role-permissions.ts:4,7`. ✓
+3. `MANAGER` does NOT have it — its permission array in `role-permissions.ts:8–16` lists 8 explicit permissions, none of which is `TENANT_MANAGE_SETTINGS`. ✓
+4. `AGENT` does NOT have it — its permission array in `role-permissions.ts:18–24` has 5 entries, none of which is `TENANT_MANAGE_SETTINGS`. ✓
+5. The only production route currently using this permission is `tenant-context-demo.controller.ts:22` (the demo/debug controller at `GET /tenant-context/demo/manage-settings`). This is a debugging endpoint, not a user-facing feature endpoint. No collision with the new controller.
+
+**Production-route consumers of TENANT_MANAGE_SETTINGS (non-demo):** 0
+
+---
+
+### Audit 3: Tenants module shape
+
+**Module declaration** (`viewpro-app/apps/api/src/tenants/tenants.module.ts`):
+
+```
+@Module({
+  providers: [{ provide: TENANTS_REPOSITORY, useClass: PrismaTenantsRepository }],
+  exports: [TENANTS_REPOSITORY],
+})
+export class TenantsModule {}
+```
+
+No controllers registered today. No use cases registered today. Module is minimal — wires the repo and exports the token.
+
+**Repository interface** (`tenants.repository.ts`):
+
+```ts
+export const TENANTS_REPOSITORY = Symbol('TENANTS_REPOSITORY')
+
+export type TenantsRepository = {
+  create(data: Prisma.TenantCreateInput): Promise<Tenant>
+  findBySlug(slug: string): Promise<Tenant | null>
+}
+```
+
+Current methods: `create` and `findBySlug` only. No `update*` method exists yet.
+
+**Prisma implementation** (`prisma-tenants.repository.ts`):
+
+```ts
+@Injectable()
+export class PrismaTenantsRepository implements TenantsRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  create(data: Prisma.TenantCreateInput): Promise<Tenant> {
+    return this.prisma.tenant.create({ data })
+  }
+
+  findBySlug(slug: string): Promise<Tenant | null> {
+    return this.prisma.tenant.findUnique({ where: { slug } })
+  }
+}
+```
+
+**Naming conventions:**
+
+- Use-case files: do not exist yet inside the `tenants/` module (the auth's `register-tenant.use-case.ts` lives under `src/auth/use-cases/`, not inside `tenants/`). Pattern from analogous modules (movement-outcome-labels): `use-cases/` subdirectory, one file per use case (e.g. `create-label.use-case.ts`).
+- DTO conventions: class-validator decorators (`@IsString`, `@IsOptional`, etc.). Example: `dto/create-label.dto.ts`.
+- Response shape for mutations: controllers return `void` / `204 No Content` for destructive/update operations (see `movement-outcome-labels.controller.ts:62–69` DELETE returns nothing). Mutations that need a body would return a mapped response object, but for PATCH returning 204 the use case returns `void`.
+- No DTOs or use-cases directory exists yet inside `src/tenants/`. Both need to be created from scratch.
+
+**Consumers of TenantsRepository / TENANTS_REPOSITORY** outside the tenants module itself:
+
+| File | Line | Role |
+|------|------|------|
+| `src/auth/use-cases/register-tenant.use-case.ts` | 14–15, 29 | Injects `TENANTS_REPOSITORY` via `@Inject` — calls `create()` only |
+
+No other consumers. Adding `updateWhatsappPhone` to the interface does not break `register-tenant.use-case.ts` because it only calls `create`.
+
+---
+
+### Audit 4: Digit-count validator decision
+
+**Source file:** `viewpro-app/apps/api/src/owner-portal/owner-whatsapp-contact.ts`
+
+**Relevant logic:**
+
+- `MIN_WHATSAPP_DIGITS = 8` (line 15) — `const`, NOT exported.
+- `mapTenantWhatsappContact(whatsappPhone: string | null)` (line 17) — exported function. Uses `whatsappPhone.replace(/\D/g, "")` to get digits, then checks `digits.length < MIN_WHATSAPP_DIGITS`.
+- `mapMovementAuthorWhatsappContact(whatsappPhone: string | null)` (line 38) — exported function. Same digit-count logic.
+
+**Problem:** `MIN_WHATSAPP_DIGITS` is `const` (not `export const`). The digit-count check is inline inside the two map functions, not extracted into a standalone exported validator.
+
+**Decision: COPY-AND-EXPORT (with controlled extraction)**
+
+Rationale: The new use case (`update-tenant-whatsapp-phone.use-case.ts`) needs to import the digit-count rule. Importing from `owner-portal/owner-whatsapp-contact.ts` would create a cross-module dependency from `tenants/` into `owner-portal/` — a layering violation (tenant domain importing from owner-portal domain). The correct approach is to:
+
+1. Extract `MIN_WHATSAPP_DIGITS = 8` and a standalone `countWhatsappDigits(phone: string): number` or `isValidWhatsappPhone(phone: string): boolean` helper into a new shared utility at `src/shared/whatsapp-phone.utils.ts` (or equivalent shared path following project conventions).
+2. Import that utility in BOTH `owner-whatsapp-contact.ts` AND the new use case.
+
+This avoids circular deps and keeps the rule at a single source of truth (the shared utility), satisfying design spec D2 and the proposal's "reuse the 23.1 helper" intent without layering violations.
+
+**Alternative (if no `shared/` convention exists):** inline the rule (`replace(/[^+\d]/g, '')` + digit-count check) in the use case and accept two copies — one in `owner-whatsapp-contact.ts` (read-side) and one in the use case (write-side). This is the fallback if a `shared/` or `common/` module doesn't exist in the project structure.
+
+**Action needed at apply time:** check for an existing `src/shared/` or `src/common/` module in the API. If it exists, extract there. If not, document the inline-copy decision in apply-progress.
+
+---
+
+### Audit 5: Canonical guarded controller pattern
+
+**Reference file:** `viewpro-app/apps/api/src/movement-outcome-labels/movement-outcome-labels.controller.ts`
+
+**Decorator stack:**
+
+```ts
+@Controller('tenants/me/movement-outcome-labels')  // class-level route
+@ApiTenantContext()                                  // Swagger decorator — optional, include for parity
+@UseGuards(AuthGuard, TenantMembershipGuard, PermissionGuard)  // class-level guards
+export class MovementOutcomeLabelsController { ... }
+```
+
+**Per-method decorators:**
+
+```ts
+@Post()
+@HttpCode(HttpStatus.OK)
+@RequirePermissions(PERMISSIONS.MOVEMENTS_OUTCOME_LABELS_MANAGE)
+
+@Get()
+@RequirePermissions(PERMISSIONS.TENANT_VIEW)
+
+@Delete(':labelId')
+@HttpCode(HttpStatus.NO_CONTENT)
+@RequirePermissions(PERMISSIONS.MOVEMENTS_OUTCOME_LABELS_MANAGE)
+```
+
+**Guard order:** `AuthGuard` → `TenantMembershipGuard` → `PermissionGuard` (class-level, applied in declaration order).
+
+**`@RequirePermissions` placement:** method-level (not class-level). Each handler declares its own permission requirement.
+
+**`@CurrentTenant()` and `@CurrentUser()` decorators:** used to extract tenant context and current user from the request, injected as method parameters.
+
+**DTO validation style:** class-validator decorators (`@IsString`, `@IsOptional`, etc.) on DTO classes. NestJS `ValidationPipe` is applied globally (standard setup). Example: `CreateLabelDto` uses `@IsString()`, `@IsOptional()`, etc.
+
+**204 No Content pattern:** `@HttpCode(HttpStatus.NO_CONTENT)` on the method + return `void` (method returns nothing after `await deleteUseCase.execute(...)`).
+
+**Return shape on success:**
+- Mutations that return a body: `return mapMovementOutcomeLabel(label)` (mapped response object).
+- 204 mutations: no return value; method `async remove(...)` has no return statement.
+
+**New controller for 23.3 will:**
+- Use `@Controller('tenants')` (NOT `'tenants/me/whatsapp-phone'`) to allow two handlers on `GET /tenants/me/whatsapp-phone` and `PATCH /tenants/me/whatsapp-phone` with `@Get('me/whatsapp-phone')` / `@Patch('me/whatsapp-phone')`.
+- Mirror the same `@ApiTenantContext()` + `@UseGuards(AuthGuard, TenantMembershipGuard, PermissionGuard)` stack at class level.
+- Use `@RequirePermissions(PERMISSIONS.TENANT_MANAGE_SETTINGS)` on both handlers.
+- PATCH returns `@HttpCode(HttpStatus.NO_CONTENT)` with void.
+- GET returns `{ whatsappPhone: string | null }` (200, default).
+
+---
+
+### Audit 6: BFF route convention
+
+**Reference files:**
+- `viewpro-app/apps/app-new/src/app/api/tenants/me/movement-outcome-labels/route.ts`
+- `viewpro-app/apps/app-new/src/app/api/tenants/me/movement-outcome-labels/route.test.ts` (colocated test exists)
+
+**Session handling pattern:**
+
+`bffFetch` (imported from `@/lib/bff-api`) handles session cookie forwarding internally. The BFF route does NOT manually read or forward cookies. The `bffFetch` function is a wrapper that:
+1. Reads the session cookie from the incoming Next.js request context (via `cookies()` or server-side cookie handling).
+2. Attaches it as a `Bearer` token or forwards it to the NestJS API.
+3. Returns the raw `Response` object from the upstream API.
+
+**Status-code propagation:**
+
+`proxyJsonResponse(response)` returns the upstream `Response` object as-is (passes through status code, headers, body). For error cases: `proxyBffErrorResponse(error, fallbackMessage)` returns a `Response` with the error status or 502 with a fallback message.
+
+**Error body shape:**
+
+On Zod validation failure (client-side BFF validation before forward):
+
+```ts
+return NextResponse.json(
+  { statusCode: 400, message: messages, error: 'Bad Request' },
+  { status: 400 }
+)
+```
+
+On upstream API error: `proxyBffErrorResponse` forwards the upstream body as-is.
+
+**Zod body validation pattern:**
+
+```ts
+const parsed = createLabelSchema.safeParse(body)
+if (!parsed.success) {
+  const messages = parsed.error.issues.map((issue) => issue.message)
+  return NextResponse.json({ statusCode: 400, message: messages, error: 'Bad Request' }, { status: 400 })
+}
+const response = await bffFetch('/tenants/me/...', {
+  body: JSON.stringify(parsed.data),
+  headers: { 'content-type': 'application/json' },
+  method: 'POST'
+})
+return proxyJsonResponse(response)
+```
+
+**Colocated test:** Yes — `route.test.ts` exists alongside `route.ts`. It mocks `bffFetch`, `proxyBffErrorResponse`, and `proxyJsonResponse` via `vi.mock('@/lib/bff-api', ...)` and tests each exported handler function directly (no HTTP server needed). The new BFF route at `app/api/tenants/me/whatsapp-phone/route.ts` should have a matching `route.test.ts`.
+
+**Template for the new whatsapp-phone BFF route (text description):**
+
+- Import `bffFetch`, `proxyBffErrorResponse`, `proxyJsonResponse` from `@/lib/bff-api`.
+- Import `NextRequest`, `NextResponse` from `next/server`.
+- Import `z` from `zod`.
+- Define Zod schema: `whatsappPhone: z.string().nullable()` (raw shape; use case normalizes).
+- `GET`: call `bffFetch('/tenants/me/whatsapp-phone')`, return `proxyJsonResponse(response)`.
+- `PATCH`: parse body with schema, on failure return 400, on success forward with `bffFetch(..., { method: 'PATCH', body, headers })`.
+- Wrap both in try/catch returning `proxyBffErrorResponse(error, fallbackMessage)`.
+
+---
+
+### Audit 7: Synthetic user fixture helper
+
+**Verdict:** No standalone `mintUser` / `createTestUser` / `withMembership` utility function exists. The e2e tests use **inline Prisma + supertest patterns**.
+
+**Pattern used across e2e specs** (canonical example from `movement-outcome-labels.e2e-spec.ts:305–328`):
+
+```ts
+// Inside describe block — local helper functions
+
+async function registerTenantSession(email: string, tenantName: string) {
+  const agent = request.agent(app.getHttpServer())
+  const response = await agent
+    .post('/api/auth/register-tenant')
+    .send({ email, password: 'password123', firstName: 'Owner', tenantName })
+    .expect(201)
+  return {
+    agent,
+    userId: response.body.user.id as string,
+    tenantId: response.body.memberships[0].tenant.id as string,
+  }
+}
+
+async function addTenantMember(userId: string, tenantId: string, role: TenantRole) {
+  return prisma.tenantMembership.create({
+    data: { userId, tenantId, role },
+  })
+}
+```
+
+**How MANAGER/AGENT fixtures are created in existing e2e tests:**
+
+1. Call `registerTenantSession(email, tenantName)` — this creates a `PRINCIPAL_MANAGER` user + tenant via the auth API.
+2. Call `registerTenantSession(anotherEmail, anotherTenantName)` — creates a second user with their own tenant (also `PRINCIPAL_MANAGER`).
+3. Call `addTenantMember(secondUser.userId, firstTenant.tenantId, TenantRole.AGENT)` — adds the second user as an `AGENT` to the first tenant via direct Prisma insert.
+
+For S-4 (MANAGER → 403): register a user as PRINCIPAL_MANAGER (via `register-tenant`), then add them to another tenant as MANAGER via `prisma.tenantMembership.create({ data: { userId, tenantId, role: TenantRole.MANAGER } })`.
+
+**Implication for T-3.2:** The new `tenants-contact.e2e-spec.ts` will use local `registerTenantSession` + `addTenantMember` helpers defined within its own describe block (no import from a shared module). This is the established project convention.
+
+---
+
+### Audit 8: Settings route existence
+
+**Result:** No `/dashboard/settings/` directory exists.
+
+Command run: `fd "settings" viewpro-app/apps/app-new/src/app/dashboard --type d` → empty result.
+
+**Confirmed:** Phase 5 (task 5.6) will create `viewpro-app/apps/app-new/src/app/dashboard/settings/tenant-contact/page.tsx` as the first entry in a new `settings/` group. No stub to migrate or conflict to resolve.
+
+---
+
+### Audit 9: Canonical small form example
+
+**Best match:** `viewpro-app/apps/app-new/src/features/auth/components/sign-in-view.tsx`
+
+This is the smallest form in the codebase using `useAppForm` + Zod (2 fields: email + password).
+
+**Import pattern:**
+
+```ts
+import * as z from 'zod'
+import { useAppForm, useFormFields } from '@/components/ui/tanstack-form'
+```
+
+**Schema → form binding:**
+
+```ts
+const signInSchema = z.object({
+  email: z.email('Ingresá un email válido.'),
+  password: z.string().min(8, '...')
+})
+
+// Inside component:
+const { FormTextField } = useFormFields<SignInValues>()
+const form = useAppForm({
+  defaultValues: { email: '', password: '' } as SignInValues,
+  validators: { onSubmit: signInSchema },
+  onSubmit: async ({ value }) => { /* call API */ }
+})
+
+// JSX:
+<form.AppForm>
+  <form.Form className='space-y-6'>
+    <FormTextField name='email' label='Email' required type='email' ... />
+    <FormTextField name='password' label='Contraseña' required type='password' ... />
+    <form.SubmitButton className='w-full'>Entrar</form.SubmitButton>
+  </form.Form>
+</form.AppForm>
+```
+
+The `tenant-contact-form.tsx` will follow this exact pattern with a single `FormTextField` for `whatsappPhone`.
+
+---
+
+### Audit 10: React Query cache invalidation pattern
+
+**Two patterns found, both valid:**
+
+**Pattern A — `useMutation` hook with `useQueryClient()` (inline):**
+
+From `viewpro-app/apps/app-new/src/features/status-change-requests/api/queries.ts`:
+
+```ts
+export const statusChangeRequestKeys = {
+  all: ['status-change-requests'] as const,
+  byEngagement: (engagementId: string) =>
+    [...statusChangeRequestKeys.all, 'by-engagement', engagementId] as const
+}
+
+export function useCreateStatusChangeRequest(engagementId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload) => createStatusChangeRequest(engagementId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: statusChangeRequestKeys.byEngagement(engagementId)
+      })
+    }
+  })
+}
+```
+
+**Pattern B — `mutationOptions` with `getQueryClient()` (server-action-style):**
+
+From `viewpro-app/apps/app-new/src/features/users/api/mutations.ts`:
+
+```ts
+import { getQueryClient } from '@/lib/query-client'
+
+export const updateUserMutation = mutationOptions({
+  mutationFn: ({ id, values }) => updateUser(id, values),
+  onSuccess: () => {
+    getQueryClient().invalidateQueries({ queryKey: userKeys.all })
+  }
+})
+```
+
+**Chosen pattern for 23.3:** Pattern A (`useMutation` + `useQueryClient()`) matches the feature-folder convention for feature-specific mutations (the status-change-requests pattern). The queries.ts file for `settings/tenant-contact/api/queries.ts` will define:
+
+```ts
+export const tenantContactKeys = {
+  all: ['tenant-contact'] as const,
+  whatsappPhone: () => [...tenantContactKeys.all, 'whatsapp-phone'] as const
+}
+```
+
+And `useUpdateTenantWhatsappPhoneMutation()` will call:
+
+```ts
+queryClient.invalidateQueries({ queryKey: tenantContactKeys.whatsappPhone() })
+```
+
+in `onSuccess`.
+
+---
+
+### Decisions for Phase 2+
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Digit-count helper | Extract to `src/shared/whatsapp-phone.utils.ts` (or inline copy as fallback if no `shared/` convention) | Avoid cross-module layering violation from `tenants/` importing `owner-portal/` |
+| Controller prefix | `@Controller('tenants')` with `@Get('me/whatsapp-phone')` / `@Patch('me/whatsapp-phone')` | Matches NestJS convention; keeps controller path clean |
+| TENANT_MANAGE_SETTINGS in frontend | Add to `TENANT_PERMISSIONS` as `TENANT_MANAGE_SETTINGS: 'tenant.manage_settings'` | Additive, zero consumers iterate the constant |
+| e2e MANAGER/AGENT fixture | Local `registerTenantSession` + `addTenantMember` helpers per describe block | No shared helper exists; established project convention |
+| BFF route test | Colocate `route.test.ts` alongside `route.ts` | Matches `movement-outcome-labels/route.test.ts` precedent |
+| React Query invalidation | `useMutation` + `useQueryClient()` + `tenantContactKeys.whatsappPhone()` | Matches feature-folder queries.ts pattern |
+| Settings route | New — no existing `dashboard/settings/` directory | Phase 5 creates it from scratch |
+| Form example to follow | `sign-in-view.tsx` — smallest `useAppForm` + Zod form | Clean single-purpose pattern |
+
+---
+
+## Phase 2–8 — Pending
+
+Tasks 2.1–8.7 are not yet started.

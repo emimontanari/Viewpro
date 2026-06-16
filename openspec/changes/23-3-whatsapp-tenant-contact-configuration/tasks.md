@@ -26,13 +26,13 @@ Chain strategy: size-exception
 
 ## Phase 1 — Pre-implementation audit (R-D3 discipline)
 
-- [ ] 1.1 Run `rg "TENANT_PERMISSIONS" viewpro-app/apps/app-new/src --type ts` — confirm only `product-form.tsx` and `product-table.test.tsx` import it; additive constant is safe. Done-when: zero unexpected consumers.
-- [ ] 1.2 Run `fd "settings" viewpro-app/apps/app-new/src/app/dashboard --type d` — confirm zero existing settings directory. Done-when: empty result.
-- [ ] 1.3 Run `rg "@Controller\(['\"]tenants" viewpro-app/apps/api/src` — confirm no route collision with the new controller. Done-when: only `movement-outcome-labels.controller.ts` at `tenants/me/movement-outcome-labels`.
-- [ ] 1.4 Run `rg "TenantsRepository|TENANTS_REPOSITORY" viewpro-app/apps/api/src` — confirm only `register-tenant.use-case.ts` and tenants module files consume it. Done-when: no unexpected consumers.
-- [ ] 1.5 Run `rg "MIN_WHATSAPP_DIGITS|replace\(/\\D/g" viewpro-app/apps/api/src` — confirm digit-count helper lives only in `owner-whatsapp-contact.ts`; plan import or inline copy. Done-when: single source located.
-- [ ] 1.6 Run `rg "whatsappPhone" viewpro-app/apps/api` — confirm only `seed-demo.mjs`, `schema.prisma`, and owner-portal read path reference the field. Done-when: no runtime-mutating callers found.
-- [ ] 1.7 Read `viewpro-app/apps/api/test/*.e2e-spec.ts` to locate fabricated-user helper for MANAGER/AGENT fixture — confirm it exists (covers S-4, S-5). Done-when: fixture pattern documented for T-11.
+- [x] 1.1 Run `rg "TENANT_PERMISSIONS" viewpro-app/apps/app-new/src --type ts` — confirm only `product-form.tsx` and `product-table.test.tsx` import it; additive constant is safe. Done-when: zero unexpected consumers.
+- [x] 1.2 Run `fd "settings" viewpro-app/apps/app-new/src/app/dashboard --type d` — confirm zero existing settings directory. Done-when: empty result.
+- [x] 1.3 Run `rg "@Controller\(['\"]tenants" viewpro-app/apps/api/src` — confirm no route collision with the new controller. Done-when: only `movement-outcome-labels.controller.ts` at `tenants/me/movement-outcome-labels`.
+- [x] 1.4 Run `rg "TenantsRepository|TENANTS_REPOSITORY" viewpro-app/apps/api/src` — confirm only `register-tenant.use-case.ts` and tenants module files consume it. Done-when: no unexpected consumers.
+- [x] 1.5 Run `rg "MIN_WHATSAPP_DIGITS|replace\(/\\D/g" viewpro-app/apps/api/src` — confirm digit-count helper lives only in `owner-whatsapp-contact.ts`; plan import or inline copy. Done-when: single source located.
+- [x] 1.6 Run `rg "whatsappPhone" viewpro-app/apps/api` — confirm only `seed-demo.mjs`, `schema.prisma`, and owner-portal read path reference the field. Done-when: no runtime-mutating callers found.
+- [x] 1.7 Read `viewpro-app/apps/api/test/*.e2e-spec.ts` to locate fabricated-user helper for MANAGER/AGENT fixture — confirm it exists (covers S-4, S-5). Done-when: fixture pattern documented for T-11.
 
 ---
 
