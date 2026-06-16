@@ -1291,3 +1291,68 @@ test.describe('isolation', () => {
     await expect(page.getByText(ISOLATION_PROPERTY_TITLE)).toHaveCount(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Stage 20.9 — Seguimiento document activity proof (S-15, S-16)
+//
+// Pre-conditions:
+//   - Seed has APPROVED doc request on Villa Centenario (T-23, FR-10).
+//   - Seed has CANCELLED doc request on Villa Centenario (T-24, D1).
+//   - Manager is signed in at /dashboard/seguimiento.
+//
+// T-28 (S-15): asserts a doc card renders with the 'Solicitud documental' header
+//   badge, at least one lifecycle status label, and a valid 'Ver propiedad' link.
+// T-29 (S-16): asserts the 'Documentos' pill scopes the feed to doc cards only
+//   and that movement-only text ('Ingresó una consulta calificada') is absent.
+// ---------------------------------------------------------------------------
+
+test.describe('Seguimiento document activity (Stage 20.9)', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  // T-28 — S-15 (FR-12): doc card renders with stable structure.
+  test('seeded smoke: doc card renders with stable structure (S-15)', async ({ page }) => {
+    await signIn(page, DEMO_EMAIL);
+    await page.goto('/dashboard/seguimiento');
+    await expect(page.getByRole('heading', { name: 'Seguimiento' })).toBeVisible();
+
+    // Apply the Documentos pill so at least one doc card appears on the first page.
+    await page.getByRole('button', { name: 'Documentos' }).click();
+    await page.waitForTimeout(600);
+
+    // At least one 'Solicitud documental' badge must be visible in the feed.
+    // After applying the Documentos filter all rendered cards are doc cards.
+    const firstBadge = page.getByText('Solicitud documental', { exact: true }).first();
+    await expect(firstBadge).toBeVisible({ timeout: 10_000 });
+
+    // At least one lifecycle status label must be visible on the page.
+    await expect(
+      page.getByText(/^(Pendiente|Subida|Aprobada|Rechazada|Cancelada)$/).first()
+    ).toBeVisible();
+
+    // 'Ver propiedad' link must be present and point to /dashboard/product/<engagementId>.
+    const verPropiedadLink = page.getByRole('link', { name: /Ver propiedad/ }).first();
+    await expect(verPropiedadLink).toBeVisible();
+    const href = await verPropiedadLink.getAttribute('href');
+    expect(href).toMatch(/^\/dashboard\/product\/[a-f0-9-]+$/);
+  });
+
+  // T-29 — S-16 (FR-13): Documentos pill scopes feed to doc cards only.
+  test('seeded smoke: Documentos filter shows only doc cards (S-16)', async ({ page }) => {
+    await signIn(page, DEMO_EMAIL);
+    await page.goto('/dashboard/seguimiento');
+    await expect(page.getByRole('heading', { name: 'Seguimiento' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Documentos' }).click();
+    await page.waitForTimeout(600);
+
+    // All visible cards must carry the doc-card header badge — count must be > 0.
+    const allHeaderBadges = page.getByText('Solicitud documental', { exact: true });
+    const docBadgeCount = await allHeaderBadges.count();
+    expect(docBadgeCount).toBeGreaterThan(0);
+
+    // No movement-only card text should be visible after the docs-only filter.
+    // 'Ingresó una consulta calificada' is a movement-only string seeded by the demo
+    // and is never rendered by doc cards (see spec FR-13, design risk 5).
+    await expect(page.getByText('Ingresó una consulta calificada')).toHaveCount(0);
+  });
+});

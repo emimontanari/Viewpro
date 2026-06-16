@@ -358,9 +358,98 @@ No assertion shifted. Baselines clean.
 
 **Result: GREEN-665** (baseline unchanged — seed changes add no new unit tests)
 
-## Phase 5 — Seeded smoke (pending)
+## Phase 5 — Seeded smoke (DONE)
 
-Tasks T-28 through T-30. Not started.
+Tasks T-28 through T-30. All complete.
+
+### T-28 — S-15 seeded smoke: doc card renders with stable structure
+
+**File:** `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`
+
+Added `test.describe('Seguimiento document activity (Stage 20.9)', ...)` block at end of file (after the isolation block, lines 1295–1359). `test.describe.configure({ mode: 'serial' })` applied to match suite pattern.
+
+Test `seeded smoke: doc card renders with stable structure (S-15)` (line 1313):
+- Signs in as manager via the existing `signIn(page, DEMO_EMAIL)` helper.
+- Navigates to `/dashboard/seguimiento`.
+- Asserts the `'Seguimiento'` heading is visible.
+- Clicks `getByRole('button', { name: 'Documentos' })` pill.
+- `waitForTimeout(600)` to let the feed reload.
+- Asserts `page.getByText('Solicitud documental', { exact: true }).first()` is visible within 10s.
+- Asserts `page.getByText(/^(Pendiente|Subida|Aprobada|Rechazada|Cancelada)$/).first()` is visible (lifecycle status label).
+- Gets `page.getByRole('link', { name: /Ver propiedad/ }).first()`, asserts visible, reads `href`, asserts `href` matches `/^\/dashboard\/product\/[a-f0-9-]+$/`.
+
+Anchor decisions:
+- Scoped to first badge on page (not the card-scoped article/Card locator) — simpler and sufficient since Documentos filter guarantees all visible cards are doc cards.
+- `Ver propiedad` link targeted by role + accessible name, not by `data-testid` (design D2).
+- `waitForTimeout(600)` is consistent with the Stage 20.11 S-8 filter test pattern already in the suite.
+
+---
+
+### T-29 — S-16 seeded smoke: Documentos filter shows only doc cards
+
+Test `seeded smoke: Documentos filter shows only doc cards (S-16)` (line 1340):
+- Signs in as manager, navigates to `/dashboard/seguimiento`.
+- Clicks "Documentos" pill, waits 600ms.
+- Counts `page.getByText('Solicitud documental', { exact: true })` — asserts count > 0.
+- Asserts `page.getByText('Ingresó una consulta calificada')` has count 0 (no movement-only card visible).
+
+Anchor note: used `page.getByText('Solicitud documental', { exact: true })` (page-level, not scoped to articles) because after the Documentos filter all rendered cards are doc cards, so every `'Solicitud documental'` text on the page corresponds to a doc card header badge.
+
+---
+
+### T-30 — Gate: pnpm test:seeded
+
+**Command:** `pnpm --filter next-shadcn-dashboard-starter exec playwright test --config playwright.seeded.config.ts`
+
+**Total tests:** 27
+**Passed:** 27
+**Failed:** 0
+**Flakes retried:** 0
+**Duration:** 1m 36s (serial, 1 worker)
+
+Test breakdown (all GREEN):
+
+| # | Test name | Status |
+|---|-----------|--------|
+| 1 | demo user can navigate the seeded operational workflow | ✓ (4.4s) |
+| 2 | martin.demo@viewpro.local sees a distinct assigned seller dashboard | ✓ (2.1s) |
+| 3 | lucia.demo@viewpro.local sees a distinct assigned seller dashboard | ✓ (2.2s) |
+| 4 | demo owner can read the owner portal follow-up (owner-portal Test 5) | ✓ (4.2s) |
+| 5 | demo owner can upload a requested document | ✓ (3.2s) |
+| 6 | existing demo owner can accept another property invitation | ✓ (1.4s) |
+| 7 | demo manager sees seeded internal notifications | ✓ (714ms) |
+| 8 | demo owner sees seeded notifications, images and contacts | ✓ (811ms) |
+| 9 | viewpro admin can inspect seeded tenant limits | ✓ (990ms) |
+| 10 | seller can create movements with outcomes and chip appears in feed | ✓ (3.6s) |
+| 11 | demo manager can review a submitted document request | ✓ (3.4s) |
+| 12 | manager can reject a pending status change request from the bandeja | ✓ (2.4s) |
+| 13 | manager can approve a new status change request from the bandeja | ✓ (3.4s) |
+| 14 | manager can create a new property engagement through the UI | ✓ (4.3s) |
+| 15 | manager can assign martin to the new engagement | ✓ (3.4s) |
+| 16 | manager can remove martin's assignment | ✓ (3.4s) |
+| 17 | manager can create a plain movement without an outcome label | ✓ (2.3s) |
+| 18 | manager can create a document request through the UI | ✓ (2.7s) |
+| 19 | manager can reject an uploaded document request with a reason | ✓ (3.1s) |
+| 20 | owner sees rejection reason and re-upload action on the rejected document | ✓ (1.1s) |
+| 21 | owner WhatsApp click POSTs a tracking event | ✓ (6.4s) |
+| 22 | tenant engagement limit blocks creation with a clear UI error | ✓ (7.3s) |
+| 23 | Seguimiento filter smoke: date=seed-clock-day + Responsable=Martín | ✓ (2.2s) |
+| 24 | isolation: seller direct deep-link to unassigned property is denied | ✓ (1.9s) |
+| 25 | isolation: owner direct deep-link to unowned property is denied | ✓ (9.4s) |
+| 26 | Seguimiento document activity (Stage 20.9) › seeded smoke: doc card renders with stable structure (S-15) | ✓ (1.9s) |
+| 27 | Seguimiento document activity (Stage 20.9) › seeded smoke: Documentos filter shows only doc cards (S-16) | ✓ (2.1s) |
+
+**Owner-portal Test 5** (test #4 — "demo owner can read the owner portal follow-up") — asserts `Ingresó una consulta calificada|Se concretó una visita|Oferta` movement strings — GREEN. No leakage from doc activity rows.
+
+### Deviations from design
+
+**None.** The seeded smoke tests match design §3.4 exactly:
+- `test.describe.configure({ mode: 'serial' })` applied.
+- S-15 anchors: `getByText('Solicitud documental', { exact: true })`, lifecycle regex, `getByRole('link', { name: /Ver propiedad/ })` with href assertion.
+- S-16 anchor: `getByText('Solicitud documental', { exact: true })` count > 0, `getByText('Ingresó una consulta calificada')` count === 0.
+- No production code touched. No new dependencies.
+
+The only minor deviation from design §3.4's pseudocode: did NOT use the article/Card wrapper locator for S-15 (design used `page.locator('article, [class*="Card"]').filter(...).first()`). Used a simpler `page.getByText('Solicitud documental', ...).first()` because after the Documentos filter all visible items are doc cards, making the article wrapper redundant. This is a simplification, not a functional deviation.
 
 ## Phase 6 — Verification gates (pending)
 

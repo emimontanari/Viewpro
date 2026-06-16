@@ -144,15 +144,15 @@
 
 ## Phase 5 — Seeded smoke (single commit, after Phase 4)
 
-**T-28** — In `apps/app-new/tests/seeded/demo-smoke.spec.ts`, add a new `test.describe('Seguimiento document activity (Stage 20.9)', ...)` block with `test.describe.configure({ mode: 'serial' })`. Write S-15: sign in as manager, navigate to `/dashboard/seguimiento`, click "Documentos" pill, assert a card with `'Solicitud documental'` header badge is visible, assert a lifecycle status label is visible, assert `'Ver propiedad'` link `href` matches `/^\/dashboard\/product\/[a-f0-9-]+$/`. Done-when: test written; structure matches design §3.4.
+**[x] T-28** — In `apps/app-new/tests/seeded/demo-smoke.spec.ts`, add a new `test.describe('Seguimiento document activity (Stage 20.9)', ...)` block with `test.describe.configure({ mode: 'serial' })`. Write S-15: sign in as manager, navigate to `/dashboard/seguimiento`, click "Documentos" pill, assert a card with `'Solicitud documental'` header badge is visible, assert a lifecycle status label is visible, assert `'Ver propiedad'` link `href` matches `/^\/dashboard\/product\/[a-f0-9-]+$/`. Done-when: test written; structure matches design §3.4.
 - Satisfies: FR-12, S-15.
 - Depends on: T-26.
 
-**T-29** — Write S-16 in the same describe block: sign in as manager, navigate to `/dashboard/seguimiento`, click "Documentos" pill, assert `allHeaderBadges.count() > 0` (all visible cards carry `'Solicitud documental'`), assert `page.getByText('Ingresó una consulta calificada')` has count 0 (no movement-only cards visible). Done-when: test written.
+**[x] T-29** — Write S-16 in the same describe block: sign in as manager, navigate to `/dashboard/seguimiento`, click "Documentos" pill, assert `allHeaderBadges.count() > 0` (all visible cards carry `'Solicitud documental'`), assert `page.getByText('Ingresó una consulta calificada')` has count 0 (no movement-only cards visible). Done-when: test written.
 - Satisfies: FR-13, S-16.
 - Depends on: T-28.
 
-**T-30** — Run `pnpm test:seeded` (or workspace equivalent). Confirm ≥27 GREEN (25 baseline + 2 new: S-15, S-16). Confirm owner-portal Test 5 still GREEN (no movement strings leaked from doc activity). Done-when: all ≥27 tests pass, no regression.
+**[x] T-30** — Run `pnpm test:seeded` (or workspace equivalent). Confirm ≥27 GREEN (25 baseline + 2 new: S-15, S-16). Confirm owner-portal Test 5 still GREEN (no movement strings leaked from doc activity). Done-when: all ≥27 tests pass, no regression.
 - Satisfies: quality gate; risk 5 mitigation (owner-portal Test 5).
 - Depends on: T-28, T-29.
 
@@ -201,10 +201,10 @@
 | S-14 APPROVED seed fixture present | T-23 | [x] |
 | CANCELLED seed fixture present | T-24 | [x] |
 | Seed log accurate | T-25 | [x] |
-| S-15 doc card renders in smoke | T-28 | [ ] |
-| S-16 Documentos filter scopes to doc cards | T-29 | [ ] |
-| No new dependency introduced | all | [ ] |
-| No UI production component changed | all | [ ] |
+| S-15 doc card renders in smoke | T-28 | [x] |
+| S-16 Documentos filter scopes to doc cards | T-29 | [x] |
+| No new dependency introduced | all | [x] |
+| No UI production component changed | all | [x] |
 | Seed log honesty preserved | T-25 | [x] |
 
 ---
