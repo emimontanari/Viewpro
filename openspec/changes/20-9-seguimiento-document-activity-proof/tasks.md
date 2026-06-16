@@ -36,63 +36,63 @@
 
 ## Phase 2 — Component test (single commit, after Phase 1 completes)
 
-**T-4** — Create `apps/app-new/src/features/activity/components/activity-document-request-feed-item.test.tsx`. Add imports and define the `buildDocumentRequestItem` typed fixture helper (default: PENDING status, UPLOADED version, non-null owner and requester). Done-when: file compiles with no TS errors.
+**[x] T-4** — Create `apps/app-new/src/features/activity/components/activity-document-request-feed-item.test.tsx`. Add imports and define the `buildDocumentRequestItem` typed fixture helper (default: PENDING status, UPLOADED version, non-null owner and requester). Done-when: file compiles with no TS errors.
 - Satisfies: FR-1 through FR-6 setup.
 - Depends on: T-1, T-2, T-3.
 
-**T-5** — Write S-1: `renders PENDING status badge with amber tone`. Override: none (default). Assert badge text "Pendiente" and `className` matches `/bg-amber-50/`. Done-when: test passes.
+**[x] T-5** — Write S-1: `renders PENDING status badge with amber tone`. Override: none (default). Assert badge text "Pendiente" and `className` matches `/bg-amber-50/`. Done-when: test passes.
 - Satisfies: FR-1, FR-2.
 - Depends on: T-4.
 
-**T-6** — Write S-2: `renders SUBMITTED status badge with sky tone`. Override: `documentRequest.status: 'SUBMITTED'`. Assert "Subida" + `/bg-sky-50/`. Done-when: test passes.
+**[x] T-6** — Write S-2: `renders SUBMITTED status badge with sky tone`. Override: `documentRequest.status: 'SUBMITTED'`. Assert "Subida" + `/bg-sky-50/`. Done-when: test passes.
 - Satisfies: FR-1, FR-2.
 - Depends on: T-4.
 
-**T-7** — Write S-3: `renders APPROVED status badge with emerald tone`. Override: `documentRequest.status: 'APPROVED'`. Assert "Aprobada" + `/bg-emerald-50/`. Done-when: test passes.
+**[x] T-7** — Write S-3: `renders APPROVED status badge with emerald tone`. Override: `documentRequest.status: 'APPROVED'`. Assert "Aprobada" + `/bg-emerald-50/`. Done-when: test passes.
 - Satisfies: FR-1, FR-2.
 - Depends on: T-4.
 
-**T-8** — Write S-4: `renders REJECTED status badge with red tone`. Override: `documentRequest.status: 'REJECTED'`. Assert "Rechazada" + `/bg-red-50/`. Done-when: test passes.
+**[x] T-8** — Write S-4: `renders REJECTED status badge with red tone`. Override: `documentRequest.status: 'REJECTED'`. Assert "Rechazada" + `/bg-red-50/`. Done-when: test passes.
 - Satisfies: FR-1, FR-2.
 - Depends on: T-4.
 
-**T-9** — Write S-5: `renders CANCELLED status badge with muted tone`. Override: `documentRequest.status: 'CANCELLED'`. Assert "Cancelada" + `/bg-muted\/50/`. Done-when: test passes.
+**[x] T-9** — Write S-5: `renders CANCELLED status badge with muted tone`. Override: `documentRequest.status: 'CANCELLED'`. Assert "Cancelada" + `/bg-muted\/50/`. Done-when: test passes.
 - Satisfies: FR-1, FR-2.
 - Depends on: T-4.
 
-**T-10** — Write S-6: `renders PENDING_UPLOAD version label`. Override: `currentVersion.status: 'PENDING_UPLOAD'`. Assert "Pendiente de carga" scoped under "Estado del archivo" section. Done-when: test passes.
+**[x] T-10** — Write S-6: `renders PENDING_UPLOAD version label`. Override: `currentVersion.status: 'PENDING_UPLOAD'`. Assert "Pendiente de carga" scoped under "Estado del archivo" section. Done-when: test passes.
 - Satisfies: FR-3.
 - Depends on: T-4.
 
-**T-11** — Write S-7: `renders UPLOADED version label`. Override: none (default). Assert "Subida" scoped under version section. Done-when: test passes.
+**[x] T-11** — Write S-7: `renders UPLOADED version label`. Override: none (default). Assert "Subida" scoped under version section. Done-when: test passes.
 - Satisfies: FR-3.
 - Depends on: T-4.
 
-**T-12** — Write S-8: `renders APPROVED version label`. Override: `currentVersion.status: 'APPROVED'`. Assert "Aprobada" scoped under version section. Done-when: test passes.
+**[x] T-12** — Write S-8: `renders APPROVED version label`. Override: `currentVersion.status: 'APPROVED'`. Assert "Aprobada" scoped under version section. Done-when: test passes.
 - Satisfies: FR-3.
 - Depends on: T-4.
 
-**T-13** — Write S-9: `renders REJECTED version label`. Override: `currentVersion.status: 'REJECTED'`. Assert "Rechazada" scoped under version section. Done-when: test passes.
+**[x] T-13** — Write S-9: `renders REJECTED version label`. Override: `currentVersion.status: 'REJECTED'`. Assert "Rechazada" scoped under version section. Done-when: test passes.
 - Satisfies: FR-3.
 - Depends on: T-4.
 
-**T-14** — Write S-10: `renders "Sin archivo cargado" when currentVersion is null`. Override: `documentRequest.currentVersion: null`. Assert `getByText('Sin archivo cargado')` present; assert no `.pdf` filename text rendered. Done-when: test passes.
+**[x] T-14** — Write S-10: `renders "Sin archivo cargado" when currentVersion is null`. Override: `documentRequest.currentVersion: null`. Assert `getByText('Sin archivo cargado')` present; assert no `.pdf` filename text rendered. Done-when: test passes.
 - Satisfies: FR-4.
 - Depends on: T-4.
 
-**T-15** — Write S-11: `renders fallback strings and correct link target`. Override: `owner: null`, `requestedBy: { id: 'r-1', firstName: null, email: '' }`. Assert "Propietario" text visible, "Solicitante no disponible" visible, and link `href === '/dashboard/product/engagement-42'`. Done-when: test passes.
+**[x] T-15** — Write S-11: `renders fallback strings and correct link target`. Override: `owner: null`, `requestedBy: { id: 'r-1', firstName: null, email: '' }`. Assert "Propietario" text visible, "Solicitante no disponible" visible, and link `href === '/dashboard/product/engagement-42'`. Done-when: test passes.
 - Satisfies: FR-5, FR-6.
 - Depends on: T-4.
 
-**T-16** — Write edge tests 12–13: (12) `renders "Solicitud no disponible" when documentRequest is null` — override `documentRequest: undefined`, assert badge text "Solicitud no disponible". (13) `renders "Propiedad sin título" when property.title is blank` — override `property.title: '   '`, assert `getByText('Propiedad sin título')`. Done-when: both tests pass.
+**[x] T-16** — Write edge tests 12–13: (12) `renders "Solicitud no disponible" when documentRequest is null` — override `documentRequest: undefined`, assert badge text "Solicitud no disponible". (13) `renders "Propiedad sin título" when property.title is blank` — override `property.title: '   '`, assert `getByText('Propiedad sin título')`. Done-when: both tests pass.
 - Satisfies: FR-5.
 - Depends on: T-4.
 
-**T-17** — Write owner-name fallback edge tests 14–16: (14) snapshot names preferred over user names; (15) user firstName fallback when snapshot is blank; (16) email fallback when both name sources are blank. Use override shapes from design §5. Done-when: all three pass.
+**[x] T-17** — Write owner-name fallback edge tests 14–16: (14) snapshot names preferred over user names; (15) user firstName fallback when snapshot is blank; (16) email fallback when both name sources are blank. Use override shapes from design §5. Done-when: all three pass.
 - Satisfies: FR-5.
 - Depends on: T-4.
 
-**T-18** — Run `pnpm app-new test` (or the workspace equivalent) and confirm all app-new unit tests GREEN (baseline 403+ tests + 16 new). Done-when: exit 0 with no failures.
+**[x] T-18** — Run `pnpm app-new test` (or the workspace equivalent) and confirm all app-new unit tests GREEN (baseline 403+ tests + 16 new). Done-when: exit 0 with no failures.
 - Satisfies: quality gate before commit.
 - Depends on: T-5 through T-17.
 
@@ -182,20 +182,20 @@
 
 | Item | Task | Done |
 |---|---|---|
-| S-1 PENDING badge with amber tone | T-5 | [ ] |
-| S-2 SUBMITTED badge with sky tone | T-6 | [ ] |
-| S-3 APPROVED badge with emerald tone | T-7 | [ ] |
-| S-4 REJECTED badge with red tone | T-8 | [ ] |
-| S-5 CANCELLED badge with muted tone | T-9 | [ ] |
-| S-6 PENDING_UPLOAD version label | T-10 | [ ] |
-| S-7 UPLOADED version label | T-11 | [ ] |
-| S-8 APPROVED version label | T-12 | [ ] |
-| S-9 REJECTED version label | T-13 | [ ] |
-| S-10 null version fallback | T-14 | [ ] |
-| S-11 fallback strings + link href | T-15 | [ ] |
-| Edge: null documentRequest | T-16 | [ ] |
-| Edge: blank property.title | T-16 | [ ] |
-| Edge: owner name precedence (3 cases) | T-17 | [ ] |
+| S-1 PENDING badge with amber tone | T-5 | [x] |
+| S-2 SUBMITTED badge with sky tone | T-6 | [x] |
+| S-3 APPROVED badge with emerald tone | T-7 | [x] |
+| S-4 REJECTED badge with red tone | T-8 | [x] |
+| S-5 CANCELLED badge with muted tone | T-9 | [x] |
+| S-6 PENDING_UPLOAD version label | T-10 | [x] |
+| S-7 UPLOADED version label | T-11 | [x] |
+| S-8 APPROVED version label | T-12 | [x] |
+| S-9 REJECTED version label | T-13 | [x] |
+| S-10 null version fallback | T-14 | [x] |
+| S-11 fallback strings + link href | T-15 | [x] |
+| Edge: null documentRequest | T-16 | [x] |
+| Edge: blank property.title | T-16 | [x] |
+| Edge: owner name precedence (3 cases) | T-17 | [x] |
 | S-12 mapper shape for all 5 doc statuses | T-19 | [ ] |
 | S-13 mixed-kind sort + id tie-break | T-20 | [ ] |
 | S-14 APPROVED seed fixture present | T-23 | [ ] |

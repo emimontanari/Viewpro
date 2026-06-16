@@ -133,9 +133,56 @@ viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts:
 
 ---
 
-## Phase 2 — Component test (pending)
+## Phase 2 — Component test (DONE)
 
-Tasks T-4 through T-18. Not started.
+Tasks T-4 through T-18. All 16 tests written and GREEN.
+
+### Label/class verification (source vs. design)
+
+| Element | Design expectation | Source actual | Match? |
+|---|---|---|---|
+| PENDING label | "Pendiente" | "Pendiente" (line 23 of component) | ✓ |
+| SUBMITTED label | "Subida" | "Subida" (line 25) | ✓ |
+| APPROVED label | "Aprobada" | "Aprobada" (line 21) | ✓ |
+| REJECTED label | "Rechazada" | "Rechazada" (line 24) | ✓ |
+| CANCELLED label | "Cancelada" | "Cancelada" (line 22) | ✓ |
+| PENDING tone class | `bg-amber-50` | `bg-amber-50` (line 36) | ✓ |
+| SUBMITTED tone class | `bg-sky-50` | `bg-sky-50` (line 40) | ✓ |
+| APPROVED tone class | `bg-emerald-50` | `bg-emerald-50` (line 33) | ✓ |
+| REJECTED tone class | `bg-red-50` | `bg-red-50` (line 38) | ✓ |
+| CANCELLED tone class | `bg-muted/50` | `bg-muted/50` (line 34) | ✓ |
+| PENDING_UPLOAD version label | "Pendiente de carga" | "Pendiente de carga" (line 48) | ✓ |
+| UPLOADED version label | "Subida" | "Subida" (line 50) | ✓ |
+| APPROVED version label | "Aprobada" | "Aprobada" (line 47) | ✓ |
+| REJECTED version label | "Rechazada" | "Rechazada" (line 49) | ✓ |
+| Sin archivo cargado | "Sin archivo cargado" | "Sin archivo cargado" (line 139) | ✓ |
+| Solicitud no disponible | "Solicitud no disponible" | "Solicitud no disponible" (line 62) | ✓ |
+| Propietario fallback | "Propietario" | "Propietario" (line 56) | ✓ |
+| Solicitante no disponible | "Solicitante no disponible" | "Solicitante no disponible" (line 197) | ✓ |
+| Propiedad sin título | "Propiedad sin título" | "Propiedad sin título" (line 54) | ✓ |
+
+**No mismatches found.** All labels and tone classes in source match design exactly.
+
+### Implementation notes
+
+- **S-2 (SUBMITTED) and S-4 (REJECTED)**: "Subida" and "Rechazada" appear twice when the doc-status and version-status share the same label. Used `getAllByText()` with class filter to find the status badge specifically.
+- **S-11 (Propietario fallback)**: `ActivityMeta` renders both a `<p>` label ("Propietario") and a `<p>` value ("Propietario") — `getByText` would throw multiple-elements error. Used `getAllByText('Propietario')` with `length >= 1` instead.
+- **Version section anchor**: Used `heading.closest('div[class*="rounded-xl"]')` to scope within the "Estado del archivo" panel. This works because the component uses `rounded-xl border bg-muted/20 p-3` on the panel divs.
+- **No production code changed**: Component `activity-document-request-feed-item.tsx` is unchanged.
+- **No new dependency**: Uses only existing `@testing-library/react` and `vitest`.
+
+### Test count
+
+| Metric | Value |
+|---|---|
+| Baseline (before Phase 2) | 403 |
+| New tests added | 16 |
+| Total after Phase 2 | 419 |
+| Test files | 82 |
+
+### Gate result
+
+**GREEN** — `pnpm --filter next-shadcn-dashboard-starter test -- --run` exits 0. 82 test files, 419 tests, 0 failures.
 
 ## Phase 3 — Use case test additions (pending)
 
