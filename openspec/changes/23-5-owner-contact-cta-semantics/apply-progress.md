@@ -374,6 +374,45 @@ None. Pure literal rename with no behavior change.
 
 ---
 
-## Phases 5–7 — Pending
+## Phase 5 — Seed (DONE)
 
-Tasks from Phase 5 through Phase 7 remain to be implemented. See `tasks.md` for the full checklist.
+All 3 tasks completed (T-5.1 through T-5.3). Seed exits 0. No blockers.
+
+### T-5.1 — sofia.demo whatsappPhone added
+
+- File: `viewpro-app/apps/api/scripts/seed-demo.mjs`
+- Lines 79-85 (after edit): `whatsappPhone: "+5493512222222"` added to sofia.demo object, matching martin.demo key order and quoting style.
+- Collision check: tenant `+5493510000000`, martín `+5493511111111`, sofia `+5493512222222` — each appears exactly once. No duplicates.
+
+### T-5.2 — Stale comment updated
+
+- Decision: **update** (not remove — the line still adds value as a fixture inventory summary).
+- Old string (line 2114): `"Contact fixtures: tenant WhatsApp, Martín seller WhatsApp, Sofía no-config movement contact"`
+- New string: `"Contact fixtures: tenant WhatsApp, Martín seller WhatsApp, Sofía assigned-seller WhatsApp (Stage 23.5)"`
+- `Document requests:` line is unchanged: `Document requests: 20 (includes Stage 26.3 SUBMITTED fixture on Los Boulevares + Stage 20.9 APPROVED and CANCELLED fixtures on Villa Centenario)` — no numeric shift.
+
+### T-5.3 — Seed run result
+
+- Syntax check: `node --check seed-demo.mjs` → exit 0.
+- `pnpm demo:seed` → **exit 0**.
+- Literal `Document requests:` log line from output:
+  ```
+  Document requests: 20 (includes Stage 26.3 SUBMITTED fixture on Los Boulevares + Stage 20.9 APPROVED and CANCELLED fixtures on Villa Centenario)
+  ```
+- Count unchanged vs. pre-apply baseline. Gate: PASSED.
+
+### Phone sweep (post-apply)
+
+`rg "5493512222222|5493511111111|5493510000000" seed-demo.mjs` output:
+```
+process.env.VIEWPRO_DEMO_TENANT_WHATSAPP_PHONE ?? "+5493510000000";
+  whatsappPhone: "+5493512222222",
+  whatsappPhone: "+5493511111111",
+```
+Each phone present exactly once. Gate: PASSED.
+
+---
+
+## Phases 6–7 — Pending
+
+Tasks from Phase 6 (seeded smoke) and Phase 7 (verification gates) remain to be implemented. See `tasks.md` for the full checklist.

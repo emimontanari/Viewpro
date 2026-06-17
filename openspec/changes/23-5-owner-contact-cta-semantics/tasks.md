@@ -82,9 +82,9 @@ Depends on: Phase 3 GREEN.
 
 Depends on: Phase 4 GREEN.
 
-- [ ] 5.1 In `viewpro-app/apps/api/scripts/seed-demo.mjs` around lines 80-97: add `whatsappPhone: '+5493512222222'` to the `sofia.demo` user definition. Verify value is distinct from `martin.demo` (`+5493511111111`) and demo tenant (`+5493510000000`). **Done-when**: single-line addition; no other `DEMO_USERS` entry modified.
-- [ ] 5.2 Confirm no log-summary line or count assertion requires updating (Phase 1 T-1.6 audit validates this). **Done-when**: `rg 'Users created|Document requests' viewpro-app/apps/api/scripts/seed-demo.mjs` output matches pre-apply audit; no numeric literal in those lines changes.
-- [ ] 5.3 Run `pnpm demo:seed` from `viewpro-app/` — GREEN gate. **Done-when**: process exits 0 with accurate log output.
+- [x] 5.1 In `viewpro-app/apps/api/scripts/seed-demo.mjs` around lines 80-97: add `whatsappPhone: '+5493512222222'` to the `sofia.demo` user definition. Verify value is distinct from `martin.demo` (`+5493511111111`) and demo tenant (`+5493510000000`). **Done-when**: single-line addition; no other `DEMO_USERS` entry modified.
+- [x] 5.2 Confirm no log-summary line or count assertion requires updating (Phase 1 T-1.6 audit validates this). **Done-when**: `rg 'Users created|Document requests' viewpro-app/apps/api/scripts/seed-demo.mjs` output matches pre-apply audit; no numeric literal in those lines changes.
+- [x] 5.3 Run `pnpm demo:seed` from `viewpro-app/` — GREEN gate. **Done-when**: process exits 0 with accurate log output.
 
 ---
 
