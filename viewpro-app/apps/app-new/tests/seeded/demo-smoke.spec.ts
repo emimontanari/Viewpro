@@ -1356,3 +1356,65 @@ test.describe('Seguimiento document activity (Stage 20.9)', () => {
     await expect(page.getByText('Ingresó una consulta calificada')).toHaveCount(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Stage 23.3 — Tenant WhatsApp contact configuration (S-12)
+//
+// Pre-conditions:
+//   - seed-demo.mjs seeds Tenant.whatsappPhone = VIEWPRO_DEMO_TENANT_WHATSAPP_PHONE ?? '+5493510000000'.
+//   - demo@viewpro.local is PRINCIPAL_MANAGER with TENANT_MANAGE_SETTINGS.
+//
+// S-12: PRINCIPAL_MANAGER edits the tenant WhatsApp phone, verifies DB persistence
+//       via page reload, then restores the original seeded value for idempotency.
+// ---------------------------------------------------------------------------
+
+const SEEDED_WHATSAPP_PHONE = '+5493510000000';
+const TEST_WHATSAPP_PHONE = '+5491166554433';
+
+test.describe('Stage 23.3 — tenant WhatsApp contact', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  test('S-12: PRINCIPAL_MANAGER can edit the tenant WhatsApp phone and the change persists across reload', async ({
+    page
+  }) => {
+    await signIn(page, DEMO_EMAIL);
+
+    // Navigate directly to the tenant contact settings page.
+    await page.goto('/dashboard/settings/tenant-contact');
+
+    // Assert the page heading is visible (confirms permission gate passed and page rendered).
+    await expect(
+      page.getByText('Contacto WhatsApp del workspace')
+    ).toBeVisible({ timeout: 10_000 });
+
+    // Locate the phone input by role+label anchor (D9 convention).
+    const phoneInput = page.getByRole('textbox', { name: /Teléfono WhatsApp del equipo/i });
+    await expect(phoneInput).toBeVisible({ timeout: 10_000 });
+
+    // Change the value to the test phone.
+    await phoneInput.clear();
+    await phoneInput.fill(TEST_WHATSAPP_PHONE);
+
+    // Submit via the "Guardar" button.
+    await page.getByRole('button', { name: /Guardar/i }).click();
+
+    // Wait for the success toast.
+    await expect(page.getByText('Teléfono actualizado')).toBeVisible({ timeout: 10_000 });
+
+    // Reload the page to prove DB persistence and React Query invalidation.
+    await page.reload();
+    await expect(
+      page.getByText('Contacto WhatsApp del workspace')
+    ).toBeVisible({ timeout: 10_000 });
+
+    const phoneInputAfterReload = page.getByRole('textbox', { name: /Teléfono WhatsApp del equipo/i });
+    await expect(phoneInputAfterReload).toBeVisible({ timeout: 10_000 });
+    await expect(phoneInputAfterReload).toHaveValue(TEST_WHATSAPP_PHONE);
+
+    // Idempotency restore: set the phone back to the seeded default.
+    await phoneInputAfterReload.clear();
+    await phoneInputAfterReload.fill(SEEDED_WHATSAPP_PHONE);
+    await page.getByRole('button', { name: /Guardar/i }).click();
+    await expect(page.getByText('Teléfono actualizado')).toBeVisible({ timeout: 10_000 });
+  });
+});

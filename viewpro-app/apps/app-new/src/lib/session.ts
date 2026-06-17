@@ -15,7 +15,8 @@ export const TENANT_PERMISSIONS = {
   DOCUMENTS_VIEW_ALL: 'documents.view_all',
   ENGAGEMENTS_CREATE: 'engagements.create',
   ENGAGEMENTS_VIEW_ALL: 'engagements.view_all',
-  MOVEMENTS_CREATE: 'movements.create'
+  MOVEMENTS_CREATE: 'movements.create',
+  TENANT_MANAGE_SETTINGS: 'tenant.manage_settings'
 } as const;
 
 export type TenantPermission = (typeof TENANT_PERMISSIONS)[keyof typeof TENANT_PERMISSIONS];
@@ -143,6 +144,10 @@ export function hasTenantPermission(
 
 export function canManagePropertyEngagements(membership: TenantMembership | null | undefined) {
   return hasTenantPermission(membership, TENANT_PERMISSIONS.ENGAGEMENTS_CREATE);
+}
+
+export function canManageTenantSettings(membership: TenantMembership | null | undefined) {
+  return hasTenantPermission(membership, TENANT_PERMISSIONS.TENANT_MANAGE_SETTINGS);
 }
 
 export function canReviewTenantDocuments(membership: TenantMembership | null | undefined) {

@@ -73,7 +73,7 @@ Accepted — 2026-06-16
 - Then: 401
 
 **S-7 — BFF propagates API 400**
-- Given: the API returns 400 with `{ code: "phone.too_short" }`
+- Given: the API returns 400 with `{ errorCode: "phone.too_short" }`
 - When: the BFF receives the upstream response
 - Then: BFF responds with 400 and the same body to the client
 

@@ -5,4 +5,6 @@ export const TENANTS_REPOSITORY = Symbol('TENANTS_REPOSITORY')
 export type TenantsRepository = {
   create(data: Prisma.TenantCreateInput): Promise<Tenant>
   findBySlug(slug: string): Promise<Tenant | null>
+  findWhatsappPhone(tenantId: string): Promise<{ whatsappPhone: string | null } | null>
+  updateWhatsappPhone(tenantId: string, phone: string | null): Promise<void>
 }

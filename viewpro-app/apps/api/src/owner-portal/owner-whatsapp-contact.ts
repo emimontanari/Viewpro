@@ -1,3 +1,5 @@
+import { MIN_WHATSAPP_DIGITS } from "../common/whatsapp/whatsapp-phone.utils";
+
 export type OwnerPropertyContactResponse = {
 	available: boolean;
 	targetType: "tenant";
@@ -11,8 +13,6 @@ export type OwnerMovementContactResponse = {
 	displayLabel: string;
 	whatsappPhone?: string;
 };
-
-const MIN_WHATSAPP_DIGITS = 8;
 
 export function mapTenantWhatsappContact(
 	whatsappPhone: string | null,
