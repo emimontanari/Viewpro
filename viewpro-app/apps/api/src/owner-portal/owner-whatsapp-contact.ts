@@ -1,4 +1,4 @@
-import { MIN_WHATSAPP_DIGITS } from "../common/whatsapp/whatsapp-phone.utils";
+import { isValidWhatsappPhone } from "../common/whatsapp/whatsapp-phone.utils";
 
 export type OwnerPropertyContactResponse = {
 	available: boolean;
@@ -23,13 +23,10 @@ export type AssignedSellerAgent = {
 export function mapTenantWhatsappContact(
 	whatsappPhone: string | null,
 ): OwnerPropertyContactResponse {
-	if (!whatsappPhone) {
-		return unavailableTenantContact();
-	}
-
-	const digits = whatsappPhone.replace(/\D/g, "");
-
-	if (digits.length < MIN_WHATSAPP_DIGITS) {
+	// isValidWhatsappPhone(null) returns true (clear-value semantics for the
+	// tenant editor). Owner-portal read path treats null/blank as "no contact",
+	// so handle null explicitly before delegating to the shared validator.
+	if (whatsappPhone === null || !isValidWhatsappPhone(whatsappPhone)) {
 		return unavailableTenantContact();
 	}
 
@@ -55,13 +52,12 @@ export function mapAssignedSellerWhatsappContact(
 		return unavailableAssignedSellerContact();
 	}
 
-	if (!seller.agentUser.whatsappPhone) {
-		return unavailableAssignedSellerContact();
-	}
+	const phone = seller.agentUser.whatsappPhone;
 
-	const digits = seller.agentUser.whatsappPhone.replace(/\D/g, "");
-
-	if (digits.length < MIN_WHATSAPP_DIGITS) {
+	// Same null-explicit guard as mapTenantWhatsappContact: isValidWhatsappPhone(null)
+	// returns true by design, but the assigned-seller read path treats null as
+	// "no contact configured". Rule check itself comes from the shared util.
+	if (phone === null || !isValidWhatsappPhone(phone)) {
 		return unavailableAssignedSellerContact();
 	}
 
@@ -69,7 +65,7 @@ export function mapAssignedSellerWhatsappContact(
 		available: true,
 		targetType: "assigned_seller",
 		displayLabel: "Consultar responsable",
-		whatsappPhone: seller.agentUser.whatsappPhone,
+		whatsappPhone: phone,
 	};
 }
 

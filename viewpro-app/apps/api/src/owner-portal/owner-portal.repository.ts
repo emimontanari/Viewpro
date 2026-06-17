@@ -12,7 +12,7 @@ export type OwnerEngagementRecord = Prisma.PropertyEngagementGetPayload<{
 		agents: {
 			select: {
 				agentUserId: true;
-				agentUser: { select: { firstName: true; email: true; whatsappPhone: true } };
+				agentUser: { select: { firstName: true; email: true } };
 			};
 		};
 	};
@@ -34,7 +34,7 @@ export type OwnerMovementContactContext = {
 export type OwnerMovementRecord = Prisma.MovementGetPayload<{
 	include: {
 		createdBy: {
-			select: { id: true; email: true; firstName: true; whatsappPhone: true };
+			select: { id: true; email: true; firstName: true };
 		};
 		propertyEngagement: {
 			select: {

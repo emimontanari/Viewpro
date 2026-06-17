@@ -22,13 +22,13 @@ const ownerEngagementInclude = {
   agents: {
     select: {
       agentUserId: true,
-      agentUser: { select: { firstName: true, email: true, whatsappPhone: true } },
+      agentUser: { select: { firstName: true, email: true } },
     },
   },
 } satisfies Prisma.PropertyEngagementInclude
 
 const ownerMovementInclude = {
-  createdBy: { select: { id: true, email: true, firstName: true, whatsappPhone: true } },
+  createdBy: { select: { id: true, email: true, firstName: true } },
   propertyEngagement: {
     select: {
       agents: {
