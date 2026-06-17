@@ -413,6 +413,49 @@ Each phone present exactly once. Gate: PASSED.
 
 ---
 
-## Phases 6–7 — Pending
+## Phase 6 — Seeded smoke (DONE)
 
-Tasks from Phase 6 (seeded smoke) and Phase 7 (verification gates) remain to be implemented. See `tasks.md` for the full checklist.
+Both tasks completed (T-6.1, T-6.2). Gate GREEN at 29/29. No blockers.
+
+### T-6.1 — S-10 test block added
+
+- File: `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`
+- New describe block appended at EOF: `test.describe('Stage 23.5 — owner timeline resolves contact to assigned seller', ...)`
+- `test.describe.configure({ mode: 'serial' })` applied inside.
+- Single test: S-10 — signs in as `propietario.demo@viewpro.local`, fetches `/api/owner/properties` to locate Villa Centenario, navigates to `/owner/properties/{id}`, clicks the "Seguimiento" tab, finds `getByRole('link', { name: 'Consultar responsable' }).first()`, asserts text is not 'Contacto no configurado', asserts href matches `/^https:\/\/wa\.me\/\d{8,}\?text=/` and contains `5493512222222`.
+- No click, no analytics assertion (23.4 boundary respected).
+
+### Regression fix applied alongside T-6.1
+
+Line 275 of the existing test "demo owner sees seeded notifications, images and contacts" was checking `item.contact.whatsappPhone === '+5493511111111'` (martin's phone). After Phase 2, the resolver uses the engagement's assigned seller (sofia, `+5493512222222` for index-0/Villa Centenario). Updated:
+- Old: `expect(ownerTimeline.items.some((item) => item.contact.whatsappPhone === '+5493511111111')).toBe(true)`
+- New: `expect(ownerTimeline.items.some((item) => item.contact.whatsappPhone === '+5493512222222')).toBe(true)`
+
+Line 278 updated similarly: `some((item) => !item.contact.available)` → `some((item) => item.contact.available)` (sofia has a valid phone; all movements on this engagement are now available).
+
+### Anchor strategy used
+
+- Primary selector: `page.getByRole('link', { name: 'Consultar responsable' }).first()`
+- Why `role=link`: `owner-timeline.tsx` renders `<Button asChild><a href={contactHref}>...</a></Button>` when the contact is resolved. The `asChild` pattern forwards all props to the `<a>` element, which has role=link in the accessibility tree.
+- href assertions: `.toMatch(/^https:\/\/wa\.me\/\d{8,}\?text=/)` + `.toContain('5493512222222')`.
+
+### T-6.2 — Gate result
+
+- Run 1: 1 FAILED (pre-existing "Smoke test label" flake on test 10 — test-state race when custom label already exists in DB from prior run), 19 did not run.
+- Run 2 (retry 1): **29/29 GREEN** — exit 0. All 28 baseline tests GREEN. S-10 GREEN.
+- Playwright flakes retried: 1.
+
+### Counts
+
+| Metric | Value |
+|--------|-------|
+| New seeded smoke tests added | 1 (S-10) |
+| Existing tests updated for regression | 1 (line 275–278 phone/available fix) |
+| Total seeded smoke tests | 29 |
+| Gate | GREEN-29/29 |
+
+---
+
+## Phase 7 — Pending
+
+Verification gates remain to be run. See `tasks.md` Phase 7 for the full checklist.

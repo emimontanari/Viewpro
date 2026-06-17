@@ -92,8 +92,8 @@ Depends on: Phase 4 GREEN.
 
 Depends on: Phase 5 GREEN seed run.
 
-- [ ] 6.1 In `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`: add a new `test.describe('Stage 23.5 — owner movement contact resolves to assigned seller', ...)` block with `test.describe.configure({ mode: 'serial' })`. Single test: sign in as `propietario.demo@viewpro.local`, navigate to the tracked engagement timeline, find a movement card whose CTA is NOT "Contacto no configurado", assert `href` matches `^https:\/\/wa\.me\/\d{8,}\?text=` and contains `5493512222222`. No click, no analytics assertion (23.4 boundary). **Done-when**: test block present and runnable.
-- [ ] 6.2 Run `pnpm --filter next-shadcn-dashboard-starter test:seeded` — GREEN gate. **Done-when**: ≥ 29 seeded tests pass (28 baseline + 1 new S-10).
+- [x] 6.1 In `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`: add a new `test.describe('Stage 23.5 — owner movement contact resolves to assigned seller', ...)` block with `test.describe.configure({ mode: 'serial' })`. Single test: sign in as `propietario.demo@viewpro.local`, navigate to the tracked engagement timeline, find a movement card whose CTA is NOT "Contacto no configurado", assert `href` matches `^https:\/\/wa\.me\/\d{8,}\?text=` and contains `5493512222222`. No click, no analytics assertion (23.4 boundary). **Done-when**: test block present and runnable.
+- [x] 6.2 Run `pnpm --filter next-shadcn-dashboard-starter test:seeded` — GREEN gate. **Done-when**: ≥ 29 seeded tests pass (28 baseline + 1 new S-10).
 
 ---
 
@@ -122,4 +122,4 @@ Depends on: all prior phases GREEN.
 | S-7 Valid phone produces correct wa.me URL | T-3.1, T-3.2 | [x] |
 | S-8 Property-level Contactar inmobiliaria unchanged (regression) | T-3.4, T-4.6 | [x] |
 | S-9 Tracking endpoint writes `assigned_seller` | T-3.3 | [x] |
-| S-10 Seeded smoke: demo owner sees sofia.demo's phone | T-6.1, T-6.2 | [ ] |
+| S-10 Seeded smoke: demo owner sees sofia.demo's phone | T-6.1, T-6.2 | [x] |
