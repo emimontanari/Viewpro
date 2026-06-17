@@ -418,6 +418,67 @@ in `onSuccess`.
 
 ---
 
-## Phase 2–8 — Pending
+## Phase 2 — Backend (DONE)
 
-Tasks 2.1–8.7 are not yet started.
+Completed 2026-06-17. Typecheck GREEN after all changes.
+
+---
+
+### Files created / changed
+
+| File | Action | Summary |
+|------|--------|---------|
+| `viewpro-app/apps/api/src/common/whatsapp/whatsapp-phone.utils.ts` | Created | Shared util: `MIN_WHATSAPP_DIGITS`, `normalizeWhatsappPhone`, `isValidWhatsappPhone` |
+| `viewpro-app/apps/api/src/owner-portal/owner-whatsapp-contact.ts` | Modified (line 1) | Imports `MIN_WHATSAPP_DIGITS` from shared util; behavior unchanged |
+| `viewpro-app/apps/api/src/tenants/tenants.repository.ts` | Modified (lines 7–8) | Added `findWhatsappPhone` and `updateWhatsappPhone` to `TenantsRepository` interface |
+| `viewpro-app/apps/api/src/tenants/prisma-tenants.repository.ts` | Modified (lines 19–32) | Implemented `findWhatsappPhone` (SELECT) and `updateWhatsappPhone` (UPDATE) |
+| `viewpro-app/apps/api/src/tenants/dto/update-whatsapp-phone.dto.ts` | Created | `UpdateWhatsappPhoneDto` with `@IsOptional @IsString whatsappPhone?: string \| null` |
+| `viewpro-app/apps/api/src/tenants/use-cases/update-tenant-whatsapp-phone.use-case.ts` | Created | Normalize → validate → `repo.updateWhatsappPhone`; throws `BadRequestException({ code: 'phone.too_short' })` on digit count < 8 |
+| `viewpro-app/apps/api/src/tenants/use-cases/get-tenant-whatsapp-phone.use-case.ts` | Created | Returns `{ whatsappPhone: string \| null }` from `repo.findWhatsappPhone`; null when tenant not found |
+| `viewpro-app/apps/api/src/tenants/tenants-contact.controller.ts` | Created | `@Controller('tenants')` with `GET me/whatsapp-phone` + `PATCH me/whatsapp-phone`; full guard stack |
+| `viewpro-app/apps/api/src/tenants/tenants.module.ts` | Modified | Added `AuthModule, MembershipsModule, PermissionsModule, TenantContextModule` imports; registered `TenantsContactController` + both use cases |
+
+---
+
+### DI tokens
+
+| Token | Symbol | Provided by |
+|-------|--------|-------------|
+| `TENANTS_REPOSITORY` | `Symbol('TENANTS_REPOSITORY')` | `{ provide: TENANTS_REPOSITORY, useClass: PrismaTenantsRepository }` in `TenantsModule` |
+
+---
+
+### Error code
+
+`phone.too_short` — thrown as `BadRequestException({ code: 'phone.too_short' })` in `UpdateTenantWhatsappPhoneUseCase.execute()` when digit count < `MIN_WHATSAPP_DIGITS` (8).
+
+---
+
+### Normalization rule (D2 compliance)
+
+`normalizeWhatsappPhone` strips all characters that are not `+` or decimal digits, removes any `+` that is not at the leading position, and returns `null` for empty/null/whitespace input. This preserves the leading `+` when present and matches the 23.1 read-side behavior exactly.
+
+---
+
+### owner-whatsapp-contact.ts behavior preservation
+
+The read-side logic (`mapTenantWhatsappContact`, `mapMovementAuthorWhatsappContact`) is **unchanged**. Both functions continue to call `whatsappPhone.replace(/\D/g, '')` and compare `digits.length < MIN_WHATSAPP_DIGITS`. The only change is that `MIN_WHATSAPP_DIGITS` is now imported from the shared util (same value: `8`) instead of being declared locally. Zero observable behavior change.
+
+---
+
+### Deviations from design
+
+- **T-2.C (tasks note):** Tasks said "unit test passes RED before this commit" — Phase 3 owns the unit tests; this phase skips the RED step as directed by the orchestrator (Phase 3 = API tests). Deviation is intentional per phased plan.
+- **No deviation on module wiring:** `TenantsModule` now imports the guard-dependency modules (`AuthModule`, `MembershipsModule`, `PermissionsModule`, `TenantContextModule`) mirroring `MovementOutcomeLabelsModule`.
+
+---
+
+### Gate result
+
+`pnpm --filter @viewpro/api typecheck` → GREEN (zero TS errors).
+
+---
+
+## Phase 3–8 — Pending
+
+Tasks 3.1–8.7 are not yet started.

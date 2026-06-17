@@ -38,14 +38,14 @@ Chain strategy: size-exception
 
 ## Phase 2 — Backend implementation
 
-- [ ] 2.1 Add `updateWhatsappPhone(tenantId: string, phone: string | null): Promise<void>` to `viewpro-app/apps/api/src/tenants/tenants.repository.ts`. Done-when: interface compiles.
-- [ ] 2.2 Implement `updateWhatsappPhone` in `viewpro-app/apps/api/src/tenants/prisma-tenants.repository.ts` using `prisma.tenant.update`. Done-when: implementation compiles.
-- [ ] 2.3 Create `viewpro-app/apps/api/src/tenants/dto/update-whatsapp-phone.dto.ts` — `whatsappPhone: string | null` with `@IsOptional`, `@IsString` or `null` validator. Done-when: DTO compiles.
-- [ ] 2.4 Create `viewpro-app/apps/api/src/tenants/use-cases/update-tenant-whatsapp-phone.use-case.ts` — normalize (strip non-`[+\d]`), count digits, throw `BadRequestException({ code: 'phone.too_short' })` if digit count < 8, else call `repo.updateWhatsappPhone`. Done-when: unit test (T-10) passes RED before this commit.
-- [ ] 2.5 Create `viewpro-app/apps/api/src/tenants/tenants-contact.controller.ts` — `@Controller('tenants')`, `@UseGuards(AuthGuard, TenantMembershipGuard, PermissionGuard)`, two handlers:
+- [x] 2.1 Add `updateWhatsappPhone(tenantId: string, phone: string | null): Promise<void>` to `viewpro-app/apps/api/src/tenants/tenants.repository.ts`. Done-when: interface compiles.
+- [x] 2.2 Implement `updateWhatsappPhone` in `viewpro-app/apps/api/src/tenants/prisma-tenants.repository.ts` using `prisma.tenant.update`. Done-when: implementation compiles.
+- [x] 2.3 Create `viewpro-app/apps/api/src/tenants/dto/update-whatsapp-phone.dto.ts` — `whatsappPhone: string | null` with `@IsOptional`, `@IsString` or `null` validator. Done-when: DTO compiles.
+- [x] 2.4 Create `viewpro-app/apps/api/src/tenants/use-cases/update-tenant-whatsapp-phone.use-case.ts` — normalize (strip non-`[+\d]`), count digits, throw `BadRequestException({ code: 'phone.too_short' })` if digit count < 8, else call `repo.updateWhatsappPhone`. Done-when: unit test (T-10) passes RED before this commit.
+- [x] 2.5 Create `viewpro-app/apps/api/src/tenants/tenants-contact.controller.ts` — `@Controller('tenants')`, `@UseGuards(AuthGuard, TenantMembershipGuard, PermissionGuard)`, two handlers:
   - `GET /tenants/me/whatsapp-phone` with `@RequirePermissions(TENANT_MANAGE_SETTINGS)` → returns `{ whatsappPhone: string | null }` (200).
   - `PATCH /tenants/me/whatsapp-phone` with `@RequirePermissions(TENANT_MANAGE_SETTINGS)` → invokes use case, returns 204. Done-when: controller compiles.
-- [ ] 2.6 Register `TenantsContactController` and `UpdateTenantWhatsappPhoneUseCase` in `viewpro-app/apps/api/src/tenants/tenants.module.ts`. Done-when: `pnpm --filter @viewpro/api typecheck` passes.
+- [x] 2.6 Register `TenantsContactController` and `UpdateTenantWhatsappPhoneUseCase` in `viewpro-app/apps/api/src/tenants/tenants.module.ts`. Done-when: `pnpm --filter @viewpro/api typecheck` passes.
 
 ---
 

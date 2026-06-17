@@ -14,4 +14,20 @@ export class PrismaTenantsRepository implements TenantsRepository {
   findBySlug(slug: string): Promise<Tenant | null> {
     return this.prisma.tenant.findUnique({ where: { slug } })
   }
+
+  async findWhatsappPhone(tenantId: string): Promise<{ whatsappPhone: string | null } | null> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { whatsappPhone: true },
+    })
+    if (!tenant) return null
+    return { whatsappPhone: tenant.whatsappPhone }
+  }
+
+  async updateWhatsappPhone(tenantId: string, phone: string | null): Promise<void> {
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { whatsappPhone: phone },
+    })
+  }
 }
