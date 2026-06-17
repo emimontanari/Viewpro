@@ -69,12 +69,12 @@ Depends on: Phase 2 GREEN typecheck.
 
 Depends on: Phase 3 GREEN.
 
-- [ ] 4.1 In `viewpro-app/apps/app-new/src/features/owner/api/types.ts:49`: rename `OwnerMovementContact.targetType` union member from `'movement_author'` to `'assigned_seller'`. **Done-when**: type definition updated; TypeScript will flag all downstream fixture mismatches.
-- [ ] 4.2 In `viewpro-app/apps/app-new/src/features/owner/components/owner-timeline.test.tsx`: replace every fixture literal `'movement_author'` with `'assigned_seller'` (expected at lines 61, 126). Test behavior unchanged; only literal swap. **Done-when**: `rg 'movement_author' owner-timeline.test.tsx` returns 0.
-- [ ] 4.3 In `viewpro-app/apps/app-new/src/features/owner/components/owner-property-detail.test.tsx`: replace fixture literal `'movement_author'` at line 134. **Done-when**: `rg 'movement_author' owner-property-detail.test.tsx` returns 0.
-- [ ] 4.4 In `viewpro-app/apps/app-new/src/features/owner/utils/owner-whatsapp-contact.test.ts`: replace all `'movement_author'` literals (expected at lines 19, 115, 127). **Done-when**: `rg 'movement_author' owner-whatsapp-contact.test.ts` returns 0.
-- [ ] 4.5 Run `rg "'movement_author'" viewpro-app/apps/app-new/src/` — confirm 0 remaining occurrences. **Done-when**: sweep complete; no missed call site.
-- [ ] 4.6 Run `pnpm --filter next-shadcn-dashboard-starter lint:strict` + `tsc --noEmit` + `pnpm --filter next-shadcn-dashboard-starter test` — GREEN gate. **Done-when**: 0 lint errors, 0 type errors, ≥ 426 baseline tests pass.
+- [x] 4.1 In `viewpro-app/apps/app-new/src/features/owner/api/types.ts:49`: rename `OwnerMovementContact.targetType` union member from `'movement_author'` to `'assigned_seller'`. **Done-when**: type definition updated; TypeScript will flag all downstream fixture mismatches.
+- [x] 4.2 In `viewpro-app/apps/app-new/src/features/owner/components/owner-timeline.test.tsx`: replace every fixture literal `'movement_author'` with `'assigned_seller'` (expected at lines 61, 126). Test behavior unchanged; only literal swap. **Done-when**: `rg 'movement_author' owner-timeline.test.tsx` returns 0.
+- [x] 4.3 In `viewpro-app/apps/app-new/src/features/owner/components/owner-property-detail.test.tsx`: replace fixture literal `'movement_author'` at line 134. **Done-when**: `rg 'movement_author' owner-property-detail.test.tsx` returns 0.
+- [x] 4.4 In `viewpro-app/apps/app-new/src/features/owner/utils/owner-whatsapp-contact.test.ts`: replace all `'movement_author'` literals (expected at lines 19, 115, 127). **Done-when**: `rg 'movement_author' owner-whatsapp-contact.test.ts` returns 0.
+- [x] 4.5 Run `rg "'movement_author'" viewpro-app/apps/app-new/src/` — confirm 0 remaining occurrences. **Done-when**: sweep complete; no missed call site.
+- [x] 4.6 Run `pnpm --filter next-shadcn-dashboard-starter lint:strict` + `tsc --noEmit` + `pnpm --filter next-shadcn-dashboard-starter test` — GREEN gate. **Done-when**: 0 lint errors, 0 type errors, ≥ 426 baseline tests pass.
 
 ---
 

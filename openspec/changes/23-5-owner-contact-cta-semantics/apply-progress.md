@@ -335,6 +335,45 @@ All 5 tasks completed (T-3.1 through T-3.5). Gate GREEN at 713 tests. No blocker
 
 ---
 
-## Phases 4–7 — Pending
+## Phase 4 — Frontend rename (DONE)
 
-Tasks from Phase 4 through Phase 7 remain to be implemented. See `tasks.md` for the full checklist.
+All 6 tasks completed (T-4.1 through T-4.6). All gates GREEN. No blockers.
+
+### Files touched
+
+| File | Change |
+|------|--------|
+| `viewpro-app/apps/app-new/src/features/owner/api/types.ts:49` | `OwnerMovementContact.targetType` literal changed from `'movement_author'` to `'assigned_seller'` |
+| `viewpro-app/apps/app-new/src/features/owner/components/owner-timeline.test.tsx:61,126` | Two fixture `targetType` literals swapped to `'assigned_seller'` |
+| `viewpro-app/apps/app-new/src/features/owner/components/owner-property-detail.test.tsx:134` | One fixture `targetType` literal swapped to `'assigned_seller'` |
+| `viewpro-app/apps/app-new/src/features/owner/utils/owner-whatsapp-contact.test.ts:19,115,127` | Three fixture/assertion `targetType` literals swapped to `'assigned_seller'` |
+
+### Verification sweep (T-4.3)
+
+`rg "movement_author" viewpro-app/apps/app-new/src/` → **0 matches** (gate PASSED).
+`rg "movement_author" viewpro-app/` (repo-wide) → **0 matches** (gate PASSED — combined with Phase 2/3 removals, zero occurrences remain anywhere in the repo).
+
+### Cross-verify with API rename (T-4.5)
+
+- `owner-whatsapp-contact.ts`: `OwnerMovementContactResponse.targetType` → `"assigned_seller"` ✓
+- `track-owner-movement-whatsapp-contact-click.use-case.ts`: `MOVEMENT_WHATSAPP_CONTACT_METADATA.targetType` → `'assigned_seller'` ✓
+- Frontend `OwnerMovementContact.targetType` → `'assigned_seller'` ✓
+- Contract match confirmed. No mismatch.
+
+### Gate results (T-4.6)
+
+| Gate | Result |
+|------|--------|
+| `pnpm --filter next-shadcn-dashboard-starter lint:strict` | GREEN (exit 0) |
+| `pnpm --filter next-shadcn-dashboard-starter exec tsc --noEmit` | GREEN (exit 0) |
+| `pnpm --filter next-shadcn-dashboard-starter test -- --run` | GREEN-426 (426/426 passed) |
+
+### Deviations from design
+
+None. Pure literal rename with no behavior change.
+
+---
+
+## Phases 5–7 — Pending
+
+Tasks from Phase 5 through Phase 7 remain to be implemented. See `tasks.md` for the full checklist.

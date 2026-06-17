@@ -16,7 +16,7 @@ const availableContact: OwnerPropertyContact = {
 
 const availableMovementContact: OwnerMovementContact = {
   available: true,
-  targetType: 'movement_author',
+  targetType: 'assigned_seller',
   displayLabel: 'Consultar responsable',
   whatsappPhone: '+54 9 351 111 2222'
 };
@@ -112,7 +112,7 @@ describe('owner WhatsApp contact utilities', () => {
       buildOwnerMovementWhatsappHref({
         contact: {
           available: false,
-          targetType: 'movement_author',
+          targetType: 'assigned_seller',
           displayLabel: 'Contacto no configurado'
         },
         movement,
@@ -124,7 +124,7 @@ describe('owner WhatsApp contact utilities', () => {
       buildOwnerMovementWhatsappHref({
         contact: {
           available: true,
-          targetType: 'movement_author',
+          targetType: 'assigned_seller',
           displayLabel: 'Consultar responsable',
           whatsappPhone: '+54'
         },

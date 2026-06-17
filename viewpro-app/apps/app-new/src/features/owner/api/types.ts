@@ -46,7 +46,7 @@ export type OwnerPropertyContact = {
 
 export type OwnerMovementContact = {
   available: boolean;
-  targetType: 'movement_author';
+  targetType: 'assigned_seller';
   displayLabel: string;
   whatsappPhone?: string;
 };

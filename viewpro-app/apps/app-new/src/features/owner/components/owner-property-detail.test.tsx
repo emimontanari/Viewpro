@@ -131,7 +131,7 @@ const timelineResponse: OwnerTimelineResponse = {
       createdBy: { id: 'agent-1', email: 'sofia.demo@viewpro.local', firstName: 'Sofía' },
       contact: {
         available: true,
-        targetType: 'movement_author',
+        targetType: 'assigned_seller',
         displayLabel: 'Consultar responsable',
         whatsappPhone: '+5493511112222'
       },
