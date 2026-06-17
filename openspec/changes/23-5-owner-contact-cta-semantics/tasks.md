@@ -28,13 +28,13 @@ Chain strategy: not applicable
 
 Run BEFORE any code mutation. Paste output into apply-progress audit section. Block apply if any count deviates.
 
-- [ ] 1.1 Run `rg 'movement_author' viewpro-app/` — list every occurrence; confirm 18 across 9 files. Any count deviation blocks apply. **Done-when**: table of file:line in apply-progress.
-- [ ] 1.2 Run `rg "createdBy\.whatsappPhone" viewpro-app/apps/api/src/` — confirm exactly 1 occurrence at `owner-movement.response.ts:25`. **Done-when**: count confirmed in apply-progress.
-- [ ] 1.3 Run `rg "ownerMovementInclude|ownerEngagementInclude" viewpro-app/apps/api/src/` — confirm single declaration per include. **Done-when**: list of occurrences in apply-progress.
-- [ ] 1.4 Run `rg "mapMovementAuthorWhatsappContact" viewpro-app/` — list every caller. **Done-when**: all callers listed; confirms blast radius before rename.
-- [ ] 1.5 Read `owner-whatsapp-contact.ts`, `responses/owner-movement.response.ts`, `repositories/prisma-owner-portal.repository.ts`, `use-cases/track-owner-movement-whatsapp-contact-click.use-case.ts` — record current line numbers and shapes. **Done-when**: actual signatures documented in apply-progress.
-- [ ] 1.6 Read `seed-demo.mjs` around lines 80-97 and any log-summary lines — confirm adding `whatsappPhone` does NOT shift any count assertion (per D6). **Done-when**: log-line audit confirmed in apply-progress.
-- [ ] 1.7 Run `rg "'movement_author'" viewpro-app/apps/app-new/src/` — confirm frontend occurrences (expected: `types.ts:49`, `owner-timeline.test.tsx:61,126`, `owner-property-detail.test.tsx:134`, `owner-whatsapp-contact.test.ts:19,115,127`). **Done-when**: all frontend occurrences listed.
+- [x] 1.1 Run `rg 'movement_author' viewpro-app/` — list every occurrence; confirm 18 across 9 files. Any count deviation blocks apply. **Done-when**: table of file:line in apply-progress.
+- [x] 1.2 Run `rg "createdBy\.whatsappPhone" viewpro-app/apps/api/src/` — confirm exactly 1 occurrence at `owner-movement.response.ts:25`. **Done-when**: count confirmed in apply-progress.
+- [x] 1.3 Run `rg "ownerMovementInclude|ownerEngagementInclude" viewpro-app/apps/api/src/` — confirm single declaration per include. **Done-when**: list of occurrences in apply-progress.
+- [x] 1.4 Run `rg "mapMovementAuthorWhatsappContact" viewpro-app/` — list every caller. **Done-when**: all callers listed; confirms blast radius before rename.
+- [x] 1.5 Read `owner-whatsapp-contact.ts`, `responses/owner-movement.response.ts`, `repositories/prisma-owner-portal.repository.ts`, `use-cases/track-owner-movement-whatsapp-contact-click.use-case.ts` — record current line numbers and shapes. **Done-when**: actual signatures documented in apply-progress.
+- [x] 1.6 Read `seed-demo.mjs` around lines 80-97 and any log-summary lines — confirm adding `whatsappPhone` does NOT shift any count assertion (per D6). **Done-when**: log-line audit confirmed in apply-progress.
+- [x] 1.7 Run `rg "'movement_author'" viewpro-app/apps/app-new/src/` — confirm frontend occurrences (expected: `types.ts:49`, `owner-timeline.test.tsx:61,126`, `owner-property-detail.test.tsx:134`, `owner-whatsapp-contact.test.ts:19,115,127`). **Done-when**: all frontend occurrences listed.
 
 ---
 
