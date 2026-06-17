@@ -21,7 +21,7 @@ export class UpdateTenantWhatsappPhoneUseCase {
     const normalized = normalizeWhatsappPhone(input.whatsappPhone)
 
     if (!isValidWhatsappPhone(normalized)) {
-      throw new BadRequestException({ code: 'phone.too_short' })
+      throw new BadRequestException({ errorCode: 'phone.too_short' })
     }
 
     await this.tenantsRepository.updateWhatsappPhone(input.tenantId, normalized)

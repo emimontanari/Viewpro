@@ -19,6 +19,7 @@ import { OwnerPortalModule } from './owner-portal/owner-portal.module'
 import { PermissionsModule } from './permissions/permissions.module'
 import { PropertyEngagementsModule } from './property-engagements/property-engagements.module'
 import { TenantsModule } from './tenants/tenants.module'
+import { TenantsContactModule } from './tenants/tenants-contact.module'
 import { TenantContextModule } from './tenant-context/tenant-context.module'
 import { TeamModule } from './team/team.module'
 import { UsersModule } from './users/users.module'
@@ -40,6 +41,7 @@ import { UsersModule } from './users/users.module'
     TenantsModule,
     MembershipsModule,
     AuthModule,
+    TenantsContactModule,
     PermissionsModule,
     TenantContextModule,
     TeamModule,
