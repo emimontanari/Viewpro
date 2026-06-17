@@ -93,13 +93,13 @@ Chain strategy: size-exception
 
 ## Phase 8 — Final verification gates
 
-- [ ] 8.1 Run `pnpm --filter @viewpro/api db:validate` — Done-when: GREEN.
-- [ ] 8.2 Run `pnpm --filter @viewpro/api typecheck` — Done-when: GREEN.
-- [ ] 8.3 Run `pnpm --filter @viewpro/api test` — Done-when: GREEN ≥ 665 + new API tests.
-- [ ] 8.4 Run `pnpm --filter next-shadcn-dashboard-starter lint:strict` — Done-when: GREEN.
-- [ ] 8.5 Run `pnpm --filter next-shadcn-dashboard-starter test` — Done-when: GREEN ≥ 419 + 6.
-- [ ] 8.6 Run seed + seeded smoke: `pnpm demo:seed && pnpm --filter next-shadcn-dashboard-starter test:seeded` — Done-when: 28/28 GREEN.
-- [ ] 8.7 **Sanity inversion (S-3):** temporarily set digit-count threshold to `< 0` (always pass), run S-3 scenario, confirm it FAILS; restore threshold; confirm GREEN. Done-when: inversion confirmed and reverted.
+- [x] 8.1 Run `pnpm --filter @viewpro/api db:validate` — Done-when: GREEN. RESULT: GREEN.
+- [x] 8.2 Run `pnpm --filter @viewpro/api typecheck` — Done-when: GREEN. RESULT: GREEN (zero TS errors).
+- [x] 8.3 Run `pnpm --filter @viewpro/api test` — Done-when: GREEN ≥ 665 + new API tests. RESULT: GREEN — 702/702 passed.
+- [x] 8.4 Run `pnpm --filter next-shadcn-dashboard-starter lint:strict` — Done-when: GREEN. RESULT: GREEN (zero warnings/errors).
+- [x] 8.5 Run `pnpm --filter next-shadcn-dashboard-starter test` — Done-when: GREEN ≥ 419 + 6. RESULT: GREEN — 426/426 passed.
+- [x] 8.6 Run seed + seeded smoke: `pnpm demo:seed && pnpm --filter next-shadcn-dashboard-starter test:seeded` — Done-when: 28/28 GREEN. RESULT: GREEN — 28/28 passed (seed log includes "Contact fixtures: tenant WhatsApp").
+- [x] 8.7 **Sanity inversion (S-3):** temporarily set digit-count threshold to `< 0` (always pass), run S-3 scenario, confirm it FAILS; restore threshold; confirm GREEN. Done-when: inversion confirmed and reverted. RESULT: CONFIRMED — MIN_WHATSAPP_DIGITS=0 caused 7 failures including "throws BadRequestException with code phone.too_short when digit count < 8 (S-3, FR-4)"; restored to 8; all 702 GREEN.
 
 ---
 
