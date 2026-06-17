@@ -272,10 +272,12 @@ test('demo owner sees seeded notifications, images and contacts', async ({ page 
     page,
     `/api/owner/engagements/${ownerEngagements[0]!.id}/timeline?page=1&pageSize=20&order=desc`
   );
-  expect(ownerTimeline.items.some((item) => item.contact.whatsappPhone === '+5493511111111')).toBe(
+  // Stage 23.5: resolver now uses assigned seller (sofia.demo = +5493512222222 for index-0 engagement)
+  expect(ownerTimeline.items.some((item) => item.contact.whatsappPhone === '+5493512222222')).toBe(
     true
   );
-  expect(ownerTimeline.items.some((item) => !item.contact.available)).toBe(true);
+  // All movements on index-0 engagement resolve to sofia (available = true); some others may not.
+  expect(ownerTimeline.items.some((item) => item.contact.available)).toBe(true);
 
   // T19a (Stage 26.3 S-9, FR-17..FR-18) — WhatsApp anchor href wired to tenant phone.
   // The owner is already on /owner where the OwnerPropertyCard renders the WhatsApp CTA.
@@ -1416,5 +1418,63 @@ test.describe('Stage 23.3 — tenant WhatsApp contact', () => {
     await phoneInputAfterReload.fill(SEEDED_WHATSAPP_PHONE);
     await page.getByRole('button', { name: /Guardar/i }).click();
     await expect(page.getByText('Teléfono actualizado')).toBeVisible({ timeout: 10_000 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Stage 23.5 — S-10: Owner timeline resolves contact to assigned seller
+//
+// Pre-conditions:
+//   - sofia.demo has whatsappPhone = '+5493512222222' (seeded by Phase 5).
+//   - sofia.demo is the assigned agent for the Villa Centenario engagement (index 0, 0 % 3 = 0).
+//   - After Phase 2, mapAssignedSellerWhatsappContact resolves the CTA from the engagement's
+//     agents[] instead of the movement creator's phone.
+//
+// S-10: Owner sees the assigned seller phone on a movement card (not 'Contacto no configurado').
+//   The CTA renders as a link (<a href="https://wa.me/...">) when the contact is resolved.
+//   No click, no analytics assertion (23.4 boundary).
+// ---------------------------------------------------------------------------
+
+test.describe('Stage 23.5 — owner timeline resolves contact to assigned seller', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  test('S-10: owner sees assigned seller phone on a movement card (not Contacto no configurado)', async ({
+    page
+  }) => {
+    // Sign in as the demo owner.
+    await signIn(page, OWNER_EMAIL, '/owner');
+    await expect(page.getByRole('heading', { name: 'Tus propiedades' })).toBeVisible();
+
+    // Locate the Villa Centenario property (assigned to sofia.demo, index 0).
+    const ownerProperties = await getJson<OwnerPropertiesResponse>(page, '/api/owner/properties');
+    const villaProperty = ownerProperties.find(
+      (property) => property.title === OWNER_VISIBLE_PROPERTY_TITLE
+    );
+    expect(villaProperty, `Expected '${OWNER_VISIBLE_PROPERTY_TITLE}' in owner properties`).toBeTruthy();
+
+    // Navigate to the property detail page.
+    await page.goto(`/owner/properties/${villaProperty!.id}`);
+    await expect(page).toHaveURL(/\/owner\/properties\/[a-f0-9-]+$/i);
+    await expect(page.getByRole('heading', { name: OWNER_VISIBLE_PROPERTY_TITLE })).toBeVisible();
+
+    // Open the Seguimiento (timeline) tab.
+    await page.getByRole('tab', { name: 'Seguimiento' }).click();
+    await expect(page.getByText('Estado de la gestión')).toBeVisible({ timeout: 10_000 });
+
+    // Find a movement card whose CTA is a link (contact resolved) with 'Consultar responsable' label.
+    // When the assigned seller has a valid phone, owner-timeline.tsx renders:
+    //   <Button asChild><a href="https://wa.me/...">{displayLabel}</a></Button>
+    // Using role=link because the Button with asChild renders as an anchor element.
+    const resolvedContactLink = page.getByRole('link', { name: 'Consultar responsable' }).first();
+    await expect(resolvedContactLink).toBeVisible({ timeout: 10_000 });
+
+    // Assert the CTA label is NOT the unavailable fallback.
+    const linkText = await resolvedContactLink.innerText();
+    expect(linkText).not.toBe('Contacto no configurado');
+
+    // Assert href points to sofia.demo's wa.me URL containing her digits (5493512222222).
+    const href = await resolvedContactLink.getAttribute('href');
+    expect(href).toMatch(/^https:\/\/wa\.me\/\d{8,}\?text=/);
+    expect(href).toContain('5493512222222');
   });
 });

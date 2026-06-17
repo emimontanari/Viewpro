@@ -19,11 +19,28 @@ const ownerPropertyInclude = {
 
 const ownerEngagementInclude = {
   tenant: { select: { id: true, name: true, whatsappPhone: true } },
-  agents: { select: { agentUserId: true, agentUser: { select: { firstName: true, email: true } } } },
+  agents: {
+    select: {
+      agentUserId: true,
+      agentUser: { select: { firstName: true, email: true } },
+    },
+  },
 } satisfies Prisma.PropertyEngagementInclude
 
 const ownerMovementInclude = {
-  createdBy: { select: { id: true, email: true, firstName: true, whatsappPhone: true } },
+  createdBy: { select: { id: true, email: true, firstName: true } },
+  propertyEngagement: {
+    select: {
+      agents: {
+        orderBy: [{ assignedAt: 'asc' }, { agentUserId: 'asc' }],
+        select: {
+          agentUserId: true,
+          assignedAt: true,
+          agentUser: { select: { whatsappPhone: true } },
+        },
+      },
+    },
+  },
 } satisfies Prisma.MovementInclude
 
 @Injectable()

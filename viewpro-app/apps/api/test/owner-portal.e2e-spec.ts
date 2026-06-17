@@ -385,7 +385,7 @@ describe("Owner portal (e2e)", () => {
 		});
 		expect(event.metadata).toEqual({
 			context: "movement",
-			targetType: "movement_author",
+			targetType: "assigned_seller",
 		});
 		expect(JSON.stringify(event.metadata)).not.toContain("549");
 		expect(JSON.stringify(event.metadata)).not.toContain(
@@ -469,16 +469,167 @@ describe("Owner portal (e2e)", () => {
 					firstName: "Owner",
 				},
 				contact: {
-					available: true,
-					targetType: "movement_author",
-					displayLabel: "Consultar responsable",
-					whatsappPhone: "+5493510000000",
+					available: false,
+					targetType: "assigned_seller",
+					displayLabel: "Contacto no configurado",
 				},
 			}),
 		]);
 		expect(visible.body.items[0].createdBy).not.toHaveProperty("passwordHash");
 		expect(visible.body.items[0].createdBy).not.toHaveProperty("whatsappPhone");
 		expect(hiddenResponse.body.message).toBe("Owner engagement not found");
+	});
+
+	// F-1: real Prisma `orderBy` integration gate. If someone flips
+	// `orderBy: [{ assignedAt: 'asc' }, { agentUserId: 'asc' }]` to 'desc',
+	// the mapper-level unit specs would still pass because they receive a
+	// pre-sorted list, so we need a real-DB test that proves the SQL clause
+	// itself selects the earliest-assigned agent.
+	it("timeline contact resolves to the earliest-assigned agent regardless of insert order", async () => {
+		const manager = await registerTenantSession(
+			"owner-orderby-manager@example.com",
+			"Owner OrderBy Homes",
+		);
+		const agentA = await registerTenantSession(
+			"owner-orderby-agent-a@example.com",
+			"Owner OrderBy Agent A Homes",
+		);
+		const agentB = await registerTenantSession(
+			"owner-orderby-agent-b@example.com",
+			"Owner OrderBy Agent B Homes",
+		);
+		await prisma.user.update({
+			where: { id: agentA.userId },
+			data: { whatsappPhone: "+5493510000111" },
+		});
+		await prisma.user.update({
+			where: { id: agentB.userId },
+			data: { whatsappPhone: "+5493510000222" },
+		});
+		await addTenantAgent(agentA.userId, manager.tenantId);
+		await addTenantAgent(agentB.userId, manager.tenantId);
+
+		const owner = await registerOwnerSession(
+			"owner-orderby@example.com",
+			"Owner OrderBy Temporary Homes",
+		);
+		const owned = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Owner OrderBy Property",
+		}).expect(201);
+		await grantOwnerAccess(owner.userId, owned.body.property.id);
+
+		// Insert agent B FIRST (later assignedAt) and agent A SECOND (earlier
+		// assignedAt). JS-side `agents[0]` after a naive fetch would pick B;
+		// only the SQL `orderBy: [{ assignedAt: 'asc' }, ...]` puts A at index 0.
+		await prisma.propertyAgent.create({
+			data: {
+				tenantId: manager.tenantId,
+				propertyEngagementId: owned.body.id,
+				agentUserId: agentB.userId,
+				assignedByUserId: manager.userId,
+				assignedAt: new Date("2026-06-02T10:00:00.000Z"),
+			},
+		});
+		await prisma.propertyAgent.create({
+			data: {
+				tenantId: manager.tenantId,
+				propertyEngagementId: owned.body.id,
+				agentUserId: agentA.userId,
+				assignedByUserId: manager.userId,
+				assignedAt: new Date("2026-06-01T10:00:00.000Z"),
+			},
+		});
+		await createMovement(manager.agent, manager.tenantId, owned.body.id, {
+			observation: "Movement under multi-agent orderBy gate.",
+		}).expect(201);
+
+		const visible = await owner.agent
+			.get(`/api/owner/engagements/${owned.body.id}/timeline`)
+			.expect(200);
+
+		expect(visible.body.items).toHaveLength(1);
+		expect(visible.body.items[0].contact).toEqual({
+			available: true,
+			targetType: "assigned_seller",
+			displayLabel: "Consultar responsable",
+			whatsappPhone: "+5493510000111",
+		});
+	});
+
+	// F-1 tie-break sub-case: identical assignedAt forces the secondary
+	// `agentUserId asc` clause to be the deciding factor.
+	it("timeline contact tie-breaks to the lower agentUserId when assignedAt is identical", async () => {
+		const manager = await registerTenantSession(
+			"owner-orderby-tie-manager@example.com",
+			"Owner OrderBy Tie Homes",
+		);
+		const lowerId = "00000000-0000-0000-0000-000000000001";
+		const higherId = "ffffffff-ffff-ffff-ffff-ffffffffffff";
+		await prisma.user.create({
+			data: {
+				id: lowerId,
+				email: "owner-orderby-tie-agent-lower@example.com",
+				passwordHash: "x",
+				firstName: "Lower",
+				whatsappPhone: "+5493510000001",
+			},
+		});
+		await prisma.user.create({
+			data: {
+				id: higherId,
+				email: "owner-orderby-tie-agent-higher@example.com",
+				passwordHash: "x",
+				firstName: "Higher",
+				whatsappPhone: "+5493510000999",
+			},
+		});
+		await addTenantAgent(lowerId, manager.tenantId);
+		await addTenantAgent(higherId, manager.tenantId);
+
+		const owner = await registerOwnerSession(
+			"owner-orderby-tie@example.com",
+			"Owner OrderBy Tie Temporary Homes",
+		);
+		const owned = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Owner OrderBy Tie Property",
+		}).expect(201);
+		await grantOwnerAccess(owner.userId, owned.body.property.id);
+
+		const sharedAssignedAt = new Date("2026-06-05T10:00:00.000Z");
+		// Insert the HIGHER agentUserId first so DB insert order != orderBy.
+		await prisma.propertyAgent.create({
+			data: {
+				tenantId: manager.tenantId,
+				propertyEngagementId: owned.body.id,
+				agentUserId: higherId,
+				assignedByUserId: manager.userId,
+				assignedAt: sharedAssignedAt,
+			},
+		});
+		await prisma.propertyAgent.create({
+			data: {
+				tenantId: manager.tenantId,
+				propertyEngagementId: owned.body.id,
+				agentUserId: lowerId,
+				assignedByUserId: manager.userId,
+				assignedAt: sharedAssignedAt,
+			},
+		});
+		await createMovement(manager.agent, manager.tenantId, owned.body.id, {
+			observation: "Movement under tie-break gate.",
+		}).expect(201);
+
+		const visible = await owner.agent
+			.get(`/api/owner/engagements/${owned.body.id}/timeline`)
+			.expect(200);
+
+		expect(visible.body.items).toHaveLength(1);
+		expect(visible.body.items[0].contact).toEqual({
+			available: true,
+			targetType: "assigned_seller",
+			displayLabel: "Consultar responsable",
+			whatsappPhone: "+5493510000001",
+		});
 	});
 
 	it("rejects unauthenticated owner requests", async () => {

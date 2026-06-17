@@ -81,6 +81,7 @@ const DEMO_USERS = [
 		firstName: "Sofía",
 		lastName: "Demo",
 		role: TenantRole.MANAGER,
+		whatsappPhone: "+5493512222222",
 	},
 	{
 		email: "martin.demo@viewpro.local",
@@ -2111,7 +2112,7 @@ function printSummary(result) {
 	console.log(`Admin audit events: ${result.adminEventsCount}`);
 	console.log(`Custom outcome labels: ${result.outcomeLabelsCount}`);
 	console.log(
-		"Contact fixtures: tenant WhatsApp, Martín seller WhatsApp, Sofía no-config movement contact",
+		"Contact fixtures: tenant WhatsApp, Martín seller WhatsApp, Sofía assigned-seller WhatsApp (Stage 23.5)",
 	);
 	// Stage 26.4 — isolation tenant summary
 	if (result.isolationResult) {

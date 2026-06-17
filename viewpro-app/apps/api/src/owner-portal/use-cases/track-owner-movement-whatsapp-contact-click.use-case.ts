@@ -5,7 +5,7 @@ import { OWNER_PORTAL_REPOSITORY, type OwnerPortalRepository } from '../owner-po
 
 const MOVEMENT_WHATSAPP_CONTACT_METADATA = {
   context: 'movement',
-  targetType: 'movement_author',
+  targetType: 'assigned_seller',
 } as const
 
 @Injectable()

@@ -34,7 +34,19 @@ export type OwnerMovementContactContext = {
 export type OwnerMovementRecord = Prisma.MovementGetPayload<{
 	include: {
 		createdBy: {
-			select: { id: true; email: true; firstName: true; whatsappPhone: true };
+			select: { id: true; email: true; firstName: true };
+		};
+		propertyEngagement: {
+			select: {
+				agents: {
+					orderBy: [{ assignedAt: "asc" }, { agentUserId: "asc" }];
+					select: {
+						agentUserId: true;
+						assignedAt: true;
+						agentUser: { select: { whatsappPhone: true } };
+					};
+				};
+			};
 		};
 	};
 }>;
