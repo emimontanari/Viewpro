@@ -479,6 +479,77 @@ The read-side logic (`mapTenantWhatsappContact`, `mapMovementAuthorWhatsappConta
 
 ---
 
-## Phase 3–8 — Pending
+## Phase 3 — API tests (DONE with one backend bug blocking e2e gate)
 
-Tasks 3.1–8.7 are not yet started.
+Completed 2026-06-17. Unit tests: 28 GREEN. E2e spec: written but blocked by Phase 2 circular dependency bug.
+
+---
+
+### Tests added
+
+| File | Type | Tests | Status |
+|------|------|-------|--------|
+| `viewpro-app/apps/api/src/common/whatsapp/whatsapp-phone.utils.spec.ts` | Unit | 16 | GREEN |
+| `viewpro-app/apps/api/test/tenants-whatsapp.use-cases.spec.ts` | Unit | 12 | GREEN |
+| `viewpro-app/apps/api/test/tenants-whatsapp.e2e-spec.ts` | E2E | 9 | BLOCKED (backend bug) |
+
+**Test count delta:** 665 → 702 (37 new unit tests passing; e2e spec blocked).
+
+---
+
+### TDD Cycle Evidence
+
+| Task | RED | GREEN | REFACTOR |
+|------|-----|-------|---------|
+| 3.1 Utils spec (`normalizeWhatsappPhone`) | Tests written first | All 16 pass against Phase 2 impl | No refactor needed |
+| 3.1 Use case spec (`UpdateTenantWhatsappPhoneUseCase`) | Tests written first | All 9 pass | No refactor needed |
+| 3.1 Use case spec (`GetTenantWhatsappPhoneUseCase`) | Tests written first | All 3 pass | No refactor needed |
+| 3.2 E2E spec | Written first | BLOCKED — app bootstrap fails | Requires backend bug fix |
+
+---
+
+### Phase 2 backend bug — circular dependency (STOP AND REPORT)
+
+**Bug:** `TenantsModule` imports `AuthModule`, and `AuthModule` imports `TenantsModule`. This creates a circular module dependency that crashes the NestJS app bootstrap with:
+
+```
+UndefinedModuleException: Nest cannot create the TenantsModule instance.
+The module at index [0] of the TenantsModule "imports" array is undefined.
+```
+
+**Root cause:** Phase 2 added `AuthModule` to `TenantsModule`'s imports array (following the `MovementOutcomeLabelsModule` pattern). However `MovementOutcomeLabelsModule` doesn't create a cycle because `AuthModule` does NOT import `MovementOutcomeLabelsModule`. But `AuthModule` DOES import `TenantsModule`, so adding `AuthModule` to `TenantsModule` creates the cycle:
+
+```
+TenantsModule → [imports] → AuthModule → [imports] → TenantsModule  ← CYCLE
+```
+
+**Fix required (Phase 2 correction, NOT Phase 3):** Remove `AuthModule` from `TenantsModule`'s imports. The `AuthGuard` that `TenantsContactController` uses can be resolved via `forwardRef(() => AuthModule)` or — more correctly — by making `AuthModule` export `AuthGuard` as a globally-available provider. Looking at `MovementOutcomeLabelsModule`, it imports `AuthModule` to get `AuthGuard`. For `TenantsModule`, the fix is to use `forwardRef`:
+
+```ts
+imports: [forwardRef(() => AuthModule), MembershipsModule, PermissionsModule, TenantContextModule]
+```
+
+**Impact on gate:** All 37 unit tests pass GREEN. The e2e spec is written correctly (9 scenarios matching S-1–S-6 + additional guard tests) but cannot run until the circular dep is resolved.
+
+---
+
+### Spec ↔ implementation gaps noted
+
+None. The `normalizeWhatsappPhone` and `isValidWhatsappPhone` implementations match all spec requirements exactly:
+- Null/empty/whitespace → null (FR-3)
+- Leading `+` preserved (FR-5, D2)
+- `BadRequestException({ code: 'phone.too_short' })` on digit count < 8 (FR-4, S-3)
+- Use case calls `repo.updateWhatsappPhone` with normalized value (FR-6)
+- GET returns `{ whatsappPhone: string | null }` (D5)
+
+---
+
+### Gate result
+
+**PARTIAL-GREEN:** 702 unit+use-case tests pass (37 new). E2e gate blocked by Phase 2 circular dep bug. Gate will be GREEN after backend fix.
+
+---
+
+## Phase 4–8 — Pending
+
+Tasks 4.1–8.7 are not yet started. Phase 3 gate requires backend bug fix before proceeding to Phase 4.

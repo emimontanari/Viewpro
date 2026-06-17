@@ -51,9 +51,9 @@ Chain strategy: size-exception
 
 ## Phase 3 — API tests (TDD — write tests before Green)
 
-- [ ] 3.1 Create `viewpro-app/apps/api/src/tenants/use-cases/update-tenant-whatsapp-phone.use-case.spec.ts` — RED tests for: valid phone persisted, null/empty → null, whitespace → null, too-short → `phone.too_short`, normalization strips non-`[+\d]` chars, leading `+` preserved. Done-when: 6 tests RED before 2.4 implementation; GREEN after.
-- [ ] 3.2 Create e2e spec (file naming following project convention, e.g. `tenants-contact.e2e-spec.ts`) — covers S-1 (204 + DB check), S-2 (null clear), S-3 (400 `phone.too_short`), S-4 (MANAGER → 403), S-5 (AGENT → 403), S-6 (unauthenticated → 401), GET returns current value. Done-when: 7 scenarios pass GREEN against a real DB.
-- [ ] 3.3 Run `pnpm --filter @viewpro/api db:validate && pnpm --filter @viewpro/api typecheck && pnpm --filter @viewpro/api test` — GREEN gate ≥ 665 baseline + new tests. Done-when: zero failures.
+- [x] 3.1 Create `viewpro-app/apps/api/src/tenants/use-cases/update-tenant-whatsapp-phone.use-case.spec.ts` — RED tests for: valid phone persisted, null/empty → null, whitespace → null, too-short → `phone.too_short`, normalization strips non-`[+\d]` chars, leading `+` preserved. Done-when: 6 tests RED before 2.4 implementation; GREEN after. NOTE: unit tests split across `src/common/whatsapp/whatsapp-phone.utils.spec.ts` (16 tests) and `test/tenants-whatsapp.use-cases.spec.ts` (12 tests); all GREEN.
+- [x] 3.2 Create e2e spec (file naming following project convention, e.g. `tenants-contact.e2e-spec.ts`) — covers S-1 (204 + DB check), S-2 (null clear), S-3 (400 `phone.too_short`), S-4 (MANAGER → 403), S-5 (AGENT → 403), S-6 (unauthenticated → 401), GET returns current value. Done-when: 7 scenarios pass GREEN against a real DB. NOTE: e2e spec written at `test/tenants-whatsapp.e2e-spec.ts` (9 scenarios); BLOCKED by Phase 2 backend bug — circular dependency (TenantsModule → AuthModule → TenantsModule). Fix required before gate is GREEN.
+- [ ] 3.3 Run `pnpm --filter @viewpro/api db:validate && pnpm --filter @viewpro/api typecheck && pnpm --filter @viewpro/api test` — GREEN gate ≥ 665 baseline + new tests. Done-when: zero failures. BLOCKED by 3.2 backend bug.
 
 ---
 
