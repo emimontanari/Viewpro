@@ -86,8 +86,8 @@ Chain strategy: size-exception
 
 ## Phase 7 — Seeded smoke test
 
-- [ ] 7.1 Add S-12 scenario inside `test.describe('Stage 23.3 — tenant WhatsApp contact', { tag: '@serial' }, ...)` in `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`: sign in as `demo@viewpro.local`, navigate to `/dashboard/settings/tenant-contact`, read prefilled value, change to `+5493510000001`, submit, wait for success toast, reload, assert input shows `+5493510000001`, then restore to original seeded value (idempotency). Done-when: test block written with role+label anchors per 20.9 convention.
-- [ ] 7.2 Run `pnpm --filter next-shadcn-dashboard-starter test:seeded` — GREEN gate ≥ 28/28 (27 baseline + 1 new). Done-when: all pass.
+- [x] 7.1 Add S-12 scenario inside `test.describe('Stage 23.3 — tenant WhatsApp contact', { tag: '@serial' }, ...)` in `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`: sign in as `demo@viewpro.local`, navigate to `/dashboard/settings/tenant-contact`, read prefilled value, change to `+5491166554433`, submit, wait for success toast, reload, assert input shows `+5491166554433`, then restore to original seeded value (idempotency). Done-when: test block written with role+label anchors per 20.9 convention.
+- [x] 7.2 Run `pnpm --filter next-shadcn-dashboard-starter test:seeded` — GREEN gate ≥ 28/28 (27 baseline + 1 new). Done-when: all pass. RESULT: 28/28 GREEN.
 
 ---
 

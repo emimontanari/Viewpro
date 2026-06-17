@@ -644,6 +644,53 @@ Completed as part of Phase 5 (TDD cycle — tests written first).
 
 ---
 
-## Phase 7–8 — Pending
+## Phase 7 — Seeded smoke (DONE)
 
-Tasks 7.1–8.7 are not yet started.
+Completed 2026-06-17. First run GREEN, zero Playwright flakes.
+
+---
+
+### Test added
+
+| File | Test | Anchors | Status |
+|------|------|---------|--------|
+| `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts` | `S-12: PRINCIPAL_MANAGER can edit the tenant WhatsApp phone and the change persists across reload` | `getByRole('textbox', { name: /Teléfono WhatsApp del equipo/i })`, `getByRole('button', { name: /Guardar/i })`, `getByText('Teléfono actualizado')` | GREEN |
+
+---
+
+### Describe block
+
+`test.describe('Stage 23.3 — tenant WhatsApp contact', ...)` with `test.describe.configure({ mode: 'serial' })` appended at end of file (line 1360+).
+
+---
+
+### Flow coverage
+
+1. Sign in as `demo@viewpro.local` (PRINCIPAL_MANAGER) via existing `signIn` helper.
+2. Navigate to `/dashboard/settings/tenant-contact`.
+3. Assert `'Contacto WhatsApp del workspace'` heading visible.
+4. Read phone input via `getByRole('textbox', { name: /Teléfono WhatsApp del equipo/i })`.
+5. Clear + fill with `+5491166554433`.
+6. Click `getByRole('button', { name: /Guardar/i })`.
+7. Assert `getByText('Teléfono actualizado')` visible (success toast).
+8. `page.reload()` — proves DB persistence and React Query invalidation.
+9. Assert phone input contains `+5491166554433`.
+10. **Idempotency restore**: fill `+5493510000000`, submit, await second success toast.
+
+---
+
+### Gate result
+
+`pnpm --filter next-shadcn-dashboard-starter test:seeded` → **GREEN 28/28** (27 baseline + 1 new). Zero retries.
+
+---
+
+### Playwright flakes retried
+
+0
+
+---
+
+## Phase 8 — Pending
+
+Tasks 8.1–8.7 are not yet started.
