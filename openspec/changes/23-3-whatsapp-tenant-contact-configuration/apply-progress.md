@@ -550,6 +550,46 @@ None. The `normalizeWhatsappPhone` and `isValidWhatsappPhone` implementations ma
 
 ---
 
-## Phase 4–8 — Pending
+## Phase 4 — BFF + session helper (DONE)
 
-Tasks 4.1–8.7 are not yet started. Phase 3 gate requires backend bug fix before proceeding to Phase 4.
+Completed 2026-06-17.
+
+---
+
+### Files created / changed
+
+| File | Action | Summary |
+|------|--------|---------|
+| `viewpro-app/apps/app-new/src/app/api/tenants/me/whatsapp-phone/route.ts` | Created | BFF route with GET + PATCH handlers; Zod validation on PATCH body before forward; `proxyJsonResponse` / `proxyBffErrorResponse` pattern |
+| `viewpro-app/apps/app-new/src/lib/session.ts` | Modified | Added `TENANT_MANAGE_SETTINGS: 'tenant.manage_settings'` to `TENANT_PERMISSIONS` constant; added `canManageTenantSettings(membership)` helper |
+
+---
+
+### Canonical BFF pattern matched
+
+- Imports: `bffFetch`, `proxyBffErrorResponse`, `proxyJsonResponse` from `@/lib/bff-api` — matches `movement-outcome-labels/route.ts` exactly.
+- GET handler: no body validation needed; forwards directly with `bffFetch`, returns `proxyJsonResponse`.
+- PATCH handler: parses body with `request.json().catch(() => ({}))`, validates with Zod schema `z.object({ whatsappPhone: z.string().nullable() })`, returns 400 with `{ statusCode, message, error }` on parse failure, forwards on success with `content-type: application/json`, returns `proxyJsonResponse`.
+- Both handlers wrapped in try/catch returning `proxyBffErrorResponse(error, fallbackMessage)`.
+- Status codes 204/400/401/403 propagate verbatim via `proxyJsonResponse` (FR-7, S-7 covered).
+
+---
+
+### Session.ts entry added
+
+- `TENANT_MANAGE_SETTINGS: 'tenant.manage_settings'` added to `TENANT_PERMISSIONS` object (additive, zero AT-RISK consumers per Audit 1).
+- `TenantPermission` union type auto-widens — no manual change needed (derives from `(typeof TENANT_PERMISSIONS)[keyof typeof TENANT_PERMISSIONS]`).
+- `canManageTenantSettings(membership)` helper added next to `canManagePropertyEngagements` — single-key `hasTenantPermission` wrapper; follows identical pattern.
+
+---
+
+### Gate result
+
+- `pnpm --filter next-shadcn-dashboard-starter lint:strict` → **GREEN** (zero warnings/errors).
+- `tsc --noEmit` → pre-existing test errors in `activity-document-request-feed-item.test.tsx` and `use-property-movements-controller.test.tsx` — confirmed pre-existing before Phase 4 changes (verified by stash test). Zero new type errors introduced by Phase 4.
+
+---
+
+## Phase 5–8 — Pending
+
+Tasks 5.1–8.7 are not yet started.

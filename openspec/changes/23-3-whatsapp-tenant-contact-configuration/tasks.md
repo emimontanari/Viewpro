@@ -59,9 +59,9 @@ Chain strategy: size-exception
 
 ## Phase 4 — BFF route and frontend session helper
 
-- [ ] 4.1 Add `TENANT_MANAGE_SETTINGS: 'tenant.manage_settings'` to `TENANT_PERMISSIONS` in `viewpro-app/apps/app-new/src/lib/session.ts`. Add `canManageTenantSettings(membership)` helper next to existing `canManagePropertyEngagements`. Done-when: typecheck passes.
-- [ ] 4.2 Create `viewpro-app/apps/app-new/src/app/api/tenants/me/whatsapp-phone/route.ts` — GET and PATCH handlers using `bffFetch`, `proxyBffErrorResponse`, `proxyJsonResponse`, Zod body validation on PATCH before forward. Propagates 204/400/401/403 verbatim (covers S-7). Done-when: route file compiles and `pnpm --filter next-shadcn-dashboard-starter lint:strict` passes.
-- [ ] 4.3 Run `pnpm --filter next-shadcn-dashboard-starter lint:strict && pnpm --filter next-shadcn-dashboard-starter typecheck` — GREEN gate. Done-when: zero errors.
+- [x] 4.1 Add `TENANT_MANAGE_SETTINGS: 'tenant.manage_settings'` to `TENANT_PERMISSIONS` in `viewpro-app/apps/app-new/src/lib/session.ts`. Add `canManageTenantSettings(membership)` helper next to existing `canManagePropertyEngagements`. Done-when: typecheck passes.
+- [x] 4.2 Create `viewpro-app/apps/app-new/src/app/api/tenants/me/whatsapp-phone/route.ts` — GET and PATCH handlers using `bffFetch`, `proxyBffErrorResponse`, `proxyJsonResponse`, Zod body validation on PATCH before forward. Propagates 204/400/401/403 verbatim (covers S-7). Done-when: route file compiles and `pnpm --filter next-shadcn-dashboard-starter lint:strict` passes.
+- [x] 4.3 Run `pnpm --filter next-shadcn-dashboard-starter lint:strict && pnpm --filter next-shadcn-dashboard-starter typecheck` — GREEN gate. Done-when: zero errors. NOTE: lint:strict GREEN; tsc pre-existing errors in unrelated test files confirmed baseline (not introduced by Phase 4).
 
 ---
 
