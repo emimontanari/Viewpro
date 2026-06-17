@@ -385,7 +385,7 @@ describe("Owner portal (e2e)", () => {
 		});
 		expect(event.metadata).toEqual({
 			context: "movement",
-			targetType: "movement_author",
+			targetType: "assigned_seller",
 		});
 		expect(JSON.stringify(event.metadata)).not.toContain("549");
 		expect(JSON.stringify(event.metadata)).not.toContain(
@@ -469,10 +469,9 @@ describe("Owner portal (e2e)", () => {
 					firstName: "Owner",
 				},
 				contact: {
-					available: true,
-					targetType: "movement_author",
-					displayLabel: "Consultar responsable",
-					whatsappPhone: "+5493510000000",
+					available: false,
+					targetType: "assigned_seller",
+					displayLabel: "Contacto no configurado",
 				},
 			}),
 		]);

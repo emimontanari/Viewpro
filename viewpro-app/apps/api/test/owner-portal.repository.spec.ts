@@ -347,10 +347,65 @@ describe("Owner portal repository", () => {
 			createdBy: { id: "agent-1", email: "ada@example.com", firstName: "Ada" },
 			contact: {
 				available: false,
-				targetType: "movement_author",
+				targetType: "assigned_seller",
 				displayLabel: "Contacto no configurado",
 			},
 			createdAt: "2026-01-05T00:00:00.000Z",
+		});
+	});
+
+	// T-3.2: mapper resolves assigned seller phone from agents[0] (S-7 at mapper level)
+	it("mapOwnerMovement resolves assigned seller contact from agents[0]", () => {
+		const movement = makeMovement({
+			propertyEngagement: {
+				agents: [
+					{
+						agentUserId: "seller-1",
+						assignedAt: new Date("2024-01-01T00:00:00.000Z"),
+						agentUser: { whatsappPhone: "+5493512222222" },
+					},
+				],
+			},
+		});
+
+		const result = mapOwnerMovement(movement as never);
+
+		expect(result.contact).toEqual({
+			available: true,
+			targetType: "assigned_seller",
+			displayLabel: "Consultar responsable",
+			whatsappPhone: "+5493512222222",
+		});
+	});
+
+	// T-3.2: S-4 tie-break at mapper level — identical assignedAt, lower agentUserId wins
+	it("mapOwnerMovement picks lower agentUserId when assignedAt is identical", () => {
+		const sharedDate = new Date("2024-03-15T00:00:00.000Z");
+		const movement = makeMovement({
+			propertyEngagement: {
+				agents: [
+					// SQL-sorted: 'user-aaa' before 'user-bbb'
+					{
+						agentUserId: "user-aaa",
+						assignedAt: sharedDate,
+						agentUser: { whatsappPhone: "+5493512222222" },
+					},
+					{
+						agentUserId: "user-bbb",
+						assignedAt: sharedDate,
+						agentUser: { whatsappPhone: "+5493511111111" },
+					},
+				],
+			},
+		});
+
+		const result = mapOwnerMovement(movement as never);
+
+		expect(result.contact).toEqual({
+			available: true,
+			targetType: "assigned_seller",
+			displayLabel: "Consultar responsable",
+			whatsappPhone: "+5493512222222",
 		});
 	});
 });
@@ -418,6 +473,13 @@ function makeMovement(overrides: Partial<Record<string, unknown>> = {}) {
 			email: "ada@example.com",
 			firstName: "Ada",
 			whatsappPhone: null,
+		},
+		propertyEngagement: {
+			agents: [] as Array<{
+				agentUserId: string;
+				assignedAt: Date;
+				agentUser: { whatsappPhone: string | null };
+			}>,
 		},
 		createdAt: new Date("2026-01-05T00:00:00.000Z"),
 		...overrides,

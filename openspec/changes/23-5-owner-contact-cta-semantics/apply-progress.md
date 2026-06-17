@@ -282,6 +282,59 @@ One additional guard `if (!seller)` was added after `agents[0]` assignment (line
 
 ---
 
-## Phases 3–7 — Pending
+## Phase 3 — API tests (DONE)
 
-Tasks from Phase 3 through Phase 7 remain to be implemented. See `tasks.md` for the full checklist.
+All 5 tasks completed (T-3.1 through T-3.5). Gate GREEN at 713 tests. No blockers.
+
+### Tests touched (existing — migrated)
+
+| File | Change |
+|------|--------|
+| `test/owner-portal.use-cases.spec.ts` | `makeMovement` default now includes `propertyEngagement: { agents: [] }` |
+| `test/owner-portal.use-cases.spec.ts` | Test "returns mapped owner engagement timeline pagination" — contact assertion updated: `movement_author` → `assigned_seller` |
+| `test/owner-portal.use-cases.spec.ts` | Test "maps movement author WhatsApp contact..." — renamed to "maps assigned seller WhatsApp contact..."; fixture migrated from `createdBy.whatsappPhone` to `propertyEngagement.agents[0].agentUser.whatsappPhone` |
+| `test/owner-portal.use-cases.spec.ts` | Test "does not fallback to tenant contact for unavailable movement author WhatsApp" — renamed; fixture migrated from short `createdBy.whatsappPhone` to `agents[0]` with `whatsappPhone: null` |
+| `test/owner-portal.use-cases.spec.ts` | Analytics test — `metadata.targetType: "movement_author"` → `"assigned_seller"` |
+| `test/owner-portal.repository.spec.ts` | `makeMovement` default now includes `propertyEngagement: { agents: [] }` |
+| `test/owner-portal.repository.spec.ts` | `mapOwnerMovement` timeline assertion — `targetType: "movement_author"` → `"assigned_seller"` |
+| `test/owner-portal.e2e-spec.ts` | Analytics metadata assertion — `targetType: "movement_author"` → `"assigned_seller"` |
+| `test/owner-portal.e2e-spec.ts` | Timeline contact assertion — migrated from `available: true / movement_author / creator's phone` to `available: false / assigned_seller / no phone` (correct: test engagement has no PropertyAgent rows) |
+
+### Tests added (new — S-1 through S-9)
+
+| Test | File | Scenario |
+|------|------|----------|
+| S-1: resolves contact from assigned seller when creator has no phone | `use-cases.spec.ts` | S-1 |
+| S-2: does not use creator phone when assigned seller has no phone | `use-cases.spec.ts` | S-2 |
+| S-3: picks the seller with the earliest assignedAt when two sellers exist | `use-cases.spec.ts` | S-3 |
+| S-4: breaks assignedAt tie by agentUserId ascending | `use-cases.spec.ts` | S-4 |
+| S-5: returns unavailable contact when no sellers are assigned | `use-cases.spec.ts` | S-5 |
+| S-6: returns unavailable contact when assigned seller phone has fewer than 8 digits | `use-cases.spec.ts` | S-6 |
+| S-7: resolves correct targetType and displayLabel for valid assigned seller phone | `use-cases.spec.ts` | S-7 |
+| S-8: property-level tenant contact resolves via mapTenantWhatsappContact with targetType tenant | `use-cases.spec.ts` | S-8 |
+| S-9: track-owner-movement-whatsapp-contact-click emits assigned_seller in analytics metadata | `use-cases.spec.ts` | S-9 (dedicated test) |
+| mapOwnerMovement resolves assigned seller contact from agents[0] | `repository.spec.ts` | S-7 (mapper level) |
+| mapOwnerMovement picks lower agentUserId when assignedAt is identical | `repository.spec.ts` | S-4 (mapper level) |
+
+### Counts
+
+| Metric | Value |
+|--------|-------|
+| Existing tests updated | 9 (5 in use-cases.spec.ts, 2 in repository.spec.ts, 2 in e2e-spec.ts) |
+| New tests added | 11 (9 in use-cases.spec.ts, 2 in repository.spec.ts) |
+| Total API tests | 713 |
+
+### Gate result
+
+`pnpm --filter @viewpro/api test` → **GREEN-713** (exit 0). One `ECONNRESET` flake in `property-engagement-images.e2e-spec.ts` observed on first run (unrelated to owner portal); second run clean at 713/713.
+
+### Spec ↔ implementation gap
+
+- **E2E test semantic update**: The e2e timeline test previously set `manager.whatsappPhone` and expected it to drive the movement contact. After Phase 2 rewire, the mapper reads `propertyEngagement.agents`, not `createdBy.whatsappPhone`. Since the e2e fixture creates an engagement with no `PropertyAgent` rows, the correct expected contact is now `available: false`. Updated accordingly — this is a spec-correct change, not a gap.
+- No other deviations from design.
+
+---
+
+## Phases 4–7 — Pending
+
+Tasks from Phase 4 through Phase 7 remain to be implemented. See `tasks.md` for the full checklist.

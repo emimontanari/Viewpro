@@ -281,7 +281,7 @@ describe("Owner portal use cases", () => {
 					id: "movement-1",
 					contact: {
 						available: false,
-						targetType: "movement_author",
+						targetType: "assigned_seller",
 						displayLabel: "Contacto no configurado",
 					},
 					createdAt: "2026-01-05T00:00:00.000Z",
@@ -293,16 +293,19 @@ describe("Owner portal use cases", () => {
 		});
 	});
 
-	it("maps movement author WhatsApp contact in owner engagement timeline", async () => {
+	it("maps assigned seller WhatsApp contact in owner engagement timeline", async () => {
 		const engagement = makeEngagement({ id: "engagement-1" });
 		const movement = makeMovement({
 			id: "movement-1",
 			propertyEngagementId: "engagement-1",
-			createdBy: {
-				id: "agent-1",
-				email: "ada@example.com",
-				firstName: "Ada",
-				whatsappPhone: "+5493510000000",
+			propertyEngagement: {
+				agents: [
+					{
+						agentUserId: "agent-1",
+						assignedAt: new Date("2024-01-01T00:00:00.000Z"),
+						agentUser: { whatsappPhone: "+5493510000000" },
+					},
+				],
 			},
 		});
 		const repository = makeRepository({
@@ -324,7 +327,7 @@ describe("Owner portal use cases", () => {
 			expect.objectContaining({
 				contact: {
 					available: true,
-					targetType: "movement_author",
+					targetType: "assigned_seller",
 					displayLabel: "Consultar responsable",
 					whatsappPhone: "+5493510000000",
 				},
@@ -338,7 +341,7 @@ describe("Owner portal use cases", () => {
 		expect(result.items[0].createdBy).not.toHaveProperty("whatsappPhone");
 	});
 
-	it("does not fallback to tenant contact for unavailable movement author WhatsApp", async () => {
+	it("does not fallback to tenant contact when assigned seller has no valid phone", async () => {
 		const engagement = makeEngagement({
 			id: "engagement-1",
 			tenant: {
@@ -350,11 +353,14 @@ describe("Owner portal use cases", () => {
 		const movement = makeMovement({
 			id: "movement-1",
 			propertyEngagementId: "engagement-1",
-			createdBy: {
-				id: "agent-1",
-				email: "ada@example.com",
-				firstName: "Ada",
-				whatsappPhone: "123",
+			propertyEngagement: {
+				agents: [
+					{
+						agentUserId: "agent-1",
+						assignedAt: new Date("2024-01-01T00:00:00.000Z"),
+						agentUser: { whatsappPhone: null },
+					},
+				],
 			},
 		});
 		const repository = makeRepository({
@@ -374,7 +380,7 @@ describe("Owner portal use cases", () => {
 
 		expect(result.items[0].contact).toEqual({
 			available: false,
-			targetType: "movement_author",
+			targetType: "assigned_seller",
 			displayLabel: "Contacto no configurado",
 		});
 		expect(result.items[0].contact).not.toHaveProperty("whatsappPhone");
@@ -495,7 +501,7 @@ describe("Owner portal use cases", () => {
 			propertyEngagementId: "engagement-1",
 			propertyAssetId: "property-1",
 			movementId: "movement-1",
-			metadata: { context: "movement", targetType: "movement_author" },
+			metadata: { context: "movement", targetType: "assigned_seller" },
 		});
 	});
 
@@ -562,6 +568,357 @@ describe("Owner portal use cases", () => {
 				order: "desc",
 			}),
 		).rejects.toThrow(new NotFoundException("Owner engagement not found"));
+	});
+
+	// S-1: assigned seller has phone; movement creator does not
+	it("S-1: resolves contact from assigned seller when creator has no phone", async () => {
+		const engagement = makeEngagement({ id: "engagement-1" });
+		const movement = makeMovement({
+			id: "movement-1",
+			propertyEngagementId: "engagement-1",
+			createdBy: {
+				id: "manager-1",
+				email: "manager@example.com",
+				firstName: "Manager",
+				whatsappPhone: null,
+			},
+			propertyEngagement: {
+				agents: [
+					{
+						agentUserId: "seller-1",
+						assignedAt: new Date("2024-01-01T00:00:00.000Z"),
+						agentUser: { whatsappPhone: "+5493512222222" },
+					},
+				],
+			},
+		});
+		const repository = makeRepository({
+			findEngagementTimelineForOwner: vi
+				.fn()
+				.mockResolvedValue({ engagement, items: [movement], total: 1 }),
+		});
+		const useCase = new GetOwnerEngagementTimelineUseCase(repository);
+
+		const result = await useCase.execute({
+			userId: "owner-1",
+			engagementId: "engagement-1",
+			page: 1,
+			pageSize: 20,
+			order: "desc",
+		});
+
+		expect(result.items[0].contact).toEqual({
+			available: true,
+			targetType: "assigned_seller",
+			displayLabel: "Consultar responsable",
+			whatsappPhone: "+5493512222222",
+		});
+	});
+
+	// S-2: assigned seller has no phone; creator's phone is NOT used
+	it("S-2: does not use creator phone when assigned seller has no phone", async () => {
+		const engagement = makeEngagement({ id: "engagement-1" });
+		const movement = makeMovement({
+			id: "movement-1",
+			propertyEngagementId: "engagement-1",
+			createdBy: {
+				id: "manager-1",
+				email: "manager@example.com",
+				firstName: "Manager",
+				whatsappPhone: "+5493511111111",
+			},
+			propertyEngagement: {
+				agents: [
+					{
+						agentUserId: "seller-1",
+						assignedAt: new Date("2024-01-01T00:00:00.000Z"),
+						agentUser: { whatsappPhone: null },
+					},
+				],
+			},
+		});
+		const repository = makeRepository({
+			findEngagementTimelineForOwner: vi
+				.fn()
+				.mockResolvedValue({ engagement, items: [movement], total: 1 }),
+		});
+		const useCase = new GetOwnerEngagementTimelineUseCase(repository);
+
+		const result = await useCase.execute({
+			userId: "owner-1",
+			engagementId: "engagement-1",
+			page: 1,
+			pageSize: 20,
+			order: "desc",
+		});
+
+		expect(result.items[0].contact).toEqual({
+			available: false,
+			targetType: "assigned_seller",
+			displayLabel: "Contacto no configurado",
+		});
+		expect(result.items[0].contact).not.toHaveProperty("whatsappPhone");
+	});
+
+	// S-3: two sellers; earliest assignedAt wins and has a phone
+	it("S-3: picks the seller with the earliest assignedAt when two sellers exist", async () => {
+		const engagement = makeEngagement({ id: "engagement-1" });
+		const movement = makeMovement({
+			id: "movement-1",
+			propertyEngagementId: "engagement-1",
+			propertyEngagement: {
+				agents: [
+					// agents[0] is earliest (SQL-sorted by assignedAt asc)
+					{
+						agentUserId: "seller-a",
+						assignedAt: new Date("2024-01-01T00:00:00.000Z"),
+						agentUser: { whatsappPhone: "+5493512222222" },
+					},
+					{
+						agentUserId: "seller-b",
+						assignedAt: new Date("2024-06-01T00:00:00.000Z"),
+						agentUser: { whatsappPhone: "+5493511111111" },
+					},
+				],
+			},
+		});
+		const repository = makeRepository({
+			findEngagementTimelineForOwner: vi
+				.fn()
+				.mockResolvedValue({ engagement, items: [movement], total: 1 }),
+		});
+		const useCase = new GetOwnerEngagementTimelineUseCase(repository);
+
+		const result = await useCase.execute({
+			userId: "owner-1",
+			engagementId: "engagement-1",
+			page: 1,
+			pageSize: 20,
+			order: "desc",
+		});
+
+		expect(result.items[0].contact).toEqual({
+			available: true,
+			targetType: "assigned_seller",
+			displayLabel: "Consultar responsable",
+			whatsappPhone: "+5493512222222",
+		});
+	});
+
+	// S-4: identical assignedAt; agentUserId ascending tie-break
+	it("S-4: breaks assignedAt tie by agentUserId ascending", async () => {
+		const sharedAssignedAt = new Date("2024-03-15T00:00:00.000Z");
+		const engagement = makeEngagement({ id: "engagement-1" });
+		const movement = makeMovement({
+			id: "movement-1",
+			propertyEngagementId: "engagement-1",
+			propertyEngagement: {
+				agents: [
+					// agents[0] wins: 'user-aaa' < 'user-bbb' (SQL-sorted by agentUserId asc)
+					{
+						agentUserId: "user-aaa",
+						assignedAt: sharedAssignedAt,
+						agentUser: { whatsappPhone: "+5493512222222" },
+					},
+					{
+						agentUserId: "user-bbb",
+						assignedAt: sharedAssignedAt,
+						agentUser: { whatsappPhone: "+5493511111111" },
+					},
+				],
+			},
+		});
+		const repository = makeRepository({
+			findEngagementTimelineForOwner: vi
+				.fn()
+				.mockResolvedValue({ engagement, items: [movement], total: 1 }),
+		});
+		const useCase = new GetOwnerEngagementTimelineUseCase(repository);
+
+		const result = await useCase.execute({
+			userId: "owner-1",
+			engagementId: "engagement-1",
+			page: 1,
+			pageSize: 20,
+			order: "desc",
+		});
+
+		expect(result.items[0].contact).toEqual({
+			available: true,
+			targetType: "assigned_seller",
+			displayLabel: "Consultar responsable",
+			whatsappPhone: "+5493512222222",
+		});
+	});
+
+	// S-5: zero assigned sellers → unavailable
+	it("S-5: returns unavailable contact when no sellers are assigned", async () => {
+		const engagement = makeEngagement({ id: "engagement-1" });
+		const movement = makeMovement({
+			id: "movement-1",
+			propertyEngagementId: "engagement-1",
+			propertyEngagement: { agents: [] },
+		});
+		const repository = makeRepository({
+			findEngagementTimelineForOwner: vi
+				.fn()
+				.mockResolvedValue({ engagement, items: [movement], total: 1 }),
+		});
+		const useCase = new GetOwnerEngagementTimelineUseCase(repository);
+
+		const result = await useCase.execute({
+			userId: "owner-1",
+			engagementId: "engagement-1",
+			page: 1,
+			pageSize: 20,
+			order: "desc",
+		});
+
+		expect(result.items[0].contact).toEqual({
+			available: false,
+			targetType: "assigned_seller",
+			displayLabel: "Contacto no configurado",
+		});
+	});
+
+	// S-6: assigned seller has 7-digit phone (below MIN_WHATSAPP_DIGITS threshold of 8)
+	it("S-6: returns unavailable contact when assigned seller phone has fewer than 8 digits", async () => {
+		const engagement = makeEngagement({ id: "engagement-1" });
+		const movement = makeMovement({
+			id: "movement-1",
+			propertyEngagementId: "engagement-1",
+			propertyEngagement: {
+				agents: [
+					{
+						agentUserId: "seller-1",
+						assignedAt: new Date("2024-01-01T00:00:00.000Z"),
+						// '+111234567' strips to '111234567' = 9 digits - use '1234567' (7 digits) instead
+						agentUser: { whatsappPhone: "1234567" },
+					},
+				],
+			},
+		});
+		const repository = makeRepository({
+			findEngagementTimelineForOwner: vi
+				.fn()
+				.mockResolvedValue({ engagement, items: [movement], total: 1 }),
+		});
+		const useCase = new GetOwnerEngagementTimelineUseCase(repository);
+
+		const result = await useCase.execute({
+			userId: "owner-1",
+			engagementId: "engagement-1",
+			page: 1,
+			pageSize: 20,
+			order: "desc",
+		});
+
+		expect(result.items[0].contact).toEqual({
+			available: false,
+			targetType: "assigned_seller",
+			displayLabel: "Contacto no configurado",
+		});
+	});
+
+	// S-7: valid phone produces correct targetType, displayLabel and whatsappPhone
+	it("S-7: resolves correct targetType and displayLabel for valid assigned seller phone", async () => {
+		const engagement = makeEngagement({ id: "engagement-1" });
+		const movement = makeMovement({
+			id: "movement-1",
+			propertyEngagementId: "engagement-1",
+			propertyEngagement: {
+				agents: [
+					{
+						agentUserId: "seller-1",
+						assignedAt: new Date("2024-01-01T00:00:00.000Z"),
+						agentUser: { whatsappPhone: "+5493512222222" },
+					},
+				],
+			},
+		});
+		const repository = makeRepository({
+			findEngagementTimelineForOwner: vi
+				.fn()
+				.mockResolvedValue({ engagement, items: [movement], total: 1 }),
+		});
+		const useCase = new GetOwnerEngagementTimelineUseCase(repository);
+
+		const result = await useCase.execute({
+			userId: "owner-1",
+			engagementId: "engagement-1",
+			page: 1,
+			pageSize: 20,
+			order: "desc",
+		});
+
+		expect(result.items[0].contact).toEqual({
+			available: true,
+			targetType: "assigned_seller",
+			displayLabel: "Consultar responsable",
+			whatsappPhone: "+5493512222222",
+		});
+	});
+
+	// S-8: property-level Contactar inmobiliaria is unchanged (regression guard)
+	it("S-8: property-level tenant contact resolves via mapTenantWhatsappContact with targetType tenant", async () => {
+		const property = makeProperty({ id: "property-1" });
+		const engagement = makeEngagement({
+			id: "engagement-1",
+			propertyAssetId: "property-1",
+			tenant: {
+				id: "tenant-1",
+				name: "Acme Realty",
+				whatsappPhone: "+5493510000000",
+			},
+		});
+		const repository = makeRepository({
+			findPropertyByOwner: vi.fn().mockResolvedValue(property),
+			findEngagementsForOwnerProperty: vi.fn().mockResolvedValue([engagement]),
+		});
+		const useCase = new ListOwnerPropertyEngagementsUseCase(repository);
+
+		const result = await useCase.execute({
+			userId: "owner-1",
+			propertyAssetId: "property-1",
+		});
+
+		expect(result[0].contact).toEqual({
+			available: true,
+			targetType: "tenant",
+			displayLabel: "Contactar inmobiliaria",
+			whatsappPhone: "+5493510000000",
+		});
+	});
+
+	// S-9: tracking use case writes metadata.targetType: 'assigned_seller'
+	it("S-9: track-owner-movement-whatsapp-contact-click emits assigned_seller in analytics metadata", async () => {
+		const repository = makeRepository({
+			findMovementContactContextForOwner: vi.fn().mockResolvedValue({
+				id: "movement-1",
+				tenantId: "tenant-1",
+				propertyEngagementId: "engagement-1",
+				propertyAssetId: "property-1",
+			}),
+		});
+		const analyticsService = {
+			track: vi.fn().mockResolvedValue({ status: "persisted" }),
+		};
+		const useCase = new TrackOwnerMovementWhatsappContactClickUseCase(
+			repository,
+			analyticsService as never,
+		);
+
+		await useCase.execute({
+			userId: "owner-1",
+			engagementId: "engagement-1",
+			movementId: "movement-1",
+		});
+
+		expect(analyticsService.track).toHaveBeenCalledWith(
+			expect.objectContaining({
+				metadata: { context: "movement", targetType: "assigned_seller" },
+			}),
+		);
 	});
 });
 
@@ -642,6 +999,13 @@ function makeMovement(overrides: Partial<Record<string, unknown>> = {}) {
 			email: "ada@example.com",
 			firstName: "Ada",
 			whatsappPhone: null,
+		},
+		propertyEngagement: {
+			agents: [] as Array<{
+				agentUserId: string;
+				assignedAt: Date;
+				agentUser: { whatsappPhone: string | null };
+			}>,
 		},
 		createdAt: new Date("2026-01-05T00:00:00.000Z"),
 		...overrides,

@@ -57,11 +57,11 @@ Depends on: Phase 1 audit complete.
 
 Depends on: Phase 2 GREEN typecheck.
 
-- [ ] 3.1 In `viewpro-app/apps/api/test/owner-portal.use-cases.spec.ts`: add test cases for S-1 (assigned seller has phone; creator does not), S-2 (assigned seller null phone; creator's phone ignored), S-3 (two sellers; earliest `assignedAt` wins), S-4 (identical `assignedAt`; `agentUserId` tie-break), S-5 (zero sellers → unavailable). Each case uses synthetic fixture objects; no Prisma client. **Done-when**: 5 new tests present and named after scenarios.
-- [ ] 3.2 In `viewpro-app/apps/api/test/owner-portal.repository.spec.ts`: add mapper-level test for assigned-seller resolution covering the Prisma include shape and the `agents[0]` pick. Also add tie-break test mirroring S-4 at the repository-spec level. **Done-when**: tests assert `targetType === 'assigned_seller'` and correct `whatsappPhone`.
-- [ ] 3.3 In the same or adjacent spec file: add/update analytics tracking test asserting the use-case emits `metadata.targetType === 'assigned_seller'` (S-9). **Done-when**: analytics assertion present for `track-owner-movement-whatsapp-contact-click`.
-- [ ] 3.4 Update all existing occurrences of `'movement_author'` literal in `owner-portal.use-cases.spec.ts`, `owner-portal.repository.spec.ts`, and `owner-portal.e2e-spec.ts` to `'assigned_seller'`. **Done-when**: `rg 'movement_author' viewpro-app/apps/api/test/` returns 0.
-- [ ] 3.5 Run `pnpm --filter @viewpro/api test` — GREEN gate. **Done-when**: ≥ 702 baseline tests pass + new tests.
+- [x] 3.1 In `viewpro-app/apps/api/test/owner-portal.use-cases.spec.ts`: add test cases for S-1 (assigned seller has phone; creator does not), S-2 (assigned seller null phone; creator's phone ignored), S-3 (two sellers; earliest `assignedAt` wins), S-4 (identical `assignedAt`; `agentUserId` tie-break), S-5 (zero sellers → unavailable). Each case uses synthetic fixture objects; no Prisma client. **Done-when**: 5 new tests present and named after scenarios.
+- [x] 3.2 In `viewpro-app/apps/api/test/owner-portal.repository.spec.ts`: add mapper-level test for assigned-seller resolution covering the Prisma include shape and the `agents[0]` pick. Also add tie-break test mirroring S-4 at the repository-spec level. **Done-when**: tests assert `targetType === 'assigned_seller'` and correct `whatsappPhone`.
+- [x] 3.3 In the same or adjacent spec file: add/update analytics tracking test asserting the use-case emits `metadata.targetType === 'assigned_seller'` (S-9). **Done-when**: analytics assertion present for `track-owner-movement-whatsapp-contact-click`.
+- [x] 3.4 Update all existing occurrences of `'movement_author'` literal in `owner-portal.use-cases.spec.ts`, `owner-portal.repository.spec.ts`, and `owner-portal.e2e-spec.ts` to `'assigned_seller'`. **Done-when**: `rg 'movement_author' viewpro-app/apps/api/test/` returns 0.
+- [x] 3.5 Run `pnpm --filter @viewpro/api test` — GREEN gate. **Done-when**: ≥ 702 baseline tests pass + new tests.
 
 ---
 
@@ -113,13 +113,13 @@ Depends on: all prior phases GREEN.
 
 | Scenario | Covered by task(s) | Done |
 |----------|--------------------|------|
-| S-1 Assigned seller has phone; creator does not | T-3.1 | [ ] |
-| S-2 Assigned seller null phone; creator's phone ignored | T-3.1 | [ ] |
-| S-3 Two sellers; earliest `assignedAt` wins | T-3.1, T-3.2 | [ ] |
-| S-4 Identical `assignedAt`; `agentUserId` tie-break | T-3.1, T-3.2 | [ ] |
-| S-5 Zero assigned sellers | T-3.1 | [ ] |
-| S-6 Assigned seller with 7-digit phone (below threshold) | T-3.1 | [ ] |
-| S-7 Valid phone produces correct wa.me URL | T-3.1, T-3.2 | [ ] |
-| S-8 Property-level Contactar inmobiliaria unchanged (regression) | T-3.4, T-4.6 | [ ] |
-| S-9 Tracking endpoint writes `assigned_seller` | T-3.3 | [ ] |
+| S-1 Assigned seller has phone; creator does not | T-3.1 | [x] |
+| S-2 Assigned seller null phone; creator's phone ignored | T-3.1 | [x] |
+| S-3 Two sellers; earliest `assignedAt` wins | T-3.1, T-3.2 | [x] |
+| S-4 Identical `assignedAt`; `agentUserId` tie-break | T-3.1, T-3.2 | [x] |
+| S-5 Zero assigned sellers | T-3.1 | [x] |
+| S-6 Assigned seller with 7-digit phone (below threshold) | T-3.1 | [x] |
+| S-7 Valid phone produces correct wa.me URL | T-3.1, T-3.2 | [x] |
+| S-8 Property-level Contactar inmobiliaria unchanged (regression) | T-3.4, T-4.6 | [x] |
+| S-9 Tracking endpoint writes `assigned_seller` | T-3.3 | [x] |
 | S-10 Seeded smoke: demo owner sees sofia.demo's phone | T-6.1, T-6.2 | [ ] |
