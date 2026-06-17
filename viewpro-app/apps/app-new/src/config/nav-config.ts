@@ -73,6 +73,19 @@ export const navGroups: NavGroup[] = [
     ]
   },
   {
+    label: 'Configuración',
+    items: [
+      {
+        title: 'Contacto WhatsApp',
+        url: '/dashboard/settings/tenant-contact',
+        icon: 'profile',
+        isActive: false,
+        items: [],
+        access: { permission: 'tenant.manage_settings' }
+      }
+    ]
+  },
+  {
     label: 'Cuenta',
     items: [
       {

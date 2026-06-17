@@ -67,20 +67,20 @@ Chain strategy: size-exception
 
 ## Phase 5 — Frontend feature folder and page
 
-- [ ] 5.1 Create `viewpro-app/apps/app-new/src/features/settings/tenant-contact/api/types.ts` — `WhatsappPhoneResponse` and `UpdateWhatsappPhonePayload` TypeScript types. Done-when: file compiles.
-- [ ] 5.2 Create `viewpro-app/apps/app-new/src/features/settings/tenant-contact/api/service.ts` — `getTenantWhatsappPhone()` and `updateTenantWhatsappPhone(payload)` fetch wrappers over `/api/tenants/me/whatsapp-phone`. Done-when: file compiles.
-- [ ] 5.3 Create `viewpro-app/apps/app-new/src/features/settings/tenant-contact/api/queries.ts` — `useTenantWhatsappPhoneQuery()` (React Query GET) and `useUpdateTenantWhatsappPhoneMutation()` (invalidates query key on success). Done-when: file compiles.
-- [ ] 5.4 Create `viewpro-app/apps/app-new/src/features/settings/schemas/tenant-whatsapp-phone.ts` — Zod schema: transform trim + strip non-`[+\d]`; refine digit count ≥ 8 with message `phone.too_short`; allow null/empty → null. Done-when: schema used by form and BFF.
-- [ ] 5.5 Create `viewpro-app/apps/app-new/src/features/settings/tenant-contact/components/tenant-contact-form.tsx` — `useAppForm` with Zod schema from 5.4, prefilled via query from 5.3, submit calls mutation, success/error toasts via `sonner`, placeholder `+54 9 351 000 0000`, label `"Teléfono WhatsApp del equipo"`. Done-when: component renders with mock data in test (T-6.1 RED before this).
-- [ ] 5.6 Create `viewpro-app/apps/app-new/src/app/dashboard/settings/tenant-contact/page.tsx` — server component; checks `canManageTenantSettings(activeMembership)`, redirects to `/dashboard` if false (S-9); renders `<TenantContactForm />` when true (S-8). Done-when: page compiles and redirect logic is unit-testable.
-- [ ] 5.7 Add nav menu entry for `PRINCIPAL_MANAGER` in `viewpro-app/apps/app-new/src/config/data.ts` (or equivalent nav config) pointing to `/dashboard/settings/tenant-contact`. Done-when: entry only visible when `canManageTenantSettings` returns true.
+- [x] 5.1 Create `viewpro-app/apps/app-new/src/features/settings/tenant-contact/api/types.ts` — `WhatsappPhoneResponse` and `UpdateWhatsappPhonePayload` TypeScript types. Done-when: file compiles.
+- [x] 5.2 Create `viewpro-app/apps/app-new/src/features/settings/tenant-contact/api/service.ts` — `getTenantWhatsappPhone()` and `updateTenantWhatsappPhone(payload)` fetch wrappers over `/api/tenants/me/whatsapp-phone`. Done-when: file compiles.
+- [x] 5.3 Create `viewpro-app/apps/app-new/src/features/settings/tenant-contact/api/queries.ts` — `useTenantWhatsappPhoneQuery()` (React Query GET) and `useUpdateTenantWhatsappPhoneMutation()` (invalidates query key on success). Done-when: file compiles.
+- [x] 5.4 Create `viewpro-app/apps/app-new/src/features/settings/schemas/tenant-whatsapp-phone.ts` — Zod schema: transform trim + strip non-`[+\d]`; refine digit count ≥ 8 with message `phone.too_short`; allow null/empty → null. Done-when: schema used by form and BFF.
+- [x] 5.5 Create `viewpro-app/apps/app-new/src/features/settings/tenant-contact/components/tenant-contact-form.tsx` — `useAppForm` with Zod schema from 5.4, prefilled via query from 5.3, submit calls mutation, success/error toasts via `sonner`, placeholder `+54 9 351 000 0000`, label `"Teléfono WhatsApp del equipo"`. Done-when: component renders with mock data in test (T-6.1 RED before this).
+- [x] 5.6 Create `viewpro-app/apps/app-new/src/app/dashboard/settings/tenant-contact/page.tsx` — client component; checks `canManageTenantSettings(activeMembership)` via `useActiveTenant`, redirects to `/dashboard` if false (S-9); renders `<TenantContactForm />` when true (S-8). Done-when: page compiles and redirect logic is unit-testable.
+- [x] 5.7 Add nav menu entry for `PRINCIPAL_MANAGER` in `viewpro-app/apps/app-new/src/config/nav-config.ts` pointing to `/dashboard/settings/tenant-contact`. Done-when: entry only visible when `canManageTenantSettings` returns true.
 
 ---
 
 ## Phase 6 — Frontend tests
 
-- [ ] 6.1 Create `viewpro-app/apps/app-new/src/features/settings/tenant-contact/components/tenant-contact-form.test.tsx` — 6 scenarios (D8): renders prefilled value, valid submit triggers mutation, clear+submit sends null, short phone blocks submit (no network call), 204 shows success toast, 400 `phone.too_short` shows error toast. Done-when: 6 tests GREEN.
-- [ ] 6.2 Run `pnpm --filter next-shadcn-dashboard-starter test` — GREEN gate ≥ 419 baseline + 6 new. Done-when: zero failures.
+- [x] 6.1 Create `viewpro-app/apps/app-new/src/features/settings/tenant-contact/components/tenant-contact-form.test.tsx` — 7 scenarios (D8 + 1 extra error toast): renders prefilled value, null empty state, valid submit triggers mutation, clear+submit sends null, short phone blocks submit (no network call), success toast, error toast with errorCode. Done-when: 7 tests GREEN.
+- [x] 6.2 Run `pnpm --filter next-shadcn-dashboard-starter test` — GREEN gate 426 (419 baseline + 7 new). Done-when: zero failures.
 
 ---
 

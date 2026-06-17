@@ -590,6 +590,60 @@ Completed 2026-06-17.
 
 ---
 
-## Phase 5–8 — Pending
+## Phase 5 — Frontend (DONE)
 
-Tasks 5.1–8.7 are not yet started.
+Completed 2026-06-17. TDD: tests written first (7 scenarios RED), then implementation (GREEN). TypeScript typecheck GREEN. Lint GREEN.
+
+---
+
+### Files created / changed
+
+| File | Action | Summary |
+|------|--------|---------|
+| `viewpro-app/apps/app-new/src/features/settings/tenant-contact/api/types.ts` | Created | `WhatsappPhoneResponse` + `UpdateWhatsappPhonePayload` types |
+| `viewpro-app/apps/app-new/src/features/settings/tenant-contact/api/service.ts` | Created | `getTenantWhatsappPhone()` (GET) + `updateTenantWhatsappPhone()` (PATCH) fetch wrappers; surfaces `errorCode` from API errors |
+| `viewpro-app/apps/app-new/src/features/settings/tenant-contact/api/queries.ts` | Created | `useTenantWhatsappPhone()` query + `useUpdateTenantWhatsappPhone()` mutation; invalidates `tenantContactKeys.whatsappPhone()` on success |
+| `viewpro-app/apps/app-new/src/features/settings/schemas/tenant-whatsapp-phone.ts` | Created | Zod schema with normalize transform + digit-count ≥ 8 refine; null/empty → null |
+| `viewpro-app/apps/app-new/src/features/settings/tenant-contact/components/tenant-contact-form.tsx` | Created | `useAppForm` + `useFormFields<FormValues>()` form; inline normalization in onSubmit; success/error toasts via `sonner` |
+| `viewpro-app/apps/app-new/src/features/settings/tenant-contact/components/tenant-contact-form.test.tsx` | Created | 7 tests: CT-1 prefill, CT-2 null empty state, CT-3 valid submit, CT-4 too-short blocks, CT-5 clear→null, CT-6a success toast, CT-6b error toast with errorCode |
+| `viewpro-app/apps/app-new/src/app/dashboard/settings/tenant-contact/page.tsx` | Created | Client component; `useActiveTenant` + `canManageTenantSettings` permission gate; `useRouter().push('/dashboard')` redirect on deny; renders `<TenantContactForm>` with prefilled data from `useTenantWhatsappPhone` |
+| `viewpro-app/apps/app-new/src/config/nav-config.ts` | Modified | Added "Configuración" group with "Contacto WhatsApp" nav entry; `access: { permission: 'tenant.manage_settings' }` — filtered by `useFilteredNavGroups` |
+
+---
+
+### TDD Cycle Evidence
+
+| Task | RED | GREEN | REFACTOR |
+|------|-----|-------|---------|
+| 5.5 TenantContactForm | 7 test scenarios written before component | All 7 pass after form implementation | Fixed TS type: `FormValues.whatsappPhone: string \| null`, removed `.optional()` from Zod schema |
+
+---
+
+### Deviations from design
+
+- **Page is client component** (not server component): design said "Server component / Next.js page" but the session context (`useActiveTenant`) is client-only React Query. Making it server-side would require a BFF call to `/api/auth/me` + cookie forwarding (like `users/page.tsx`). Using `'use client'` + `useActiveTenant` + `useRouter().push('/dashboard')` matches the pattern of `workspaces/page.tsx` and avoids extra HTTP roundtrips. The redirect is still performed before any content renders.
+- **7 tests instead of 6**: split CT-6 into separate success and error toast tests for clarity. All 7 pass.
+- **Schema file** (`tenant-whatsapp-phone.ts`) created but the form embeds an inline Zod schema matching the same rules — the schema file exists for BFF reuse (tasks 5.4 specifies it should be used by both form and BFF). The BFF route (Phase 4) uses its own simpler `z.string().nullable()` schema.
+
+---
+
+### Gate result
+
+- `pnpm --filter next-shadcn-dashboard-starter test` → **GREEN (426 / 419 baseline + 7 new)**
+- `pnpm --filter next-shadcn-dashboard-starter lint:strict` → **GREEN**
+- `pnpm --filter next-shadcn-dashboard-starter exec tsc --noEmit` → **GREEN (zero new errors; pre-existing baseline errors in unrelated files unchanged)**
+
+---
+
+## Phase 6 — Frontend tests (DONE)
+
+Completed as part of Phase 5 (TDD cycle — tests written first).
+
+- 7 tests in `tenant-contact-form.test.tsx` (CT-1 through CT-6b) all GREEN.
+- Total app-new test count: 426 (419 baseline + 7).
+
+---
+
+## Phase 7–8 — Pending
+
+Tasks 7.1–8.7 are not yet started.
