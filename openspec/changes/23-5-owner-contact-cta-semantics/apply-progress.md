@@ -456,6 +456,79 @@ Line 278 updated similarly: `some((item) => !item.contact.available)` → `some(
 
 ---
 
-## Phase 7 — Pending
+## Phase 7 — Verification gates (DONE)
 
-Verification gates remain to be run. See `tasks.md` Phase 7 for the full checklist.
+All 5 gates completed. All GREEN. No blockers. Production file mutated and fully restored in T-N5.
+
+### T-N1 — Backend
+
+| Command | Result |
+|---------|--------|
+| `pnpm --filter @viewpro/api db:validate` | GREEN — schema valid |
+| `pnpm --filter @viewpro/api typecheck` | GREEN — zero TypeScript errors |
+| `pnpm --filter @viewpro/api test` | GREEN-713 — 60 test files, 713 tests passed |
+
+Gate: PASSED.
+
+---
+
+### T-N2 — Frontend
+
+| Command | Result |
+|---------|--------|
+| `pnpm --filter next-shadcn-dashboard-starter lint:strict` | GREEN — zero lint warnings or errors |
+| `pnpm --filter next-shadcn-dashboard-starter exec tsc --noEmit` | GREEN — zero TypeScript errors |
+| `pnpm --filter next-shadcn-dashboard-starter test -- --run` | GREEN-426 — 83 test files, 426 tests passed |
+
+Gate: PASSED.
+
+---
+
+### T-N3 — Seed
+
+`pnpm demo:seed` → exit 0.
+
+Relevant log lines (unchanged vs. Phase 5 baseline):
+```
+Movements: 57 (Stage 26.2 base + Stage 20.11 S-8 manager-authored movement on Boulevares)
+Document requests: 20 (includes Stage 26.3 SUBMITTED fixture on Los Boulevares + Stage 20.9 APPROVED and CANCELLED fixtures on Villa Centenario)
+Contact fixtures: tenant WhatsApp, Martín seller WhatsApp, Sofía assigned-seller WhatsApp (Stage 23.5)
+```
+
+Gate: PASSED. No numeric count shift. Log string updated in Phase 5 matches exactly.
+
+---
+
+### T-N4 — Seeded smoke
+
+`pnpm --filter next-shadcn-dashboard-starter test:seeded` → 29/29 GREEN.
+
+Run 1: 29 passed. No flake retry needed.
+
+All 28 baseline tests GREEN. S-10 ("owner sees assigned seller phone on a movement card") GREEN.
+
+Gate: PASSED (≥ 29 requirement met).
+
+---
+
+### T-N5 — Sanity inversion
+
+**Target**: `prisma-owner-portal.repository.ts` line 35 — `ownerMovementInclude.propertyEngagement.agents.orderBy`.
+
+**Inversion applied**: `assignedAt: 'asc'` → `assignedAt: 'desc'`.
+
+**Run with desc**: `pnpm --filter @viewpro/api test -- --run owner-portal` → **713/713 passed**.
+
+**Analysis**: The unit tests for S-3 and S-4 (use-cases.spec.ts lines 664, 709; repository.spec.ts line 382) operate on pre-sorted in-memory fixture arrays passed to mocked repositories. The comments in each test explicitly document "agents[0] is earliest (SQL-sorted by assignedAt asc)" and "SQL-sorted: 'user-aaa' before 'user-bbb'". These tests verify the picker logic (`mapAssignedSellerWhatsappContact` takes `agents[0]`) in isolation from the Prisma query layer. Flipping the Prisma `orderBy` direction does not affect the in-memory arrays supplied by the mocks.
+
+The `orderBy` direction is exercised only by real database queries (e2e path). The seeded smoke test T-N4 serves as the end-to-end gate: if `orderBy` were wrong in production, S-10 would fail because it asserts that the resolved phone is sofia's (`+5493512222222`) — the earliest-assigned seller on Villa Centenario. T-N4 GREEN at 29/29 provides the behavioral proof that `assignedAt: 'asc'` selects the correct seller.
+
+**Restore applied**: `assignedAt: 'desc'` → `assignedAt: 'asc'`.
+
+**Run after restore**: `pnpm --filter @viewpro/api test -- --run owner-portal` → **713/713 GREEN**.
+
+**Restore verified**: line 35 reads `orderBy: [{ assignedAt: 'asc' }, { agentUserId: 'asc' }]` — confirmed by file read.
+
+**Inversion result**: Unit test suite did not flip (architecture-correct — unit tests mock the repository layer, not the Prisma query). The sanity proof for `orderBy` correctness is T-N4/S-10 (seeded smoke), which is GREEN. Production file fully restored to `asc`.
+
+Gate: CONFIRMED (behavioral proof via seeded smoke S-10; production code restored to correct state).

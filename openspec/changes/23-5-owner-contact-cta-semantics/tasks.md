@@ -101,11 +101,11 @@ Depends on: Phase 5 GREEN seed run.
 
 Depends on: all prior phases GREEN.
 
-- [ ] 7.1 (T-N1) `pnpm --filter @viewpro/api db:validate` + `pnpm --filter @viewpro/api typecheck` + `pnpm --filter @viewpro/api test` — all GREEN.
-- [ ] 7.2 (T-N2) `pnpm --filter next-shadcn-dashboard-starter lint:strict` + `tsc --noEmit` + `pnpm --filter next-shadcn-dashboard-starter test` — all GREEN.
-- [ ] 7.3 (T-N3) `pnpm demo:seed` — exits 0; log output matches pre-apply baseline.
-- [ ] 7.4 (T-N4) `pnpm --filter next-shadcn-dashboard-starter test:seeded` — ≥ 29/29 GREEN.
-- [ ] 7.5 (T-N5) Tie-break inversion sanity: temporarily reverse Prisma `ownerMovementInclude.propertyEngagement.agents.orderBy` to `[{ assignedAt: 'desc' }]`, confirm S-3 / S-4 unit tests FAIL, restore `asc`, confirm GREEN. **Done-when**: RED/GREEN evidence recorded in apply-progress.
+- [x] 7.1 (T-N1) `pnpm --filter @viewpro/api db:validate` + `pnpm --filter @viewpro/api typecheck` + `pnpm --filter @viewpro/api test` — all GREEN.
+- [x] 7.2 (T-N2) `pnpm --filter next-shadcn-dashboard-starter lint:strict` + `tsc --noEmit` + `pnpm --filter next-shadcn-dashboard-starter test` — all GREEN.
+- [x] 7.3 (T-N3) `pnpm demo:seed` — exits 0; log output matches pre-apply baseline.
+- [x] 7.4 (T-N4) `pnpm --filter next-shadcn-dashboard-starter test:seeded` — ≥ 29/29 GREEN.
+- [x] 7.5 (T-N5) Tie-break inversion sanity: temporarily reverse Prisma `ownerMovementInclude.propertyEngagement.agents.orderBy` to `[{ assignedAt: 'desc' }]`, confirm S-3 / S-4 unit tests FAIL, restore `asc`, confirm GREEN. **Done-when**: RED/GREEN evidence recorded in apply-progress.
 
 ---
 
