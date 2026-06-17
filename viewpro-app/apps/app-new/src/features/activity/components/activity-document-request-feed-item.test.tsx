@@ -156,10 +156,10 @@ describe('ActivityDocumentRequestFeedItem — document status badge', () => {
 // S-6..S-9 — Version status labels (scoped under "Estado del archivo")
 // ---------------------------------------------------------------------------
 
-function getVersionSection() {
+function getVersionSection(): HTMLElement {
   const heading = screen.getByText('Estado del archivo');
   // The heading is inside a flex div; its parent is the panel div.
-  return heading.closest('div[class*="rounded-xl"]') ?? heading.parentElement!;
+  return (heading.closest('div[class*="rounded-xl"]') ?? heading.parentElement!) as HTMLElement;
 }
 
 describe('ActivityDocumentRequestFeedItem — version status labels', () => {

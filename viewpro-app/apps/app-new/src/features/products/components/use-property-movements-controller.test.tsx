@@ -38,7 +38,9 @@ const movement: ProductMovement = {
   source: 'MANUAL',
   tenantId: 'tenant-1',
   type: 'GENERAL_UPDATE',
-  visitCount: null
+  visitCount: null,
+  builtInOutcome: null,
+  customOutcomeLabel: null
 };
 
 describe('usePropertyMovementsController', () => {
