@@ -243,6 +243,45 @@ Total: **7 occurrences** in 4 frontend files, confirmed covered by T-1.1 sweep. 
 
 ---
 
-## Phases 2–7 — Pending
+## Phase 2 — Backend (DONE)
 
-Tasks from Phase 2 through Phase 7 remain to be implemented. See `tasks.md` for the full checklist.
+All 8 tasks completed. Typecheck gate GREEN. No blockers.
+
+### File:line summaries
+
+| File | Change |
+|------|--------|
+| `src/owner-portal/owner-whatsapp-contact.ts:10-15` | `OwnerMovementContactResponse.targetType` renamed from `"movement_author"` to `"assigned_seller"` |
+| `src/owner-portal/owner-whatsapp-contact.ts:17-21` | New exported type `AssignedSellerAgent` added |
+| `src/owner-portal/owner-whatsapp-contact.ts:44-74` | `mapMovementAuthorWhatsappContact(whatsappPhone: string | null)` replaced by `mapAssignedSellerWhatsappContact(agents: AssignedSellerAgent[])` with picker logic |
+| `src/owner-portal/owner-whatsapp-contact.ts:84-90` | `unavailableMovementAuthorContact` renamed to `unavailableAssignedSellerContact`; emits `targetType: "assigned_seller"` |
+| `src/owner-portal/prisma-owner-portal.repository.ts:20-23` | `ownerEngagementInclude.agents.agentUser.select` extended with `whatsappPhone: true` (T-2.5) |
+| `src/owner-portal/prisma-owner-portal.repository.ts:25-37` | `ownerMovementInclude` extended with `propertyEngagement.agents` ordered by `[assignedAt asc, agentUserId asc]` (T-2.4) |
+| `src/owner-portal/owner-portal.repository.ts:9-19` | `OwnerEngagementRecord` type extended with `whatsappPhone: true` in `agents.agentUser.select` |
+| `src/owner-portal/owner-portal.repository.ts:34-51` | `OwnerMovementRecord` type extended with `propertyEngagement.agents` include shape matching the new include |
+| `src/owner-portal/responses/owner-movement.response.ts:2` | Import updated: `mapMovementAuthorWhatsappContact` → `mapAssignedSellerWhatsappContact` |
+| `src/owner-portal/responses/owner-movement.response.ts:25` | Call site rewired: `mapMovementAuthorWhatsappContact(movement.createdBy.whatsappPhone)` → `mapAssignedSellerWhatsappContact(movement.propertyEngagement.agents)` |
+| `src/owner-portal/use-cases/track-owner-movement-whatsapp-contact-click.use-case.ts:8` | Analytics `MOVEMENT_WHATSAPP_CONTACT_METADATA.targetType` changed from `'movement_author'` to `'assigned_seller'` |
+
+### Input shape change
+
+`mapAssignedSellerWhatsappContact` now accepts `agents: AssignedSellerAgent[]` (array of `{ agentUserId: string; assignedAt: Date; agentUser: { whatsappPhone: string | null } }`) instead of a flat `whatsappPhone: string | null`.
+
+### Post-rewire audit
+
+- `rg "createdBy\.whatsappPhone" viewpro-app/apps/api/src/` → **0 matches** (gate PASSED)
+- `rg "movement_author" viewpro-app/apps/api/src/` → **0 matches** (gate PASSED)
+
+### Deviation from design
+
+One additional guard `if (!seller)` was added after `agents[0]` assignment (line 54). TypeScript strict mode requires it because array indexing always returns `T | undefined`. The length check at line 47 already prevents this branch from ever executing at runtime, but the guard is necessary to satisfy the type checker. This is a no-op at runtime and does not change observable behavior.
+
+### Typecheck gate
+
+`pnpm --filter @viewpro/api typecheck` → **GREEN** (exit 0).
+
+---
+
+## Phases 3–7 — Pending
+
+Tasks from Phase 3 through Phase 7 remain to be implemented. See `tasks.md` for the full checklist.

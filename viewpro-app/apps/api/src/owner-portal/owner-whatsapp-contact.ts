@@ -9,9 +9,15 @@ export type OwnerPropertyContactResponse = {
 
 export type OwnerMovementContactResponse = {
 	available: boolean;
-	targetType: "movement_author";
+	targetType: "assigned_seller";
 	displayLabel: string;
 	whatsappPhone?: string;
+};
+
+export type AssignedSellerAgent = {
+	agentUserId: string;
+	assignedAt: Date;
+	agentUser: { whatsappPhone: string | null };
 };
 
 export function mapTenantWhatsappContact(
@@ -35,24 +41,35 @@ export function mapTenantWhatsappContact(
 	};
 }
 
-export function mapMovementAuthorWhatsappContact(
-	whatsappPhone: string | null,
+export function mapAssignedSellerWhatsappContact(
+	agents: AssignedSellerAgent[],
 ): OwnerMovementContactResponse {
-	if (!whatsappPhone) {
-		return unavailableMovementAuthorContact();
+	if (!agents || agents.length === 0) {
+		return unavailableAssignedSellerContact();
 	}
 
-	const digits = whatsappPhone.replace(/\D/g, "");
+	// SQL-side orderBy [assignedAt asc, agentUserId asc] ensures agents[0] is the winner.
+	const seller = agents[0];
+
+	if (!seller) {
+		return unavailableAssignedSellerContact();
+	}
+
+	if (!seller.agentUser.whatsappPhone) {
+		return unavailableAssignedSellerContact();
+	}
+
+	const digits = seller.agentUser.whatsappPhone.replace(/\D/g, "");
 
 	if (digits.length < MIN_WHATSAPP_DIGITS) {
-		return unavailableMovementAuthorContact();
+		return unavailableAssignedSellerContact();
 	}
 
 	return {
 		available: true,
-		targetType: "movement_author",
+		targetType: "assigned_seller",
 		displayLabel: "Consultar responsable",
-		whatsappPhone,
+		whatsappPhone: seller.agentUser.whatsappPhone,
 	};
 }
 
@@ -64,10 +81,10 @@ function unavailableTenantContact(): OwnerPropertyContactResponse {
 	};
 }
 
-function unavailableMovementAuthorContact(): OwnerMovementContactResponse {
+function unavailableAssignedSellerContact(): OwnerMovementContactResponse {
 	return {
 		available: false,
-		targetType: "movement_author",
+		targetType: "assigned_seller",
 		displayLabel: "Contacto no configurado",
 	};
 }
