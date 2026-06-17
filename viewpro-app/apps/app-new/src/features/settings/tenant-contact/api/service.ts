@@ -21,7 +21,9 @@ async function parseResponse<T>(response: Response): Promise<T> {
   const body = await response.json().catch(() => undefined)
   if (!response.ok) {
     const errorCode =
-      body && typeof body === 'object' && 'code' in body ? (body as { code: string }).code : null
+      body && typeof body === 'object' && 'errorCode' in body
+        ? (body as { errorCode: string }).errorCode
+        : null
     const message =
       body && typeof body === 'object' && 'message' in body
         ? Array.isArray((body as { message: unknown }).message)

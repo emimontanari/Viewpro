@@ -12,7 +12,9 @@ export default function TenantContactPage() {
   const router = useRouter()
   const { activeMembership, isTenantLoading } = useActiveTenant()
   const hasPermission = canManageTenantSettings(activeMembership)
-  const { data, isLoading: isPhoneLoading } = useTenantWhatsappPhone()
+  const { data, isLoading: isPhoneLoading } = useTenantWhatsappPhone({
+    enabled: hasPermission
+  })
 
   useEffect(() => {
     if (!isTenantLoading && !hasPermission) {

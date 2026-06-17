@@ -7,10 +7,15 @@ export const tenantContactKeys = {
   whatsappPhone: () => [...tenantContactKeys.all, 'whatsapp-phone'] as const
 }
 
-export function useTenantWhatsappPhone() {
+type UseTenantWhatsappPhoneOptions = {
+  enabled?: boolean
+}
+
+export function useTenantWhatsappPhone(options: UseTenantWhatsappPhoneOptions = {}) {
   return useQuery({
     queryKey: tenantContactKeys.whatsappPhone(),
-    queryFn: getTenantWhatsappPhone
+    queryFn: getTenantWhatsappPhone,
+    enabled: options.enabled ?? true
   })
 }
 

@@ -433,7 +433,7 @@ Completed 2026-06-17. Typecheck GREEN after all changes.
 | `viewpro-app/apps/api/src/tenants/tenants.repository.ts` | Modified (lines 7–8) | Added `findWhatsappPhone` and `updateWhatsappPhone` to `TenantsRepository` interface |
 | `viewpro-app/apps/api/src/tenants/prisma-tenants.repository.ts` | Modified (lines 19–32) | Implemented `findWhatsappPhone` (SELECT) and `updateWhatsappPhone` (UPDATE) |
 | `viewpro-app/apps/api/src/tenants/dto/update-whatsapp-phone.dto.ts` | Created | `UpdateWhatsappPhoneDto` with `@IsOptional @IsString whatsappPhone?: string \| null` |
-| `viewpro-app/apps/api/src/tenants/use-cases/update-tenant-whatsapp-phone.use-case.ts` | Created | Normalize → validate → `repo.updateWhatsappPhone`; throws `BadRequestException({ code: 'phone.too_short' })` on digit count < 8 |
+| `viewpro-app/apps/api/src/tenants/use-cases/update-tenant-whatsapp-phone.use-case.ts` | Created | Normalize → validate → `repo.updateWhatsappPhone`; throws `BadRequestException({ errorCode: 'phone.too_short' })` on digit count < 8 |
 | `viewpro-app/apps/api/src/tenants/use-cases/get-tenant-whatsapp-phone.use-case.ts` | Created | Returns `{ whatsappPhone: string \| null }` from `repo.findWhatsappPhone`; null when tenant not found |
 | `viewpro-app/apps/api/src/tenants/tenants-contact.controller.ts` | Created | `@Controller('tenants')` with `GET me/whatsapp-phone` + `PATCH me/whatsapp-phone`; full guard stack |
 | `viewpro-app/apps/api/src/tenants/tenants.module.ts` | Modified | Added `AuthModule, MembershipsModule, PermissionsModule, TenantContextModule` imports; registered `TenantsContactController` + both use cases |
@@ -450,7 +450,7 @@ Completed 2026-06-17. Typecheck GREEN after all changes.
 
 ### Error code
 
-`phone.too_short` — thrown as `BadRequestException({ code: 'phone.too_short' })` in `UpdateTenantWhatsappPhoneUseCase.execute()` when digit count < `MIN_WHATSAPP_DIGITS` (8).
+`phone.too_short` — thrown as `BadRequestException({ errorCode: 'phone.too_short' })` in `UpdateTenantWhatsappPhoneUseCase.execute()` when digit count < `MIN_WHATSAPP_DIGITS` (8).
 
 ---
 
@@ -538,7 +538,7 @@ imports: [forwardRef(() => AuthModule), MembershipsModule, PermissionsModule, Te
 None. The `normalizeWhatsappPhone` and `isValidWhatsappPhone` implementations match all spec requirements exactly:
 - Null/empty/whitespace → null (FR-3)
 - Leading `+` preserved (FR-5, D2)
-- `BadRequestException({ code: 'phone.too_short' })` on digit count < 8 (FR-4, S-3)
+- `BadRequestException({ errorCode: 'phone.too_short' })` on digit count < 8 (FR-4, S-3)
 - Use case calls `repo.updateWhatsappPhone` with normalized value (FR-6)
 - GET returns `{ whatsappPhone: string | null }` (D5)
 
