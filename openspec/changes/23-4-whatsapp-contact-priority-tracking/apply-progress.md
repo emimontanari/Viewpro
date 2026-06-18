@@ -287,3 +287,38 @@ Same file, same cluster (after T-3.1).
 | Tests | `pnpm --filter next-shadcn-dashboard-starter test` | GREEN — **430 passed** (83 test files) |
 
 **Delta confirmed:** 428 (Phase 2 total) + 2 new = **430**. No production code change. No existing tests modified.
+
+---
+
+## Phase 4 — Movement-level seeded smoke (DONE)
+
+### T-4.1 — New test added inside Stage 23.5 describe block
+
+**File modified:** `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`
+
+**Placement:** Inserted as the SECOND `test(...)` inside the existing `test.describe('Stage 23.5 — owner timeline resolves contact to assigned seller', ...)` serial block, after the S-10 test closing brace and before the describe's closing `});`.
+
+**T19b mirror confirmation (D4):**
+- Route registered with `await page.route(...)` BEFORE the click (same as T19b:997).
+- Route glob: `**/api/owner/engagements/*/movements/*/whatsapp-contact-click` (adds `/movements/*/` segment vs T19b's property-level glob).
+- `waitForEvent('popup', { timeout: 5_000 }).catch(() => null)` set up before the click (T19b:1008 pattern).
+- `click({ modifiers: ['Meta'] })` on the resolved contact link (T19b:1009).
+- `waitForTimeout(500)` settle window (T19b:1014).
+- `expect(trackingHits).toBeGreaterThanOrEqual(1)` assertion (T19b:1017).
+- Route fulfills with `{ status: 204, body: '' }` to avoid the real API call from consuming seed state.
+
+**Auth deviation from D8 (documented):** D8 stated the test would "inherit sign-in from S-10 via serial mode." In practice, Playwright's serial mode shares the browser WORKER but does NOT guarantee cookie persistence across test boundaries when each test starts with a fresh navigation. The page redirected to `/auth/sign-in` on the first attempt. Resolved by adding `signIn(page, OWNER_EMAIL, '/owner')` at the top of the test — identical to how T19b at line 993 handles auth. This deviation does NOT change test semantics; it only adds an explicit sign-in round-trip (~0.5s overhead).
+
+**Navigation:** After sign-in, the test navigates to `/owner`, fetches the owner properties via `getJson`, locates "Casa familiar con pileta en Villa Centenario", navigates to its detail page, opens the "Seguimiento" tab, and locates the `role=link { name: 'Consultar responsable' }` element — same path as S-10 but fully independent.
+
+---
+
+### T-4.2 — Gate results
+
+| Gate | Command | Result |
+|------|---------|--------|
+| Seeded smoke | `pnpm test:seeded` (from `apps/app-new/`) | GREEN — **30 passed** (1 worker, 1.7m) |
+
+**Delta confirmed:** 29 baseline + 1 new = **30**. S-10 (Stage 23.5 existing test, test #29) continues to pass — serial mode and sign-in inheritance are unaffected. No existing test modified. No production code change. No seed change. No new dependency.
+
+**Playwright flakes retried:** 0 (after the auth approach fix on the first run — not a Playwright flake, was a test logic issue).

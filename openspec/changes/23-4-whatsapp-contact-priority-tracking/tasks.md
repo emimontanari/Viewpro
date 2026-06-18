@@ -149,7 +149,7 @@ Phases 1–6 are SEQUENTIAL. Within each phase, tasks may run in parallel where 
 
 ## Phase 4 — Movement-level seeded smoke (FR-6, S-9)
 
-**T-4.1** — Write movement-level tracking smoke test
+**[x] T-4.1** — Write movement-level tracking smoke test
 - File: `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`
 - Insertion: as a SECOND `test(...)` block inside the existing `test.describe('Stage 23.5 ...')` serial block at line 1438, after the existing S-10 test.
 - Pattern: mirror T19b at lines 990–1018 exactly —
@@ -160,11 +160,13 @@ Phases 1–6 are SEQUENTIAL. Within each phase, tasks may run in parallel where 
   5. `waitForTimeout(500)` settle window.
   6. Assert `trackingHits >= 1`.
 - Satisfies: FR-6, S-9.
+- Result: DONE. Test added, explicit sign-in added (serial mode does not guarantee session persistence across tests — mirrors T19b which also calls signIn). Gate: 30/30 GREEN.
 
-**T-4.2** — Gate: Phase 4
+**[x] T-4.2** — Gate: Phase 4
 - Run: `pnpm --filter @viewpro-app/app-new test:seeded`
 - Expected: test count ≥ 30 (baseline 29 + 1 new). All tests GREEN.
 - Block Phase 5 if this gate fails.
+- Result: GREEN — 30 tests passed. All existing tests preserved. S-9 and S-10 both pass.
 
 ---
 
