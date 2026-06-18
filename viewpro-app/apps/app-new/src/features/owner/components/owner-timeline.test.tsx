@@ -138,4 +138,34 @@ describe('OwnerTimeline', () => {
     expect(screen.getByRole('button', { name: 'Contacto no configurado' })).toBeDisabled();
     expect(screen.queryByRole('link', { name: 'Consultar responsable' })).not.toBeInTheDocument();
   });
+
+  it('does not invoke tracking when the movement contact button is disabled (available: false)', () => {
+    const trackingSpy = vi
+      .spyOn(ownerService, 'trackOwnerMovementWhatsappContactClick')
+      .mockResolvedValue(undefined);
+    useQueryMock.mockReturnValue({
+      data: {
+        ...timelineResponse,
+        items: [
+          {
+            ...timelineResponse.items[0],
+            contact: {
+              available: false,
+              targetType: 'assigned_seller',
+              displayLabel: 'Contacto no configurado'
+            }
+          }
+        ]
+      },
+      isError: false,
+      isLoading: false
+    } as ReturnType<typeof useQuery>);
+
+    render(<OwnerTimeline engagementId='engagement-1' property={property} />);
+
+    const contactButton = screen.getByRole('button', { name: 'Contacto no configurado' });
+
+    expect(contactButton).toBeDisabled();
+    expect(trackingSpy).not.toHaveBeenCalled();
+  });
 });

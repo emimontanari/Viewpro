@@ -195,3 +195,57 @@ test.describe('Stage 23.5 — owner timeline resolves contact to assigned seller
 6. **Stage 23.5 describe block confirmed.** T-4.1 inserts after the S-10 test body (after line 1479) before the describe closing brace (line 1480). Serial mode is active.
 
 7. **`movement_author` is already gone from codebase.** Stage 23.5 already renamed it to `assigned_seller` everywhere. The S-9 test at line 894 asserts `targetType: "assigned_seller"`. This is correct and consistent with the current codebase state.
+
+---
+
+## Phase 2 — FE negative guards (DONE)
+
+### T-2.1 — owner-home negative guard
+
+**File modified:** `viewpro-app/apps/app-new/src/features/owner/components/owner-home.test.tsx`
+
+Added a new `it(...)` block immediately before the empty-state test:
+
+```
+it('does not invoke tracking when the contact button is disabled (available: false)', ...)
+```
+
+**Spy strategy (D3):** `vi.spyOn(ownerService, 'trackOwnerWhatsappContactClick').mockResolvedValue(undefined)` installed BEFORE `render(<OwnerHome />)`. Module is `../api/service` imported as `* as ownerService` — mirrors the existing positive test at line 172.
+
+**Fixture:** `buildOwnerEngagement({ contact: { available: false, targetType: 'tenant', displayLabel: 'Contacto no configurado' } })` — same shape as the existing disabled-state test at line 197. With `available: false`, `buildOwnerPropertyWhatsappHref` returns `null` so `contactHref` is null. `OwnerActionTile` renders `<Button disabled>` with no `onClick` wired, making `handleContactClick` unreachable.
+
+**Component path:** `OwnerActionTile` at `owner-home.tsx:417-428` — when `href === null`, renders a disabled `<Button>` that does NOT forward `onClick`. The early-return at `owner-home.tsx:267` is a belt-and-suspenders guard; the real protection is the conditional render.
+
+**Assertion:** `expect(trackingSpy).not.toHaveBeenCalled()`.
+
+---
+
+### T-2.2 — owner-timeline negative guard
+
+**File modified:** `viewpro-app/apps/app-new/src/features/owner/components/owner-timeline.test.tsx`
+
+Added a new `it(...)` block appended after the existing disabled-state test:
+
+```
+it('does not invoke tracking when the movement contact button is disabled (available: false)', ...)
+```
+
+**Spy strategy (D3):** `vi.spyOn(ownerService, 'trackOwnerMovementWhatsappContactClick').mockResolvedValue(undefined)` installed BEFORE `render(...)`. Module is `../api/service` imported as `* as ownerService` — mirrors the existing positive test at line 80.
+
+**Fixture:** `useQueryMock.mockReturnValue({ data: { ...timelineResponse, items: [{ ...timelineResponse.items[0], contact: { available: false, targetType: 'assigned_seller', displayLabel: 'Contacto no configurado' } }] }, isError: false, isLoading: false })` — same pattern as existing disabled test at line 117. `contactHref` resolves to null → disabled button with no `onClick`.
+
+**Component path:** `owner-timeline.tsx:108-123` — when `contactHref` is null, renders `<Button disabled>` without `onClick`. The early-return at line 82 is unreachable through the disabled button path.
+
+**Assertion:** `expect(trackingSpy).not.toHaveBeenCalled()`.
+
+---
+
+### T-2.3 — Gate results
+
+| Gate | Command | Result |
+|------|---------|--------|
+| Lint | `pnpm --filter next-shadcn-dashboard-starter lint:strict` | GREEN (exit 0) |
+| TypeScript | `pnpm --filter next-shadcn-dashboard-starter exec tsc --noEmit` | GREEN (exit 0) |
+| Tests | `pnpm --filter next-shadcn-dashboard-starter test` | GREEN — **428 passed** (83 test files) |
+
+**Delta confirmed:** 426 baseline + 2 new = **428**. No existing tests modified. Spy cleanup handled by `vi.restoreAllMocks()` in `beforeEach` of both describe blocks.

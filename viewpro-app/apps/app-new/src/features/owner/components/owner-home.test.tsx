@@ -223,6 +223,31 @@ describe('OwnerHome', () => {
     expect(screen.queryByRole('link', { name: /Contactar inmobiliaria/i })).not.toBeInTheDocument();
   });
 
+  it('does not invoke tracking when the contact button is disabled (available: false)', () => {
+    const trackingSpy = vi
+      .spyOn(ownerService, 'trackOwnerWhatsappContactClick')
+      .mockResolvedValue(undefined);
+    mockOwnerHomeData(ownerPropertiesResponse, [
+      [
+        buildOwnerEngagement({
+          contact: {
+            available: false,
+            targetType: 'tenant',
+            displayLabel: 'Contacto no configurado'
+          },
+          tenant: { id: 'tenant-1', name: 'ViewPro Demo Inmobiliaria' }
+        })
+      ]
+    ]);
+
+    render(<OwnerHome />);
+
+    const contactButton = screen.getByRole('button', { name: 'Contacto — no configurado' });
+
+    expect(contactButton).toBeDisabled();
+    expect(trackingSpy).not.toHaveBeenCalled();
+  });
+
   it('renders an owner-safe empty state', () => {
     mockOwnerHomeData([], []);
 

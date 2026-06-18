@@ -92,28 +92,31 @@ Phases 1–6 are SEQUENTIAL. Within each phase, tasks may run in parallel where 
 
 ## Phase 2 — FE negative guards (FR-1, S-1, S-2)
 
-**T-2.1** — Extend `owner-home.test.tsx` — property-level disabled-button guard
+**[x] T-2.1** — Extend `owner-home.test.tsx` — property-level disabled-button guard
 - File: `viewpro-app/apps/app-new/src/features/owner/components/owner-home.test.tsx`
 - Insertion: after the existing disabled-state test at line 197.
 - Arrange: install `vi.spyOn(ownerService, 'trackOwnerWhatsappContactClick')` BEFORE `render(...)`. Render with a fixture where `contact.available === false`.
 - Act: simulate a click on the disabled "Contactar inmobiliaria" button.
 - Assert: `expect(spy).not.toHaveBeenCalled()`.
 - Satisfies: FR-1, S-1.
+- Result: DONE. Test added, spy installed before render, assertion passes.
 
-**T-2.2** — Extend `owner-timeline.test.tsx` — movement-level disabled-button guard
+**[x] T-2.2** — Extend `owner-timeline.test.tsx` — movement-level disabled-button guard
 - File: `viewpro-app/apps/app-new/src/features/owner/components/owner-timeline.test.tsx`
 - Insertion: after the existing disabled-state test at line 117.
 - Arrange: install `vi.spyOn(ownerService, 'trackOwnerMovementWhatsappContactClick')` BEFORE `render(...)`. Render with a fixture where `contact.available === false`.
 - Act: simulate a click on the disabled "Consultar responsable" button.
 - Assert: `expect(spy).not.toHaveBeenCalled()`.
 - Satisfies: FR-1, S-2.
+- Result: DONE. Test added, spy installed before render, assertion passes.
 
 > T-2.1 and T-2.2 can run in PARALLEL.
 
-**T-2.3** — Gate: Phase 2
+**[x] T-2.3** — Gate: Phase 2
 - Run: `pnpm --filter @viewpro-app/app-new lint:strict && tsc --noEmit && vitest run`
 - Expected: all tests GREEN, test count ≥ 428 (baseline 426 + 2 new).
 - Block Phase 3 if this gate fails.
+- Result: GREEN — 428 tests passed (83 files). Lint exit 0. TypeScript exit 0.
 
 ---
 
