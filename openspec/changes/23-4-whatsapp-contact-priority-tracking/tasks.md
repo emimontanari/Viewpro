@@ -33,46 +33,55 @@ Phases 1–6 are SEQUENTIAL. Within each phase, tasks may run in parallel where 
 > Capture each command's verbatim output in apply-progress.
 > If any command returns an unexpected result, STOP and escalate.
 
-**T-1.1** — Backfill consumer audit — `movement_author`
+**[x] T-1.1** — Backfill consumer audit — `movement_author`
 - Command: `rg "movement_author" viewpro-app/apps/api/src/`
 - Expected: 0 matches.
+- Result: 0 matches in live code. Matches only in docs/ and openspec/ planning artifacts. Gate PASSED.
 - Satisfies: FR-9, D9.
 
-**T-1.2** — Backfill consumer audit — `targetType` branch
+**[x] T-1.2** — Backfill consumer audit — `targetType` branch
 - Command: `rg "metadata.targetType" viewpro-app/apps/api/src/`
 - Expected: 0 matches outside the two use-case implementation files.
+- Result: 0 matches. Gate PASSED.
 - Satisfies: FR-9, D9.
 
-**T-1.3** — D6 audit: confirm existing backend coverage (FR-2..FR-5)
+**[x] T-1.3** — D6 audit: confirm existing backend coverage (FR-2..FR-5)
 - Command: `rg "TrackOwnerWhatsappContactClickUseCase|TrackOwnerMovementWhatsappContactClickUseCase" viewpro-app/apps/api/test/`
 - Expected: 6+ matches in `owner-portal.use-cases.spec.ts`.
+- Result: 9 matches (2 imports + 7 instantiation sites). All 6 FR-2..FR-5 tests confirmed + S-9 at line 894.
 - Read lines 389–552 and line 894. Document each `it(...)` mapping to FR-2..FR-5.
-  - Line 389 → FR-2 / S-4 (property 204 + shape)
-  - Line 426 → FR-4 / S-5 (property 404 + no event)
-  - Line 445 → FR-5 / S-8 (property analytics swallow)
-  - Line 466 → FR-3 / S-6 (movement 204 + shape)
-  - Line 508 → FR-4 / S-7 (movement 404 + no event)
-  - Line 528 → FR-5 / S-8 (movement analytics swallow)
-  - Line 894 → S-9 (movement targetType assertion)
-- Flag any FR gap found. Expected: none.
+  - Line 389 → FR-2 / S-4 (property 204 + shape) — CONFIRMED
+  - Line 426 → FR-4 / S-5 (property 404 + no event) — CONFIRMED
+  - Line 445 → FR-5 / S-8 (property analytics swallow) — CONFIRMED
+  - Line 466 → FR-3 / S-6 (movement 204 + shape) — CONFIRMED
+  - Line 508 → FR-4 / S-7 (movement 404 + no event) — CONFIRMED
+  - Line 528 → FR-5 / S-8 (movement analytics swallow) — CONFIRMED
+  - Line 894 → S-9 (movement targetType 'assigned_seller' assertion) — CONFIRMED
+- Flag any FR gap found: NONE.
 - Satisfies: FR-2, FR-3, FR-4, FR-5, D6.
 
-**T-1.4** — Locate spy targets
+**[x] T-1.4** — Locate spy targets
 - Command: `rg "trackOwnerWhatsappContactClick|trackOwnerMovementWhatsappContactClick" viewpro-app/apps/app-new/src/`
 - Expected: exactly the two service definitions + two component call sites.
+- Result: confirmed — service.ts (2 definitions), owner-home.tsx (import + call), owner-timeline.tsx (import + call), plus existing spy calls in owner-home.test.tsx and owner-timeline.test.tsx.
+- Canonical import: `import * as ownerService from '../api/service';` (relative from component test file).
 - Satisfies: D3.
 
-**T-1.5** — Locate early-return locations
+**[x] T-1.5** — Locate early-return locations
 - Command: `rg "handleContactClick" viewpro-app/apps/app-new/src/features/owner/`
 - Expected: `owner-home.tsx:266` and `owner-timeline.tsx:81`.
+- Result: CONFIRMED at exact lines.
+  - owner-home.tsx:266 — condition: `if (!engagement || !contactHref) { return; }`
+  - owner-timeline.tsx:81 — condition: `if (!contactHref) { return; }`
 - Satisfies: D3, FR-1.
 
-**T-1.6** — Read T19b pattern (template for seeded smoke)
-- Read `demo-smoke.spec.ts:990-1018`. Document: intercept registration order, `modifiers: ['Meta']`, `waitForEvent('popup')`, `waitForTimeout(500)`, assertion form.
+**[x] T-1.6** — Read T19b pattern (template for seeded smoke)
+- Read `demo-smoke.spec.ts:990-1018`. Documented: intercept-before-click, `modifiers: ['Meta']`, `waitForEvent('popup')` set up before click, `waitForTimeout(500)` settle, `toBeGreaterThanOrEqual(1)` assertion.
+- Movement URL glob: `**/api/owner/engagements/*/movements/*/whatsapp-contact-click`.
 - Satisfies: D4, FR-6.
 
-**T-1.7** — Confirm Stage 23.5 describe placement
-- Read `demo-smoke.spec.ts:1438-1480`. Confirm `test.describe.configure({ mode: 'serial' })` at line 1439 and the existing S-10 test. Confirm correct insertion point for T-4.1.
+**[x] T-1.7** — Confirm Stage 23.5 describe placement
+- Read `demo-smoke.spec.ts:1438-1480`. Confirmed `test.describe.configure({ mode: 'serial' })` at line 1439. Exactly 1 test inside (S-10). T-4.1 inserts after line 1479 before line 1480.
 - Satisfies: D8, FR-6.
 
 > T-1.1, T-1.2, T-1.3, T-1.4, T-1.5 can run in PARALLEL.
