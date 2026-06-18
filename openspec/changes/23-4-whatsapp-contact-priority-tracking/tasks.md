@@ -172,7 +172,7 @@ Phases 1–6 are SEQUENTIAL. Within each phase, tasks may run in parallel where 
 
 ## Phase 5 — Backfill audit documentation (FR-9, D9)
 
-**T-5.1** — Record backfill decision in apply-progress
+**[x] T-5.1** — Record backfill decision in apply-progress
 - File: `openspec/changes/23-4-whatsapp-contact-priority-tracking/apply-progress.md`
 - Append section: `## Backfill audit results`.
 - Content: verbatim output of T-1.1 and T-1.2. Decision: PUNT — zero consumers confirmed, no migration performed, risk documented per FR-9 and D9.

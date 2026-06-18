@@ -322,3 +322,144 @@ Same file, same cluster (after T-3.1).
 **Delta confirmed:** 29 baseline + 1 new = **30**. S-10 (Stage 23.5 existing test, test #29) continues to pass — serial mode and sign-in inheritance are unaffected. No existing test modified. No production code change. No seed change. No new dependency.
 
 **Playwright flakes retried:** 0 (after the auth approach fix on the first run — not a Playwright flake, was a test logic issue).
+
+---
+
+## Phase 5 — Backfill decision (documented)
+
+### T-5.1 — Backfill audit + decision doc
+
+**FR-9 / D9 requirement:** Re-run sweeps immediately before apply completion to confirm zero live-code consumers of `movement_author`. Document the decision with literal command outputs.
+
+---
+
+#### Sweep 1: `rg "movement_author" viewpro-app/apps/api/src/`
+
+```
+(no output — 0 matches)
+EXIT_CODE: 1
+```
+
+**Result:** 0 matches in API source.
+
+---
+
+#### Sweep 2: `rg "movement_author" viewpro-app/apps/app-new/src/`
+
+```
+(no output — 0 matches)
+EXIT_CODE: 1
+```
+
+**Result:** 0 matches in frontend source.
+
+---
+
+#### Sweep 3: `rg "movement_author" viewpro-app/apps/api/test/`
+
+```
+(no output — 0 matches)
+EXIT_CODE: 1
+```
+
+**Result:** 0 matches in API test fixtures. Stage 23.5 already renamed all test assertions from `'movement_author'` to `'assigned_seller'`. The S-9 test at `owner-portal.use-cases.spec.ts:894` asserts `targetType: "assigned_seller"` — confirmed correct.
+
+---
+
+#### Sweep 4: `rg "movement_author" openspec/`
+
+```
+openspec/changes/23-4-whatsapp-contact-priority-tracking/proposal.md:**Analytics consumers reading `metadata.targetType`: ZERO.** ...
+openspec/changes/23-4-whatsapp-contact-priority-tracking/proposal.md:- **Backfill of historical `targetType: 'movement_author'` events.** ...
+openspec/changes/23-4-whatsapp-contact-priority-tracking/proposal.md:- [ ] Backfill decision for historical `'movement_author'` events is documented in this proposal...
+openspec/changes/23-4-whatsapp-contact-priority-tracking/design.md: (4 occurrences — all audit gate / decision documentation text)
+openspec/changes/23-4-whatsapp-contact-priority-tracking/spec.md: (2 occurrences — FR-9 text)
+openspec/changes/23-4-whatsapp-contact-priority-tracking/tasks.md: (2 occurrences — task descriptions)
+openspec/changes/23-4-whatsapp-contact-priority-tracking/apply-progress.md: (multiple — this file and Phase 1 T-1.1 documentation)
+openspec/changes/23-5-owner-contact-cta-semantics/proposal.md: (multiple — context for the 23.5 rename decision)
+openspec/changes/23-5-owner-contact-cta-semantics/apply-progress.md: (multiple — 23.5 apply-progress documents the rename execution)
+openspec/changes/23-5-owner-contact-cta-semantics/spec.md, design.md, tasks.md: (multiple — 23.5 planning artifacts)
+EXIT_CODE: 0
+```
+
+**Result:** All matches are in planning/spec/design/tasks/apply-progress files under `openspec/`. Zero live-code occurrences. These are historical context references, not consumers.
+
+---
+
+#### Sweep 5: `rg "movement_author" .` (repo root, excluding `openspec/`)
+
+```
+./docs/plans/2026-06-01-stage-23-whatsapp-contact-design.md:  targetType: 'movement_author';
+./docs/plans/2026-06-01-stage-23-whatsapp-contact-design.md:  "targetType": "movement_author"
+./docs/plans/2026-06-01-stage-23-2-movement-whatsapp-contact-implementation.md:  targetType: 'movement_author',  (7 occurrences)
+./docs/plans/2026-06-01-stage-23-2-movement-whatsapp-contact-implementation.md:  targetType: 'movement_author';
+./docs/plans/2026-06-01-stage-23-2-movement-whatsapp-contact-design.md:  targetType: 'movement_author';
+./docs/plans/2026-06-01-stage-23-2-movement-whatsapp-contact-design.md:  "targetType": "movement_author"
+EXIT_CODE: 0
+```
+
+**Result:** All matches outside `openspec/` are in `docs/plans/` — three Stage 23 / 23.2 historical design and implementation planning documents dated 2026-06-01. These are read-only historical artifacts; no business logic reads them. Zero script, seed, or source code matches.
+
+---
+
+#### Sweep 6: `rg "metadata\.targetType|targetType:" viewpro-app/apps/api/src/analytics/`
+
+```
+(no output — 0 matches)
+EXIT_CODE: 1
+```
+
+**Result:** The analytics module has no code that reads `metadata.targetType` or branches on `targetType:`. `analytics-event.mapper.ts` passes the event `metadata` object through `sanitizeAnalyticsMetadata` unchanged. No query, no filter, no branch.
+
+---
+
+#### Classification table
+
+| Location | File type | Matches | Classification | Status |
+|---|---|---|---|---|
+| `viewpro-app/apps/api/src/` | Production source | 0 | N/A | OK — no consumer |
+| `viewpro-app/apps/app-new/src/` | Frontend source | 0 | N/A | OK — no consumer |
+| `viewpro-app/apps/api/test/` | Test fixtures | 0 | N/A | OK — Stage 23.5 rename complete |
+| `viewpro-app/apps/api/src/analytics/` | Analytics module | 0 | N/A | OK — no targetType branch |
+| `openspec/changes/23-4-*/` | Planning artifacts | ~15 | Historical context, docs only | OK |
+| `openspec/changes/23-5-*/` | Planning artifacts | ~30 | Documents the 23.5 rename | OK |
+| `docs/plans/2026-06-01-*.md` | Historical design docs | 13 | Pre-rename design documentation | OK |
+
+**Live code consumers (production + test):** 0
+
+---
+
+#### Decision: PUNT backfill — no migration
+
+**Decision:** No data migration is performed. Historical analytics events with `metadata.targetType: 'movement_author'` remain in the database as opaque JSON records.
+
+**Rationale:**
+
+1. **Zero consumers in `src/` (production code paths).** Sweeps 1–6 confirm no production code reads, queries, filters, or branches on `metadata.targetType` anywhere. The `analytics-event.mapper.ts` passes the full metadata object through `sanitizeAnalyticsMetadata` without inspecting individual keys.
+
+2. **No use case reads `WHATSAPP_CONTACT_CLICKED` events.** None of the analytics, dashboards, activity feed, pilot summary, or list-events use cases retrieve `WHATSAPP_CONTACT_CLICKED` events or branch on `targetType`. The field is write-only from the production code perspective.
+
+3. **No test fixture dependency.** Sweep 3 confirms `viewpro-app/apps/api/test/` has zero remaining `movement_author` literals. Stage 23.5 already completed the rename in all test assertions. The test suite asserts `'assigned_seller'` from `owner-portal.use-cases.spec.ts:894` onwards.
+
+4. **Historical events are append-only and safe.** The analytics event log is append-only. Past events with `'movement_author'` are queryable as opaque JSON records. They carry no foreign key that would break referential integrity. They do not affect business logic for any current feature.
+
+5. **Migration would carry risk without product value.** A bulk `UPDATE analytics_events SET metadata = ...` on historical rows would require a data migration with rollback risk, a deployment window, and verification testing — none of which deliver product value when zero consumers exist.
+
+---
+
+#### Forward note (for future analytics consumers)
+
+If a future reporting feature needs to query `WHATSAPP_CONTACT_CLICKED` events by `targetType`, it will need to handle BOTH values:
+
+- `'movement_author'` — historical events created before Stage 23.5 (cutover date: 2026-06-07)
+- `'assigned_seller'` — events created from Stage 23.5 onwards
+
+**Recommended handling:** Any query filter or aggregation on `targetType` should treat both values as equivalent for the "movement-level WhatsApp contact click" event. Example:
+
+```sql
+WHERE event_name = 'WHATSAPP_CONTACT_CLICKED'
+  AND metadata->>'context' = 'movement'
+  AND metadata->>'targetType' IN ('movement_author', 'assigned_seller')
+```
+
+This note should be added as an inline comment in the `MOVEMENT_WHATSAPP_CONTACT_METADATA` constant in `track-owner-movement-whatsapp-contact-click.use-case.ts` when (and only when) a reporting consumer is introduced. Until then, the comment would be premature and create maintenance noise.
