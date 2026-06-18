@@ -139,7 +139,8 @@ describe('OwnerTimeline', () => {
     expect(screen.queryByRole('link', { name: 'Consultar responsable' })).not.toBeInTheDocument();
   });
 
-  it('does not invoke tracking when the movement contact button is disabled (available: false)', () => {
+  it('renders the movement contact button as disabled and does not wire the tracking call site (sentinel)', async () => {
+    const user = userEvent.setup();
     const trackingSpy = vi
       .spyOn(ownerService, 'trackOwnerMovementWhatsappContactClick')
       .mockResolvedValue(undefined);
@@ -166,6 +167,11 @@ describe('OwnerTimeline', () => {
     const contactButton = screen.getByRole('button', { name: 'Contacto no configurado' });
 
     expect(contactButton).toBeDisabled();
+    // Act step: attempt to click the disabled button. The disabled attribute should
+    // swallow the click in jsdom AND the onClick should not be wired to the tracking
+    // call site when movement contact.available is false. If anyone removes the
+    // disabled attribute OR wires onClick to the disabled state, this sentinel fails.
+    await user.click(contactButton);
     expect(trackingSpy).not.toHaveBeenCalled();
   });
 });

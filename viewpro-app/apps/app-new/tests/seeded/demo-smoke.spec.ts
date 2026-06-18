@@ -1508,11 +1508,11 @@ test.describe('Stage 23.5 — owner timeline resolves contact to assigned seller
     await page.getByRole('tab', { name: 'Seguimiento' }).click();
     await expect(page.getByText('Estado de la gestión')).toBeVisible({ timeout: 10_000 });
 
-    // Register the route intercept BEFORE clicking (mirrors T19b sequencing).
+    // Register the route intercept BEFORE clicking (mirrors T19b sequencing + handler).
     let trackingHits = 0;
-    await page.route('**/api/owner/engagements/*/movements/*/whatsapp-contact-click', async route => {
+    await page.route('**/api/owner/engagements/*/movements/*/whatsapp-contact-click', (route) => {
       trackingHits += 1;
-      await route.fulfill({ status: 204, body: '' });
+      return route.continue();
     });
 
     // Locate the movement contact link.
