@@ -223,6 +223,37 @@ describe('OwnerHome', () => {
     expect(screen.queryByRole('link', { name: /Contactar inmobiliaria/i })).not.toBeInTheDocument();
   });
 
+  it('renders the contact button as disabled and does not wire the tracking call site (sentinel)', async () => {
+    const user = userEvent.setup();
+    const trackingSpy = vi
+      .spyOn(ownerService, 'trackOwnerWhatsappContactClick')
+      .mockResolvedValue(undefined);
+    mockOwnerHomeData(ownerPropertiesResponse, [
+      [
+        buildOwnerEngagement({
+          contact: {
+            available: false,
+            targetType: 'tenant',
+            displayLabel: 'Contacto no configurado'
+          },
+          tenant: { id: 'tenant-1', name: 'ViewPro Demo Inmobiliaria' }
+        })
+      ]
+    ]);
+
+    render(<OwnerHome />);
+
+    const contactButton = screen.getByRole('button', { name: 'Contacto — no configurado' });
+
+    expect(contactButton).toBeDisabled();
+    // Act step: attempt to click the disabled button. The disabled attribute should
+    // swallow the click in jsdom AND the onClick should not be wired to the tracking
+    // call site when contact.available is false. If anyone removes the disabled
+    // attribute OR wires onClick to the disabled state, this sentinel fails.
+    await user.click(contactButton);
+    expect(trackingSpy).not.toHaveBeenCalled();
+  });
+
   it('renders an owner-safe empty state', () => {
     mockOwnerHomeData([], []);
 

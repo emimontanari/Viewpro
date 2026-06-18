@@ -1477,4 +1477,58 @@ test.describe('Stage 23.5 — owner timeline resolves contact to assigned seller
     expect(href).toMatch(/^https:\/\/wa\.me\/\d{8,}\?text=/);
     expect(href).toContain('5493512222222');
   });
+
+  // S-9 — movement-level click tracking smoke.
+  // Mirrors T19b at demo-smoke.spec.ts:990 (D4).
+  // Auth: re-authenticate as owner (serial mode shares the browser context but session may not
+  //        survive across tests — signing in mirrors T19b which also calls signIn explicitly).
+  // Navigation: navigate to the property timeline fresh to avoid depending on S-10 page state.
+  test('S-9: clicking Consultar responsable on a movement card POSTs to the tracking endpoint', async ({
+    page
+  }) => {
+    // Sign in as the demo owner (mirrors T19b pattern; serial mode does not guarantee session).
+    await signIn(page, OWNER_EMAIL, '/owner');
+    await expect(page.getByRole('heading', { name: 'Tus propiedades' })).toBeVisible();
+
+    // Locate the Villa Centenario property.
+    const ownerProperties = await getJson<{ id: string; title: string }[]>(
+      page,
+      '/api/owner/properties'
+    );
+    const villaProperty = ownerProperties.find(
+      (property) => property.title === OWNER_VISIBLE_PROPERTY_TITLE
+    );
+    expect(villaProperty, `Expected '${OWNER_VISIBLE_PROPERTY_TITLE}' in owner properties`).toBeTruthy();
+
+    // Navigate to the property detail page.
+    await page.goto(`/owner/properties/${villaProperty!.id}`);
+    await expect(page).toHaveURL(/\/owner\/properties\/[a-f0-9-]+$/i);
+
+    // Open the Seguimiento (timeline) tab.
+    await page.getByRole('tab', { name: 'Seguimiento' }).click();
+    await expect(page.getByText('Estado de la gestión')).toBeVisible({ timeout: 10_000 });
+
+    // Register the route intercept BEFORE clicking (mirrors T19b sequencing + handler).
+    let trackingHits = 0;
+    await page.route('**/api/owner/engagements/*/movements/*/whatsapp-contact-click', (route) => {
+      trackingHits += 1;
+      return route.continue();
+    });
+
+    // Locate the movement contact link.
+    const resolvedContactLink = page.getByRole('link', { name: 'Consultar responsable' }).first();
+    await expect(resolvedContactLink).toBeVisible({ timeout: 10_000 });
+
+    // Click with Meta modifier to avoid navigation; absorb new-tab popup (mirrors T19b).
+    const popupPromise = page.waitForEvent('popup', { timeout: 5_000 }).catch(() => null);
+    await resolvedContactLink.click({ modifiers: ['Meta'] });
+    const popup = await popupPromise;
+    await popup?.close();
+
+    // Settle window for the tracking POST to complete.
+    await page.waitForTimeout(500);
+
+    // Assert: movement tracking endpoint was hit at least once.
+    expect(trackingHits).toBeGreaterThanOrEqual(1);
+  });
 });

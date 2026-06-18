@@ -68,6 +68,33 @@ describe('owner WhatsApp contact utilities', () => {
     ).toBeNull();
   });
 
+  it('returns null when whatsappPhone is null (S-10)', () => {
+    expect(
+      buildOwnerPropertyWhatsappHref({
+        contact: {
+          available: true,
+          targetType: 'tenant',
+          displayLabel: 'Contactar inmobiliaria',
+          whatsappPhone: null as unknown as string
+        },
+        property
+      })
+    ).toBeNull();
+  });
+
+  it('returns null when whatsappPhone is undefined (S-11)', () => {
+    expect(
+      buildOwnerPropertyWhatsappHref({
+        contact: {
+          available: true,
+          targetType: 'tenant',
+          displayLabel: 'Contactar inmobiliaria'
+        },
+        property
+      })
+    ).toBeNull();
+  });
+
   it('builds message text from owner-visible property context only', () => {
     expect(buildOwnerPropertyWhatsappMessage(property)).toBe(
       'Hola, soy propietario de Av. Siempre Viva 123, Córdoba, Córdoba.\nQuería hacer una consulta general sobre esta propiedad.'
