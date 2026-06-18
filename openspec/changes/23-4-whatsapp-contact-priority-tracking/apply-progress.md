@@ -447,6 +447,33 @@ EXIT_CODE: 1
 
 ---
 
+---
+
+## Phase 6 — Verification gates (DONE)
+
+### Gate results
+
+| Gate | Command | Result | Detail |
+|------|---------|--------|--------|
+| db:validate | `pnpm db:validate` | GREEN | exit 0 — schema valid |
+| api_typecheck | `pnpm --filter @viewpro/api typecheck` | GREEN | exit 0 |
+| api_tests | `pnpm --filter @viewpro/api test` | GREEN-715 | 715 passed — flake noted below |
+| app_new_lint | `pnpm --filter next-shadcn-dashboard-starter lint:strict` | GREEN | exit 0 (oxlint --deny-warnings) |
+| app_new_typecheck | `pnpm --filter next-shadcn-dashboard-starter exec tsc --noEmit` | GREEN | exit 0 |
+| app_new_tests | `pnpm --filter next-shadcn-dashboard-starter test -- --run` | GREEN-430 | 430 passed (83 files) |
+| demo_seed | `pnpm --filter @viewpro/api demo:seed` | GREEN | exit 0 |
+| test_seeded | `pnpm test:seeded` (from apps/app-new) | GREEN-30 | 30 passed (1.7m) |
+
+### T-N1 flake classification
+
+API test suite runs 1 and 2 each failed with 1 `socket hang up` error on different e2e tests (`owner-portal.e2e-spec.ts` on run 1, `analytics.e2e-spec.ts` on run 2). Run 3 passed all 715 tests with exit 0. Classification: **pre-existing environment flake** — non-deterministic across consecutive runs, always on different tests, unrelated to Stage 23.4 (zero backend changes in this slice). No production or test code change was made.
+
+### Outcome
+
+All four T-N gates GREEN. Stage 23.4 is verified and ready for judgment day + PR.
+
+---
+
 #### Forward note (for future analytics consumers)
 
 If a future reporting feature needs to query `WHATSAPP_CONTACT_CLICKED` events by `targetType`, it will need to handle BOTH values:

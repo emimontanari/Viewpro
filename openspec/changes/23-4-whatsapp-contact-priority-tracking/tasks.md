@@ -182,21 +182,25 @@ Phases 1–6 are SEQUENTIAL. Within each phase, tasks may run in parallel where 
 
 ## Phase 6 — Final verification gates
 
-**T-N1** — API suite unchanged
+**[x] T-N1** — API suite unchanged
 - Run: `pnpm --filter @viewpro/api typecheck && pnpm --filter @viewpro/api test`
 - Expected: 715 tests GREEN, +0 delta (no backend changes in this slice).
+- Result: GREEN — `db:validate` exit 0, `typecheck` exit 0, 715 tests passed (3rd run; runs 1-2 hit pre-existing e2e socket hang-up flake on different tests each time — confirmed pre-existing flake unrelated to 23.4).
 
-**T-N2** — App-new full suite
+**[x] T-N2** — App-new full suite
 - Run: `pnpm --filter @viewpro-app/app-new lint:strict && tsc --noEmit && pnpm --filter @viewpro-app/app-new test`
 - Expected: ≥ 430 tests GREEN (+4 delta from baseline 426).
+- Result: GREEN — lint exit 0, tsc exit 0, **430 tests passed** (83 files).
 
-**T-N3** — Seed health check
+**[x] T-N3** — Seed health check
 - Run: `pnpm --filter @viewpro/api demo:seed` (or equivalent)
 - Expected: exits 0. No seed changes in this slice.
+- Result: GREEN — exit 0.
 
-**T-N4** — Seeded smoke suite
+**[x] T-N4** — Seeded smoke suite
 - Run: `pnpm --filter @viewpro-app/app-new test:seeded`
 - Expected: ≥ 30 tests GREEN (+1 delta from baseline 29).
+- Result: GREEN — **30 passed** (1.7m, 1 worker).
 
 > T-N1, T-N2, T-N3, T-N4 can run in PARALLEL.
 
