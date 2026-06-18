@@ -249,3 +249,41 @@ it('does not invoke tracking when the movement contact button is disabled (avail
 | Tests | `pnpm --filter next-shadcn-dashboard-starter test` | GREEN — **428 passed** (83 test files) |
 
 **Delta confirmed:** 426 baseline + 2 new = **428**. No existing tests modified. Spy cleanup handled by `vi.restoreAllMocks()` in `beforeEach` of both describe blocks.
+
+---
+
+## Phase 3 — Wa.me null guard (DONE)
+
+### T-3.1 — null phone test (S-10)
+
+**File modified:** `viewpro-app/apps/app-new/src/features/owner/utils/owner-whatsapp-contact.test.ts`
+
+Added a new `it(...)` block immediately after the existing "returns null when property contact is unavailable or invalid" test:
+
+```
+it('returns null when whatsappPhone is null (S-10)', ...)
+```
+
+**Fixture:** `{ available: true, targetType: 'tenant', displayLabel: 'Contactar inmobiliaria', whatsappPhone: null as unknown as string }`. Since `OwnerPropertyContact` types `whatsappPhone` as `string | undefined`, a cast was used to pass `null` explicitly. The production guard `!contact.whatsappPhone` evaluates `null` as falsy and returns `null`.
+
+**Assertion:** `toBeNull()`.
+
+---
+
+### T-3.2 — undefined phone test (S-11)
+
+Same file, same cluster (after T-3.1).
+
+**Fixture:** omits the `whatsappPhone` key entirely — valid since `whatsappPhone?: string` in the type. The production guard `!contact.whatsappPhone` evaluates `undefined` as falsy and returns `null`. No malformed `wa.me//?text=...` string can be produced.
+
+**Assertion:** `toBeNull()`.
+
+---
+
+### T-3.3 — Gate results
+
+| Gate | Command | Result |
+|------|---------|--------|
+| Tests | `pnpm --filter next-shadcn-dashboard-starter test` | GREEN — **430 passed** (83 test files) |
+
+**Delta confirmed:** 428 (Phase 2 total) + 2 new = **430**. No production code change. No existing tests modified.

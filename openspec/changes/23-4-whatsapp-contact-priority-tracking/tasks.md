@@ -122,25 +122,28 @@ Phases 1–6 are SEQUENTIAL. Within each phase, tasks may run in parallel where 
 
 ## Phase 3 — Wa.me null/undefined guard (FR-7, S-10, S-11)
 
-**T-3.1** — Extend `owner-whatsapp-contact.test.ts` — null phone
+**[x] T-3.1** — Extend `owner-whatsapp-contact.test.ts` — null phone
 - File: `viewpro-app/apps/app-new/src/features/owner/utils/owner-whatsapp-contact.test.ts`
 - Insertion: immediately after the existing "returns null when property contact is unavailable or invalid" case at line 46.
 - Arrange: call `buildOwnerPropertyWhatsappHref({ whatsappPhone: null, ... })`.
 - Assert: return value is `null`.
 - Satisfies: FR-7, S-10.
+- Result: DONE. Test added, assertion passes.
 
-**T-3.2** — Extend `owner-whatsapp-contact.test.ts` — undefined phone
+**[x] T-3.2** — Extend `owner-whatsapp-contact.test.ts` — undefined phone
 - Same file, same cluster (after T-3.1).
 - Arrange: call `buildOwnerPropertyWhatsappHref({ whatsappPhone: undefined, ... })` (or omit the key entirely).
 - Assert: return value is `null`, never `'wa.me//?text=...'` or any non-null string.
 - Satisfies: FR-7, S-11.
+- Result: DONE. Key omitted from fixture (type permits it). Assertion passes.
 
 > T-3.1 and T-3.2 can run in PARALLEL.
 
-**T-3.3** — Gate: Phase 3
+**[x] T-3.3** — Gate: Phase 3
 - Run: `pnpm --filter @viewpro-app/app-new vitest run`
 - Expected: test count ≥ 430 (baseline 426 + 4 new). All tests GREEN.
 - Block Phase 4 if this gate fails.
+- Result: GREEN — 430 tests passed (83 files).
 
 ---
 
