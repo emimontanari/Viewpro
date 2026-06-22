@@ -18,6 +18,8 @@
  * T18a (reject) MUST run after seed fixture exists (Stage 26.3 Commit B).
  * T20 (limit) MUST be last — it has an afterEach that restores the tenant limit.
  */
+import { execFileSync } from 'node:child_process';
+import { resolve } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   getJson,
@@ -1015,6 +1017,132 @@ test('owner WhatsApp click POSTs a tracking event', async ({ page }) => {
 
   // Assertion: tracking endpoint was called at least once.
   expect(trackingHits).toBeGreaterThanOrEqual(1);
+});
+
+// ---------------------------------------------------------------------------
+// Stage 24.5 — S-B1 + S-B2: mark-read + reload persistence (owner and manager).
+// These two tests mutate readAt on seeded notifications (mark-one-read / mark-all-read).
+// CLEANUP: there is NO HTTP mark-unread endpoint to surgically restore readAt, so the
+// afterEach below runs a FULL `pnpm demo:seed` re-seed as the cleanup fallback. It is a
+// blunt restore, not a per-id surgical undo. Its purpose is forward-safety: keeping seeded
+// readAt state deterministic for any subsequent test under retries or test reordering.
+// NEXT-RESEED FALLBACK: if the afterEach itself fails (e.g. hard kill), run
+// 'pnpm demo:seed' manually to restore the seeded readAt state.
+// ---------------------------------------------------------------------------
+
+// Workspace root + document-storage root — same calculation as global-setup.ts so the
+// re-seed writes document fixtures to the storage root the seeded server actually serves.
+const seededWorkspaceRoot = resolve(process.cwd(), '../..');
+const seededDocumentStorageRoot = resolve(seededWorkspaceRoot, 'apps/api/.document-storage-seeded');
+const seededApiPort = Number(process.env.VIEWPRO_APP_NEW_SEEDED_E2E_API_PORT ?? 3001);
+const seededApiBaseUrl = `http://127.0.0.1:${seededApiPort}`;
+const seededDocumentStorageSecret =
+  process.env.VIEWPRO_APP_NEW_SEEDED_E2E_ACCESS_TOKEN_SECRET ?? 'app-new-seeded-auth-e2e-local';
+
+// Playwright injects fixtures as the first hook arg and requires it to be an object-destructure
+// pattern; this hook needs no fixtures, only testInfo, so the empty pattern is intentional.
+// eslint-disable-next-line no-empty-pattern
+test.afterEach(async ({}, testInfo) => {
+  const isMarkReadTest =
+    testInfo.title.includes('owner mark-one-read persists after re-fetch') ||
+    testInfo.title.includes('manager mark-all-read yields unread-count zero after re-fetch');
+  if (!isMarkReadTest) {
+    return;
+  }
+  // Full re-seed cleanup fallback (no mark-unread endpoint exists). Must pass the SAME
+  // DOCUMENT_STORAGE_* / API_PUBLIC_URL env block as global-setup.ts so document fixtures
+  // land in the storage root the server reads from; passing only process.env would seed
+  // documents to the wrong (default) root. Only runs for the two title-matched tests above.
+  try {
+    execFileSync('pnpm', ['demo:seed'], {
+      cwd: seededWorkspaceRoot,
+      env: {
+        ...process.env,
+        API_PUBLIC_URL: seededApiBaseUrl,
+        DOCUMENT_STORAGE_DRIVER: 'local',
+        DOCUMENT_STORAGE_LOCAL_ROOT: seededDocumentStorageRoot,
+        DOCUMENT_STORAGE_SIGNING_SECRET: seededDocumentStorageSecret
+      },
+      stdio: 'pipe'
+    });
+  } catch (err) {
+    console.warn(
+      'Stage 24.5 afterEach restore failed — run pnpm demo:seed to restore seeded readAt state.',
+      err
+    );
+  }
+});
+
+// T-NEW-1 (S-B1) — owner mark-one-read persists after re-fetch.
+// Auth: propietario.demo@viewpro.local (the demo owner). No tenant header required.
+// FR-B1: the write must persist to the real DB and be observable across a separate GET request.
+// FR-B3: the title-guarded afterEach re-seeds (full demo:seed) as the cleanup fallback,
+//        keeping seeded readAt state deterministic for any later test under retries/reordering.
+// FR-B4: isolation via afterEach cleanup, not serial ordering.
+test('owner mark-one-read persists after re-fetch', async ({ page }) => {
+  await signIn(page, OWNER_EMAIL, '/owner');
+
+  // Capture the current set of unread owner notification IDs before any mutation.
+  type NotificationItem = { id: string; readAt: string | null };
+  type NotificationsPage = { items: NotificationItem[] };
+
+  const unreadResponse = await getJson<NotificationsPage>(
+    page,
+    '/api/owner/notifications?unreadOnly=true'
+  );
+  const unreadIds = unreadResponse.items.map((n) => n.id);
+  expect(
+    unreadIds.length,
+    'Expected at least one unread owner notification in demo seed'
+  ).toBeGreaterThan(0);
+
+  const targetId = unreadIds[0]!;
+
+  // Mark the first unread notification read.
+  const markResp = await page.request.post(`/api/owner/notifications/${targetId}/read`);
+  expect(markResp.ok(), `POST /api/owner/notifications/${targetId}/read should return OK`).toBe(true);
+
+  // Re-fetch the notification list and find the target record.
+  const refetchResponse = await getJson<NotificationsPage>(
+    page,
+    '/api/owner/notifications?page=1&pageSize=10'
+  );
+  const refetched = refetchResponse.items.find((n) => n.id === targetId);
+  expect(refetched, `Expected to find notification ${targetId} in re-fetched list`).toBeTruthy();
+  // FR-B1: readAt must be non-null and non-empty on re-fetch (proves real-DB persistence).
+  expect(refetched!.readAt).toBeTruthy();
+  expect(typeof refetched!.readAt).toBe('string');
+});
+
+// T-NEW-2 (S-B2) — manager mark-all-read yields unread-count zero after re-fetch.
+// Auth: demo@viewpro.local (the demo manager). The session context auto-selects the
+// primary demo tenant (memberships[0]); no manual x-tenant-id header is needed — this
+// mirrors T07's pattern (line 207). See _helpers.ts:113.
+// FR-B2: unread-count must be 0 on re-fetch after mark-all-read.
+// FR-B3: the title-guarded afterEach re-seeds (full demo:seed) as the cleanup fallback,
+//        keeping seeded readAt state deterministic for any later test under retries/reordering.
+// FR-B4: isolation via afterEach cleanup, not serial ordering.
+test('manager mark-all-read yields unread-count zero after re-fetch', async ({ page }) => {
+  await signIn(page, DEMO_EMAIL);
+
+  type CountResponse = { unreadCount: number };
+  type NotificationItem = { id: string; readAt: string | null };
+  type NotificationsPage = { items: NotificationItem[] };
+
+  // Confirm there is at least one unread internal notification before mutation.
+  const unreadBefore = await getJson<NotificationsPage>(page, '/api/notifications?unreadOnly=true');
+  expect(
+    unreadBefore.items.length,
+    'Expected at least one unread internal notification in demo seed'
+  ).toBeGreaterThan(0);
+
+  // Mark all internal notifications read.
+  const markAllResp = await page.request.post('/api/notifications/read-all');
+  expect(markAllResp.ok(), 'POST /api/notifications/read-all should return OK').toBe(true);
+
+  // Re-fetch unread-count — must be 0 (FR-B2).
+  const countData = await getJson<CountResponse>(page, '/api/notifications/unread-count');
+  expect(countData.unreadCount).toBe(0);
 });
 
 // T20 — G-7 (FR-20..FR-22): Tenant engagement limit blocks creation with a clear UI error.
