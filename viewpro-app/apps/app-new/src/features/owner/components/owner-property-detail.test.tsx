@@ -5,17 +5,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OwnerEngagementsResponse, OwnerProperty, OwnerTimelineResponse } from '../api/types';
 import { OwnerPropertyDetail } from './owner-property-detail';
 
-const nuqsMockState = vi.hoisted(() => ({ initialTab: undefined as string | undefined }));
+const nuqsMockState = vi.hoisted(() => ({
+  initialTab: undefined as string | undefined,
+  initialDoc: null as string | null
+}));
 
 vi.mock('./owner-document-requests', () => ({
   OwnerDocumentRequests: ({
     hideAgencyInDocumentCards,
+    highlightDocId,
     propertyEngagementId
   }: {
     hideAgencyInDocumentCards?: boolean;
+    highlightDocId?: string | null;
     propertyEngagementId: string;
   }) => (
-    <div data-hide-agency={hideAgencyInDocumentCards} data-testid='owner-document-requests'>
+    <div
+      data-hide-agency={hideAgencyInDocumentCards}
+      data-highlight-doc={highlightDocId ?? ''}
+      data-testid='owner-document-requests'
+    >
       Documentos de {propertyEngagementId}
     </div>
   )
@@ -30,8 +39,24 @@ vi.mock('nuqs', async () => {
         withDefault: (defaultValue: string) => ({ defaultValue })
       })
     },
-    useQueryState: (_key: string, parser: { defaultValue: string }) =>
-      React.useState(nuqsMockState.initialTab ?? parser.defaultValue)
+    // Each nuqs param is modelled by its own independent state slot, mirroring nuqs'
+    // shallow per-key URL writes: a `tab` write never touches the `doc` slot. Hooks are
+    // called unconditionally (one fixed order) so the mock obeys the rules of hooks.
+    useQueryState: (key: string, parser: { defaultValue?: string }) => {
+      const tabState = React.useState<string>(
+        nuqsMockState.initialTab ?? parser.defaultValue ?? 'summary'
+      );
+      const docState = React.useState<string | null>(nuqsMockState.initialDoc);
+      const fallbackState = React.useState<string | null>(parser.defaultValue ?? null);
+
+      if (key === 'tab') {
+        return tabState;
+      }
+      if (key === 'doc') {
+        return docState;
+      }
+      return fallbackState;
+    }
   };
 });
 
@@ -146,6 +171,7 @@ const timelineResponse: OwnerTimelineResponse = {
 describe('OwnerPropertyDetail', () => {
   beforeEach(() => {
     nuqsMockState.initialTab = undefined;
+    nuqsMockState.initialDoc = null;
     useQueryMock.mockReset();
     prefetchQueryMock.mockReset();
     useQueryClientMock.mockReturnValue({ prefetchQuery: prefetchQueryMock } as never);
@@ -236,6 +262,61 @@ describe('OwnerPropertyDetail', () => {
 
     expect(screen.getByRole('tab', { name: 'Resumen' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('Ficha técnica')).toBeInTheDocument();
+  });
+
+  it('threads highlightDocId prop to OwnerDocumentRequests when doc param is set', () => {
+    nuqsMockState.initialTab = 'documents';
+    nuqsMockState.initialDoc = 'req-123';
+    mockOwnerPropertyDetailQueries();
+
+    render(<OwnerPropertyDetail propertyId='property-1' />);
+
+    expect(screen.getByTestId('owner-document-requests')).toHaveAttribute(
+      'data-highlight-doc',
+      'req-123'
+    );
+  });
+
+  it('threads null highlightDocId to OwnerDocumentRequests when doc param is absent', () => {
+    nuqsMockState.initialTab = 'documents';
+    nuqsMockState.initialDoc = null;
+    mockOwnerPropertyDetailQueries();
+
+    render(<OwnerPropertyDetail propertyId='property-1' />);
+
+    expect(screen.getByTestId('owner-document-requests')).toHaveAttribute('data-highlight-doc', '');
+  });
+
+  // S-F5 — Risk A3 / FR-F2 / design D2: writing the `tab` param must NOT clobber `doc`.
+  // The two nuqs params are registered independently; a Tabs change writes `tab` only,
+  // so the threaded highlightDocId (`data-highlight-doc`) must still equal the doc value.
+  it('S-F5: keeps the doc param when the user changes tabs (doc survives tab write)', async () => {
+    const user = userEvent.setup();
+    nuqsMockState.initialTab = 'documents';
+    nuqsMockState.initialDoc = 'req-123';
+    mockOwnerPropertyDetailQueries({ includeTimeline: true });
+
+    render(<OwnerPropertyDetail propertyId='property-1' />);
+
+    // Precondition: doc is threaded while on the documents tab.
+    expect(screen.getByTestId('owner-document-requests')).toHaveAttribute(
+      'data-highlight-doc',
+      'req-123'
+    );
+
+    // User changes tabs — this fires the Tabs onValueChange which writes `tab` only.
+    await user.click(screen.getByRole('tab', { name: 'Seguimiento' }));
+    expect(screen.getByRole('tab', { name: 'Seguimiento' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+
+    // Back to documents: the doc param must NOT have been clobbered by the tab write.
+    await user.click(screen.getByRole('tab', { name: 'Documentos' }));
+    expect(screen.getByTestId('owner-document-requests')).toHaveAttribute(
+      'data-highlight-doc',
+      'req-123'
+    );
   });
 
   it('renders property content while engagements are still loading', async () => {

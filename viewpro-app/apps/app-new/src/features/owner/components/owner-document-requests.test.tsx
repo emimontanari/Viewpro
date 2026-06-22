@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -478,6 +478,98 @@ describe('OwnerDocumentRequests', () => {
     expect(screen.queryByText('DNI del propietario.pdf')).not.toBeInTheDocument();
   });
 
+  // ---------------------------------------------------------------------------
+  // Scroll/highlight tests — S-F1..S-F5 (Phase 6, 24.6a deep-link)
+  // ---------------------------------------------------------------------------
+
+  it('S-F1: scrolls to and highlights the matching item when highlightDocId matches', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const scrollIntoViewMock = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewMock;
+
+    getOwnerDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([documentRequest({ id: 'req-123', status: 'PENDING', currentVersion: null })])
+    );
+
+    renderOwnerDocumentRequests({ highlightDocId: 'req-123' });
+
+    await screen.findByText('DNI del propietario');
+
+    expect(scrollIntoViewMock).toHaveBeenCalledOnce();
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+
+    // FR-F3 requires BOTH scroll AND a transient highlight on the matching item.
+    const highlightedItem = document.querySelector('[data-request-id="req-123"]');
+    expect(highlightedItem).toHaveClass('ring-2', 'ring-primary');
+
+    // The highlight clears after the 2s transient timeout.
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(document.querySelector('[data-request-id="req-123"]')).not.toHaveClass('ring-2');
+
+    vi.useRealTimers();
+  });
+
+  it('S-F2: does not scroll when highlightDocId is absent', async () => {
+    const scrollIntoViewMock = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewMock;
+
+    getOwnerDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([documentRequest({ id: 'req-123', status: 'PENDING', currentVersion: null })])
+    );
+
+    renderOwnerDocumentRequests({ highlightDocId: null });
+
+    await screen.findByText('DNI del propietario');
+
+    expect(scrollIntoViewMock).not.toHaveBeenCalled();
+  });
+
+  it('S-F3: does not scroll or throw when highlightDocId is not in the list', async () => {
+    const scrollIntoViewMock = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewMock;
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    getOwnerDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([documentRequest({ id: 'req-123', status: 'PENDING', currentVersion: null })])
+    );
+
+    renderOwnerDocumentRequests({ highlightDocId: 'req-deleted' });
+
+    await screen.findByText('DNI del propietario');
+
+    expect(scrollIntoViewMock).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('S-F4: scrolls after query resolves, not before data is available', async () => {
+    const scrollIntoViewMock = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewMock;
+
+    const deferred = createDeferred<ReturnType<typeof documentRequestsResponse>>();
+    getOwnerDocumentRequestsMock.mockReturnValueOnce(deferred.promise);
+
+    renderOwnerDocumentRequests({ highlightDocId: 'req-123' });
+
+    // Query still loading — scrollIntoView must not have been called yet.
+    expect(scrollIntoViewMock).not.toHaveBeenCalled();
+
+    // Resolve query with matching item.
+    deferred.resolve(
+      documentRequestsResponse([documentRequest({ id: 'req-123', status: 'PENDING', currentVersion: null })])
+    );
+
+    await screen.findByText('DNI del propietario');
+
+    expect(scrollIntoViewMock).toHaveBeenCalledOnce();
+  });
+
+  // S-F5 lives in owner-property-detail.test.tsx (page level) where BOTH the `tab`
+  // and `doc` nuqs params are registered, so the doc-survives-tab-write contract is
+  // observable. A child-only test here cannot model that interaction.
+
   it('renders a real thumbnail for uploaded image versions', async () => {
     const imageVersion: OwnerDocumentVersion = {
       ...currentVersion,
@@ -538,8 +630,9 @@ describe('OwnerDocumentRequests', () => {
 });
 
 function renderOwnerDocumentRequests({
-  hideAgencyInDocumentCards = false
-}: { hideAgencyInDocumentCards?: boolean } = {}) {
+  hideAgencyInDocumentCards = false,
+  highlightDocId = null
+}: { hideAgencyInDocumentCards?: boolean; highlightDocId?: string | null } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
       mutations: { retry: false },
@@ -547,17 +640,18 @@ function renderOwnerDocumentRequests({
     }
   });
 
-  render(
+  const { container } = render(
     <QueryClientProvider client={queryClient}>
       <OwnerDocumentRequests
         agencyName='ViewPro Demo Inmobiliaria'
         hideAgencyInDocumentCards={hideAgencyInDocumentCards}
+        highlightDocId={highlightDocId}
         propertyEngagementId={propertyEngagementId}
       />
     </QueryClientProvider>
   );
 
-  return { queryClient };
+  return { container, queryClient };
 }
 
 function documentRequestsResponse(items: OwnerDocumentRequest[]): OwnerDocumentRequestsResponse {
