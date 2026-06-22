@@ -1,10 +1,17 @@
 # Current MVP Execution Handoff
 
-**Current answer:** the project is in **100% development mode**. There is no pilot deadline, no demo-to-sell pressure, and no deploy clock. The remaining work focuses on closing the development backlog (8 audit-adopted slices in order below). Deploy, architectural scalability prep, external service integration, and the pilot-ready deck are explicitly deferred until the development phase is fully complete.
+**Last updated:** 2026-06-19.
 
-**Active phase:** development. **Next active slice:** `26.6a` — InmoView copy and role-language pass.
+**Current answer:** the project is still in **100% development mode**. There is no pilot deadline, no demo-to-sell pressure, and no deploy clock. Since the dev-mode reframe, **six of the eight audit-adopted development slices have landed**. The active development queue is now down to:
 
-Phase A (gates) is closed. Phase B (product flows) is mostly closed with movement outcomes, state change request workflow, full seeded E2E, and security/isolation regression all merged. Eight audit-adopted product slices remain; deploy is held until they all land.
+1. `24.5` — Notification routing E2E (**next**).
+2. `20.12` — Document duplicate guard (**blocked on D5: canonical document taxonomy**).
+
+Deploy, architectural scalability prep, external service integration, and the pilot-ready deck remain explicitly deferred until the development queue is closed or the user changes this policy.
+
+**Active phase:** development.
+**Current base:** `develop` at `c1aea0f` / PR #175.
+**Next active slice:** `24.5` — Notification routing E2E.
 
 ## Source precedence
 
@@ -18,6 +25,25 @@ Phase A (gates) is closed. Phase B (product flows) is mostly closed with movemen
 | 6 | Older dated `docs/plans/*` docs | Historical context only unless promoted by sources 1–4 or accepted OpenSpec. |
 
 Unsupported completed/current/next claims are not execution directives. Future product/source changes must go through SDD/OpenSpec before code, seed, migration, test, or runtime-config edits.
+
+**Artifact caveat:** individual OpenSpec proposal `Status:` lines can be historical. For current execution status, trust this handoff first, then merge evidence and apply-progress artifacts.
+
+## What changed since the dev-mode reframe
+
+This update does **not** introduce a new roadmap. It reconciles the dev-mode queue created by PR #164 with the merge history through PR #175.
+
+The previous handoff still pointed at `26.6a` as next. Git first-parent history now proves these development slices have merged after PR #163:
+
+| Slice | Merge evidence | Result |
+|---|---|---|
+| `26.6a` — InmoView copy and role-language pass | PR #165 / `a40ea51` | User-facing role labels updated to real-estate vocabulary in the targeted UI surfaces. |
+| `20.11` — Seguimiento filter corrections | PR #167 / `8c4a366` | Timezone/date parsing and Responsable filter semantics fixed with strict TDD evidence. |
+| `20.9` — Seguimiento document activity proof | PR #169 / `6962c0f` | Document-request lifecycle proof added to activity feed, use cases, seed, and smoke coverage. |
+| `23.3` — WhatsApp tenant contact configuration | PR #171 / `537a426` | Tenant WhatsApp GET/PATCH API, settings UI, validation, and seeded round-trip shipped. |
+| `23.5` — Owner contact CTA semantics | PR #173 / `0858752` | Owner movement contact now resolves to assigned seller semantics, with backend/frontend/seeded proof. |
+| `23.4` — WhatsApp contact priority and tracking proof | PR #175 / `c1aea0f` | Contact tracking guards and seeded movement-level WhatsApp proof completed. |
+
+Supporting SDD/documentation PRs also landed for those slices: #166, #168, #170, #172, and #174.
 
 ## Status ledger
 
@@ -34,19 +60,26 @@ Unsupported completed/current/next claims are not execution directives. Future p
 | Completed | Stage 20.13 movement outcomes + custom tenant labels. | PR #152 (PR 1) + #155 (PR 2 recovery). | Sellers label movements operationally without moving official state. |
 | Completed | Stage 20.10 state change request workflow. | PR #157 (PR 1 schema+API+tests) + #158 (PR 2 BFF+UI+bandeja+smoke). | Seller proposes, manager approves; API 403 guard preserved. |
 | Completed | Owner invitation expiry test stability fix. | PR #159. | Closes the 14-day expiry time bomb introduced by the deterministic seed clock. |
-| Completed | Stage 26.3 full seeded E2E. | PR #161. | 22/22 seeded smoke green; full pilot choreography reproducible from one command. |
+| Completed | Stage 26.3 full seeded E2E. | PR #161. | Full pilot choreography reproducible from one command. |
 | Completed | Stage 26.4 security and isolation regression. | PR #163. | 13 API negative tests + 2 seeded UI tests; sanity-inversion proven. |
-| Next | Stage 26.6a — InmoView copy and role-language pass. | Revised plan Phase F (re-prioritized to run early). | Rename Agente → Vendedor and Manager → Encargado consistently across UI strings. |
+| Completed | Stage 26.6a InmoView copy and role-language pass. | PR #165 (`a40ea51`), 13 files / +27 / -27. | Copy pass landed; no enum/schema/security rename. |
+| Completed | Stage 20.11 Seguimiento daily workflow corrections. | PR #167 (`8c4a366`), apply-progress complete; API 659/659, app 403/403, seeded 25/25. | Responsable/date filter bugs closed. |
+| Completed | Stage 20.9 Seguimiento document activity proof. | PR #169 (`6962c0f`), apply-progress complete; API 665/665, app 419/419, seeded 27/27. | Document lifecycle visibility proof landed. |
+| Completed | Stage 23.3 WhatsApp tenant contact configuration. | PR #171 (`537a426`), apply-progress Phase 7 GREEN; API 702/702, app 426/426, seeded 28/28. | Tenant WhatsApp editor and round-trip shipped. |
+| Completed | Stage 23.5 owner contact CTA semantics. | PR #173 (`0858752`), Phase 7 GREEN; backend 713/713, frontend 426/426, seeded 29/29. | Owner movement contact resolves to assigned seller. |
+| Completed | Stage 23.4 WhatsApp contact priority and tracking proof. | PR #175 (`c1aea0f`), Phase 6 GREEN; API 715/715, app 430/430, seeded 30/30. | WhatsApp bundle closed end-to-end. |
+| Next | Stage 24.5 — Notification routing E2E. | No `openspec/changes/24-5-notification-routing-e2e/` directory exists yet. Historical audit marks notification routing/read-unread as P0 evidence gap. | Start with SDD/OpenSpec artifact creation, then implement only evidence-backed notification proof. |
+| Blocked | Stage 20.12 — Document duplicate guard and visibility decision. | `openspec/changes/20-12-document-duplicate-guard/proposal.md`; D5 still pending. | Do not enter spec/apply until canonical document taxonomy is decided. |
 
 ## Active gates
 
-Phase A gates all PASSED on 2026-06-14 and are kept here for traceability.
+Phase A gates all PASSED on 2026-06-14 and are kept here for traceability. Latest seeded smoke evidence has since increased from the original 24/24 baseline to 30/30 after PR #175.
 
 | Gate | Status | Evidence |
 |---|---|---|
-| G1 | PASS 2026-06-14 | Seller does not see flagged management controls. API direct call returns `403 Insufficient permissions`. |
+| G1 | PASS 2026-06-14 | Seller does not see flagged management controls. API direct call returns `403 Insufficient permissions`. Later security/isolation and WhatsApp slices preserved this. |
 | G2 | PASS 2026-06-14 | `dashboard/{chat,kanban,forms,forms/simple,elements/icons,react-query,exclusive}` → `404`. `dashboard/billing` → redirect. |
-| G3 | PASS 2026-06-14 | `pnpm demo:seed` clean offline; `test:seeded` 24/24 after 26.3 + 26.4. |
+| G3 | PASS 2026-06-14; latest smoke 30/30 by PR #175 | `pnpm demo:seed` clean offline; `test:seeded` baseline grew as evidence slices landed. Latest recorded result: Stage 23.4 seeded smoke 30/30 GREEN. |
 
 ## Open product decisions
 
@@ -54,38 +87,50 @@ Phase A gates all PASSED on 2026-06-14 and are kept here for traceability.
 |---|---|---|---|
 | D1 | Beta ships with seller status mutation, or Cuenta Madre approval gates state changes. | `20.10` priority | **Resolved 2026-06-14** — approval workflow shipped via 20.10. |
 | D2 | Manual copy-link acceptable, or transactional email ships now. | `21.7` priority | **Deferred** — no email provider work scheduled while in development mode. |
-| D3 | Image limit 5→10 confirmed by product. | `FB-8` small media slice | Pending — default backlog until product confirms. |
+| D3 | Image limit 5→10 confirmed by product. | `FB-8` small media slice | Pending — default backlog until product confirms with storage implications. |
 | D4 | PR #138 guards hold in browser, or the audit reproductions stand. | `22.8` priority | **Resolved 2026-06-14** — guards hold per gate G1; `22.8` closes as evidence-only. |
-| D5 | Document type taxonomy | `20.12` document duplicate guard | Pending — required before 20.12 can enter `sdd-spec`. |
+| D5 | Document type taxonomy and synonym map. | `20.12` document duplicate guard | **Pending/blocking** — required before 20.12 can enter `sdd-spec` or implementation. |
 
 ## Phase ordering — development first, deploy at the end
 
-Project is in **development mode**. The eight audit-adopted product slices that remain run in this order. Deploy + scalability prep + pilot deck are explicitly deferred until all eight land.
+Project is in **development mode**. The eight audit-adopted product slices were selected by the 2026-06-14 revision. Six are now closed; two remain.
 
-### Development-phase order
+### Closed development slices
+
+| Order | Slice | Evidence |
+|---:|---|---|
+| 1 | `26.6a` — Copy pass (Vendedor / Encargado / Cuenta Madre) | PR #165. |
+| 2 | `20.11` — Seguimiento daily workflow corrections | PR #167. |
+| 3 | `20.9` — Seguimiento document activity proof | PR #169. |
+| 4 | `23.3` — WhatsApp tenant contact configuration | PR #171. |
+| 5 | `23.5` — Owner contact CTA semantics | PR #173. |
+| 6 | `23.4` — WhatsApp contact priority and tracking proof | PR #175. |
+
+### Remaining development queue
 
 ```
-1. 26.6a  Copy pass (Vendedor / Encargado / Cuenta Madre)        ← NEXT
-2. 20.11  Seguimiento daily workflow corrections (filter fixes)
-3. 20.9   Seguimiento document activity proof
-4. 23.3   WhatsApp tenant contact configuration (UI editor)
-5. 23.5   Owner contact CTA semantics (movement-level)
-6. 23.4   WhatsApp contact priority and tracking proof
-7. 24.5   Notification routing E2E (mostly evidence after 26.3)
-8. 20.12  Document duplicate guard (gated on D5 — taxonomy decision)
+7. 24.5   Notification routing E2E                         ← NEXT
+8. 20.12  Document duplicate guard                          ← BLOCKED on D5 taxonomy
 ```
 
-Reasoning for the order:
+Execution notes:
 
-- `26.6a` first so the vocabulary is correct for every string the next slices touch.
-- Seguimiento group (`20.11` → `20.9`) bundled by feature area.
-- WhatsApp group (`23.3` → `23.5` → `23.4`) bundled by feature area; `23.5` runs after `23.3` so the editor exists before movement-level priority is tested.
-- `24.5` near the end because much of it is implicitly covered by `26.3`.
-- `20.12` last because it is blocked by D5 product decision on document taxonomy.
+- `24.5` is next because the WhatsApp and Seguimiento bundles are now closed, and notification routing/read-unread remains the only unblocked audit-adopted development slice.
+- `20.12` remains last because duplicate detection is unsafe without the D5 canonical document-type taxonomy and synonym map.
+- If D5 remains unresolved after 24.5, stop and ask for the taxonomy decision before implementing 20.12.
+
+### Reconciliation with older canonical phases
+
+Older canonical plans still contain `22.6` (team UI/inactive/seller proof) and `22.7` (seller assignment regression proof). They are **not promoted as active next slices by this handoff** because PR #164 intentionally reframed the immediate development queue around the eight audit-adopted slices above, and later proof already covers the critical seller-assignment/isolation paths:
+
+- `26.3` added seeded manager assign/unassign seller coverage via `Gestionar vendedores`.
+- `26.4` added seller unassigned API/UI denial and security/isolation regression coverage.
+
+Do not silently reopen `22.6` or `22.7`. Reopen a focused follow-up only if a fresh failing gate proves an uncovered team/inactive/seller behavior.
 
 ### Deferred until development complete
 
-These slices stay in the plan but **do not run** until the eight development slices above are merged.
+These slices stay in the plan but **do not run** until `24.5` and the `20.12` decision path are closed or explicitly re-prioritized by the user.
 
 ```
 26.5    Staging / deploy checklist
@@ -93,39 +138,42 @@ These slices stay in the plan but **do not run** until the eight development sli
         Architectural scalability prep (multi-user, service integration)
         External services wiring (Sentry, S3/R2 verification, email provider, etc.)
 26.6    Pilot-ready deck
+21.7    Transactional invitation email delivery (deferred by D2)
+FB-8    Property image limit 5→10 (deferred by D3)
 ```
 
-When development is complete, a new handoff revision reopens deploy planning explicitly.
+When development is complete, create a new handoff revision that explicitly reopens deploy planning.
 
 ## Next slice contract
 
 ```txt
-Stage: 26
-Slice: 26.6a — InmoView copy and role-language pass
-Objective: rename user-facing strings to the real-estate industry terms (Vendedor instead of Agente, Encargado instead of Manager) and keep Cuenta Madre consistent across the UI.
-Evidence needed: every user-facing UI string updated in a single coherent pass, with no internal enum/permission rename and no schema change. Audit-row trace in the PR description.
-Do not touch: TenantRole enum values, GlobalRole values, database role columns, permission guards, the API 403 guard, the 26.2 deterministic seed contract, or the 26.2.1 image fixtures.
-Done: `rg -i "Agente"` and `rg -i "Manager"` in user-facing string locations return no false positives; existing tests still pass without modification beyond updated assertion strings.
-Next slice: 20.11 — Seguimiento daily workflow corrections.
+Stage: 24
+Slice: 24.5 — Notification routing E2E
+Objective: prove owner/internal notification routing, links, and read/unread persistence under seeded E2E conditions.
+Evidence needed: audit existing API/BFF/unit notification coverage; add or confirm seeded owner/internal notification flow; prove notification appearance, click-through, mark-read, and reload persistence; prove owner notifications do not route into dashboard surfaces.
+Do not touch: realtime notifications, SSE/WebSockets, cron polling, push/email providers, broad notification redesign, deploy/runtime configuration, or unrelated dashboard navigation.
+Done: the Stage 26.0 notification routing/read-unread evidence gap is closed with deterministic tests/evidence, and the PR description traces the audit gap.
+Next slice: 20.12 — Document duplicate guard, only after D5 taxonomy is resolved.
 ```
 
 ## Adopted sub-slices from the audit
 
-These are staged in `openspec/changes/` and follow the new development order. Each carries an explicit `Status:` line in its proposal.
+Current state by change:
 
-- `openspec/changes/26-6a-inmoview-copy-pass/` — **next**.
-- `openspec/changes/20-11-seguimiento-filter-corrections/` — Phase 2 of dev.
-- `openspec/changes/20-9-seguimiento-document-activity-proof/` — not yet created; will be added before its turn.
-- `openspec/changes/23-3-whatsapp-tenant-contact-configuration/` — not yet created.
-- `openspec/changes/23-5-owner-contact-cta-semantics/` — proposal exists (Phase B4 in the revised plan).
-- `openspec/changes/23-4-whatsapp-contact-priority-tracking/` — not yet created.
-- `openspec/changes/24-5-notification-routing-e2e/` — not yet created.
-- `openspec/changes/20-12-document-duplicate-guard/` — proposal exists, blocked on D5.
+- `openspec/changes/26-6a-inmoview-copy-pass/` — **completed/merged** via PR #165.
+- `openspec/changes/20-11-seguimiento-filter-corrections/` — **completed/merged** via PR #167.
+- `openspec/changes/20-9-seguimiento-document-activity-proof/` — **completed/merged** via PR #169.
+- `openspec/changes/23-3-whatsapp-tenant-contact-configuration/` — **completed/merged** via PR #171.
+- `openspec/changes/23-5-owner-contact-cta-semantics/` — **completed/merged** via PR #173.
+- `openspec/changes/23-4-whatsapp-contact-priority-tracking/` — **completed/merged** via PR #175.
+- `openspec/changes/24-5-notification-routing-e2e/` — **next, not yet created**.
+- `openspec/changes/20-12-document-duplicate-guard/` — **proposal exists, blocked on D5 taxonomy**.
 
 Deferred until development complete:
+
 - `openspec/changes/26-5a-inmoview-domain-handoff/` — proposal exists; do not run.
-- `openspec/changes/21-7-transactional-invitation-email/` — proposal exists; do not run.
+- `openspec/changes/21-7-transactional-invitation-email/` — proposal exists; do not run unless D2 changes.
 
 ## Update rule
 
-Update this file whenever a slice handoff, validation result, merge, or accepted OpenSpec change changes completed/current/next MVP status. Every status update needs evidence. Do not delete prior revisions of the revised plan; create a new dated revision under `docs/plans/` and update this handoff to point at it.
+Update this file whenever a slice handoff, validation result, merge, blocker decision, or accepted OpenSpec change changes completed/current/next MVP status. Every status update needs evidence. Do not delete prior revisions of the revised plan; create a new dated revision under `docs/plans/` only when the execution plan itself changes, then update this handoff to point at it.
