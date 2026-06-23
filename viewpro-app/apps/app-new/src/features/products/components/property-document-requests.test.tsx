@@ -2,6 +2,7 @@ import { render, screen, waitFor, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { toast } from 'sonner';
 import { productKeys } from '../api/queries';
 import type {
   ProductDocumentRequest,
@@ -25,6 +26,27 @@ vi.mock('../api/service', () => ({
   createProductDocumentRequest: vi.fn(),
   getProductDocumentRequests: vi.fn(),
   rejectProductDocumentRequest: vi.fn()
+}));
+
+// Lightweight stub for CreateDocumentRequestDialog that renders a button calling onSubmit
+// directly. This allows testing the mutation's onError callback without fighting Radix Select
+// in jsdom.
+vi.mock('./create-document-request-dialog', () => ({
+  CreateDocumentRequestDialog: ({
+    open,
+    onSubmit
+  }: {
+    open: boolean
+    onSubmit: (payload: { propertyAssetOwnerId: string; title: string }) => void
+  }) =>
+    open ? (
+      <button
+        type='button'
+        onClick={() => onSubmit({ propertyAssetOwnerId: 'owner-link-1', title: 'Escritura' })}
+      >
+        Stub Submit
+      </button>
+    ) : null
 }));
 
 vi.mock('sonner', () => ({
@@ -745,6 +767,31 @@ describe('PropertyDocumentRequests', () => {
     // Regression guard: the deep-link scroll must NOT re-fire on a later user filter
     // toggle (Effect B must stay un-keyed on the filter). Still exactly one scroll.
     expect(Element.prototype.scrollIntoView).toHaveBeenCalledOnce();
+  });
+
+  // Stage 20.12 — 409 toast surfacing
+  it('shows a toast error with the API message when createDocumentRequest returns 409', async () => {
+    const user = userEvent.setup();
+    const duplicateError = new Error(
+      'An approved document of this type already exists for this property.'
+    );
+    getProductDocumentRequestsMock.mockResolvedValueOnce(documentRequestsResponse([]));
+    createProductDocumentRequestMock.mockRejectedValueOnce(duplicateError);
+
+    renderPropertyDocumentRequests();
+
+    // Open the dialog (stub renders a submit button when dialogOpen=true).
+    await user.click(await screen.findByRole('button', { name: 'Solicitar documento' }));
+
+    // The stub dialog renders a button that calls onSubmit with a fixed payload.
+    await user.click(screen.getByRole('button', { name: 'Stub Submit' }));
+
+    // The mutation rejects with the 409 error; onError calls toast.error with the message.
+    await waitFor(() => {
+      expect((toast.error as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith(
+        'An approved document of this type already exists for this property.'
+      );
+    });
   });
 });
 
