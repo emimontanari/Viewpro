@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { IconFilePlus } from '@tabler/icons-react';
 import { parseAsString, useQueryState } from 'nuqs';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { productDocumentRequestsOptions, productKeys } from '../api/queries';
 import {
@@ -113,6 +113,18 @@ export function PropertyDocumentRequests({
       .withOptions({ history: 'replace', scroll: false, shallow: true })
       .withDefault('all')
   );
+  // D3: read the deep-link doc param (read-only sibling nuqs param).
+  const [highlightDocId] = useQueryState('doc', parseAsString);
+  // D4: controlled open state for the resolved Collapsible.
+  const [resolvedOpen, setResolvedOpen] = useState(false);
+  // D6: transient highlight state + container ref for querySelector scope.
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // D5: one-shot filter reset guard — fires exactly once per mount with a non-null doc.
+  const didResetFilterRef = useRef(false);
+  // D4: one-shot resolved-open guard — prevents re-fighting a user collapse.
+  const didOpenResolvedRef = useRef(false);
   const activeFilter = getDocumentFilter(documentFilter);
   const documentRequestsQueryKey = productKeys.documentRequests(productId, tenantId);
   const eligibleOwners = useMemo(() => owners.filter(isEligibleDocumentOwner), [owners]);
@@ -171,6 +183,96 @@ export function PropertyDocumentRequests({
       toast.error(error instanceof Error ? error.message : 'No se pudo rechazar el documento');
     }
   });
+
+  // Cleanup: clear the highlight timer on unmount to avoid setState-after-unmount.
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current !== null) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, []);
+
+  // D5: one-shot filter reset. Fires once when doc is non-null on first render with a
+  // truthy highlightDocId. The ref guard prevents re-firing on subsequent renders.
+  useEffect(() => {
+    if (!highlightDocId || didResetFilterRef.current) {
+      return;
+    }
+    didResetFilterRef.current = true;
+    void setDocumentFilter(null);
+  }, [highlightDocId, setDocumentFilter]);
+
+  // D4 + D6 (R1 split-effect path): Two effects to avoid the single-tick race where
+  // setResolvedOpen(true) and scrollIntoView fire in the same tick — Radix needs a
+  // re-render between the open state change and scrollIntoView measuring layout.
+  //
+  // Effect A: data resolves → find target → open resolved group if needed.
+  useEffect(() => {
+    if (!highlightDocId || !documentRequestsQuery.isSuccess) {
+      return;
+    }
+
+    const item = documentRequestsQuery.data.items.find((i) => i.id === highlightDocId);
+    // If absent (deleted, CANCELLED-not-rendered, wrong id) → no-op, no throw (R5).
+    if (!item) {
+      return;
+    }
+
+    // Open the resolved Collapsible if the target is APPROVED or REJECTED (D4).
+    if (
+      (item.status === 'APPROVED' || item.status === 'REJECTED') &&
+      !didOpenResolvedRef.current
+    ) {
+      didOpenResolvedRef.current = true;
+      setResolvedOpen(true);
+    }
+  }, [highlightDocId, documentRequestsQuery.isSuccess, documentRequestsQuery.data]);
+
+  // Effect B: after resolvedOpen (or data resolved for non-resolved items) → scroll + highlight.
+  // Keyed on resolvedOpen so it runs after Radix has painted the open content.
+  useEffect(() => {
+    if (!highlightDocId || !documentRequestsQuery.isSuccess) {
+      return;
+    }
+
+    const item = documentRequestsQuery.data.items.find((i) => i.id === highlightDocId);
+    if (!item) {
+      return;
+    }
+
+    // For resolved items, only scroll once the Collapsible is open (resolvedOpen = true).
+    const isResolved = item.status === 'APPROVED' || item.status === 'REJECTED';
+    if (isResolved && !resolvedOpen) {
+      return;
+    }
+
+    // Scroll to the target element (D6). Only arm the highlight when the element is
+    // actually rendered — if the target is filtered out / not present, do not scroll
+    // or arm the transient highlight (FR-F9: no highlight fire when not found).
+    const selector = `[data-request-id="${CSS.escape(highlightDocId)}"]`;
+    const element = containerRef.current?.querySelector(selector);
+    if (!element) {
+      return;
+    }
+
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Transient highlight (D6).
+    setHighlightedId(highlightDocId);
+    if (highlightTimerRef.current !== null) {
+      clearTimeout(highlightTimerRef.current);
+    }
+    highlightTimerRef.current = setTimeout(() => {
+      setHighlightedId(null);
+      highlightTimerRef.current = null;
+    }, 2000);
+  }, [
+    highlightDocId,
+    documentRequestsQuery.isSuccess,
+    documentRequestsQuery.data,
+    resolvedOpen
+  ]);
 
   function handleOpenDialog() {
     if (
@@ -256,6 +358,7 @@ export function PropertyDocumentRequests({
               onFilterChange={handleFilterChange}
             />
             <div
+              ref={containerRef}
               data-testid='document-request-results'
               className='min-h-[28rem] space-y-4 [overflow-anchor:none] sm:min-h-[32rem]'
             >
@@ -264,12 +367,15 @@ export function PropertyDocumentRequests({
                   key={group.key}
                   group={group}
                   canReviewDocuments={canReviewDocuments}
+                  highlightedId={highlightedId}
                   isApproving={approveDocumentMutation.isPending}
                   isReading={readDocumentMutation.isPending}
                   isRejecting={rejectDocumentMutation.isPending}
                   onApprove={(requestId) => approveDocumentMutation.mutate(requestId)}
                   onRead={(versionId) => readDocumentMutation.mutate(versionId)}
                   onReject={setRequestToReject}
+                  resolvedOpen={resolvedOpen}
+                  onResolvedOpenChange={setResolvedOpen}
                 />
               ))}
             </div>
@@ -437,25 +543,32 @@ function DocumentRequestFilters({
 function DocumentRequestSection({
   canReviewDocuments,
   group,
+  highlightedId,
   isApproving,
   isReading,
   isRejecting,
   onApprove,
   onRead,
-  onReject
+  onReject,
+  onResolvedOpenChange,
+  resolvedOpen
 }: {
   canReviewDocuments: boolean;
   group: DocumentRequestGroup;
+  highlightedId?: string | null;
   isApproving: boolean;
   isReading: boolean;
   isRejecting: boolean;
   onApprove: (requestId: string) => void;
   onRead: (versionId: string) => void;
   onReject: (request: ProductDocumentRequest) => void;
+  onResolvedOpenChange?: (open: boolean) => void;
+  resolvedOpen?: boolean;
 }) {
   if (group.key === 'resolved') {
     return (
-      <Collapsible defaultOpen={false}>
+      // D4: controlled Collapsible — open/onOpenChange driven by PropertyDocumentRequests.
+      <Collapsible open={resolvedOpen} onOpenChange={onResolvedOpenChange}>
         <div className='rounded-xl border bg-background/50'>
           <CollapsibleTrigger asChild>
             <Button
@@ -476,6 +589,7 @@ function DocumentRequestSection({
             <DocumentRequestList
               canReviewDocuments={canReviewDocuments}
               emptyCopy={group.emptyCopy}
+              highlightedId={highlightedId}
               isApproving={isApproving}
               isReading={isReading}
               isRejecting={isRejecting}
@@ -500,6 +614,7 @@ function DocumentRequestSection({
       <DocumentRequestList
         canReviewDocuments={canReviewDocuments}
         emptyCopy={group.emptyCopy}
+        highlightedId={highlightedId}
         isApproving={isApproving}
         isReading={isReading}
         isRejecting={isRejecting}
@@ -515,6 +630,7 @@ function DocumentRequestSection({
 function DocumentRequestList({
   canReviewDocuments,
   emptyCopy,
+  highlightedId,
   isApproving,
   isReading,
   isRejecting,
@@ -525,6 +641,7 @@ function DocumentRequestList({
 }: {
   canReviewDocuments: boolean;
   emptyCopy: string;
+  highlightedId?: string | null;
   isApproving: boolean;
   isReading: boolean;
   isRejecting: boolean;
@@ -547,6 +664,7 @@ function DocumentRequestList({
         <DocumentRequestItem
           key={request.id}
           canReviewDocuments={canReviewDocuments}
+          isHighlighted={highlightedId === request.id}
           request={request}
           isApproving={isApproving}
           isReading={isReading}
@@ -563,6 +681,7 @@ function DocumentRequestList({
 function DocumentRequestItem({
   canReviewDocuments,
   isApproving,
+  isHighlighted,
   isReading,
   isRejecting,
   onApprove,
@@ -572,6 +691,7 @@ function DocumentRequestItem({
 }: {
   canReviewDocuments: boolean;
   isApproving: boolean;
+  isHighlighted?: boolean;
   isReading: boolean;
   isRejecting: boolean;
   onApprove: (requestId: string) => void;
@@ -587,7 +707,12 @@ function DocumentRequestItem({
   const reviewActionsDisabled = isApproving || isReading || isRejecting;
 
   return (
-    <li>
+    // D6: data-request-id is the DOM selector anchor for scroll/highlight.
+    // isHighlighted adds a transient ring to make the deep-linked item stand out.
+    <li
+      data-request-id={request.id}
+      className={cn(isHighlighted && 'ring-2 ring-primary rounded-xl')}
+    >
       <Card
         className={cn(
           'gap-0 overflow-hidden py-0 shadow-xs',

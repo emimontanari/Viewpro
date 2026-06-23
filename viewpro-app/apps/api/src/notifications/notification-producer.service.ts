@@ -109,7 +109,7 @@ export class NotificationProducerService {
 				type: NotificationType.DOCUMENT_UPLOADED,
 				title: "Document uploaded",
 				body: input.documentTitle,
-				linkHref: `/dashboard/product/${input.propertyEngagementId}`,
+				linkHref: `/dashboard/product/${input.propertyEngagementId}?doc=${input.documentRequestId}`,
 				propertyEngagementId: input.propertyEngagementId,
 				propertyAssetId: input.propertyAssetId,
 				documentRequestId: input.documentRequestId,
