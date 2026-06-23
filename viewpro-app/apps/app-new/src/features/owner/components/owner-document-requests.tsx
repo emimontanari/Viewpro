@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type ChangeEvent, useRef, useState } from 'react';
+import { type ChangeEvent, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ownerDocumentRequestsOptions, ownerKeys } from '../api/queries';
 import {
@@ -81,6 +81,8 @@ type OwnerDocumentRequestsProps = {
   agencyName?: string;
   /** Hide repeated agency copy inside each card when the surrounding page already shows it. */
   hideAgencyInDocumentCards?: boolean;
+  /** When set, scrolls to and briefly highlights the document request with this id. */
+  highlightDocId?: string | null;
   propertyEngagementId: string;
 };
 
@@ -93,6 +95,7 @@ type SelectedUpload = {
 export function OwnerDocumentRequests({
   agencyName = 'la inmobiliaria',
   hideAgencyInDocumentCards = false,
+  highlightDocId,
   propertyEngagementId
 }: OwnerDocumentRequestsProps) {
   const queryClient = useQueryClient();
@@ -101,9 +104,46 @@ export function OwnerDocumentRequests({
   const [uploadErrorMessage, setUploadErrorMessage] = useState<string | null>(null);
   const [uploadPhase, setUploadPhase] = useState<OwnerUploadPhase>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const containerRef = useRef<HTMLUListElement>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const documentRequestsQuery = useQuery(
     ownerDocumentRequestsOptions(propertyEngagementId, OWNER_DOCUMENT_FILTERS)
   );
+
+  // Cleanup timer on unmount to avoid setState-after-unmount.
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current !== null) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Scroll to and briefly highlight the target item after the query resolves (D3, FR-F3).
+  useEffect(() => {
+    if (!highlightDocId || !documentRequestsQuery.isSuccess) {
+      return;
+    }
+
+    const itemExists = documentRequestsQuery.data.items.some((item) => item.id === highlightDocId);
+    if (!itemExists) {
+      return;
+    }
+
+    const selector = `[data-request-id="${CSS.escape(highlightDocId)}"]`;
+    const element = containerRef.current?.querySelector(selector);
+    element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setHighlightedId(highlightDocId);
+
+    if (highlightTimerRef.current !== null) {
+      clearTimeout(highlightTimerRef.current);
+    }
+    highlightTimerRef.current = setTimeout(() => {
+      setHighlightedId(null);
+      highlightTimerRef.current = null;
+    }, 2000);
+  }, [highlightDocId, documentRequestsQuery.isSuccess, documentRequestsQuery.data]);
   const documentRequestsQueryKey = ownerKeys.documentRequests(
     propertyEngagementId,
     OWNER_DOCUMENT_FILTERS
@@ -226,11 +266,12 @@ export function OwnerDocumentRequests({
         {!documentRequestsQuery.isLoading &&
         !documentRequestsQuery.isError &&
         (documentRequestsQuery.data?.items.length ?? 0) > 0 ? (
-          <ul className='space-y-3'>
+          <ul ref={containerRef} className='space-y-3'>
             {documentRequestsQuery.data?.items.map((request) => (
               <OwnerDocumentRequestItem
                 key={request.id}
                 agencyName={agencyName}
+                isHighlighted={highlightedId === request.id}
                 request={request}
                 showAgencyInHeader={!hideAgencyInDocumentCards}
                 isUploading={uploadMutation.isPending}
@@ -260,6 +301,7 @@ export function OwnerDocumentRequests({
 
 function OwnerDocumentRequestItem({
   agencyName,
+  isHighlighted,
   isReading,
   isUploading,
   onRead,
@@ -268,6 +310,7 @@ function OwnerDocumentRequestItem({
   showAgencyInHeader
 }: {
   agencyName: string;
+  isHighlighted: boolean;
   isReading: boolean;
   isUploading: boolean;
   onRead: (versionId: string) => void;
@@ -310,7 +353,10 @@ function OwnerDocumentRequestItem({
   }
 
   return (
-    <li>
+    <li
+      className={cn(isHighlighted && 'ring-2 ring-primary rounded-xl')}
+      data-request-id={request.id}
+    >
       <Card className='overflow-visible py-0 shadow-xs'>
         <CardHeader className='rounded-t-xl border-b bg-muted/10 px-4 py-4'>
           <div

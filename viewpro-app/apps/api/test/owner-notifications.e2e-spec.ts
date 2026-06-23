@@ -532,6 +532,97 @@ describe("Owner Notifications API endpoints (e2e)", () => {
 	});
 
 	// ---------------------------------------------------------------------------
+	// Stage 24.6a — Deep-link round-trip tests (S-P1, S-R1, S-R2, S-R3 backend layer)
+	// ---------------------------------------------------------------------------
+
+	// S-P1/S-P2/S-P3 — DOCUMENT_REQUESTED notification stores and returns deep-link linkHref.
+	// Confirms sanitizeOwnerNotificationLink accepts the new ?tab=documents&doc={id} format.
+	it("stores and returns deep-link linkHref for DOCUMENT_REQUESTED notification", async () => {
+		const docReqId = "docreq-deeplink-1";
+		const owner = await registerTenantSession(
+			"owner-deeplink@example.com",
+			"Owner Deep-Link Tenant",
+		);
+		const propertyAsset = await seedPropertyAsset(prisma, owner.userId);
+		await linkOwner(
+			prisma,
+			propertyAsset.id,
+			owner.userId,
+			PropertyAssetOwnerAccessStatus.ACTIVE,
+		);
+		await seedNotification(prisma, {
+			recipientUserId: owner.userId,
+			surface: NotificationSurface.OWNER,
+			type: NotificationType.DOCUMENT_REQUESTED,
+			title: "Document requested deep-link",
+			linkHref: `/owner/properties/${propertyAsset.id}?tab=documents&doc=${docReqId}`,
+			propertyAssetId: propertyAsset.id,
+		});
+
+		const response = await owner.agent
+			.get("/api/owner/notifications")
+			.expect(200);
+
+		expect(response.body.total).toBe(1);
+		expect(response.body.items[0].linkHref).toBe(
+			`/owner/properties/${propertyAsset.id}?tab=documents&doc=${docReqId}`,
+		);
+	});
+
+	// S-R1 — Historical param-less /owner/properties/{assetId} linkHref still accepted.
+	it("accepts historical param-less /owner/properties/{assetId} linkHref (S-R1 regression)", async () => {
+		const owner = await registerTenantSession(
+			"owner-r1-regression@example.com",
+			"Owner R1 Regression Tenant",
+		);
+		const propertyAsset = await seedPropertyAsset(prisma, owner.userId);
+		await linkOwner(
+			prisma,
+			propertyAsset.id,
+			owner.userId,
+			PropertyAssetOwnerAccessStatus.ACTIVE,
+		);
+		await seedNotification(prisma, {
+			recipientUserId: owner.userId,
+			surface: NotificationSurface.OWNER,
+			title: "Historical param-less notification",
+			linkHref: `/owner/properties/${propertyAsset.id}`,
+			propertyAssetId: propertyAsset.id,
+		});
+
+		const response = await owner.agent
+			.get("/api/owner/notifications")
+			.expect(200);
+
+		expect(response.body.total).toBe(1);
+		expect(response.body.items[0].linkHref).toBe(`/owner/properties/${propertyAsset.id}`);
+	});
+
+	// S-R2 — /owner root linkHref still accepted.
+	it("accepts /owner root linkHref (S-R2 regression)", async () => {
+		const owner = await registerTenantSession(
+			"owner-r2-regression@example.com",
+			"Owner R2 Regression Tenant",
+		);
+		await seedNotification(prisma, {
+			recipientUserId: owner.userId,
+			surface: NotificationSurface.OWNER,
+			title: "Owner root notification",
+			linkHref: "/owner",
+		});
+
+		const response = await owner.agent
+			.get("/api/owner/notifications")
+			.expect(200);
+
+		expect(response.body.total).toBe(1);
+		expect(response.body.items[0].linkHref).toBe("/owner");
+	});
+
+	// S-R3 / S-A8 — Cross-surface link sanitization assertion confirmed unchanged.
+	// The existing S-A8 test above already covers this — no modification needed.
+
+	// ---------------------------------------------------------------------------
 	// Harness helpers (mirrored from notifications.e2e-spec.ts with owner extensions)
 	// ---------------------------------------------------------------------------
 

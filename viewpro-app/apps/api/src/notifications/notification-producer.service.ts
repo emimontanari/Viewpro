@@ -261,7 +261,7 @@ export class NotificationProducerService {
 				type: config.type,
 				title: config.title,
 				body: input.documentTitle,
-				linkHref: `/owner/properties/${input.propertyAssetId}`,
+				linkHref: `/owner/properties/${input.propertyAssetId}?tab=documents&doc=${input.documentRequestId}`,
 				propertyEngagementId: input.propertyEngagementId,
 				propertyAssetId: input.propertyAssetId,
 				documentRequestId: input.documentRequestId,

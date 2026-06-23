@@ -32,6 +32,7 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
       .withOptions({ history: 'replace', scroll: false, shallow: true })
       .withDefault('summary')
   );
+  const [highlightDocId] = useQueryState('doc', parseAsString);
   const activeTab = getOwnerDetailTab(tabQueryValue);
   const propertyQuery = useQuery(ownerPropertyOptions(propertyId));
   const engagementsQuery = useQuery(ownerPropertyEngagementsOptions(propertyId));
@@ -163,6 +164,7 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
             <OwnerDocumentRequests
               agencyName={primaryEngagement.tenant.name}
               hideAgencyInDocumentCards
+              highlightDocId={highlightDocId}
               propertyEngagementId={primaryEngagement.id}
             />
           ) : null}
