@@ -2,17 +2,13 @@
 
 **Last updated:** 2026-06-23.
 
-**Current answer:** the project is still in **100% development mode**. There is no pilot deadline, no demo-to-sell pressure, and no deploy clock. Since the dev-mode reframe, the `24.5` notification routing E2E proof and the full `24.6` notification deep-linking bundle (a/b/c) all landed. **D5 was resolved on 2026-06-23**, unblocking the last development slice:
+**Current answer:** the **development queue is now closed.** Every audit-adopted development slice has shipped: the `24.5` notification routing E2E proof, the full `24.6` notification deep-linking bundle (a/b/c), and — after D5 was resolved on 2026-06-23 — the final `20.12` document duplicate guard (PR #180, merged, archived). There is no unblocked development work remaining.
 
-1. `20.12` — Document duplicate guard (**unblocked** — D5 canonical taxonomy approved; ready for `sdd-spec`).
+The project has reached the decision point the plan reserves for development completion. **The next move is to create a new dated handoff revision that reopens deploy planning** (26.5 staging/deploy checklist, external services wiring, architectural scalability prep, 26.6 pilot-ready deck). Do not silently start deploy work — the user reopens that phase explicitly.
 
-After `20.12` ships, the development queue is closed and the project reaches the decision point the plan reserves for development completion: create a new handoff revision that reopens deploy planning.
-
-Deploy, architectural scalability prep, external service integration, and the pilot-ready deck remain explicitly deferred until the development queue is closed or the user reopens deploy planning.
-
-**Active phase:** development.
-**Current base:** `develop` at `99fcfc2` / PR #179.
-**Next active slice:** `20.12` — Document duplicate guard (D5 resolved; ready for `sdd-spec`).
+**Active phase:** development complete — awaiting deploy-planning reopen.
+**Current base:** `develop` at `cf81c7a` / PR #180.
+**Next active slice:** none — development queue closed; reopen deploy planning when the user decides.
 
 ## Source precedence
 
@@ -73,7 +69,7 @@ Supporting SDD/documentation PRs also landed for those slices: #166, #168, #170,
 | Completed | Stage 24.6a Notification deep-linking: owner document notifications. | PR #177 (`d947496`), archived `461f278`. | DOCUMENT_REQUESTED/APPROVED/REJECTED deep-link to the exact owner document. |
 | Completed | Stage 24.6b Notification deep-linking: internal document-uploaded. | PR #178 (`47faa2d`), archived `321497b`. | Internal DOCUMENT_UPLOADED deep-links to the exact document on the product page. |
 | Completed | Stage 24.6c Notification deep-linking: owner PROPERTY_STATUS_CHANGED. | PR #179 (`99fcfc2`). | Owner status-change notification deep-links to the movement timeline with scroll/highlight. |
-| Next | Stage 20.12 — Document duplicate guard and visibility decision. | `openspec/changes/20-12-document-duplicate-guard/proposal.md`; D5 resolved 2026-06-23. | Unblocked — ready for `sdd-spec`. Only remaining unshipped slice. |
+| Completed | Stage 20.12 — Document duplicate guard. | PR #180 (`cf81c7a`), archived 2026-06-23; D5 resolved. API 856/856, FE 456/456; verify PASS 0 CRITICAL. | Server-side 409 guard blocks re-requesting an APPROVED canonical document type per engagement. Development queue closed. |
 
 ## Active gates
 
@@ -117,13 +113,16 @@ Project is in **development mode**. The eight audit-adopted product slices were 
    24.6a  Deep-link owner document notifications           ← DONE (PR #177)
    24.6b  Deep-link internal document-uploaded             ← DONE (PR #178)
    24.6c  Deep-link owner PROPERTY_STATUS_CHANGED          ← DONE (PR #179)
-8. 20.12  Document duplicate guard                          ← BLOCKED on D5 taxonomy (only slice left)
+8. 20.12  Document duplicate guard                          ← DONE (PR #180, D5 resolved)
 ```
+
+Development queue is **closed** — every slice above has shipped.
 
 Execution notes:
 
-- `24.5` shipped (PR #176) and was followed by the `24.6` deep-linking bundle (a/b/c, PRs #177/#178/#179), which wires notification click-through to the exact document/movement. These were added after the 2026-06-19 revision and are now all merged.
-- `20.12` is the only remaining unshipped slice. **D5 resolved 2026-06-23** — the canonical taxonomy, synonym map, and guard rules are approved (see the 20.12 proposal). The slice is unblocked and ready for `sdd-spec`.
+- `24.5` shipped (PR #176), followed by the `24.6` deep-linking bundle (a/b/c, PRs #177/#178/#179) wiring notification click-through to the exact document/movement.
+- `20.12` shipped (PR #180) after D5 was resolved on 2026-06-23. Server-side document duplicate guard: a new request whose title resolves to a canonical type is blocked (409) when an APPROVED request of that type already exists on the same engagement; `otro` free-text is never guarded. No schema change.
+- **No unblocked development work remains.** The next move is to reopen deploy planning via a new dated handoff revision.
 
 ### Reconciliation with older canonical phases
 
