@@ -1,17 +1,18 @@
 # Current MVP Execution Handoff
 
-**Last updated:** 2026-06-19.
+**Last updated:** 2026-06-23.
 
-**Current answer:** the project is still in **100% development mode**. There is no pilot deadline, no demo-to-sell pressure, and no deploy clock. Since the dev-mode reframe, **six of the eight audit-adopted development slices have landed**. The active development queue is now down to:
+**Current answer:** the project is still in **100% development mode**. There is no pilot deadline, no demo-to-sell pressure, and no deploy clock. Since the dev-mode reframe, the `24.5` notification routing E2E proof and the full `24.6` notification deep-linking bundle (a/b/c) all landed. **D5 was resolved on 2026-06-23**, unblocking the last development slice:
 
-1. `24.5` — Notification routing E2E (**next**).
-2. `20.12` — Document duplicate guard (**blocked on D5: canonical document taxonomy**).
+1. `20.12` — Document duplicate guard (**unblocked** — D5 canonical taxonomy approved; ready for `sdd-spec`).
 
-Deploy, architectural scalability prep, external service integration, and the pilot-ready deck remain explicitly deferred until the development queue is closed or the user changes this policy.
+After `20.12` ships, the development queue is closed and the project reaches the decision point the plan reserves for development completion: create a new handoff revision that reopens deploy planning.
+
+Deploy, architectural scalability prep, external service integration, and the pilot-ready deck remain explicitly deferred until the development queue is closed or the user reopens deploy planning.
 
 **Active phase:** development.
-**Current base:** `develop` at `c1aea0f` / PR #175.
-**Next active slice:** `24.5` — Notification routing E2E.
+**Current base:** `develop` at `99fcfc2` / PR #179.
+**Next active slice:** `20.12` — Document duplicate guard (D5 resolved; ready for `sdd-spec`).
 
 ## Source precedence
 
@@ -68,8 +69,11 @@ Supporting SDD/documentation PRs also landed for those slices: #166, #168, #170,
 | Completed | Stage 23.3 WhatsApp tenant contact configuration. | PR #171 (`537a426`), apply-progress Phase 7 GREEN; API 702/702, app 426/426, seeded 28/28. | Tenant WhatsApp editor and round-trip shipped. |
 | Completed | Stage 23.5 owner contact CTA semantics. | PR #173 (`0858752`), Phase 7 GREEN; backend 713/713, frontend 426/426, seeded 29/29. | Owner movement contact resolves to assigned seller. |
 | Completed | Stage 23.4 WhatsApp contact priority and tracking proof. | PR #175 (`c1aea0f`), Phase 6 GREEN; API 715/715, app 430/430, seeded 30/30. | WhatsApp bundle closed end-to-end. |
-| Next | Stage 24.5 — Notification routing E2E. | No `openspec/changes/24-5-notification-routing-e2e/` directory exists yet. Historical audit marks notification routing/read-unread as P0 evidence gap. | Start with SDD/OpenSpec artifact creation, then implement only evidence-backed notification proof. |
-| Blocked | Stage 20.12 — Document duplicate guard and visibility decision. | `openspec/changes/20-12-document-duplicate-guard/proposal.md`; D5 still pending. | Do not enter spec/apply until canonical document taxonomy is decided. |
+| Completed | Stage 24.5 Notification routing E2E. | PR #176 (`94fd146`), archived `e310cb4`. | Owner/internal notification routing, links, and read/unread persistence proven under seeded E2E. |
+| Completed | Stage 24.6a Notification deep-linking: owner document notifications. | PR #177 (`d947496`), archived `461f278`. | DOCUMENT_REQUESTED/APPROVED/REJECTED deep-link to the exact owner document. |
+| Completed | Stage 24.6b Notification deep-linking: internal document-uploaded. | PR #178 (`47faa2d`), archived `321497b`. | Internal DOCUMENT_UPLOADED deep-links to the exact document on the product page. |
+| Completed | Stage 24.6c Notification deep-linking: owner PROPERTY_STATUS_CHANGED. | PR #179 (`99fcfc2`). | Owner status-change notification deep-links to the movement timeline with scroll/highlight. |
+| Next | Stage 20.12 — Document duplicate guard and visibility decision. | `openspec/changes/20-12-document-duplicate-guard/proposal.md`; D5 resolved 2026-06-23. | Unblocked — ready for `sdd-spec`. Only remaining unshipped slice. |
 
 ## Active gates
 
@@ -89,7 +93,7 @@ Phase A gates all PASSED on 2026-06-14 and are kept here for traceability. Lates
 | D2 | Manual copy-link acceptable, or transactional email ships now. | `21.7` priority | **Deferred** — no email provider work scheduled while in development mode. |
 | D3 | Image limit 5→10 confirmed by product. | `FB-8` small media slice | Pending — default backlog until product confirms with storage implications. |
 | D4 | PR #138 guards hold in browser, or the audit reproductions stand. | `22.8` priority | **Resolved 2026-06-14** — guards hold per gate G1; `22.8` closes as evidence-only. |
-| D5 | Document type taxonomy and synonym map. | `20.12` document duplicate guard | **Pending/blocking** — required before 20.12 can enter `sdd-spec` or implementation. |
+| D5 | Document type taxonomy and synonym map. | `20.12` document duplicate guard | **Resolved 2026-06-23** — canonical taxonomy + synonym map + guard rules approved (see `openspec/changes/20-12-document-duplicate-guard/proposal.md`). 20.12 unblocked for `sdd-spec`. |
 
 ## Phase ordering — development first, deploy at the end
 
@@ -109,15 +113,17 @@ Project is in **development mode**. The eight audit-adopted product slices were 
 ### Remaining development queue
 
 ```
-7. 24.5   Notification routing E2E                         ← NEXT
-8. 20.12  Document duplicate guard                          ← BLOCKED on D5 taxonomy
+7. 24.5   Notification routing E2E                         ← DONE (PR #176)
+   24.6a  Deep-link owner document notifications           ← DONE (PR #177)
+   24.6b  Deep-link internal document-uploaded             ← DONE (PR #178)
+   24.6c  Deep-link owner PROPERTY_STATUS_CHANGED          ← DONE (PR #179)
+8. 20.12  Document duplicate guard                          ← BLOCKED on D5 taxonomy (only slice left)
 ```
 
 Execution notes:
 
-- `24.5` is next because the WhatsApp and Seguimiento bundles are now closed, and notification routing/read-unread remains the only unblocked audit-adopted development slice.
-- `20.12` remains last because duplicate detection is unsafe without the D5 canonical document-type taxonomy and synonym map.
-- If D5 remains unresolved after 24.5, stop and ask for the taxonomy decision before implementing 20.12.
+- `24.5` shipped (PR #176) and was followed by the `24.6` deep-linking bundle (a/b/c, PRs #177/#178/#179), which wires notification click-through to the exact document/movement. These were added after the 2026-06-19 revision and are now all merged.
+- `20.12` is the only remaining unshipped slice. **D5 resolved 2026-06-23** — the canonical taxonomy, synonym map, and guard rules are approved (see the 20.12 proposal). The slice is unblocked and ready for `sdd-spec`.
 
 ### Reconciliation with older canonical phases
 
@@ -166,8 +172,11 @@ Current state by change:
 - `openspec/changes/23-3-whatsapp-tenant-contact-configuration/` — **completed/merged** via PR #171.
 - `openspec/changes/23-5-owner-contact-cta-semantics/` — **completed/merged** via PR #173.
 - `openspec/changes/23-4-whatsapp-contact-priority-tracking/` — **completed/merged** via PR #175.
-- `openspec/changes/24-5-notification-routing-e2e/` — **next, not yet created**.
-- `openspec/changes/20-12-document-duplicate-guard/` — **proposal exists, blocked on D5 taxonomy**.
+- `openspec/changes/24-5-notification-routing-e2e/` — **completed/merged** via PR #176.
+- `openspec/changes/24-6a-notification-deeplink-owner-documents/` — **completed/merged** via PR #177.
+- `openspec/changes/24-6b-notification-deeplink-internal-documents/` — **completed/merged** via PR #178.
+- `openspec/changes/24-6c-notification-deeplink-owner-movement/` — **completed/merged** via PR #179.
+- `openspec/changes/20-12-document-duplicate-guard/` — **proposal exists, blocked on D5 taxonomy**. Only remaining unshipped slice.
 
 Deferred until development complete:
 
