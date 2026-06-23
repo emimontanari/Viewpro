@@ -33,6 +33,7 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
       .withDefault('summary')
   );
   const [highlightDocId] = useQueryState('doc', parseAsString);
+  const [highlightMovementId] = useQueryState('movement', parseAsString);
   const activeTab = getOwnerDetailTab(tabQueryValue);
   const propertyQuery = useQuery(ownerPropertyOptions(propertyId));
   const engagementsQuery = useQuery(ownerPropertyEngagementsOptions(propertyId));
@@ -140,7 +141,9 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
                 <OwnerEngagementCard
                   key={engagement.id}
                   engagement={engagement}
+                  highlightMovementId={highlightMovementId}
                   property={property}
+                  scrollSectionOnMiss={engagements.length === 1}
                 />
               ))}
             </section>

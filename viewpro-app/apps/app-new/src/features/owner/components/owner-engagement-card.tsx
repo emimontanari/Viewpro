@@ -6,10 +6,14 @@ import { OwnerTimeline } from './owner-timeline';
 
 export function OwnerEngagementCard({
   engagement,
-  property
+  highlightMovementId = null,
+  property,
+  scrollSectionOnMiss = true
 }: {
   engagement: OwnerEngagement;
+  highlightMovementId?: string | null;
   property: Pick<OwnerProperty, 'addressLine' | 'city' | 'province'>;
+  scrollSectionOnMiss?: boolean;
 }) {
   return (
     <Card className='overflow-hidden'>
@@ -56,7 +60,12 @@ export function OwnerEngagementCard({
                 Últimos movimientos visibles para propietarios.
               </p>
             </div>
-            <OwnerTimeline engagementId={engagement.id} property={property} />
+            <OwnerTimeline
+              engagementId={engagement.id}
+              highlightMovementId={highlightMovementId}
+              property={property}
+              scrollSectionOnMiss={scrollSectionOnMiss}
+            />
           </div>
         </div>
       </CardContent>

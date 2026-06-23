@@ -91,7 +91,7 @@ export function sanitizeInternalNotificationLink(input: {
 	return `${url.pathname}${url.search}`;
 }
 
-const ALLOWED_OWNER_QUERY_PARAM_NAMES = new Set(['tab', 'doc']);
+const ALLOWED_OWNER_QUERY_PARAM_NAMES = new Set(['tab', 'doc', 'movement']);
 
 export function sanitizeOwnerNotificationLink(input: {
 	linkHref?: string | null;
@@ -150,14 +150,19 @@ export function sanitizeOwnerNotificationLink(input: {
 		}
 	}
 
-	// tab value must be exactly "documents" (FR-S6).
-	if (url.searchParams.get('tab') !== 'documents') {
-		return null;
-	}
-
-	// Both tab=documents AND a NON-EMPTY doc must be present together (FR-S10, D1 step 5).
+	// Two-tab dispatch (D2, FR-S2): exactly two ACCEPT shapes; any other tab value → reject.
+	const tab = url.searchParams.get('tab');
 	const docValue = url.searchParams.get('doc');
-	if (!docValue) {
+	const movementValue = url.searchParams.get('movement');
+
+	if (tab === 'documents') {
+		// 24.6a path: require non-empty doc AND movement absent.
+		if (!docValue || movementValue !== null) return null;
+	} else if (tab === 'tracking') {
+		// 24.6c path: require non-empty movement AND doc absent.
+		if (!movementValue || docValue !== null) return null;
+	} else {
+		// Any other tab value, or tab absent → reject.
 		return null;
 	}
 

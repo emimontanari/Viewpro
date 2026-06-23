@@ -141,7 +141,7 @@ export class NotificationProducerService {
 						type: NotificationType.PROPERTY_STATUS_CHANGED,
 						title: "Property status updated",
 						body: formatStatusChangeBody(input.previousStatus, input.newStatus),
-						linkHref: `/owner/properties/${input.propertyAssetId}`,
+						linkHref: `/owner/properties/${input.propertyAssetId}?tab=tracking&movement=${input.movementId}`,
 						propertyEngagementId: input.propertyEngagementId,
 						propertyAssetId: input.propertyAssetId,
 						movementId: input.movementId,
