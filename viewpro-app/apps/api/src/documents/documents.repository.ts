@@ -3,8 +3,23 @@ import type {
 	DocumentVersionStatus,
 	Prisma,
 } from "@prisma/client";
+import type { CanonicalDocumentType } from "./taxonomy/document-taxonomy";
 
 export const DOCUMENTS_REPOSITORY = Symbol("DOCUMENTS_REPOSITORY");
+
+/**
+ * Sentinel error thrown by runCreateWithDuplicateGuard when an APPROVED request
+ * of the same canonical type already exists on the engagement.
+ * The use case maps this to a ConflictException (409).
+ */
+export class DuplicateApprovedDocumentError extends Error {
+	constructor() {
+		super(
+			"An approved document of this type already exists for this property.",
+		);
+		this.name = "DuplicateApprovedDocumentError";
+	}
+}
 
 export type DocumentRequestRecord = Prisma.DocumentRequestGetPayload<{
 	include: {
@@ -55,6 +70,16 @@ export type CreateDocumentRequestInput = {
 	requestedByUserId: string;
 	title: string;
 	description?: string | null;
+};
+
+/**
+ * Input for the guarded create path.
+ * Extends the base create input with the pre-resolved canonical type key.
+ * The repository uses this to lock the engagement row, fetch APPROVED titles,
+ * and reject if a collision is found — all inside a single $transaction.
+ */
+export type RunCreateWithDuplicateGuardInput = CreateDocumentRequestInput & {
+	canonicalKey: CanonicalDocumentType;
 };
 
 export type TenantEngagementForDocumentRequest = {
@@ -153,6 +178,20 @@ export type DocumentsRepository = {
 	}): Promise<TenantEngagementForDocumentRequest | null>;
 	createRequest(
 		input: CreateDocumentRequestInput,
+	): Promise<DocumentRequestRecord>;
+	/**
+	 * Creates a document request while guarding against duplicate APPROVED requests
+	 * of the same canonical type on the same engagement.
+	 *
+	 * Executes inside a single $transaction:
+	 *   1. Locks the engagement row (SELECT FOR UPDATE) to serialize concurrent creates.
+	 *   2. Fetches all APPROVED request titles for the engagement.
+	 *   3. Resolves each title and compares against input.canonicalKey.
+	 *   4. Throws DuplicateApprovedDocumentError on collision (no row is inserted).
+	 *   5. Inserts and returns the new DocumentRequest on no collision.
+	 */
+	runCreateWithDuplicateGuard(
+		input: RunCreateWithDuplicateGuardInput,
 	): Promise<DocumentRequestRecord>;
 	listOwnerRequests(
 		input: ListOwnerDocumentRequestsInput,

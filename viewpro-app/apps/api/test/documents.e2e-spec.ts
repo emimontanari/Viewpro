@@ -409,6 +409,440 @@ describe("Documents internal endpoints (e2e)", () => {
 		expect(response.body.message).toBe("Authentication required");
 	});
 
+	// ---------------------------------------------------------------------------
+	// Stage 20.12 — Duplicate Guard tests
+	// ---------------------------------------------------------------------------
+
+	it("rejects creation when an APPROVED request of the same canonical type already exists on the engagement", async () => {
+		// G1-a, G4-a: APPROVED conflict → 409, no new row persisted.
+		const manager = await registerTenantSession(
+			"dup-guard-approved-manager@example.com",
+			"Dup Guard Approved Tenant",
+		);
+		const owner = await registerOwnerSession("dup-guard-approved-owner@example.com");
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Dup Guard Approved Property",
+		}).expect(201);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
+
+		// Seed a SUBMITTED request and advance it to APPROVED via the review endpoint.
+		const submitted = await seedSubmittedDocumentRequest({
+			tenantId: manager.tenantId,
+			propertyEngagementId: engagement.body.id,
+			propertyAssetOwnerId: ownerLink.id,
+			ownerUserId: owner.userId,
+			requestedByUserId: manager.userId,
+			title: "Escritura",
+		});
+		await manager.agent
+			.post(`/api/document-requests/${submitted.id}/approve`)
+			.set("x-tenant-id", manager.tenantId)
+			.expect(201);
+
+		// Attempt to create another request of the same canonical type (escritura firmada → escritura).
+		const response = await manager.agent
+			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({
+				propertyAssetOwnerId: ownerLink.id,
+				title: "escritura firmada",
+			})
+			.expect(409);
+
+		expect(response.body.errorCode).toBe("DOCUMENT_DUPLICATE_APPROVED");
+		await expect(
+			prisma.documentRequest.count({
+				where: { propertyEngagementId: engagement.body.id, status: "PENDING" },
+			}),
+		).resolves.toBe(0);
+	});
+
+	it("allows creation when the same-type request is PENDING", async () => {
+		// G1-b: PENDING existing does not block creation.
+		const manager = await registerTenantSession(
+			"dup-guard-pending-manager@example.com",
+			"Dup Guard Pending Tenant",
+		);
+		const owner = await registerOwnerSession("dup-guard-pending-owner@example.com");
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Dup Guard Pending Property",
+		}).expect(201);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
+
+		// Seed a PENDING request for 'Escritura'.
+		await prisma.documentRequest.create({
+			data: {
+				tenantId: manager.tenantId,
+				propertyEngagementId: engagement.body.id,
+				propertyAssetOwnerId: ownerLink.id,
+				ownerUserId: owner.userId,
+				requestedByUserId: manager.userId,
+				title: "Escritura",
+				status: "PENDING",
+			},
+		});
+
+		// New request of the same canonical type must succeed.
+		await manager.agent
+			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ propertyAssetOwnerId: ownerLink.id, title: "escritura" })
+			.expect(201);
+
+		await expect(
+			prisma.documentRequest.count({ where: { propertyEngagementId: engagement.body.id } }),
+		).resolves.toBe(2);
+	});
+
+	it("allows creation when the same-type request is SUBMITTED", async () => {
+		// G1-c: SUBMITTED existing does not block creation.
+		const manager = await registerTenantSession(
+			"dup-guard-submitted-manager@example.com",
+			"Dup Guard Submitted Tenant",
+		);
+		const owner = await registerOwnerSession("dup-guard-submitted-owner@example.com");
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Dup Guard Submitted Property",
+		}).expect(201);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
+
+		await seedSubmittedDocumentRequest({
+			tenantId: manager.tenantId,
+			propertyEngagementId: engagement.body.id,
+			propertyAssetOwnerId: ownerLink.id,
+			ownerUserId: owner.userId,
+			requestedByUserId: manager.userId,
+			title: "dni",
+		});
+
+		await manager.agent
+			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ propertyAssetOwnerId: ownerLink.id, title: "DNI del propietario" })
+			.expect(201);
+	});
+
+	it("allows creation when the same-type request is REJECTED", async () => {
+		// G1-d: REJECTED existing does not block creation.
+		const manager = await registerTenantSession(
+			"dup-guard-rejected-manager@example.com",
+			"Dup Guard Rejected Tenant",
+		);
+		const owner = await registerOwnerSession("dup-guard-rejected-owner@example.com");
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Dup Guard Rejected Property",
+		}).expect(201);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
+
+		await prisma.documentRequest.create({
+			data: {
+				tenantId: manager.tenantId,
+				propertyEngagementId: engagement.body.id,
+				propertyAssetOwnerId: ownerLink.id,
+				ownerUserId: owner.userId,
+				requestedByUserId: manager.userId,
+				title: "plano",
+				status: "REJECTED",
+			},
+		});
+
+		await manager.agent
+			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ propertyAssetOwnerId: ownerLink.id, title: "Plano municipal" })
+			.expect(201);
+	});
+
+	it("allows creation when the same-type request is CANCELLED", async () => {
+		// G1-e: CANCELLED existing does not block creation.
+		const manager = await registerTenantSession(
+			"dup-guard-cancelled-manager@example.com",
+			"Dup Guard Cancelled Tenant",
+		);
+		const owner = await registerOwnerSession("dup-guard-cancelled-owner@example.com");
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Dup Guard Cancelled Property",
+		}).expect(201);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
+
+		await prisma.documentRequest.create({
+			data: {
+				tenantId: manager.tenantId,
+				propertyEngagementId: engagement.body.id,
+				propertyAssetOwnerId: ownerLink.id,
+				ownerUserId: owner.userId,
+				requestedByUserId: manager.userId,
+				title: "expensas",
+				status: "CANCELLED",
+			},
+		});
+
+		await manager.agent
+			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ propertyAssetOwnerId: ownerLink.id, title: "Expensas" })
+			.expect(201);
+	});
+
+	it("allows creation on engagement B when APPROVED same-type exists only on engagement A", async () => {
+		// G2-a: guard is scoped to the same engagement.
+		const manager = await registerTenantSession(
+			"dup-guard-cross-eng-manager@example.com",
+			"Dup Guard Cross Engagement Tenant",
+		);
+		const owner = await registerOwnerSession("dup-guard-cross-eng-owner@example.com");
+		const engagementA = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Dup Guard Cross Eng A",
+		}).expect(201);
+		const engagementB = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Dup Guard Cross Eng B",
+		}).expect(201);
+		const ownerLinkA = await grantOwnerAccess(owner.userId, engagementA.body.property.id);
+		const ownerLinkB = await grantOwnerAccess(owner.userId, engagementB.body.property.id);
+
+		// Seed APPROVED 'dni' on engagement A.
+		const submittedA = await seedSubmittedDocumentRequest({
+			tenantId: manager.tenantId,
+			propertyEngagementId: engagementA.body.id,
+			propertyAssetOwnerId: ownerLinkA.id,
+			ownerUserId: owner.userId,
+			requestedByUserId: manager.userId,
+			title: "dni",
+		});
+		await manager.agent
+			.post(`/api/document-requests/${submittedA.id}/approve`)
+			.set("x-tenant-id", manager.tenantId)
+			.expect(201);
+
+		// Creating 'DNI del propietario' on engagement B must succeed.
+		await manager.agent
+			.post(`/api/property-engagements/${engagementB.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ propertyAssetOwnerId: ownerLinkB.id, title: "DNI del propietario" })
+			.expect(201);
+	});
+
+	it("allows creation of any free-text (otro) title even when an APPROVED otro request exists", async () => {
+		// G3-a: otro titles bypass the guard entirely.
+		const manager = await registerTenantSession(
+			"dup-guard-otro-manager@example.com",
+			"Dup Guard Otro Tenant",
+		);
+		const owner = await registerOwnerSession("dup-guard-otro-owner@example.com");
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Dup Guard Otro Property",
+		}).expect(201);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
+
+		// Seed APPROVED 'factura de gas' (unmatched → otro).
+		const submitted = await seedSubmittedDocumentRequest({
+			tenantId: manager.tenantId,
+			propertyEngagementId: engagement.body.id,
+			propertyAssetOwnerId: ownerLink.id,
+			ownerUserId: owner.userId,
+			requestedByUserId: manager.userId,
+			title: "factura de gas",
+		});
+		await manager.agent
+			.post(`/api/document-requests/${submitted.id}/approve`)
+			.set("x-tenant-id", manager.tenantId)
+			.expect(201);
+
+		// Another otro title must be allowed.
+		await manager.agent
+			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ propertyAssetOwnerId: ownerLink.id, title: "recibo de medianera" })
+			.expect(201);
+	});
+
+	it("allows creation when the title is a near-typo (not a synonym) of a canonical type", async () => {
+		// G3-b: 'escrituraa' resolves to otro, so creation is allowed even with APPROVED escritura.
+		const manager = await registerTenantSession(
+			"dup-guard-typo-manager@example.com",
+			"Dup Guard Typo Tenant",
+		);
+		const owner = await registerOwnerSession("dup-guard-typo-owner@example.com");
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Dup Guard Typo Property",
+		}).expect(201);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
+
+		// Seed APPROVED 'Escritura'.
+		const submitted = await seedSubmittedDocumentRequest({
+			tenantId: manager.tenantId,
+			propertyEngagementId: engagement.body.id,
+			propertyAssetOwnerId: ownerLink.id,
+			ownerUserId: owner.userId,
+			requestedByUserId: manager.userId,
+			title: "Escritura",
+		});
+		await manager.agent
+			.post(`/api/document-requests/${submitted.id}/approve`)
+			.set("x-tenant-id", manager.tenantId)
+			.expect(201);
+
+		// 'escrituraa' is a typo, resolves to otro — must be allowed.
+		await manager.agent
+			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ propertyAssetOwnerId: ownerLink.id, title: "escrituraa" })
+			.expect(201);
+	});
+
+	it("direct API call without frontend guard still returns 409 on duplicate APPROVED", async () => {
+		// G4-a: server-side enforcement; direct API call blocked.
+		const manager = await registerTenantSession(
+			"dup-guard-direct-manager@example.com",
+			"Dup Guard Direct Tenant",
+		);
+		const owner = await registerOwnerSession("dup-guard-direct-owner@example.com");
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Dup Guard Direct Property",
+		}).expect(201);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
+
+		// Seed APPROVED 'dni'.
+		const submitted = await seedSubmittedDocumentRequest({
+			tenantId: manager.tenantId,
+			propertyEngagementId: engagement.body.id,
+			propertyAssetOwnerId: ownerLink.id,
+			ownerUserId: owner.userId,
+			requestedByUserId: manager.userId,
+			title: "dni",
+		});
+		await manager.agent
+			.post(`/api/document-requests/${submitted.id}/approve`)
+			.set("x-tenant-id", manager.tenantId)
+			.expect(201);
+
+		// Direct API call with a synonym (documento de identidad → dni) must return 409.
+		const response = await manager.agent
+			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ propertyAssetOwnerId: ownerLink.id, title: "documento de identidad" })
+			.expect(409);
+
+		expect(response.body.errorCode).toBe("DOCUMENT_DUPLICATE_APPROVED");
+	});
+
+	it("allows any valid title string when no APPROVED requests exist", async () => {
+		// R1-a: free-text title stored as-is; no APPROVED requests present.
+		const manager = await registerTenantSession(
+			"dup-guard-r1a-manager@example.com",
+			"Dup Guard R1a Tenant",
+		);
+		const owner = await registerOwnerSession("dup-guard-r1a-owner@example.com");
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Dup Guard R1a Property",
+		}).expect(201);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
+
+		const response = await manager.agent
+			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ propertyAssetOwnerId: ownerLink.id, title: "Informe de dominio especial" })
+			.expect(201);
+
+		// Title is stored as the original un-normalized string.
+		expect(response.body.title).toBe("Informe de dominio especial");
+	});
+
+	it("does not reject a title of exactly 200 characters due to the guard", async () => {
+		// R1-b: 200-char title that resolves to otro; guard does not block it.
+		const manager = await registerTenantSession(
+			"dup-guard-r1b-manager@example.com",
+			"Dup Guard R1b Tenant",
+		);
+		const owner = await registerOwnerSession("dup-guard-r1b-owner@example.com");
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Dup Guard R1b Property",
+		}).expect(201);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
+
+		// 200-character title that resolves to otro (not a known synonym).
+		const longTitle = "x".repeat(200);
+
+		await manager.agent
+			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ propertyAssetOwnerId: ownerLink.id, title: longTitle })
+			.expect(201);
+	});
+
+	it("review-document-request still succeeds and does not invoke the duplicate guard", async () => {
+		// R2-a: the review (approve) flow is unchanged; guard not involved.
+		const manager = await registerTenantSession(
+			"dup-guard-r2a-manager@example.com",
+			"Dup Guard R2a Tenant",
+		);
+		const owner = await registerOwnerSession("dup-guard-r2a-owner@example.com");
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Dup Guard R2a Property",
+		}).expect(201);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
+
+		const submitted = await seedSubmittedDocumentRequest({
+			tenantId: manager.tenantId,
+			propertyEngagementId: engagement.body.id,
+			propertyAssetOwnerId: ownerLink.id,
+			ownerUserId: owner.userId,
+			requestedByUserId: manager.userId,
+		});
+
+		const response = await manager.agent
+			.post(`/api/document-requests/${submitted.id}/approve`)
+			.set("x-tenant-id", manager.tenantId)
+			.expect(201);
+
+		expect(response.body.status).toBe("APPROVED");
+	});
+
+	it("seller without canViewAll does not receive other sellers document requests", async () => {
+		// R3-a: seller-scoped visibility is unchanged by the guard.
+		const manager = await registerTenantSession(
+			"dup-guard-r3a-manager@example.com",
+			"Dup Guard R3a Tenant",
+		);
+		const sellerA = await registerTenantSession(
+			"dup-guard-r3a-seller-a@example.com",
+			"Dup Guard R3a Seller A",
+		);
+		const sellerB = await registerTenantSession(
+			"dup-guard-r3a-seller-b@example.com",
+			"Dup Guard R3a Seller B",
+		);
+		const owner = await registerOwnerSession("dup-guard-r3a-owner@example.com");
+
+		await addTenantAgent(sellerA.userId, manager.tenantId);
+		await addTenantAgent(sellerB.userId, manager.tenantId);
+
+		const engagement = await createEngagement(manager.agent, manager.tenantId, {
+			title: "Dup Guard R3a Property",
+		}).expect(201);
+		const ownerLink = await grantOwnerAccess(owner.userId, engagement.body.property.id);
+
+		// Assign only sellerA to the engagement.
+		await assignAgent(manager.agent, manager.tenantId, engagement.body.id, sellerA.userId).expect(201);
+
+		// Create a document request via manager on sellerA's engagement.
+		const created = await manager.agent
+			.post(`/api/property-engagements/${engagement.body.id}/document-requests`)
+			.set("x-tenant-id", manager.tenantId)
+			.send({ propertyAssetOwnerId: ownerLink.id, title: "Plano municipal" })
+			.expect(201);
+
+		// sellerB (unassigned) must NOT see the request.
+		const sellerBList = await sellerB.agent
+			.get("/api/document-requests")
+			.set("x-tenant-id", manager.tenantId)
+			.expect(200);
+
+		expect(
+			sellerBList.body.items.map((item: { id: string }) => item.id),
+		).not.toContain(created.body.id);
+	});
+
 	async function registerTenantSession(email: string, tenantName: string) {
 		const agent = request.agent(app.getHttpServer());
 		const response = await agent
@@ -504,11 +938,12 @@ describe("Documents internal endpoints (e2e)", () => {
 		propertyAssetOwnerId: string;
 		ownerUserId: string;
 		requestedByUserId: string;
+		title?: string;
 	}) {
 		const documentRequest = await prisma.documentRequest.create({
 			data: {
 				...input,
-				title: "Uploaded deed",
+				title: input.title ?? "Uploaded deed",
 				status: DocumentRequestStatus.SUBMITTED,
 				document: {
 					create: {

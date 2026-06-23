@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common'
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common'
 import { AnalyticsActorType, AnalyticsEventName } from '@prisma/client'
 import { AnalyticsService, type TrackAnalyticsEventInput } from '../../analytics/analytics.service'
 import { NotificationProducerService, type DocumentOwnerNotificationInput } from '../../notifications/notification-producer.service'
@@ -7,7 +7,8 @@ import { PERMISSIONS } from '../../permissions/permissions.constants'
 import type { TenantContext } from '../../tenant-context/tenant-context.types'
 import { mapDocumentRequestResponse, type DocumentRequestResponse } from '../document-response.mapper'
 import type { CreateDocumentRequestDto } from '../dto/create-document-request.dto'
-import { DOCUMENTS_REPOSITORY, type DocumentRequestRecord, type DocumentsRepository } from '../documents.repository'
+import { DOCUMENTS_REPOSITORY, DuplicateApprovedDocumentError, type DocumentRequestRecord, type DocumentsRepository } from '../documents.repository'
+import { resolveCanonicalType } from '../taxonomy/document-taxonomy'
 
 @Injectable()
 export class CreateDocumentRequestUseCase {
@@ -46,7 +47,9 @@ export class CreateDocumentRequestUseCase {
       throw new NotFoundException('Property engagement not found')
     }
 
-    const request = await this.documentsRepository.createRequest({
+    const canonicalKey = resolveCanonicalType(input.title)
+
+    const createInput = {
       tenantId: tenant.tenantId,
       propertyEngagementId,
       propertyAssetOwnerId: engagement.propertyAssetOwnerId,
@@ -54,7 +57,28 @@ export class CreateDocumentRequestUseCase {
       requestedByUserId: currentUser.id,
       title: input.title,
       description: input.description,
-    })
+    }
+
+    let request: DocumentRequestRecord
+    if (canonicalKey === 'otro') {
+      // G3: unrecognized titles bypass the duplicate guard entirely.
+      request = await this.documentsRepository.createRequest(createInput)
+    } else {
+      try {
+        request = await this.documentsRepository.runCreateWithDuplicateGuard({
+          ...createInput,
+          canonicalKey,
+        })
+      } catch (error) {
+        if (error instanceof DuplicateApprovedDocumentError) {
+          throw new ConflictException({
+            errorCode: 'DOCUMENT_DUPLICATE_APPROVED',
+            message: 'An approved document of this type already exists for this property.',
+          })
+        }
+        throw error
+      }
+    }
 
     await this.trackAnalytics({
       eventName: AnalyticsEventName.DOCUMENT_REQUESTED,

@@ -24,7 +24,10 @@ import type {
   ListInternalDocumentRequestsInput,
   ListOwnerDocumentRequestsInput,
   ReviewDocumentRequestInput,
+  RunCreateWithDuplicateGuardInput,
 } from './documents.repository'
+import { DuplicateApprovedDocumentError } from './documents.repository'
+import { resolveCanonicalType } from './taxonomy/document-taxonomy'
 
 const inactiveEngagementStatuses = [PropertyEngagementStatus.CLOSED, PropertyEngagementStatus.CANCELLED]
 
@@ -187,6 +190,49 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
         status: DocumentRequestStatus.PENDING,
       },
       include: documentRequestInclude,
+    })
+  }
+
+  async runCreateWithDuplicateGuard(input: RunCreateWithDuplicateGuardInput): Promise<DocumentRequestRecord> {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Lock the engagement row to serialize concurrent creates on the same engagement.
+      //    Mirrors the lockTenantRow pattern used by ensureTenantDocumentStorageCapacity.
+      if (typeof tx.$queryRaw === 'function') {
+        await tx.$queryRaw`SELECT id FROM property_engagements WHERE id = ${input.propertyEngagementId} FOR UPDATE`
+      }
+
+      // 2. Fetch all APPROVED request titles for this engagement.
+      const approvedRequests = await tx.documentRequest.findMany({
+        where: {
+          propertyEngagementId: input.propertyEngagementId,
+          status: DocumentRequestStatus.APPROVED,
+        },
+        select: { title: true },
+      })
+
+      // 3. Resolve each approved title and check for a canonical key collision.
+      const hasConflict = approvedRequests.some(
+        (r) => resolveCanonicalType(r.title) === input.canonicalKey,
+      )
+
+      if (hasConflict) {
+        throw new DuplicateApprovedDocumentError()
+      }
+
+      // 4. No collision — insert the new request with PENDING status.
+      return tx.documentRequest.create({
+        data: {
+          tenantId: input.tenantId,
+          propertyEngagementId: input.propertyEngagementId,
+          propertyAssetOwnerId: input.propertyAssetOwnerId,
+          ownerUserId: input.ownerUserId ?? null,
+          requestedByUserId: input.requestedByUserId,
+          title: input.title,
+          description: input.description ?? null,
+          status: DocumentRequestStatus.PENDING,
+        },
+        include: documentRequestInclude,
+      })
     })
   }
 
