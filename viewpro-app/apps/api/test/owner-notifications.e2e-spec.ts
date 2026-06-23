@@ -623,6 +623,80 @@ describe("Owner Notifications API endpoints (e2e)", () => {
 	// The existing S-A8 test above already covers this — no modification needed.
 
 	// ---------------------------------------------------------------------------
+	// Stage 24.6c — PROPERTY_STATUS_CHANGED deep-link round-trip (S-P1, S-P2, S-R3..S-R5)
+	// ---------------------------------------------------------------------------
+
+	// S-P1/S-P2 — PROPERTY_STATUS_CHANGED stores and returns exact deep-link linkHref.
+	// movementId FK is not set to avoid seeding a PropertyEngagementMovement row;
+	// the linkHref column is the source of truth tested here (sanitizer round-trip).
+	it("24.6c: stores and returns deep-link linkHref for PROPERTY_STATUS_CHANGED notification", async () => {
+		const movementId = "mov-deeplink-24-6c";
+		const owner = await registerTenantSession(
+			"owner-24-6c-deeplink@example.com",
+			"Owner 24.6c Deep-Link Tenant",
+		);
+		const propertyAsset = await seedPropertyAsset(prisma, owner.userId);
+		await linkOwner(
+			prisma,
+			propertyAsset.id,
+			owner.userId,
+			PropertyAssetOwnerAccessStatus.ACTIVE,
+		);
+		await seedNotification(prisma, {
+			recipientUserId: owner.userId,
+			surface: NotificationSurface.OWNER,
+			type: NotificationType.PROPERTY_STATUS_CHANGED,
+			title: "Property status changed deep-link",
+			linkHref: `/owner/properties/${propertyAsset.id}?tab=tracking&movement=${movementId}`,
+			propertyAssetId: propertyAsset.id,
+			// movementId FK intentionally omitted — FK must reference a real PropertyEngagementMovement.
+			// The linkHref column independently encodes the id for deep-linking.
+		});
+
+		const response = await owner.agent
+			.get("/api/owner/notifications")
+			.expect(200);
+
+		expect(response.body.total).toBe(1);
+		expect(response.body.items[0].linkHref).toBe(
+			`/owner/properties/${propertyAsset.id}?tab=tracking&movement=${movementId}`,
+		);
+	});
+
+	// S-R3 (24.6a regression) — tab=documents+doc deep-link still accepted by sanitizer.
+	it("24.6c regression S-R3: tab=documents+doc linkHref still accepted after dispatch rewrite", async () => {
+		const docReqId = "docreq-24-6c-regression";
+		const owner = await registerTenantSession(
+			"owner-24-6c-r3@example.com",
+			"Owner 24.6c R3 Tenant",
+		);
+		const propertyAsset = await seedPropertyAsset(prisma, owner.userId);
+		await linkOwner(
+			prisma,
+			propertyAsset.id,
+			owner.userId,
+			PropertyAssetOwnerAccessStatus.ACTIVE,
+		);
+		await seedNotification(prisma, {
+			recipientUserId: owner.userId,
+			surface: NotificationSurface.OWNER,
+			type: NotificationType.DOCUMENT_REQUESTED,
+			title: "24.6a regression guard",
+			linkHref: `/owner/properties/${propertyAsset.id}?tab=documents&doc=${docReqId}`,
+			propertyAssetId: propertyAsset.id,
+		});
+
+		const response = await owner.agent
+			.get("/api/owner/notifications")
+			.expect(200);
+
+		expect(response.body.total).toBe(1);
+		expect(response.body.items[0].linkHref).toBe(
+			`/owner/properties/${propertyAsset.id}?tab=documents&doc=${docReqId}`,
+		);
+	});
+
+	// ---------------------------------------------------------------------------
 	// Harness helpers (mirrored from notifications.e2e-spec.ts with owner extensions)
 	// ---------------------------------------------------------------------------
 
