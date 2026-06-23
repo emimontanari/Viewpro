@@ -74,13 +74,14 @@ describe("NotificationProducerService", () => {
 			makeDocumentUploadNotificationInput(),
 		);
 
+		// S-P1/S-P2: linkHref must be the deep-link shape (24.6b).
 		expect(repository.createInternal).toHaveBeenCalledWith({
 			tenantId: "tenant-1",
 			recipientUserId: "agent-1",
 			type: NotificationType.DOCUMENT_UPLOADED,
 			title: "Document uploaded",
 			body: "Property deed",
-			linkHref: "/dashboard/product/engagement-1",
+			linkHref: "/dashboard/product/engagement-1?doc=request-1",
 			propertyEngagementId: "engagement-1",
 			propertyAssetId: "property-1",
 			documentRequestId: "request-1",

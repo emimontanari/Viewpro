@@ -1,4 +1,8 @@
-import { NotificationSurface, NotificationType } from "@prisma/client";
+import {
+	NotificationSurface,
+	NotificationType,
+	PropertyType,
+} from "@prisma/client";
 import type { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -272,6 +276,132 @@ describe("Notifications internal endpoints (e2e)", () => {
 		).resolves.toBe(1);
 	});
 
+	it("S-P1/S-P2 round-trip: DOCUMENT_UPLOADED stores and returns deep-link linkHref verbatim", async () => {
+		const manager = await registerTenantSession(
+			"notifications-deeplink-manager@example.com",
+			"Notifications Deep-link Tenant",
+		);
+
+		// Create the FK chain: PropertyAsset → PropertyEngagement → Notification.
+		const asset = await prisma.propertyAsset.create({
+			data: {
+				title: "Deep-link Test Property",
+				addressLine: "123 Test St",
+				city: "Test City",
+				province: "Test Province",
+				propertyType: PropertyType.HOUSE,
+				createdByUserId: manager.userId,
+			},
+		});
+		const engagement = await prisma.propertyEngagement.create({
+			data: {
+				tenantId: manager.tenantId,
+				propertyAssetId: asset.id,
+				operationType: "SALE",
+				createdByUserId: manager.userId,
+			},
+		});
+
+		const deepLinkHref = `/dashboard/product/${engagement.id}?doc=req-deep-1`;
+
+		await seedNotification({
+			tenantId: manager.tenantId,
+			recipientUserId: manager.userId,
+			title: "Document uploaded deep-link",
+			linkHref: deepLinkHref,
+			propertyEngagementId: engagement.id,
+		});
+
+		const response = await manager.agent
+			.get("/api/notifications")
+			.set("x-tenant-id", manager.tenantId)
+			.expect(200);
+
+		expect(response.body.total).toBe(1);
+		// S-P1/S-P2: sanitizer accepts the deep-link and returns it verbatim.
+		expect(response.body.items[0].linkHref).toBe(deepLinkHref);
+	});
+
+	it("S-R1 regression: param-less /dashboard/product/{engId} linkHref still accepted", async () => {
+		const manager = await registerTenantSession(
+			"notifications-paramless-manager@example.com",
+			"Notifications Param-less Tenant",
+		);
+
+		// Create the FK chain for propertyEngagementId.
+		const asset = await prisma.propertyAsset.create({
+			data: {
+				title: "Param-less Test Property",
+				addressLine: "456 Param St",
+				city: "Test City",
+				province: "Test Province",
+				propertyType: PropertyType.HOUSE,
+				createdByUserId: manager.userId,
+			},
+		});
+		const engagement = await prisma.propertyEngagement.create({
+			data: {
+				tenantId: manager.tenantId,
+				propertyAssetId: asset.id,
+				operationType: "SALE",
+				createdByUserId: manager.userId,
+			},
+		});
+
+		const paramlessHref = `/dashboard/product/${engagement.id}`;
+
+		await seedNotification({
+			tenantId: manager.tenantId,
+			recipientUserId: manager.userId,
+			title: "Historical param-less notification",
+			linkHref: paramlessHref,
+			propertyEngagementId: engagement.id,
+		});
+
+		const response = await manager.agent
+			.get("/api/notifications")
+			.set("x-tenant-id", manager.tenantId)
+			.expect(200);
+
+		expect(response.body.total).toBe(1);
+		// S-R1: historical param-less product path still sanitizes through.
+		expect(response.body.items[0].linkHref).toBe(paramlessHref);
+	});
+
+	it("S-R2 regression: SAFE_INTERNAL_LINKS members pass through unchanged", async () => {
+		const manager = await registerTenantSession(
+			"notifications-safe-links-manager@example.com",
+			"Notifications Safe Links Tenant",
+		);
+		const safeLinks = [
+			"/dashboard",
+			"/dashboard/seguimiento",
+			"/dashboard/users",
+			"/dashboard/status-change-requests",
+		];
+
+		// SAFE_INTERNAL_LINKS don't need propertyEngagementId — no FK required.
+		for (const linkHref of safeLinks) {
+			await seedNotification({
+				tenantId: manager.tenantId,
+				recipientUserId: manager.userId,
+				title: `Safe link: ${linkHref}`,
+				linkHref,
+			});
+		}
+
+		const response = await manager.agent
+			.get("/api/notifications")
+			.set("x-tenant-id", manager.tenantId)
+			.expect(200);
+
+		expect(response.body.total).toBe(4);
+		const returnedLinks = response.body.items
+			.map((item: { linkHref: string | null }) => item.linkHref)
+			.sort();
+		expect(returnedLinks).toEqual(safeLinks.slice().sort());
+	});
+
 	it("rejects invalid list query values", async () => {
 		const manager = await registerTenantSession(
 			"notifications-invalid-query@example.com",
@@ -325,6 +455,7 @@ describe("Notifications internal endpoints (e2e)", () => {
 		title: string;
 		body?: string | null;
 		linkHref?: string | null;
+		propertyEngagementId?: string | null;
 		readAt?: Date | null;
 		createdAt?: Date;
 	}) {
@@ -337,6 +468,7 @@ describe("Notifications internal endpoints (e2e)", () => {
 				title: input.title,
 				body: input.body ?? null,
 				linkHref: input.linkHref ?? null,
+				propertyEngagementId: input.propertyEngagementId ?? null,
 				readAt: input.readAt ?? null,
 				createdAt: input.createdAt,
 			},
