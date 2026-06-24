@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppForm, useFormFields } from '@/components/ui/tanstack-form';
 import { InteractiveGridPattern } from '@/features/auth/components/interactive-grid';
 import { getApiErrorMessage, isApiError } from '@/lib/api-client';
+import { BRAND } from '@/lib/brand/brand';
 import { getSessionWithRefresh, type Session } from '@/lib/session';
 import { setSelectedTenantId } from '@/lib/tenant-selection';
 import { cn } from '@/lib/utils';
@@ -246,7 +247,7 @@ function BrandPanel() {
         >
           <path d='M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3' />
         </svg>
-        ViewPro
+        {BRAND.auth.invitationLabel}
       </div>
       <InteractiveGridPattern
         className={cn(
@@ -260,7 +261,7 @@ function BrandPanel() {
             &ldquo;Cada incorporación al equipo queda conectada al tenant correcto desde el primer
             acceso.&rdquo;
           </p>
-          <footer className='text-sidebar-foreground/70 text-sm'>Equipo ViewPro</footer>
+          <footer className='text-sidebar-foreground/70 text-sm'>{BRAND.auth.testimonialAuthor}</footer>
         </blockquote>
       </div>
     </>
@@ -547,7 +548,7 @@ function getInvitationUiError(error: unknown): InvitationUiError {
   if (!isApiError(error)) {
     return {
       title: 'No pudimos cargar la invitación',
-      description: 'No pudimos conectar con ViewPro. Volvé a intentarlo más tarde.'
+      description: BRAND.auth.invitationConnectError
     };
   }
 
@@ -571,7 +572,7 @@ function getInvitationUiError(error: unknown): InvitationUiError {
   if (error.status === 410 && message.includes('accepted')) {
     return {
       title: 'Invitación ya aceptada',
-      description: 'Esta invitación ya fue aceptada. Iniciá sesión para acceder a ViewPro.',
+      description: BRAND.auth.teamInvitationAlreadyAccepted,
       showSignInLink: true
     };
   }

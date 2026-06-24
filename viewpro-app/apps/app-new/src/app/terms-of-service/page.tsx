@@ -1,3 +1,4 @@
+import { BRAND } from '@/lib/brand/brand';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -21,8 +22,8 @@ export default function TermsOfServicePage() {
         <section>
           <h2 className='text-foreground mb-3 text-xl font-semibold'>Introduction</h2>
           <p className='text-muted-foreground text-base leading-relaxed'>
-            Welcome to ViewPro. These Terms of Service govern your access to and use of the
-            application. By accessing or using ViewPro, you agree to be bound by these terms. Please
+            Welcome to {BRAND.identity.productName}. These Terms of Service govern your access to and use of the
+            application. By accessing or using {BRAND.identity.productName}, you agree to be bound by these terms. Please
             read them carefully before proceeding.
           </p>
         </section>
@@ -31,7 +32,7 @@ export default function TermsOfServicePage() {
         <section>
           <h2 className='text-foreground mb-3 text-xl font-semibold'>Preview Purpose</h2>
           <p className='text-muted-foreground text-base leading-relaxed'>
-            This baseline version is provided for product evaluation while ViewPro-specific access
+            This baseline version is provided for product evaluation while {BRAND.identity.productName}-specific access
             and account flows are connected. It is not intended to replace a final production legal
             agreement.
           </p>
@@ -41,7 +42,7 @@ export default function TermsOfServicePage() {
         <section>
           <h2 className='text-foreground mb-3 text-xl font-semibold'>Service Use</h2>
           <p className='text-muted-foreground text-base leading-relaxed'>
-            Use ViewPro only for authorized business activity. Do not attempt to access accounts,
+            Use {BRAND.identity.productName} only for authorized business activity. Do not attempt to access accounts,
             properties, or information that you are not permitted to manage.
           </p>
         </section>
@@ -64,7 +65,7 @@ export default function TermsOfServicePage() {
           <p className='text-muted-foreground text-base leading-relaxed'>
             Any information you provide while using this baseline version may be temporary while the
             product is being configured. Do not enter sensitive or confidential information unless
-            your ViewPro contact has confirmed that the environment is ready for it.
+            your {BRAND.identity.productName} contact has confirmed that the environment is ready for it.
           </p>
         </section>
 
@@ -82,7 +83,7 @@ export default function TermsOfServicePage() {
         {/* Contact */}
         <section className='border-border border-t pt-4'>
           <p className='text-muted-foreground text-center text-sm'>
-            If you have any questions about these Terms of Service, contact the ViewPro team through
+            If you have any questions about these Terms of Service, contact the {BRAND.identity.teamPhraseEn} through
             the support channel configured for your deployment.
           </p>
         </section>

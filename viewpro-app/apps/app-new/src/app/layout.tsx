@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { fontVariables } from '@/components/themes/font.config';
 import { DEFAULT_THEME, THEMES } from '@/components/themes/theme.config';
 import ThemeProvider from '@/components/themes/theme-provider';
+import { BRAND } from '@/lib/brand/brand';
 import { cn } from '@/lib/utils';
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
@@ -16,8 +17,8 @@ const META_THEME_COLORS = {
 };
 
 export const metadata: Metadata = {
-  title: 'ViewPro',
-  description: 'Panel de ViewPro para inmobiliarias'
+  title: BRAND.metadata.appTitle,
+  description: BRAND.metadata.defaultDescription
 };
 
 export const viewport: Viewport = {

@@ -9,6 +9,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { activityFeedOptions } from '@/features/activity/api/queries';
 import type { ActivityFeedItem } from '@/features/activity/api/types';
+import { BRAND } from '@/lib/brand/brand';
 import { dashboardSummaryOptions } from '@/features/dashboard/api/queries';
 import type {
   DashboardSummaryRange,
@@ -651,7 +652,7 @@ function RecentActivityList({
 }
 
 function PropertyPreviewList({
-  emptyDescription = 'Creá una propiedad para empezar a operar la gestión desde ViewPro.',
+  emptyDescription = BRAND.dashboardEmptyDescription,
   emptyTitle = 'Sin propiedades activas',
   isLoading,
   products

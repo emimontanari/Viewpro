@@ -45,6 +45,7 @@ import type {
   AdminTenantStatusAction
 } from '@/features/admin/api/types';
 import { getApiErrorMessage } from '@/lib/api-client';
+import { BRAND } from '@/lib/brand/brand';
 import { useSession } from '@/lib/session-context';
 
 type PendingStatusAction = {
@@ -206,7 +207,7 @@ function AdminRestrictedState() {
         <Badge variant='outline' className='mb-2 w-fit rounded-full bg-muted/40'>
           Acceso global
         </Badge>
-        <CardTitle>Acceso restringido a ViewPro Admin</CardTitle>
+        <CardTitle>{BRAND.admin.restrictedTitle}</CardTitle>
         <CardDescription>
           Necesitás rol global VIEWPRO_ADMIN para abrir este comando operativo. Los roles tenant no
           conceden acceso admin.
