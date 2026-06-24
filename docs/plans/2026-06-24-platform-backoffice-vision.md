@@ -71,12 +71,35 @@ Today `VIEWPRO_ADMIN` is binary. As the team grows, roles will differentiate. Th
 
 Principle: design the seams now, build the roles when there are people to fill them.
 
+## Platform access & identity
+
+How the operator (control plane) is entered and kept separate from tenant users (data plane).
+
+| # | Decision |
+|---|---|
+| A1 | **Mutual-exclusion invariant.** A `VIEWPRO_ADMIN` never has tenant memberships; a tenant user is never `VIEWPRO_ADMIN`. Control plane and data plane never cross. Enforced on purpose — today the model ALLOWS the cross, so it must be built. |
+| A2 | **Shared login, logical separation.** Reuse the single login (`/auth/sign-in`, custom JWT + httpOnly cookies). No separate identity table or login surface yet, but design so migrating to physical separation (e.g. `admin.viewpro.com`) later is painless. |
+| A3 | **Hardened admin path, applied per slice.** The admin's path through the shared login is reinforced; reinforcements land when relevant (schedule below), not all at once. |
+| A4 | **Admins are not self-registered.** First super-admin via seed/migration (bootstrap); afterwards an existing admin creates/invites another. Connects to D3 (audit) and D4 (platform roles). |
+
+**Invariant enforcement points:** self-registration must keep defaulting to `globalRole = USER`; promoting to `VIEWPRO_ADMIN` must be rejected when the user has memberships (and vice versa); ideally backed by a DB-level constraint, not only app code.
+
+**Reinforcement schedule (the "hardened path"):**
+
+| Reinforcement | Slice |
+|---|---|
+| Server-side route protection for `/admin` (today client-side only via `src/proxy.ts`) | 1 |
+| Real post-login routing — admin lands in the console, not `/dashboard` | 1 |
+| Mandatory MFA for admins (asymmetric — clients keep email+password) | 2 |
+| Step-up re-auth for destructive actions (suspend/cancel/limits) | 2 |
+| Shorter idle-timeout for the platform session | 2 |
+
 ## Roadmap — 4 chained slices
 
 | Order | Slice | Scope | Notes |
 |---:|---|---|---|
-| 1 | **Global metrics panel** (read-only) | Extend `/admin`: totals + per-tenant breakdown of properties, people, movements, engagements. Add the missing `movement` count. | Low risk. Designed behind the platform-permission layer. **Start here.** |
-| 2 | **Platform roles + tenant management + audit log** | Governance foundation: grant/revoke access, change limits, all audited, all behind platform permissions. | The "from the start" foundation from D3/D4. |
+| 1 | **Global metrics panel** (read-only) + access entry | Extend `/admin`: totals + per-tenant breakdown of properties, people, movements, engagements. Add the missing `movement` count. Plus the access entry: server-side route protection for `/admin` and real post-login routing for admins. | Low risk. Designed behind the platform-permission layer. **Start here.** |
+| 2 | **Platform roles + tenant management + audit log + auth hardening** | Governance foundation: grant/revoke access, change limits, all audited, all behind platform permissions. Plus MFA, step-up re-auth for destructive actions, and shorter idle-timeout. | The "from the start" foundation from D3/D4 and the A3 reinforcements. |
 | 3 | **Self-service onboarding + trial** | Self-registration → `TRIAL` with cap-based limits (D5). | Reuses existing capacity checks. |
 | 4 | **Manual plans** | Named limit presets (Básico / Pro / Enterprise) assigned by hand (D1). | Sugar over slice 2's limit editing. |
 
