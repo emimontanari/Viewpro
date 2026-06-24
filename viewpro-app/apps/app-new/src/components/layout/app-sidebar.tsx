@@ -30,6 +30,7 @@ import type { NavGroup } from '@/types';
 import { useFilteredNavGroups } from '@/hooks/use-nav';
 import { useSession } from '@/lib/session-context';
 import { getUserDisplayName } from '@/lib/session';
+import { BRAND } from '@/lib/brand/brand';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Icons } from '../icons';
@@ -71,7 +72,7 @@ export default function AppSidebar({
                   </div>
                   <div className='grid flex-1 text-left text-sm leading-tight'>
                     <span className='truncate font-medium'>Portal propietario</span>
-                    <span className='text-muted-foreground truncate text-xs'>ViewPro</span>
+                    <span className='text-muted-foreground truncate text-xs'>{BRAND.ownerPortalTagline}</span>
                   </div>
                 </Link>
               </SidebarMenuButton>

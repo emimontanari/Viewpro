@@ -9,6 +9,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppForm, useFormFields } from '@/components/ui/tanstack-form';
 import { getApiErrorMessage, isApiError } from '@/lib/api-client';
+import { BRAND } from '@/lib/brand/brand';
 import { getSessionWithRefresh, type Session } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { InteractiveGridPattern } from '@/features/auth/components/interactive-grid';
@@ -226,7 +227,7 @@ function BrandPanel() {
         >
           <path d='M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3' />
         </svg>
-        ViewPro
+        {BRAND.auth.invitationLabel}
       </div>
       <InteractiveGridPattern
         className={cn(
@@ -237,10 +238,9 @@ function BrandPanel() {
       <div className='text-sidebar-foreground relative z-20 mt-auto'>
         <blockquote className='space-y-2'>
           <p className='text-lg'>
-            &ldquo;ViewPro nos ayuda a ordenar propiedades, contactos y seguimiento comercial en un
-            solo lugar.&rdquo;
+            &ldquo;{BRAND.auth.testimonialQuote}&rdquo;
           </p>
-          <footer className='text-sidebar-foreground/70 text-sm'>Equipo ViewPro</footer>
+          <footer className='text-sidebar-foreground/70 text-sm'>{BRAND.auth.testimonialAuthor}</footer>
         </blockquote>
       </div>
     </>
@@ -522,7 +522,7 @@ function getInvitationUiError(error: unknown): InvitationUiError {
   if (!isApiError(error)) {
     return {
       title: 'No pudimos cargar la invitación',
-      description: 'No pudimos conectar con ViewPro. Volvé a intentarlo más tarde.'
+      description: BRAND.auth.invitationConnectError
     };
   }
 
@@ -539,7 +539,7 @@ function getInvitationUiError(error: unknown): InvitationUiError {
   if (error.status === 409) {
     return {
       title: 'Email ya registrado',
-      description: 'Este email ya está registrado. Iniciá sesión para continuar con ViewPro.',
+      description: BRAND.auth.ownerInvitationEmailRegistered,
       showSignInLink: true
     };
   }

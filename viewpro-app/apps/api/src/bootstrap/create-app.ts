@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import type { NestExpressApplication } from '@nestjs/platform-express'
 import cookieParser from 'cookie-parser'
 import { AppModule } from '../app.module'
+import { API_BRAND } from './brand.constants'
 import { GlobalExceptionFilter } from '../common/filters/global-exception.filter'
 import { requestIdMiddleware } from '../common/middleware/request-id.middleware'
 import { SentryService } from '../observability/sentry.service'
@@ -41,8 +42,8 @@ export async function createApiApp() {
   app.useGlobalFilters(new GlobalExceptionFilter(configService.get<string>('app.nodeEnv'), sentryService))
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('ViewPro API')
-    .setDescription('REST API for ViewPro')
+    .setTitle(API_BRAND.apiTitle)
+    .setDescription(API_BRAND.apiDescription)
     .setVersion('0.1.0')
     .build()
 

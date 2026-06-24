@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAppForm, useFormFields } from '@/components/ui/tanstack-form';
 import { getApiErrorMessage } from '@/lib/api-client';
+import { BRAND } from '@/lib/brand/brand';
 import { registerTenant } from '@/lib/session';
 import { setSelectedTenantId } from '@/lib/tenant-selection';
 import { cn } from '@/lib/utils';
@@ -74,7 +75,7 @@ function SignUpForm() {
       <CardHeader>
         <CardTitle className='text-2xl font-bold'>Crear cuenta</CardTitle>
         <p className='text-muted-foreground'>
-          Completá tus datos para crear tu cuenta y empezar a usar ViewPro.
+          {BRAND.auth.signUpSubtitle}
         </p>
       </CardHeader>
       <CardContent>
@@ -155,7 +156,7 @@ export default function SignUpViewPage() {
           >
             <path d='M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3' />
           </svg>
-          ViewPro
+          {BRAND.auth.signUpLabel}
         </div>
         <InteractiveGridPattern
           className={cn(
@@ -166,10 +167,9 @@ export default function SignUpViewPage() {
         <div className='text-sidebar-foreground relative z-20 mt-auto'>
           <blockquote className='space-y-2'>
             <p className='text-lg'>
-              &ldquo;ViewPro nos ayuda a ordenar propiedades, contactos y seguimiento comercial en
-              un solo lugar.&rdquo;
+              &ldquo;{BRAND.auth.testimonialQuote}&rdquo;
             </p>
-            <footer className='text-sidebar-foreground/70 text-sm'>Equipo ViewPro</footer>
+            <footer className='text-sidebar-foreground/70 text-sm'>{BRAND.auth.testimonialAuthor}</footer>
           </blockquote>
         </div>
       </div>
@@ -177,7 +177,7 @@ export default function SignUpViewPage() {
         <div className='flex w-full max-w-xl flex-col items-center justify-center space-y-6'>
           <SignUpForm />
           <div className='text-muted-foreground space-y-2 px-8 text-center text-xs'>
-            <p>Creá tu cuenta para continuar con ViewPro.</p>
+            <p>{BRAND.auth.signUpContinue}</p>
           </div>
           <p className='text-muted-foreground px-8 text-center text-sm'>
             Al continuar, aceptás nuestros{' '}
