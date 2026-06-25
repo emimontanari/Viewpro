@@ -1,7 +1,7 @@
 /**
  * App-local brand constants for the FE (apps/app-new).
- * Phase 1: extraction only — all values read "ViewPro".
- * Phase 2: flip values to "InmoView" by editing this file alone.
+ * Single source of truth for user-visible product brand strings —
+ * flipping the product name is an edit to this file alone.
  *
  * No use-client / use-server directive — importable by Server Components,
  * Client Components, and static pages alike.
@@ -9,86 +9,87 @@
 export const BRAND = {
   /** Core identity */
   identity: {
-    productName: 'ViewPro',
-    legalEntity: 'ViewPro',
-    /** Spanish prose phrase: "...con el {teamPhraseEs}." → "equipo de ViewPro" */
-    teamPhraseEs: 'equipo de ViewPro',
-    /** English prose phrase: "contact the {teamPhraseEn} through..." → "ViewPro team" */
-    teamPhraseEn: 'ViewPro team'
+    productName: 'InmoView',
+    legalEntity: 'InmoView',
+    /** Spanish prose phrase: "...con el {teamPhraseEs}." → "equipo de InmoView" */
+    teamPhraseEs: 'equipo de InmoView',
+    /** English prose phrase: "contact the {teamPhraseEn} through..." → "InmoView team" */
+    teamPhraseEn: 'InmoView team'
   },
 
   /** Page/document titles */
   metadata: {
-    appTitle: 'ViewPro',
-    dashboardTitle: 'ViewPro Dashboard',
-    adminTitle: 'Admin ViewPro',
-    defaultDescription: 'Panel de ViewPro para inmobiliarias'
+    appTitle: 'InmoView',
+    dashboardTitle: 'InmoView Dashboard',
+    adminTitle: 'Admin InmoView',
+    defaultDescription: 'Panel de InmoView para inmobiliarias'
   },
 
   /** Auth page copy */
   auth: {
     /** Sign-in brand label (top-left logo area) */
-    signInLabel: 'ViewPro',
+    signInLabel: 'InmoView',
     /** Sign-up brand label (top-left logo area) */
-    signUpLabel: 'ViewPro',
+    signUpLabel: 'InmoView',
     /** Brand label on invitation acceptance pages (owner & team) */
-    invitationLabel: 'ViewPro',
+    invitationLabel: 'InmoView',
     /** Testimonial quote body used on sign-in and sign-up panels
      * (raw text — JSX callers wrap with &ldquo; / &rdquo;) */
     testimonialQuote:
-      'ViewPro nos ayuda a ordenar propiedades, contactos y seguimiento comercial en un solo lugar.',
+      'InmoView nos ayuda a ordenar propiedades, contactos y seguimiento comercial en un solo lugar.',
     /** Testimonial author footer — shared across auth and invitation panels */
-    testimonialAuthor: 'Equipo ViewPro',
+    testimonialAuthor: 'Equipo InmoView',
     /** Sign-in page footer copy */
-    signInContinue: 'Ingresá para continuar con ViewPro.',
+    signInContinue: 'Ingresá para continuar con InmoView.',
     /** Sign-up page footer copy */
-    signUpContinue: 'Creá tu cuenta para continuar con ViewPro.',
+    signUpContinue: 'Creá tu cuenta para continuar con InmoView.',
     /** Sign-up subtitle */
-    signUpSubtitle: 'Completá tus datos para crear tu cuenta y empezar a usar ViewPro.',
+    signUpSubtitle: 'Completá tus datos para crear tu cuenta y empezar a usar InmoView.',
     /** Generic connectivity-error description shown on invitation pages */
-    invitationConnectError: 'No pudimos conectar con ViewPro. Volvé a intentarlo más tarde.',
+    invitationConnectError: 'No pudimos conectar con InmoView. Volvé a intentarlo más tarde.',
     /** Already-accepted invitation error (team invitation) */
     teamInvitationAlreadyAccepted:
-      'Esta invitación ya fue aceptada. Iniciá sesión para acceder a ViewPro.',
+      'Esta invitación ya fue aceptada. Iniciá sesión para acceder a InmoView.',
     /** Already-registered email error on owner invitation */
     ownerInvitationEmailRegistered:
-      'Este email ya está registrado. Iniciá sesión para continuar con ViewPro.'
+      'Este email ya está registrado. Iniciá sesión para continuar con InmoView.'
   },
 
   /** SEO / Open-Graph */
   seo: {
-    ogSiteName: 'ViewPro'
+    ogSiteName: 'InmoView'
   },
 
   /**
-   * PWA manifest fields — defined for Phase 2 readiness.
-   * No manifest.ts/webmanifest exists in Phase 1; wire these in Phase 2.
+   * PWA manifest fields — defined for Phase 2b readiness.
+   * No manifest.ts/webmanifest exists yet; wire these once brand icon
+   * assets exist (deferred PWA slice).
    */
   pwa: {
-    name: 'ViewPro',
-    shortName: 'ViewPro',
-    description: 'Panel de ViewPro para inmobiliarias'
+    name: 'InmoView',
+    shortName: 'InmoView',
+    description: 'Panel de InmoView para inmobiliarias'
   },
 
   /** Admin console copy */
   admin: {
     /** Restricted-access card heading shown to non-admin users */
-    restrictedTitle: 'Acceso restringido a ViewPro Admin'
+    restrictedTitle: 'Acceso restringido a InmoView Admin'
   },
 
   /** Invitation page metadata */
   invitations: {
-    ownerTitle: 'Aceptar invitación | ViewPro',
+    ownerTitle: 'Aceptar invitación | InmoView',
     ownerDescription:
-      'Aceptá tu invitación para acceder al portal de propietarios de ViewPro.',
-    teamTitle: 'Aceptar invitación de equipo | ViewPro',
-    teamDescription: 'Aceptá tu invitación para sumarte a una inmobiliaria en ViewPro.'
+      'Aceptá tu invitación para acceder al portal de propietarios de InmoView.',
+    teamTitle: 'Aceptar invitación de equipo | InmoView',
+    teamDescription: 'Aceptá tu invitación para sumarte a una inmobiliaria en InmoView.'
   },
 
   /** Owner portal sidebar tagline */
-  ownerPortalTagline: 'ViewPro',
+  ownerPortalTagline: 'InmoView',
 
   /** Dashboard empty-state copy */
   dashboardEmptyDescription:
-    'Creá una propiedad para empezar a operar la gestión desde ViewPro.'
+    'Creá una propiedad para empezar a operar la gestión desde InmoView.'
 } as const
