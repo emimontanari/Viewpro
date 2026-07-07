@@ -3,7 +3,13 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+	DeleteObjectsCommand,
+	PutObjectCommand,
+	S3Client,
+} from "@aws-sdk/client-s3";
 import { argon2id, hash } from "argon2";
+import { assertSafeDemoSeedEnvironment } from "./seed-demo-safety.mjs";
 import {
 	AnalyticsActorType,
 	AnalyticsEventName,
@@ -133,12 +139,18 @@ function loadDemoPropertyImageMap() {
 	if (!existsSync(mapPath)) {
 		return new Map();
 	}
-	const raw = JSON.parse(readFileSync(mapPath, "utf8"));
-	const entries = (raw.mappings ?? []).map((entry) => [
-		entry.seedIndex,
-		entry.postingId,
-	]);
-	return new Map(entries);
+	try {
+		const raw = JSON.parse(readFileSync(mapPath, "utf8"));
+		const entries = (raw.mappings ?? []).map((entry) => [
+			entry.seedIndex,
+			entry.postingId,
+		]);
+		return new Map(entries);
+	} catch (error) {
+		throw new Error(`Invalid property image map fixture at ${mapPath}`, {
+			cause: error,
+		});
+	}
 }
 
 function getDemoImageBuffer(seedIndex, imageIndex) {
@@ -600,12 +612,18 @@ async function seedDemo(client) {
 		where: { tenantId: isolationResult.tenant.id },
 	});
 	console.log(`Demo tenant engagements: ${demoEngagementCount} (expected 20)`);
-	console.log(`Isolation tenant engagements: ${isolationEngagementCount} (expected 1)`);
+	console.log(
+		`Isolation tenant engagements: ${isolationEngagementCount} (expected 1)`,
+	);
 	if (demoEngagementCount !== 20) {
-		throw new Error(`Demo tenant engagement count mismatch: expected 20, got ${demoEngagementCount}`);
+		throw new Error(
+			`Demo tenant engagement count mismatch: expected 20, got ${demoEngagementCount}`,
+		);
 	}
 	if (isolationEngagementCount !== 1) {
-		throw new Error(`Isolation tenant engagement count mismatch: expected 1, got ${isolationEngagementCount}`);
+		throw new Error(
+			`Isolation tenant engagement count mismatch: expected 1, got ${isolationEngagementCount}`,
+		);
 	}
 
 	return {
@@ -661,9 +679,9 @@ async function resetTenantBySlug(client, slug, knownUserEmails = []) {
 			...new Set(engagements.map((engagement) => engagement.propertyAssetId)),
 		];
 
-		// Remove image and document files for the demo tenant only (isolation tenant has none)
+		// Remove image and document fixtures for the demo tenant only (isolation tenant has none)
 		if (slug === DEMO_TENANT_SLUG) {
-			await removeDemoImageFiles(existingTenant.id);
+			await removeDemoImageObjects(client, existingTenant.id);
 			await removeDemoDocumentFiles(client, existingTenant.id);
 		}
 
@@ -1104,7 +1122,7 @@ async function createDemoPropertyImages(client, tenant, properties) {
 				`${imageId}.${extension}`,
 			].join("/");
 
-			await writeDemoImageFile(storageKey, buffer);
+			await writeDemoImageObject(storageKey, buffer, mimeType);
 			images.push(
 				await client.propertyAssetImage.create({
 					data: {
@@ -1126,17 +1144,69 @@ async function createDemoPropertyImages(client, tenant, properties) {
 	return images;
 }
 
-async function writeDemoImageFile(storageKey, buffer) {
+async function writeDemoImageObject(storageKey, buffer, mimeType) {
+	if (isS3PropertyImageStorageConfigured()) {
+		const config = getPropertyImagesS3SeedStorageConfig();
+		await getPropertyImagesS3SeedClient(config).send(
+			new PutObjectCommand({
+				Bucket: config.bucket,
+				Key: storageKey,
+				Body: buffer,
+				ContentType: mimeType,
+				ContentLength: buffer.byteLength,
+			}),
+		);
+		return;
+	}
+
 	const absolutePath = join(getUploadsRoot(), storageKey);
 	await mkdir(dirname(absolutePath), { recursive: true });
 	await writeFile(absolutePath, buffer);
 }
 
-async function removeDemoImageFiles(tenantId) {
+async function removeDemoImageObjects(client, tenantId) {
+	if (isS3PropertyImageStorageConfigured()) {
+		await removeDemoImageS3Objects(client, tenantId);
+		return;
+	}
+
 	await rm(join(getUploadsRoot(), PROPERTY_IMAGES_STORAGE_PREFIX, tenantId), {
 		force: true,
 		recursive: true,
 	});
+}
+
+async function removeDemoImageS3Objects(client, tenantId) {
+	const images = await client.propertyAssetImage.findMany({
+		where: {
+			propertyAsset: {
+				engagements: {
+					some: { tenantId },
+				},
+			},
+		},
+		select: { storageKey: true },
+	});
+
+	if (images.length === 0) {
+		return;
+	}
+
+	const config = getPropertyImagesS3SeedStorageConfig();
+	const s3Client = getPropertyImagesS3SeedClient(config);
+
+	for (let offset = 0; offset < images.length; offset += 1000) {
+		const batch = images.slice(offset, offset + 1000);
+		await s3Client.send(
+			new DeleteObjectsCommand({
+				Bucket: config.bucket,
+				Delete: {
+					Objects: batch.map(({ storageKey }) => ({ Key: storageKey })),
+					Quiet: true,
+				},
+			}),
+		);
+	}
 }
 
 async function removeDemoDocumentFiles(client, tenantId) {
@@ -1171,6 +1241,53 @@ function getUploadsRoot() {
 	}
 
 	return join(apiRoot, "uploads");
+}
+
+function isS3PropertyImageStorageConfigured() {
+	return process.env.PROPERTY_IMAGES_STORAGE_DRIVER === "s3";
+}
+
+function getPropertyImagesS3SeedStorageConfig() {
+	return {
+		bucket: requirePropertyImagesS3Env("PROPERTY_IMAGES_S3_BUCKET"),
+		endpoint: optionalEnv("PROPERTY_IMAGES_S3_ENDPOINT"),
+		region: optionalEnv("PROPERTY_IMAGES_S3_REGION") ?? "auto",
+		accessKeyId: requirePropertyImagesS3Env("PROPERTY_IMAGES_S3_ACCESS_KEY_ID"),
+		secretAccessKey: requirePropertyImagesS3Env(
+			"PROPERTY_IMAGES_S3_SECRET_ACCESS_KEY",
+		),
+		forcePathStyle: process.env.PROPERTY_IMAGES_S3_FORCE_PATH_STYLE === "true",
+	};
+}
+
+let propertyImagesS3SeedClient;
+
+function getPropertyImagesS3SeedClient(config) {
+	propertyImagesS3SeedClient ??= new S3Client({
+		region: config.region,
+		endpoint: config.endpoint,
+		forcePathStyle: config.forcePathStyle,
+		credentials: {
+			accessKeyId: config.accessKeyId,
+			secretAccessKey: config.secretAccessKey,
+		},
+	});
+
+	return propertyImagesS3SeedClient;
+}
+
+function requirePropertyImagesS3Env(name) {
+	const value = optionalEnv(name);
+	if (!value) {
+		throw new Error(`${name} is required for demo property image seeding.`);
+	}
+
+	return value;
+}
+
+function optionalEnv(name) {
+	const value = process.env[name];
+	return value && value.trim() ? value.trim() : undefined;
 }
 
 function getDocumentStorageRoot() {
@@ -1456,7 +1573,8 @@ async function createDemoDocumentReviewStates(
 		// Stage 20.9 — APPROVED fixture for lifecycle coverage (FR-10, S-14).
 		{
 			title: "Boleto de compra-venta aprobado",
-			description: "Documento demo aprobado por el manager para Stage 20.9 coverage.",
+			description:
+				"Documento demo aprobado por el manager para Stage 20.9 coverage.",
 			status: DocumentRequestStatus.APPROVED,
 			versionStatus: DocumentVersionStatus.APPROVED,
 			originalFilename: "boleto-compraventa-aprobado-demo.pdf",
@@ -1553,7 +1671,11 @@ async function createDemoDocumentReviewStates(
 	});
 	// demoUploadedAt: null signals no version row; createDocumentReviewAnalyticsEvents
 	// will skip this request (no DOCUMENT_UPLOADED event for a cancelled request).
-	requests.push({ ...cancelledRequest, demoUploadedAt: null, demoReviewedAt: null });
+	requests.push({
+		...cancelledRequest,
+		demoUploadedAt: null,
+		demoReviewedAt: null,
+	});
 
 	// NEW (Stage 26.3) — Property index 1 (Los Boulevares): SUBMITTED fixture for the
 	// document-rejection test (T18a/T18b). Uses propietario.demo@viewpro.local via the
@@ -1810,7 +1932,12 @@ async function createDemoNotifications(
  *    on property index 1 (Los Boulevares), resolved by demo@viewpro.local.
  *    A corresponding STATUS_CHANGE movement is inserted for the resolved request.
  */
-async function createDemoStatusChangeRequests(client, tenant, users, properties) {
+async function createDemoStatusChangeRequests(
+	client,
+	tenant,
+	users,
+	properties,
+) {
 	const martin = users.get("martin.demo@viewpro.local");
 	const manager = users.get("demo@viewpro.local");
 
@@ -1959,32 +2086,16 @@ async function writeDemoDocumentFileIfEnabled(storageKey, buffer, metadata) {
 }
 
 function assertSafeEnvironment() {
-	if (process.env.NODE_ENV === "production") {
-		throw new Error("Refusing to run demo seed with NODE_ENV=production.");
-	}
+	const safety = assertSafeDemoSeedEnvironment();
 
-	const databaseUrl = process.env.DATABASE_URL;
+	if (safety.mode === "demo") {
+		if (process.env.PROPERTY_IMAGES_STORAGE_DRIVER !== "s3") {
+			throw new Error(
+				"PROPERTY_IMAGES_STORAGE_DRIVER=s3 is required for guarded demo seed/reset.",
+			);
+		}
 
-	if (!databaseUrl) {
-		throw new Error("DATABASE_URL is required to run the demo seed.");
-	}
-
-	if (process.env.VIEWPRO_ALLOW_DEMO_SEED === "true") {
-		return;
-	}
-
-	const normalizedUrl = databaseUrl.toLowerCase();
-	const looksSafe = [
-		"localhost",
-		"127.0.0.1",
-		"viewpro_dev",
-		"viewpro_test",
-	].some((signal) => normalizedUrl.includes(signal));
-
-	if (!looksSafe) {
-		throw new Error(
-			"Refusing to run demo seed against a database URL that does not look local/dev/test. Set VIEWPRO_ALLOW_DEMO_SEED=true only when you are certain this is safe.",
-		);
+		getPropertyImagesS3SeedStorageConfig();
 	}
 }
 
@@ -2083,6 +2194,14 @@ async function createDemoOutcomeLabels(client, tenant, users) {
 	return labels;
 }
 
+function getDemoImageAssetSummary() {
+	const storage = isS3PropertyImageStorageConfigured()
+		? "S3/R2 object storage"
+		: "local API filesystem storage";
+
+	return `deterministic fixtures written to ${storage} (real JPG photos when mapped, 1x1 PNG placeholder otherwise)`;
+}
+
 function printSummary(result) {
 	const passwordSummary = process.env.VIEWPRO_DEMO_PASSWORD
 		? "<VIEWPRO_DEMO_PASSWORD>"
@@ -2102,11 +2221,13 @@ function printSummary(result) {
 	console.log(`- ViewPro admin: ${DEMO_ADMIN_USER.email} / ${passwordSummary}`);
 	console.log(`Properties: ${result.propertiesCount}`);
 	console.log(`Images: ${result.imagesCount}`);
+	console.log(`Image assets: ${getDemoImageAssetSummary()}`);
 	console.log(
-		"Image assets: deterministic local fixtures (real JPG photos when mapped, 1x1 PNG placeholder otherwise)",
+		`Movements: ${result.movementsCount} (Stage 26.2 base + Stage 20.11 S-8 manager-authored movement on Boulevares)`,
 	);
-	console.log(`Movements: ${result.movementsCount} (Stage 26.2 base + Stage 20.11 S-8 manager-authored movement on Boulevares)`);
-	console.log(`Document requests: ${result.documentRequestsCount} (includes Stage 26.3 SUBMITTED fixture on Los Boulevares + Stage 20.9 APPROVED and CANCELLED fixtures on Villa Centenario)`);
+	console.log(
+		`Document requests: ${result.documentRequestsCount} (includes Stage 26.3 SUBMITTED fixture on Los Boulevares + Stage 20.9 APPROVED and CANCELLED fixtures on Villa Centenario)`,
+	);
 	console.log(`Status change requests: ${result.statusChangeRequestsCount}`);
 	console.log(`Notifications: ${result.notificationsCount}`);
 	console.log(`Admin audit events: ${result.adminEventsCount}`);
@@ -2117,11 +2238,19 @@ function printSummary(result) {
 	// Stage 26.4 — isolation tenant summary
 	if (result.isolationResult) {
 		console.log("---");
-		console.log(`Isolation tenant: ${result.isolationResult.tenant.name} (slug: ${DEMO_ISOLATION_TENANT_SLUG})`);
+		console.log(
+			`Isolation tenant: ${result.isolationResult.tenant.name} (slug: ${DEMO_ISOLATION_TENANT_SLUG})`,
+		);
 		console.log("Isolation tenant: 1 manager, 1 property");
-		console.log(`- Isolation manager: ${DEMO_ISOLATION_MANAGER_EMAIL} / ${passwordSummary}`);
-		console.log(`- Isolation owner: ${DEMO_ISOLATION_OWNER_EMAIL} / ${passwordSummary}`);
-		console.log(`- Isolation engagement id: ${result.isolationResult.engagement.id}`);
+		console.log(
+			`- Isolation manager: ${DEMO_ISOLATION_MANAGER_EMAIL} / ${passwordSummary}`,
+		);
+		console.log(
+			`- Isolation owner: ${DEMO_ISOLATION_OWNER_EMAIL} / ${passwordSummary}`,
+		);
+		console.log(
+			`- Isolation engagement id: ${result.isolationResult.engagement.id}`,
+		);
 		console.log(`- Isolation asset id: ${result.isolationResult.asset.id}`);
 	}
 }

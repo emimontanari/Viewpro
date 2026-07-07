@@ -15,6 +15,8 @@ viewpro-app/apps/api/.document-storage-seeded/
 # Local agent/CLI runtime state
 .pi/
 .pi-lens/
+.pi-subagents/
+.codegraph/
 .playwright-mcp/
 diagnostics/
 viewpro-app/diagnostics/
