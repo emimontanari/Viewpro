@@ -2,7 +2,10 @@ import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nest
 import type { CurrentUser } from '../../auth/types/current-user'
 import { PERMISSIONS } from '../../permissions/permissions.constants'
 import type { TenantContext } from '../../tenant-context/tenant-context.types'
-import { LocalPropertyImagesStorage } from '../property-images.storage'
+import {
+  PROPERTY_IMAGES_STORAGE_PORT,
+  type PropertyImagesStoragePort,
+} from '../property-images.storage'
 import {
   PROPERTY_ENGAGEMENTS_REPOSITORY,
   type PropertyEngagementsRepository,
@@ -18,8 +21,8 @@ export class DeletePropertyImageUseCase {
   constructor(
     @Inject(PROPERTY_ENGAGEMENTS_REPOSITORY)
     private readonly propertyEngagementsRepository: PropertyEngagementsRepository,
-    @Inject(LocalPropertyImagesStorage)
-    private readonly propertyImagesStorage: LocalPropertyImagesStorage,
+    @Inject(PROPERTY_IMAGES_STORAGE_PORT)
+    private readonly propertyImagesStorage: PropertyImagesStoragePort,
   ) {}
 
   async execute(

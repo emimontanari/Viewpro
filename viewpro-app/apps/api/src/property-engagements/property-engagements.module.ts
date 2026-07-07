@@ -7,7 +7,12 @@ import { UsersModule } from "../users/users.module";
 import { PrismaPropertyEngagementsRepository } from "./prisma-property-engagements.repository";
 import { PropertyEngagementsController } from "./property-engagements.controller";
 import { PROPERTY_ENGAGEMENTS_REPOSITORY } from "./property-engagements.repository";
-import { LocalPropertyImagesStorage } from "./property-images.storage";
+import {
+	LocalPropertyImagesStorage,
+	PROPERTY_IMAGES_STORAGE_PORT,
+	resolvePropertyImagesStorageDriver,
+	S3PropertyImagesStorage,
+} from "./property-images.storage";
 import { AssignPropertyAgentUseCase } from "./use-cases/assign-property-agent.use-case";
 import { ArchivePropertyEngagementUseCase } from "./use-cases/archive-property-engagement.use-case";
 import { CreateOwnerInvitationLinkUseCase } from "./use-cases/create-owner-invitation-link.use-case";
@@ -25,40 +30,57 @@ import { UpdatePropertyEngagementUseCase } from "./use-cases/update-property-eng
 import { UploadPropertyImageUseCase } from "./use-cases/upload-property-image.use-case";
 
 const propertyEngagementUseCases = [
-  CreatePropertyEngagementUseCase,
-  ListPropertyEngagementsUseCase,
-  GetPropertyEngagementUseCase,
-  UpdatePropertyEngagementUseCase,
-  ArchivePropertyEngagementUseCase,
-  RestorePropertyEngagementUseCase,
-  AssignPropertyAgentUseCase,
-  RemovePropertyAgentUseCase,
-  ListAssignablePropertyAgentsUseCase,
-  LinkPropertyOwnerUseCase,
-  CreateOwnerInvitationLinkUseCase,
-  RevokeOwnerInvitationLinkUseCase,
-  UploadPropertyImageUseCase,
-  DeletePropertyImageUseCase,
-  SetPropertyImagePrimaryUseCase,
+	CreatePropertyEngagementUseCase,
+	ListPropertyEngagementsUseCase,
+	GetPropertyEngagementUseCase,
+	UpdatePropertyEngagementUseCase,
+	ArchivePropertyEngagementUseCase,
+	RestorePropertyEngagementUseCase,
+	AssignPropertyAgentUseCase,
+	RemovePropertyAgentUseCase,
+	ListAssignablePropertyAgentsUseCase,
+	LinkPropertyOwnerUseCase,
+	CreateOwnerInvitationLinkUseCase,
+	RevokeOwnerInvitationLinkUseCase,
+	UploadPropertyImageUseCase,
+	DeletePropertyImageUseCase,
+	SetPropertyImagePrimaryUseCase,
 ];
 
 @Module({
-  imports: [
-    AuthModule,
-    MembershipsModule,
-    PermissionsModule,
-    TenantContextModule,
-    UsersModule,
-  ],
-  controllers: [PropertyEngagementsController],
-  providers: [
-    {
-      provide: PROPERTY_ENGAGEMENTS_REPOSITORY,
-      useClass: PrismaPropertyEngagementsRepository,
-    },
-    LocalPropertyImagesStorage,
-    ...propertyEngagementUseCases,
-  ],
-  exports: [PROPERTY_ENGAGEMENTS_REPOSITORY, ...propertyEngagementUseCases],
+	imports: [
+		AuthModule,
+		MembershipsModule,
+		PermissionsModule,
+		TenantContextModule,
+		UsersModule,
+	],
+	controllers: [PropertyEngagementsController],
+	providers: [
+		{
+			provide: PROPERTY_ENGAGEMENTS_REPOSITORY,
+			useClass: PrismaPropertyEngagementsRepository,
+		},
+		LocalPropertyImagesStorage,
+		S3PropertyImagesStorage,
+		{
+			provide: PROPERTY_IMAGES_STORAGE_PORT,
+			useFactory: (
+				localStorage: LocalPropertyImagesStorage,
+				s3Storage: S3PropertyImagesStorage,
+			) => {
+				const driver = resolvePropertyImagesStorageDriver();
+				if (driver === "s3") {
+					s3Storage.assertConfigured();
+					return s3Storage;
+				}
+
+				return localStorage;
+			},
+			inject: [LocalPropertyImagesStorage, S3PropertyImagesStorage],
+		},
+		...propertyEngagementUseCases,
+	],
+	exports: [PROPERTY_ENGAGEMENTS_REPOSITORY, ...propertyEngagementUseCases],
 })
 export class PropertyEngagementsModule {}

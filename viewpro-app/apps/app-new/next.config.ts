@@ -1,16 +1,25 @@
 import type { NextConfig } from 'next';
 
+type RemotePattern = NonNullable<NonNullable<NextConfig['images']>['remotePatterns']>[number];
+
+const remoteImagePatterns: RemotePattern[] = [
+  {
+    protocol: 'https',
+    hostname: 'api.slingacademy.com',
+    port: ''
+  },
+  ...buildOptionalRemotePatterns([
+    process.env.NEXT_PUBLIC_API_URL,
+    process.env.NEXT_PUBLIC_PROPERTY_IMAGES_PUBLIC_BASE_URL,
+    process.env.PROPERTY_IMAGES_PUBLIC_BASE_URL
+  ])
+];
+
 // Define the base Next.js configuration
 const baseConfig: NextConfig = {
   output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'api.slingacademy.com',
-        port: ''
-      }
-    ]
+    remotePatterns: remoteImagePatterns
   },
   transpilePackages: ['geist'],
   compiler: {
@@ -64,6 +73,50 @@ async function getNextConfig(): Promise<NextConfig> {
       disable: !process.env.NEXT_PUBLIC_SENTRY_ORG || !process.env.NEXT_PUBLIC_SENTRY_PROJECT
     }
   });
+}
+
+function buildOptionalRemotePatterns(values: Array<string | undefined>): RemotePattern[] {
+  const patterns = new Map<string, RemotePattern>();
+
+  for (const value of values) {
+    const pattern = buildRemotePattern(value);
+    if (!pattern) {
+      continue;
+    }
+
+    patterns.set(`${pattern.protocol}://${pattern.hostname}:${pattern.port ?? ''}`, pattern);
+  }
+
+  return [...patterns.values()];
+}
+
+function buildRemotePattern(value: string | undefined): RemotePattern | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const url = new URL(value);
+    if (url.protocol === 'http:' && !isLocalImageHost(url.hostname)) {
+      return undefined;
+    }
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+      return undefined;
+    }
+
+    return {
+      protocol: url.protocol === 'https:' ? 'https' : 'http',
+      hostname: url.hostname,
+      port: url.port,
+      pathname: '/**'
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function isLocalImageHost(hostname: string) {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
 }
 
 export default getNextConfig();
