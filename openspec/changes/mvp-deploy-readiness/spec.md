@@ -50,7 +50,7 @@ The API MUST NOT be adapted to Vercel serverless for this demo.
 
 ### REQ-3 — Demo database isolation
 
-The demo environment MUST use a dedicated Railway Postgres database.
+The demo environment MUST use a dedicated Neon Postgres database.
 
 The demo database MUST be isolated from any future real production database.
 

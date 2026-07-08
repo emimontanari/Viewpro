@@ -15,7 +15,7 @@ Use this checklist after the demo environment is deployed, migrated, and seeded.
 - [ ] `demo.inmoview.app` serves HTTPS without certificate warnings.
 - [ ] `api-demo.inmoview.app` serves HTTPS without certificate warnings.
 - [ ] API health check passes.
-- [ ] Demo DB is the dedicated Railway Postgres database.
+- [ ] Demo DB is the dedicated Neon Postgres database.
 - [ ] Demo seed/reset has been run only against the dedicated demo DB with `INMOVIEW_ENVIRONMENT=demo`, `INMOVIEW_DEMO_SEED_ALLOWED=true`, and a matching `INMOVIEW_DEMO_DATABASE_IDENTIFIER`.
 - [ ] Demo credentials are available from the approved secret store or handoff channel.
 - [ ] Sentry env variables are configured for frontend and API.

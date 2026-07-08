@@ -7,7 +7,7 @@ Ship the public demo as a production-like environment using the current monorepo
 ```txt
 https://demo.inmoview.app      -> Vercel -> apps/app-new (Next.js)
 https://api-demo.inmoview.app  -> Railway -> apps/api (NestJS Docker service)
-Railway Postgres              -> dedicated demo database
+Neon Postgres                 -> dedicated demo database
 Cloudflare R2 / S3-compatible -> documents + property images
 Sentry                        -> frontend + API observability
 ```
@@ -193,7 +193,7 @@ Checklist sections:
 
 - Vercel frontend env.
 - Railway API env.
-- Railway Postgres linkage.
+- Neon Postgres linkage.
 - R2/S3 bucket and CORS configuration.
 - Domain/DNS mapping.
 - Cookie/CORS values.
@@ -217,7 +217,7 @@ PORT=<Railway-provided or configured>
 APP_PUBLIC_URL=https://demo.inmoview.app
 API_PUBLIC_URL=https://api-demo.inmoview.app
 CORS_ORIGIN=https://demo.inmoview.app
-DATABASE_URL=<Railway Postgres private/public URL as appropriate>
+DATABASE_URL=<Neon direct (non-pooled) URL, with ?sslmode=require>
 ACCESS_TOKEN_SECRET=<shared strong secret>
 COOKIE_DOMAIN=.inmoview.app
 COOKIE_SECURE=true
@@ -313,8 +313,8 @@ The design should prefer failing closed if required demo guard env vars are abse
 
 Minimum evidence for demo readiness:
 
-- Railway Postgres backup/snapshot or documented dump command before demo reset.
-- Restore procedure documented and dry-run evidence if Railway supports it without risking the active demo.
+- Neon branch/point-in-time restore or documented `pg_dump` before demo reset.
+- Restore procedure documented and dry-run evidence via a Neon branch without risking the active demo.
 - API rollback: Railway previous deployment rollback or redeploy previous git SHA.
 - Frontend rollback: Vercel previous deployment promotion/rollback.
 - R2 reset stance: demo bucket can be reseeded, with lifecycle policy or manual cleanup documented.

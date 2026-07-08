@@ -19,7 +19,7 @@ This change spans deployment docs/config, Docker runtime, property-image storage
 Goal: make the deploy plan executable without changing runtime behavior.
 
 - [x] Add API Docker build/start path for Railway without automatic migrations or seed.
-- [x] Add/update demo environment checklist for Vercel frontend, Railway API, Railway Postgres, R2/S3, Sentry, cookies, and CORS.
+- [x] Add/update demo environment checklist for Vercel frontend, Railway API, Neon Postgres, R2/S3, Sentry, cookies, and CORS.
 - [x] Add deploy runbook for demo setup, migration, seed/reset, backup/restore, rollback, and smoke commands.
 - [x] Add demo checklist for manager, seller, owner, documents, notifications, WhatsApp/contact, route isolation, and Sentry evidence.
 - [x] Verify docs contain variable names and purpose only, no secret values.
@@ -59,7 +59,7 @@ Goal: make public demo reset safe and verifiable.
 - [ ] `https://api-demo.inmoview.app/api/health` responds over HTTPS.
 - [ ] Cross-subdomain auth works with secure cookies and explicit CORS.
 - [ ] API runs as Docker/containerized NestJS on Railway.
-- [ ] Demo DB is Railway Postgres and isolated from real production data.
+- [ ] Demo DB is Neon Postgres and isolated from real production data.
 - [ ] Migrations are explicit, not automatic API startup behavior.
 - [ ] Demo seed/reset is explicit and guarded.
 - [ ] Documents use R2/S3 in demo mode.

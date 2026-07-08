@@ -30,7 +30,7 @@ Demo API
   Runtime: Docker/containerized long-running Node service
 
 Demo database
-  Railway Postgres
+  Neon Postgres
   Dedicated demo/staging database only
 
 Object storage
@@ -48,7 +48,7 @@ Observability
 - Configure Vercel deployment for `apps/app-new` at `demo.inmoview.app`.
 - Configure Railway project for the NestJS API at `api-demo.inmoview.app`.
 - Deploy the API as an explicit Docker/containerized service rather than adapting Nest to Vercel serverless.
-- Provision a dedicated Railway Postgres instance for demo/staging.
+- Provision a dedicated Neon Postgres instance for demo/staging.
 - Configure production-like API/frontend environment variables.
 - Configure HTTPS, CORS, cookie domain, and secure cookies for the selected subdomains.
 - Configure Sentry DSNs/environments for API and frontend.
@@ -103,7 +103,7 @@ Observability
 | Frontend hosting | Vercel. |
 | API hosting | Railway. |
 | API runtime | Docker/containerized long-running NestJS service. |
-| Database | Railway Postgres dedicated to demo/staging. |
+| Database | Neon Postgres dedicated to demo/staging (separate from Railway to avoid usage overages). |
 | Document storage | Cloudflare R2/S3-compatible storage. |
 | Email | Keep manual copy-link unless explicitly promoted. |
 
@@ -112,7 +112,7 @@ Observability
 - `https://demo.inmoview.app` loads the InmoView demo frontend over HTTPS.
 - `https://api-demo.inmoview.app/api/health` responds successfully over HTTPS.
 - Frontend can authenticate against API using production-like secure cookies and explicit CORS.
-- Railway Postgres is dedicated to demo/staging and has documented migration, seed, backup, restore, and rollback procedures.
+- Neon Postgres is dedicated to demo/staging and has documented migration, seed, backup, restore, and rollback procedures.
 - Document storage uses S3/R2-compatible configuration in demo mode.
 - Demo seed can reset the demo dataset with explicit guardrails.
 - Demo accounts are documented and work for manager, seller, owner, and admin flows.

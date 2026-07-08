@@ -289,7 +289,7 @@ still reports the existing placeholder message `OpenAPI contract check not confi
 
 ## Residual Risks
 
-- Demo seed/reset has not been run against a real Railway demo DB; verify only after the dedicated demo DB and secret-store variables exist.
+- Demo seed/reset has not been run against a real Neon demo DB; verify only after the dedicated demo DB and secret-store variables exist.
 - Deployed smoke checks remain blocked until Railway/Vercel/R2/Sentry/domain wiring exists.
 - Dockerfile has not been fully built in Docker locally; validate in Railway or with an approved `.dockerignore`/build context check.
 - Railway settings are documented but not applied in external dashboards during this PR.

@@ -176,7 +176,7 @@ Existing demo seed and smoke tests already define a strong demo baseline:
 |---|---|---|
 | Frontend | Vercel for `apps/app-new` | Best Next.js fit; API remains separate and needs cookie/CORS care. |
 | API | Railway/Fly.io/Render long-running Node process | Fits Nest/Prisma; platform-specific migration/startup behavior must be documented. |
-| Postgres | Supabase Postgres or Railway Postgres | Supabase has strong DB tooling/backups; Railway is fastest if API also lives there. |
+| Postgres | Neon Postgres (chosen) | Managed serverless Postgres separate from Railway to avoid usage overages; branch/PITR backups; use the direct endpoint for Prisma migrations. |
 | Object storage | Cloudflare R2 | S3-compatible and low egress; signed URL/CORS behavior must be tested. |
 | Error tracking | Sentry | Already integrated; needs DSNs/env/release/source-map proof. |
 | Email | Manual copy-link for MVP; Resend only if promoted | Avoids new scope; real email requires domain verification/templates/tests. |

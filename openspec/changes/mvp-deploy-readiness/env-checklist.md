@@ -53,7 +53,7 @@ Runtime variables:
 | `APP_PUBLIC_URL` | Public app origin: `https://demo.inmoview.app`. |
 | `API_PUBLIC_URL` | Public API origin: `https://api-demo.inmoview.app`. |
 | `CORS_ORIGIN` | Allowed browser origin: `https://demo.inmoview.app`. |
-| `DATABASE_URL` | Railway Postgres connection string for the dedicated demo DB. |
+| `DATABASE_URL` | Neon Postgres connection string for the dedicated demo DB. Use the direct (non-pooled) endpoint with `?sslmode=require`. |
 | `ACCESS_TOKEN_SECRET` | Strong JWT secret; must match Vercel frontend. |
 | `ACCESS_TOKEN_TTL_SECONDS` | Access token lifetime if overriding default. |
 | `REFRESH_TOKEN_TTL_SECONDS` | Refresh token lifetime if overriding default. |
@@ -69,14 +69,14 @@ Runtime variables:
 | `SENTRY_ENVIRONMENT` | Use `demo`. |
 | `SENTRY_TRACES_SAMPLE_RATE` | API tracing sample rate for demo. |
 
-## Railway Postgres
+## Neon Postgres
 
 | Item | Purpose |
 |---|---|
-| Dedicated Railway Postgres service | Keeps demo data isolated from future production data. |
-| `DATABASE_URL` linkage | Provides API and explicit migration/seed commands with the demo DB connection. |
-| Backup/snapshot mechanism | Required before demo reset and before public handoff. |
-| Restore procedure | Required recovery path for broken seed, migration, or demo data. |
+| Dedicated Neon project/database | Keeps demo data isolated from future production data; separate from Railway to avoid usage overages. |
+| `DATABASE_URL` linkage | Provides API and explicit migration/seed commands with the demo DB connection. Use the direct (non-pooled) endpoint with `?sslmode=require`. |
+| Branch/PITR or `pg_dump` backup | Required before demo reset and before public handoff. |
+| Restore procedure | Neon branch promotion / point-in-time restore, or `pg_restore`/`psql` from a dump. |
 
 Before migrations or seed/reset, confirm the target DB is the dedicated demo database.
 

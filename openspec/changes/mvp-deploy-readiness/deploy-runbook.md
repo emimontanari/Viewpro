@@ -7,7 +7,7 @@ This runbook makes the `mvp-deploy-readiness` demo deploy path executable. It do
 ```txt
 Frontend: https://demo.inmoview.app      -> Vercel -> apps/app-new
 API:      https://api-demo.inmoview.app  -> Railway -> apps/api Docker service
-Database: Railway Postgres dedicated demo DB
+Database: Neon Postgres dedicated demo DB
 Storage:  Cloudflare R2 / S3-compatible buckets
 Sentry:   API + frontend demo environments
 ```
@@ -16,7 +16,7 @@ Sentry:   API + frontend demo environments
 
 - Confirm the branch contains only the intended `mvp-deploy-readiness` deploy-readiness changes.
 - Confirm no `.env`, database dump, upload, document, image byte, or secret file is staged.
-- Confirm the Railway Postgres target is the dedicated demo/staging database.
+- Confirm the Neon Postgres target is the dedicated demo/staging database.
 - Confirm `demo.inmoview.app` and `api-demo.inmoview.app` can be managed in DNS.
 - Keep migrations and demo seed/reset as explicit commands. Do not attach them to API container startup.
 
@@ -36,12 +36,20 @@ Service settings:
 
 The Dockerfile builds the NestJS API and starts the compiled long-running process. It intentionally does not run migrations or demo seed/reset.
 
-## 2. Configure Railway Postgres
+## 2. Configure Neon Postgres
 
-- Provision a Railway Postgres service dedicated to the public demo.
-- Link its `DATABASE_URL` to the API service.
-- Record how to create a backup/snapshot before seed resets.
-- Record how to restore from that backup/snapshot.
+- Provision a Neon project/database dedicated to the public demo.
+- Copy the Neon connection string into the Railway API service as `DATABASE_URL`.
+  Append `?sslmode=require` — Neon requires TLS.
+- Use the **direct (non-pooled)** Neon endpoint for `DATABASE_URL`. The Prisma
+  schema uses a single `DATABASE_URL` with no `directUrl`, so `prisma migrate
+  deploy` must run against the direct endpoint. The pooled (`-pooler`) endpoint
+  is only needed later if the demo hits connection limits, and would require a
+  `directUrl` split in the schema first.
+- Record how to create a backup before seed resets: either a Neon branch of the
+  demo database or a `pg_dump` snapshot.
+- Record how to restore: promote the Neon branch / point-in-time restore, or
+  `pg_restore`/`psql` from the dump.
 
 Do not reuse a future production database for the demo.
 
@@ -175,7 +183,7 @@ Before public handoff, capture evidence for:
 
 | Area | Evidence needed |
 |---|---|
-| Database backup | Railway snapshot/backup or documented dump command before demo reset. |
+| Database backup | Neon branch/point-in-time restore or documented `pg_dump` before demo reset. |
 | Database restore | Restore procedure and dry-run notes when safe. |
 | API rollback | Railway previous deployment rollback or redeploy previous git SHA. |
 | Frontend rollback | Vercel previous deployment promotion/rollback. |
@@ -216,7 +224,7 @@ Include:
 1. Stop new demo resets.
 2. Roll back frontend in Vercel to the last known-good deployment.
 3. Roll back API in Railway to the last known-good deployment or previous git SHA.
-4. Restore Railway Postgres from the last known-good backup if data is broken.
+4. Restore Neon Postgres from the last known-good backup (branch/PITR or dump) if data is broken.
 5. Re-run smoke checks and the affected checklist sections.
 6. Document what was restored and what data may have changed.
 
