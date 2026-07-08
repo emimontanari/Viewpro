@@ -2,6 +2,10 @@
 
 This runbook makes the `mvp-deploy-readiness` demo deploy path executable. It does not replace platform dashboards and it must not contain secrets.
 
+> For the demo → real-production transition (expected ~1–2 weeks after the
+> demo), see `production-readiness-plan.md`. This runbook covers the demo; that
+> plan covers the T-0 gates required before the first real inmobiliaria.
+
 ## Deployment target
 
 ```txt
