@@ -164,7 +164,7 @@ describe('AdminTenantManagementPage', () => {
 
     renderAdminPage();
 
-    expect(await screen.findByText('Acceso restringido a ViewPro Admin')).toBeInTheDocument();
+    expect(await screen.findByText('Acceso restringido a InmoView Admin')).toBeInTheDocument();
     expect(
       screen.getByText(/Necesitás rol global VIEWPRO_ADMIN para abrir este comando operativo/i)
     ).toBeInTheDocument();
