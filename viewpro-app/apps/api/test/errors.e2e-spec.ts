@@ -119,6 +119,11 @@ describe('GlobalExceptionFilter production sanitization (e2e)', () => {
   let previousS3Bucket: string | undefined
   let previousS3AccessKeyId: string | undefined
   let previousS3SecretAccessKey: string | undefined
+  let previousPropertyImagesStorageDriver: string | undefined
+  let previousPropertyImagesS3Bucket: string | undefined
+  let previousPropertyImagesS3AccessKeyId: string | undefined
+  let previousPropertyImagesS3SecretAccessKey: string | undefined
+  let previousPropertyImagesPublicBaseUrl: string | undefined
 
   beforeAll(async () => {
     previousAppPublicUrl = process.env.APP_PUBLIC_URL
@@ -126,6 +131,11 @@ describe('GlobalExceptionFilter production sanitization (e2e)', () => {
     previousS3Bucket = process.env.DOCUMENT_STORAGE_S3_BUCKET
     previousS3AccessKeyId = process.env.DOCUMENT_STORAGE_S3_ACCESS_KEY_ID
     previousS3SecretAccessKey = process.env.DOCUMENT_STORAGE_S3_SECRET_ACCESS_KEY
+    previousPropertyImagesStorageDriver = process.env.PROPERTY_IMAGES_STORAGE_DRIVER
+    previousPropertyImagesS3Bucket = process.env.PROPERTY_IMAGES_S3_BUCKET
+    previousPropertyImagesS3AccessKeyId = process.env.PROPERTY_IMAGES_S3_ACCESS_KEY_ID
+    previousPropertyImagesS3SecretAccessKey = process.env.PROPERTY_IMAGES_S3_SECRET_ACCESS_KEY
+    previousPropertyImagesPublicBaseUrl = process.env.PROPERTY_IMAGES_PUBLIC_BASE_URL
     process.env.NODE_ENV = 'production'
     process.env.APP_PUBLIC_URL = 'https://app.viewpro.example'
     process.env.CORS_ORIGIN = 'https://app.viewpro.example'
@@ -133,6 +143,11 @@ describe('GlobalExceptionFilter production sanitization (e2e)', () => {
     process.env.DOCUMENT_STORAGE_S3_BUCKET = 'test-documents'
     process.env.DOCUMENT_STORAGE_S3_ACCESS_KEY_ID = 'test-access-key'
     process.env.DOCUMENT_STORAGE_S3_SECRET_ACCESS_KEY = 'test-secret-key'
+    process.env.PROPERTY_IMAGES_STORAGE_DRIVER = 's3'
+    process.env.PROPERTY_IMAGES_S3_BUCKET = 'test-property-images'
+    process.env.PROPERTY_IMAGES_S3_ACCESS_KEY_ID = 'test-access-key'
+    process.env.PROPERTY_IMAGES_S3_SECRET_ACCESS_KEY = 'test-secret-key'
+    process.env.PROPERTY_IMAGES_PUBLIC_BASE_URL = 'https://images.viewpro.example'
 
     app = await createApiApp()
     await app.init()
@@ -147,6 +162,11 @@ describe('GlobalExceptionFilter production sanitization (e2e)', () => {
     restoreEnv('DOCUMENT_STORAGE_S3_BUCKET', previousS3Bucket)
     restoreEnv('DOCUMENT_STORAGE_S3_ACCESS_KEY_ID', previousS3AccessKeyId)
     restoreEnv('DOCUMENT_STORAGE_S3_SECRET_ACCESS_KEY', previousS3SecretAccessKey)
+    restoreEnv('PROPERTY_IMAGES_STORAGE_DRIVER', previousPropertyImagesStorageDriver)
+    restoreEnv('PROPERTY_IMAGES_S3_BUCKET', previousPropertyImagesS3Bucket)
+    restoreEnv('PROPERTY_IMAGES_S3_ACCESS_KEY_ID', previousPropertyImagesS3AccessKeyId)
+    restoreEnv('PROPERTY_IMAGES_S3_SECRET_ACCESS_KEY', previousPropertyImagesS3SecretAccessKey)
+    restoreEnv('PROPERTY_IMAGES_PUBLIC_BASE_URL', previousPropertyImagesPublicBaseUrl)
   })
 
   it('removes route internals while preserving diagnostic envelope fields', async () => {
