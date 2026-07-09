@@ -12,8 +12,8 @@ stays the same to avoid premature complexity.
 
 - Frontend on Vercel and object storage on R2 scale effectively for free; they
   are not the capacity constraint.
-- The whole capacity question collapses onto **one Railway API container + its
-  Postgres connections**.
+- The whole capacity question collapses onto **one Dokploy API container on a
+  single Hostinger KVM2 VPS (2 vCPU / 8 GB RAM) + its Postgres connections**.
 - The API is effectively stateless: sessions/refresh tokens live in Postgres
   (`auth/tokens/prisma-refresh-token.repository.ts`), not in process memory.
   This is what makes horizontal scaling cheap later.
@@ -38,11 +38,23 @@ first bottleneck under real concurrency.
 ### 1. Separate production from demo (hard isolation)
 
 - Separate Neon database/project for production (never reuse the demo DB).
-- Separate Railway service/environment for the production API.
+- Separate host/environment for the production API (a dedicated Dokploy
+  application/environment, or a reevaluated managed platform — see the SPOF note
+  below).
 - Separate domain for production (e.g. `app.inmoview.app` / `api.inmoview.app`),
   keeping `demo.inmoview.app` as the throwaway demo.
 - Separate secret store values (do not reuse demo `ACCESS_TOKEN_SECRET`,
   storage keys, or DSNs).
+
+**Single point of failure (must address for real production).** The demo API
+runs on one self-managed Hostinger VPS via Dokploy, with **no automatic failover
+or scaling**. Capacity is not the concern — 2 vCPU / 8 GB comfortably serves the
+demo and early real tenants doing low-frequency CRUD — but a single box is a
+SPOF: a host outage, disk failure, or bad reboot takes the API down with no
+standby. Before real production, reevaluate either a managed platform (Railway /
+Fly / Render) or a multi-node self-hosted setup so the API is not one VPS away
+from downtime. The Hostinger weekly backups + snapshot mitigate data loss but do
+not provide hot failover.
 
 ### 2. Neon connection model (the #1 scaling change)
 
@@ -64,7 +76,7 @@ The seed guard (`scripts/seed-demo-safety.mjs`) already fails closed: it refuses
 in production:
 
 - NEVER set `INMOVIEW_ENVIRONMENT`, `INMOVIEW_DEMO_SEED_ALLOWED`, or
-  `INMOVIEW_DEMO_DATABASE_IDENTIFIER` in the production Railway service.
+  `INMOVIEW_DEMO_DATABASE_IDENTIFIER` in the production API service.
 - Choose the demo `INMOVIEW_DEMO_DATABASE_IDENTIFIER` so it can NEVER be a
   substring of the production `DATABASE_URL` (the guard is a substring match).
 - Treat `pnpm demo:seed` as a demo-only command; production onboarding uses real
@@ -102,7 +114,9 @@ Do NOT do these preemptively. Each has a concrete trigger.
    across instances without shared storage.
 3. **Horizontal API scaling** — trigger: single container CPU/latency pressure
    after the DB is pooled. Cheap because the API is already stateless (sessions
-   in Postgres). Run N Railway instances behind the platform load balancer.
+   in Postgres). Run N API instances behind a load balancer — either scale the
+   self-hosted Dokploy/Swarm service across nodes or move to a managed platform
+   (Railway / Fly / Render) as part of resolving the single-VPS SPOF.
 4. **Background queue (BullMQ/Redis)** — trigger: work that should not block a
    request (bulk imports, heavy document processing, outbound notifications).
    Not needed until such a feature exists.

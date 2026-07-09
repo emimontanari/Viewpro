@@ -25,9 +25,10 @@ Demo frontend
 
 Demo API
   https://api-demo.inmoview.app
-  Hosted by Railway
+  Hosted by Dokploy (self-hosted PaaS on a Hostinger KVM2 VPS)
   NestJS API: viewpro-app/apps/api
   Runtime: Docker/containerized long-running Node service
+  HTTPS via Traefik (automatic Let's Encrypt)
 
 Demo database
   Neon Postgres
@@ -46,7 +47,7 @@ Observability
 ### Infrastructure and deployment
 
 - Configure Vercel deployment for `apps/app-new` at `demo.inmoview.app`.
-- Configure Railway project for the NestJS API at `api-demo.inmoview.app`.
+- Configure a Dokploy application (self-hosted PaaS on a Hostinger KVM2 VPS) for the NestJS API at `api-demo.inmoview.app`, served over HTTPS by Traefik.
 - Deploy the API as an explicit Docker/containerized service rather than adapting Nest to Vercel serverless.
 - Provision a dedicated Neon Postgres instance for demo/staging.
 - Configure production-like API/frontend environment variables.
@@ -101,9 +102,9 @@ Observability
 | Domain | `demo.inmoview.app` for the app. |
 | API domain | `api-demo.inmoview.app` recommended for the API. |
 | Frontend hosting | Vercel. |
-| API hosting | Railway. |
+| API hosting | Dokploy (self-hosted PaaS on a Hostinger KVM2 VPS), Docker Swarm + Traefik. For real production (Phase 4), reevaluate managed platforms such as Railway/Fly/Render or a multi-node setup. |
 | API runtime | Docker/containerized long-running NestJS service. |
-| Database | Neon Postgres dedicated to demo/staging (separate from Railway to avoid usage overages). |
+| Database | Neon Postgres dedicated to demo/staging (managed serverless, separate from the API host). |
 | Document storage | Cloudflare R2/S3-compatible storage. |
 | Email | Keep manual copy-link unless explicitly promoted. |
 
@@ -128,7 +129,8 @@ Observability
 | Cookie/CORS misconfiguration across subdomains | Login/refresh breaks in deployed demo | Lock `demo.inmoview.app` + `api-demo.inmoview.app` topology and test auth early. |
 | Demo seed runs against the wrong DB | Data loss | Add explicit demo-only guardrails and checklist confirmation. |
 | Property images remain local-file backed | Images can disappear on redeploy/restart | Prefer object storage follow-up or document/reset mitigation. |
-| Railway start/migration coupling | App startup can fail or mutate DB unexpectedly | Keep migrations as explicit deploy/checklist step, not automatic app boot behavior. |
+| Container start/migration coupling | App startup can fail or mutate DB unexpectedly | Keep migrations as explicit deploy/checklist step, not automatic app boot behavior. |
+| Single self-managed VPS (Dokploy on Hostinger) is a single point of failure | No automatic failover/scaling for the demo API | Acceptable for the demo; for real production (Phase 4), reevaluate a managed or multi-node setup. |
 | S3/R2 signed URL/CORS mismatch | Documents fail in browser demo | Include focused storage smoke in design/tasks. |
 | Sentry appears configured but emits no useful events | Blind demo failures | Include initialization/log/event verification. |
 

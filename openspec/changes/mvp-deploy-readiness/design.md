@@ -6,7 +6,7 @@ Ship the public demo as a production-like environment using the current monorepo
 
 ```txt
 https://demo.inmoview.app      -> Vercel -> apps/app-new (Next.js)
-https://api-demo.inmoview.app  -> Railway -> apps/api (NestJS Docker service)
+https://api-demo.inmoview.app  -> Dokploy (Hostinger KVM2 VPS, Traefik HTTPS) -> apps/api (NestJS Docker service)
 Neon Postgres                 -> dedicated demo database
 Cloudflare R2 / S3-compatible -> documents + property images
 Sentry                        -> frontend + API observability
@@ -22,7 +22,7 @@ The implementation should happen in small, reviewable slices. The most important
 - `viewpro-app/apps/api/src/config/app.config.ts` — production URL/CORS/auth/cookie/Sentry env parsing.
 - `viewpro-app/apps/api/src/bootstrap/create-app.ts` — CORS credentials, global `/api` prefix, Swagger, static `/uploads` serving.
 - New: `viewpro-app/apps/api/Dockerfile` or root-level Dockerfile with API target.
-- New: deploy/runbook docs for Railway service commands and env variables.
+- New: deploy/runbook docs for the Dokploy application settings and env variables.
 
 ### Frontend deploy/runtime
 
@@ -78,9 +78,9 @@ Docker strategy:
 
 Important: do **not** run Prisma migrations or `demo:seed` automatically in the container `CMD`. Migrations and seed/reset remain explicit deploy operations.
 
-Optional supporting file if Railway needs explicit project config:
-
-- `viewpro-app/railway.json` or Railway dashboard settings documented in runbook.
+No repo-committed platform config file is required. The Dokploy application
+config (source repo/Dockerfile, build context, domain, Traefik HTTPS, and env
+vars) is set in the Dokploy dashboard and documented in the runbook.
 
 ### 2. Property image object storage
 
@@ -192,7 +192,7 @@ These are change artifacts until verified/archived. They can later be promoted i
 Checklist sections:
 
 - Vercel frontend env.
-- Railway API env.
+- Dokploy API env.
 - Neon Postgres linkage.
 - R2/S3 bucket and CORS configuration.
 - Domain/DNS mapping.
@@ -207,13 +207,13 @@ No secret values in docs.
 
 ## Environment Design
 
-### API — Railway
+### API — Dokploy (Hostinger KVM2 VPS)
 
-Required values:
+Required values (set in the Dokploy UI, never committed):
 
 ```txt
 NODE_ENV=production
-PORT=<Railway-provided or configured>
+PORT=<configured; Traefik routes api-demo.inmoview.app to this port>
 APP_PUBLIC_URL=https://demo.inmoview.app
 API_PUBLIC_URL=https://api-demo.inmoview.app
 CORS_ORIGIN=https://demo.inmoview.app
@@ -315,7 +315,7 @@ Minimum evidence for demo readiness:
 
 - Neon branch/point-in-time restore or documented `pg_dump` before demo reset.
 - Restore procedure documented and dry-run evidence via a Neon branch without risking the active demo.
-- API rollback: Railway previous deployment rollback or redeploy previous git SHA.
+- API rollback: redeploy a previous build/commit from Dokploy deployment history; the Hostinger VPS weekly backups / snapshot are the fallback.
 - Frontend rollback: Vercel previous deployment promotion/rollback.
 - R2 reset stance: demo bucket can be reseeded, with lifecycle policy or manual cleanup documented.
 
@@ -376,7 +376,7 @@ If the diff exceeds the 400-line review budget, split into chained PRs: first do
 |---|---|
 | Property image access model grows too large | Prefer public-read demo image bucket/custom domain for property images; keep documents private/signed. |
 | Seed guard blocks local developer usage | Gate only destructive demo reset behavior; preserve local test/dev paths with explicit env. |
-| Dockerfile breaks monorepo caching | Keep Dockerfile minimal and document Railway build context; optimize later after first successful deploy. |
+| Dockerfile breaks monorepo caching | Keep Dockerfile minimal and document the Dokploy build context; optimize later after first successful deploy. The 8 GB VPS builds the image on-box; if build resources ever become a constraint, fall back to building the image in CI and having Dokploy pull it. |
 | Cross-subdomain cookies fail | Validate early with real domains before investing in polish. |
 | Platform setup cannot be fully tested locally | Keep platform steps in runbook and verify with deployed evidence. |
 

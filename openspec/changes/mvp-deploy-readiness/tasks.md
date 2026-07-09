@@ -18,8 +18,8 @@ This change spans deployment docs/config, Docker runtime, property-image storage
 
 Goal: make the deploy plan executable without changing runtime behavior.
 
-- [x] Add API Docker build/start path for Railway without automatic migrations or seed.
-- [x] Add/update demo environment checklist for Vercel frontend, Railway API, Neon Postgres, R2/S3, Sentry, cookies, and CORS.
+- [x] Add API Docker build/start path for the Dokploy application without automatic migrations or seed.
+- [x] Add/update demo environment checklist for Vercel frontend, Dokploy API, Neon Postgres, R2/S3, Sentry, cookies, and CORS.
 - [x] Add deploy runbook for demo setup, migration, seed/reset, backup/restore, rollback, and smoke commands.
 - [x] Add demo checklist for manager, seller, owner, documents, notifications, WhatsApp/contact, route isolation, and Sentry evidence.
 - [x] Verify docs contain variable names and purpose only, no secret values.
@@ -58,7 +58,7 @@ Goal: make public demo reset safe and verifiable.
 - [ ] `https://demo.inmoview.app` loads over HTTPS.
 - [ ] `https://api-demo.inmoview.app/api/health` responds over HTTPS.
 - [ ] Cross-subdomain auth works with secure cookies and explicit CORS.
-- [ ] API runs as Docker/containerized NestJS on Railway.
+- [ ] API runs as Docker/containerized NestJS on the Dokploy application (Hostinger KVM2 VPS).
 - [ ] Demo DB is Neon Postgres and isolated from real production data.
 - [ ] Migrations are explicit, not automatic API startup behavior.
 - [ ] Demo seed/reset is explicit and guarded.
@@ -108,12 +108,12 @@ curl -I https://demo.inmoview.app
 - Do not commit secrets or generated uploads.
 - Keep ViewPro platform Phase 4 out of scope.
 - If PR 2 grows beyond review budget, split adapter/config from frontend render allowlist and seeded image updates.
-- If real environment credentials are needed, stop and ask the user to configure them in Vercel/Railway/R2/Sentry dashboards rather than pasting secrets into chat or files.
+- If real environment credentials are needed, stop and ask the user to configure them in Vercel/Dokploy/R2/Sentry dashboards rather than pasting secrets into chat or files.
 
 ## Next Recommended Phase
 
 `verify` / review prep for the local implementation batch.
 
 PR 1, PR 2, and PR 3 implementation tasks are applied locally. Deployed smoke
-checks and cross-PR acceptance remain pending until Railway, Vercel, R2/S3,
+checks and cross-PR acceptance remain pending until Dokploy, Vercel, R2/S3,
 Sentry, DNS, and the dedicated demo DB are configured.

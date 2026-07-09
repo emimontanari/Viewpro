@@ -10,7 +10,7 @@ This runbook makes the `mvp-deploy-readiness` demo deploy path executable. It do
 
 ```txt
 Frontend: https://demo.inmoview.app      -> Vercel -> apps/app-new
-API:      https://api-demo.inmoview.app  -> Railway -> apps/api Docker service
+API:      https://api-demo.inmoview.app  -> Dokploy (Hostinger KVM2 VPS, Traefik HTTPS) -> apps/api Docker service
 Database: Neon Postgres dedicated demo DB
 Storage:  Cloudflare R2 / S3-compatible buckets
 Sentry:   API + frontend demo environments
@@ -24,26 +24,33 @@ Sentry:   API + frontend demo environments
 - Confirm `demo.inmoview.app` and `api-demo.inmoview.app` can be managed in DNS.
 - Keep migrations and demo seed/reset as explicit commands. Do not attach them to API container startup.
 
-## 1. Configure Railway API service
+## 1. Configure Dokploy API application
 
-Create or update a Railway project for the demo environment.
+Create or update a Dokploy application for the demo environment. Dokploy is a
+self-hosted PaaS running on a Hostinger KVM2 VPS (2 vCPU, 8 GB RAM, 100 GB NVMe,
+dedicated IP, weekly backups + 1 snapshot) on Docker Swarm + Traefik.
 
-Service settings:
+Application settings:
 
 | Setting | Value |
 |---|---|
-| Service type | Docker service |
-| Docker context/root | `viewpro-app` |
+| Source | Repository/Dockerfile build (point at `apps/api/Dockerfile`) |
+| Docker build context/root | `viewpro-app` |
 | Dockerfile path | `apps/api/Dockerfile` |
-| Public domain | `api-demo.inmoview.app` |
+| Public domain | `api-demo.inmoview.app`, served over HTTPS by Traefik (automatic Let's Encrypt) |
 | Start command | Dockerfile `CMD` (`node dist/main.js`) |
+| Environment variables | Set from `env-checklist.md` in the Dokploy UI; never committed |
 
-The Dockerfile builds the NestJS API and starts the compiled long-running process. It intentionally does not run migrations or demo seed/reset.
+The Dockerfile builds the NestJS API and starts the compiled long-running process. It intentionally does not run migrations or demo seed/reset — keep those as explicit deploy steps (sections 7 and 8).
+
+Build note: 8 GB RAM is enough to build the image on-box in Dokploy. If build
+resources ever become a constraint, fall back to building the image in CI and
+having Dokploy pull the prebuilt image instead.
 
 ## 2. Configure Neon Postgres
 
 - Provision a Neon project/database dedicated to the public demo.
-- Copy the Neon connection string into the Railway API service as `DATABASE_URL`.
+- Copy the Neon connection string into the Dokploy API application as `DATABASE_URL` (set in the Dokploy UI).
   Append `?sslmode=require` — Neon requires TLS.
 - Use the **direct (non-pooled)** Neon endpoint for `DATABASE_URL`. The Prisma
   schema uses a single `DATABASE_URL` with no `directUrl`, so `prisma migrate
@@ -74,7 +81,7 @@ wiring must choose the S3/R2 driver and public image host before deployed smoke.
 
 - Create or select document bucket.
 - Create or select property image bucket or prefix.
-- Configure access keys in Railway only.
+- Configure access keys in the Dokploy UI only.
 - Configure CORS for browser document upload/read flows.
 - Keep document storage private/signed.
 - Configure `PROPERTY_IMAGES_STORAGE_DRIVER=s3` for demo.
@@ -86,7 +93,7 @@ wiring must choose the S3/R2 driver and public image host before deployed smoke.
 
 - Create or select frontend demo project/environment.
 - Create or select API demo project/environment.
-- Configure DSNs in Vercel and Railway.
+- Configure DSNs in Vercel and the Dokploy UI.
 - Configure source-map upload only if org/project/token setup is ready.
 - If source maps are not ready, record the follow-up instead of blocking the first public demo deploy.
 
@@ -97,7 +104,7 @@ Expected records:
 | Host | Target |
 |---|---|
 | `demo.inmoview.app` | Vercel demo frontend target |
-| `api-demo.inmoview.app` | Railway API custom domain target |
+| `api-demo.inmoview.app` | Hostinger VPS IP (Dokploy/Traefik terminates HTTPS) |
 
 After DNS propagates, verify HTTPS certificates are active before auth testing.
 
@@ -132,7 +139,7 @@ pnpm demo:seed
 
 The value of `INMOVIEW_DEMO_DATABASE_IDENTIFIER` must be a non-secret substring
 that appears in the dedicated demo `DATABASE_URL`, such as the demo database
-name or Railway service/database identifier. Keep it specific enough to avoid
+name or dedicated demo database identifier. Keep it specific enough to avoid
 matching real production databases.
 
 Stable demo accounts created by the seed:
@@ -189,7 +196,7 @@ Before public handoff, capture evidence for:
 |---|---|
 | Database backup | Neon branch/point-in-time restore or documented `pg_dump` before demo reset. |
 | Database restore | Restore procedure and dry-run notes when safe. |
-| API rollback | Railway previous deployment rollback or redeploy previous git SHA. |
+| API rollback | Redeploy a previous build/commit from Dokploy deployment history; Hostinger VPS weekly backups / snapshot as fallback. |
 | Frontend rollback | Vercel previous deployment promotion/rollback. |
 | Storage recovery | R2/S3 cleanup/reseed stance for demo documents and images. |
 
@@ -197,8 +204,8 @@ Evidence template:
 
 | Field | Evidence |
 |---|---|
-| Demo environment | `<Railway project/service + Vercel project>` |
-| Commit/deploy ID | `<git SHA, Railway deployment, Vercel deployment>` |
+| Demo environment | `<Dokploy application + Vercel project>` |
+| Commit/deploy ID | `<git SHA, Dokploy deployment, Vercel deployment>` |
 | DB target confirmed | `<operator + timestamp + demo DB identifier>` |
 | Backup captured | `<snapshot/backup id + timestamp>` |
 | Migration result | `<command + exit/status>` |
@@ -227,7 +234,7 @@ Include:
 
 1. Stop new demo resets.
 2. Roll back frontend in Vercel to the last known-good deployment.
-3. Roll back API in Railway to the last known-good deployment or previous git SHA.
+3. Roll back API in Dokploy to the last known-good deployment (previous build/commit); use the Hostinger VPS backup/snapshot if the box itself is compromised.
 4. Restore Neon Postgres from the last known-good backup (branch/PITR or dump) if data is broken.
 5. Re-run smoke checks and the affected checklist sections.
 6. Document what was restored and what data may have changed.

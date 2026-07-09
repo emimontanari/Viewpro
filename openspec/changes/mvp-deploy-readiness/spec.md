@@ -37,13 +37,13 @@ The frontend MUST be deployed as the existing Next.js app under `viewpro-app/app
 
 The API MUST be deployed as the existing NestJS app under `viewpro-app/apps/api`.
 
-The API MUST run as a long-running Node process in a Docker/containerized Railway service.
+The API MUST run as a long-running Node process in a Docker/containerized Dokploy application (self-hosted PaaS on a Hostinger KVM2 VPS), served over HTTPS by Traefik.
 
 The API MUST NOT be adapted to Vercel serverless for this demo.
 
 #### Scenario: API starts from production build
 
-- **Given** the Railway API service is built
+- **Given** the Dokploy API application is built
 - **When** the service starts
 - **Then** it runs the compiled NestJS API as a long-running process
 - **And** it does not depend on Next.js or Vercel serverless handlers
@@ -138,7 +138,7 @@ Local filesystem storage MAY remain available for local development/test only.
 - **Given** seeded property images are visible in the demo
 - **When** the API service is redeployed or restarted
 - **Then** property images remain available
-- **And** availability does not depend on Railway container filesystem persistence
+- **And** availability does not depend on Dokploy container filesystem persistence
 
 ### REQ-7 — Auth, cookies, CORS, and secrets
 

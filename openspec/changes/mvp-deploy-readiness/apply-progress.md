@@ -6,7 +6,7 @@ PR 1, PR 2, and PR 3 local apply complete. Deployed smoke and actual guarded dem
 
 ## Scope Applied
 
-- Added API Docker build/start path for Railway.
+- Added API Docker build/start path for the Dokploy application.
 - Added demo environment checklist.
 - Added deploy runbook.
 - Added manual demo checklist.
@@ -182,7 +182,7 @@ Parent follow-up before moving to PR 3:
 
 - Added `.pi-subagents/` to `.gitignore` so local agent artifacts are not committed.
 - Updated PR 1 checklist/runbook wording that still described PR 2 property image object storage as future work.
-- Reconfirmed there is no cloud infrastructure yet; deployed smoke remains future evidence after Railway/Vercel/R2/Sentry wiring.
+- Reconfirmed there is no cloud infrastructure yet; deployed smoke remains future evidence after Dokploy/Vercel/R2/Sentry wiring.
 
 Validation:
 
@@ -282,7 +282,7 @@ still reports the existing placeholder message `OpenAPI contract check not confi
 ### PR 3 Scope Guard
 
 - Did not run `pnpm demo:seed` or any destructive DB command.
-- Did not touch Railway, Vercel, R2/S3, Sentry, DNS, or cloud dashboards.
+- Did not touch Dokploy, Vercel, R2/S3, Sentry, DNS, or cloud dashboards.
 - Did not add secrets, `.env` files, DB dumps, uploads, or credentials.
 - Did not implement ViewPro platform Phase 4, billing, realtime/push, WhatsApp Business API, or transactional email.
 - Did not run deployed smoke checks because no cloud infrastructure exists yet.
@@ -290,9 +290,9 @@ still reports the existing placeholder message `OpenAPI contract check not confi
 ## Residual Risks
 
 - Demo seed/reset has not been run against a real Neon demo DB; verify only after the dedicated demo DB and secret-store variables exist.
-- Deployed smoke checks remain blocked until Railway/Vercel/R2/Sentry/domain wiring exists.
-- Dockerfile has not been fully built in Docker locally; validate in Railway or with an approved `.dockerignore`/build context check.
-- Railway settings are documented but not applied in external dashboards during this PR.
+- Deployed smoke checks remain blocked until Dokploy/Vercel/R2/Sentry/domain wiring exists.
+- Dockerfile has not been fully built in Docker locally; validate in Dokploy (on-box build) or with an approved `.dockerignore`/build context check.
+- Dokploy application settings are documented but not applied in external dashboards during this PR.
 - R2/S3, Sentry, and domain credentials/values must be configured outside the repository.
 - Frontend deployments that render R2 property image URLs must set `NEXT_PUBLIC_PROPERTY_IMAGES_PUBLIC_BASE_URL` or `PROPERTY_IMAGES_PUBLIC_BASE_URL` at build time so Next can allowlist the image host.
 - The focused property image e2e suite could not run because local Postgres was unavailable; DB-backed upload/delete/render proof remains unchecked.

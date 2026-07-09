@@ -175,8 +175,8 @@ Existing demo seed and smoke tests already define a strong demo baseline:
 | Area | Recommended demo path | Tradeoff |
 |---|---|---|
 | Frontend | Vercel for `apps/app-new` | Best Next.js fit; API remains separate and needs cookie/CORS care. |
-| API | Railway/Fly.io/Render long-running Node process | Fits Nest/Prisma; platform-specific migration/startup behavior must be documented. |
-| Postgres | Neon Postgres (chosen) | Managed serverless Postgres separate from Railway to avoid usage overages; branch/PITR backups; use the direct endpoint for Prisma migrations. |
+| API | Dokploy on a Hostinger KVM2 VPS (chosen demo path); Railway/Fly.io/Render were the compared managed alternatives | Fits Nest/Prisma as a Docker/containerized long-running Node process; Dokploy (Docker Swarm + Traefik) gives full control on a self-hosted box; managed alternatives remain a Phase 4 reevaluation option. |
+| Postgres | Neon Postgres (chosen) | Managed serverless Postgres separate from the API host; branch/PITR backups; use the direct endpoint for Prisma migrations. |
 | Object storage | Cloudflare R2 | S3-compatible and low egress; signed URL/CORS behavior must be tested. |
 | Error tracking | Sentry | Already integrated; needs DSNs/env/release/source-map proof. |
 | Email | Manual copy-link for MVP; Resend only if promoted | Avoids new scope; real email requires domain verification/templates/tests. |
@@ -232,7 +232,7 @@ curl -I https://app.inmoview.<tld>
 
 ## Open Questions for Proposal
 
-1. Which hosting split should be first-class for the MVP demo: Vercel frontend + Railway/Fly/Render API, or one provider for both?
+1. Which hosting split should be first-class for the MVP demo: Vercel frontend + a self-hosted Dokploy API (or a managed Railway/Fly/Render API), or one provider for both?
 2. Which managed Postgres provider should be selected for staging/demo?
 3. Should property images move to object storage before demo, or can the first demo explicitly accept reseed/local-file volatility?
 4. Should transactional email remain deferred with manual copy-link, or must email delivery be promoted into this deploy-readiness change?

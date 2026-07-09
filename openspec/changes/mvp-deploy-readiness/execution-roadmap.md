@@ -22,9 +22,9 @@ Reference docs:
 
 - [ ] 👤 Neon: create demo project; copy the **direct** connection string with `?sslmode=require`.
 - [ ] 👤 R2: create documents bucket (private) + property images bucket (public); create access keys; configure CORS.
-- [ ] 👤 Railway: create Docker service (context `viewpro-app`, `apps/api/Dockerfile`), domain `api-demo.inmoview.app`, set all env vars from `env-checklist.md` including Neon `DATABASE_URL`.
+- [ ] 👤 Dokploy: create an application from the repo/Dockerfile (build context `viewpro-app`, `apps/api/Dockerfile`), set domain `api-demo.inmoview.app` via Traefik (automatic Let's Encrypt HTTPS), set all env vars from `env-checklist.md` in the Dokploy UI including Neon `DATABASE_URL`.
 - [ ] 👤 Vercel: project for `apps/app-new`, domain `demo.inmoview.app`, env vars from checklist.
-- [ ] 👤 DNS: point `demo.` → Vercel and `api-demo.` → Railway; wait for HTTPS.
+- [ ] 👤 DNS: point `demo.` → Vercel and `api-demo.` → the Hostinger VPS IP (Dokploy/Traefik); wait for HTTPS.
 
 ## Phase 2 — Database and demo data
 
@@ -43,7 +43,7 @@ Reference docs:
 
 Non-negotiable before the first real tenant. See `production-readiness-plan.md`.
 
-- [ ] 👤 Isolate prod from demo: new Neon prod DB, Railway prod service, `app./api.inmoview.app` domains, separate secrets.
+- [ ] 👤 Isolate prod from demo: new Neon prod DB, separate prod API host (dedicated Dokploy app/environment or a reevaluated managed platform to address the single-VPS SPOF), `app./api.inmoview.app` domains, separate secrets.
 - [ ] Add `directUrl = env("DIRECT_URL")` to `schema.prisma`; prod `DATABASE_URL` = Neon **pooled** endpoint, `DIRECT_URL` = direct endpoint.
 - [ ] 👤 Never set `INMOVIEW_DEMO_*` vars in the prod service; keep demo identifier non-substring of the prod URL.
 - [ ] 👤 Enable scheduled Neon backups; run one restore drill into a branch.

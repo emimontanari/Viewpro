@@ -1,6 +1,6 @@
 # InmoView Demo Environment Checklist
 
-Use this checklist to configure the production-like public demo without committing secrets. Values belong in Vercel, Railway, Cloudflare R2/S3, and Sentry dashboards — not in the repository.
+Use this checklist to configure the production-like public demo without committing secrets. Values belong in Vercel, Dokploy, Cloudflare R2/S3, and Sentry dashboards — not in the repository.
 
 ## Target domains
 
@@ -8,7 +8,7 @@ Use this checklist to configure the production-like public demo without committi
 |---|---|---|
 | Landing | `https://inmoview.app` | Existing Vercel landing project |
 | Demo frontend | `https://demo.inmoview.app` | Vercel InmoView app project |
-| Demo API | `https://api-demo.inmoview.app` | Railway API service |
+| Demo API | `https://api-demo.inmoview.app` | Dokploy application (Hostinger KVM2 VPS), Traefik HTTPS |
 
 ## Vercel frontend
 
@@ -19,7 +19,7 @@ Project target: `viewpro-app/apps/app-new`.
 | `NEXT_PUBLIC_APP_URL` | Public frontend origin: `https://demo.inmoview.app`. |
 | `NEXT_PUBLIC_API_URL` | Browser API base URL: `https://api-demo.inmoview.app/api`. |
 | `BFF_API_URL` | Server-side API base URL: `https://api-demo.inmoview.app/api`. |
-| `ACCESS_TOKEN_SECRET` | JWT verification secret; must match Railway API. |
+| `ACCESS_TOKEN_SECRET` | JWT verification secret; must match Dokploy API. |
 | `NEXT_PUBLIC_SENTRY_ENABLED` | Enables Sentry in the demo frontend. |
 | `NEXT_PUBLIC_SENTRY_DSN` | Frontend Sentry DSN. |
 | `NEXT_PUBLIC_SENTRY_ORG` | Sentry org for source-map upload when enabled. |
@@ -33,28 +33,29 @@ Build settings to confirm:
 - Build command targets the Next app workspace package.
 - No `.env` files or secret values are committed.
 
-## Railway API
+## Dokploy API
 
-Railway Docker settings:
+Dokploy application settings (self-hosted PaaS on a Hostinger KVM2 VPS, Docker Swarm + Traefik):
 
 | Setting | Expected value |
 |---|---|
+| Source | Repository/Dockerfile build |
 | Root / Docker context | `viewpro-app` |
 | Dockerfile path | `apps/api/Dockerfile` |
 | Start command | Use Dockerfile `CMD`; do not override with migration/seed commands. |
-| Public domain | `https://api-demo.inmoview.app` |
+| Public domain | `https://api-demo.inmoview.app` via Traefik with automatic Let's Encrypt HTTPS |
 
-Runtime variables:
+Runtime variables (set in the Dokploy UI, never committed):
 
 | Variable | Purpose |
 |---|---|
 | `NODE_ENV` | Must be `production` for demo runtime behavior. |
-| `PORT` | Railway-provided port consumed by the Nest API. |
+| `PORT` | Port the Nest API listens on; Traefik routes the public domain to it. |
 | `APP_PUBLIC_URL` | Public app origin: `https://demo.inmoview.app`. |
 | `API_PUBLIC_URL` | Public API origin: `https://api-demo.inmoview.app`. |
 | `CORS_ORIGIN` | Allowed browser origin: `https://demo.inmoview.app`. |
 | `DATABASE_URL` | Neon Postgres connection string for the dedicated demo DB. Use the direct (non-pooled) endpoint with `?sslmode=require`. |
-| `ACCESS_TOKEN_SECRET` | Strong JWT secret; must match Vercel frontend. |
+| `ACCESS_TOKEN_SECRET` | Strong JWT secret; must match Vercel frontend. Set in the Dokploy UI. |
 | `ACCESS_TOKEN_TTL_SECONDS` | Access token lifetime if overriding default. |
 | `REFRESH_TOKEN_TTL_SECONDS` | Refresh token lifetime if overriding default. |
 | `COOKIE_DOMAIN` | `.inmoview.app` for cross-subdomain cookies. |
@@ -73,7 +74,7 @@ Runtime variables:
 
 | Item | Purpose |
 |---|---|
-| Dedicated Neon project/database | Keeps demo data isolated from future production data; separate from Railway to avoid usage overages. |
+| Dedicated Neon project/database | Keeps demo data isolated from future production data; managed serverless Postgres separate from the API host. |
 | `DATABASE_URL` linkage | Provides API and explicit migration/seed commands with the demo DB connection. Use the direct (non-pooled) endpoint with `?sslmode=require`. |
 | Branch/PITR or `pg_dump` backup | Required before demo reset and before public handoff. |
 | Restore procedure | Neon branch promotion / point-in-time restore, or `pg_restore`/`psql` from a dump. |
@@ -116,7 +117,7 @@ Storage checklist:
 
 | Surface | Required evidence |
 |---|---|
-| API | Railway env has API DSN and `SENTRY_ENVIRONMENT=demo`; logs or safe event prove initialization. |
+| API | Dokploy env has API DSN and `SENTRY_ENVIRONMENT=demo`; logs or safe event prove initialization. |
 | Frontend | Vercel env has frontend DSN and Sentry enabled; build/deploy logs prove initialization. |
 | Source maps | If org/project/token are not fully configured, document the gap and follow-up. |
 
@@ -149,5 +150,5 @@ public demo reset mode; local/dev/test seed flows continue to work when
 ## Secret safety
 
 - Do not commit `.env`, database dumps, document bytes, uploaded images, private keys, API tokens, DSNs with credentials, or generated secrets.
-- Store secrets only in Vercel, Railway, R2/S3, and Sentry dashboards.
+- Store secrets only in Vercel, Dokploy, R2/S3, and Sentry dashboards.
 - Use this checklist for variable names and purpose only.
