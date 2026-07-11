@@ -542,6 +542,12 @@ const DEMO_PROPERTIES = [
 	},
 ];
 
+// Memoized S3 client for demo property image uploads. Declared before the
+// top-level `await seedDemo()` below so it is initialized before the seed
+// reaches getPropertyImagesS3SeedClient(); otherwise top-level await enters
+// that function while this binding is still in its temporal dead zone.
+let propertyImagesS3SeedClient;
+
 assertSafeEnvironment();
 
 const prisma = new PrismaClient();
@@ -1259,8 +1265,6 @@ function getPropertyImagesS3SeedStorageConfig() {
 		forcePathStyle: process.env.PROPERTY_IMAGES_S3_FORCE_PATH_STYLE === "true",
 	};
 }
-
-let propertyImagesS3SeedClient;
 
 function getPropertyImagesS3SeedClient(config) {
 	propertyImagesS3SeedClient ??= new S3Client({
