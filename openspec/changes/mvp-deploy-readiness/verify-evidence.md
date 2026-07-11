@@ -85,11 +85,10 @@ projects. Frontend source maps uploaded at build time (de-minified stack traces)
 | API rollback | Redeploy a previous **`done`** Dokploy deployment (last known-good commits `a8ae689`, `92cde8f`). Hostinger VPS weekly backups + 1 snapshot as fallback. |
 | Frontend rollback | Vercel — promote/rollback to a previous production deployment (`vercel rollback`); several prior deployments exist for `inmoview-demo`. |
 | Storage recovery | Demo R2 buckets are reseedable; the guarded seed is idempotent (resets tenants first). |
-| DB backup | **PENDING (manual op):** capture a Neon branch / PITR snapshot before the next public reset. Not yet performed — requires the Neon console/API. |
+| DB backup | Neon branch `demo-backup-20260711` created from `production` (data + schema, auto-delete Never) as a restorable snapshot. Restore via Neon reset-from-branch. Recovery fallback: the guarded seed is idempotent (`prisma migrate deploy` + `pnpm demo:seed` rebuilds the demo). |
 
 ## Known gaps / follow-ups
 
-- **Neon backup snapshot** not yet captured (the only open acceptance item).
 - **Sentry auth token:** the frontend source-map `SENTRY_AUTH_TOKEN` was rotated
   to an org token; the originally-exposed token should be revoked in the Sentry UI.
 - **R2 CORS** for `inmoview-demo-documents` was set manually in the Cloudflare

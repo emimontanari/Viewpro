@@ -65,7 +65,7 @@ Goal: make public demo reset safe and verifiable.
 - [x] Documents use R2/S3 in demo mode. (verified round-trip: signed upload → confirm → read, bytes match)
 - [x] Property images use R2/S3 in demo mode and survive API redeploy/restart. (60 seeded images persist across API redeploys; upload/delete verified)
 - [x] Sentry initializes for API and frontend. (projects `inmoview-api-demo` + `inmoview-frontend-demo`, env `demo`, frontend source maps uploaded)
-- [ ] Backup/restore/rollback procedure is documented with evidence. (rollback paths captured in `verify-evidence.md`; Neon backup snapshot is the remaining manual op)
+- [x] Backup/restore/rollback procedure is documented with evidence. (rollback paths in `verify-evidence.md`; Neon backup branch `demo-backup-20260711` created 2026-07-11)
 - [x] Demo accounts work for manager, seller, owner, and admin/global demo flow if included. (all 4 log in; RBAC matrix verified)
 - [x] Starter/template dashboard routes remain inaccessible. (`/dashboard/billing` redirects; `/dashboard/product` is the real "Propiedades" page)
 - [x] No secrets, `.env` files, DB dumps, or document/image bytes are committed.
