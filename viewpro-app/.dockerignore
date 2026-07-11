@@ -1,0 +1,20 @@
+# Dependencies and build outputs are regenerated inside the image
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+.turbo
+
+# VCS and local tooling
+.git
+.atl
+.pi
+
+# Env and secrets must never enter the build context
+**/.env
+**/.env.*
+
+# Logs and OS noise
+**/*.log
+.DS_Store
