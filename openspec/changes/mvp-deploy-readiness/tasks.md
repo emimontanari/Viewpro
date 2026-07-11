@@ -38,7 +38,7 @@ Goal: make property images production-like and durable across API redeploys.
 - [x] Update upload/delete property image use cases to inject the storage port, not `LocalPropertyImagesStorage` directly.
 - [x] Update `next.config.ts` remote image allowlist for configured public property image host or API-mediated image host.
 - [x] Add/adjust unit tests for local adapter selection, S3 config validation, storage key safety, upload URL persistence, and delete behavior.
-- [ ] Run DB-backed upload/delete/render path proof once local Postgres or deployed demo is available. Unit/use-case/frontend build checks passed in PR 2, but DB-backed e2e remained blocked by missing local Postgres.
+- [x] Run DB-backed upload/delete/render path proof once local Postgres or deployed demo is available. Verified 2026-07-11 against the deployed demo: property image upload → r2.dev serve (HTTP 200) → delete → 404; 60 seeded images render in the dashboard. See `verify-evidence.md`.
 
 ### PR 3 — Guarded demo reset and deploy verification evidence
 
@@ -51,24 +51,24 @@ Goal: make public demo reset safe and verifiable.
 - [x] Document stable demo credentials and reset procedure without committing secrets.
 - [x] Capture backup/restore/rollback evidence template in the runbook.
 - [x] Run non-destructive local validation: seed syntax/guard tests, `pnpm db:validate`, API typecheck/build, property-image tests, `pnpm openapi:check`, and `git diff --check` as applicable. Do not run DB-backed seed/e2e until a safe DB target exists.
-- [ ] Run deployed smoke checks after environment wiring: API health, API docs, frontend headers, login, property image persistence, document storage, and route isolation.
+- [x] Run deployed smoke checks after environment wiring: API health, API docs, frontend headers, login, property image persistence, document storage, and route isolation. Verified 2026-07-11 — all pass. See `verify-evidence.md`.
 
 ## Cross-PR Acceptance Checklist
 
-- [ ] `https://demo.inmoview.app` loads over HTTPS.
-- [ ] `https://api-demo.inmoview.app/api/health` responds over HTTPS.
-- [ ] Cross-subdomain auth works with secure cookies and explicit CORS.
-- [ ] API runs as Docker/containerized NestJS on the Dokploy application (Hostinger KVM2 VPS).
-- [ ] Demo DB is Neon Postgres and isolated from real production data.
-- [ ] Migrations are explicit, not automatic API startup behavior.
-- [ ] Demo seed/reset is explicit and guarded.
-- [ ] Documents use R2/S3 in demo mode.
-- [ ] Property images use R2/S3 in demo mode and survive API redeploy/restart.
-- [ ] Sentry initializes for API and frontend.
-- [ ] Backup/restore/rollback procedure is documented with evidence.
-- [ ] Demo accounts work for manager, seller, owner, and admin/global demo flow if included.
-- [ ] Starter/template dashboard routes remain inaccessible.
-- [ ] No secrets, `.env` files, DB dumps, or document/image bytes are committed.
+- [x] `https://demo.inmoview.app` loads over HTTPS. (verified 2026-07-11)
+- [x] `https://api-demo.inmoview.app/api/health` responds over HTTPS. (Let's Encrypt cert; health 200)
+- [x] Cross-subdomain auth works with secure cookies and explicit CORS. (login sets cookies; `CORS_ORIGIN=https://demo.inmoview.app`)
+- [x] API runs as Docker/containerized NestJS on the Dokploy application (Hostinger KVM2 VPS).
+- [x] Demo DB is Neon Postgres and isolated from real production data. (dedicated `neondb`, direct endpoint for migrations)
+- [x] Migrations are explicit, not automatic API startup behavior. (`prisma migrate deploy`, 21 migrations; Dockerfile CMD does not migrate)
+- [x] Demo seed/reset is explicit and guarded. (`seed-demo-safety.mjs` requires demo flags)
+- [x] Documents use R2/S3 in demo mode. (verified round-trip: signed upload → confirm → read, bytes match)
+- [x] Property images use R2/S3 in demo mode and survive API redeploy/restart. (60 seeded images persist across API redeploys; upload/delete verified)
+- [x] Sentry initializes for API and frontend. (projects `inmoview-api-demo` + `inmoview-frontend-demo`, env `demo`, frontend source maps uploaded)
+- [ ] Backup/restore/rollback procedure is documented with evidence. (rollback paths captured in `verify-evidence.md`; Neon backup snapshot is the remaining manual op)
+- [x] Demo accounts work for manager, seller, owner, and admin/global demo flow if included. (all 4 log in; RBAC matrix verified)
+- [x] Starter/template dashboard routes remain inaccessible. (`/dashboard/billing` redirects; `/dashboard/product` is the real "Propiedades" page)
+- [x] No secrets, `.env` files, DB dumps, or document/image bytes are committed.
 
 ## Validation Commands
 
