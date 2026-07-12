@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Guard against the one irreversible mistake: force-push / deletion of main or develop.
+# Normal fast-forward pushes pass untouched. Bypass in a real emergency with --no-verify.
+protected="main develop"
+zero="0000000000000000000000000000000000000000"
+while read -r local_ref local_sha remote_ref remote_sha; do
+  branch="${remote_ref#refs/heads/}"
+  for p in $protected; do
+    [ "$branch" = "$p" ] || continue
+    if [ "$local_sha" = "$zero" ]; then
+      echo "⛔ Blocked: deleting '$p' is not allowed." >&2; exit 1
+    fi
+    if [ "$remote_sha" != "$zero" ] && ! git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
+      echo "⛔ Blocked: non-fast-forward (force) push to '$p'. Go through a PR / do not force-push." >&2
+      exit 1
+    fi
+  done
+done
+exit 0
