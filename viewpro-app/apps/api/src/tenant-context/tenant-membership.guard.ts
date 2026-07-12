@@ -1,7 +1,7 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common'
+import { type CanActivate, type ExecutionContext, ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common'
 import { TenantStatus, UserStatus } from '@prisma/client'
 import type { Request } from 'express'
-import { AuthenticatedRequest } from '../auth/guards/auth.guard'
+import type { AuthenticatedRequest } from '../auth/guards/auth.guard'
 import { MEMBERSHIPS_REPOSITORY, type MembershipsRepository } from '../memberships/memberships.repository'
 import { getPermissionsForRole } from '../permissions/role-permissions'
 import type { RequestWithTenantContext } from './tenant-context.types'
@@ -35,7 +35,7 @@ export class TenantMembershipGuard implements CanActivate {
       throw new ForbiddenException('Tenant context required')
     }
 
-    const membership = await this.membershipsRepository.findByUserIdAndTenantId(request.user.id, tenantId)
+    const membership = await this.membershipsRepository.findActiveByUserIdAndTenantId(request.user.id, tenantId)
 
     if (!membership) {
       throw new ForbiddenException('Tenant access denied')

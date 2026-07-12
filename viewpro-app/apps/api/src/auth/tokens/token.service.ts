@@ -5,6 +5,9 @@ import { createHash, randomBytes } from 'node:crypto'
 import type { Response } from 'express'
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '../auth.constants'
 
+const REFRESH_TOKEN_COOKIE_PATH = '/'
+const LEGACY_REFRESH_TOKEN_COOKIE_PATH = '/api/auth'
+
 export type AccessTokenPayload = {
   sub: string
   email: string
@@ -49,7 +52,7 @@ export class TokenService {
     response.cookie(REFRESH_TOKEN_COOKIE, refreshToken, {
       ...this.baseCookieOptions(),
       maxAge: refreshTtlSeconds * 1000,
-      path: '/api/auth',
+      path: REFRESH_TOKEN_COOKIE_PATH,
     })
   }
 
@@ -57,7 +60,11 @@ export class TokenService {
     response.clearCookie(ACCESS_TOKEN_COOKIE, this.baseCookieOptions())
     response.clearCookie(REFRESH_TOKEN_COOKIE, {
       ...this.baseCookieOptions(),
-      path: '/api/auth',
+      path: REFRESH_TOKEN_COOKIE_PATH,
+    })
+    response.clearCookie(REFRESH_TOKEN_COOKIE, {
+      ...this.baseCookieOptions(),
+      path: LEGACY_REFRESH_TOKEN_COOKIE_PATH,
     })
   }
 

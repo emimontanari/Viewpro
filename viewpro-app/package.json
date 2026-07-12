@@ -4,11 +4,10 @@
   "private": true,
   "packageManager": "pnpm@10.13.1",
   "scripts": {
-    "dev": "turbo dev",
-    "dev:web": "pnpm --filter @viewpro/web dev",
+    "dev": "turbo dev --filter=@viewpro/api --filter=next-shadcn-dashboard-starter",
+    "dev:app-new": "turbo dev --filter=@viewpro/api --filter=next-shadcn-dashboard-starter",
     "dev:api": "pnpm --filter @viewpro/api start:dev",
     "build": "turbo build",
-    "build:web": "pnpm --filter @viewpro/web build",
     "build:api": "pnpm --filter @viewpro/api build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
@@ -19,6 +18,7 @@
     "db:migrate": "pnpm --filter @viewpro/api db:migrate",
     "db:validate": "pnpm --filter @viewpro/api db:validate",
     "db:studio": "pnpm --filter @viewpro/api db:studio",
+    "demo:seed": "pnpm --filter @viewpro/api demo:seed",
     "openapi:generate": "pnpm --filter @viewpro/contracts generate",
     "openapi:check": "pnpm --filter @viewpro/contracts check"
   },

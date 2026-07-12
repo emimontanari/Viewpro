@@ -1,6 +1,6 @@
 # @viewpro/contracts
 
-Frontera de contrato entre `apps/api` y `apps/web`.
+Frontera de contrato entre `apps/api` y la app web activa `apps/app-new`.
 
 En etapas futuras, este paquete contendrá tipos y cliente generados desde OpenAPI.
 

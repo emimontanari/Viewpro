@@ -1,0 +1,100 @@
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { navGroups, ownerNavGroups } from './nav-config';
+
+const navItems = navGroups.flatMap((group) =>
+  group.items.flatMap((item) => [item, ...(item.items ?? [])])
+);
+const navTitles = navItems.map((item) => item.title);
+
+describe('nav config', () => {
+  it('points the primary dashboard entry to Inicio', () => {
+    expect(navItems).toContainEqual(
+      expect.objectContaining({
+        title: 'Inicio',
+        url: '/dashboard'
+      })
+    );
+  });
+
+  it('does not expose template/demo routes in the customer menu', () => {
+    expect(navTitles).not.toEqual(
+      expect.arrayContaining(['Forms', 'React Query', 'Icons', 'Exclusive', 'Login'])
+    );
+  });
+
+  it('does not link to removed template route URLs', () => {
+    const navUrls = navItems.map((item) => item.url);
+    const removedRoutes = [
+      '/dashboard/chat',
+      '/dashboard/kanban',
+      '/dashboard/forms',
+      '/dashboard/forms/basic',
+      '/dashboard/forms/advanced',
+      '/dashboard/forms/multi-step',
+      '/dashboard/forms/sheet-form',
+      '/dashboard/elements',
+      '/dashboard/elements/icons',
+      '/dashboard/react-query',
+      '/dashboard/exclusive'
+    ];
+
+    for (const route of removedRoutes) {
+      expect(navUrls).not.toContain(route);
+    }
+  });
+
+  it('does not expose billing in the default dashboard navigation', () => {
+    const navUrls = navItems.map((item) => item.url);
+    const navShortcuts = navItems.flatMap((item) => item.shortcut?.join(' ') ?? []);
+
+    expect(navTitles).not.toContain('Facturación');
+    expect(navUrls).not.toContain('/dashboard/billing');
+    expect(navShortcuts).not.toContain('b b');
+  });
+
+  it('does not keep hard-coded billing links in account dropdown menus', () => {
+    const appSidebarSource = readFileSync('src/components/layout/app-sidebar.tsx', 'utf8');
+    const userNavSource = readFileSync('src/components/layout/user-nav.tsx', 'utf8');
+
+    expect(appSidebarSource).not.toContain('/dashboard/billing');
+    expect(appSidebarSource).not.toContain('Facturación');
+    expect(userNavSource).not.toContain('/dashboard/billing');
+    expect(userNavSource).not.toContain('Facturación');
+  });
+
+  it('uses product-facing Spanish labels for the main workspace areas', () => {
+    expect(navTitles).toEqual(
+      expect.arrayContaining(['Inicio', 'Propiedades', 'Seguimiento', 'Inmobiliarias', 'Equipo'])
+    );
+  });
+
+  it('points the Equipo menu item to the real team list', () => {
+    expect(navItems).toContainEqual(
+      expect.objectContaining({
+        title: 'Equipo',
+        url: '/dashboard/users'
+      })
+    );
+    expect(navItems).not.toContainEqual(
+      expect.objectContaining({
+        title: 'Equipo',
+        url: '/dashboard/workspaces/team'
+      })
+    );
+  });
+
+  it('exposes only owner-available routes in the owner menu', () => {
+    const ownerItems = ownerNavGroups.flatMap((group) => group.items);
+
+    expect(ownerItems).toEqual([
+      expect.objectContaining({
+        title: 'Mis propiedades',
+        url: '/owner'
+      })
+    ]);
+    expect(ownerItems.map((item) => item.url)).not.toEqual(
+      expect.arrayContaining(['/dashboard', '/dashboard/product', '/dashboard/billing'])
+    );
+  });
+});

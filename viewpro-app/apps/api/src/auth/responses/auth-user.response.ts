@@ -1,4 +1,4 @@
-import type { User } from '@prisma/client'
+import type { GlobalRole, User } from '@prisma/client'
 
 export type AuthUserResponse = {
   id: string
@@ -6,6 +6,7 @@ export type AuthUserResponse = {
   firstName: string
   lastName: string | null
   status: string
+  globalRole: GlobalRole
   emailVerifiedAt: string | null
 }
 
@@ -16,6 +17,7 @@ export function mapAuthUser(user: User): AuthUserResponse {
     firstName: user.firstName,
     lastName: user.lastName,
     status: user.status,
+    globalRole: user.globalRole,
     emailVerifiedAt: user.emailVerifiedAt?.toISOString() ?? null,
   }
 }

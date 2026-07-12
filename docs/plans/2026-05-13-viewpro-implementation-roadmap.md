@@ -23,6 +23,8 @@ Bootstrap técnico
 → propietario ve seguimiento
 → documentos
 → métricas
+→ frontend MVP vertical
+→ admin ViewPro operativo
 → hardening MVP
 ```
 
@@ -179,12 +181,18 @@ Gerente/vendedor crea propiedad física
 Incluye:
 
 - `property_assets`
-- `property_asset_owners`
 - `property_engagements`
 - `property_agents`
 - listados paginados
 - detalle de gestión
 - filtros básicos por estado
+
+Estado backend:
+
+- Implementado en Stage 4: backend para `property_assets`, `property_engagements` y `property_agents` con endpoints tenant-scoped bajo `/api/property-engagements`.
+- Todos los endpoints protegidos de gestiones requieren `x-tenant-id`; el backend valida membership y permisos antes de ejecutar casos de uso.
+- Managers ven todas las gestiones del tenant; agentes ven sólo gestiones asignadas.
+- Fuera de alcance de Stage 4: usuarios propietarios, portal propietario, ownership real (`property_asset_owners`), movimientos y documentos.
 
 Validación:
 
@@ -192,6 +200,8 @@ Validación:
 - propiedad física y gestión no se mezclan
 - una gestión puede tener varios vendedores
 - listados usan paginación/filtros
+- leer una gestión de otro tenant responde `404` para no filtrar existencia
+- asignar agentes exige que el usuario pertenezca al mismo tenant
 
 ## Etapa 5 — Movimientos
 
@@ -228,6 +238,14 @@ Validación:
 - movimiento aparece en timeline
 - carga no exige formulario largo
 
+Estado backend:
+
+- Implementado en Stage 5: modelo `movements`, `POST /api/property-engagements/:id/movements` y `GET /api/property-engagements/:id/movements` para crear movimientos y recuperar timeline paginado.
+- Los endpoints de timeline requieren `x-tenant-id`, autenticación, membership activa y permisos. Managers acceden a todas las gestiones del tenant; agentes sólo a gestiones asignadas.
+- `POST /api/property-engagements/:id/movements` puede recibir `newStatus` para actualizar el estado de la gestión junto con el movimiento.
+- Acceso cross-tenant o no asignado responde `404` para no filtrar existencia.
+- Fuera de alcance de Stage 5: formulario/UI, display en portal propietario, documentos y notificaciones. El portal propietario continúa en Stage 6.
+
 ## Etapa 6 — Portal propietario
 
 Objetivo:
@@ -246,20 +264,27 @@ Propietario inicia sesión
 
 Incluye:
 
-- dashboard propietario
-- detalle de propiedad física
-- gestiones bajo la propiedad
-- timeline visible
-- documentos visibles si existen
-- link WhatsApp a vendedor asignado
-- evento `owner_viewed_property`
+- APIs backend read-only para propiedades del propietario
+- detalle sanitizado de propiedad física
+- gestiones visibles bajo la propiedad
+- timeline visible de movimientos
+- base de ownership real con `PropertyAssetOwner`
+- dashboard propietario, documentos, WhatsApp y eventos de analytics quedan para slices futuros
 
 Validación:
 
 - propietario sólo ve propiedades donde tiene acceso
 - no ve datos internos de otras inmobiliarias
 - entiende estado y últimos movimientos rápido
-- click WhatsApp queda medido
+- click WhatsApp queda medido en un slice futuro, no en Stage 6 backend
+
+Estado backend:
+
+- Implementado en Stage 6: modelo `PropertyAssetOwner`, repositorio/use cases del portal propietario y endpoints read-only bajo `/api/owner/*`.
+- Los endpoints usan cookies de auth y `AuthGuard` solamente; no requieren `x-tenant-id` ni `TenantMembershipGuard`.
+- Owners son `User`s existentes vinculados por `PropertyAssetOwner(accessStatus: ACTIVE)`, no miembros del tenant.
+- Recursos inexistentes, cross-tenant, revocados, no asignados o inaccesibles responden `404` para no filtrar existencia.
+- Fuera de alcance de Stage 6 backend: owner UI, invitaciones, self-registration, documentos, WhatsApp tracking, billing y marketplace.
 
 ## Etapa 7 — Documentos
 
@@ -286,6 +311,14 @@ Incluye:
 - aprobación/rechazo con motivo
 - visibilidad por propiedad/gestión
 
+Estado backend:
+
+- Implementado en Stage 7: modelos `DocumentRequest`, `Document` y `DocumentVersion`, repositorio/use cases, storage abstraction, controllers internos y owner, tests unit/e2e y documentación.
+- Endpoints internos entregados: `POST /api/property-engagements/:propertyEngagementId/document-requests`, `GET /api/document-requests`, `GET /api/document-requests/:id`, `POST /api/document-requests/:id/approve`, `POST /api/document-requests/:id/reject`, `POST /api/document-versions/:id/read-url`.
+- Endpoints owner entregados: `GET /api/owner/document-requests`, `GET /api/owner/document-requests/:id`, `POST /api/owner/document-requests/:id/upload-url`, `POST /api/owner/document-versions/:id/confirm-upload`, `POST /api/owner/document-versions/:id/read-url`.
+- Regla de propiedad documental: managers ven/revisan todas las solicitudes del tenant; vendedores sólo ven/revisan solicitudes que crearon; propietarios sólo acceden a solicitudes dirigidas a su usuario con acceso activo a la propiedad.
+- URLs firmadas se crean sólo después de validar autorización. Stage 7 usa storage fake detrás de `DocumentStoragePort`; un adapter productivo S3/R2/MinIO queda fuera de alcance.
+
 Validación:
 
 - propietario sólo sube documentos solicitados
@@ -309,19 +342,24 @@ Métrica norte:
 Eventos mínimos:
 
 ```txt
-seller_logged_in
-movement_created
-property_status_changed
-owner_invited
-owner_activated
-owner_viewed_dashboard
-owner_viewed_property
-document_requested
-document_uploaded
-document_approved
-document_rejected
-whatsapp_contact_clicked
+SELLER_LOGGED_IN
+MOVEMENT_CREATED
+PROPERTY_STATUS_CHANGED
+OWNER_VIEWED_PROPERTY
+DOCUMENT_REQUESTED
+DOCUMENT_UPLOADED
+DOCUMENT_APPROVED
+DOCUMENT_REJECTED
 ```
+
+Estado backend:
+
+- Implementado en Stage 8: event log interno `analytics_events`, tracking desde auth/movimientos/owner/documents y reportes manager-only bajo `/api/analytics/*`.
+- Endpoints entregados: `GET /api/analytics/pilot-summary`, `GET /api/analytics/inactive-engagements`, `GET /api/analytics/events`.
+- La métrica norte usa, por ahora, gestiones activas con al menos un `MOVEMENT_CREATED` semanal como actualización visible para propietario.
+- Regla de privacidad: metadata segura solamente; no guardar emails, nombres, direcciones completas, contenido documental, observaciones, tokens, passwords ni secretos.
+- PostHog queda como adapter futuro, no fuente de verdad del piloto MVP.
+- Diferidos: `OWNER_INVITED`, `OWNER_ACTIVATED`, `OWNER_VIEWED_DASHBOARD`, `WHATSAPP_CONTACT_CLICKED`.
 
 Validación:
 
@@ -330,7 +368,77 @@ Validación:
 - se detectan gestiones sin actualización
 - se mide activación de propietarios
 
-## Etapa 9 — Hardening MVP
+## Etapa 9 — Frontend MVP vertical
+
+Objetivo:
+
+Convertir el backend MVP en una aplicación usable por inmobiliarias y propietarios con una UI claro/editorial premium.
+
+Incluye:
+
+- login/registro y selección de tenant
+- dashboard interno de inmobiliaria
+- listado/detalle/creación de gestiones
+- timeline y creación de movimientos mobile-first
+- portal propietario con propiedades, detalle y timeline
+- documentos internos y owner básicos
+- dashboard visual de métricas piloto
+- smoke tests públicos mínimos con Playwright para home, login y registro
+
+Estado frontend:
+
+- Implementado en Stage 9: shell premium, login/registro, selección de tenant, workspace interno, gestiones, movimientos, portal propietario, documentos, métricas piloto y smoke tests públicos mínimos.
+- La validación de navegador cubre rutas públicas no autenticadas sin backend ni fixtures de sesión.
+- Pendiente fuera de Stage 9: smoke/E2E autenticado de tenant, gestiones, movimientos, propietario y documentos cuando exista infraestructura seeded de usuarios/sesiones.
+
+Validación:
+
+- gerente puede operar una gestión desde UI
+- vendedor puede cargar un movimiento en menos de 60 segundos
+- propietario puede entender el avance sin pedirlo por WhatsApp
+- frontend typecheck/build pasan
+- smoke tests públicos pasan
+- la UI no parece template genérico ni “primera UI hecha por AI”
+
+## Etapa 10 — Admin ViewPro operativo
+
+Objetivo:
+
+Dar al equipo ViewPro una pantalla interna para operar y monitorear el piloto completo.
+
+Estado:
+
+- Slice 1 implementado: base de rol global independiente para operadores ViewPro (`USER | VIEWPRO_ADMIN`) en `users.globalRole`, expuesta por auth y `/auth/me`.
+- El rol global no reemplaza ni deriva de roles tenant (`PRINCIPAL_MANAGER`, `MANAGER`, `AGENT`) y no depende de `x-tenant-id`.
+- Slice 2 implementado: `AdminGuard`/`AdminModule` protegen `GET /api/admin/access-check` como endpoint smoke read-only para validar autorización backend de operadores ViewPro.
+- La frontera admin usa sólo `users.globalRole === VIEWPRO_ADMIN`; los roles tenant no conceden acceso admin y `x-tenant-id` se ignora en endpoints admin.
+- Slice 3 implementado: read models backend protegidos por admin global en `GET /api/admin/summary`, `GET /api/admin/tenants` y `GET /api/admin/activity`, con respuestas sanitizadas de agregados/listas sin emails, tokens ni datos privados de documentos.
+- Slice 4 implementado: UI frontend `/admin` como comando interno read-only que valida `/auth/me`, muestra estado prohibido si el usuario no tiene `VIEWPRO_ADMIN` y consume `/api/admin/summary`, `/api/admin/tenants` y `/api/admin/activity` sin `x-tenant-id`, tenant seleccionado ni datos demo en producción.
+- Pendiente para un slice futuro: smoke/E2E autenticado con infraestructura seeded real; mantener fuera edición, impersonación, billing y acceso a contenido documental privado hasta una decisión explícita.
+
+Incluye primera versión read-only:
+
+- listado de inmobiliarias/tenants
+- actividad global del piloto
+- tenants sin uso reciente
+- conteos por tenant de gestiones, documentos y eventos
+- soporte operativo básico sin impersonar usuarios
+
+No incluye inicialmente:
+
+- edición peligrosa de tenants
+- borrado de datos
+- impersonación
+- acceso a contenido privado de documentos
+- billing
+
+Validación:
+
+- ViewPro puede ver salud general del piloto
+- se detectan tenants/inmobiliarias sin actividad
+- no se expone información sensible innecesaria
+
+## Etapa 11 — Hardening MVP
 
 Objetivo:
 
@@ -339,7 +447,7 @@ Preparar el piloto real con seguridad, observabilidad y estabilidad razonable.
 Incluye:
 
 - tests críticos backend
-- smoke tests frontend
+- smoke/E2E frontend autenticado cuando exista infraestructura seeded
 - Sentry frontend/backend
 - rate limiting login/reset
 - CORS correcto
@@ -347,6 +455,15 @@ Incluye:
 - backups/restore básico documentado
 - revisión de permisos multi-tenant
 - deploy staging/producción
+
+Estado:
+
+- Slice 1 implementado: runner Playwright seeded autenticado para manager workspace y Admin ViewPro, separado del smoke público/mockeado.
+- Uso local opt-in y serial: `pnpm db:up`, `pnpm db:migrate`, `pnpm --filter @viewpro/web test:auth:seeded` desde `viewpro-app`.
+- Slice 2 implementado: hardening público del API con rate limiting en auth, CORS explícito con credenciales y sanitización de errores en producción.
+- Slice 3 implementado: matriz de aislamiento multi-tenant y cobertura e2e focalizada para movimientos, documentos, analytics, owner portal y admin global.
+- Slice 4 implementado: Sentry error-only frontend/backend, desactivado sin DSN y sin Replay/tracing/source-map upload. Los DSN reales son secretos de ambiente y no deben commitearse.
+- Slice 5 implementado: runbook básico de backup/restore PostgreSQL con restore aislado, checklist de verificación y nota de storage documental futuro.
 
 Validación:
 

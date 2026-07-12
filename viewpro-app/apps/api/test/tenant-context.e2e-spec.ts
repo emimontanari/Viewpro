@@ -21,6 +21,10 @@ describe('Tenant context and permissions (e2e)', () => {
   })
 
   beforeEach(async () => {
+    await prisma.movement.deleteMany()
+    await prisma.propertyAgent.deleteMany()
+    await prisma.propertyEngagement.deleteMany()
+    await prisma.propertyAsset.deleteMany()
     await prisma.refreshToken.deleteMany()
     await prisma.tenantMembership.deleteMany()
     await prisma.tenant.deleteMany()

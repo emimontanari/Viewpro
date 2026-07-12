@@ -1,3 +1,5 @@
+import 'reflect-metadata'
+
 import { ConfigService } from '@nestjs/config'
 import { createApiApp } from './bootstrap/create-app'
 

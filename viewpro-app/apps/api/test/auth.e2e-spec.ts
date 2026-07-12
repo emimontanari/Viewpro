@@ -20,6 +20,10 @@ describe('AuthController (e2e)', () => {
   })
 
   beforeEach(async () => {
+    await prisma.movement.deleteMany()
+    await prisma.propertyAgent.deleteMany()
+    await prisma.propertyEngagement.deleteMany()
+    await prisma.propertyAsset.deleteMany()
     await prisma.refreshToken.deleteMany()
     await prisma.tenantMembership.deleteMany()
     await prisma.tenant.deleteMany()
@@ -45,6 +49,7 @@ describe('AuthController (e2e)', () => {
       user: {
         email: 'owner@example.com',
         firstName: 'Owner',
+        globalRole: 'USER',
         status: 'ACTIVE',
         emailVerifiedAt: null,
       },
@@ -64,6 +69,10 @@ describe('AuthController (e2e)', () => {
       ]),
     )
     expect(response.headers['set-cookie'].join(';')).toContain('HttpOnly')
+    const refreshCookie = response.headers['set-cookie'].find((cookie: string) =>
+      cookie.startsWith('viewpro_refresh_token='),
+    )
+    expect(refreshCookie).toContain('Path=/')
 
     const user = await prisma.user.findUniqueOrThrow({ where: { email: 'owner@example.com' } })
     const tenant = await prisma.tenant.findUniqueOrThrow({ where: { slug: 'acme-homes' } })
@@ -74,6 +83,7 @@ describe('AuthController (e2e)', () => {
 
     expect(user.passwordHash).not.toBe('password123')
     expect(user.passwordHash).toContain('argon2id')
+    expect(user.globalRole).toBe('USER')
     expect(membership.role).toBe('PRINCIPAL_MANAGER')
     expect(refreshToken.tokenHash).toHaveLength(64)
   })
@@ -109,9 +119,10 @@ describe('AuthController (e2e)', () => {
 
     const meResponse = await agent.get('/api/auth/me').expect(200)
     expect(meResponse.body).toMatchObject({
-      user: { email: 'login@example.com' },
-      memberships: [{ tenant: { slug: 'login-homes' } }],
+      user: { email: 'login@example.com', globalRole: 'USER' },
+      memberships: [{ role: 'PRINCIPAL_MANAGER', tenant: { slug: 'login-homes' } }],
     })
+    expect(meResponse.body.user.globalRole).not.toBe(meResponse.body.memberships[0].role)
 
     const refreshTokensBefore = await prisma.refreshToken.findMany({
       where: { user: { email: 'login@example.com' } },
@@ -140,6 +151,24 @@ describe('AuthController (e2e)', () => {
     await agent.get('/api/auth/me').expect(401)
   })
 
+  it('returns VIEWPRO_ADMIN as an independent global role on /me', async () => {
+    await registerTenant('admin@example.com')
+    await prisma.user.update({
+      where: { email: 'admin@example.com' },
+      data: { globalRole: 'VIEWPRO_ADMIN' },
+    })
+
+    const agent = request.agent(app.getHttpServer())
+    await agent.post('/api/auth/login').send({ email: 'admin@example.com', password: 'password123' }).expect(201)
+
+    const meResponse = await agent.get('/api/auth/me').expect(200)
+    expect(meResponse.body).toMatchObject({
+      user: { email: 'admin@example.com', globalRole: 'VIEWPRO_ADMIN' },
+      memberships: [{ role: 'PRINCIPAL_MANAGER', tenant: { slug: 'duplicate-homes' } }],
+    })
+    expect(meResponse.body.user.globalRole).not.toBe(meResponse.body.memberships[0].role)
+  })
+
   it('rejects wrong login password and unauthenticated session access', async () => {
     await registerTenant('wrong-password@example.com')
 
@@ -164,4 +193,100 @@ describe('AuthController (e2e)', () => {
       })
       .expect(201)
   }
+})
+
+describe('AuthController throttling (e2e)', () => {
+  let app: INestApplication
+
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test'
+    process.env.ACCESS_TOKEN_SECRET = 'test-access-token-secret'
+    process.env.COOKIE_DOMAIN = 'localhost'
+    process.env.COOKIE_SECURE = 'false'
+
+    app = await createApiApp()
+    await app.init()
+  })
+
+  afterAll(async () => {
+    await app.close()
+  })
+
+  it('rate-limits repeated login attempts without throttling guarded reads', async () => {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({ email: 'rate-limit-login@example.com', password: 'wrong-password' })
+        .expect(401)
+    }
+
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'rate-limit-login@example.com', password: 'wrong-password' })
+      .expect(429)
+
+    await request(app.getHttpServer()).get('/api/auth/me').expect(401)
+  })
+
+  it('keeps login throttling scoped to the route path instead of query strings', async () => {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await request(app.getHttpServer())
+        .post(`/api/auth/login?cacheBust=${attempt}`)
+        .send({ email: 'query-bucket-login@example.com', password: 'wrong-password' })
+        .expect(401)
+    }
+
+    await request(app.getHttpServer())
+      .post('/api/auth/login?cacheBust=final')
+      .send({ email: 'query-bucket-login@example.com', password: 'wrong-password' })
+      .expect(429)
+  })
+
+  it('rate-limits repeated tenant registration attempts on the register route only', async () => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await request(app.getHttpServer())
+        .post('/api/auth/register-tenant')
+        .send({
+          email: 'rate-limit-register@example.com',
+          password: 'short',
+          firstName: 'Owner',
+          tenantName: 'Rate Limited Homes',
+        })
+        .expect(400)
+    }
+
+    await request(app.getHttpServer())
+      .post('/api/auth/register-tenant')
+      .send({
+        email: 'rate-limit-register@example.com',
+        password: 'short',
+        firstName: 'Owner',
+        tenantName: 'Rate Limited Homes',
+      })
+      .expect(429)
+
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'register-route-scope@example.com', password: 'wrong-password' })
+      .expect(401)
+  })
+
+  it('rate-limits repeated refresh attempts on the refresh route only', async () => {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await request(app.getHttpServer())
+        .post('/api/auth/refresh')
+        .set('Cookie', [`viewpro_refresh_token=invalid-refresh-${attempt}`])
+        .expect(401)
+    }
+
+    await request(app.getHttpServer())
+      .post('/api/auth/refresh')
+      .set('Cookie', ['viewpro_refresh_token=invalid-refresh-final'])
+      .expect(429)
+
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'refresh-route-scope@example.com', password: 'wrong-password' })
+      .expect(401)
+  })
 })
