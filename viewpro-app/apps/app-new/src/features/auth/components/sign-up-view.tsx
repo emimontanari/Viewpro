@@ -146,12 +146,20 @@ export default function SignUpViewPage() {
         <div className='absolute inset-0 bg-sidebar' />
         <div className='relative z-20 flex items-center'>
           <Image
-            src='/logo-largo.jpeg'
+            src='/logo-theme-claro.png'
             alt={BRAND.auth.signUpLabel}
-            width={180}
-            height={74}
+            width={2048}
+            height={1365}
             priority
-            className='h-11 w-auto rounded-md'
+            className='h-auto w-48 dark:hidden'
+          />
+          <Image
+            src='/logo-inmoview-dark.png'
+            alt={BRAND.auth.signUpLabel}
+            width={2048}
+            height={1365}
+            priority
+            className='hidden h-auto w-48 dark:block'
           />
         </div>
         <InteractiveGridPattern
@@ -160,14 +168,6 @@ export default function SignUpViewPage() {
             'inset-x-0 inset-y-[0%] h-full skew-y-12'
           )}
         />
-        <div className='text-sidebar-foreground relative z-20 mt-auto'>
-          <blockquote className='space-y-2'>
-            <p className='text-lg'>
-              &ldquo;{BRAND.auth.testimonialQuote}&rdquo;
-            </p>
-            <footer className='text-sidebar-foreground/70 text-sm'>{BRAND.auth.testimonialAuthor}</footer>
-          </blockquote>
-        </div>
       </div>
       <div className='flex h-full items-center justify-center p-4 lg:p-8'>
         <div className='flex w-full max-w-xl flex-col items-center justify-center space-y-6'>
