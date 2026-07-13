@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { AnalyticsActorType, AnalyticsEventName } from '@prisma/client'
+import { AnalyticsActorType, AnalyticsEventName, type Prisma } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import type {
   AdminTenantLimits,
@@ -20,9 +20,12 @@ type LockedTenantLimitsRow = {
 export class PrismaAdminTenantLimitsRepository implements AdminTenantLimitsRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async updateTenantLimits(input: UpdateAdminTenantLimitsInput): Promise<UpdateAdminTenantLimitsResult> {
-    return this.prisma.$transaction(async (tx) => {
-      const [tenant] = await tx.$queryRaw<LockedTenantLimitsRow[]>`
+  async updateTenantLimits(
+    input: UpdateAdminTenantLimitsInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<UpdateAdminTenantLimitsResult> {
+    const run = async (client: Prisma.TransactionClient): Promise<UpdateAdminTenantLimitsResult> => {
+      const [tenant] = await client.$queryRaw<LockedTenantLimitsRow[]>`
         SELECT "id", "maxUsers", "maxActivePropertyEngagements", "maxDocumentsStorageMb", "updatedAt"
         FROM "tenants"
         WHERE "id" = ${input.tenantId}
@@ -45,7 +48,7 @@ export class PrismaAdminTenantLimitsRepository implements AdminTenantLimitsRepos
         }
       }
 
-      const updatedTenant = await tx.tenant.update({
+      const updatedTenant = await client.tenant.update({
         where: { id: tenant.id },
         data: input.limits,
       })
@@ -65,7 +68,7 @@ export class PrismaAdminTenantLimitsRepository implements AdminTenantLimitsRepos
               actorUserId: input.actor.userId,
             }
 
-      await tx.analyticsEvent.create({
+      await client.analyticsEvent.create({
         data: {
           tenantId: tenant.id,
           ...actorData,
@@ -85,7 +88,11 @@ export class PrismaAdminTenantLimitsRepository implements AdminTenantLimitsRepos
         limits: updatedLimits,
         updatedAt: updatedTenant.updatedAt,
       }
-    })
+    }
+
+    // If an outer transaction is provided, run inside it (no nested $transaction).
+    // Otherwise start an own transaction — preserves the existing /admin behaviour.
+    return tx ? run(tx) : this.prisma.$transaction(run)
   }
 }
 

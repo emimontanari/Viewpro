@@ -1,4 +1,4 @@
-import type { TenantStatus } from '@prisma/client'
+import type { Prisma, TenantStatus } from '@prisma/client'
 import type { CommandActor } from './admin-actor'
 
 export const ADMIN_TENANT_STATUS_REPOSITORY = Symbol('ADMIN_TENANT_STATUS_REPOSITORY')
@@ -28,5 +28,14 @@ export type UpdateAdminTenantStatusResult =
   | { status: 'notFound' }
 
 export type AdminTenantStatusRepository = {
-  updateTenantStatus(input: UpdateAdminTenantStatusInput): Promise<UpdateAdminTenantStatusResult>
+  /**
+   * Updates tenant status.
+   * If `tx` is provided the mutation runs inside that existing transaction
+   * (no nested $transaction). If omitted, the repo starts its own transaction
+   * — preserving the existing /admin call-site behaviour exactly.
+   */
+  updateTenantStatus(
+    input: UpdateAdminTenantStatusInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<UpdateAdminTenantStatusResult>
 }

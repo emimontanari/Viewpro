@@ -1,5 +1,5 @@
 import { JwtService } from '@nestjs/jwt'
-import type { PlatformServiceIdentity } from '@viewpro/platform-contract'
+import type { PlatformServiceIdentity } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 
 const REQUIRED_ISS = 'viewpro-api'
 const REQUIRED_AUD = 'inmoview-control'

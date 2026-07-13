@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import type { Prisma } from '@prisma/client'
 import type { CommandActor } from './admin-actor'
 import {
   ADMIN_TENANT_LIMITS_REPOSITORY,
@@ -17,19 +18,32 @@ export class AdminTenantLimitsService {
     private readonly adminTenantLimitsRepository: AdminTenantLimitsRepository,
   ) {}
 
-  async updateTenantLimits(input: {
-    tenantId: string
-    limits: Partial<AdminTenantLimits>
-    actor: CommandActor
-  }): Promise<AdminTenantLimitsUpdateResponse> {
+  /**
+   * Updates tenant limits with validation.
+   *
+   * @param tx — optional outer Prisma transaction. When provided the repo runs
+   *   inside it (no nested transaction). When omitted the repo starts its own
+   *   transaction — preserving the existing /admin call-site behaviour exactly.
+   */
+  async updateTenantLimits(
+    input: {
+      tenantId: string
+      limits: Partial<AdminTenantLimits>
+      actor: CommandActor
+    },
+    tx?: Prisma.TransactionClient,
+  ): Promise<AdminTenantLimitsUpdateResponse> {
     const limits = parseTenantLimits(input.limits)
 
-    const result = await this.adminTenantLimitsRepository.updateTenantLimits({
-      tenantId: input.tenantId,
-      limits,
-      actor: input.actor,
-      now: new Date(),
-    })
+    const result = await this.adminTenantLimitsRepository.updateTenantLimits(
+      {
+        tenantId: input.tenantId,
+        limits,
+        actor: input.actor,
+        now: new Date(),
+      },
+      tx,
+    )
 
     if (result.status === 'notFound') {
       throw new NotFoundException('Tenant not found')

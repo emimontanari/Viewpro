@@ -3,10 +3,12 @@ import { Body, Controller, HttpCode, Inject, Param, Post, Req, UseGuards } from 
 import { AdminTenantLimitsService } from '../admin/admin-tenant-limits.service'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { AdminTenantStatusService } from '../admin/admin-tenant-status.service'
+// biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
+import { PrismaService } from '../database/prisma.service'
+import type { Prisma } from '@prisma/client'
 import type { JsonValue } from '@prisma/client/runtime/library'
 import type { PlatformControlRequest } from './platform-control.guard'
 import { PlatformControlGuard } from './platform-control.guard'
-import { IDEMPOTENCY_REPOSITORY, type IIdempotencyRepository } from './idempotency.repository'
 // biome-ignore lint/style/useImportType: Nest validation needs runtime DTO metadata.
 import { SetTenantStatusDto } from './dto/set-tenant-status.dto'
 // biome-ignore lint/style/useImportType: Nest validation needs runtime DTO metadata.
@@ -17,9 +19,22 @@ import { SetTenantLimitsDto } from './dto/set-tenant-limits.dto'
  *
  * Protected by PlatformControlGuard (HS256 service JWT, PLATFORM_CONTROL_SECRET).
  * Delegates to AdminTenantStatusService/AdminTenantLimitsService with operator actor.
- * Enforces idempotency via platform_command_log (insert-first pattern).
+ * Enforces idempotency via platform_command_log (single-transaction atomic model).
  *
  * Trust isolation invariant: request.user is NEVER set on this controller's paths.
+ *
+ * Idempotency model (single-row, single-transaction):
+ *   1. Within a single Prisma transaction:
+ *      a. INSERT the idempotency row with a temporary placeholder result.
+ *         - P2002 on the UNIQUE idempotencyKey → duplicate; fetch and return stored result.
+ *      b. Run the mutation (status/limits update) in the SAME transaction.
+ *      c. UPDATE the idempotency row with the real result.
+ *   2. On success: ONE row per command, result contains the real outcome.
+ *   3. On any error (not found, bad request, unexpected): the whole transaction rolls back.
+ *      The idempotency key is NOT committed → a retry re-attempts the full mutation.
+ *
+ * This ensures atomicity: there is no window where a row is committed but
+ * the mutation has not run (or vice versa).
  */
 @Controller('internal/platform')
 @UseGuards(PlatformControlGuard)
@@ -27,8 +42,8 @@ export class PlatformControlController {
   constructor(
     private readonly adminTenantStatusService: AdminTenantStatusService,
     private readonly adminTenantLimitsService: AdminTenantLimitsService,
-    @Inject(IDEMPOTENCY_REPOSITORY)
-    private readonly idempotencyRepository: IIdempotencyRepository,
+    @Inject(PrismaService)
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -49,12 +64,15 @@ export class PlatformControlController {
       idempotencyKey: body.idempotencyKey,
       tenantId,
       commandType: 'SET_STATUS',
-      apply: () =>
-        this.adminTenantStatusService.updateTenantStatus({
-          tenantId,
-          targetStatus: body.targetStatus,
-          actor: { type: 'operator', operatorId },
-        }),
+      apply: (tx) =>
+        this.adminTenantStatusService.updateTenantStatus(
+          {
+            tenantId,
+            targetStatus: body.targetStatus,
+            actor: { type: 'operator', operatorId },
+          },
+          tx,
+        ),
     })
   }
 
@@ -76,27 +94,28 @@ export class PlatformControlController {
       idempotencyKey: body.idempotencyKey,
       tenantId,
       commandType: 'SET_LIMITS',
-      apply: () =>
-        this.adminTenantLimitsService.updateTenantLimits({
-          tenantId,
-          limits: body.limits,
-          actor: { type: 'operator', operatorId },
-        }),
+      apply: (tx) =>
+        this.adminTenantLimitsService.updateTenantLimits(
+          {
+            tenantId,
+            limits: body.limits,
+            actor: { type: 'operator', operatorId },
+          },
+          tx,
+        ),
     })
   }
 
   /**
-   * Template method: apply a command with insert-first idempotency.
+   * Apply a command with single-transaction atomic idempotency.
    *
-   * Strategy:
-   * 1. Try to INSERT the idempotency key with a sentinel value.
-   *    - Success → first call; apply the mutation, then store the real result
-   *      under a result-key so replays can return it.
-   *    - P2002 (conflict) → duplicate call; return the stored result immediately.
+   * All three steps — reserve slot, apply mutation, store result — run in ONE
+   * Prisma transaction. If anything fails, the whole transaction rolls back:
+   * the idempotency key is not committed, so a retry can re-attempt.
    *
-   * We use two keys: the primary key (reserves the slot) and a result key
-   * (holds the outcome JSON for replay). The primary-key insert must succeed
-   * atomically before the mutation runs, closing the concurrent-duplicate race.
+   * The UNIQUE constraint on idempotencyKey acts as the concurrency gate:
+   * only one concurrent writer can insert a given key; the second one gets
+   * P2002 and returns the stored result immediately (no duplicate apply).
    */
   private async applyWithIdempotency<T>({
     idempotencyKey,
@@ -107,39 +126,58 @@ export class PlatformControlController {
     idempotencyKey: string
     tenantId: string
     commandType: string
-    apply: () => Promise<T>
+    apply: (tx: import('@prisma/client').Prisma.TransactionClient) => Promise<T>
   }): Promise<T | JsonValue> {
-    // Step 1: reserve the slot (primary key)
-    const slotCheck = await this.idempotencyRepository.insertOrFind(
-      idempotencyKey,
-      tenantId,
-      commandType,
-      { reserved: true } as JsonValue,
-    )
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // Step 1: Atomically reserve the idempotency slot.
+        // We use a placeholder result; it is overwritten in step 3.
+        // If the key already exists (P2002), we fall through to the catch block.
+        await tx.platformCommandLog.create({
+          data: {
+            idempotencyKey,
+            tenantId,
+            commandType,
+            // Placeholder overwritten in step 3 with the real result.
+            // Must be a valid JSON object (field is non-nullable in schema).
+            result: { __pending: true } as Prisma.InputJsonValue,
+          },
+        })
 
-    if (slotCheck.found) {
-      // Duplicate call — fetch and return the stored result
-      const resultCheck = await this.idempotencyRepository.insertOrFind(
-        `${idempotencyKey}::result`,
-        tenantId,
-        `${commandType}_RESULT`,
-        null as unknown as JsonValue,
-      )
-      // Return result if stored; otherwise return the sentinel (should not happen in normal flow)
-      return resultCheck.found ? resultCheck.result : slotCheck.result
+        // Step 2: Run the mutation in the SAME transaction.
+        // If this throws (BadRequest, NotFound, etc.) the whole transaction rolls
+        // back — the idempotency row is NOT committed, so a retry can re-attempt.
+        const result = await apply(tx)
+
+        // Step 3: Replace the placeholder with the real result in the SAME row.
+        await tx.platformCommandLog.update({
+          where: { idempotencyKey },
+          data: { result: result as unknown as Prisma.InputJsonValue },
+        })
+
+        return result
+      })
+    } catch (err) {
+      if (isUniqueConstraintError(err)) {
+        // Duplicate idempotencyKey: the command was already successfully applied.
+        // Return the stored result with 200 — no re-apply, no second analytics event.
+        const existing = await this.prisma.platformCommandLog.findUnique({
+          where: { idempotencyKey },
+          select: { result: true },
+        })
+        // If the row is somehow gone (extremely unlikely), let the error propagate
+        if (!existing) {
+          throw err
+        }
+        return existing.result
+      }
+      // All other errors (NotFound, BadRequest, unexpected DB errors) propagate
+      // so NestJS exception filters translate them to the correct HTTP status.
+      throw err
     }
-
-    // Step 2: apply the mutation (slot was new)
-    const result = await apply()
-
-    // Step 3: store the result for future replays
-    await this.idempotencyRepository.insertOrFind(
-      `${idempotencyKey}::result`,
-      tenantId,
-      `${commandType}_RESULT`,
-      result as unknown as JsonValue,
-    )
-
-    return result
   }
+}
+
+function isUniqueConstraintError(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { code?: string }).code === 'P2002'
 }

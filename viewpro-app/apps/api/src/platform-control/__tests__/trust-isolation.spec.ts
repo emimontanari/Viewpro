@@ -39,7 +39,7 @@ describe('Trust Path Isolation', () => {
     process.env.NODE_ENV = 'test'
     process.env.PLATFORM_CONTROL_SECRET = PLATFORM_CONTROL_SECRET
 
-    const { createApiApp } = await import('../../bootstrap/create-app')
+    const { createApiApp } = await import('../../bootstrap/create-app.js')
     app = await createApiApp()
     await app.init()
   })

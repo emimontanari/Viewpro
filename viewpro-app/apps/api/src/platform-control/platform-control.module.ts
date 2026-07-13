@@ -1,9 +1,7 @@
 import { Module } from '@nestjs/common'
 import { AdminModule } from '../admin/admin.module'
-import { IDEMPOTENCY_REPOSITORY } from './idempotency.repository'
 import { PlatformControlController } from './platform-control.controller'
 import { PlatformControlGuard } from './platform-control.guard'
-import { PrismaIdempotencyRepository } from './prisma-idempotency.repository'
 
 /**
  * PlatformControlModule — inbound control-lane endpoints for apps/api.
@@ -11,7 +9,10 @@ import { PrismaIdempotencyRepository } from './prisma-idempotency.repository'
  * Wires:
  *  - PlatformControlGuard: verifies HS256 service JWT (PLATFORM_CONTROL_SECRET)
  *  - PlatformControlController: POST /internal/platform/tenants/:id/{status,limits}
- *  - PrismaIdempotencyRepository: insert-first idempotency via platform_command_log
+ *
+ * Idempotency is handled via a single Prisma transaction in PlatformControlController,
+ * using PrismaService (provided globally by DatabaseModule) directly — no separate
+ * idempotency repository needed.
  *
  * Imports AdminModule to reuse AdminTenantStatusService + AdminTenantLimitsService.
  * Does NOT import or share JwtModule with AuthModule — trust paths are fully isolated.
@@ -23,12 +24,6 @@ import { PrismaIdempotencyRepository } from './prisma-idempotency.repository'
 @Module({
   imports: [AdminModule],
   controllers: [PlatformControlController],
-  providers: [
-    PlatformControlGuard,
-    {
-      provide: IDEMPOTENCY_REPOSITORY,
-      useClass: PrismaIdempotencyRepository,
-    },
-  ],
+  providers: [PlatformControlGuard],
 })
 export class PlatformControlModule {}

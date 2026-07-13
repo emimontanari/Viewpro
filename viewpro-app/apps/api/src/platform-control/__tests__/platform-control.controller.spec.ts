@@ -10,13 +10,15 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 //
 // Scenarios (spec: platform-control-lane-inbound):
 //   - Valid status command → 200, tenant SUSPENDED
-//   - Tenant not found → 404
-//   - Invalid targetStatus → 400
+//   - Tenant not found → 404, NO idempotency row committed (retry allowed)
+//   - Invalid targetStatus → 400, NO idempotency row committed (retry allowed)
 //   - Valid limits command → 200, limits updated
-//   - Duplicate idempotencyKey → 200 replay, tenant NOT mutated again
+//   - Duplicate idempotencyKey → 200 replay, tenant NOT mutated again, no second analytics event
 //   - Different key → applies normally
 //   - AnalyticsEvent has actorOperatorId=op-1, actorType=PLATFORM_OPERATOR, actorUserId=null
 //   - actorUserId null for control-lane events
+//   - ATOMICITY: single platform_command_log row per successful command (no ::result second row)
+//   - ATOMICITY: failed mutation rolls back log row (no orphan idempotency key)
 // ---------------------------------------------------------------------------
 
 const PLATFORM_CONTROL_SECRET = 'test-platform-control-secret-min16'
@@ -41,11 +43,11 @@ describe('PlatformControlController (integration)', () => {
     process.env.NODE_ENV = 'test'
     process.env.PLATFORM_CONTROL_SECRET = PLATFORM_CONTROL_SECRET
 
-    const { createApiApp } = await import('../../bootstrap/create-app')
+    const { createApiApp } = await import('../../bootstrap/create-app.js')
     app = await createApiApp()
     await app.init()
 
-    const { PrismaService } = await import('../../database/prisma.service')
+    const { PrismaService } = await import('../../database/prisma.service.js')
     prisma = app.get(PrismaService)
   })
 
@@ -231,5 +233,110 @@ describe('PlatformControlController (integration)', () => {
 
     const events = await prisma.analyticsEvent.findMany({ where: { tenantId: tenant.id } })
     expect(events[0]?.actorUserId).toBeNull()
+  })
+
+  // -------------------------------------------------------------------------
+  // Atomicity: single-transaction idempotency (new model)
+  // -------------------------------------------------------------------------
+
+  it('ATOMICITY — successful command creates exactly ONE platform_command_log row (no ::result second key)', async () => {
+    const tenant = await seedTenant(`tenant-one-row-${Date.now()}`)
+    const token = await mintServiceToken()
+    const key = `atomic-one-row-${Date.now()}`
+
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: key })
+      .expect(200)
+
+    // Must be exactly ONE row — no legacy ::result second row
+    const rows = await prisma.platformCommandLog.findMany({ where: { idempotencyKey: { startsWith: key } } })
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.idempotencyKey).toBe(key)
+  })
+
+  it('ATOMICITY — tenant not found → 404, NO platform_command_log row committed (retry is possible)', async () => {
+    const token = await mintServiceToken()
+    const key = `atomic-404-${Date.now()}`
+
+    await request(app.getHttpServer())
+      .post('/api/internal/platform/tenants/non-existent-id/status')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: key })
+      .expect(404)
+
+    // No log row must exist — failure rolled back the whole transaction
+    const row = await prisma.platformCommandLog.findUnique({ where: { idempotencyKey: key } })
+    expect(row).toBeNull()
+  })
+
+  it('ATOMICITY — unsupported targetStatus → 400, NO platform_command_log row committed (retry is possible)', async () => {
+    const tenant = await seedTenant(`tenant-400-${Date.now()}`)
+    const token = await mintServiceToken()
+    const key = `atomic-400-${Date.now()}`
+
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'INVALID_STATUS', idempotencyKey: key })
+      .expect(400)
+
+    const row = await prisma.platformCommandLog.findUnique({ where: { idempotencyKey: key } })
+    expect(row).toBeNull()
+  })
+
+  it('ATOMICITY — replay returns stored result with 200, does NOT create second analytics event', async () => {
+    const tenant = await seedTenant(`tenant-replay-atomic-${Date.now()}`)
+    const token = await mintServiceToken()
+    const key = `atomic-replay-${Date.now()}`
+
+    // First call
+    const firstResponse = await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: key })
+      .expect(200)
+
+    const eventsAfterFirst = await prisma.analyticsEvent.count({ where: { tenantId: tenant.id } })
+    expect(eventsAfterFirst).toBe(1)
+
+    // Replay with same key
+    const replayResponse = await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: key })
+      .expect(200)
+
+    // Same result returned
+    expect(replayResponse.body).toMatchObject(firstResponse.body)
+
+    // No second analytics event
+    const eventsAfterReplay = await prisma.analyticsEvent.count({ where: { tenantId: tenant.id } })
+    expect(eventsAfterReplay).toBe(eventsAfterFirst)
+
+    // Still only ONE log row
+    const logRows = await prisma.platformCommandLog.findMany({ where: { idempotencyKey: key } })
+    expect(logRows).toHaveLength(1)
+  })
+
+  it('ATOMICITY — stored result in log row contains real result (not sentinel placeholder)', async () => {
+    const tenant = await seedTenant(`tenant-real-result-${Date.now()}`)
+    const token = await mintServiceToken()
+    const key = `atomic-real-result-${Date.now()}`
+
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: key })
+      .expect(200)
+
+    const logRow = await prisma.platformCommandLog.findUnique({ where: { idempotencyKey: key } })
+    expect(logRow).not.toBeNull()
+    // The stored result must be the real command result, not a sentinel like { reserved: true }
+    const stored = logRow!.result as Record<string, unknown>
+    expect(stored).not.toMatchObject({ reserved: true })
+    expect(stored.tenantId).toBe(tenant.id)
+    expect(stored.status).toBe('SUSPENDED')
   })
 })

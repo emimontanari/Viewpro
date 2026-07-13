@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common'
 import type { Request } from 'express'
-import type { PlatformServiceIdentity } from '@viewpro/platform-contract'
+import type { PlatformServiceIdentity } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 import { verifyServiceToken } from './service-token.verifier'
 
 /**

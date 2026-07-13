@@ -1,7 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common'
 import type { ExecutionContext } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ---------------------------------------------------------------------------
 // Spec: PlatformControlGuard — Service Token Verification + Trust Path Isolation
@@ -63,7 +63,7 @@ describe('PlatformControlGuard', () => {
   beforeEach(async () => {
     process.env.PLATFORM_CONTROL_SECRET = PLATFORM_CONTROL_SECRET
     vi.resetModules()
-    const mod = await import('../platform-control.guard')
+    const mod = await import('../platform-control.guard.js')
     Guard = mod.PlatformControlGuard
   })
 
