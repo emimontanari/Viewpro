@@ -426,4 +426,85 @@ describe('PlatformControlController (integration)', () => {
     const committedRow = await prisma.platformCommandLog.findUnique({ where: { idempotencyKey: key } })
     expect(committedRow).not.toBeNull()
   })
+
+  // -------------------------------------------------------------------------
+  // FIX 3: Idempotency key reuse for a DIFFERENT command → 409 Conflict
+  // Same key + same (tenant, command) → 200 replay (existing behaviour stays)
+  // Same key + different tenant → 409 (key reused for a different command)
+  // Same key + different commandType → 409
+  // -------------------------------------------------------------------------
+
+  it('FIX3 — same idempotencyKey, same tenant+command → 200 replay (correct behaviour unchanged)', async () => {
+    const tenant = await seedTenant(`tenant-fix3-same-${Date.now()}`)
+    const token = await mintServiceToken()
+    const key = `fix3-same-${Date.now()}`
+
+    // First call — applies the command and commits the idempotency row
+    const first = await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: key })
+      .expect(200)
+
+    // Second call — same tenant, same commandType → replay
+    const replay = await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: key })
+      .expect(200)
+
+    expect(replay.body).toMatchObject(first.body)
+  })
+
+  it('FIX3 — same idempotencyKey, DIFFERENT tenant → 409 Conflict', async () => {
+    const tenantA = await seedTenant(`tenant-fix3-a-${Date.now()}`)
+    const tenantB = await seedTenant(`tenant-fix3-b-${Date.now()}`)
+    const token = await mintServiceToken()
+    const key = `fix3-diff-tenant-${Date.now()}`
+
+    // Commit the key for tenantA
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenantA.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: key })
+      .expect(200)
+
+    // Second call with SAME key but DIFFERENT tenant → must be 409
+    const res = await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenantB.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: key })
+      .expect(409)
+
+    expect(res.body.message).toContain('Idempotency key reused for a different command')
+
+    // tenantB must NOT have been mutated
+    const tenantBAfter = await prisma.tenant.findUnique({ where: { id: tenantB.id } })
+    expect(tenantBAfter?.status).not.toBe('SUSPENDED')
+  })
+
+  it('FIX3 — same idempotencyKey, DIFFERENT commandType → 409 Conflict', async () => {
+    const tenant = await seedTenant(`tenant-fix3-cmd-${Date.now()}`)
+    const token = await mintServiceToken()
+    const key = `fix3-diff-cmd-${Date.now()}`
+
+    // Commit the key for status command
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: key })
+      .expect(200)
+
+    // Second call with SAME key but limits commandType → must be 409
+    const res = await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/limits`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        limits: { maxUsers: 5, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+        idempotencyKey: key,
+      })
+      .expect(409)
+
+    expect(res.body.message).toContain('Idempotency key reused for a different command')
+  })
 })

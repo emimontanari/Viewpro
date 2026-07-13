@@ -167,4 +167,29 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
 
     expect(res.status).toBeGreaterThanOrEqual(400)
   })
+
+  // FIX 1: unsupported status rejected locally — no outbound call
+  it('PATCH with targetStatus=TRIAL → 400 locally, no outbound call made', async () => {
+    const cookie = await getSessionCookie()
+
+    const res = await request(app.getHttpServer())
+      .patch('/api/operators/tenants/tenant-1/status')
+      .set('Cookie', cookie)
+      .send({ status: 'TRIAL' })
+
+    expect(res.status).toBe(400)
+    expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
+  })
+
+  it('PATCH with targetStatus=CANCELLED → 400 locally, no outbound call made', async () => {
+    const cookie = await getSessionCookie()
+
+    const res = await request(app.getHttpServer())
+      .patch('/api/operators/tenants/tenant-1/status')
+      .set('Cookie', cookie)
+      .send({ status: 'CANCELLED' })
+
+    expect(res.status).toBe(400)
+    expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
+  })
 })

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { HttpException, Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import type { PlatformTenantStatus, PlatformTenantLimits } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
@@ -128,11 +128,16 @@ export class PlatformControlClient {
       try {
         errorBody = await response.json()
       } catch {
-        errorBody = { statusCode: response.status }
+        errorBody = { statusCode: response.status, message: 'Unknown downstream error' }
       }
-      throw new Error(
-        `InmoView control-lane returned ${response.status}: ${JSON.stringify(errorBody)}`,
-      )
+      // Throw a NestJS HttpException so the global exception filter preserves
+      // the downstream status code (404, 400, etc.) instead of collapsing to 500.
+      // The operator receives the same status InmoView returned.
+      const safeBody =
+        typeof errorBody === 'string' || (typeof errorBody === 'object' && errorBody !== null)
+          ? (errorBody as string | Record<string, unknown>)
+          : { statusCode: response.status, message: 'Unknown downstream error' }
+      throw new HttpException(safeBody, response.status)
     }
 
     return response.json()

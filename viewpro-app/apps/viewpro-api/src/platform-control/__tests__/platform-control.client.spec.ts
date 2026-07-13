@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { JwtService } from '@nestjs/jwt'
+import { HttpException } from '@nestjs/common'
 import { PlatformControlClient } from '../platform-control.client'
 
 /**
@@ -79,9 +80,10 @@ describe('PlatformControlClient — token minting', () => {
     vi.unstubAllGlobals()
   })
 
-  it('postTenantStatus surfaces downstream 4xx as an error', async () => {
+  // FIX 4: downstream 404 → throws HttpException with status 404
+  it('postTenantStatus downstream 404 → throws HttpException with status 404', async () => {
     const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }),
+      new Response(JSON.stringify({ message: 'Not Found', statusCode: 404 }), { status: 404 }),
     )
     vi.stubGlobal('fetch', mockFetch)
 
@@ -90,14 +92,57 @@ describe('PlatformControlClient — token minting', () => {
       platformControlSecret: PLATFORM_CONTROL_SECRET,
     })
 
-    await expect(
-      client.postTenantStatus(
-        'unknown-tenant',
-        { targetStatus: 'ACTIVE' as const },
-        'idem-key-2',
-        OPERATOR_ID,
-      ),
-    ).rejects.toThrow()
+    const error = await client
+      .postTenantStatus('unknown-tenant', { targetStatus: 'ACTIVE' as const }, 'idem-key-2', OPERATOR_ID)
+      .catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(HttpException)
+    expect((error as HttpException).getStatus()).toBe(404)
+
+    vi.unstubAllGlobals()
+  })
+
+  // FIX 4: downstream 400 → throws HttpException with status 400
+  it('postTenantStatus downstream 400 → throws HttpException with status 400', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ message: 'Bad Request', statusCode: 400 }), { status: 400 }),
+    )
+    vi.stubGlobal('fetch', mockFetch)
+
+    const client = new PlatformControlClient({
+      inmoviewApiInternalUrl: 'http://localhost:3001',
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    const error = await client
+      .postTenantStatus('tenant-1', { targetStatus: 'ACTIVE' as const }, 'idem-key-400', OPERATOR_ID)
+      .catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(HttpException)
+    expect((error as HttpException).getStatus()).toBe(400)
+
+    vi.unstubAllGlobals()
+  })
+
+  // FIX 4: 2xx response still resolves successfully (passthrough unchanged)
+  it('postTenantStatus 2xx → resolves with parsed body (passthrough unchanged)', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: 'updated' }), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', mockFetch)
+
+    const client = new PlatformControlClient({
+      inmoviewApiInternalUrl: 'http://localhost:3001',
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    const result = await client.postTenantStatus(
+      'tenant-ok',
+      { targetStatus: 'ACTIVE' as const },
+      'idem-key-ok',
+      OPERATOR_ID,
+    )
+    expect(result).toEqual({ status: 'updated' })
 
     vi.unstubAllGlobals()
   })

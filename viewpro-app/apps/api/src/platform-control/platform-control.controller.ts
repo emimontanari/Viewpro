@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Inject, Param, Post, Req, UseGuards } from '@nestjs/common'
+import { Body, ConflictException, Controller, HttpCode, Inject, Param, Post, Req, UseGuards } from '@nestjs/common'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { AdminTenantLimitsService } from '../admin/admin-tenant-limits.service'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
@@ -158,17 +158,23 @@ export class PlatformControlController {
         return result
       })
     } catch (err) {
-      if (isUniqueConstraintError(err)) {
-        // Duplicate idempotencyKey: the command was already successfully applied.
-        // Return the stored result with 200 — no re-apply, no second analytics event.
+      if (isIdempotencyKeyConflict(err)) {
+        // Potential duplicate idempotencyKey: load the stored row and verify
+        // that it belongs to the SAME (tenantId, commandType) pair.
+        // A key reused for a DIFFERENT command is a caller bug and must 409.
         const existing = await this.prisma.platformCommandLog.findUnique({
           where: { idempotencyKey },
-          select: { result: true },
+          select: { result: true, tenantId: true, commandType: true },
         })
-        // If the row is somehow gone (extremely unlikely), let the error propagate
+        // If the row is somehow gone (extremely unlikely race), let the original error propagate
         if (!existing) {
           throw err
         }
+        // Guard: same key but different tenant or command type → explicit 409
+        if (existing.tenantId !== tenantId || existing.commandType !== commandType) {
+          throw new ConflictException('Idempotency key reused for a different command')
+        }
+        // Same command — safe to replay the stored result
         return existing.result
       }
       // All other errors (NotFound, BadRequest, unexpected DB errors) propagate
@@ -178,6 +184,28 @@ export class PlatformControlController {
   }
 }
 
-function isUniqueConstraintError(err: unknown): boolean {
-  return typeof err === 'object' && err !== null && (err as { code?: string }).code === 'P2002'
+/**
+ * Returns true ONLY when the Prisma error is a P2002 unique constraint
+ * violation on the platform_command_log.idempotencyKey unique index.
+ *
+ * Narrowing to the specific constraint prevents masking genuine P2002 errors
+ * from other unique constraints inside the mutation (e.g. tenant slug) that
+ * would otherwise be silently swallowed and misclassified as idempotency replays.
+ *
+ * Prisma sets meta.target to the constraint or column names involved;
+ * we look for 'idempotencyKey' in that array.
+ */
+function isIdempotencyKeyConflict(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false
+  const e = err as { code?: string; meta?: { target?: unknown } }
+  if (e.code !== 'P2002') return false
+  const target = e.meta?.target
+  // target can be a string (old Prisma) or an array of strings (Prisma 5+)
+  if (Array.isArray(target)) {
+    return (target as string[]).some((t) => t === 'idempotencyKey')
+  }
+  if (typeof target === 'string') {
+    return target.includes('idempotencyKey')
+  }
+  return false
 }
