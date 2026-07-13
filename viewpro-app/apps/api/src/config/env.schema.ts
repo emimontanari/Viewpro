@@ -8,6 +8,7 @@ import {
 	IsString,
 	Max,
 	Min,
+	MinLength,
 	validateSync,
 } from "class-validator";
 
@@ -142,6 +143,10 @@ class EnvironmentVariables {
 	@Max(1)
 	@Type(() => Number)
 	SENTRY_TRACES_SAMPLE_RATE = 0;
+
+	@IsString()
+	@MinLength(16)
+	PLATFORM_CONTROL_SECRET = 'change-me-platform-control-secret';
 }
 
 export function validateEnv(config: Record<string, unknown>) {
