@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { JwtService } from '@nestjs/jwt'
 import { AuthThrottlerGuard } from '../auth-throttler.guard'
 import { TokenService } from '../../tokens/token.service'
+import { appConfig } from '../../../config/app.config'
 
 /**
  * T-20 — Auth hardening: throttler tracker keyed per-IP only.
@@ -137,11 +138,9 @@ describe('app.config.ts — cookie secure flag enforcement', () => {
     } else {
       delete process.env.COOKIE_SECURE
     }
-    // Re-import the config factory by inlining the same logic as app.config.ts
-    // (avoids module cache issues with registerAs).
-    const env = (process.env.NODE_ENV ?? 'development') as 'development' | 'test' | 'production'
-    const secure = env === 'production' || process.env.COOKIE_SECURE === 'true'
-    return { cookies: { secure } }
+    // Invoke the REAL production config factory (registerAs reads process.env
+    // at call time), so a regression in app.config.ts is genuinely caught here.
+    return appConfig() as { cookies: { secure: boolean } }
   }
 
   it('NODE_ENV=production → secure=true (forced, regardless of COOKIE_SECURE)', () => {

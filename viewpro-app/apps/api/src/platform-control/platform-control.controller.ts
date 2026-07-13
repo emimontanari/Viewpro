@@ -195,14 +195,16 @@ export class PlatformControlController {
  * Prisma sets meta.target to the constraint or column names involved;
  * we look for 'idempotencyKey' in that array.
  */
-function isIdempotencyKeyConflict(err: unknown): boolean {
+export function isIdempotencyKeyConflict(err: unknown): boolean {
   if (typeof err !== 'object' || err === null) return false
   const e = err as { code?: string; meta?: { target?: unknown } }
   if (e.code !== 'P2002') return false
   const target = e.meta?.target
-  // target can be a string (old Prisma) or an array of strings (Prisma 5+)
+  // target can be a string (old Prisma) or an array of strings (Prisma 5+),
+  // and may be the column name ('idempotencyKey') or the index name
+  // ('PlatformCommandLog_idempotencyKey_key') — substring match handles both.
   if (Array.isArray(target)) {
-    return (target as string[]).some((t) => t === 'idempotencyKey')
+    return (target as string[]).some((t) => t.includes('idempotencyKey'))
   }
   if (typeof target === 'string') {
     return target.includes('idempotencyKey')

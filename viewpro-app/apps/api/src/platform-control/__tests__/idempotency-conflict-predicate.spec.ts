@@ -1,35 +1,22 @@
 import { describe, it, expect } from 'vitest'
+import { isIdempotencyKeyConflict } from '../platform-control.controller'
 
 /**
- * FIX 5 — Unit test for the isIdempotencyKeyConflict predicate logic.
+ * FIX 5 — Unit test for the EXPORTED isIdempotencyKeyConflict predicate.
  *
- * The production function (platform-control.controller.ts) is file-scoped and
- * not exported. We test the SAME logic inline here to prove the target-check
- * behaviour: only P2002 errors whose meta.target includes 'idempotencyKey'
- * are treated as idempotency-key conflicts. All others must propagate.
- *
- * This prevents a genuine P2002 on a different unique constraint from being
- * silently swallowed and misclassified as a safe replay.
+ * Only P2002 errors whose meta.target refers to the idempotencyKey unique
+ * constraint are treated as idempotency-key conflicts; all others must
+ * propagate so a genuine P2002 on a different constraint is not swallowed.
  */
-
-// Mirror of the production predicate — kept in sync by convention.
-function isIdempotencyKeyConflict(err: unknown): boolean {
-  if (typeof err !== 'object' || err === null) return false
-  const e = err as { code?: string; meta?: { target?: unknown } }
-  if (e.code !== 'P2002') return false
-  const target = e.meta?.target
-  if (Array.isArray(target)) {
-    return (target as string[]).some((t) => t === 'idempotencyKey')
-  }
-  if (typeof target === 'string') {
-    return target.includes('idempotencyKey')
-  }
-  return false
-}
 
 describe('isIdempotencyKeyConflict — predicate unit tests', () => {
   it('returns true for P2002 with target=["idempotencyKey"] (array form, Prisma 5+)', () => {
     const err = { code: 'P2002', meta: { target: ['idempotencyKey'] } }
+    expect(isIdempotencyKeyConflict(err)).toBe(true)
+  })
+
+  it('returns true for P2002 with target=["PlatformCommandLog_idempotencyKey_key"] (index-name form)', () => {
+    const err = { code: 'P2002', meta: { target: ['PlatformCommandLog_idempotencyKey_key'] } }
     expect(isIdempotencyKeyConflict(err)).toBe(true)
   })
 
