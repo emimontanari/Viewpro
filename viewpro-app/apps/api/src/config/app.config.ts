@@ -89,6 +89,10 @@ export const appConfig = registerAs('app', () => {
       domain: process.env.COOKIE_DOMAIN,
       secure: process.env.COOKIE_SECURE === 'true',
     },
+    email: {
+      apiKey: process.env.RESEND_API_KEY,
+      fromAddress: process.env.EMAIL_FROM_ADDRESS ?? 'no-reply@inmoview.app',
+    },
     sentry: getSentryConfig(nodeEnv),
   }
 })

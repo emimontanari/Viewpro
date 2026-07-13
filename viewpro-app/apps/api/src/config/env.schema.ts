@@ -123,6 +123,14 @@ class EnvironmentVariables {
 
 	@IsOptional()
 	@IsString()
+	RESEND_API_KEY?: string;
+
+	@IsOptional()
+	@IsString()
+	EMAIL_FROM_ADDRESS?: string;
+
+	@IsOptional()
+	@IsString()
 	SENTRY_DSN?: string;
 
 	@IsOptional()

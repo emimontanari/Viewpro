@@ -1,11 +1,13 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common'
+import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import type { CurrentUser } from '../../auth/types/current-user'
+import { EMAIL_SENDER, type EmailSender } from '../../email/email-sender.port'
 import type { TenantContext } from '../../tenant-context/tenant-context.types'
 import type { CreateTeamInvitationDto } from '../dto/create-team-invitation.dto'
 import {
   toTeamInvitationLinkResponse,
   type TeamInvitationLinkResponse,
+  type TeamInvitationRole,
 } from '../responses/team-invitation.response'
 import {
   TEAM_INVITATIONS_REPOSITORY,
@@ -19,11 +21,15 @@ import {
 
 @Injectable()
 export class CreateTeamInvitationUseCase {
+  private readonly logger = new Logger(CreateTeamInvitationUseCase.name)
+
   constructor(
     @Inject(TEAM_INVITATIONS_REPOSITORY)
     private readonly teamInvitationsRepository: TeamInvitationsRepository,
     @Inject(ConfigService)
     private readonly configService: ConfigService,
+    @Inject(EMAIL_SENDER)
+    private readonly emailSender: EmailSender,
   ) {}
 
   async execute(
@@ -45,10 +51,28 @@ export class CreateTeamInvitationUseCase {
       throw new ConflictException('User is already a member of this tenant')
     }
 
-    return toTeamInvitationLinkResponse(
-      result.invitation,
-      buildTeamInvitationUrl(this.configService.getOrThrow<string>('app.publicUrl'), result.invitation.token),
+    const invitationUrl = buildTeamInvitationUrl(
+      this.configService.getOrThrow<string>('app.publicUrl'),
+      result.invitation.token,
     )
+
+    // Best-effort: an email failure must never fail the invitation request.
+    try {
+      await this.emailSender.sendTeamInvitation({
+        to: result.invitation.email,
+        role: result.invitation.role as TeamInvitationRole,
+        invitationUrl,
+        expiresAt: result.invitation.expiresAt,
+      })
+    } catch (error) {
+      this.logger.error(
+        `Failed to send team invitation email to ${result.invitation.email}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
+
+    return toTeamInvitationLinkResponse(result.invitation, invitationUrl)
   }
 }
 

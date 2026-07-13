@@ -1,10 +1,12 @@
-import { GoneException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { GoneException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import type { CurrentUser } from '../../auth/types/current-user'
+import { EMAIL_SENDER, type EmailSender } from '../../email/email-sender.port'
 import type { TenantContext } from '../../tenant-context/tenant-context.types'
 import {
   toTeamInvitationLinkResponse,
   type TeamInvitationLinkResponse,
+  type TeamInvitationRole,
 } from '../responses/team-invitation.response'
 import {
   TEAM_INVITATIONS_REPOSITORY,
@@ -14,11 +16,15 @@ import { buildTeamInvitationUrl, ensureTeamManagePermission } from './team-invit
 
 @Injectable()
 export class ResendTeamInvitationUseCase {
+  private readonly logger = new Logger(ResendTeamInvitationUseCase.name)
+
   constructor(
     @Inject(TEAM_INVITATIONS_REPOSITORY)
     private readonly teamInvitationsRepository: TeamInvitationsRepository,
     @Inject(ConfigService)
     private readonly configService: ConfigService,
+    @Inject(EMAIL_SENDER)
+    private readonly emailSender: EmailSender,
   ) {}
 
   async execute(
@@ -42,9 +48,27 @@ export class ResendTeamInvitationUseCase {
       throw new GoneException('Team invitation is no longer available')
     }
 
-    return toTeamInvitationLinkResponse(
-      result.invitation,
-      buildTeamInvitationUrl(this.configService.getOrThrow<string>('app.publicUrl'), result.invitation.token),
+    const invitationUrl = buildTeamInvitationUrl(
+      this.configService.getOrThrow<string>('app.publicUrl'),
+      result.invitation.token,
     )
+
+    // Best-effort: an email failure must never fail the resend request.
+    try {
+      await this.emailSender.sendTeamInvitation({
+        to: result.invitation.email,
+        role: result.invitation.role as TeamInvitationRole,
+        invitationUrl,
+        expiresAt: result.invitation.expiresAt,
+      })
+    } catch (error) {
+      this.logger.error(
+        `Failed to resend team invitation email to ${result.invitation.email}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
+
+    return toTeamInvitationLinkResponse(result.invitation, invitationUrl)
   }
 }
