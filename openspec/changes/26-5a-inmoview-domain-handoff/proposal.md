@@ -1,6 +1,6 @@
 # Proposal — Stage 26.5a InmoView Domain, Branding, and Demo Handoff
 
-**Status:** proposed, no product decision required (confirmed P0 in audit).
+**Status:** done — demo live on `demo.inmoview.app`/`api-demo.inmoview.app`, final env/route audit passed, handoff doc at `docs/INMOVIEW_DEMO_HANDOFF.md` (smoke test OK: health 200, sign-in 200, login 201 on all 6 demo accounts).
 **Origin:** `docs/plans/2026-06-08-stage-26-0-mvp-evidence-audit.md`, FB-11.
 **Plan reference:** `docs/plans/2026-06-14-mvp-execution-plan-revision.md`, Phase E, slice E3.
 
