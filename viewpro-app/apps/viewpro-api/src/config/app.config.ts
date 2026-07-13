@@ -14,6 +14,21 @@ export const appConfig = registerAs('app', () => {
     )
   }
 
+  // Required — control-lane secrets must be explicit at startup.
+  const platformControlSecret = process.env.PLATFORM_CONTROL_SECRET
+  if (!platformControlSecret) {
+    throw new Error(
+      'PLATFORM_CONTROL_SECRET is required and has no default. Set it in the environment.',
+    )
+  }
+
+  const inmoviewApiInternalUrl = process.env.INMOVIEW_API_INTERNAL_URL
+  if (!inmoviewApiInternalUrl) {
+    throw new Error(
+      'INMOVIEW_API_INTERNAL_URL is required and has no default. Set it in the environment.',
+    )
+  }
+
   return {
     nodeEnv,
     port: Number(process.env.PORT ?? 3002),
@@ -31,7 +46,13 @@ export const appConfig = registerAs('app', () => {
     },
     cookies: {
       domain: process.env.COOKIE_DOMAIN,
-      secure: process.env.COOKIE_SECURE === 'true',
+      // Force secure=true in production regardless of COOKIE_SECURE env var.
+      // In development/test, respect the COOKIE_SECURE env var (defaults false via env schema).
+      secure: nodeEnv === 'production' || process.env.COOKIE_SECURE === 'true',
+    },
+    platformControl: {
+      secret: platformControlSecret,
+      inmoviewApiInternalUrl,
     },
   }
 })

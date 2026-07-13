@@ -30,6 +30,10 @@ export async function verifyServiceToken(
     audience: REQUIRED_AUD,
     issuer: REQUIRED_ISS,
     clockTolerance: 30,
+    // Pin to HS256 only. Rejecting other algorithms (HS512, RS256, none, etc.)
+    // prevents algorithm-confusion attacks where a token signed with a different
+    // algorithm is presented with the same secret.
+    algorithms: ['HS256'],
   })
 
   // Extra explicit check for aud in case the jwt library returns it as an array

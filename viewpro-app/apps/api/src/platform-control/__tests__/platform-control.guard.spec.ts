@@ -136,4 +136,19 @@ describe('PlatformControlGuard', () => {
     })
     expect(request.user).toBeUndefined()
   })
+
+  // FIX 2: algorithm pinning — token signed with HS512 (same secret) must be rejected
+  it('throws 401 for a token signed with HS512 (algorithm not in allow-list)', async () => {
+    // Sign with the correct secret but using HS512 instead of HS256
+    const hs512Signer = new JwtService({ secret: PLATFORM_CONTROL_SECRET })
+    const hs512Token = await hs512Signer.signAsync(
+      { iss: 'viewpro-api', aud: 'inmoview-control', sub: 'op-1', jti: 'token-id-hs512' },
+      { expiresIn: '120s', algorithm: 'HS512' },
+    )
+
+    const guard = new Guard()
+    const { ctx } = makeContext(`Bearer ${hs512Token}`)
+
+    await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException)
+  })
 })
