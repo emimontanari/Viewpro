@@ -1,0 +1,235 @@
+import type { INestApplication } from '@nestjs/common'
+import { AnalyticsActorType, AnalyticsEventName, TenantStatus } from '@prisma/client'
+import { JwtService } from '@nestjs/jwt'
+import request from 'supertest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+
+// ---------------------------------------------------------------------------
+// Integration spec: PlatformControlController (inbound)
+// Tests run against the full NestJS app + test DB.
+//
+// Scenarios (spec: platform-control-lane-inbound):
+//   - Valid status command → 200, tenant SUSPENDED
+//   - Tenant not found → 404
+//   - Invalid targetStatus → 400
+//   - Valid limits command → 200, limits updated
+//   - Duplicate idempotencyKey → 200 replay, tenant NOT mutated again
+//   - Different key → applies normally
+//   - AnalyticsEvent has actorOperatorId=op-1, actorType=PLATFORM_OPERATOR, actorUserId=null
+//   - actorUserId null for control-lane events
+// ---------------------------------------------------------------------------
+
+const PLATFORM_CONTROL_SECRET = 'test-platform-control-secret-min16'
+const OPERATOR_ID = 'op-1'
+
+process.env.PLATFORM_CONTROL_SECRET = PLATFORM_CONTROL_SECRET
+
+const serviceSigner = new JwtService({ secret: PLATFORM_CONTROL_SECRET })
+
+async function mintServiceToken(operatorId = OPERATOR_ID): Promise<string> {
+  return serviceSigner.signAsync(
+    { iss: 'viewpro-api', aud: 'inmoview-control', sub: operatorId, jti: `jti-${Date.now()}` },
+    { expiresIn: '120s' },
+  )
+}
+
+describe('PlatformControlController (integration)', () => {
+  let app: INestApplication
+  let prisma: import('@prisma/client').PrismaClient
+
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test'
+    process.env.PLATFORM_CONTROL_SECRET = PLATFORM_CONTROL_SECRET
+
+    const { createApiApp } = await import('../../bootstrap/create-app')
+    app = await createApiApp()
+    await app.init()
+
+    const { PrismaService } = await import('../../database/prisma.service')
+    prisma = app.get(PrismaService)
+  })
+
+  beforeEach(async () => {
+    // Full cleanup matching admin e2e teardown order (FK-safe)
+    await prisma.analyticsEvent.deleteMany()
+    await prisma.platformCommandLog.deleteMany()
+    await prisma.documentVersion.deleteMany()
+    await prisma.document.deleteMany()
+    await prisma.documentRequest.deleteMany()
+    await prisma.propertyAssetOwner.deleteMany()
+    await prisma.movement.deleteMany()
+    await prisma.propertyAgent.deleteMany()
+    await prisma.propertyEngagement.deleteMany()
+    await prisma.propertyAsset.deleteMany()
+    await prisma.refreshToken.deleteMany()
+    await prisma.tenantMembership.deleteMany()
+    await prisma.tenant.deleteMany()
+    await prisma.user.deleteMany()
+  })
+
+  afterAll(async () => {
+    await app.close()
+  })
+
+  async function seedTenant(slug: string) {
+    return prisma.tenant.create({ data: { name: `Test ${slug}`, slug } })
+  }
+
+  // -------------------------------------------------------------------------
+  // Status endpoint
+  // -------------------------------------------------------------------------
+
+  it('valid status command → 200, tenant SUSPENDED', async () => {
+    const tenant = await seedTenant(`tenant-status-${Date.now()}`)
+    const token = await mintServiceToken()
+
+    const response = await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: 'key-status-1' })
+      .expect(200)
+
+    expect(response.body.status).toBe('SUSPENDED')
+
+    const updated = await prisma.tenant.findUnique({ where: { id: tenant.id } })
+    expect(updated?.status).toBe(TenantStatus.SUSPENDED)
+  })
+
+  it('tenant not found → 404', async () => {
+    const token = await mintServiceToken()
+
+    await request(app.getHttpServer())
+      .post('/api/internal/platform/tenants/non-existent-id/status')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: 'key-404-1' })
+      .expect(404)
+  })
+
+  it('invalid targetStatus → 400', async () => {
+    const tenant = await seedTenant(`tenant-badstatus-${Date.now()}`)
+    const token = await mintServiceToken()
+
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'INVALID_STATUS', idempotencyKey: 'key-bad-1' })
+      .expect(400)
+  })
+
+  // -------------------------------------------------------------------------
+  // Limits endpoint
+  // -------------------------------------------------------------------------
+
+  it('valid limits command → 200, limits updated', async () => {
+    const tenant = await seedTenant(`tenant-limits-${Date.now()}`)
+    const token = await mintServiceToken()
+
+    const response = await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/limits`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        limits: { maxUsers: 25, maxActivePropertyEngagements: 10, maxDocumentsStorageMb: 500 },
+        idempotencyKey: 'key-limits-1',
+      })
+      .expect(200)
+
+    expect(response.body.limits).toMatchObject({ maxUsers: 25, maxActivePropertyEngagements: 10, maxDocumentsStorageMb: 500 })
+  })
+
+  // -------------------------------------------------------------------------
+  // Idempotency
+  // -------------------------------------------------------------------------
+
+  it('duplicate idempotencyKey → 200 replay, tenant NOT mutated again', async () => {
+    const tenant = await seedTenant(`tenant-idem-${Date.now()}`)
+    const token = await mintServiceToken()
+    const key = `idem-key-${Date.now()}`
+
+    // First call: mutates tenant
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: key })
+      .expect(200)
+
+    // Restore tenant status in DB to verify second call doesn't re-apply
+    await prisma.tenant.update({ where: { id: tenant.id }, data: { status: TenantStatus.ACTIVE } })
+
+    const eventsAfterFirst = await prisma.analyticsEvent.count({ where: { tenantId: tenant.id } })
+
+    // Second call with same key: should return stored result, NOT mutate
+    const replayResponse = await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: key })
+      .expect(200)
+
+    // Tenant should still be ACTIVE (restored above, not re-mutated)
+    const tenantAfterReplay = await prisma.tenant.findUnique({ where: { id: tenant.id } })
+    expect(tenantAfterReplay?.status).toBe(TenantStatus.ACTIVE)
+
+    // No new analytics event
+    const eventsAfterReplay = await prisma.analyticsEvent.count({ where: { tenantId: tenant.id } })
+    expect(eventsAfterReplay).toBe(eventsAfterFirst)
+
+    // Response is the stored result
+    expect(replayResponse.body).toMatchObject({ tenantId: tenant.id })
+  })
+
+  it('different idempotencyKey applies normally (second mutation occurs)', async () => {
+    const tenant = await seedTenant(`tenant-diff-key-${Date.now()}`)
+    const token = await mintServiceToken()
+
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: `key-a-${Date.now()}` })
+      .expect(200)
+
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'ACTIVE', idempotencyKey: `key-b-${Date.now()}` })
+      .expect(200)
+
+    const tenant2 = await prisma.tenant.findUnique({ where: { id: tenant.id } })
+    expect(tenant2?.status).toBe(TenantStatus.ACTIVE)
+  })
+
+  // -------------------------------------------------------------------------
+  // Operator audit attribution
+  // -------------------------------------------------------------------------
+
+  it('AnalyticsEvent has actorOperatorId=op-1, actorType=PLATFORM_OPERATOR, actorUserId=null', async () => {
+    const tenant = await seedTenant(`tenant-audit-${Date.now()}`)
+    const token = await mintServiceToken('op-1')
+
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: `key-audit-${Date.now()}` })
+      .expect(200)
+
+    const events = await prisma.analyticsEvent.findMany({ where: { tenantId: tenant.id } })
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({
+      actorOperatorId: 'op-1',
+      actorType: AnalyticsActorType.PLATFORM_OPERATOR,
+      actorUserId: null,
+    })
+  })
+
+  it('actorUserId remains null for control-lane events', async () => {
+    const tenant = await seedTenant(`tenant-null-user-${Date.now()}`)
+    const token = await mintServiceToken()
+
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: `key-null-user-${Date.now()}` })
+      .expect(200)
+
+    const events = await prisma.analyticsEvent.findMany({ where: { tenantId: tenant.id } })
+    expect(events[0]?.actorUserId).toBeNull()
+  })
+})

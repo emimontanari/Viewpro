@@ -211,7 +211,7 @@ All RED until migration is applied and client generated.
 
 ## WU-2 — apps/api PlatformControlModule
 
-### [ ] T-08 — RED: unit tests for `PlatformControlGuard`
+### [x] T-08 — RED: unit tests for `PlatformControlGuard`
 **Type**: test (RED)
 **Spec**: platform-control-lane-inbound — PlatformControlGuard, Trust Path Isolation (all scenarios)
 **WU**: WU-2, commit 1
@@ -231,7 +231,7 @@ All RED until guard exists.
 
 ---
 
-### [ ] T-09 — GREEN: implement `service-token.verifier.ts` + `PlatformControlGuard`
+### [x] T-09 — GREEN: implement `service-token.verifier.ts` + `PlatformControlGuard`
 **Type**: impl
 **Spec**: platform-control-lane-inbound — PlatformControlGuard requirement
 **WU**: WU-2, commit 2
@@ -247,7 +247,7 @@ All RED until guard exists.
 
 ---
 
-### [ ] T-10 — RED: unit tests for `IdempotencyRepository`
+### [x] T-10 — RED: unit tests for `IdempotencyRepository`
 **Type**: test (RED)
 **Spec**: platform-control-lane-inbound — Idempotency Store (all scenarios)
 **WU**: WU-2, commit 3
@@ -264,7 +264,7 @@ All RED until `IdempotencyRepository` exists.
 
 ---
 
-### [ ] T-11 — GREEN: implement `IdempotencyRepository` + Prisma impl
+### [x] T-11 — GREEN: implement `IdempotencyRepository` + Prisma impl
 **Type**: impl
 **Spec**: platform-control-lane-inbound — Idempotency Store
 **WU**: WU-2, commit 4
@@ -279,7 +279,7 @@ All RED until `IdempotencyRepository` exists.
 
 ---
 
-### [ ] T-12 — RED: integration tests for `PlatformControlController` (inbound)
+### [x] T-12 — RED: integration tests for `PlatformControlController` (inbound)
 **Type**: test (RED)
 **Spec**: platform-control-lane-inbound — Internal Tenant Status Write, Internal Tenant Limits Write, Operator Audit Attribution, Idempotency Store (all integration scenarios)
 **WU**: WU-2, commit 5
@@ -301,7 +301,7 @@ All RED until controller + module exist.
 
 ---
 
-### [ ] T-13 — GREEN: implement `PlatformControlController` + `PlatformControlModule`
+### [x] T-13 — GREEN: implement `PlatformControlController` + `PlatformControlModule`
 **Type**: impl
 **Spec**: platform-control-lane-inbound — Internal Tenant Status Write, Internal Tenant Limits Write
 **WU**: WU-2, commit 6
@@ -319,7 +319,7 @@ All RED until controller + module exist.
 
 ---
 
-### [ ] T-14 — RED: trust-isolation integration tests
+### [x] T-14 — RED: trust-isolation integration tests
 **Type**: test (RED)
 **Spec**: platform-control-lane-inbound — Trust Path Isolation (both isolation scenarios)
 **WU**: WU-2, commit 7
@@ -335,7 +335,7 @@ Both RED until asserted against live module wiring.
 
 ---
 
-### [ ] T-15 — GREEN: confirm trust-isolation tests pass
+### [x] T-15 — GREEN: confirm trust-isolation tests pass
 **Type**: impl
 **Spec**: platform-control-lane-inbound — Trust Path Isolation
 **WU**: WU-2, commit 8
@@ -506,11 +506,11 @@ All RED until controller + module exist.
 ## Success Checklist (maps to spec acceptance)
 
 - [ ] Operator calls `viewpro-api` (Phase 4 auth) → command reaches `POST /internal/platform/tenants/:id/{status,limits}` via valid service token (T-17, T-19)
-- [ ] Tenant status/limits mutate on InmoView DB with existing `FOR UPDATE` transactional semantics (T-12, T-13)
-- [ ] `AnalyticsEvent` records operator actor (`actorOperatorId` + `PLATFORM_OPERATOR`); `actorUserId` null (T-12, T-13)
-- [ ] Duplicate `idempotencyKey` → 200 replay, no double-apply (T-12, T-13)
-- [ ] Invalid/missing/expired service token → 401; `request.user` never set by `PlatformControlGuard` (T-08, T-09, T-14)
-- [ ] User cookie token rejected by `PlatformControlGuard`; service token rejected by `AuthGuard` (T-14, T-15)
+- [x] Tenant status/limits mutate on InmoView DB with existing `FOR UPDATE` transactional semantics (T-12, T-13)
+- [x] `AnalyticsEvent` records operator actor (`actorOperatorId` + `PLATFORM_OPERATOR`); `actorUserId` null (T-12, T-13)
+- [x] Duplicate `idempotencyKey` → 200 replay, no double-apply (T-12, T-13)
+- [x] Invalid/missing/expired service token → 401; `request.user` never set by `PlatformControlGuard` (T-08, T-09, T-14)
+- [x] User cookie token rejected by `PlatformControlGuard`; service token rejected by `AuthGuard` (T-14, T-15)
 - [x] Existing `/admin` status + limits write routes remain functional (T-04 regression test)
 - [x] `actorUserId` preserved on user-actor events (T-02, T-04)
 - [x] Type-equality assertion `PlatformTenantStatus ↔ TenantStatus` is compile-time enforced (T-01)

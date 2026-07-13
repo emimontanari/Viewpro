@@ -34,5 +34,17 @@ import { PrismaAdminTenantStatusRepository } from "./prisma-admin-tenant-status.
 			useClass: PrismaAdminTenantLimitsRepository,
 		},
 	],
+	exports: [
+		AdminTenantStatusService,
+		AdminTenantLimitsService,
+		{
+			provide: ADMIN_TENANT_STATUS_REPOSITORY,
+			useClass: PrismaAdminTenantStatusRepository,
+		},
+		{
+			provide: ADMIN_TENANT_LIMITS_REPOSITORY,
+			useClass: PrismaAdminTenantLimitsRepository,
+		},
+	],
 })
 export class AdminModule {}
