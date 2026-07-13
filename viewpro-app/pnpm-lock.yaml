@@ -47,6 +47,9 @@ importers:
       '@sentry/node':
         specifier: ^10.53.1
         version: 10.53.1
+      '@viewpro/platform-contract':
+        specifier: workspace:*
+        version: link:../../packages/platform-contract
       argon2:
         specifier: 0.44.0
         version: 0.44.0
@@ -403,6 +406,9 @@ importers:
       '@prisma/client':
         specifier: 6.19.2
         version: 6.19.2(prisma@6.19.2(typescript@6.0.3))(typescript@6.0.3)
+      '@viewpro/platform-contract':
+        specifier: workspace:*
+        version: link:../../packages/platform-contract
       argon2:
         specifier: 0.44.0
         version: 0.44.0

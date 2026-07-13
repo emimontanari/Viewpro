@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { TenantStatus } from '@prisma/client'
+import type { CommandActor } from './admin-actor'
 import {
   ADMIN_TENANT_STATUS_REPOSITORY,
   type AdminTenantStatusRepository,
@@ -21,7 +22,7 @@ export class AdminTenantStatusService {
   async updateTenantStatus(input: {
     tenantId: string
     targetStatus: TenantStatus
-    actorUserId: string
+    actor: CommandActor
   }): Promise<AdminTenantStatusUpdateResponse> {
     if (!ALLOWED_TARGET_STATUSES.has(input.targetStatus)) {
       throw new BadRequestException('Unsupported tenant status')
@@ -30,7 +31,7 @@ export class AdminTenantStatusService {
     const result = await this.adminTenantStatusRepository.updateTenantStatus({
       tenantId: input.tenantId,
       targetStatus: input.targetStatus,
-      actorUserId: input.actorUserId,
+      actor: input.actor,
       now: new Date(),
     })
 

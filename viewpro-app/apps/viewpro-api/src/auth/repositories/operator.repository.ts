@@ -1,4 +1,4 @@
-import type { Operator } from '@prisma/client'
+import type { Operator } from '@prisma-platform/client'
 
 export const OPERATOR_REPOSITORY = Symbol('OPERATOR_REPOSITORY')
 

@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import type { CommandActor } from './admin-actor'
 import {
   ADMIN_TENANT_LIMITS_REPOSITORY,
   type AdminTenantLimits,
@@ -19,14 +20,14 @@ export class AdminTenantLimitsService {
   async updateTenantLimits(input: {
     tenantId: string
     limits: Partial<AdminTenantLimits>
-    actorUserId: string
+    actor: CommandActor
   }): Promise<AdminTenantLimitsUpdateResponse> {
     const limits = parseTenantLimits(input.limits)
 
     const result = await this.adminTenantLimitsRepository.updateTenantLimits({
       tenantId: input.tenantId,
       limits,
-      actorUserId: input.actorUserId,
+      actor: input.actor,
       now: new Date(),
     })
 

@@ -156,6 +156,7 @@ enum AnalyticsActorType {
   INTERNAL_USER
   OWNER
   SYSTEM
+  PLATFORM_OPERATOR
 }
 
 enum AnalyticsEventName {
@@ -603,6 +604,7 @@ model AnalyticsEvent {
   id                   String             @id @default(uuid())
   tenantId             String?
   actorUserId          String?
+  actorOperatorId      String?
   actorType            AnalyticsActorType
   eventName            AnalyticsEventName
   propertyEngagementId String?
@@ -616,7 +618,19 @@ model AnalyticsEvent {
   @@index([tenantId, occurredAt])
   @@index([propertyEngagementId, occurredAt])
   @@index([actorUserId, occurredAt])
+  @@index([actorOperatorId, occurredAt])
   @@map("analytics_events")
+}
+
+model PlatformCommandLog {
+  id             String   @id @default(uuid())
+  idempotencyKey String   @unique
+  tenantId       String
+  commandType    String
+  result         Json
+  createdAt      DateTime @default(now())
+
+  @@map("platform_command_log")
 }
 
 model StatusChangeRequest {

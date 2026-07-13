@@ -51,11 +51,24 @@ export class PrismaAdminTenantLimitsRepository implements AdminTenantLimitsRepos
       })
       const updatedLimits = mapTenantLimits(updatedTenant)
 
+      // Stamp audit actor: operator or product user (discriminated union)
+      const actorData =
+        input.actor.type === 'operator'
+          ? {
+              actorType: AnalyticsActorType.PLATFORM_OPERATOR,
+              actorOperatorId: input.actor.operatorId,
+              actorUserId: null,
+            }
+          : {
+              actorType: AnalyticsActorType.INTERNAL_USER,
+              actorOperatorId: null,
+              actorUserId: input.actor.userId,
+            }
+
       await tx.analyticsEvent.create({
         data: {
           tenantId: tenant.id,
-          actorUserId: input.actorUserId,
-          actorType: AnalyticsActorType.INTERNAL_USER,
+          ...actorData,
           eventName: AnalyticsEventName.TENANT_LIMITS_UPDATED,
           metadata: {
             previousLimits,

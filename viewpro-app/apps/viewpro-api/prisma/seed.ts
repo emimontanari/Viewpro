@@ -4,7 +4,7 @@
  * NOTE (deferred follow-up): VIEWPRO_ADMIN → Operator migration is a separate follow-up task;
  * existing records in InmoView's `viewpro` DB are untouched.
  */
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../src/generated/prisma'
 import * as argon2 from 'argon2'
 
 const prisma = new PrismaClient()

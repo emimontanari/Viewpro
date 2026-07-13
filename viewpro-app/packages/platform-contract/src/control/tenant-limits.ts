@@ -1,4 +1,4 @@
-import type { IdempotencyKey } from "./identity";
+import type { IdempotencyKey } from "./identity.js";
 
 // Maps Tenant.maxUsers / maxActivePropertyEngagements / maxDocumentsStorageMb
 // (schema.prisma:219-221, all Int?). Ref: admin-tenant-limits.repository.ts:5-9

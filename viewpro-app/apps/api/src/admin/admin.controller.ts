@@ -57,7 +57,7 @@ export class AdminController {
     return this.adminTenantStatusService.updateTenantStatus({
       tenantId,
       targetStatus: body.status,
-      actorUserId: request.user!.id,
+      actor: { type: 'user', userId: request.user!.id },
     })
   }
 
@@ -70,7 +70,7 @@ export class AdminController {
     return this.adminTenantLimitsService.updateTenantLimits({
       tenantId,
       limits: body,
-      actorUserId: request.user!.id,
+      actor: { type: 'user', userId: request.user!.id },
     })
   }
 
