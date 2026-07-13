@@ -2,7 +2,8 @@ import type { INestApplication } from '@nestjs/common'
 import { AnalyticsActorType, AnalyticsEventName, TenantStatus } from '@prisma/client'
 import { JwtService } from '@nestjs/jwt'
 import request from 'supertest'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { AdminTenantStatusService } from '../../admin/admin-tenant-status.service.js'
 
 // ---------------------------------------------------------------------------
 // Integration spec: PlatformControlController (inbound)
@@ -38,6 +39,7 @@ async function mintServiceToken(operatorId = OPERATOR_ID): Promise<string> {
 describe('PlatformControlController (integration)', () => {
   let app: INestApplication
   let prisma: import('@prisma/client').PrismaClient
+  let adminTenantStatusService: AdminTenantStatusService
 
   beforeAll(async () => {
     process.env.NODE_ENV = 'test'
@@ -49,6 +51,11 @@ describe('PlatformControlController (integration)', () => {
 
     const { PrismaService } = await import('../../database/prisma.service.js')
     prisma = app.get(PrismaService)
+    adminTenantStatusService = app.get(AdminTenantStatusService)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   beforeEach(async () => {
@@ -338,5 +345,85 @@ describe('PlatformControlController (integration)', () => {
     expect(stored).not.toMatchObject({ reserved: true })
     expect(stored.tenantId).toBe(tenant.id)
     expect(stored.status).toBe('SUSPENDED')
+  })
+
+  // -------------------------------------------------------------------------
+  // Atomicity: POST-mutation failure rolls back the ENTIRE transaction
+  //
+  // The existing atomicity tests only prove PRE-write rollback (404/400 throw
+  // before the tenant is ever touched). This test proves the stronger property:
+  // when the tenant row HAS ALREADY been updated (and the AnalyticsEvent written)
+  // inside the transaction, a later throw before commit still rolls EVERYTHING
+  // back — tenant status, analytics event, and the platform_command_log row.
+  //
+  // Injection: spy on the reused AdminTenantStatusService.updateTenantStatus so
+  // it calls THROUGH to the real implementation (performing tenant.update +
+  // analyticsEvent.create on the passed tx) and only THEN throws. Because the
+  // real mutation runs against `tx` before the throw, this genuinely exercises
+  // the post-mutation rollback path (not the pre-write path).
+  // -------------------------------------------------------------------------
+  it('rolls back the tenant mutation when the post-mutation step fails (full atomicity)', async () => {
+    const tenant = await seedTenant(`tenant-postmut-${Date.now()}`)
+    // Ensure a known baseline status.
+    await prisma.tenant.update({ where: { id: tenant.id }, data: { status: TenantStatus.ACTIVE } })
+
+    const token = await mintServiceToken()
+    const key = `atomic-postmut-${Date.now()}`
+
+    // Spy: run the REAL mutation (mutates the tenant + writes AnalyticsEvent on the
+    // shared tx), record that it reached the post-mutation point, then throw.
+    let mutationRan = false
+    const realImpl = adminTenantStatusService.updateTenantStatus.bind(adminTenantStatusService)
+    const spy = vi
+      .spyOn(adminTenantStatusService, 'updateTenantStatus')
+      .mockImplementation(async (input, tx) => {
+        // Perform the real tenant.update + analyticsEvent.create inside the outer tx.
+        await realImpl(input, tx)
+        mutationRan = true
+        // Simulate a failure AFTER the mutation but BEFORE the transaction commits.
+        throw new Error('post-mutation boom')
+      })
+
+    // Endpoint must error (injected error surfaces as 500).
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: key })
+      .expect(500)
+
+    // The injection genuinely fired AFTER the real mutation ran.
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(mutationRan).toBe(true)
+
+    // ROLLBACK ASSERTION 1: tenant status is UNCHANGED (still ACTIVE).
+    const tenantAfter = await prisma.tenant.findUnique({ where: { id: tenant.id } })
+    expect(tenantAfter?.status).toBe(TenantStatus.ACTIVE)
+
+    // ROLLBACK ASSERTION 2: NO AnalyticsEvent row was committed for this tenant.
+    const events = await prisma.analyticsEvent.count({ where: { tenantId: tenant.id } })
+    expect(events).toBe(0)
+
+    // ROLLBACK ASSERTION 3: NO platform_command_log row exists for the key.
+    const logRow = await prisma.platformCommandLog.findUnique({ where: { idempotencyKey: key } })
+    expect(logRow).toBeNull()
+
+    // The idempotency key was NOT burned: retrying the SAME key without the
+    // injected failure now applies cleanly.
+    spy.mockRestore()
+
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'SUSPENDED', idempotencyKey: key })
+      .expect(200)
+
+    const tenantRetried = await prisma.tenant.findUnique({ where: { id: tenant.id } })
+    expect(tenantRetried?.status).toBe(TenantStatus.SUSPENDED)
+
+    const eventsRetried = await prisma.analyticsEvent.count({ where: { tenantId: tenant.id } })
+    expect(eventsRetried).toBe(1)
+
+    const committedRow = await prisma.platformCommandLog.findUnique({ where: { idempotencyKey: key } })
+    expect(committedRow).not.toBeNull()
   })
 })

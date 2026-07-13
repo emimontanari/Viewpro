@@ -20,7 +20,7 @@ MUST be rejected.
 #### Scenario: Valid operator session passes authentication
 
 - GIVEN an operator is signed in and presents a valid `viewpro_platform_access_token` cookie
-- WHEN `POST /platform/tenants/:id/status` is called on `viewpro-api`
+- WHEN `PATCH /operators/tenants/:id/status` is called on `viewpro-api`
 - THEN the request is forwarded to the control-lane client
 
 #### Scenario: Missing session is rejected
@@ -39,7 +39,7 @@ MUST be rejected.
 
 ### Requirement: Operator Command — Tenant Status
 
-`viewpro-api` MUST expose `POST /platform/tenants/:id/status` for setting
+`viewpro-api` MUST expose `PATCH /operators/tenants/:id/status` for setting
 tenant status. The endpoint MUST forward `SetTenantStatusCommand` plus a
 generated `idempotencyKey` to InmoView's internal endpoint and relay the
 response.
@@ -48,8 +48,8 @@ response.
 
 - GIVEN an authenticated operator with a valid session
 - AND InmoView's internal endpoint is reachable
-- WHEN `POST /platform/tenants/:id/status` is called with `{ targetStatus: "SUSPENDED" }`
-- THEN `viewpro-api` mints a service token and POSTs the command to `INMOVIEW_API_INTERNAL_URL/internal/platform/tenants/:id/status`
+- WHEN `PATCH /operators/tenants/:id/status` is called with `{ targetStatus: "SUSPENDED" }`
+- THEN `viewpro-api` mints a service token and POSTs the command to `INMOVIEW_API_INTERNAL_URL/api/internal/platform/tenants/:id/status`
 - AND the operator receives a response reflecting the mutation outcome
 
 #### Scenario: Downstream failure is surfaced
@@ -62,13 +62,13 @@ response.
 
 ### Requirement: Operator Command — Tenant Limits
 
-`viewpro-api` MUST expose `POST /platform/tenants/:id/limits` for setting
+`viewpro-api` MUST expose `PATCH /operators/tenants/:id/limits` for setting
 tenant limits, with the same forwarding pattern as the status command.
 
 #### Scenario: Happy path — operator sets tenant limits
 
 - GIVEN an authenticated operator with a valid session
-- WHEN `POST /platform/tenants/:id/limits` is called with a valid limits payload
+- WHEN `PATCH /operators/tenants/:id/limits` is called with a valid limits payload
 - THEN `viewpro-api` forwards the command to InmoView's internal limits endpoint via a service token
 - AND the operator receives a response reflecting the outcome
 

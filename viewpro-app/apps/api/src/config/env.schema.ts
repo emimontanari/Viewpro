@@ -144,9 +144,11 @@ class EnvironmentVariables {
 	@Type(() => Number)
 	SENTRY_TRACES_SAMPLE_RATE = 0;
 
+	// Required — no default. Shared with viewpro-api; a weak/missing secret would
+	// let a forged service token drive tenant control commands. Fail fast at boot.
 	@IsString()
 	@MinLength(16)
-	PLATFORM_CONTROL_SECRET = 'change-me-platform-control-secret';
+	PLATFORM_CONTROL_SECRET!: string;
 }
 
 export function validateEnv(config: Record<string, unknown>) {
