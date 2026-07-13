@@ -44,7 +44,7 @@ export function PendingTeamInvitationsList({
         {invitations.length === 0 ? (
           <div className='text-muted-foreground rounded-lg border p-6 text-sm'>
             <h2 className='text-foreground mb-2 font-medium'>No hay invitaciones pendientes</h2>
-            <p>Cuando generes invitaciones para managers o agentes, van a aparecer acá.</p>
+            <p>Cuando generes invitaciones para encargados o vendedores, van a aparecer acá.</p>
           </div>
         ) : (
           <div className='overflow-hidden rounded-lg border'>

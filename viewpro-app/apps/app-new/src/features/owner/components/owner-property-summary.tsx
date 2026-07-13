@@ -109,7 +109,7 @@ function OwnerAgencyTeam({ engagement }: { engagement: OwnerEngagement }) {
           </ul>
         ) : (
           <p className='text-sm text-muted-foreground'>
-            La inmobiliaria todavía no informó agentes asignados.
+            La inmobiliaria todavía no informó vendedores asignados.
           </p>
         )}
       </CardContent>

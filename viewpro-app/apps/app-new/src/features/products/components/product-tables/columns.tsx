@@ -103,7 +103,7 @@ export function getAgentSummary(product: Product) {
   const [firstAgent] = product.agents;
 
   if (!firstAgent) {
-    return { detail: 'Sin agente asignado', label: 'Sin asignar' };
+    return { detail: 'Sin vendedor asignado', label: 'Sin asignar' };
   }
 
   if (product.agents.length === 1) {

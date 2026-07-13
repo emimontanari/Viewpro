@@ -78,7 +78,7 @@ describe('PropertyDetailHeader', () => {
     });
 
     expect(screen.queryByRole('button', { name: /restaurar propiedad/i })).not.toBeInTheDocument();
-    expect(screen.getByText('La propiedad está archivada. Pedile a un manager que la restaure.')).toBeInTheDocument();
+    expect(screen.getByText('La propiedad está archivada. Pedile a un encargado que la restaure.')).toBeInTheDocument();
   });
 });
 
