@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
+import { EmailModule } from "../email/email.module";
 import { MembershipsModule } from "../memberships/memberships.module";
 import { PermissionsModule } from "../permissions/permissions.module";
 import { TenantContextModule } from "../tenant-context/tenant-context.module";
@@ -50,6 +51,7 @@ const propertyEngagementUseCases = [
 @Module({
 	imports: [
 		AuthModule,
+		EmailModule,
 		MembershipsModule,
 		PermissionsModule,
 		TenantContextModule,
