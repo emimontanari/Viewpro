@@ -239,7 +239,7 @@ Create the bare directory tree and root files so the package exists in the works
 
 ---
 
-#### T-11 — RED: unit tests for `LoginUseCase`
+#### [x] T-11 — RED: unit tests for `LoginUseCase`
 **Type**: test (RED)  
 **Spec requirement**: Operator Sign-In — wrong password / unknown operator / happy path  
 **Work unit**: WU-2, commit 1  
@@ -258,7 +258,7 @@ All tests RED until use-case and interfaces exist.
 
 ---
 
-#### T-12 — GREEN: implement `LoginUseCase`, `OperatorRepository`, and password hasher
+#### [x] T-12 — GREEN: implement `LoginUseCase`, `OperatorRepository`, and password hasher
 **Type**: impl  
 **Spec requirement**: Operator Sign-In  
 **Work unit**: WU-2, commit 2  
@@ -277,7 +277,7 @@ All tests RED until use-case and interfaces exist.
 
 ---
 
-#### T-13 — RED: unit tests for `TokenService` (cookie name + security attrs)
+#### [x] T-13 — RED: unit tests for `TokenService` (cookie name + security attrs)
 **Type**: test (RED)  
 **Spec requirement**: Cookie Name Isolation (Guardrail 2) + Cookie Security Attributes  
 **Work unit**: WU-2, commit 3  
@@ -298,7 +298,7 @@ All RED until `TokenService` and `auth.constants.ts` exist.
 
 ---
 
-#### T-14 — GREEN: implement `TokenService` and `auth.constants.ts`
+#### [x] T-14 — GREEN: implement `TokenService` and `auth.constants.ts`
 **Type**: impl  
 **Spec requirement**: Cookie Name Isolation + Cookie Security Attributes + Database Isolation (secret isolation)  
 **Work unit**: WU-2, commit 4  
@@ -313,7 +313,7 @@ All RED until `TokenService` and `auth.constants.ts` exist.
 
 ---
 
-#### T-15 — RED: integration tests for auth controller (login flow)
+#### [x] T-15 — RED: integration tests for auth controller (login flow)
 **Type**: test (RED)  
 **Spec requirement**: Operator Sign-In (all scenarios) + Cookie Name Isolation + Cookie Security Attributes  
 **Work unit**: WU-2, commit 5  
@@ -335,7 +335,7 @@ All RED until controller + module wiring exist.
 
 ---
 
-#### T-16 — GREEN: implement `AuthController`, `AuthModule`, and env config
+#### [x] T-16 — GREEN: implement `AuthController`, `AuthModule`, and env config
 **Type**: impl  
 **Spec requirement**: Operator Sign-In + Cookie Security Attributes  
 **Work unit**: WU-2, commit 6  
@@ -356,7 +356,7 @@ All RED until controller + module wiring exist.
 
 ---
 
-#### T-17 — RED: isolation regression test (InmoView DB unset)
+#### [x] T-17 — RED: isolation regression test (InmoView DB unset)
 **Type**: test (RED)  
 **Spec requirement**: Database Isolation — "Scenario: Sign-in succeeds when InmoView DB is unreachable" + "Scenario: Sign-in uses its own JWT secret"  
 **Work unit**: WU-2, commit 7  
@@ -374,7 +374,7 @@ Test RED (will require the bootstrapped environment with isolation env setup).
 
 ---
 
-#### T-18 — GREEN: confirm isolation test passes with env isolation setup
+#### [x] T-18 — GREEN: confirm isolation test passes with env isolation setup
 **Type**: impl  
 **Spec requirement**: Database Isolation  
 **Work unit**: WU-2, commit 8  
@@ -391,7 +391,7 @@ Test RED (will require the bootstrapped environment with isolation env setup).
 
 ---
 
-#### T-19 — Add `viewpro_platform` to test-DB safety guard
+#### [x] T-19 — Add `viewpro_platform` to test-DB safety guard
 **Type**: impl  
 **Spec requirement**: Database Isolation (safety, Workspace Integration)  
 **Work unit**: WU-2, commit 9  
@@ -408,7 +408,7 @@ Test RED (will require the bootstrapped environment with isolation env setup).
 
 ---
 
-#### T-20 — Final workspace verification and invariant check
+#### [x] T-20 — Final workspace verification and invariant check
 **Type**: verify  
 **Spec requirement**: Workspace Integration + all invariants  
 **Work unit**: WU-2, commit 10  
@@ -461,13 +461,13 @@ Test RED (will require the bootstrapped environment with isolation env setup).
 - [x] App Bootstrap: `GET /api/health` → 200 `{ status:'ok', service:'viewpro-platform-api' }` (T-08, T-09)
 - [x] Operator Model: `Operator` table exists with exactly `id, email, passwordHash, status, createdAt, updatedAt` (T-02, T-03, T-04)
 - [x] Operator Seed: seed creates first operator idempotently; no row in InmoView `viewpro` DB (T-05, T-06, T-07)
-- [ ] Operator Sign-In: valid credentials → 200 + `viewpro_platform_access_token` cookie (T-15, T-16)
-- [ ] Operator Sign-In: wrong password or unknown operator → 401, no cookie (T-11, T-15)
-- [ ] Cookie Name Isolation: cookie name is exactly `viewpro_platform_access_token`; `viewpro_access_token` never emitted (T-13, T-14, T-15, T-20)
-- [ ] Cookie Security: `HttpOnly`, `SameSite=Lax`, `Secure` in prod-equivalent (T-13, T-14, T-15)
-- [ ] Database Isolation: sign-in succeeds with InmoView `DATABASE_URL` unset (T-17, T-18)
-- [ ] Database Isolation: `viewpro_platform_access_token` JWT cannot be verified with InmoView's secret (T-13, T-17)
+- [x] Operator Sign-In: valid credentials → 200 + `viewpro_platform_access_token` cookie (T-15, T-16)
+- [x] Operator Sign-In: wrong password or unknown operator → 401, no cookie (T-11, T-15)
+- [x] Cookie Name Isolation: cookie name is exactly `viewpro_platform_access_token`; `viewpro_access_token` never emitted (T-13, T-14, T-15, T-20)
+- [x] Cookie Security: `HttpOnly`, `SameSite=Lax`, `Secure` in prod-equivalent (T-13, T-14, T-15)
+- [x] Database Isolation: sign-in succeeds with InmoView `DATABASE_URL` unset (T-17, T-18)
+- [x] Database Isolation: `viewpro_platform_access_token` JWT cannot be verified with InmoView's secret (T-13, T-17)
 - [x] Workspace Integration: `pnpm turbo run typecheck/test --filter @viewpro/platform-api` runs (T-10, T-20)
-- [ ] Test-DB safety guard blocks production DB names in test context (T-19)
-- [ ] `apps/api` diff is empty — InmoView untouched (T-20)
-- [ ] VIEWPRO_ADMIN migration deferred follow-up noted (T-20)
+- [x] Test-DB safety guard blocks production DB names in test context (T-19)
+- [x] `apps/api` diff is empty — InmoView untouched (T-20)
+- [x] VIEWPRO_ADMIN migration deferred follow-up noted (T-20)
