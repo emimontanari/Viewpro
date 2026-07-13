@@ -351,7 +351,7 @@ Both RED until asserted against live module wiring.
 
 ## WU-3 — viewpro-api Outbound + Hardening + Proxy
 
-### [ ] T-16 — RED: unit tests for `PlatformControlClient` token minting
+### [x] T-16 — RED: unit tests for `PlatformControlClient` token minting
 **Type**: test (RED)
 **Spec**: platform-control-lane-outbound — Service Token Minting (both scenarios)
 **WU**: WU-3, commit 1
@@ -367,7 +367,7 @@ All RED until client exists.
 
 ---
 
-### [ ] T-17 — GREEN: implement `PlatformControlClient`
+### [x] T-17 — GREEN: implement `PlatformControlClient`
 **Type**: impl
 **Spec**: platform-control-lane-outbound — Service Token Minting, Operator Command requirements
 **WU**: WU-3, commit 2
@@ -386,7 +386,7 @@ All RED until client exists.
 
 ---
 
-### [ ] T-18 — RED: integration tests for viewpro-api operator endpoints
+### [x] T-18 — RED: integration tests for viewpro-api operator endpoints
 **Type**: test (RED)
 **Spec**: platform-control-lane-outbound — Operator Endpoint Authentication, Operator Command Status, Operator Command Limits, Downstream failure (all scenarios)
 **WU**: WU-3, commit 3
@@ -405,7 +405,7 @@ All RED until controller + module exist.
 
 ---
 
-### [ ] T-19 — GREEN: implement `PlatformControlController` (viewpro-api) + `PlatformControlModule`
+### [x] T-19 — GREEN: implement `PlatformControlController` (viewpro-api) + `PlatformControlModule`
 **Type**: impl
 **Spec**: platform-control-lane-outbound — Operator Command Status, Operator Command Limits
 **WU**: WU-3, commit 4
@@ -423,7 +423,7 @@ All RED until controller + module exist.
 
 ---
 
-### [ ] T-20 — Auth hardening: throttler tracker + trust proxy + prod cookie
+### [x] T-20 — Auth hardening: throttler tracker + trust proxy + prod cookie
 **Type**: impl
 **Spec**: platform-control-lane-outbound — Auth Hardening — Login Throttler (both scenarios)
 **WU**: WU-3, commit 5
@@ -438,7 +438,7 @@ All RED until controller + module exist.
 
 ---
 
-### [ ] T-21 — Add `/admin` to `isProtectedAppPath` in proxy
+### [x] T-21 — Add `/admin` to `isProtectedAppPath` in proxy
 **Type**: impl
 **Spec**: app-new-proxy-hardening — /admin Server-Side Protection (both scenarios)
 **WU**: WU-3, commit 6
@@ -453,7 +453,7 @@ All RED until controller + module exist.
 
 ---
 
-### [ ] T-22 — Final verification + invariant check
+### [x] T-22 — Final verification + invariant check
 **Type**: verify
 **Spec**: All invariants; proposal success criteria
 **WU**: WU-3, commit 7
@@ -505,7 +505,7 @@ All RED until controller + module exist.
 
 ## Success Checklist (maps to spec acceptance)
 
-- [ ] Operator calls `viewpro-api` (Phase 4 auth) → command reaches `POST /internal/platform/tenants/:id/{status,limits}` via valid service token (T-17, T-19)
+- [x] Operator calls `viewpro-api` (Phase 4 auth) → command reaches `POST /internal/platform/tenants/:id/{status,limits}` via valid service token (T-17, T-19)
 - [x] Tenant status/limits mutate on InmoView DB with existing `FOR UPDATE` transactional semantics (T-12, T-13)
 - [x] `AnalyticsEvent` records operator actor (`actorOperatorId` + `PLATFORM_OPERATOR`); `actorUserId` null (T-12, T-13)
 - [x] Duplicate `idempotencyKey` → 200 replay, no double-apply (T-12, T-13)
@@ -514,7 +514,7 @@ All RED until controller + module exist.
 - [x] Existing `/admin` status + limits write routes remain functional (T-04 regression test)
 - [x] `actorUserId` preserved on user-actor events (T-02, T-04)
 - [x] Type-equality assertion `PlatformTenantStatus ↔ TenantStatus` is compile-time enforced (T-01)
-- [ ] `/admin` guarded server-side by `proxy.ts` (T-21)
-- [ ] viewpro-api prod cookie `secure=true`; throttler per-IP-only behind `trust proxy 1` (T-20)
+- [x] `/admin` guarded server-side by `proxy.ts` (T-21)
+- [x] viewpro-api prod cookie `secure=true`; throttler per-IP-only behind `trust proxy 1` (T-20)
 - [x] R1 migration deployed before app code (operational sequencing; see T-05 note)
-- [ ] `platform_command_log` TTL cleanup noted as deferred ops task (T-22)
+- [x] `platform_command_log` TTL cleanup noted as deferred ops task (T-22)

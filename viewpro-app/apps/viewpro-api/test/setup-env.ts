@@ -15,6 +15,8 @@ process.env.DATABASE_URL ??=
 process.env.ACCESS_TOKEN_SECRET ??= 'test-access-token-secret'
 process.env.COOKIE_DOMAIN ??= 'localhost'
 process.env.COOKIE_SECURE ??= 'false'
+process.env.PLATFORM_CONTROL_SECRET ??= 'test-platform-control-secret-min16'
+process.env.INMOVIEW_API_INTERNAL_URL ??= 'http://localhost:3001'
 
 assertSafeTestDatabaseUrl()
 

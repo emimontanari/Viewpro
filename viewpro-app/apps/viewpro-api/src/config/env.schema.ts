@@ -47,6 +47,16 @@ class EnvironmentVariables {
   @IsString()
   CORS_ORIGIN?: string
 
+  // Required — URL of the InmoView internal API (apps/api). No default.
+  @IsString()
+  INMOVIEW_API_INTERNAL_URL!: string
+
+  // Required — HS256 shared secret for the platform control-lane service token.
+  // Must match PLATFORM_CONTROL_SECRET in apps/api. No default.
+  @IsString()
+  @MinLength(16)
+  PLATFORM_CONTROL_SECRET!: string
+
   @IsInt()
   @Min(1)
   @Type(() => Number)
