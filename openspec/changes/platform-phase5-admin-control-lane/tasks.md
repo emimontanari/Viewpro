@@ -78,7 +78,7 @@ T-14 may begin in parallel with T-16 once T-13 is done.
 
 ## WU-1 — R1 Migration + Service Widening
 
-### [ ] T-01 — Add `@viewpro/platform-contract` dep + compile-time type assertion
+### [x] T-01 — Add `@viewpro/platform-contract` dep + compile-time type assertion
 **Type**: impl
 **Spec**: admin-tenant-status-limits — Writable-Target Status Policy; proposal §Scope
 **WU**: WU-1, commit 1
@@ -95,7 +95,7 @@ T-14 may begin in parallel with T-16 once T-13 is done.
 
 ---
 
-### [ ] T-02 — RED: unit tests for widened `CommandActor` union in status + limits services
+### [x] T-02 — RED: unit tests for widened `CommandActor` union in status + limits services
 **Type**: test (RED)
 **Spec**: admin-tenant-status-limits — Dual-Actor Audit Attribution (both scenarios)
 **WU**: WU-1, commit 2
@@ -113,7 +113,7 @@ All RED until services/repos accept `CommandActor`.
 
 ---
 
-### [ ] T-03 — GREEN: widen `CommandActor` union in repos + services
+### [x] T-03 — GREEN: widen `CommandActor` union in repos + services
 **Type**: impl
 **Spec**: admin-tenant-status-limits — Dual-Actor Audit Attribution
 **WU**: WU-1, commit 3
@@ -131,7 +131,7 @@ All RED until services/repos accept `CommandActor`.
 
 ---
 
-### [ ] T-04 — Pass `{type:'user'}` actor from `AdminController`
+### [x] T-04 — Pass `{type:'user'}` actor from `AdminController`
 **Type**: impl
 **Spec**: admin-tenant-status-limits — Scenario: Admin-route command stamps user actor (unchanged)
 **WU**: WU-1, commit 4
@@ -145,7 +145,7 @@ All RED until services/repos accept `CommandActor`.
 
 ---
 
-### [ ] T-05 — R1 LIVE-DB MIGRATION — additive schema changes (HIGHEST RISK)
+### [x] T-05 — R1 LIVE-DB MIGRATION — additive schema changes (HIGHEST RISK)
 **Type**: impl
 **Spec**: platform-control-lane-inbound — Additive DB Schema; Operator Audit Attribution
 **WU**: WU-1, commit 5
@@ -178,7 +178,7 @@ All RED until services/repos accept `CommandActor`.
 
 ---
 
-### [ ] T-06 — RED: migration additive-invariant test
+### [x] T-06 — RED: migration additive-invariant test
 **Type**: test (RED)
 **Spec**: platform-control-lane-inbound — Scenario: Existing user-actor events are unaffected
 **WU**: WU-1, commit 6
@@ -195,7 +195,7 @@ All RED until migration is applied and client generated.
 
 ---
 
-### [ ] T-07 — GREEN: confirm migration invariant test passes
+### [x] T-07 — GREEN: confirm migration invariant test passes
 **Type**: impl
 **Spec**: platform-control-lane-inbound — Additive DB Schema
 **WU**: WU-1, commit 7
@@ -511,10 +511,10 @@ All RED until controller + module exist.
 - [ ] Duplicate `idempotencyKey` → 200 replay, no double-apply (T-12, T-13)
 - [ ] Invalid/missing/expired service token → 401; `request.user` never set by `PlatformControlGuard` (T-08, T-09, T-14)
 - [ ] User cookie token rejected by `PlatformControlGuard`; service token rejected by `AuthGuard` (T-14, T-15)
-- [ ] Existing `/admin` status + limits write routes remain functional (T-04 regression test)
-- [ ] `actorUserId` preserved on user-actor events (T-02, T-04)
-- [ ] Type-equality assertion `PlatformTenantStatus ↔ TenantStatus` is compile-time enforced (T-01)
+- [x] Existing `/admin` status + limits write routes remain functional (T-04 regression test)
+- [x] `actorUserId` preserved on user-actor events (T-02, T-04)
+- [x] Type-equality assertion `PlatformTenantStatus ↔ TenantStatus` is compile-time enforced (T-01)
 - [ ] `/admin` guarded server-side by `proxy.ts` (T-21)
 - [ ] viewpro-api prod cookie `secure=true`; throttler per-IP-only behind `trust proxy 1` (T-20)
-- [ ] R1 migration deployed before app code (operational sequencing; see T-05 note)
+- [x] R1 migration deployed before app code (operational sequencing; see T-05 note)
 - [ ] `platform_command_log` TTL cleanup noted as deferred ops task (T-22)

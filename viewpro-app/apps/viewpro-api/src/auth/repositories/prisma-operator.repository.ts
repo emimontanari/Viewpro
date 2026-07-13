@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import type { Operator } from '@prisma/client'
+import type { Operator } from '@prisma-platform/client'
 import { PrismaService } from '../../database/prisma.service'
 import type { IOperatorRepository } from './operator.repository'
 

@@ -1,5 +1,5 @@
 import { Injectable, type OnModuleDestroy } from '@nestjs/common'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma-platform/client'
 import { assertSafeTestDatabaseUrl } from './test-database-url.guard'
 
 @Injectable()

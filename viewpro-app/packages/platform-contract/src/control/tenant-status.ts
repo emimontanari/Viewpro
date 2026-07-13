@@ -1,4 +1,4 @@
-import type { IdempotencyKey } from "./identity";
+import type { IdempotencyKey } from "./identity.js";
 
 // Own union — keep in sync with prisma TenantStatus (schema.prisma:20-25).
 // Never import from "@prisma/client" (Design B no-Prisma seam).

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma-platform/client'
 
 describe('Operator schema shape', () => {
   it('contains exactly the required fields and no extras', () => {
