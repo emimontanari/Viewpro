@@ -13,12 +13,12 @@ and cookie, with zero dependency on InmoView's `viewpro` database or its `UsersR
 ### Requirement: App Bootstrap
 
 The `viewpro-api` app MUST start as a standalone NestJS process independent of `apps/api`.
-The app MUST expose a `GET /health` endpoint that returns HTTP 200.
+The app MUST expose a `GET /api/health` endpoint that returns HTTP 200.
 
 #### Scenario: Health check returns 200
 
 - GIVEN the `viewpro-api` process is running with a valid `DATABASE_URL` pointing at `viewpro_platform`
-- WHEN `GET /health` is requested (no authentication required)
+- WHEN `GET /api/health` is requested (no authentication required)
 - THEN the response status is 200
 
 ---
@@ -60,7 +60,7 @@ and sets an HTTP response cookie named **exactly** `viewpro_platform_access_toke
 #### Scenario: Valid credentials issue a JWT cookie
 
 - GIVEN a seeded operator exists in `viewpro_platform`
-- WHEN `POST /auth/sign-in` is called with that operator's email and correct password
+- WHEN `POST /auth/login` is called with that operator's email and correct password
 - THEN the response status is 200
 - AND the `Set-Cookie` header contains a cookie named `viewpro_platform_access_token`
 - AND the cookie value is a valid JWT signed by `viewpro-api`'s `ACCESS_TOKEN_SECRET`
@@ -68,14 +68,14 @@ and sets an HTTP response cookie named **exactly** `viewpro_platform_access_toke
 #### Scenario: Wrong password is rejected
 
 - GIVEN a seeded operator exists in `viewpro_platform`
-- WHEN `POST /auth/sign-in` is called with that operator's email and an incorrect password
+- WHEN `POST /auth/login` is called with that operator's email and an incorrect password
 - THEN the response status is 401
 - AND no `Set-Cookie` header is present in the response
 
 #### Scenario: Unknown operator is rejected
 
 - GIVEN no operator exists with a given email in `viewpro_platform`
-- WHEN `POST /auth/sign-in` is called with that email and any password
+- WHEN `POST /auth/login` is called with that email and any password
 - THEN the response status is 401
 - AND no `Set-Cookie` header is present in the response
 
@@ -120,7 +120,7 @@ Operator sign-in MUST use only the `viewpro-api`-own `DATABASE_URL` (pointing at
 
 - GIVEN `viewpro-api` is configured with its own `DATABASE_URL` for `viewpro_platform`
 - AND InmoView's `viewpro` database is not configured or is unreachable
-- WHEN `POST /auth/sign-in` is called with valid operator credentials
+- WHEN `POST /auth/login` is called with valid operator credentials
 - THEN the response status is 200 and a `viewpro_platform_access_token` cookie is issued
 - AND no connection attempt to InmoView's database occurs
 
@@ -128,7 +128,7 @@ Operator sign-in MUST use only the `viewpro-api`-own `DATABASE_URL` (pointing at
 
 - GIVEN `viewpro-api` is configured with its own `ACCESS_TOKEN_SECRET`
 - AND InmoView's `apps/api` is configured with a different `ACCESS_TOKEN_SECRET`
-- WHEN `POST /auth/sign-in` succeeds and issues a `viewpro_platform_access_token`
+- WHEN `POST /auth/login` succeeds and issues a `viewpro_platform_access_token`
 - THEN the issued JWT cannot be verified using InmoView's `ACCESS_TOKEN_SECRET`
 
 ---

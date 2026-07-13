@@ -7,6 +7,7 @@ import {
   IsString,
   Max,
   Min,
+  MinLength,
   validateSync,
 } from 'class-validator'
 
@@ -24,8 +25,10 @@ class EnvironmentVariables {
   @IsString()
   DATABASE_URL?: string
 
+  // Required — no default. A missing/weak secret means forgeable operator tokens.
   @IsString()
-  ACCESS_TOKEN_SECRET = 'change-me-in-real-env'
+  @MinLength(16)
+  ACCESS_TOKEN_SECRET!: string
 
   @IsInt()
   @Min(60)

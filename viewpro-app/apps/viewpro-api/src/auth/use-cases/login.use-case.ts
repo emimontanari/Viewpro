@@ -11,6 +11,13 @@ export type LoginResult = {
   token: string
 }
 
+// Constant argon2id hash used to equalize verification timing when no operator
+// matches the email. Without it, an unknown email skips the (slow) hash verify
+// and returns measurably faster than a wrong password, enabling user enumeration
+// by timing. This target never matches any real password.
+const DUMMY_PASSWORD_HASH =
+  '$argon2id$v=19$m=65536,t=3,p=4$JEsFVXAuD0fPuOa76bb/9w$HTNJ4naPn/w0lcEhQUAQ68Jm+lWBtnSHrjvMZFFQcgs'
+
 @Injectable()
 export class LoginUseCase {
   constructor(
@@ -22,9 +29,13 @@ export class LoginUseCase {
   async execute(dto: LoginDto): Promise<LoginResult> {
     const normalizedEmail = dto.email.toLowerCase().trim()
     const operator = await this.operatorRepository.findByEmail(normalizedEmail)
-    const validPassword = operator
-      ? await this.passwordHasher.verify(operator.passwordHash, dto.password)
-      : false
+
+    // Always verify against a hash — the operator's, or a dummy — so response
+    // timing does not reveal whether the email exists (no user enumeration).
+    const validPassword = await this.passwordHasher.verify(
+      operator?.passwordHash ?? DUMMY_PASSWORD_HASH,
+      dto.password,
+    )
 
     if (!operator || !validPassword || operator.status !== 'ACTIVE') {
       throw new UnauthorizedException('Invalid email or password')

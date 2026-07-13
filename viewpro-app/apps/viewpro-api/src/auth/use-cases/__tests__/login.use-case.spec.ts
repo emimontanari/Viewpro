@@ -76,6 +76,17 @@ describe('LoginUseCase', () => {
     ).rejects.toThrow(new UnauthorizedException('Invalid email or password'))
   })
 
+  it('unknown email: still runs a password verify to equalize timing (no user enumeration)', async () => {
+    vi.mocked(operatorRepository.findByEmail).mockResolvedValue(null)
+    vi.mocked(passwordHasher.verify).mockResolvedValue(false)
+
+    await expect(
+      useCase.execute({ email: 'unknown@viewpro.app', password: 'any-pass' }),
+    ).rejects.toThrow(UnauthorizedException)
+
+    expect(passwordHasher.verify).toHaveBeenCalledTimes(1)
+  })
+
   it('suspended operator: throws UnauthorizedException even with correct password', async () => {
     const operator = { ...makeActiveOperator(), status: 'SUSPENDED' as const }
     vi.mocked(operatorRepository.findByEmail).mockResolvedValue(operator)
