@@ -1,0 +1,22 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OperatorStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model Operator {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  passwordHash String
+  status       OperatorStatus @default(ACTIVE)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
