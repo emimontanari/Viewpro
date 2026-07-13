@@ -79,7 +79,7 @@ T-11 and T-13 may begin in parallel; both depend on T-10.
 
 ---
 
-#### T-01 — Scaffold `apps/viewpro-api` package skeleton
+#### [x] T-01 — Scaffold `apps/viewpro-api` package skeleton
 **Type**: impl  
 **Spec requirement**: App Bootstrap  
 **Work unit**: WU-1, commit 1  
@@ -99,7 +99,7 @@ Create the bare directory tree and root files so the package exists in the works
 
 ---
 
-#### T-02 — Write Prisma schema for `viewpro_platform`
+#### [x] T-02 — Write Prisma schema for `viewpro_platform`
 **Type**: impl  
 **Spec requirement**: Operator Model  
 **Work unit**: WU-1, commit 2  
@@ -112,7 +112,7 @@ Create the bare directory tree and root files so the package exists in the works
 
 ---
 
-#### T-03 — RED: test that Operator schema has exactly the required columns
+#### [x] T-03 — RED: test that Operator schema has exactly the required columns
 **Type**: test (RED)  
 **Spec requirement**: Operator Model — "Scenario: Operator table exists with minimal fields"  
 **Work unit**: WU-1, commit 3  
@@ -127,7 +127,7 @@ Create the bare directory tree and root files so the package exists in the works
 
 ---
 
-#### T-04 — Run migration and generate Prisma client
+#### [x] T-04 — Run migration and generate Prisma client
 **Type**: impl  
 **Spec requirement**: Operator Model  
 **Work unit**: WU-1, commit 4  
@@ -144,7 +144,7 @@ Create the bare directory tree and root files so the package exists in the works
 
 ---
 
-#### T-05 — Write idempotent Prisma seed
+#### [x] T-05 — Write idempotent Prisma seed
 **Type**: impl  
 **Spec requirement**: Operator Seed  
 **Work unit**: WU-1, commit 5  
@@ -158,7 +158,7 @@ Create the bare directory tree and root files so the package exists in the works
 
 ---
 
-#### T-06 — RED: test that seed creates operator and does not touch InmoView DB
+#### [x] T-06 — RED: test that seed creates operator and does not touch InmoView DB
 **Type**: test (RED)  
 **Spec requirement**: Operator Seed — "Scenario: Seed creates the first operator"  
 **Work unit**: WU-1, commit 6  
@@ -174,7 +174,7 @@ Create the bare directory tree and root files so the package exists in the works
 
 ---
 
-#### T-07 — GREEN: wire seed test environment + confirm T-06 passes
+#### [x] T-07 — GREEN: wire seed test environment + confirm T-06 passes
 **Type**: impl  
 **Spec requirement**: Operator Seed  
 **Work unit**: WU-1, commit 7  
@@ -188,7 +188,7 @@ Create the bare directory tree and root files so the package exists in the works
 
 ---
 
-#### T-08 — RED: test that `GET /health` returns 200
+#### [x] T-08 — RED: test that `GET /health` returns 200
 **Type**: test (RED)  
 **Spec requirement**: App Bootstrap — "Scenario: Health check returns 200"  
 **Work unit**: WU-1, commit 8  
@@ -203,7 +203,7 @@ Create the bare directory tree and root files so the package exists in the works
 
 ---
 
-#### T-09 — GREEN: implement `HealthController` + `HealthModule`
+#### [x] T-09 — GREEN: implement `HealthController` + `HealthModule`
 **Type**: impl  
 **Spec requirement**: App Bootstrap  
 **Work unit**: WU-1, commit 9  
@@ -219,7 +219,7 @@ Create the bare directory tree and root files so the package exists in the works
 
 ---
 
-#### T-10 — Verify workspace / turbo pickup
+#### [x] T-10 — Verify workspace / turbo pickup
 **Type**: impl + verify  
 **Spec requirement**: Workspace Integration  
 **Work unit**: WU-1, commit 10  
@@ -457,17 +457,17 @@ Test RED (will require the bootstrapped environment with isolation env setup).
 
 ## Success Checklist (maps to spec)
 
-- [ ] App Bootstrap: `apps/viewpro-api` boots as standalone NestJS app (T-01, T-09, T-10)
-- [ ] App Bootstrap: `GET /api/health` → 200 `{ status:'ok', service:'viewpro-platform-api' }` (T-08, T-09)
-- [ ] Operator Model: `Operator` table exists with exactly `id, email, passwordHash, status, createdAt, updatedAt` (T-02, T-03, T-04)
-- [ ] Operator Seed: seed creates first operator idempotently; no row in InmoView `viewpro` DB (T-05, T-06, T-07)
+- [x] App Bootstrap: `apps/viewpro-api` boots as standalone NestJS app (T-01, T-09, T-10)
+- [x] App Bootstrap: `GET /api/health` → 200 `{ status:'ok', service:'viewpro-platform-api' }` (T-08, T-09)
+- [x] Operator Model: `Operator` table exists with exactly `id, email, passwordHash, status, createdAt, updatedAt` (T-02, T-03, T-04)
+- [x] Operator Seed: seed creates first operator idempotently; no row in InmoView `viewpro` DB (T-05, T-06, T-07)
 - [ ] Operator Sign-In: valid credentials → 200 + `viewpro_platform_access_token` cookie (T-15, T-16)
 - [ ] Operator Sign-In: wrong password or unknown operator → 401, no cookie (T-11, T-15)
 - [ ] Cookie Name Isolation: cookie name is exactly `viewpro_platform_access_token`; `viewpro_access_token` never emitted (T-13, T-14, T-15, T-20)
 - [ ] Cookie Security: `HttpOnly`, `SameSite=Lax`, `Secure` in prod-equivalent (T-13, T-14, T-15)
 - [ ] Database Isolation: sign-in succeeds with InmoView `DATABASE_URL` unset (T-17, T-18)
 - [ ] Database Isolation: `viewpro_platform_access_token` JWT cannot be verified with InmoView's secret (T-13, T-17)
-- [ ] Workspace Integration: `pnpm turbo run typecheck/test --filter @viewpro/platform-api` runs (T-10, T-20)
+- [x] Workspace Integration: `pnpm turbo run typecheck/test --filter @viewpro/platform-api` runs (T-10, T-20)
 - [ ] Test-DB safety guard blocks production DB names in test context (T-19)
 - [ ] `apps/api` diff is empty — InmoView untouched (T-20)
 - [ ] VIEWPRO_ADMIN migration deferred follow-up noted (T-20)
