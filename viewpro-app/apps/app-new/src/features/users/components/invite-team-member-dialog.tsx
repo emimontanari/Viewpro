@@ -103,7 +103,7 @@ export function InviteTeamMemberDialog({
         <DialogHeader>
           <DialogTitle>Invitar miembro</DialogTitle>
           <DialogDescription>
-            Creá una invitación para sumar un manager o agente al equipo. El email automático queda
+            Creá una invitación para sumar un encargado o vendedor al equipo. El email automático queda
             para una próxima etapa, así que copiá el link y envialo manualmente.
           </DialogDescription>
         </DialogHeader>
@@ -118,7 +118,7 @@ export function InviteTeamMemberDialog({
               disabled={isSubmitting}
               aria-invalid={!!errors.email}
               autoComplete='email'
-              placeholder='agente@email.com'
+              placeholder='vendedor@email.com'
               onChange={(event) => updateEmail(event.target.value)}
             />
             <FieldDescription>
@@ -146,7 +146,7 @@ export function InviteTeamMemberDialog({
                 ))}
               </SelectContent>
             </Select>
-            <FieldDescription>Solo se pueden invitar managers o agentes.</FieldDescription>
+            <FieldDescription>Solo se pueden invitar encargados o vendedores.</FieldDescription>
             <FieldError>{errors.role}</FieldError>
           </Field>
 
