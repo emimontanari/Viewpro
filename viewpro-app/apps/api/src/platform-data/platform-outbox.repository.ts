@@ -33,7 +33,7 @@ export class PrismaOutboxRepository {
       id: row.id,
       // Convert BigInt to number — safe for slice-1 volumes (seqNo << 2^53)
       seqNo: Number(row.seqNo),
-      eventType: row.eventType as 'TENANT_STATUS_CHANGED',
+      eventType: row.eventType as PlatformOutboxEvent['eventType'],
       tenantId: row.tenantId,
       payload: row.payload as PlatformOutboxEvent['payload'],
       // Serialize Date to ISO string

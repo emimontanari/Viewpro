@@ -12,6 +12,8 @@ type LockedTenantStatusRow = {
   id: string
   status: TenantStatus
   updatedAt: Date
+  name: string
+  slug: string
 }
 
 @Injectable()
@@ -27,7 +29,7 @@ export class PrismaAdminTenantStatusRepository implements AdminTenantStatusRepos
   ): Promise<UpdateAdminTenantStatusResult> {
     const run = async (client: Prisma.TransactionClient): Promise<UpdateAdminTenantStatusResult> => {
       const [tenant] = await client.$queryRaw<LockedTenantStatusRow[]>`
-        SELECT "id", "status", "updatedAt"
+        SELECT "id", "status", "updatedAt", "name", "slug"
         FROM "tenants"
         WHERE "id" = ${input.tenantId}
         FOR UPDATE
@@ -81,12 +83,15 @@ export class PrismaAdminTenantStatusRepository implements AdminTenantStatusRepos
 
       // D3: emit outbox event inside the SAME transaction as the domain mutation.
       // D4: only on the `updated` branch — no-op/unchanged transitions emit nothing.
+      // A3: name and slug are read from the same FOR UPDATE row (same tx, no extra query).
       await this.outboxWriter.emit(client, {
         eventType: 'TENANT_STATUS_CHANGED',
         tenantId: tenant.id,
         payload: {
           previousStatus: tenant.status,
           newStatus: input.targetStatus,
+          name: tenant.name,
+          slug: tenant.slug,
         },
         occurredAt: input.now,
       })

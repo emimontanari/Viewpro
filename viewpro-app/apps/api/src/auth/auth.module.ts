@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt'
 import { AnalyticsCoreModule } from '../analytics/analytics-core.module'
 import { DatabaseModule } from '../database/database.module'
 import { MembershipsModule } from '../memberships/memberships.module'
+import { PlatformDataModule } from '../platform-data/platform-data.module'
 import { TenantsModule } from '../tenants/tenants.module'
 import { UsersModule } from '../users/users.module'
 import { AuthController } from './auth.controller'
@@ -30,6 +31,10 @@ import { RegisterTenantUseCase } from './use-cases/register-tenant.use-case'
     UsersModule,
     TenantsModule,
     MembershipsModule,
+    // A4: PlatformDataModule exports PlatformOutboxWriter so PrismaAuthRegistrationRepository
+    // can inject it. Mirrors the admin.module.ts pattern (no circular dependency:
+    // PlatformDataModule imports neither AuthModule nor AdminModule).
+    PlatformDataModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({

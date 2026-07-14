@@ -1,15 +1,31 @@
 import { Injectable } from '@nestjs/common'
 import type { Prisma } from '@prisma/client'
+import type { TenantRegisteredPayload } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 
-type OutboxEventInput = {
-  eventType: 'TENANT_STATUS_CHANGED'
-  tenantId: string
-  payload: {
-    previousStatus: string
-    newStatus: string
-  }
-  occurredAt: Date
-}
+/**
+ * OutboxEventInput — discriminated union of all supported outbox event shapes (A5).
+ *
+ * Adding a new event type: extend the union here and in
+ * packages/platform-contract/src/data/platform-outbox-event.ts.
+ */
+type OutboxEventInput =
+  | {
+      eventType: 'TENANT_STATUS_CHANGED'
+      tenantId: string
+      payload: {
+        previousStatus: string
+        newStatus: string
+        name?: string
+        slug?: string
+      }
+      occurredAt: Date
+    }
+  | {
+      eventType: 'TENANT_REGISTERED'
+      tenantId: string
+      payload: TenantRegisteredPayload
+      occurredAt: Date | string
+    }
 
 /**
  * OUTBOX_LOCK_KEY — fixed Postgres advisory lock key used to serialize outbox

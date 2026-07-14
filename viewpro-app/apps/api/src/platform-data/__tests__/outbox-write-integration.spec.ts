@@ -113,6 +113,38 @@ describe('Outbox write integration — $transaction atomicity', () => {
   })
 
   // -------------------------------------------------------------------------
+  // T-06 — RED: TENANT_STATUS_CHANGED payload now carries name and slug (A3)
+  //
+  // Spec: platform-data-lane delta — Modified Transactional Outbox Write
+  //   - After updateTenantStatus → payload contains name and slug matching the tenant's DB values
+  //   - payload.previousStatus and payload.newStatus are still present (regression)
+  // -------------------------------------------------------------------------
+  it('[T-06] TENANT_STATUS_CHANGED outbox payload includes name and slug (A3)', async () => {
+    const uniqueSuffix = Date.now()
+    const tenant = await prisma.tenant.create({
+      data: { name: `Acme Corp ${uniqueSuffix}`, slug: `acme-corp-${uniqueSuffix}`, status: 'TRIAL' },
+    })
+    const token = await mintServiceToken()
+
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'ACTIVE', idempotencyKey: `t06-name-slug-${uniqueSuffix}` })
+      .expect(200)
+
+    const rows = await prisma.platformOutboxEvent.findMany({ where: { tenantId: tenant.id } })
+    expect(rows).toHaveLength(1)
+
+    const payload = rows[0]!.payload as Record<string, unknown>
+    // Regression: previousStatus and newStatus still present
+    expect(payload.previousStatus).toBe('TRIAL')
+    expect(payload.newStatus).toBe('ACTIVE')
+    // A3 enrichment: name and slug now included
+    expect(payload.name).toBe(`Acme Corp ${uniqueSuffix}`)
+    expect(payload.slug).toBe(`acme-corp-${uniqueSuffix}`)
+  })
+
+  // -------------------------------------------------------------------------
   // Scenario: D4 invariant — unchanged/no-op branch emits NO outbox row
   // -------------------------------------------------------------------------
   it('unchanged branch (same status): NO outbox row emitted (D4)', async () => {

@@ -76,7 +76,7 @@ T-01 (contract: widen eventType union + TenantRegisteredPayload + limits type)
 
 ## WU-1 — platform-contract union + InmoView emit sites + internal tenants endpoint
 
-### [ ] T-01 — Widen `platform-contract` data/ with `TENANT_REGISTERED` type union
+### [x] T-01 — Widen `platform-contract` data/ with `TENANT_REGISTERED` type union
 **Type**: impl
 **Spec**: platform-data-lane delta — TENANT_REGISTERED Event Type; tenant-registry — Registration Event
 **WU**: WU-1, commit 1
@@ -95,7 +95,7 @@ T-01 (contract: widen eventType union + TenantRegisteredPayload + limits type)
 
 ---
 
-### [ ] T-02 — RED: compile-time assertions — union coverage + limits field mirror
+### [x] T-02 — RED: compile-time assertions — union coverage + limits field mirror
 **Type**: test (RED)
 **Spec**: platform-data-lane delta — Contract accepts TENANT_REGISTERED as valid eventType; tenant-registry — Registration Event Transactional Emit
 **WU**: WU-1, commit 2
@@ -113,7 +113,7 @@ All RED until T-03 implements the assertions.
 
 ---
 
-### [ ] T-03 — GREEN: implement compile-time assertions; confirm typecheck
+### [x] T-03 — GREEN: implement compile-time assertions; confirm typecheck
 **Type**: impl
 **Spec**: platform-data-lane delta — Contract backward compatibility
 **WU**: WU-1, commit 3
@@ -127,7 +127,7 @@ All RED until T-03 implements the assertions.
 
 ---
 
-### [ ] T-04 — RED: unit tests — `PlatformOutboxWriter` accepts both input shapes (A5)
+### [x] T-04 — RED: unit tests — `PlatformOutboxWriter` accepts both input shapes (A5)
 **Type**: test (RED)
 **Spec**: platform-data-lane delta — TENANT_REGISTERED Event Type; writer union
 **WU**: WU-1, commit 4
@@ -144,7 +144,7 @@ All RED until T-05.
 
 ---
 
-### [ ] T-05 — GREEN: widen `PlatformOutboxWriter.OutboxEventInput` union (A5)
+### [x] T-05 — GREEN: widen `PlatformOutboxWriter.OutboxEventInput` union (A5)
 **Type**: impl
 **Spec**: platform-data-lane delta — TENANT_REGISTERED Event Type; A5
 **WU**: WU-1, commit 5
@@ -160,7 +160,7 @@ All RED until T-05.
 
 ---
 
-### [ ] T-06 — RED: unit test — status-repo SELECT widened to name/slug + enriched emit (A3)
+### [x] T-06 — RED: unit test — status-repo SELECT widened to name/slug + enriched emit (A3)
 **Type**: test (RED)
 **Spec**: platform-data-lane delta — Modified Transactional Outbox Write; name and slug read in same tx
 **WU**: WU-1, commit 6
@@ -176,7 +176,7 @@ All RED until T-07.
 
 ---
 
-### [ ] T-07 — GREEN: widen SELECT + pass name/slug in `TENANT_STATUS_CHANGED` emit
+### [x] T-07 — GREEN: widen SELECT + pass name/slug in `TENANT_STATUS_CHANGED` emit
 **Type**: impl
 **Spec**: platform-data-lane delta — Modified Transactional Outbox Write; A3
 **WU**: WU-1, commit 7
@@ -192,7 +192,7 @@ All RED until T-07.
 
 ---
 
-### [ ] T-08 — RED: unit test — `PrismaAuthRegistrationRepository` emits `TENANT_REGISTERED` inside tx; rollback ⇒ no emit (A4)
+### [x] T-08 — RED: unit test — `PrismaAuthRegistrationRepository` emits `TENANT_REGISTERED` inside tx; rollback ⇒ no emit (A4)
 **Type**: test (RED)
 **Spec**: tenant-registry — Registration Event Transactional Emit (both scenarios)
 **WU**: WU-1, commit 8
@@ -208,7 +208,7 @@ All RED until T-09.
 
 ---
 
-### [ ] T-09 — GREEN: inject `PlatformOutboxWriter` into `PrismaAuthRegistrationRepository` + wire `auth.module.ts` (A4)
+### [x] T-09 — GREEN: inject `PlatformOutboxWriter` into `PrismaAuthRegistrationRepository` + wire `auth.module.ts` (A4)
 **Type**: impl
 **Spec**: tenant-registry — Registration Event; A4; auth.module.ts import
 **WU**: WU-1, commit 9
@@ -224,7 +224,7 @@ All RED until T-09.
 
 ---
 
-### [ ] T-10 — RED: controller tests — `GET /internal/platform/tenants` (A13)
+### [x] T-10 — RED: controller tests — `GET /internal/platform/tenants` (A13)
 **Type**: test (RED)
 **Spec**: tenant-registry — Backfill InmoView Internal Tenants Endpoint (both scenarios)
 **WU**: WU-1, commit 10
@@ -241,7 +241,7 @@ All RED until T-11.
 
 ---
 
-### [ ] T-11 — GREEN: `PlatformTenantsReadRepository` + add endpoint to `PlatformDataController`
+### [x] T-11 — GREEN: `PlatformTenantsReadRepository` + add endpoint to `PlatformDataController`
 **Type**: impl
 **Spec**: tenant-registry — Backfill InmoView Internal Tenants Endpoint; A13
 **WU**: WU-1, commit 11
