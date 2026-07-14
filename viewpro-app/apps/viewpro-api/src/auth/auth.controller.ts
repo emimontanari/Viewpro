@@ -27,6 +27,15 @@ export class AuthController {
     return { operator: result.operator }
   }
 
+  // Unguarded: clearing an already-absent or expired cookie is harmless,
+  // and an expired session must still be able to trigger a clean logout (D5 follow-up).
+  @Post('logout')
+  @HttpCode(200)
+  logout(@Res({ passthrough: true }) response: Response) {
+    this.tokenService.clearAccessCookie(response)
+    return { success: true }
+  }
+
   @Get('me')
   @UseGuards(AuthGuard)
   getMe(@Req() req: AuthenticatedRequest): OperatorMeResponse {

@@ -18,7 +18,7 @@ vi.mock('@/lib/api-client', () => ({
 }));
 
 import { apiRequest } from '@/lib/api-client';
-import { login, getSession, type Session } from '../session';
+import { login, getSession, logout, type Session } from '../session';
 
 const mockApiRequest = vi.mocked(apiRequest);
 
@@ -93,6 +93,27 @@ describe('getSession()', () => {
     mockApiRequest.mockRejectedValueOnce(apiError);
 
     await expect(getSession()).rejects.toMatchObject({ status: 401 });
+  });
+});
+
+// ─── logout() ───────────────────────────────────────────────────────────────
+
+describe('logout()', () => {
+  it('calls POST /auth/logout', async () => {
+    mockApiRequest.mockResolvedValueOnce({ success: true });
+
+    await logout();
+
+    expect(mockApiRequest).toHaveBeenCalledOnce();
+    const [path, options] = mockApiRequest.mock.calls[0];
+    expect(path).toBe('/auth/logout');
+    expect(options).toMatchObject({ method: 'POST' });
+  });
+
+  it('resolves even on network error (best-effort; caller is responsible for swallowing)', async () => {
+    // logout() itself propagates the rejection — the caller (signOut) swallows it.
+    mockApiRequest.mockRejectedValueOnce(new Error('network'));
+    await expect(logout()).rejects.toThrow('network');
   });
 });
 

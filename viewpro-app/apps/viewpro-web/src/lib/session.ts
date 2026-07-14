@@ -21,3 +21,9 @@ export function login(input: LoginInput) {
 export function getSession() {
   return apiRequest<Session>('/auth/me');
 }
+
+// Server-side logout: instructs viewpro-api to clear the httpOnly cookie.
+// Best-effort — errors are intentionally swallowed by the caller (signOut in session-context).
+export function logout(): Promise<unknown> {
+  return apiRequest<unknown>('/auth/logout', { method: 'POST' });
+}

@@ -125,4 +125,37 @@ describe('AuthController (integration)', () => {
     expect(response.body.operator.email).toBe(SEEDED_EMAIL)
     expect(response.body.operator).not.toHaveProperty('passwordHash')
   })
+
+  it('POST /api/auth/logout returns 200 with { success: true }', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/auth/logout')
+
+    expect(response.status).toBe(200)
+    expect(response.body).toEqual({ success: true })
+  })
+
+  it('POST /api/auth/logout clears viewpro_platform_access_token cookie (maxAge=0 or expires in past)', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/auth/logout')
+
+    const setCookieHeader = response.headers['set-cookie'] as string[] | string | undefined
+    const cookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader ?? '']
+    const platformCookie = cookies.find((c) => c.startsWith('viewpro_platform_access_token=')) ?? ''
+
+    // clearCookie sets maxAge=0 (or Expires to epoch) to instruct the browser to delete the cookie
+    const hasMaxAgeZero = /max-age=0/i.test(platformCookie)
+    const expiresMatch = platformCookie.match(/expires=([^;]+)/i)
+    const expiresValue = expiresMatch?.[1]
+    const hasExpiredDate = expiresValue !== undefined && new Date(expiresValue).getTime() <= Date.now()
+
+    expect(hasMaxAgeZero || hasExpiredDate).toBe(true)
+  })
+
+  it('POST /api/auth/logout is idempotent — works without a session cookie (no 401)', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/auth/logout')
+      // No cookie attached — should still succeed (unguarded endpoint)
+
+    expect(response.status).toBe(200)
+  })
 })
