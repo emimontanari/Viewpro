@@ -80,7 +80,7 @@ T-11 may begin in parallel with T-11 note above — sequential within WU-2 chain
 
 ## WU-1 — platform-contract `data/` + InmoView outbox migration + transactional writer
 
-### [ ] T-01 — Add `packages/platform-contract/src/data/` namespace skeleton
+### [x] T-01 — Add `packages/platform-contract/src/data/` namespace skeleton
 **Type**: impl
 **Spec**: platform-data-lane-outbox — Change-Feed Endpoint; proposal §in-scope item 7
 **WU**: WU-1, commit 1
@@ -98,7 +98,7 @@ T-11 may begin in parallel with T-11 note above — sequential within WU-2 chain
 
 ---
 
-### [ ] T-02 — RED: compile-time type-equality assertion test
+### [x] T-02 — RED: compile-time type-equality assertion test
 **Type**: test (RED)
 **Spec**: proposal R7 — contract vs Prisma drift
 **WU**: WU-1, commit 2
@@ -115,7 +115,7 @@ All RED until assertion is wired.
 
 ---
 
-### [ ] T-03 — GREEN: wire type assertion; export from contract
+### [x] T-03 — GREEN: wire type assertion; export from contract
 **Type**: impl
 **Spec**: proposal R7
 **WU**: WU-1, commit 3
@@ -129,7 +129,7 @@ All RED until assertion is wired.
 
 ---
 
-### [ ] T-04 — R1 LIVE-DB MIGRATION — additive `platform_outbox_events` on InmoView (HIGHEST RISK)
+### [x] T-04 — R1 LIVE-DB MIGRATION — additive `platform_outbox_events` on InmoView (HIGHEST RISK)
 **Type**: impl
 **Spec**: platform-data-lane-outbox — Outbox Schema requirement (both scenarios)
 **WU**: WU-1, commit 4
@@ -161,7 +161,7 @@ All RED until assertion is wired.
 
 ---
 
-### [ ] T-05 — RED: migration additive-invariant test
+### [x] T-05 — RED: migration additive-invariant test
 **Type**: test (RED)
 **Spec**: platform-data-lane-outbox — Outbox Schema — Scenario: Migration is additive; seqNo total order
 **WU**: WU-1, commit 5
@@ -178,7 +178,7 @@ All RED until migration applied and client generated.
 
 ---
 
-### [ ] T-06 — GREEN: confirm migration invariant test passes
+### [x] T-06 — GREEN: confirm migration invariant test passes
 **Type**: impl
 **Spec**: platform-data-lane-outbox — Outbox Schema
 **WU**: WU-1, commit 6
@@ -192,7 +192,7 @@ All RED until migration applied and client generated.
 
 ---
 
-### [ ] T-07 — RED: unit tests for `PlatformOutboxWriter`
+### [x] T-07 — RED: unit tests for `PlatformOutboxWriter`
 **Type**: test (RED)
 **Spec**: platform-data-lane-outbox — Transactional Outbox Write requirement (both scenarios)
 **WU**: WU-1, commit 7
@@ -209,7 +209,7 @@ All RED until writer exists.
 
 ---
 
-### [ ] T-08 — GREEN: implement `PlatformOutboxWriter`
+### [x] T-08 — GREEN: implement `PlatformOutboxWriter`
 **Type**: impl
 **Spec**: platform-data-lane-outbox — Transactional Outbox Write
 **WU**: WU-1, commit 8
@@ -223,7 +223,7 @@ All RED until writer exists.
 
 ---
 
-### [ ] T-09 — RED: integration test — outbox write inside repo `$transaction` (D3)
+### [x] T-09 — RED: integration test — outbox write inside repo `$transaction` (D3)
 **Type**: test (RED)
 **Spec**: platform-data-lane-outbox — Scenario: Status change commits outbox row in same transaction; Scenario: Rolled-back domain transaction leaves no outbox row
 **WU**: WU-1, commit 9
@@ -240,7 +240,7 @@ All RED until writer is wired into the repo.
 
 ---
 
-### [ ] T-10 — GREEN: wire `PlatformOutboxWriter` into `PrismaAdminTenantStatusRepository`
+### [x] T-10 — GREEN: wire `PlatformOutboxWriter` into `PrismaAdminTenantStatusRepository`
 **Type**: impl
 **Spec**: platform-data-lane-outbox — Transactional Outbox Write; Invariants (outbox in same $transaction)
 **WU**: WU-1, commit 10
@@ -570,9 +570,9 @@ All RED until metrics controller + service exist.
 
 ## Success Checklist (maps to spec acceptance)
 
-- [ ] Status change commits exactly one `platform_outbox_events` row in same `$transaction` (T-09, T-10)
-- [ ] Rolled-back transaction leaves zero outbox rows (T-09)
-- [ ] No-op/unchanged transition emits NO outbox row (D4; T-09)
+- [x] Status change commits exactly one `platform_outbox_events` row in same `$transaction` (T-09, T-10)
+- [x] Rolled-back transaction leaves zero outbox rows (T-09)
+- [x] No-op/unchanged transition emits NO outbox row (D4; T-09)
 - [ ] `GET /internal/platform/changes?since=N` returns events seqNo > N, ordered ASC, nextCursor = max seqNo (T-11, T-12)
 - [ ] Empty batch returns nextCursor = supplied cursor (T-11, T-12)
 - [ ] Batch bounded by `PLATFORM_DATA_BATCH_LIMIT`; ms-collision events both delivered (T-11, T-12)
@@ -586,6 +586,6 @@ All RED until metrics controller + service exist.
 - [ ] Unauthenticated metrics request → 401 (T-22)
 - [ ] Empty mirror → 200 with zeroed counts (T-22)
 - [ ] Metrics served from `viewpro_platform` ONLY — no InmoView DB reads (D6; T-22, T-23)
-- [ ] Type-equality assertion `PlatformTenantStatus ↔ TenantStatus` compile-time enforced (T-02, T-03)
-- [ ] R1 migration deployed BEFORE app code writing outbox rows (operational sequencing; T-04 note)
+- [x] Type-equality assertion `PlatformTenantStatus ↔ TenantStatus` compile-time enforced (T-02, T-03)
+- [x] R1 migration deployed BEFORE app code writing outbox rows (operational sequencing; T-04 note)
 - [ ] `PLATFORM_CONTROL_SECRET` never in response body or logs (T-13, invariant check)

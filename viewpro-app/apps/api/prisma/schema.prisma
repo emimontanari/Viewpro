@@ -633,6 +633,19 @@ model PlatformCommandLog {
   @@map("platform_command_log")
 }
 
+model PlatformOutboxEvent {
+  id         String   @id @default(uuid())
+  seqNo      BigInt   @default(autoincrement())
+  eventType  String
+  tenantId   String
+  payload    Json
+  occurredAt DateTime
+
+  @@index([seqNo])
+  @@index([occurredAt, seqNo])
+  @@map("platform_outbox_events")
+}
+
 model StatusChangeRequest {
   id                    String                    @id @default(uuid())
   tenantId              String

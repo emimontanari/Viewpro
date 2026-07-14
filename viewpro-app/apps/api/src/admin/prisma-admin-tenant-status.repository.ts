@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { AnalyticsActorType, AnalyticsEventName, type Prisma, type TenantStatus } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
+import { PlatformOutboxWriter } from '../platform-data/platform-outbox-writer'
 import type {
   AdminTenantStatusRepository,
   UpdateAdminTenantStatusInput,
@@ -15,7 +16,10 @@ type LockedTenantStatusRow = {
 
 @Injectable()
 export class PrismaAdminTenantStatusRepository implements AdminTenantStatusRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    private readonly outboxWriter: PlatformOutboxWriter,
+  ) {}
 
   async updateTenantStatus(
     input: UpdateAdminTenantStatusInput,
@@ -73,6 +77,18 @@ export class PrismaAdminTenantStatusRepository implements AdminTenantStatusRepos
           },
           occurredAt: input.now,
         },
+      })
+
+      // D3: emit outbox event inside the SAME transaction as the domain mutation.
+      // D4: only on the `updated` branch — no-op/unchanged transitions emit nothing.
+      await this.outboxWriter.emit(client, {
+        eventType: 'TENANT_STATUS_CHANGED',
+        tenantId: tenant.id,
+        payload: {
+          previousStatus: tenant.status,
+          newStatus: input.targetStatus,
+        },
+        occurredAt: input.now,
       })
 
       return {
