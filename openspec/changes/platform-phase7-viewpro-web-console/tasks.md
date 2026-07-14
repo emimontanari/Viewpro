@@ -227,7 +227,7 @@ Delete the following paths from `apps/viewpro-web/src/`:
 
 ## WU-2 — Operator auth: session + middleware + sign-in
 
-### [ ] T-09 — RED: unit tests for `session.ts`
+### [x] T-09 — RED: unit tests for `session.ts`
 **Type**: test (RED)
 **Spec**: operator-console — Operator Sign-In (all scenarios); Client Session Model; Session Rehydration
 **WU**: WU-2, commit 1
@@ -247,7 +247,7 @@ All RED until `session.ts` is rewritten.
 
 ---
 
-### [ ] T-10 — GREEN: rewrite `session.ts` — operator-only session (D2, D4, D5, D6)
+### [x] T-10 — GREEN: rewrite `session.ts` — operator-only session (D2, D4, D5, D6)
 **Type**: impl
 **Spec**: operator-console — Operator Sign-In; Client Session Model; Session Rehydration
 **WU**: WU-2, commit 2
@@ -265,7 +265,7 @@ All RED until `session.ts` is rewritten.
 
 ---
 
-### [ ] T-11 — RED: unit tests for `proxy.ts` middleware
+### [x] T-11 — RED: unit tests for `proxy.ts` middleware
 **Type**: test (RED)
 **Spec**: operator-console — Protected Route Middleware (all 3 scenarios); Cookie and Auth Boundary
 **WU**: WU-2, commit 3
@@ -284,7 +284,7 @@ All RED until `proxy.ts` is rewritten.
 
 ---
 
-### [ ] T-12 — GREEN: rewrite `proxy.ts` — presence-check middleware (D3)
+### [x] T-12 — GREEN: rewrite `proxy.ts` — presence-check middleware (D3)
 **Type**: impl
 **Spec**: operator-console — Protected Route Middleware; D3
 **WU**: WU-2, commit 4
@@ -303,7 +303,7 @@ All RED until `proxy.ts` is rewritten.
 
 ---
 
-### [ ] T-13 — RED: unit tests for `session-context.tsx`
+### [x] T-13 — RED: unit tests for `session-context.tsx`
 **Type**: test (RED)
 **Spec**: operator-console — Session Rehydration; Cookie and Auth Boundary; D5; D6
 **WU**: WU-2, commit 5
@@ -321,7 +321,7 @@ All RED until `session-context.tsx` is rewritten.
 
 ---
 
-### [ ] T-14 — GREEN: rewrite `session-context.tsx` — operator-only (D2, D4, D5, D6)
+### [x] T-14 — GREEN: rewrite `session-context.tsx` — operator-only (D2, D4, D5, D6)
 **Type**: impl
 **Spec**: operator-console — Session Rehydration; D4; D5; D6
 **WU**: WU-2, commit 6
@@ -340,7 +340,7 @@ All RED until `session-context.tsx` is rewritten.
 
 ---
 
-### [ ] T-15 — Strip+wire: `app-sidebar.tsx` + `user-nav.tsx`
+### [x] T-15 — Strip+wire: `app-sidebar.tsx` + `user-nav.tsx`
 **Type**: impl
 **Spec**: operator-console — Client Session Model (session.operator; no tenant fields)
 **WU**: WU-2, commit 7
@@ -361,7 +361,7 @@ All RED until `session-context.tsx` is rewritten.
 
 ---
 
-### [ ] T-16 — Strip+wire: `sign-in-view.tsx` — remove sign-up; wire `login()`
+### [x] T-16 — Strip+wire: `sign-in-view.tsx` — remove sign-up; wire `login()`
 **Type**: impl
 **Spec**: operator-console — Operator Sign-In (both scenarios); residual Q2 (no sign-up)
 **WU**: WU-2, commit 8
@@ -505,14 +505,14 @@ All RED until components + page exist.
 | ~~T-06~~ [x] strip: api-client x-tenant-id | impl | WU-1 | Isolation; Cookie Boundary | T-05 |
 | ~~T-07~~ [x] .env.example + CORS note | impl | WU-1 | D3; D10; CORS config | T-06 |
 | ~~T-08~~ [x] workspace smoke test | verify | WU-1 | D9; boots | T-07 |
-| T-09 RED: session.ts tests | test | WU-2 | Sign-In; Session Model; Rehydration | T-08 |
-| T-10 GREEN: session.ts rewrite | impl | WU-2 | Sign-In; Session Model; D2; D4; D6 | T-09 |
-| T-11 RED: proxy.ts tests | test | WU-2 | Protected Middleware (all 3 scenarios); D3 | T-10 |
-| T-12 GREEN: proxy.ts rewrite | impl | WU-2 | Protected Middleware; D3 | T-11 |
-| T-13 RED: session-context tests | test | WU-2 | Rehydration; D5; D6 | T-12 |
-| T-14 GREEN: session-context rewrite | impl | WU-2 | Rehydration; D2; D4; D5; D6 | T-13 |
-| T-15 strip+wire: sidebar + user-nav | impl | WU-2 | Session Model; D5 | T-14 |
-| T-16 strip+wire: sign-in-view | impl | WU-2 | Sign-In scenarios; residual Q2 | T-15 |
+| ~~T-09~~ [x] RED: session.ts tests | test | WU-2 | Sign-In; Session Model; Rehydration | T-08 |
+| ~~T-10~~ [x] GREEN: session.ts rewrite | impl | WU-2 | Sign-In; Session Model; D2; D4; D6 | T-09 |
+| ~~T-11~~ [x] RED: proxy.ts tests | test | WU-2 | Protected Middleware (all 3 scenarios); D3 | T-10 |
+| ~~T-12~~ [x] GREEN: proxy.ts rewrite | impl | WU-2 | Protected Middleware; D3 | T-11 |
+| ~~T-13~~ [x] RED: session-context tests | test | WU-2 | Rehydration; D5; D6 | T-12 |
+| ~~T-14~~ [x] GREEN: session-context rewrite | impl | WU-2 | Rehydration; D2; D4; D5; D6 | T-13 |
+| ~~T-15~~ [x] strip+wire: sidebar + user-nav | impl | WU-2 | Session Model; D5 | T-14 |
+| ~~T-16~~ [x] strip+wire: sign-in-view | impl | WU-2 | Sign-In scenarios; residual Q2 | T-15 |
 | T-17 RED: metrics api tests | test | WU-3 | Dashboard (scenarios 1-2); D7; D11 | T-16 |
 | T-18 GREEN: metrics api module | impl | WU-3 | Dashboard; D7; D11 | T-17 |
 | T-19 RED: dashboard page + component tests | test | WU-3 | Dashboard (all 3 scenarios); D11 | T-18 |
