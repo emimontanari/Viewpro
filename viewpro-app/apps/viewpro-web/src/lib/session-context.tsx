@@ -1,7 +1,9 @@
 'use client';
 
-// WU-1 stub — will be fully rewritten in WU-2 (T-13/T-14).
-// This minimal provider satisfies the import graph so the scaffold boots.
+// Operator-only session context (D2, D4, D5, D6).
+// Rehydrates via GET /auth/me on mount — client-only, no SSR (D4).
+// On 401/error → redirects to /auth/sign-in (D6).
+// signOut is client-side only: no backend logout endpoint exists on viewpro-api (D5).
 import * as React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
@@ -22,8 +24,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const sessionQuery = useQuery({
     queryKey: ['session'],
     queryFn: getSession,
-    retry: false
+    retry: false,
+    staleTime: 60_000
   });
+
+  // D6: 401/403 from /auth/me → redirect to sign-in (no refresh).
+  React.useEffect(() => {
+    if (sessionQuery.isError) {
+      router.push('/auth/sign-in');
+    }
+  }, [sessionQuery.isError, router]);
 
   function signOut() {
     // No backend logout endpoint exists on viewpro-api (D5). Cookie expires at TTL.
