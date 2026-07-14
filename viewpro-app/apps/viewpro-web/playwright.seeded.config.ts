@@ -36,7 +36,7 @@ export default defineConfig({
       timeout: 120_000
     },
     {
-      command: `ACCESS_TOKEN_SECRET=${accessTokenSecret} BFF_API_URL=${apiBaseUrl}/api NEXT_PUBLIC_API_URL=${apiBaseUrl}/api NEXT_PUBLIC_APP_URL=${webBaseUrl} pnpm --dir apps/app-new exec next dev --hostname ${host} --port ${webPort}`,
+      command: `BFF_API_URL=${apiBaseUrl}/api NEXT_PUBLIC_API_URL=${apiBaseUrl}/api NEXT_PUBLIC_APP_URL=${webBaseUrl} pnpm --dir apps/app-new exec next dev --hostname ${host} --port ${webPort}`,
       cwd: workspaceRoot,
       url: webBaseUrl,
       reuseExistingServer: !process.env.CI,

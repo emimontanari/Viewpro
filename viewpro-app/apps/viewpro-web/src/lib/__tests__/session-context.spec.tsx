@@ -18,10 +18,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-// Mock session.ts so we control getSession
+// Mock session.ts so we control getSession and logout
 vi.mock('@/lib/session', () => ({
   getSession: vi.fn(),
-  login: vi.fn()
+  login: vi.fn(),
+  logout: vi.fn()
 }));
 
 // Mock next/navigation
@@ -32,10 +33,11 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams()
 }));
 
-import { getSession, type Session } from '@/lib/session';
+import { getSession, logout, type Session } from '@/lib/session';
 import { SessionProvider, useSession } from '../session-context';
 
 const mockGetSession = vi.mocked(getSession);
+const mockLogout = vi.mocked(logout);
 
 const MOCK_SESSION: Session = { operator: { id: 'op-1', email: 'admin@viewpro.app' } };
 
@@ -76,6 +78,8 @@ function SessionConsumer() {
 beforeEach(() => {
   vi.clearAllMocks();
   pushMock.mockReset();
+  // Default: logout resolves successfully (best-effort — errors are swallowed by signOut)
+  mockLogout.mockResolvedValue({ success: true });
 });
 
 // ─── Rehydration ─────────────────────────────────────────────────────────────
@@ -155,6 +159,20 @@ describe('SessionProvider — context shape (D2)', () => {
 // ─── signOut (D5) ─────────────────────────────────────────────────────────────
 
 describe('SessionProvider — signOut (D5)', () => {
+  it('signOut() calls logout() on viewpro-api before redirecting', async () => {
+    mockGetSession.mockResolvedValueOnce(MOCK_SESSION);
+    const user = userEvent.setup();
+
+    renderWithSession(<SessionConsumer />);
+    await waitFor(() => expect(screen.getByTestId('email').textContent).toBe('admin@viewpro.app'));
+
+    await act(async () => {
+      await user.click(screen.getByTestId('sign-out'));
+    });
+
+    expect(mockLogout).toHaveBeenCalledOnce();
+  });
+
   it('signOut() redirects to /auth/sign-in', async () => {
     mockGetSession.mockResolvedValueOnce(MOCK_SESSION);
     const user = userEvent.setup();
@@ -166,6 +184,22 @@ describe('SessionProvider — signOut (D5)', () => {
       await user.click(screen.getByTestId('sign-out'));
     });
 
+    expect(pushMock).toHaveBeenCalledWith('/auth/sign-in');
+  });
+
+  it('signOut() redirects even if logout() rejects (best-effort)', async () => {
+    mockGetSession.mockResolvedValueOnce(MOCK_SESSION);
+    mockLogout.mockRejectedValueOnce(new Error('network'));
+    const user = userEvent.setup();
+
+    renderWithSession(<SessionConsumer />);
+    await waitFor(() => expect(screen.getByTestId('email').textContent).toBe('admin@viewpro.app'));
+
+    await act(async () => {
+      await user.click(screen.getByTestId('sign-out'));
+    });
+
+    // redirect must still happen despite logout() rejection
     expect(pushMock).toHaveBeenCalledWith('/auth/sign-in');
   });
 });
