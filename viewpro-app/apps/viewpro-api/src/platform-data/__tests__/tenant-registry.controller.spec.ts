@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { execSync } from 'node:child_process'
 import { Test, TestingModule } from '@nestjs/testing'
@@ -201,7 +201,7 @@ describe('TenantRegistryController (integration — test DB)', () => {
   // Isolation invariant (structural): TenantRegistryService imports no @prisma/client
   // (InmoView's client) — only its own generated client (src/generated/prisma).
   it('TenantRegistryService imports no @prisma/client — only the viewpro-api generated client', () => {
-    const serviceSourcePath = fileURLToPath(new URL('../tenant-registry.service.ts', import.meta.url))
+    const serviceSourcePath = join(__dirname, '..', 'tenant-registry.service.ts')
     const source = readFileSync(serviceSourcePath, 'utf8')
 
     expect(source).not.toContain("from '@prisma/client'")
