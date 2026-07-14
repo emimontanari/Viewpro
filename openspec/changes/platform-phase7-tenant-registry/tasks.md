@@ -259,7 +259,7 @@ All RED until T-11.
 
 ## WU-2 — viewpro-api `platform_tenants` migration + ingest routing + operator list endpoint
 
-### [ ] T-12 — RED: `platform_tenants` model + additive migration
+### [x] T-12 — RED: `platform_tenants` model + additive migration
 **Type**: test (RED)
 **Spec**: tenant-registry — platform_tenants Projection (schema requirement)
 **WU**: WU-2, commit 1
@@ -275,7 +275,7 @@ All RED until T-13.
 
 ---
 
-### [ ] T-13 — GREEN: add `PlatformTenant` Prisma model + generate additive migration (A7)
+### [x] T-13 — GREEN: add `PlatformTenant` Prisma model + generate additive migration (A7)
 **Type**: impl
 **Spec**: tenant-registry — platform_tenants Projection; A7
 **WU**: WU-2, commit 2
@@ -305,7 +305,7 @@ All RED until T-13.
 
 ---
 
-### [ ] T-14 — RED: ingest routing unit tests — REGISTERED full upsert, STATUS upsert-create-if-missing, unknown skip (A8/A9)
+### [x] T-14 — RED: ingest routing unit tests — REGISTERED full upsert, STATUS upsert-create-if-missing, unknown skip (A8/A9)
 **Type**: test (RED)
 **Spec**: tenant-registry — platform_tenants Projection (ingest scenarios); platform-data-lane delta — Ingest Event-Type Routing (all 3 scenarios)
 **WU**: WU-2, commit 3
@@ -325,7 +325,7 @@ All RED until T-15.
 
 ---
 
-### [ ] T-15 — GREEN: `PlatformTenantRepository` + ingest event-type branch in `IngestService` (A8/A9)
+### [x] T-15 — GREEN: `PlatformTenantRepository` + ingest event-type branch in `IngestService` (A8/A9)
 **Type**: impl
 **Spec**: tenant-registry — platform_tenants Projection; platform-data-lane delta — Ingest Event-Type Routing; A8; A9
 **WU**: WU-2, commit 4
@@ -347,7 +347,7 @@ All RED until T-15.
 
 ---
 
-### [ ] T-16 — RED: `TenantRegistryController` tests — pagination, auth, isolation (A10/A11)
+### [x] T-16 — RED: `TenantRegistryController` tests — pagination, auth, isolation (A10/A11)
 **Type**: test (RED)
 **Spec**: tenant-registry — Operator Tenant List Endpoint (all 4 scenarios); isolation invariant
 **WU**: WU-2, commit 5
@@ -367,7 +367,7 @@ All RED until T-17.
 
 ---
 
-### [ ] T-17 — GREEN: `TenantRegistryController` + `TenantRegistryService` (A10/A11)
+### [x] T-17 — GREEN: `TenantRegistryController` + `TenantRegistryService` (A10/A11)
 **Type**: impl
 **Spec**: tenant-registry — Operator Tenant List Endpoint; A10; A11
 **WU**: WU-2, commit 6
@@ -384,7 +384,7 @@ All RED until T-17.
 
 ---
 
-### [ ] T-18 — GREEN: register all new providers in `PlatformDataModule` (viewpro-api)
+### [x] T-18 — GREEN: register all new providers in `PlatformDataModule` (viewpro-api)
 **Type**: impl
 **Spec**: tenant-registry — Operator Tenant List Endpoint; platform-data.module.ts wiring
 **WU**: WU-2, commit 7
