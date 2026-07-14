@@ -54,5 +54,9 @@ export const appConfig = registerAs('app', () => {
       secret: platformControlSecret,
       inmoviewApiInternalUrl,
     },
+    platformData: {
+      pollIntervalMs: Number(process.env.PLATFORM_POLL_INTERVAL_MS ?? 5000),
+      batchLimit: Number(process.env.PLATFORM_DATA_BATCH_LIMIT ?? 100),
+    },
   }
 })

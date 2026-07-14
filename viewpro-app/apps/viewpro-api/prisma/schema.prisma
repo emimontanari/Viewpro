@@ -21,3 +21,27 @@ model Operator {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 }
+
+/// Mirror of InmoView platform outbox events — deduped by sourceEventId (D5, D8).
+model PlatformMirrorEvent {
+  id            String   @id @default(uuid())
+  sourceEventId String   @unique
+  eventType     String
+  tenantId      String
+  newStatus     String
+  occurredAt    DateTime
+  seqNo         Int
+  ingestedAt    DateTime @default(now())
+  payload       Json
+
+  @@index([tenantId, seqNo])
+  @@map("platform_mirror_events")
+}
+
+/// Single-row cursor tracking the last successfully ingested seqNo (D7).
+model PlatformIngestCursor {
+  id    Int @id @default(1)
+  seqNo Int @default(0)
+
+  @@map("platform_ingest_cursor")
+}

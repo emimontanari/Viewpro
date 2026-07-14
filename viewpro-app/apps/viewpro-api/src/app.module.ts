@@ -6,6 +6,7 @@ import { ConfigModule } from './config/config.module'
 import { DatabaseModule } from './database/database.module'
 import { HealthModule } from './health/health.module'
 import { PlatformControlModule } from './platform-control/platform-control.module'
+import { PlatformDataModule } from './platform-data/platform-data.module'
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { PlatformControlModule } from './platform-control/platform-control.modul
     AuthModule,
     HealthModule,
     PlatformControlModule,
+    PlatformDataModule,
   ],
 })
 export class AppModule {}

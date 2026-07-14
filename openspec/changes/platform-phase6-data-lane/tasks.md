@@ -334,7 +334,7 @@ All RED.
 
 ## WU-3 — viewpro-api mirror + cursor + poll ingest + metrics endpoint
 
-### [ ] T-15 — RED: unit tests for `ChangeFeedClient` (viewpro-api)
+### [x] T-15 — RED: unit tests for `ChangeFeedClient` (viewpro-api)
 **Type**: test (RED)
 **Spec**: platform-data-lane-ingest-metrics — Interval Poll Job (env config + overlap guard scenarios); poller uses persisted cursor
 **WU**: WU-3, commit 1
@@ -351,7 +351,7 @@ All RED until client exists.
 
 ---
 
-### [ ] T-16 — GREEN: implement `ChangeFeedClient`
+### [x] T-16 — GREEN: implement `ChangeFeedClient`
 **Type**: impl
 **Spec**: platform-data-lane-ingest-metrics — Data-Lane Environment Configuration; Interval Poll Job
 **WU**: WU-3, commit 2
@@ -367,7 +367,7 @@ All RED until client exists.
 
 ---
 
-### [ ] T-17 — R2 + R3 migrations — `viewpro_platform` mirror table + cursor (low risk, own DB)
+### [x] T-17 — R2 + R3 migrations — `viewpro_platform` mirror table + cursor (low risk, own DB)
 **Type**: impl
 **Spec**: platform-data-lane-ingest-metrics — Idempotent Mirror Ingest; Durable Cursor Advance
 **WU**: WU-3, commit 3
@@ -405,7 +405,7 @@ All RED until client exists.
 
 ---
 
-### [ ] T-18 — RED: unit tests for mirror ingest + cursor persistence
+### [x] T-18 — RED: unit tests for mirror ingest + cursor persistence
 **Type**: test (RED)
 **Spec**: platform-data-lane-ingest-metrics — Idempotent Mirror Ingest (both scenarios); Durable Cursor Advance (all 3 scenarios)
 **WU**: WU-3, commit 4
@@ -424,7 +424,7 @@ All RED until `IngestService` + repos exist.
 
 ---
 
-### [ ] T-19 — GREEN: implement `IngestService` + `MirrorRepository` + `CursorRepository`
+### [x] T-19 — GREEN: implement `IngestService` + `MirrorRepository` + `CursorRepository`
 **Type**: impl
 **Spec**: platform-data-lane-ingest-metrics — Idempotent Mirror Ingest; Durable Cursor Advance
 **WU**: WU-3, commit 5
@@ -440,7 +440,7 @@ All RED until `IngestService` + repos exist.
 
 ---
 
-### [ ] T-20 — RED: poll-job lifecycle tests (OnModuleInit + overlap guard + OnModuleDestroy)
+### [x] T-20 — RED: poll-job lifecycle tests (OnModuleInit + overlap guard + OnModuleDestroy)
 **Type**: test (RED)
 **Spec**: platform-data-lane-ingest-metrics — Interval Poll Job (all 3 scenarios: cursor used per tick, overlap skipped, interval configurable)
 **WU**: WU-3, commit 6
@@ -459,7 +459,7 @@ All RED until `PlatformDataPollJob` exists.
 
 ---
 
-### [ ] T-21 — GREEN: implement `PlatformDataPollJob`
+### [x] T-21 — GREEN: implement `PlatformDataPollJob`
 **Type**: impl
 **Spec**: platform-data-lane-ingest-metrics — Interval Poll Job; D9
 **WU**: WU-3, commit 7
@@ -477,7 +477,7 @@ All RED until `PlatformDataPollJob` exists.
 
 ---
 
-### [ ] T-22 — RED: operator metrics endpoint tests
+### [x] T-22 — RED: operator metrics endpoint tests
 **Type**: test (RED)
 **Spec**: platform-data-lane-ingest-metrics — Metrics Endpoint — Operator-Only Access (all 4 scenarios); Empty-State Metrics
 **WU**: WU-3, commit 8
@@ -496,7 +496,7 @@ All RED until metrics controller + service exist.
 
 ---
 
-### [ ] T-23 — GREEN: implement `MetricsService` + `MetricsController` + `PlatformDataModule` (viewpro-api)
+### [x] T-23 — GREEN: implement `MetricsService` + `MetricsController` + `PlatformDataModule` (viewpro-api)
 **Type**: impl
 **Spec**: platform-data-lane-ingest-metrics — Metrics Endpoint; D5; D6
 **WU**: WU-3, commit 9
@@ -514,7 +514,7 @@ All RED until metrics controller + service exist.
 
 ---
 
-### [ ] T-24 — Final verification + invariant check
+### [x] T-24 — Final verification + invariant check
 **Type**: verify
 **Spec**: All invariants; proposal acceptance criteria (items 1–7)
 **WU**: WU-3, commit 10
@@ -573,19 +573,19 @@ All RED until metrics controller + service exist.
 - [x] Status change commits exactly one `platform_outbox_events` row in same `$transaction` (T-09, T-10)
 - [x] Rolled-back transaction leaves zero outbox rows (T-09)
 - [x] No-op/unchanged transition emits NO outbox row (D4; T-09)
-- [ ] `GET /internal/platform/changes?since=N` returns events seqNo > N, ordered ASC, nextCursor = max seqNo (T-11, T-12)
-- [ ] Empty batch returns nextCursor = supplied cursor (T-11, T-12)
-- [ ] Batch bounded by `PLATFORM_DATA_BATCH_LIMIT`; ms-collision events both delivered (T-11, T-12)
-- [ ] Invalid/missing service token → 401; read-only — no outbox mutation (T-11, T-13)
-- [ ] User JWT rejected by change-feed endpoint; service token rejected by AuthGuard (T-13)
-- [ ] `evt-abc` re-delivered → still one mirror row, no error (D8; T-18, T-19)
-- [ ] Cursor advances to max seqNo after successful ingest; does NOT advance on ingest failure (D7; T-18, T-19)
-- [ ] Restart resumes from persisted cursor (T-18, T-19)
-- [ ] Overlap guard prevents concurrent polls (D9; T-20, T-21)
-- [ ] `GET /operators/metrics/summary` returns 200 + correct counts for authenticated operator (T-22, T-23)
-- [ ] Unauthenticated metrics request → 401 (T-22)
-- [ ] Empty mirror → 200 with zeroed counts (T-22)
-- [ ] Metrics served from `viewpro_platform` ONLY — no InmoView DB reads (D6; T-22, T-23)
+- [x] `GET /internal/platform/changes?since=N` returns events seqNo > N, ordered ASC, nextCursor = max seqNo (T-11, T-12)
+- [x] Empty batch returns nextCursor = supplied cursor (T-11, T-12)
+- [x] Batch bounded by `PLATFORM_DATA_BATCH_LIMIT`; ms-collision events both delivered (T-11, T-12)
+- [x] Invalid/missing service token → 401; read-only — no outbox mutation (T-11, T-13)
+- [x] User JWT rejected by change-feed endpoint; service token rejected by AuthGuard (T-13)
+- [x] `evt-abc` re-delivered → still one mirror row, no error (D8; T-18, T-19)
+- [x] Cursor advances to max seqNo after successful ingest; does NOT advance on ingest failure (D7; T-18, T-19)
+- [x] Restart resumes from persisted cursor (T-18, T-19)
+- [x] Overlap guard prevents concurrent polls (D9; T-20, T-21)
+- [x] `GET /operators/metrics/summary` returns 200 + correct counts for authenticated operator (T-22, T-23)
+- [x] Unauthenticated metrics request → 401 (T-22)
+- [x] Empty mirror → 200 with zeroed counts (T-22)
+- [x] Metrics served from `viewpro_platform` ONLY — no InmoView DB reads (D6; T-22, T-23)
 - [x] Type-equality assertion `PlatformTenantStatus ↔ TenantStatus` compile-time enforced (T-02, T-03)
 - [x] R1 migration deployed BEFORE app code writing outbox rows (operational sequencing; T-04 note)
-- [ ] `PLATFORM_CONTROL_SECRET` never in response body or logs (T-13, invariant check)
+- [x] `PLATFORM_CONTROL_SECRET` never in response body or logs (T-13, invariant check)
