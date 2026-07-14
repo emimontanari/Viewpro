@@ -326,3 +326,171 @@ describe('IngestService (integration — test DB)', () => {
     await retryModule.close()
   })
 })
+
+/**
+ * T-14 — RED: ingest event-type routing — REGISTERED full upsert,
+ * STATUS upsert-create-if-missing, unknown skip (A8/A9).
+ *
+ * Spec: tenant-registry — platform_tenants Projection (ingest scenarios);
+ *       platform-data-lane delta — Ingest Event-Type Routing (all 3 scenarios)
+ */
+describe('IngestService — platform_tenants routing (T-14/T-15, A8/A9)', () => {
+  let moduleRef: TestingModule
+  let ingestService: IngestService
+  let cursorRepo: CursorRepository
+  let prisma: PrismaService
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [IngestService, MirrorRepository, CursorRepository],
+    }).compile()
+
+    ingestService = moduleRef.get(IngestService)
+    cursorRepo = moduleRef.get(CursorRepository)
+    prisma = moduleRef.get(PrismaService)
+  })
+
+  afterAll(async () => {
+    await moduleRef.close()
+  })
+
+  beforeEach(async () => {
+    await prisma.platformTenant.deleteMany()
+    await prisma.platformMirrorEvent.deleteMany()
+    await prisma.platformIngestCursor.upsert({
+      where: { id: 1 },
+      update: { seqNo: 0 },
+      create: { id: 1, seqNo: 0 },
+    })
+  })
+
+  function makeRegisteredEvent(overrides: Partial<PlatformOutboxEvent> = {}): PlatformOutboxEvent {
+    return {
+      id: 'evt-registered-t1',
+      seqNo: 1,
+      eventType: 'TENANT_REGISTERED',
+      tenantId: 't-1',
+      payload: {
+        id: 't-1',
+        name: 'Acme',
+        slug: 'acme',
+        newStatus: 'TRIAL',
+        limits: { maxUsers: 5, maxActivePropertyEngagements: 10, maxDocumentsStorageMb: 500 },
+      },
+      occurredAt: new Date().toISOString(),
+      ...overrides,
+    }
+  }
+
+  // Scenario: Ingest of TENANT_REGISTERED upserts a full row
+  it('TENANT_REGISTERED for a new tenant → one platform_tenants row with all fields', async () => {
+    await ingestService.ingestBatch([makeRegisteredEvent()])
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-1' } })
+    expect(row).not.toBeNull()
+    expect(row?.name).toBe('Acme')
+    expect(row?.slug).toBe('acme')
+    expect(row?.latestStatus).toBe('TRIAL')
+    expect(row?.maxUsers).toBe(5)
+    expect(row?.maxActivePropertyEngagements).toBe(10)
+    expect(row?.maxDocumentsStorageMb).toBe(500)
+  })
+
+  // Scenario: Re-delivery of TENANT_REGISTERED is idempotent
+  it('re-delivered TENANT_REGISTERED for t-1 → still exactly one row, no error', async () => {
+    const evt = makeRegisteredEvent()
+
+    await ingestService.ingestBatch([evt])
+    await ingestService.ingestBatch([evt]) // replay
+
+    const rows = await prisma.platformTenant.findMany({ where: { id: 't-1' } })
+    expect(rows).toHaveLength(1)
+  })
+
+  // Scenario: Ingest of TENANT_STATUS_CHANGED updates latestStatus
+  it('TENANT_STATUS_CHANGED for an existing tenant → latestStatus updated; name/slug updated when present', async () => {
+    await ingestService.ingestBatch([makeRegisteredEvent()])
+
+    await ingestService.ingestBatch([
+      makeEvent({
+        id: 'evt-status-t1',
+        seqNo: 2,
+        eventType: 'TENANT_STATUS_CHANGED',
+        tenantId: 't-1',
+        payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE', name: 'Acme Renamed', slug: 'acme' },
+      }),
+    ])
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-1' } })
+    expect(row?.latestStatus).toBe('ACTIVE')
+    expect(row?.name).toBe('Acme Renamed')
+  })
+
+  // Scenario A9: TENANT_STATUS_CHANGED for a not-yet-registered tenant → create-if-missing
+  it('TENANT_STATUS_CHANGED for an absent tenant → row created with id + latestStatus (A9)', async () => {
+    await ingestService.ingestBatch([
+      makeEvent({
+        id: 'evt-status-t2',
+        seqNo: 1,
+        eventType: 'TENANT_STATUS_CHANGED',
+        tenantId: 't-2',
+        payload: { previousStatus: 'TRIAL', newStatus: 'SUSPENDED' },
+      }),
+    ])
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-2' } })
+    expect(row).not.toBeNull()
+    expect(row?.latestStatus).toBe('SUSPENDED')
+  })
+
+  // Scenario: Unknown event type does not crash ingest — skipped for platform_tenants,
+  // mirror append + cursor advance still happen (platform-data-lane delta)
+  it('unknown eventType → no platform_tenants write; mirror still appends; cursor advances', async () => {
+    const unknownEvent = {
+      id: 'evt-unknown-1',
+      seqNo: 5,
+      eventType: 'UNKNOWN_FUTURE_TYPE',
+      tenantId: 't-unknown',
+      payload: { newStatus: 'ACTIVE' },
+      occurredAt: new Date().toISOString(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any as PlatformOutboxEvent
+
+    await ingestService.ingestBatch([unknownEvent])
+
+    const tenantRow = await prisma.platformTenant.findUnique({ where: { id: 't-unknown' } })
+    expect(tenantRow).toBeNull()
+
+    const mirrorRow = await prisma.platformMirrorEvent.findUnique({
+      where: { sourceEventId: 'evt-unknown-1' },
+    })
+    expect(mirrorRow).not.toBeNull()
+
+    const cursor = await cursorRepo.getCursor()
+    expect(cursor).toBe(5)
+  })
+
+  // Both event types append to platform_mirror_events (platform-data-lane delta)
+  it('both TENANT_REGISTERED and TENANT_STATUS_CHANGED append a row to platform_mirror_events', async () => {
+    await ingestService.ingestBatch([
+      makeRegisteredEvent({ id: 'evt-mirror-registered', seqNo: 1, tenantId: 't-mirror' }),
+      makeEvent({
+        id: 'evt-mirror-status',
+        seqNo: 2,
+        eventType: 'TENANT_STATUS_CHANGED',
+        tenantId: 't-mirror-2',
+        payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE' },
+      }),
+    ])
+
+    const registeredMirrorRow = await prisma.platformMirrorEvent.findUnique({
+      where: { sourceEventId: 'evt-mirror-registered' },
+    })
+    const statusMirrorRow = await prisma.platformMirrorEvent.findUnique({
+      where: { sourceEventId: 'evt-mirror-status' },
+    })
+    expect(registeredMirrorRow).not.toBeNull()
+    expect(statusMirrorRow).not.toBeNull()
+  })
+})
