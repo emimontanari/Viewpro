@@ -149,6 +149,15 @@ class EnvironmentVariables {
 	@IsString()
 	@MinLength(16)
 	PLATFORM_CONTROL_SECRET!: string;
+
+	// Optional — configurable batch size for GET /internal/platform/changes.
+	// Controller reads process.env.PLATFORM_DATA_BATCH_LIMIT directly at request
+	// time so test overrides take effect without restarting the app.
+	@IsOptional()
+	@IsInt()
+	@Min(1)
+	@Type(() => Number)
+	PLATFORM_DATA_BATCH_LIMIT = 100;
 }
 
 export function validateEnv(config: Record<string, unknown>) {

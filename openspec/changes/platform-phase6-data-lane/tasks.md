@@ -259,7 +259,7 @@ All RED until writer is wired into the repo.
 
 ## WU-2 — `PlatformDataModule` change-feed endpoint (apps/api)
 
-### [ ] T-11 — RED: unit tests for `PlatformDataController` change-feed
+### [x] T-11 — RED: unit tests for `PlatformDataController` change-feed
 **Type**: test (RED)
 **Spec**: platform-data-lane-outbox — Change-Feed Endpoint (all 6 scenarios); Change-Feed Environment Configuration
 **WU**: WU-2, commit 1
@@ -280,7 +280,7 @@ All RED until controller + module exist.
 
 ---
 
-### [ ] T-12 — GREEN: implement `PlatformDataController` + `PlatformDataModule`
+### [x] T-12 — GREEN: implement `PlatformDataController` + `PlatformDataModule`
 **Type**: impl
 **Spec**: platform-data-lane-outbox — Change-Feed Endpoint; Change-Feed Environment Configuration
 **WU**: WU-2, commit 2
@@ -300,7 +300,7 @@ All RED until controller + module exist.
 
 ---
 
-### [ ] T-13 — RED: cursor/pagination edge-case + trust-isolation tests
+### [x] T-13 — RED: cursor/pagination edge-case + trust-isolation tests
 **Type**: test (RED)
 **Spec**: platform-data-lane-outbox — Invariants: read-only endpoint; secret not logged; token confusion threat
 **WU**: WU-2, commit 3
@@ -318,7 +318,7 @@ All RED.
 
 ---
 
-### [ ] T-14 — GREEN: confirm edge-case + trust-isolation tests pass
+### [x] T-14 — GREEN: confirm edge-case + trust-isolation tests pass
 **Type**: impl
 **Spec**: platform-data-lane-outbox — Invariants
 **WU**: WU-2, commit 4
