@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import type { PlatformOutboxEvent } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 import { MirrorRepository } from './mirror.repository'
 import { CursorRepository } from './cursor.repository'
+import { PlatformTenantRepository } from './platform-tenant.repository'
 
 /**
  * IngestService — processes a batch of outbox events from the change-feed.
@@ -11,6 +12,13 @@ import { CursorRepository } from './cursor.repository'
  *   A crash between the upserts and the cursor update causes the batch to be
  *   re-fetched on restart. UNIQUE(sourceEventId) on the mirror table makes
  *   re-processing idempotent (D8).
+ *
+ * A8: after the mirror upsert (which runs for EVERY event regardless of
+ *   eventType), the batch is additionally routed by eventType into the
+ *   `platform_tenants` projection:
+ *     - TENANT_REGISTERED     → full identity + limits upsert
+ *     - TENANT_STATUS_CHANGED → latestStatus (+ name/slug) upsert, create-if-missing (A9)
+ *     - any other eventType   → skipped without error
  *
  * Feed error handling: a failure during any single event's upsert causes the
  *   entire batch to be logged-and-skipped. The cursor does NOT advance, so the
@@ -23,12 +31,14 @@ export class IngestService {
   constructor(
     private readonly mirrorRepo: MirrorRepository,
     private readonly cursorRepo: CursorRepository,
+    private readonly tenantRepo: PlatformTenantRepository,
   ) {}
 
   /**
    * Ingest a batch of events from the change-feed.
    *
    * - Upserts each event into the mirror (idempotent — ON CONFLICT DO NOTHING).
+   * - Routes each event into the `platform_tenants` projection by eventType (A8/A9).
    * - Advances the cursor to the max seqNo in the batch ONLY after all upserts commit.
    * - On any error: logs and skips — the cursor is NOT advanced.
    */
@@ -40,6 +50,7 @@ export class IngestService {
     try {
       for (const event of events) {
         await this.mirrorRepo.upsertEvent(event)
+        await this.routeToTenantProjection(event)
       }
     } catch (err) {
       // D7: cursor must NOT advance if mirror write failed.
@@ -57,5 +68,44 @@ export class IngestService {
       // so dedup ensures they won't be duplicated on the next re-poll.
       this.logger.error('Failed to advance cursor after successful ingest', err)
     }
+  }
+
+  /**
+   * A8/A9: route a single event into the `platform_tenants` projection by
+   * eventType. Any other eventType is skipped without error (forward
+   * compatibility with future event types).
+   *
+   * Mirrors the mirror repo's W2 guard: a malformed payload with a missing
+   * `newStatus` is skipped here too — this prevents a blank/undefined
+   * `latestStatus` from being persisted (same malformed-event contract as
+   * the mirror table, so existing malformed-event regression coverage
+   * continues to hold for the projection as well).
+   */
+  private async routeToTenantProjection(event: PlatformOutboxEvent): Promise<void> {
+    if (event.eventType === 'TENANT_REGISTERED') {
+      const payload = event.payload as { newStatus?: string } & Record<string, unknown>
+      if (!payload.newStatus) {
+        return
+      }
+      await this.tenantRepo.upsertFromRegistered(
+        event.payload as Parameters<PlatformTenantRepository['upsertFromRegistered']>[0],
+      )
+      return
+    }
+
+    if (event.eventType === 'TENANT_STATUS_CHANGED') {
+      const payload = event.payload as { newStatus?: string } & Record<string, unknown>
+      if (!payload.newStatus) {
+        return
+      }
+      await this.tenantRepo.upsertFromStatusChange(
+        event.tenantId,
+        event.payload as Parameters<PlatformTenantRepository['upsertFromStatusChange']>[1],
+      )
+      return
+    }
+
+    // Unknown eventType — skip projection routing without error; the mirror
+    // append above already ran, and the cursor still advances normally.
   }
 }

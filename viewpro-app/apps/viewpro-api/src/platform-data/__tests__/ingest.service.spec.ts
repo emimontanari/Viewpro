@@ -6,6 +6,7 @@ import { PrismaService } from '../../database/prisma.service'
 import { IngestService } from '../ingest.service'
 import { MirrorRepository } from '../mirror.repository'
 import { CursorRepository } from '../cursor.repository'
+import { PlatformTenantRepository } from '../platform-tenant.repository'
 import type { PlatformOutboxEvent } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 
 /**
@@ -37,7 +38,7 @@ describe('IngestService (integration — test DB)', () => {
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
       imports: [ConfigModule, DatabaseModule],
-      providers: [IngestService, MirrorRepository, CursorRepository],
+      providers: [IngestService, MirrorRepository, CursorRepository, PlatformTenantRepository],
     }).compile()
 
     ingestService = moduleRef.get(IngestService)
@@ -126,6 +127,7 @@ describe('IngestService (integration — test DB)', () => {
         IngestService,
         { provide: MirrorRepository, useValue: throwingMirrorRepo },
         CursorRepository,
+        PlatformTenantRepository,
       ],
     }).compile()
 
@@ -249,6 +251,7 @@ describe('IngestService (integration — test DB)', () => {
         IngestService,
         { provide: MirrorRepository, useValue: partialMirrorRepo },
         CursorRepository,
+        PlatformTenantRepository,
       ],
     }).compile()
 
@@ -297,6 +300,7 @@ describe('IngestService (integration — test DB)', () => {
         IngestService,
         { provide: MirrorRepository, useValue: retryMirrorRepo },
         CursorRepository,
+        PlatformTenantRepository,
       ],
     }).compile()
 
@@ -343,7 +347,7 @@ describe('IngestService — platform_tenants routing (T-14/T-15, A8/A9)', () => 
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
       imports: [ConfigModule, DatabaseModule],
-      providers: [IngestService, MirrorRepository, CursorRepository],
+      providers: [IngestService, MirrorRepository, CursorRepository, PlatformTenantRepository],
     }).compile()
 
     ingestService = moduleRef.get(IngestService)
