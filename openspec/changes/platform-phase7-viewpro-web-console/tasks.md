@@ -383,7 +383,7 @@ All RED until `session-context.tsx` is rewritten.
 
 ## WU-3 — Metrics feature module + dashboard page
 
-### [ ] T-17 — RED: unit tests for metrics `types` + `service` + `queries`
+### [x] T-17 — RED: unit tests for metrics `types` + `service` + `queries`
 **Type**: test (RED)
 **Spec**: operator-console — Read-Only Metrics Dashboard (scenarios 1, 2, 3); D7; D11
 **WU**: WU-3, commit 1
@@ -402,7 +402,7 @@ All RED until metrics api module exists.
 
 ---
 
-### [ ] T-18 — GREEN: implement metrics api module (`types` + `service` + `queries`)
+### [x] T-18 — GREEN: implement metrics api module (`types` + `service` + `queries`)
 **Type**: impl
 **Spec**: operator-console — Read-Only Metrics Dashboard; D7; D11
 **WU**: WU-3, commit 2
@@ -422,7 +422,7 @@ All RED until metrics api module exists.
 
 ---
 
-### [ ] T-19 — RED: component tests for dashboard page + metrics components
+### [x] T-19 — RED: component tests for dashboard page + metrics components
 **Type**: test (RED)
 **Spec**: operator-console — Read-Only Metrics Dashboard (all 3 scenarios); D11
 **WU**: WU-3, commit 3
@@ -445,7 +445,7 @@ All RED until components + page exist.
 
 ---
 
-### [ ] T-20 — GREEN: metrics components + dashboard page
+### [x] T-20 — GREEN: metrics components + dashboard page
 **Type**: impl
 **Spec**: operator-console — Read-Only Metrics Dashboard; D11
 **WU**: WU-3, commit 4
@@ -468,7 +468,7 @@ All RED until components + page exist.
 
 ---
 
-### [ ] T-21 — Final verification + invariant check
+### [x] T-21 — Final verification + invariant check
 **Type**: verify
 **Spec**: All invariants; proposal acceptance criteria (all 7 items)
 **WU**: WU-3, commit 5
@@ -513,23 +513,23 @@ All RED until components + page exist.
 | ~~T-14~~ [x] GREEN: session-context rewrite | impl | WU-2 | Rehydration; D2; D4; D5; D6 | T-13 |
 | ~~T-15~~ [x] strip+wire: sidebar + user-nav | impl | WU-2 | Session Model; D5 | T-14 |
 | ~~T-16~~ [x] strip+wire: sign-in-view | impl | WU-2 | Sign-In scenarios; residual Q2 | T-15 |
-| T-17 RED: metrics api tests | test | WU-3 | Dashboard (scenarios 1-2); D7; D11 | T-16 |
-| T-18 GREEN: metrics api module | impl | WU-3 | Dashboard; D7; D11 | T-17 |
-| T-19 RED: dashboard page + component tests | test | WU-3 | Dashboard (all 3 scenarios); D11 | T-18 |
-| T-20 GREEN: metrics components + dashboard | impl | WU-3 | Dashboard; D11 | T-19 |
-| T-21 final verification | verify | WU-3 | All invariants + acceptance criteria | T-20 |
+| ~~T-17~~ [x] RED: metrics api tests | test | WU-3 | Dashboard (scenarios 1-2); D7; D11 | T-16 |
+| ~~T-18~~ [x] GREEN: metrics api module | impl | WU-3 | Dashboard; D7; D11 | T-17 |
+| ~~T-19~~ [x] RED: dashboard page + component tests | test | WU-3 | Dashboard (all 3 scenarios); D11 | T-18 |
+| ~~T-20~~ [x] GREEN: metrics components + dashboard | impl | WU-3 | Dashboard; D11 | T-19 |
+| ~~T-21~~ [x] final verification | verify | WU-3 | All invariants + acceptance criteria | T-20 |
 
 ---
 
 ## Success Checklist (maps to spec acceptance)
 
-- [ ] viewpro-web boots on `localhost:3003` (T-08, T-21)
-- [ ] Operator signs in against viewpro-api and lands on `/dashboard` (T-10, T-16)
-- [ ] Dashboard shows tenant count + byStatus breakdown + generatedAt (T-18, T-20)
-- [ ] Page reload rehydrates session via `GET /auth/me` without spurious logout (T-10, T-14)
-- [ ] Unauthenticated visit to `/dashboard` redirects to `/auth/sign-in` (T-11, T-12)
-- [ ] `GET /api/auth/me` returns 401 without valid operator session (T-01, T-02)
-- [ ] No InmoView calls from viewpro-web — Design-B isolation confirmed (T-06, T-21)
-- [ ] `ACCESS_TOKEN_SECRET` absent from all viewpro-web source files (T-11, T-21)
-- [ ] Empty metrics state (tenants === 0) renders without error (T-19, T-20)
-- [ ] Sign-up link absent from sign-in page (T-16)
+- [x] viewpro-web boots on `localhost:3003` (T-08, T-21)
+- [x] Operator signs in against viewpro-api and lands on `/dashboard` (T-10, T-16)
+- [x] Dashboard shows tenant count + byStatus breakdown + generatedAt (T-18, T-20)
+- [x] Page reload rehydrates session via `GET /auth/me` without spurious logout (T-10, T-14)
+- [x] Unauthenticated visit to `/dashboard` redirects to `/auth/sign-in` (T-11, T-12)
+- [x] `GET /api/auth/me` returns 401 without valid operator session (T-01, T-02)
+- [x] No InmoView calls from viewpro-web — Design-B isolation confirmed (T-06, T-21)
+- [x] `ACCESS_TOKEN_SECRET` absent from all viewpro-web source files (T-11, T-21)
+- [x] Empty metrics state (tenants === 0) renders without error (T-19, T-20)
+- [x] Sign-up link absent from sign-in page (T-16)
