@@ -153,20 +153,55 @@ describe('MetricsController (integration — test DB)', () => {
   })
 
   // Scenario: InmoView DB isolation — metrics served from mirror only (spec scenario 4; D6)
-  it('MetricsService does not import or use InmoView Prisma client', async () => {
-    // Static assertion: MetricsService must only use PrismaService (@prisma-platform/client)
-    // We verify this by checking the module resolves without any InmoView dependency.
-    // The MetricsController + MetricsService are wired with only DatabaseModule (viewpro_platform).
-    // If they inadvertently used the InmoView client, the module would fail to wire.
-    const cookie = await getSessionCookie()
+  //
+  // Genuine proof strategy (two layers):
+  //  A. DI/structural: the test module wires MetricsController + MetricsService with
+  //     ONLY DatabaseModule (viewpro_platform PrismaService) and AuthModule. No
+  //     ChangeFeedClient or InmoView Prisma client is in scope. If MetricsService
+  //     tried to inject either, NestJS would throw at module compilation time.
+  //  B. Behavioral: seed a mirror row directly in viewpro_platform (bypassing any
+  //     InmoView touch), call the endpoint, and assert the response reflects that
+  //     seeded row — proving the metrics path reads ONLY viewpro_platform.
+  it('metrics reads ONLY viewpro_platform mirror — no ChangeFeedClient/InmoView dependency (DI + behavioral proof)', async () => {
+    // --- A. DI/structural check ---
+    // The moduleFixture was built with: DatabaseModule, AuthModule, MetricsController,
+    // MetricsService — and nothing else. Confirm ChangeFeedClient is NOT resolvable,
+    // which proves it is absent from the metrics wiring.
+    // (NestJS throws NotFoundException when trying to get an unregistered provider.)
+    let changeFeedClientResolved: boolean
+    try {
+      const { ChangeFeedClient } = await import('../change-feed.client.js')
+      app.get(ChangeFeedClient)
+      changeFeedClientResolved = true
+    } catch {
+      changeFeedClientResolved = false
+    }
+    expect(changeFeedClientResolved).toBe(false)
 
-    // Metrics should work even with no InmoView connection — the test environment
-    // already has no InmoView DB URL configured (setup-env.ts deletes INMV_DATABASE_URL).
+    // --- B. Behavioral isolation proof ---
+    // Seed a PENDING row directly into viewpro_platform (no InmoView call).
+    await prisma.platformMirrorEvent.create({
+      data: {
+        sourceEventId: 'evt-isolation-proof-pending',
+        eventType: 'TENANT_STATUS_CHANGED',
+        tenantId: 'tenant-isolation-proof',
+        newStatus: 'TRIAL',
+        occurredAt: new Date(),
+        seqNo: 99,
+        payload: { previousStatus: 'CANCELLED', newStatus: 'TRIAL' },
+      },
+    })
+
+    const cookie = await getSessionCookie()
     const res = await request(app.getHttpServer())
       .get('/api/operators/metrics/summary')
       .set('Cookie', cookie)
 
-    expect(res.status).toBe(200) // served from viewpro_platform mirror only
+    // The response must reflect the seeded mirror row — proving the query hit
+    // viewpro_platform only (no InmoView DB was touched to produce this result).
+    expect(res.status).toBe(200)
+    expect(res.body.tenants).toBeGreaterThanOrEqual(1)
+    expect((res.body.byStatus as Record<string, number>)['TRIAL']).toBeGreaterThanOrEqual(1)
   })
 
   // Latest-event-wins: if t-1 has two events (ACTIVE then SUSPENDED), report SUSPENDED
