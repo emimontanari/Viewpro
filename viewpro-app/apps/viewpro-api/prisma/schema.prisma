@@ -47,3 +47,21 @@ model PlatformIngestCursor {
 
   @@map("platform_ingest_cursor")
 }
+
+/// Operator-facing tenant registry projection (Phase 7 slice 2A).
+/// Upserted from the data-lane feed: TENANT_REGISTERED (full identity+limits)
+/// and TENANT_STATUS_CHANGED (latestStatus + name/slug when present, A8/A9).
+/// `latestStatus` is a plain String (mirrors platform_mirror_events.newStatus) —
+/// the contract union enforces valid values, avoiding an enum migration (A7).
+model PlatformTenant {
+  id                           String   @id
+  name                         String
+  slug                         String
+  latestStatus                 String
+  maxUsers                     Int?
+  maxActivePropertyEngagements Int?
+  maxDocumentsStorageMb        Int?
+  updatedAt                    DateTime @updatedAt
+
+  @@map("platform_tenants")
+}
