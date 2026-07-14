@@ -66,6 +66,16 @@ class EnvironmentVariables {
   @Min(1)
   @Type(() => Number)
   AUTH_RATE_LIMIT_LOGIN_TTL_SECONDS = 60
+
+  // Optional — poll interval for the platform data-lane ingest job (ms). Default 5000.
+  @IsOptional()
+  @IsInt()
+  @Min(100)
+  @Type(() => Number)
+  PLATFORM_POLL_INTERVAL_MS = 5000
+  // S2: PLATFORM_DATA_BATCH_LIMIT removed — batch size is controlled by the producer
+  // (apps/api change-feed endpoint). A consumer-side limit here was dead config that
+  // misled operators into thinking they could control pull size from this side.
 }
 
 export function validateEnv(config: Record<string, unknown>) {

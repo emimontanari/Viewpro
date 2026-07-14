@@ -54,5 +54,10 @@ export const appConfig = registerAs('app', () => {
       secret: platformControlSecret,
       inmoviewApiInternalUrl,
     },
+    platformData: {
+      pollIntervalMs: Number(process.env.PLATFORM_POLL_INTERVAL_MS ?? 5000),
+      // S2: batchLimit removed — batch size is producer-controlled (apps/api endpoint).
+      // The consumer-side batchLimit was dead config that misled operators.
+    },
   }
 })
