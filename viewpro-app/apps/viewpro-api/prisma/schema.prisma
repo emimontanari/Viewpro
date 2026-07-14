@@ -30,7 +30,8 @@ model PlatformMirrorEvent {
   tenantId      String
   newStatus     String
   occurredAt    DateTime
-  seqNo         Int
+  /// W1: BigInt matches the producer BIGSERIAL (platform_outbox_events.seqNo).
+  seqNo         BigInt
   ingestedAt    DateTime @default(now())
   payload       Json
 
@@ -40,8 +41,9 @@ model PlatformMirrorEvent {
 
 /// Single-row cursor tracking the last successfully ingested seqNo (D7).
 model PlatformIngestCursor {
-  id    Int @id @default(1)
-  seqNo Int @default(0)
+  id    Int    @id @default(1)
+  /// W1: BigInt matches the producer BIGSERIAL (platform_outbox_events.seqNo).
+  seqNo BigInt @default(0)
 
   @@map("platform_ingest_cursor")
 }

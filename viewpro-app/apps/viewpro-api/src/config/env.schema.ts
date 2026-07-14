@@ -73,13 +73,9 @@ class EnvironmentVariables {
   @Min(100)
   @Type(() => Number)
   PLATFORM_POLL_INTERVAL_MS = 5000
-
-  // Optional — max events fetched per poll tick. Default 100.
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Type(() => Number)
-  PLATFORM_DATA_BATCH_LIMIT = 100
+  // S2: PLATFORM_DATA_BATCH_LIMIT removed — batch size is controlled by the producer
+  // (apps/api change-feed endpoint). A consumer-side limit here was dead config that
+  // misled operators into thinking they could control pull size from this side.
 }
 
 export function validateEnv(config: Record<string, unknown>) {

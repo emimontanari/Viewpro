@@ -56,7 +56,8 @@ export const appConfig = registerAs('app', () => {
     },
     platformData: {
       pollIntervalMs: Number(process.env.PLATFORM_POLL_INTERVAL_MS ?? 5000),
-      batchLimit: Number(process.env.PLATFORM_DATA_BATCH_LIMIT ?? 100),
+      // S2: batchLimit removed — batch size is producer-controlled (apps/api endpoint).
+      // The consumer-side batchLimit was dead config that misled operators.
     },
   }
 })

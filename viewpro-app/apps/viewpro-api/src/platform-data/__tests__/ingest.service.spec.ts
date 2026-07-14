@@ -161,4 +161,168 @@ describe('IngestService (integration — test DB)', () => {
 
     await freshModule.close()
   })
+
+  // W2: Malformed event (missing newStatus) must NOT be stored as '' in the mirror
+  // and must NOT appear in metrics buckets. The cursor CAN still advance past it.
+  it('[W2] event with missing/empty newStatus is NOT stored as a blank row in the mirror', async () => {
+    // Override payload to simulate a malformed event — no newStatus field.
+    // Build the event manually to bypass the contract's strict payload type.
+    const malformedEvent: PlatformOutboxEvent = {
+      id: 'evt-malformed',
+      seqNo: 42,
+      eventType: 'TENANT_STATUS_CHANGED',
+      tenantId: 't-malformed',
+      occurredAt: new Date().toISOString(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      payload: { previousStatus: 'TRIAL' } as any,
+    }
+
+    await ingestService.ingestBatch([malformedEvent])
+
+    // The row must NOT have been written (no '' row, no row at all)
+    const count = await prisma.platformMirrorEvent.count({
+      where: { sourceEventId: 'evt-malformed' },
+    })
+    expect(count).toBe(0)
+  })
+
+  it('[W2] a malformed event does not appear as a status bucket in metrics (no empty-string bucket)', async () => {
+    const malformedEvent: PlatformOutboxEvent = {
+      id: 'evt-malformed-metrics',
+      seqNo: 43,
+      eventType: 'TENANT_STATUS_CHANGED',
+      tenantId: 't-malformed-metrics',
+      occurredAt: new Date().toISOString(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      payload: { previousStatus: 'TRIAL' } as any,
+    }
+
+    // Also ingest a valid event to prove normal events still work
+    const validEvent = makeEvent({ id: 'evt-valid-w2', seqNo: 44, tenantId: 't-w2' })
+
+    await ingestService.ingestBatch([malformedEvent, validEvent])
+
+    const rows = await prisma.platformMirrorEvent.findMany()
+    // The valid event should be stored; the malformed one should not
+    const sourceIds = rows.map((r) => r.sourceEventId)
+    expect(sourceIds).toContain('evt-valid-w2')
+    expect(sourceIds).not.toContain('evt-malformed-metrics')
+
+    // No row should have newStatus === '' (blank)
+    const blankRows = rows.filter((r) => r.newStatus === '')
+    expect(blankRows).toHaveLength(0)
+  })
+
+  // S3: Partial-batch crash safety — event 1 commits, event 2 throws → cursor NOT advanced
+  // Retry is idempotent: event 1 not double-stored, batch eventually completes.
+  it('[S3] partial-batch: event 1 upsert commits, event 2 throws → cursor does NOT advance', async () => {
+    await prisma.platformIngestCursor.update({ where: { id: 1 }, data: { seqNo: 0 } })
+
+    let callCount = 0
+    const partialMirrorRepo = {
+      upsertEvent: async (event: PlatformOutboxEvent) => {
+        callCount++
+        if (callCount === 2) {
+          // Second event throws mid-batch
+          throw new Error('upsert failed mid-batch (test)')
+        }
+        // First event: directly write to real DB to simulate a committed upsert
+        await prisma.platformMirrorEvent.upsert({
+          where: { sourceEventId: event.id },
+          update: {},
+          create: {
+            sourceEventId: event.id,
+            eventType: 'TENANT_STATUS_CHANGED',
+            tenantId: 't-s3',
+            newStatus: 'ACTIVE',
+            occurredAt: new Date(),
+            seqNo: BigInt(event.seqNo),
+            payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE' },
+          },
+        })
+      },
+    }
+
+    const localModule = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [
+        IngestService,
+        { provide: MirrorRepository, useValue: partialMirrorRepo },
+        CursorRepository,
+      ],
+    }).compile()
+
+    const svc = localModule.get(IngestService)
+    const cursorR = localModule.get(CursorRepository)
+
+    const evt1 = makeEvent({ id: 'evt-s3-1', seqNo: 10, tenantId: 't-s3' })
+    const evt2 = makeEvent({ id: 'evt-s3-2', seqNo: 11, tenantId: 't-s3' })
+
+    // First attempt — mid-batch failure
+    await svc.ingestBatch([evt1, evt2])
+
+    // Cursor must NOT have advanced (D7)
+    const cursorAfterFailure = await cursorR.getCursor()
+    expect(cursorAfterFailure).toBe(0)
+
+    // evt1 IS in the mirror (it was written before the failure)
+    const evt1Row = await prisma.platformMirrorEvent.findMany({
+      where: { sourceEventId: 'evt-s3-1' },
+    })
+    expect(evt1Row).toHaveLength(1)
+
+    // Retry: reset callCount to simulate a fresh attempt where both succeed
+    callCount = 0
+    const retryMirrorRepo = {
+      upsertEvent: async (event: PlatformOutboxEvent) => {
+        await prisma.platformMirrorEvent.upsert({
+          where: { sourceEventId: event.id },
+          update: {},
+          create: {
+            sourceEventId: event.id,
+            eventType: 'TENANT_STATUS_CHANGED',
+            tenantId: 't-s3',
+            newStatus: 'ACTIVE',
+            occurredAt: new Date(),
+            seqNo: BigInt(event.seqNo),
+            payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE' },
+          },
+        })
+      },
+    }
+
+    const retryModule = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [
+        IngestService,
+        { provide: MirrorRepository, useValue: retryMirrorRepo },
+        CursorRepository,
+      ],
+    }).compile()
+
+    const retrySvc = retryModule.get(IngestService)
+    const retryCursorR = retryModule.get(CursorRepository)
+
+    // Retry full batch — evt1 upsert is a no-op (idempotent), evt2 succeeds
+    await retrySvc.ingestBatch([evt1, evt2])
+
+    // Cursor advances on successful retry
+    const cursorAfterRetry = await retryCursorR.getCursor()
+    expect(cursorAfterRetry).toBe(11)
+
+    // evt1 still only one row (dedup/idempotent)
+    const evt1RowAfterRetry = await prisma.platformMirrorEvent.findMany({
+      where: { sourceEventId: 'evt-s3-1' },
+    })
+    expect(evt1RowAfterRetry).toHaveLength(1)
+
+    // evt2 now stored
+    const evt2Row = await prisma.platformMirrorEvent.findMany({
+      where: { sourceEventId: 'evt-s3-2' },
+    })
+    expect(evt2Row).toHaveLength(1)
+
+    await localModule.close()
+    await retryModule.close()
+  })
 })

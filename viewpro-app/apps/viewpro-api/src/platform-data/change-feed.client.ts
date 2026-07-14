@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
+import { randomUUID } from 'node:crypto'
 import type { ChangeFeedResponse } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 
 /**
@@ -53,6 +54,7 @@ export class ChangeFeedClient {
    *  - iss: 'viewpro-api'
    *  - aud: 'inmoview-control'
    *  - sub: 'system-ingest' (fixed system principal for the poll job)
+   *  - jti: crypto.randomUUID() — unique token ID, populates PlatformServiceIdentity.tokenId (S1)
    *  - exp: now + 120s
    */
   private mintIngestToken(): string {
@@ -60,6 +62,9 @@ export class ChangeFeedClient {
       {
         iss: 'viewpro-api',
         aud: 'inmoview-control',
+        // S1: jti makes each token unique so PlatformServiceIdentity.tokenId is populated
+        // and token replay can be detected. Using crypto.randomUUID() for collision resistance.
+        jti: randomUUID(),
       },
       {
         subject: 'system-ingest',
