@@ -77,7 +77,7 @@ T-01 (RED: /auth/me tests — viewpro-api)
 
 ## WU-1 — viewpro-api `GET /auth/me` (TDD) + viewpro-web scaffold (copy-strip + boots)
 
-### [ ] T-01 — RED: unit tests for `GET /auth/me`
+### [x] T-01 — RED: unit tests for `GET /auth/me`
 **Type**: test (RED)
 **Spec**: operator-session-me — GET /auth/me Endpoint (all 3 scenarios); No Database Access
 **WU**: WU-1, commit 1
@@ -96,7 +96,7 @@ All RED until `@Get('me')` is added.
 
 ---
 
-### [ ] T-02 — GREEN: implement `GET /auth/me` on `auth.controller.ts`
+### [x] T-02 — GREEN: implement `GET /auth/me` on `auth.controller.ts`
 **Type**: impl
 **Spec**: operator-session-me — GET /auth/me Endpoint; No Database Access; Additive
 **WU**: WU-1, commit 2
@@ -114,7 +114,7 @@ All RED until `@Get('me')` is added.
 
 ---
 
-### [ ] T-03 — Scaffold `apps/viewpro-web` — copy `apps/app-new`
+### [x] T-03 — Scaffold `apps/viewpro-web` — copy `apps/app-new`
 **Type**: impl
 **Spec**: operator-console — scaffold foundation
 **WU**: WU-1, commit 3
@@ -128,7 +128,7 @@ All RED until `@Get('me')` is added.
 
 ---
 
-### [ ] T-04 — Strip: delete dead feature directories (D1)
+### [x] T-04 — Strip: delete dead feature directories (D1)
 **Type**: impl
 **Spec**: operator-console — Isolation from InmoView API; proposal R1 no dead code
 **WU**: WU-1, commit 4
@@ -153,7 +153,7 @@ Delete the following paths from `apps/viewpro-web/src/`:
 
 ---
 
-### [ ] T-05 — Strip: rewrite `package.json` + copy config files
+### [x] T-05 — Strip: rewrite `package.json` + copy config files
 **Type**: impl
 **Spec**: operator-console — scaffold
 **WU**: WU-1, commit 5
@@ -168,7 +168,7 @@ Delete the following paths from `apps/viewpro-web/src/`:
 
 ---
 
-### [ ] T-06 — Strip: `api-client.ts` — remove `x-tenant-id`; retarget `NEXT_PUBLIC_API_URL`
+### [x] T-06 — Strip: `api-client.ts` — remove `x-tenant-id`; retarget `NEXT_PUBLIC_API_URL`
 **Type**: impl
 **Spec**: operator-console — Isolation from InmoView API; Cookie and Auth Boundary
 **WU**: WU-1, commit 6
@@ -186,7 +186,7 @@ Delete the following paths from `apps/viewpro-web/src/`:
 
 ---
 
-### [ ] T-07 — Create `.env.example` + CORS config note
+### [x] T-07 — Create `.env.example` + CORS config note
 **Type**: impl
 **Spec**: operator-console — Cookie and Auth Boundary; CORS / cookie config
 **WU**: WU-1, commit 7
@@ -208,7 +208,7 @@ Delete the following paths from `apps/viewpro-web/src/`:
 
 ---
 
-### [ ] T-08 — Workspace/turbo smoke test — confirm app boots
+### [x] T-08 — Workspace/turbo smoke test — confirm app boots
 **Type**: verify
 **Spec**: operator-console — scaffold; D9 (no workspace edits needed)
 **WU**: WU-1, commit 8
@@ -497,14 +497,14 @@ All RED until components + page exist.
 
 | Task | Type | WU | Spec requirement | Depends on |
 |------|------|-----|-----------------|------------|
-| T-01 RED: GET /auth/me tests | test | WU-1 | operator-session-me (all 3 scenarios + no-DB) | — |
-| T-02 GREEN: GET /auth/me impl | impl | WU-1 | operator-session-me; D8 | T-01 |
-| T-03 scaffold apps/viewpro-web | impl | WU-1 | operator-console scaffold | T-02 |
-| T-04 strip: delete dead features | impl | WU-1 | Isolation; R1 | T-03 |
-| T-05 strip: package.json + config | impl | WU-1 | scaffold; D9 | T-04 |
-| T-06 strip: api-client x-tenant-id | impl | WU-1 | Isolation; Cookie Boundary | T-05 |
-| T-07 .env.example + CORS note | impl | WU-1 | D3; D10; CORS config | T-06 |
-| T-08 workspace smoke test | verify | WU-1 | D9; boots | T-07 |
+| ~~T-01~~ [x] RED: GET /auth/me tests | test | WU-1 | operator-session-me (all 3 scenarios + no-DB) | — |
+| ~~T-02~~ [x] GREEN: GET /auth/me impl | impl | WU-1 | operator-session-me; D8 | T-01 |
+| ~~T-03~~ [x] scaffold apps/viewpro-web | impl | WU-1 | operator-console scaffold | T-02 |
+| ~~T-04~~ [x] strip: delete dead features | impl | WU-1 | Isolation; R1 | T-03 |
+| ~~T-05~~ [x] strip: package.json + config | impl | WU-1 | scaffold; D9 | T-04 |
+| ~~T-06~~ [x] strip: api-client x-tenant-id | impl | WU-1 | Isolation; Cookie Boundary | T-05 |
+| ~~T-07~~ [x] .env.example + CORS note | impl | WU-1 | D3; D10; CORS config | T-06 |
+| ~~T-08~~ [x] workspace smoke test | verify | WU-1 | D9; boots | T-07 |
 | T-09 RED: session.ts tests | test | WU-2 | Sign-In; Session Model; Rehydration | T-08 |
 | T-10 GREEN: session.ts rewrite | impl | WU-2 | Sign-In; Session Model; D2; D4; D6 | T-09 |
 | T-11 RED: proxy.ts tests | test | WU-2 | Protected Middleware (all 3 scenarios); D3 | T-10 |
