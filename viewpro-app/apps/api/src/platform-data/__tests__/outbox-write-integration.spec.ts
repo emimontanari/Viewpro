@@ -223,6 +223,85 @@ describe('Outbox write integration — $transaction atomicity', () => {
   })
 
   // -------------------------------------------------------------------------
+  // T-10 — RED: limits change emits its first-ever AUDIT_LOGGED outbox row,
+  // in the SAME transaction as the limits mutation.
+  //
+  // Spec: platform-audit-log — Limits Change Audit Event — Transactional Emit
+  // -------------------------------------------------------------------------
+  it('[T-10] updated branch: exactly one AUDIT_LOGGED outbox row (limits first-ever emit)', async () => {
+    const tenant = await prisma.tenant.create({
+      data: {
+        name: `Limits Corp ${Date.now()}`,
+        slug: `limits-corp-${Date.now()}`,
+        status: 'ACTIVE',
+        maxUsers: 10,
+        maxActivePropertyEngagements: 5,
+        maxDocumentsStorageMb: 100,
+      },
+    })
+    const token = await mintServiceToken()
+
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/limits`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        limits: { maxUsers: 25, maxActivePropertyEngagements: 5, maxDocumentsStorageMb: 100 },
+        idempotencyKey: `outbox-audit-limits-${Date.now()}`,
+      })
+      .expect(200)
+
+    const rows = await prisma.platformOutboxEvent.findMany({ where: { tenantId: tenant.id } })
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ eventType: 'AUDIT_LOGGED', tenantId: tenant.id })
+
+    const payload = rows[0]!.payload as Record<string, unknown>
+    expect(payload.action).toBe('TENANT_LIMITS_UPDATED')
+    expect(payload.previousValue).toEqual({
+      maxUsers: 10,
+      maxActivePropertyEngagements: 5,
+      maxDocumentsStorageMb: 100,
+    })
+    expect(payload.newValue).toEqual({
+      maxUsers: 25,
+      maxActivePropertyEngagements: 5,
+      maxDocumentsStorageMb: 100,
+    })
+    expect(payload.actor).toBeDefined()
+  })
+
+  // -------------------------------------------------------------------------
+  // T-10 — RED: rolled-back limits transaction leaves zero AUDIT_LOGGED rows
+  // (regression guard c)
+  // -------------------------------------------------------------------------
+  it('[T-10] invalid request (400) leaves zero AUDIT_LOGGED rows for limits (rolled-back tx)', async () => {
+    const tenant = await prisma.tenant.create({
+      data: {
+        name: `Limits Rollback ${Date.now()}`,
+        slug: `limits-rollback-${Date.now()}`,
+        status: 'ACTIVE',
+        maxUsers: 10,
+        maxActivePropertyEngagements: 5,
+        maxDocumentsStorageMb: 100,
+      },
+    })
+    const token = await mintServiceToken()
+
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/limits`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        limits: { maxUsers: -5, maxActivePropertyEngagements: 5, maxDocumentsStorageMb: 100 },
+        idempotencyKey: `outbox-audit-limits-rollback-${Date.now()}`,
+      })
+      .expect(400)
+
+    const rows = await prisma.platformOutboxEvent.findMany({
+      where: { tenantId: tenant.id, eventType: 'AUDIT_LOGGED' },
+    })
+    expect(rows).toHaveLength(0)
+  })
+
+  // -------------------------------------------------------------------------
   // Scenario: outbox row commits atomically WITH the tenant update and analyticsEvent
   // -------------------------------------------------------------------------
   it('outbox row, tenant update, and analyticsEvent all committed in the same tx', async () => {
