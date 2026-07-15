@@ -452,7 +452,7 @@ All RED until T-22.
 
 ---
 
-### [ ] T-22 — GREEN: implement Nest standalone backfill command + `fetchAllTenants` in `ChangeFeedClient`
+### [x] T-22 — GREEN: implement Nest standalone backfill command + `fetchAllTenants` in `ChangeFeedClient`
 **Type**: impl
 **Spec**: tenant-registry — Backfill Idempotent Seed; A12; A14
 **WU**: WU-3, commit 4
