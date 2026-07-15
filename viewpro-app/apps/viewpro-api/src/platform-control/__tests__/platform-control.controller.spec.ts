@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { HttpException, ValidationPipe } from '@nestjs/common'
 import { ThrottlerModule } from '@nestjs/throttler'
+import { JwtService } from '@nestjs/jwt'
 import cookieParser from 'cookie-parser'
 import request from 'supertest'
 import { ConfigModule } from '../../config/config.module'
@@ -11,6 +12,15 @@ import { DatabaseModule } from '../../database/database.module'
 import { AuthModule } from '../../auth/auth.module'
 import { PlatformControlModule } from '../platform-control.module'
 import { PlatformControlClient } from '../platform-control.client'
+
+// T-11 — must match STEP_UP_TOKEN_SECRET set in test/setup-env.ts
+const STEP_UP_TOKEN_SECRET =
+  process.env.STEP_UP_TOKEN_SECRET ?? 'test-step-up-token-secret-min16'
+
+async function buildExpiredStepUpToken(sub: string): Promise<string> {
+  const jwtService = new JwtService({ secret: STEP_UP_TOKEN_SECRET })
+  return jwtService.signAsync({ sub, stepUp: true }, { expiresIn: -1 })
+}
 
 /**
  * T-18 → T-19: operator endpoint integration tests.
@@ -24,12 +34,18 @@ import { PlatformControlClient } from '../platform-control.client'
 
 const TEST_EMAIL = 'platform-ctrl-test@viewpro.app'
 const TEST_PASSWORD = 'platform-ctrl-test-password'
+const TEST_EMAIL_B = 'platform-ctrl-test-operator-b@viewpro.app'
+const TEST_PASSWORD_B = 'platform-ctrl-test-operator-b-password'
 
-function extractPlatformCookie(headers: Record<string, unknown>): string {
+function extractCookie(headers: Record<string, unknown>, name: string): string {
   const raw = headers['set-cookie'] as string[] | string | undefined
   const arr = Array.isArray(raw) ? raw : [raw ?? '']
-  const found = arr.find((c) => c.includes('viewpro_platform_access_token=')) ?? ''
+  const found = arr.find((c) => c.includes(`${name}=`)) ?? ''
   return (found.split(';')[0] ?? '').trim()
+}
+
+function extractPlatformCookie(headers: Record<string, unknown>): string {
+  return extractCookie(headers, 'viewpro_platform_access_token')
 }
 
 describe('PlatformControlController (viewpro-api) — operator endpoints', () => {
@@ -66,13 +82,21 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
     await app.init()
 
-    // Seed a test operator (idempotent upsert)
+    // Seed test operators (idempotent upsert)
     execSync('pnpm db:seed', {
       cwd: process.cwd(),
       env: {
         ...process.env,
         SEED_OPERATOR_EMAIL: TEST_EMAIL,
         SEED_OPERATOR_PASSWORD: TEST_PASSWORD,
+      },
+    })
+    execSync('pnpm db:seed', {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        SEED_OPERATOR_EMAIL: TEST_EMAIL_B,
+        SEED_OPERATOR_PASSWORD: TEST_PASSWORD_B,
       },
     })
   })
@@ -87,14 +111,33 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
     mockClient.postTenantLimits.mockResolvedValue({ status: 'updated' })
   })
 
-  async function getSessionCookie(): Promise<string> {
+  async function getSessionCookieFor(email: string, password: string): Promise<string> {
     const res = await request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ email: TEST_EMAIL, password: TEST_PASSWORD })
+      .send({ email, password })
     if (res.status !== 200) {
       throw new Error(`Login failed: ${res.status} ${JSON.stringify(res.body)}`)
     }
     return extractPlatformCookie(res.headers as Record<string, unknown>)
+  }
+
+  async function getSessionCookie(): Promise<string> {
+    return getSessionCookieFor(TEST_EMAIL, TEST_PASSWORD)
+  }
+
+  async function getStepUpCookieFor(accessCookie: string, password: string): Promise<string> {
+    const res = await request(app.getHttpServer())
+      .post('/api/auth/step-up')
+      .set('Cookie', accessCookie)
+      .send({ password })
+    if (res.status !== 200) {
+      throw new Error(`Step-up failed: ${res.status} ${JSON.stringify(res.body)}`)
+    }
+    return extractCookie(res.headers as Record<string, unknown>, 'viewpro_platform_stepup_token')
+  }
+
+  async function getStepUpCookie(accessCookie: string): Promise<string> {
+    return getStepUpCookieFor(accessCookie, TEST_PASSWORD)
   }
 
   it('PATCH /api/operators/tenants/:id/status without session → 401', async () => {
@@ -117,10 +160,11 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
 
   it('PATCH /api/operators/tenants/:id/status with valid session → 200, forwards to InmoView', async () => {
     const cookie = await getSessionCookie()
+    const stepUpCookie = await getStepUpCookie(cookie)
 
     const res = await request(app.getHttpServer())
       .patch('/api/operators/tenants/tenant-1/status')
-      .set('Cookie', cookie)
+      .set('Cookie', `${cookie}; ${stepUpCookie}`)
       .send({ status: 'SUSPENDED' })
 
     expect(res.status).toBe(200)
@@ -135,10 +179,11 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
 
   it('PATCH /api/operators/tenants/:id/limits with valid session → 200', async () => {
     const cookie = await getSessionCookie()
+    const stepUpCookie = await getStepUpCookie(cookie)
 
     const res = await request(app.getHttpServer())
       .patch('/api/operators/tenants/tenant-1/limits')
-      .set('Cookie', cookie)
+      .set('Cookie', `${cookie}; ${stepUpCookie}`)
       .send({ maxUsers: 10, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null })
 
     expect(res.status).toBe(200)
@@ -183,10 +228,11 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
 
   it('PATCH with status=CANCELLED → 200, forwards targetStatus=CANCELLED to InmoView', async () => {
     const cookie = await getSessionCookie()
+    const stepUpCookie = await getStepUpCookie(cookie)
 
     const res = await request(app.getHttpServer())
       .patch('/api/operators/tenants/tenant-1/status')
-      .set('Cookie', cookie)
+      .set('Cookie', `${cookie}; ${stepUpCookie}`)
       .send({ status: 'CANCELLED' })
 
     expect(res.status).toBe(200)
@@ -218,5 +264,156 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
     expect(res.status).toBe(400)
     // No special-casing/retry: the client was invoked exactly once.
     expect(mockClient.postTenantStatus).toHaveBeenCalledOnce()
+  })
+
+  // -------------------------------------------------------------------------
+  // T-11 — RED: destructive routes gated by StepUpGuard (AC2-AC6, threat matrix)
+  //
+  // Spec: operator-step-up-auth — StepUpGuard Gates Destructive Tenant Routes
+  //   (all 5 scenarios); Reactivate Is Exempt; Step-up Freshness (both
+  //   scenarios); Cross-Operator Step-up Rejection
+  // -------------------------------------------------------------------------
+  describe('StepUpGuard on destructive routes', () => {
+    it('PATCH .../status {status:SUSPENDED} without step-up cookie → 403 STEP_UP_REQUIRED, no downstream call (AC2)', async () => {
+      const cookie = await getSessionCookie()
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', cookie)
+        .send({ status: 'SUSPENDED' })
+
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('STEP_UP_REQUIRED')
+      expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
+    })
+
+    it('PATCH .../status {status:CANCELLED} without step-up cookie → 403 STEP_UP_REQUIRED, no downstream call', async () => {
+      const cookie = await getSessionCookie()
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', cookie)
+        .send({ status: 'CANCELLED' })
+
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('STEP_UP_REQUIRED')
+      expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
+    })
+
+    it('PATCH .../limits without step-up cookie → 403 STEP_UP_REQUIRED, no downstream call', async () => {
+      const cookie = await getSessionCookie()
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/limits')
+        .set('Cookie', cookie)
+        .send({ maxUsers: 10, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null })
+
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('STEP_UP_REQUIRED')
+      expect(mockClient.postTenantLimits).not.toHaveBeenCalled()
+    })
+
+    it('PATCH .../status {status:SUSPENDED} WITH a fresh step-up cookie → 200, downstream called once (AC3)', async () => {
+      const cookie = await getSessionCookie()
+      const stepUpCookie = await getStepUpCookie(cookie)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', `${cookie}; ${stepUpCookie}`)
+        .send({ status: 'SUSPENDED' })
+
+      expect(res.status).toBe(200)
+      expect(mockClient.postTenantStatus).toHaveBeenCalledOnce()
+    })
+
+    it('PATCH .../limits WITH a fresh step-up cookie → 200, downstream called once', async () => {
+      const cookie = await getSessionCookie()
+      const stepUpCookie = await getStepUpCookie(cookie)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/limits')
+        .set('Cookie', `${cookie}; ${stepUpCookie}`)
+        .send({ maxUsers: 10, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null })
+
+      expect(res.status).toBe(200)
+      expect(mockClient.postTenantLimits).toHaveBeenCalledOnce()
+    })
+
+    it('PATCH .../status {status:ACTIVE} with NO step-up cookie → 200 (reactivate exempt, AC6)', async () => {
+      const cookie = await getSessionCookie()
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', cookie)
+        .send({ status: 'ACTIVE' })
+
+      expect(res.status).toBe(200)
+    })
+
+    it('a step-up cookie is reusable: limits then status(SUSPENDED) succeed with a single POST /auth/step-up (AC4 reusable)', async () => {
+      const cookie = await getSessionCookie()
+      const stepUpCookie = await getStepUpCookie(cookie)
+
+      const limitsRes = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/limits')
+        .set('Cookie', `${cookie}; ${stepUpCookie}`)
+        .send({ maxUsers: 10, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null })
+      expect(limitsRes.status).toBe(200)
+
+      const statusRes = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', `${cookie}; ${stepUpCookie}`)
+        .send({ status: 'SUSPENDED' })
+      expect(statusRes.status).toBe(200)
+
+      expect(mockClient.postTenantLimits).toHaveBeenCalledOnce()
+      expect(mockClient.postTenantStatus).toHaveBeenCalledOnce()
+    })
+
+    it('an expired step-up cookie is rejected → 403 STEP_UP_REQUIRED (AC4 expiry)', async () => {
+      const cookie = await getSessionCookie()
+      const loginRes = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({ email: TEST_EMAIL, password: TEST_PASSWORD })
+      const operatorId = loginRes.body.operator.id as string
+      const expiredStepUpToken = await buildExpiredStepUpToken(operatorId)
+      const expiredStepUpCookie = `viewpro_platform_stepup_token=${expiredStepUpToken}`
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', `${cookie}; ${expiredStepUpCookie}`)
+        .send({ status: 'CANCELLED' })
+
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('STEP_UP_REQUIRED')
+      expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
+    })
+
+    it("operator B's request carrying operator A's step-up cookie is rejected → 403 STEP_UP_REQUIRED, no mutation (AC5)", async () => {
+      const cookieA = await getSessionCookieFor(TEST_EMAIL, TEST_PASSWORD)
+      const stepUpCookieA = await getStepUpCookieFor(cookieA, TEST_PASSWORD)
+      const cookieB = await getSessionCookieFor(TEST_EMAIL_B, TEST_PASSWORD_B)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', `${cookieB}; ${stepUpCookieA}`)
+        .send({ status: 'SUSPENDED' })
+
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('STEP_UP_REQUIRED')
+      expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
+    })
+
+    it("PATCH .../status {status:'GARBAGE'} → 400 from DTO validation, never reaches the handler (threat matrix — body-manipulation bypass)", async () => {
+      const cookie = await getSessionCookie()
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', cookie)
+        .send({ status: 'GARBAGE' })
+
+      expect(res.status).toBe(400)
+      expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
+    })
   })
 })
