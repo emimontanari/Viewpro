@@ -18,7 +18,7 @@ vi.mock('@/lib/api-client', () => ({
 }));
 
 import { apiRequest } from '@/lib/api-client';
-import { login, getSession, logout, type Session } from '../session';
+import { login, getSession, logout, stepUp, type Session } from '../session';
 
 const mockApiRequest = vi.mocked(apiRequest);
 
@@ -114,6 +114,31 @@ describe('logout()', () => {
     // logout() itself propagates the rejection — the caller (signOut) swallows it.
     mockApiRequest.mockRejectedValueOnce(new Error('network'));
     await expect(logout()).rejects.toThrow('network');
+  });
+});
+
+// ─── stepUp() ───────────────────────────────────────────────────────────────
+// T-17 — RED: session.stepUp(password)
+// Spec: operator-step-up-auth — Frontend Step-up Prompt for Destructive Actions
+
+describe('stepUp()', () => {
+  it('calls POST /auth/step-up with the given password and resolves the response', async () => {
+    mockApiRequest.mockResolvedValueOnce({ success: true });
+
+    const result = await stepUp('secret');
+
+    expect(mockApiRequest).toHaveBeenCalledOnce();
+    const [path, options] = mockApiRequest.mock.calls[0];
+    expect(path).toBe('/auth/step-up');
+    expect(options).toMatchObject({ method: 'POST', body: { password: 'secret' } });
+    expect(result).toEqual({ success: true });
+  });
+
+  it('propagates a rejection on wrong password (401) — caller handles it inline, not as a logout', async () => {
+    const apiError = { status: 401, message: 'Invalid password' };
+    mockApiRequest.mockRejectedValueOnce(apiError);
+
+    await expect(stepUp('wrong')).rejects.toMatchObject({ status: 401 });
   });
 });
 

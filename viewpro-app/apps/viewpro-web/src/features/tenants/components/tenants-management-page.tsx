@@ -7,6 +7,8 @@ import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StepUpDialog } from '@/features/auth/components/step-up-dialog';
+import { useStepUpGate } from '@/features/auth/hooks/use-step-up-gate';
 import { tenantsKeys, tenantsListOptions } from '@/features/tenants/api/queries';
 import { updateTenantLimits, updateTenantStatus } from '@/features/tenants/api/service';
 import type { TenantLimits, TenantListItem, TenantStatusAction } from '@/features/tenants/api/types';
@@ -51,6 +53,7 @@ export function TenantsManagementPage() {
   const [limitsTenant, setLimitsTenant] = React.useState<TenantListItem | null>(null);
 
   const queryClient = useQueryClient();
+  const stepUpGate = useStepUpGate();
 
   const { data, isLoading, isError, error } = useQuery({
     ...tenantsListOptions(offset, LIMIT),
@@ -78,7 +81,15 @@ export function TenantsManagementPage() {
     // D15: close the confirm dialog on failure too (mirrors onSuccess), and map a
     // 400 terminality reject to a Spanish message instead of leaking the raw
     // English backend copy — same style as the 404 mapping in reportMutationError.
-    onError: (error) => {
+    // D13: a 403 STEP_UP_REQUIRED is checked FIRST — the confirm dialog stays
+    // open (no setPendingStatusAction(null), no toast) while the StepUpDialog
+    // prompts for the password; on success the retry closure re-runs this
+    // same mutation with the same variables.
+    onError: (error, variables) => {
+      if (stepUpGate.handleStepUpError(error, () => statusMutation.mutate(variables))) {
+        return;
+      }
+
       setPendingStatusAction(null);
 
       if (isApiError(error) && error.status === 400) {
@@ -103,7 +114,16 @@ export function TenantsManagementPage() {
       setLimitsTenant(null);
       await invalidateList();
     },
-    onError: reportMutationError
+    // D13: same step-up-first gate as statusMutation — reuses the shared
+    // useStepUpGate instance, so both destructive surfaces prompt through the
+    // same modal.
+    onError: (error, variables) => {
+      if (stepUpGate.handleStepUpError(error, () => limitsMutation.mutate(variables))) {
+        return;
+      }
+
+      reportMutationError(error);
+    }
   });
 
   const isMutating = statusMutation.isPending || limitsMutation.isPending;
@@ -206,6 +226,7 @@ export function TenantsManagementPage() {
         onClose={() => setLimitsTenant(null)}
         onSave={handleSaveLimits}
       />
+      <StepUpDialog {...stepUpGate.dialogProps} />
     </div>
   );
 }

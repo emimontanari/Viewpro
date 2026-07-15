@@ -52,6 +52,13 @@ vi.mock('sonner', () => ({
   }
 }));
 
+// T-23: mock session.stepUp so the real useStepUpGate/StepUpDialog wiring
+// (T-24) can be exercised end-to-end through the container without a real
+// network call.
+vi.mock('@/lib/session', () => ({
+  stepUp: vi.fn()
+}));
+
 // Mock the table to isolate container logic from tenants-table's own rendering
 // (already covered by tenants-table.spec.tsx, T-05/T-12/T-16) while still
 // exercising the real onEditLimits/onStatusAction/isMutating wiring through
@@ -155,12 +162,20 @@ vi.mock('../tenants-empty-state', () => ({
 }));
 
 import { getTenantList, updateTenantLimits, updateTenantStatus } from '@/features/tenants/api/service';
+import { stepUp } from '@/lib/session';
 import { TenantsManagementPage } from '../tenants-management-page';
 
 const mockGetTenantList = vi.mocked(getTenantList);
 const mockUpdateTenantStatus = vi.mocked(updateTenantStatus);
 const mockUpdateTenantLimits = vi.mocked(updateTenantLimits);
 const mockToast = vi.mocked(toast);
+const mockStepUp = vi.mocked(stepUp);
+
+const STEP_UP_REQUIRED_ERROR = {
+  status: 403,
+  code: 'STEP_UP_REQUIRED',
+  message: 'Step-up verification required'
+};
 
 const ITEM: TenantListItem = {
   id: 'tenant-1',
@@ -792,10 +807,15 @@ describe('TenantsManagementPage — double-submit guard', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Suspender' }));
 
     const pager = await screen.findByTestId('tenants-pager');
+    // {hidden: true}: the pager is a background sibling of the still-open
+    // AlertDialog, so Radix marks it aria-hidden while the confirm dialog is
+    // pending — this is correct a11y behavior (D13 keeps the confirm dialog
+    // genuinely open/pending rather than self-closing on click), it just
+    // means role queries here must opt in to hidden elements.
     await waitFor(() => {
-      expect(within(pager).getByRole('button', { name: 'prev' })).toBeDisabled();
+      expect(within(pager).getByRole('button', { name: 'prev', hidden: true })).toBeDisabled();
     });
-    expect(within(pager).getByRole('button', { name: 'next' })).toBeDisabled();
+    expect(within(pager).getByRole('button', { name: 'next', hidden: true })).toBeDisabled();
 
     resolveMutation(STATUS_SUCCESS_RESPONSE);
 
@@ -830,5 +850,148 @@ describe('TenantsManagementPage — double-submit guard', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull();
     });
+  });
+});
+
+// ─── Step-up gate wiring (T-23/WU-2, AC8) ──────────────────────────────────────
+
+describe('TenantsManagementPage — step-up gate wiring', () => {
+  it('a 403 STEP_UP_REQUIRED on suspend opens the StepUpDialog and keeps the confirm dialog open — no error toast (AC8 scenario 1)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const confirmDialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Contraseña')).toBeTruthy();
+    });
+    // The underlying suspend confirm dialog stays open (still mounted, just
+    // aria-hidden behind the stacked StepUpDialog) — not cleared like a
+    // normal mutation failure.
+    expect(screen.getByRole('alertdialog', { hidden: true })).toBeTruthy();
+    expect(mockToast.error).not.toHaveBeenCalled();
+  });
+
+  it('correct password retries the ORIGINAL suspend mutation with the same variables; success closes both dialogs and refetches the list (AC8 scenario 2)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
+    mockUpdateTenantStatus.mockResolvedValueOnce(STATUS_SUCCESS_RESPONSE);
+    mockStepUp.mockResolvedValueOnce({ success: true });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const confirmDialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => screen.getByLabelText('Contraseña'));
+    fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'secret1234' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+
+    await waitFor(() => {
+      expect(mockStepUp).toHaveBeenCalledWith('secret1234');
+    });
+    await waitFor(() => {
+      expect(mockUpdateTenantStatus).toHaveBeenCalledTimes(2);
+    });
+    expect(mockUpdateTenantStatus).toHaveBeenNthCalledWith(2, 'tenant-1', { status: 'SUSPENDED' });
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(screen.queryByLabelText('Contraseña')).toBeNull();
+    await waitFor(() => {
+      expect(mockGetTenantList).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('wrong password shows an inline error, performs no retry mutation, and keeps the modal open (AC8 scenario 3)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
+    mockStepUp.mockRejectedValueOnce({ status: 401, message: 'Invalid password' });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const confirmDialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => screen.getByLabelText('Contraseña'));
+    fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'wrong-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Contraseña incorrecta')).toBeTruthy();
+    });
+    // Only the original (403) attempt was made — no retried PATCH.
+    expect(mockUpdateTenantStatus).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('Contraseña')).toBeTruthy();
+  });
+
+  it('a suspend mutation that resolves normally never opens the step-up modal (AC8 scenario 4)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockResolvedValueOnce(STATUS_SUCCESS_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const confirmDialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => {
+      expect(mockToast.success).toHaveBeenCalled();
+    });
+    expect(screen.queryByLabelText('Contraseña')).toBeNull();
+    expect(mockStepUp).not.toHaveBeenCalled();
+  });
+
+  it('cancelling the step-up modal closes it without retrying the mutation, mutating, or logging out (JD)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const confirmDialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => screen.getByLabelText('Contraseña'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Contraseña')).toBeNull();
+    });
+    // Only the original (403) attempt was made — dismissing never retries the
+    // destructive PATCH and never re-verifies the password (no logout path).
+    expect(mockUpdateTenantStatus).toHaveBeenCalledTimes(1);
+    expect(mockStepUp).not.toHaveBeenCalled();
+  });
+
+  it('a 403 STEP_UP_REQUIRED on updateTenantLimits also opens the shared modal — no logout, no redirect (AC8 scenario 5)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantLimits.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-edit-limits-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-edit-limits-tenant-1'));
+
+    await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar límites' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Contraseña')).toBeTruthy();
+    });
+    // The limits dialog stays open too (2 mounted Dialogs: limits + step-up —
+    // the limits one is aria-hidden behind the stacked StepUpDialog).
+    expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(2);
+    expect(mockToast.error).not.toHaveBeenCalled();
   });
 });

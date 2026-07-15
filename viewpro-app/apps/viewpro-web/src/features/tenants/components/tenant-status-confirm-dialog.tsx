@@ -6,7 +6,6 @@
 // variants — the pending/Escape gating below is shared, not duplicated.
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -14,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import type { TenantListItem } from '@/features/tenants/api/types';
 
 type Variant = 'suspend' | 'cancel';
@@ -78,9 +78,19 @@ export function TenantStatusConfirmDialog({
           <AlertDialogCancel disabled={isPending} onClick={onCancel}>
             Cancelar
           </AlertDialogCancel>
-          <AlertDialogAction disabled={isPending} onClick={onConfirm}>
+          {/*
+            A plain Button here (not AlertDialogAction) intentionally: Radix's
+            AlertDialogAction is a self-closing DialogPrimitive.Close, so it
+            would fire onOpenChange(false) synchronously on click — before the
+            mutation's `isPending` state has re-rendered — and unconditionally
+            close this dialog regardless of outcome. A step-up-gated failure
+            (D13) needs this dialog to stay open/pending until the mutation
+            actually settles, so closing is driven entirely by
+            pendingStatusAction (onSuccess / non-step-up onError).
+          */}
+          <Button disabled={isPending} onClick={onConfirm}>
             {isPending ? copy.pendingLabel : copy.confirmLabel}
-          </AlertDialogAction>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
