@@ -1,18 +1,24 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { TenantListItem, TenantStatus } from '@/features/tenants/api/types';
+import type { TenantListItem, TenantStatus, TenantStatusAction } from '@/features/tenants/api/types';
 
 type Props = {
   items: TenantListItem[];
+  isMutating: boolean;
+  onEditLimits: (item: TenantListItem) => void;
+  onToggleStatus: (item: TenantListItem) => void;
 };
 
 /**
- * Read-only tenant list table (PR1 scope — no actions column yet, see T-13).
- * Rows render in the order received; the API already sorts name ASC.
+ * Tenant list table. Read-only columns (name/slug/status/limits, PR1) plus an
+ * actions column (edit-limits + status toggle, T-13/WU-2). Rows render in the
+ * order received; the API already sorts name ASC. `isMutating` disables both
+ * action buttons on every row (double-submit guard, D11).
  */
-export function TenantsTable({ items }: Props) {
+export function TenantsTable({ items, isMutating, onEditLimits, onToggleStatus }: Props) {
   return (
     <Table>
       <TableHeader>
@@ -20,28 +26,77 @@ export function TenantsTable({ items }: Props) {
           <TableHead>Inquilino</TableHead>
           <TableHead>Estado</TableHead>
           <TableHead>Límites</TableHead>
+          <TableHead className='text-right'>Acciones</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {items.map((item) => (
-          <TableRow key={item.id} data-testid={`tenant-row-${item.id}`}>
-            <TableCell>
-              <div className='space-y-1'>
-                <p className='font-medium'>{item.name}</p>
-                <p className='text-muted-foreground text-xs'>{item.slug}</p>
-              </div>
-            </TableCell>
-            <TableCell>
-              <StatusBadge status={item.status} testId={`tenant-status-${item.id}`} />
-            </TableCell>
-            <TableCell>
-              <TenantLimitsSummary limits={item.limits} testId={`tenant-limits-${item.id}`} />
-            </TableCell>
-          </TableRow>
-        ))}
+        {items.map((item) => {
+          const action = getTenantAction(item);
+
+          return (
+            <TableRow key={item.id} data-testid={`tenant-row-${item.id}`}>
+              <TableCell>
+                <div className='space-y-1'>
+                  <p className='font-medium'>{item.name}</p>
+                  <p className='text-muted-foreground text-xs'>{item.slug}</p>
+                </div>
+              </TableCell>
+              <TableCell>
+                <StatusBadge status={item.status} testId={`tenant-status-${item.id}`} />
+              </TableCell>
+              <TableCell>
+                <TenantLimitsSummary limits={item.limits} testId={`tenant-limits-${item.id}`} />
+              </TableCell>
+              <TableCell className='text-right'>
+                <div className='flex justify-end gap-2'>
+                  <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    disabled={isMutating}
+                    onClick={() => onEditLimits(item)}
+                  >
+                    Editar límites
+                  </Button>
+                  {action ? (
+                    <Button
+                      type='button'
+                      size='sm'
+                      variant={action.targetStatus === 'SUSPENDED' ? 'destructive' : 'outline'}
+                      disabled={isMutating}
+                      onClick={() => onToggleStatus(item)}
+                    >
+                      {action.label}
+                    </Button>
+                  ) : null}
+                </div>
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );
+}
+
+// Maps the current status to the next PATCH target + button label (copy
+// app-new pattern, D14). CANCELLED has no action — the button is omitted.
+type TenantAction = { targetStatus: TenantStatusAction; label: string };
+
+export function getTenantAction(item: TenantListItem): TenantAction | null {
+  if (item.status === 'TRIAL') {
+    return { targetStatus: 'ACTIVE', label: 'Activar' };
+  }
+
+  if (item.status === 'ACTIVE') {
+    return { targetStatus: 'SUSPENDED', label: 'Suspender' };
+  }
+
+  if (item.status === 'SUSPENDED') {
+    return { targetStatus: 'ACTIVE', label: 'Reactivar' };
+  }
+
+  return null;
 }
 
 function StatusBadge({ status, testId }: { status: TenantStatus; testId: string }) {

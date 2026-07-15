@@ -177,7 +177,7 @@ describe('TenantsTable — actions column (T-12/WU-2)', () => {
     expect(onToggleStatus).toHaveBeenCalledWith(ITEMS[0]);
   });
 
-  it('renders a status-action button labeled "Activar" for a SUSPENDED row', () => {
+  it('renders a status-action button labeled "Reactivar" for a SUSPENDED row', () => {
     render(
       <TenantsTable
         items={ITEMS}
@@ -187,7 +187,7 @@ describe('TenantsTable — actions column (T-12/WU-2)', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: 'Activar' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Reactivar' })).toBeTruthy();
   });
 
   it('renders no status-action button for a CANCELLED row', () => {

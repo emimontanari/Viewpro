@@ -65,7 +65,15 @@ export function TenantsManagementPage() {
 
   return (
     <div className='flex flex-col gap-4'>
-      <TenantsTable items={data.items} />
+      {/* isMutating/onEditLimits/onToggleStatus are wired to real mutations in T-17;
+          this interim no-op wiring only keeps the tree building after T-13's
+          actions column lands ahead of the container's mutation logic. */}
+      <TenantsTable
+        items={data.items}
+        isMutating={false}
+        onEditLimits={() => {}}
+        onToggleStatus={() => {}}
+      />
       <TenantsPager
         offset={offset}
         limit={LIMIT}

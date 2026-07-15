@@ -275,7 +275,7 @@ All new assertions RED until T-13.
 
 ---
 
-### [ ] T-13 — GREEN: `tenants-table.tsx` — add actions column
+### [x] T-13 — GREEN: `tenants-table.tsx` — add actions column
 **Type**: impl
 **Spec**: Status Toggle with Suspend Confirmation; Limits Editing via Modal Dialog; Double-Submit Guard
 **WU**: WU-2, commit 2
