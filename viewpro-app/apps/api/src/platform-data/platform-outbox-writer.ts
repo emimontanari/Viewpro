@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common'
 import type { Prisma } from '@prisma/client'
-import type { TenantRegisteredPayload } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
+import type {
+  TenantRegisteredPayload,
+  AuditLoggedPayload,
+} from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 
 /**
  * OutboxEventInput — discriminated union of all supported outbox event shapes (A5).
@@ -25,6 +28,12 @@ type OutboxEventInput =
       tenantId: string
       payload: TenantRegisteredPayload
       occurredAt: Date | string
+    }
+  | {
+      eventType: 'AUDIT_LOGGED'
+      tenantId: string
+      payload: AuditLoggedPayload
+      occurredAt: Date
     }
 
 /**
@@ -65,8 +74,11 @@ export class PlatformOutboxWriter {
     // transaction commits or rolls back — no explicit release needed.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${OUTBOX_LOCK_KEY})`
 
+    // AUDIT_LOGGED's payload carries `unknown`-typed previousValue/newValue (loose
+    // JSON, display-only trail — A7/A8). Prisma's generated Json input type requires
+    // InputJsonValue, so a narrow cast is needed here; the insert itself is unchanged.
     await tx.platformOutboxEvent.create({
-      data: event,
+      data: event as Prisma.PlatformOutboxEventUncheckedCreateInput,
     })
   }
 }
