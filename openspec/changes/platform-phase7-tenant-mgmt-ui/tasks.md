@@ -161,7 +161,7 @@ All RED until T-06.
 
 ---
 
-### [ ] T-06 — GREEN: `tenants-table.tsx` (read-only) + `tenants-pager.tsx` + `tenants-empty-state.tsx`
+### [x] T-06 — GREEN: `tenants-table.tsx` (read-only) + `tenants-pager.tsx` + `tenants-empty-state.tsx`
 **Type**: impl
 **Spec**: Paginated Tenant List (scenarios 1, 2, 4)
 **WU**: WU-1, commit 6
