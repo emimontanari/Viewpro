@@ -63,10 +63,10 @@ describe('SignInForm — session_expired Alert (D8)', () => {
     render(<SignInForm />);
     expect(screen.getByText(EXPIRY_COPY)).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText('Email'), {
+    fireEvent.change(screen.getByLabelText(/^Email/), {
       target: { value: 'operator@viewpro.app' }
     });
-    fireEvent.change(screen.getByLabelText('Contraseña'), {
+    fireEvent.change(screen.getByLabelText(/^Contraseña/), {
       target: { value: 'password123' }
     });
     fireEvent.click(screen.getByRole('button', { name: /entrar/i }));
