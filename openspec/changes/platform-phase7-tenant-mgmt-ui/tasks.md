@@ -258,7 +258,7 @@ All RED until T-10.
 
 ## WU-2 — mutations: status confirm + limits dialog + nav (PR 2)
 
-### [ ] T-12 — RED: `tenants-table.spec.tsx` — actions column + `isMutating` guard
+### [x] T-12 — RED: `tenants-table.spec.tsx` — actions column + `isMutating` guard
 **Type**: test (RED)
 **Spec**: Status Toggle with Suspend Confirmation (button present); Limits Editing via Modal Dialog (edit-limits button present); Double-Submit Guard
 **WU**: WU-2, commit 1
@@ -275,7 +275,7 @@ All new assertions RED until T-13.
 
 ---
 
-### [ ] T-13 — GREEN: `tenants-table.tsx` — add actions column
+### [x] T-13 — GREEN: `tenants-table.tsx` — add actions column
 **Type**: impl
 **Spec**: Status Toggle with Suspend Confirmation; Limits Editing via Modal Dialog; Double-Submit Guard
 **WU**: WU-2, commit 2
@@ -290,7 +290,7 @@ All new assertions RED until T-13.
 
 ---
 
-### [ ] T-14 — RED: `tenant-limits-dialog.spec.tsx`
+### [x] T-14 — RED: `tenant-limits-dialog.spec.tsx`
 **Type**: test (RED)
 **Spec**: Limits Editing via Modal Dialog (all 3 scenarios)
 **WU**: WU-2, commit 3
@@ -308,7 +308,7 @@ All RED until T-15.
 
 ---
 
-### [ ] T-15 — GREEN: `tenant-limits-dialog.tsx`
+### [x] T-15 — GREEN: `tenant-limits-dialog.tsx`
 **Type**: impl
 **Spec**: Limits Editing via Modal Dialog (all 3 scenarios)
 **WU**: WU-2, commit 4
@@ -322,7 +322,7 @@ All RED until T-15.
 
 ---
 
-### [ ] T-16 — RED: `tenants-management-page.spec.tsx` — mutations, suspend confirm, unchanged, 404
+### [x] T-16 — RED: `tenants-management-page.spec.tsx` — mutations, suspend confirm, unchanged, 404
 **Type**: test (RED)
 **Spec**: Status Toggle with Suspend Confirmation (all 4 scenarios); Limits Editing via Modal Dialog (scenarios 2, 3); Double-Submit Guard; Error Handling (both scenarios)
 **WU**: WU-2, commit 5
@@ -345,7 +345,7 @@ All new assertions RED until T-17.
 
 ---
 
-### [ ] T-17 — GREEN: `tenants-management-page.tsx` mutations + `tenant-status-confirm-dialog.tsx`
+### [x] T-17 — GREEN: `tenants-management-page.tsx` mutations + `tenant-status-confirm-dialog.tsx`
 **Type**: impl
 **Spec**: Status Toggle with Suspend Confirmation; Limits Editing via Modal Dialog; Double-Submit Guard; Error Handling; viewpro-api-Only Isolation
 **WU**: WU-2, commit 6
@@ -360,7 +360,7 @@ All new assertions RED until T-17.
 
 ---
 
-### [ ] T-18 — Nav: add "Inquilinos" entry to `config/nav-config.ts`
+### [x] T-18 — Nav: add "Inquilinos" entry to `config/nav-config.ts`
 **Type**: impl (mechanical, no RED required — additive config data, no new branching logic)
 **Spec**: Paginated Tenant List (page discoverability, proposal AC8)
 **WU**: WU-2, commit 7
@@ -378,7 +378,7 @@ All new assertions RED until T-17.
 
 ---
 
-### [ ] T-19 — Final verification: full suite, typecheck, build, isolation
+### [x] T-19 — Final verification: full suite, typecheck, build, isolation
 **Type**: verify
 **Spec**: All 6 requirements + all invariants; proposal acceptance criteria 1–10
 **WU**: WU-2, commit 8
@@ -431,18 +431,18 @@ All new assertions RED until T-17.
 
 ## Success Checklist (maps to spec acceptance criteria)
 
-- [ ] Tenant list renders from `GET /operators/tenants?offset&limit` (`{total,items}`), name ASC (T-05, T-06, T-07, T-08)
-- [ ] Pager navigates offset/limit pages; requested `limit` never exceeds 200 (T-06, T-07, T-08, T-19)
-- [ ] Empty registry (`total===0`) shows an empty-state instead of a table row (T-06, T-07, T-08)
-- [ ] Suspend requires an explicit confirmation step before `PATCH .../status` fires; Activate PATCHes directly (T-16, T-17)
-- [ ] `unchanged:true` on a status/limits mutation handled gracefully — no error, list still reflects the returned value (T-16, T-17)
-- [ ] List is invalidated and refetched (never patched optimistically) after a successful status or limits mutation (T-16, T-17)
-- [ ] Limits modal opens pre-filled from the row; clearing a field sends `null`; save PATCHes and refreshes the list (T-14, T-15, T-16, T-17)
-- [ ] The acting button for any in-flight mutation is disabled until it settles (T-12, T-13, T-14, T-15, T-16, T-17)
-- [ ] 404 on a mutation shows a clear "no existe" message; the list stays unchanged (T-16, T-17)
-- [ ] Generic (500) mutation failure surfaces an error without crashing the page; list retains pre-failure data (T-16, T-17)
-- [ ] Every request goes through `apiRequest` to viewpro-api only — no BFF route, no InmoView call (T-03, T-04, T-19)
-- [ ] No role-based hiding of any list/status/limits action (T-13, T-17, T-19 — `globalRole`/`isAdmin` grep is empty)
-- [ ] FE-owned response types (`AdminTenant{Status,Limits}UpdateResponse`) are locally defined; `@viewpro/platform-contract` `SetTenant*Result` is NOT imported (T-04, T-19)
-- [ ] New nav entry links to the tenant-management page (T-18, T-19)
-- [ ] Full `pnpm --filter viewpro-web test` + `typecheck` + `build` green with no regressions in `features/metrics/` (T-19)
+- [x] Tenant list renders from `GET /operators/tenants?offset&limit` (`{total,items}`), name ASC (T-05, T-06, T-07, T-08)
+- [x] Pager navigates offset/limit pages; requested `limit` never exceeds 200 (T-06, T-07, T-08, T-19)
+- [x] Empty registry (`total===0`) shows an empty-state instead of a table row (T-06, T-07, T-08)
+- [x] Suspend requires an explicit confirmation step before `PATCH .../status` fires; Activate PATCHes directly (T-16, T-17)
+- [x] `unchanged:true` on a status/limits mutation handled gracefully — no error, list still reflects the returned value (T-16, T-17)
+- [x] List is invalidated and refetched (never patched optimistically) after a successful status or limits mutation (T-16, T-17)
+- [x] Limits modal opens pre-filled from the row; clearing a field sends `null`; save PATCHes and refreshes the list (T-14, T-15, T-16, T-17)
+- [x] The acting button for any in-flight mutation is disabled until it settles (T-12, T-13, T-14, T-15, T-16, T-17)
+- [x] 404 on a mutation shows a clear "no existe" message; the list stays unchanged (T-16, T-17)
+- [x] Generic (500) mutation failure surfaces an error without crashing the page; list retains pre-failure data (T-16, T-17)
+- [x] Every request goes through `apiRequest` to viewpro-api only — no BFF route, no InmoView call (T-03, T-04, T-19)
+- [x] No role-based hiding of any list/status/limits action (T-13, T-17, T-19 — `globalRole`/`isAdmin` grep is empty)
+- [x] FE-owned response types (`AdminTenant{Status,Limits}UpdateResponse`) are locally defined; `@viewpro/platform-contract` `SetTenant*Result` is NOT imported (T-04, T-19)
+- [x] New nav entry links to the tenant-management page (T-18, T-19)
+- [x] Full `pnpm --filter viewpro-web test` + `typecheck` + `build` green with no regressions in `features/metrics/` (T-19)

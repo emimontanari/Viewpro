@@ -15,6 +15,13 @@ export const navGroups: NavGroup[] = [
         isActive: false,
         shortcut: ['d', 'd'],
         items: []
+      },
+      {
+        title: 'Inquilinos',
+        url: '/dashboard/tenants',
+        icon: 'listDetails',
+        isActive: false,
+        items: []
       }
     ]
   }
