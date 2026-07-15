@@ -181,7 +181,7 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
     expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
   })
 
-  it('PATCH with targetStatus=CANCELLED → 400 locally, no outbound call made', async () => {
+  it('PATCH with status=CANCELLED → 200, forwards targetStatus=CANCELLED to InmoView', async () => {
     const cookie = await getSessionCookie()
 
     const res = await request(app.getHttpServer())
@@ -189,7 +189,10 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
       .set('Cookie', cookie)
       .send({ status: 'CANCELLED' })
 
-    expect(res.status).toBe(400)
-    expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
+    expect(res.status).toBe(200)
+    expect(mockClient.postTenantStatus).toHaveBeenCalledOnce()
+    const [tenantId, cmd] = mockClient.postTenantStatus.mock.calls[0] as [string, { targetStatus: string }]
+    expect(tenantId).toBe('tenant-1')
+    expect(cmd.targetStatus).toBe('CANCELLED')
   })
 })
