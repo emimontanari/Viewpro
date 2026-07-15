@@ -848,4 +848,121 @@ describe('IngestService — AUDIT_LOGGED routing (T-16/T-17)', () => {
       auditLogRepo.appendFromEvent(makeAuditEvent({ id: 'evt-audit-direct' })),
     ).resolves.toBeUndefined()
   })
+
+  // FIX 1: AUDIT_LOGGED must be branched BEFORE the mirror upsert so it never
+  // hits MirrorRepository's W2 guard (which would log a false '[W2] malformed
+  // event' warning on every audit event). Prove upsertEvent is NOT invoked for
+  // AUDIT_LOGGED, while the audit row is still written and the cursor advances.
+  it('AUDIT_LOGGED → mirrorRepo.upsertEvent is NOT called; one audit row; cursor advances', async () => {
+    const upsertCalls: string[] = []
+    const spyMirrorRepo = {
+      upsertEvent: async (event: PlatformOutboxEvent) => {
+        upsertCalls.push(event.id)
+      },
+    }
+
+    const localModule = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [
+        IngestService,
+        { provide: MirrorRepository, useValue: spyMirrorRepo },
+        CursorRepository,
+        PlatformTenantRepository,
+        AuditLogRepository,
+      ],
+    }).compile()
+
+    const svc = localModule.get(IngestService)
+    const cursorR = localModule.get(CursorRepository)
+
+    await svc.ingestBatch([makeAuditEvent({ id: 'evt-audit-nomirror', seqNo: 12 })])
+
+    // Crux: the mirror upsert (and therefore the W2 guard) was never reached.
+    expect(upsertCalls).toHaveLength(0)
+
+    const auditRows = await prisma.platformAuditLog.findMany({
+      where: { sourceEventId: 'evt-audit-nomirror' },
+    })
+    expect(auditRows).toHaveLength(1)
+
+    const cursor = await cursorR.getCursor()
+    expect(cursor).toBe(12)
+
+    await localModule.close()
+  })
+
+  // Regression: TENANT_STATUS_CHANGED must STILL flow through the mirror upsert.
+  it('TENANT_STATUS_CHANGED still calls mirrorRepo.upsertEvent (regression)', async () => {
+    const upsertCalls: string[] = []
+    const spyMirrorRepo = {
+      upsertEvent: async (event: PlatformOutboxEvent) => {
+        upsertCalls.push(event.id)
+      },
+    }
+
+    const localModule = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [
+        IngestService,
+        { provide: MirrorRepository, useValue: spyMirrorRepo },
+        CursorRepository,
+        PlatformTenantRepository,
+        AuditLogRepository,
+      ],
+    }).compile()
+
+    const svc = localModule.get(IngestService)
+
+    const statusEvent: PlatformOutboxEvent = {
+      id: 'evt-status-mirror-called',
+      seqNo: 13,
+      eventType: 'TENANT_STATUS_CHANGED',
+      tenantId: 't-status-mirror',
+      payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE' },
+      occurredAt: new Date().toISOString(),
+    }
+
+    await svc.ingestBatch([statusEvent])
+
+    expect(upsertCalls).toContain('evt-status-mirror-called')
+
+    await localModule.close()
+  })
+
+  // FIX 2: a malformed AUDIT_LOGGED (missing `action`) must be logged-and-skipped
+  // (non-stalling — no throw), the cursor must advance past it, and a later valid
+  // event in the SAME batch must still be processed (no head-of-line blocking).
+  it('[W2] malformed AUDIT_LOGGED (missing action) → skipped, no throw, cursor advances, later valid event processed', async () => {
+    const malformedAudit = {
+      id: 'evt-audit-batch-malformed',
+      seqNo: 20,
+      eventType: 'AUDIT_LOGGED',
+      tenantId: 't-audit-mal',
+      // action intentionally omitted (malformed)
+      payload: { actor: { id: 'op-1', type: 'operator', label: 'op-1' } },
+      occurredAt: new Date().toISOString(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any as PlatformOutboxEvent
+
+    const validAudit = makeAuditEvent({
+      id: 'evt-audit-batch-valid',
+      seqNo: 21,
+      tenantId: 't-audit-valid',
+    })
+
+    await expect(ingestService.ingestBatch([malformedAudit, validAudit])).resolves.toBeUndefined()
+
+    const malformedRows = await prisma.platformAuditLog.findMany({
+      where: { sourceEventId: 'evt-audit-batch-malformed' },
+    })
+    expect(malformedRows).toHaveLength(0)
+
+    const validRows = await prisma.platformAuditLog.findMany({
+      where: { sourceEventId: 'evt-audit-batch-valid' },
+    })
+    expect(validRows).toHaveLength(1)
+
+    const cursor = await cursorRepo.getCursor()
+    expect(cursor).toBe(21)
+  })
 })

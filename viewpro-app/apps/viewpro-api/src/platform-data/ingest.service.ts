@@ -14,19 +14,21 @@ import { AuditLogRepository } from './audit-log.repository'
  *   re-fetched on restart. UNIQUE(sourceEventId) on the mirror table makes
  *   re-processing idempotent (D8).
  *
- * A8: after the mirror upsert (which runs for EVERY event regardless of
- *   eventType), the batch is additionally routed by eventType into the
- *   `platform_tenants` projection:
+ * A8: after the mirror upsert (which runs for every TENANT_* event), the
+ *   batch is additionally routed by eventType into the `platform_tenants`
+ *   projection:
  *     - TENANT_REGISTERED     → full identity + limits upsert
  *     - TENANT_STATUS_CHANGED → latestStatus (+ name/slug) upsert, create-if-missing (A9)
  *     - any other eventType   → skipped without error
  *
- * A6 (platform-audit-log): AUDIT_LOGGED events have no `newStatus` field, so
- *   they must NOT go through the TENANT_* newStatus-guarded branches. They
- *   are routed EXCLUSIVELY to `platform_audit_log` via AuditLogRepository —
- *   never to `platform_tenants`. The mirror upsert above already W2-skips
- *   AUDIT_LOGGED (no `newStatus`) with ZERO MirrorRepository code change
- *   (A5) — this keeps MetricsService's latest-event-wins query uncorrupted.
+ * A6 (platform-audit-log): AUDIT_LOGGED events have no `newStatus` field. They
+ *   are branched BEFORE the mirror upsert and routed EXCLUSIVELY to
+ *   `platform_audit_log` via AuditLogRepository — never to the mirror and
+ *   never to `platform_tenants`. Branching before the mirror means AUDIT_LOGGED
+ *   never reaches the W2 guard, so it produces no false '[W2] malformed event'
+ *   warning; the crux invariant (AUDIT_LOGGED absent from platform_mirror_events)
+ *   holds by construction, keeping MetricsService's latest-event-wins query
+ *   uncorrupted with ZERO MirrorRepository code change (A5).
  *
  * Feed error handling: a failure during any single event's upsert causes the
  *   entire batch to be logged-and-skipped. The cursor does NOT advance, so the
@@ -58,6 +60,16 @@ export class IngestService {
 
     try {
       for (const event of events) {
+        // A6: AUDIT_LOGGED has no `newStatus`, so it must NOT reach
+        // mirrorRepo.upsertEvent — the mirror's W2 guard would log a false
+        // '[W2] Skipping malformed event' warning on every audit event,
+        // flooding logs and burying genuine malformed-TENANT-event warnings.
+        // Branch it BEFORE the mirror call so the crux invariant (AUDIT_LOGGED
+        // is never written to platform_mirror_events) holds by construction.
+        if (event.eventType === 'AUDIT_LOGGED') {
+          await this.auditLogRepo.appendFromEvent(event)
+          continue
+        }
         await this.mirrorRepo.upsertEvent(event)
         await this.routeToTenantProjection(event)
       }
@@ -91,13 +103,9 @@ export class IngestService {
    * continues to hold for the projection as well).
    */
   private async routeToTenantProjection(event: PlatformOutboxEvent): Promise<void> {
-    // A6: AUDIT_LOGGED has no newStatus — must NOT go through the TENANT_*
-    // newStatus guards below. Routes exclusively to platform_audit_log.
-    if (event.eventType === 'AUDIT_LOGGED') {
-      await this.auditLogRepo.appendFromEvent(event)
-      return
-    }
-
+    // A6: AUDIT_LOGGED is routed to platform_audit_log in ingestBatch BEFORE
+    // the mirror upsert, so it never reaches this method (nor the mirror W2
+    // guard). Only TENANT_* events flow through here.
     if (event.eventType === 'TENANT_REGISTERED') {
       const payload = event.payload as { newStatus?: string } & Record<string, unknown>
       if (!payload.newStatus) {

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../database/prisma.service'
 import type { PlatformOutboxEvent } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 
@@ -16,14 +16,30 @@ import type { PlatformOutboxEvent } from '@viewpro/platform-contract' with { 're
  */
 @Injectable()
 export class AuditLogRepository {
+  private readonly logger = new Logger(AuditLogRepository.name)
+
   constructor(private readonly prisma: PrismaService) {}
 
   async appendFromEvent(event: PlatformOutboxEvent): Promise<void> {
     const payload = event.payload as {
-      action: string
+      action?: string
       previousValue?: unknown
       newValue?: unknown
-      actor: unknown
+      actor?: unknown
+    }
+
+    // W2-equivalent malformed-payload guard (mirrors MirrorRepository's W2
+    // log-and-skip): the projection requires a non-empty `action`, a present
+    // `actor`, and a non-empty `tenantId`. If any is missing/empty, log a
+    // warning and SKIP — do NOT throw, so the cursor still advances past this
+    // event (non-stalling; a malformed event must not head-of-line-block the
+    // batch forever). Genuine infrastructure/DB errors are NOT swallowed —
+    // they still surface from the upsert below.
+    if (!payload.action || payload.actor == null || !event.tenantId) {
+      this.logger.warn(
+        `[W2] Skipping malformed audit event ${event.id} (seqNo=${event.seqNo}): payload.action/actor or tenantId is missing or empty`,
+      )
+      return
     }
 
     await this.prisma.platformAuditLog.upsert({

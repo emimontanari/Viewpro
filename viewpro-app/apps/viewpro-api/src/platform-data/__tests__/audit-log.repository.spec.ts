@@ -87,4 +87,57 @@ describe('AuditLogRepository (integration — test DB)', () => {
     expect(typeof row?.seqNo).toBe('bigint')
     expect(row?.seqNo).toBe(42n)
   })
+
+  // FIX 2: non-stalling malformed-payload guard (mirrors MirrorRepository's W2
+  // log-and-skip). A payload missing a required field (`action`) must be
+  // logged-and-skipped — NOT throw — so the ingest cursor can still advance
+  // past it instead of head-of-line-blocking the batch forever.
+  it('[W2] malformed AUDIT_LOGGED (missing action) → logged-and-skipped, no throw, no row written', async () => {
+    const malformed = {
+      id: 'evt-audit-missing-action',
+      seqNo: 1,
+      eventType: 'AUDIT_LOGGED',
+      tenantId: 't-1',
+      // action intentionally omitted
+      payload: {
+        actor: { id: 'op-1', type: 'operator', label: 'op-1' },
+        previousValue: { status: 'TRIAL' },
+        newValue: { status: 'ACTIVE' },
+      },
+      occurredAt: new Date().toISOString(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any as PlatformOutboxEvent
+
+    await expect(repo.appendFromEvent(malformed)).resolves.toBeUndefined()
+
+    const rows = await prisma.platformAuditLog.findMany({
+      where: { sourceEventId: 'evt-audit-missing-action' },
+    })
+    expect(rows).toHaveLength(0)
+  })
+
+  // Same non-stalling guard for a missing `actor`.
+  it('[W2] malformed AUDIT_LOGGED (missing actor) → logged-and-skipped, no throw, no row written', async () => {
+    const malformed = {
+      id: 'evt-audit-missing-actor',
+      seqNo: 2,
+      eventType: 'AUDIT_LOGGED',
+      tenantId: 't-1',
+      // actor intentionally omitted
+      payload: {
+        action: 'TENANT_STATUS_CHANGED',
+        previousValue: { status: 'TRIAL' },
+        newValue: { status: 'ACTIVE' },
+      },
+      occurredAt: new Date().toISOString(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any as PlatformOutboxEvent
+
+    await expect(repo.appendFromEvent(malformed)).resolves.toBeUndefined()
+
+    const rows = await prisma.platformAuditLog.findMany({
+      where: { sourceEventId: 'evt-audit-missing-actor' },
+    })
+    expect(rows).toHaveLength(0)
+  })
 })
