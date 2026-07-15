@@ -22,6 +22,13 @@ export const navGroups: NavGroup[] = [
         icon: 'listDetails',
         isActive: false,
         items: []
+      },
+      {
+        title: 'Auditoría',
+        url: '/dashboard/audit',
+        icon: 'clock',
+        isActive: false,
+        items: []
       }
     ]
   }

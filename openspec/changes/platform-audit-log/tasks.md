@@ -549,7 +549,7 @@ All RED until T-21.
 
 ## WU-3 — viewpro-web `features/audit` global feed + route + final verification
 
-### [ ] T-22 — RED: `features/audit` api layer — zod defensive parse, `renderValue` degrades safely
+### [x] T-22 — RED: `features/audit` api layer — zod defensive parse, `renderValue` degrades safely
 **Type**: test (RED)
 **Spec**: platform-audit-log — viewpro-web Global Audit Feed (feed-renders scenario, implicitly); design Testing Strategy — FE zod parse tolerates absent/malformed previousValue (R4)
 **WU**: WU-3, commit 1
@@ -570,7 +570,7 @@ All RED until T-23.
 
 ---
 
-### [ ] T-23 — GREEN: `features/audit/api/{types,schemas,service,queries}.ts` + `renderValue` helper
+### [x] T-23 — GREEN: `features/audit/api/{types,schemas,service,queries}.ts` + `renderValue` helper
 **Type**: impl
 **Spec**: platform-audit-log — viewpro-web Global Audit Feed; A11
 **WU**: WU-3, commit 2
@@ -599,7 +599,7 @@ All RED until T-23.
 
 ---
 
-### [ ] T-24 — RED: audit feed components — table/pager/empty-state/loading/error (all 5 spec scenarios)
+### [x] T-24 — RED: audit feed components — table/pager/empty-state/loading/error (all 5 spec scenarios)
 **Type**: test (RED)
 **Spec**: platform-audit-log — viewpro-web Global Audit Feed (all 5 scenarios)
 **WU**: WU-3, commit 3
@@ -619,7 +619,7 @@ All RED until T-25.
 
 ---
 
-### [ ] T-25 — GREEN: `audit-feed-page` + `audit-table` + `audit-pager` + `audit-empty-state`
+### [x] T-25 — GREEN: `audit-feed-page` + `audit-table` + `audit-pager` + `audit-empty-state`
 **Type**: impl
 **Spec**: platform-audit-log — viewpro-web Global Audit Feed
 **WU**: WU-3, commit 4
@@ -636,7 +636,7 @@ All RED until T-25.
 
 ---
 
-### [ ] T-26 — GREEN: route `app/dashboard/audit/page.tsx` + nav-config.ts entry
+### [x] T-26 — GREEN: route `app/dashboard/audit/page.tsx` + nav-config.ts entry
 **Type**: impl
 **Spec**: platform-audit-log — viewpro-web Global Audit Feed (route gated behind authentication)
 **WU**: WU-3, commit 5
@@ -664,7 +664,7 @@ All RED until T-25.
 
 ---
 
-### [ ] T-27 — Coordinated deploy documentation + final verification
+### [x] T-27 — Coordinated deploy documentation + final verification
 **Type**: verify
 **Spec**: All invariants; proposal acceptance criteria 1–10; coordinated deploy §5 / design Migration-Rollout
 **WU**: WU-3, commit 6
@@ -745,12 +745,12 @@ All RED until T-25.
 - [x] viewpro-api ingest appends one `platform_audit_log` row per event; re-delivery idempotent on `sourceEventId` (T-14, T-15, T-16, T-20 — acceptance #4)
 - [x] `GET /operators/audit` returns newest-first (`seqNo` DESC), offset/limit paginated (cap 200), `{total, items}`, from `viewpro_platform` only (T-18, T-19 — acceptance #5)
 - [x] `GET /operators/audit` is operator-only: 401 without a valid operator session (T-18 — acceptance #6)
-- [ ] viewpro-web renders a single global, paginated, chronological audit feed (actor/action/tenant/timestamp/old→new) (T-22–T-26 — acceptance #7)
-- [x] Isolation preserved (viewpro-api half): no InmoView DB / `analytics_events` read anywhere in viewpro-api (T-18 isolation check — acceptance #8; viewpro-web half deferred to WU-3/T-27)
-- [x] `platform_mirror_events` append + cursor/seqNo semantics unchanged; `AUDIT_LOGGED` correctly W2-skipped (T-16, T-20 — final T-27 checklist #12 zero-diff confirmation deferred to WU-3)
+- [x] viewpro-web renders a single global, paginated, chronological audit feed (actor/action/tenant/timestamp/old→new) (T-22–T-26 — acceptance #7)
+- [x] Isolation preserved (viewpro-api half): no InmoView DB / `analytics_events` read anywhere in viewpro-api (T-18 isolation check — acceptance #8; viewpro-web half confirmed T-27 — zero raw `fetch()`, zero `@viewpro/platform-contract` import, no role gate)
+- [x] `platform_mirror_events` append + cursor/seqNo semantics unchanged; `AUDIT_LOGGED` correctly W2-skipped (T-16, T-20; T-27 checklist #12/#13 zero-diff confirmed against feat/platform-audit-wu1)
 - [x] No InmoView schema migration — only new outbox rows; only migration is `platform_audit_log` on `viewpro_platform` (T-13 — acceptance #10)
 - [x] Regression guard (a): `AUDIT_LOGGED` never in `platform_mirror_events`; metrics status breakdown uncorrupted (T-16, T-20)
 - [x] Regression guard (b): `TENANT_STATUS_CHANGED` still emits + still projects to `platform_tenants`, unregressed (T-08, T-09, T-16, T-20)
 - [x] Regression guard (c): limits emit is inside the tx — rollback ⇒ no event (T-10, T-11 — proven by WU-1's existing apps/api suite, reverified GREEN in T-21)
 - [x] Regression guard (d): re-delivery idempotency via `platform_audit_log.sourceEventId` (T-14, T-20)
-- [ ] Coordinated deploy ordering documented in migration SQL (T-27)
+- [x] Coordinated deploy ordering documented in migration SQL (T-27)
