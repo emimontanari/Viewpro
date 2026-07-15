@@ -239,7 +239,7 @@ All RED until T-10.
 
 ---
 
-### [ ] T-11 — WU-1 verification (PR1 boundary)
+### [x] T-11 — WU-1 verification (PR1 boundary)
 **Type**: verify
 **Spec**: Paginated Tenant List (all 4 scenarios); Error Handling (list load); viewpro-api-Only Isolation
 **WU**: WU-1, commit 11

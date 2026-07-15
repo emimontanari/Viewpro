@@ -4,9 +4,9 @@
  * Source: GET /operators/tenants → apps/api/src/platform-data/tenant-registry.service.ts
  * PATCH responses are typed `unknown` server-side (opaque InmoView control-lane
  * passthrough) — apps/api/src/admin/responses/admin-tenant-{status,limits}.response.ts
- * traces the exact shapes below. Do NOT import `@viewpro/platform-contract`
- * `SetTenantStatusResult` / `SetTenantLimitsResult` — those types are dead and
- * do not match the wire shape (D3).
+ * traces the exact shapes below. Do NOT import the dead `SetTenantStatusResult`
+ * / `SetTenantLimitsResult` types from the platform-contract package — those
+ * types do not match the wire shape (D3).
  */
 
 export type TenantStatus = 'TRIAL' | 'ACTIVE' | 'SUSPENDED' | 'CANCELLED';
