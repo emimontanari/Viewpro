@@ -6,6 +6,8 @@ import type {
   PlatformTenantStatus,
   PlatformOutboxEvent,
   PlatformTenantRegistryLimits,
+  AuditActor,
+  AuditLoggedPayload,
 } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 import type { TenantStatus, Tenant } from '@prisma/client'
 
@@ -87,3 +89,57 @@ const _assertLimits: _AssertLimitsFieldsMatchTenant = {
   maxDocumentsStorageMb: true,
 }
 void _assertLimits
+
+// ---------------------------------------------------------------------------
+// T-02/T-03 (platform-audit-log) — AUDIT_LOGGED union coverage + payload shape
+// ---------------------------------------------------------------------------
+
+/**
+ * Positive: AUDIT_LOGGED is a valid eventType in the widened union (A1/A2).
+ * Compile error here → the contract union was not widened.
+ */
+type _AssertAuditLoggedInUnion =
+  ['AUDIT_LOGGED'] extends [PlatformOutboxEvent['eventType']] ? true : never
+
+const _assertAuditLogged: _AssertAuditLoggedInUnion = true
+void _assertAuditLogged
+
+/**
+ * Regression: TENANT_STATUS_CHANGED and TENANT_REGISTERED remain assignable
+ * after widening the union with AUDIT_LOGGED.
+ */
+type _AssertTenantStatusChangedStillInUnion =
+  ['TENANT_STATUS_CHANGED'] extends [PlatformOutboxEvent['eventType']] ? true : never
+
+const _assertTenantStatusChangedStill: _AssertTenantStatusChangedStillInUnion = true
+void _assertTenantStatusChangedStill
+
+type _AssertTenantRegisteredStillInUnion =
+  ['TENANT_REGISTERED'] extends [PlatformOutboxEvent['eventType']] ? true : never
+
+const _assertTenantRegisteredStill: _AssertTenantRegisteredStillInUnion = true
+void _assertTenantRegisteredStill
+
+/**
+ * Positive: AuditLoggedPayload is assignable to PlatformOutboxEvent['payload'].
+ */
+type _AssertAuditLoggedPayloadInUnion =
+  [AuditLoggedPayload] extends [PlatformOutboxEvent['payload']] ? true : never
+
+const _assertAuditLoggedPayload: _AssertAuditLoggedPayloadInUnion = true
+void _assertAuditLoggedPayload
+
+const _assertAuditPayloadShape: AuditLoggedPayload = {
+  action: 'TENANT_STATUS_CHANGED',
+  previousValue: { status: 'TRIAL' },
+  newValue: { status: 'ACTIVE' },
+  actor: { id: 'op-1', type: 'operator', label: 'op-1' },
+}
+void _assertAuditPayloadShape
+
+/**
+ * Negative: AuditActor['type'] is 'operator' | 'user' — a literal 'admin' is NOT
+ * assignable. RED: without @ts-expect-error, this line fails `tsc --noEmit`.
+ */
+const _assertBadActorType: AuditActor['type'] = 'admin'
+void _assertBadActorType
