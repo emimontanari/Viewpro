@@ -290,7 +290,7 @@ All new assertions RED until T-13.
 
 ---
 
-### [ ] T-14 — RED: `tenant-limits-dialog.spec.tsx`
+### [x] T-14 — RED: `tenant-limits-dialog.spec.tsx`
 **Type**: test (RED)
 **Spec**: Limits Editing via Modal Dialog (all 3 scenarios)
 **WU**: WU-2, commit 3
