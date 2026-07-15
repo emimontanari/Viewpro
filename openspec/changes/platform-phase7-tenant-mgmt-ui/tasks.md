@@ -211,7 +211,7 @@ All RED until T-08.
 
 ---
 
-### [ ] T-09 — RED: `app/dashboard/tenants/__tests__/page.spec.tsx`
+### [x] T-09 — RED: `app/dashboard/tenants/__tests__/page.spec.tsx`
 **Type**: test (RED)
 **Spec**: Paginated Tenant List (page reachability, scenario 1)
 **WU**: WU-1, commit 9
