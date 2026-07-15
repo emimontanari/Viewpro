@@ -435,7 +435,7 @@ All RED until T-20.
 
 ---
 
-### [ ] T-21 — RED: backfill seed tests — first run populates; re-run is idempotent (A12/A14)
+### [x] T-21 — RED: backfill seed tests — first run populates; re-run is idempotent (A12/A14)
 **Type**: test (RED)
 **Spec**: tenant-registry — Backfill Idempotent Seed (both scenarios)
 **WU**: WU-3, commit 3
