@@ -125,3 +125,81 @@ describe('useStepUpGate — onSubmit (wrong password)', () => {
     expect(retry).not.toHaveBeenCalled();
   });
 });
+
+describe('useStepUpGate — dismiss/cancel (JD)', () => {
+  it('dismissing closes the dialog, clears the inline error, and never runs the stashed retry', async () => {
+    mockStepUp.mockRejectedValueOnce({ status: 401, message: 'Invalid password' });
+    const { result } = renderHook(() => useStepUpGate());
+    const retry = vi.fn();
+
+    act(() => {
+      result.current.handleStepUpError(STEP_UP_ERROR, retry);
+    });
+    await act(async () => {
+      await result.current.dialogProps.onSubmit('wrong-password');
+    });
+    expect(result.current.dialogProps.error).toBeTruthy();
+
+    act(() => {
+      result.current.dialogProps.onOpenChange?.(false);
+    });
+
+    expect(result.current.dialogProps.open).toBe(false);
+    expect(result.current.dialogProps.error).toBeUndefined();
+    expect(retry).not.toHaveBeenCalled();
+  });
+
+  it('after dismissing one action, confirming a DIFFERENT action runs the new retry, not the stale one', async () => {
+    mockStepUp.mockResolvedValue({ success: true });
+    const { result } = renderHook(() => useStepUpGate());
+    const firstRetry = vi.fn();
+    const secondRetry = vi.fn();
+
+    act(() => {
+      result.current.handleStepUpError(STEP_UP_ERROR, firstRetry);
+    });
+    // Operator abandons the first destructive action.
+    act(() => {
+      result.current.dialogProps.onOpenChange?.(false);
+    });
+    expect(result.current.dialogProps.open).toBe(false);
+
+    // A later, unrelated action triggers step-up again.
+    act(() => {
+      result.current.handleStepUpError(STEP_UP_ERROR, secondRetry);
+    });
+    await act(async () => {
+      await result.current.dialogProps.onSubmit('secret1234');
+    });
+
+    expect(firstRetry).not.toHaveBeenCalled();
+    expect(secondRetry).toHaveBeenCalledOnce();
+  });
+
+  it('clears the inline wrong-password error after dismiss (closed) and on re-open', async () => {
+    mockStepUp.mockRejectedValueOnce({ status: 401, message: 'Invalid password' });
+    const { result } = renderHook(() => useStepUpGate());
+    const retry = vi.fn();
+
+    act(() => {
+      result.current.handleStepUpError(STEP_UP_ERROR, retry);
+    });
+    await act(async () => {
+      await result.current.dialogProps.onSubmit('wrong-password');
+    });
+    expect(result.current.dialogProps.error).toBeTruthy();
+
+    act(() => {
+      result.current.dialogProps.onOpenChange?.(false);
+    });
+    expect(result.current.dialogProps.open).toBe(false);
+    expect(result.current.dialogProps.error).toBeUndefined();
+
+    // Re-opening via a fresh step-up shows no stale error.
+    act(() => {
+      result.current.handleStepUpError(STEP_UP_ERROR, retry);
+    });
+    expect(result.current.dialogProps.open).toBe(true);
+    expect(result.current.dialogProps.error).toBeUndefined();
+  });
+});

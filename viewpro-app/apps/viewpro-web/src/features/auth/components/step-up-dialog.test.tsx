@@ -67,4 +67,25 @@ describe('StepUpDialog', () => {
     expect(screen.getByText('Contraseña incorrecta')).toBeTruthy();
     expect(screen.getByRole('dialog')).toBeTruthy();
   });
+
+  it('renders a Cancel button when open (JD)', () => {
+    render(<StepUpDialog open isVerifying={false} onSubmit={noop} />);
+
+    expect(screen.getByRole('button', { name: /cancelar/i })).toBeTruthy();
+  });
+
+  it('clicking Cancel requests dismissal via onOpenChange(false) (JD)', () => {
+    const onOpenChange = vi.fn();
+    render(<StepUpDialog open isVerifying={false} onSubmit={noop} onOpenChange={onOpenChange} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /cancelar/i }));
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('disables the Cancel button while isVerifying (JD)', () => {
+    render(<StepUpDialog open isVerifying onSubmit={noop} />);
+
+    expect(screen.getByRole('button', { name: /cancelar/i })).toBeDisabled();
+  });
 });

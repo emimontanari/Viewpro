@@ -952,6 +952,29 @@ describe('TenantsManagementPage — step-up gate wiring', () => {
     expect(mockStepUp).not.toHaveBeenCalled();
   });
 
+  it('cancelling the step-up modal closes it without retrying the mutation, mutating, or logging out (JD)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const confirmDialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => screen.getByLabelText('Contraseña'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Contraseña')).toBeNull();
+    });
+    // Only the original (403) attempt was made — dismissing never retries the
+    // destructive PATCH and never re-verifies the password (no logout path).
+    expect(mockUpdateTenantStatus).toHaveBeenCalledTimes(1);
+    expect(mockStepUp).not.toHaveBeenCalled();
+  });
+
   it('a 403 STEP_UP_REQUIRED on updateTenantLimits also opens the shared modal — no logout, no redirect (AC8 scenario 5)', async () => {
     mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
     mockUpdateTenantLimits.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
