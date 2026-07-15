@@ -1,8 +1,11 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { PrismaOutboxRepository } from './platform-outbox.repository'
+// biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
+import { PlatformTenantsReadRepository } from './platform-tenants-read.repository'
 import { PlatformControlGuard } from '../platform-control/platform-control.guard'
 import type { ChangeFeedResponse } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
+import type { TenantRegistryItem } from './platform-tenants-read.repository'
 
 /**
  * PlatformDataController — read-side change-feed for the data lane.
@@ -23,7 +26,10 @@ import type { ChangeFeedResponse } from '@viewpro/platform-contract' with { 'res
 @Controller('internal/platform')
 @UseGuards(PlatformControlGuard)
 export class PlatformDataController {
-  constructor(private readonly outboxRepository: PrismaOutboxRepository) {}
+  constructor(
+    private readonly outboxRepository: PrismaOutboxRepository,
+    private readonly tenantsReadRepository: PlatformTenantsReadRepository,
+  ) {}
 
   /**
    * GET /internal/platform/changes?since=<seqNo>
@@ -49,5 +55,22 @@ export class PlatformDataController {
         : cursor
 
     return { events, nextCursor }
+  }
+
+  /**
+   * GET /internal/platform/tenants
+   *
+   * Returns all tenants with identity + limits for the one-time backfill seed
+   * that viewpro-api calls to populate its platform_tenants projection (A13).
+   *
+   * Protected by PlatformControlGuard (same HS256 service token as the change-feed).
+   * READ-ONLY: never writes any row.
+   *
+   * // TODO: add paging if tenant count exceeds 1 000
+   */
+  @Get('tenants')
+  async getTenants(): Promise<{ tenants: TenantRegistryItem[] }> {
+    const tenants = await this.tenantsReadRepository.findAll()
+    return { tenants }
   }
 }

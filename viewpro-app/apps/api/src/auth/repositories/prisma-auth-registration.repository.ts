@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import type { TenantRole } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
+import { PlatformOutboxWriter } from '../../platform-data/platform-outbox-writer'
 import type {
   AuthRegistrationRepository,
   RegisteredTenantRecord,
@@ -9,7 +10,10 @@ import type {
 
 @Injectable()
 export class PrismaAuthRegistrationRepository implements AuthRegistrationRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly outboxWriter: PlatformOutboxWriter,
+  ) {}
 
   async registerTenant(input: RegisterTenantRecordInput): Promise<RegisteredTenantRecord> {
     return this.prisma.$transaction(async (tx) => {
@@ -36,6 +40,26 @@ export class PrismaAuthRegistrationRepository implements AuthRegistrationReposit
           tenantId: tenant.id,
         },
         include: { tenant: true },
+      })
+
+      // A4: emit TENANT_REGISTERED inside the SAME $transaction after tenant.create.
+      // The outbox row commits iff user + tenant + membership commit.
+      // Rollback ⇒ no outbox row persisted (atomicity guarantee).
+      await this.outboxWriter.emit(tx, {
+        eventType: 'TENANT_REGISTERED',
+        tenantId: tenant.id,
+        payload: {
+          id: tenant.id,
+          name: tenant.name,
+          slug: tenant.slug,
+          newStatus: tenant.status,
+          limits: {
+            maxUsers: tenant.maxUsers,
+            maxActivePropertyEngagements: tenant.maxActivePropertyEngagements,
+            maxDocumentsStorageMb: tenant.maxDocumentsStorageMb,
+          },
+        },
+        occurredAt: new Date().toISOString(),
       })
 
       return { user, memberships: [membership] }

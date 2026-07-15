@@ -278,3 +278,124 @@ describe('PlatformDataController — change-feed endpoint', () => {
     expect(body.events.length).toBeGreaterThanOrEqual(1)
   })
 })
+
+// ---------------------------------------------------------------------------
+// T-10 — RED: GET /internal/platform/tenants (A13)
+//
+// Spec: tenant-registry — Backfill InmoView Internal Tenants Endpoint
+//   1. Valid service token → 200 with { tenants: [{ id, name, slug, status, limits }] }
+//   2. Missing / invalid service token → 401
+//   3. Endpoint is read-only: no platform_outbox_events rows written
+// ---------------------------------------------------------------------------
+
+describe('PlatformDataController — GET /internal/platform/tenants (T-10/T-11)', () => {
+  let app: INestApplication
+  let prisma: import('@prisma/client').PrismaClient
+
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test'
+    process.env.PLATFORM_CONTROL_SECRET = PLATFORM_CONTROL_SECRET
+
+    const { createApiApp } = await import('../../bootstrap/create-app.js')
+    app = await createApiApp()
+    await app.init()
+
+    const { PrismaService } = await import('../../database/prisma.service.js')
+    prisma = app.get(PrismaService)
+  })
+
+  afterAll(async () => {
+    await app.close()
+  })
+
+  beforeEach(async () => {
+    // Clean tenants + outbox for isolation
+    await prisma.platformOutboxEvent.deleteMany()
+    await prisma.tenantMembership.deleteMany()
+    await prisma.tenant.deleteMany()
+  })
+
+  // -------------------------------------------------------------------------
+  // Scenario: Valid service token returns all tenants
+  // -------------------------------------------------------------------------
+  it('valid service token → 200 with tenants array including id, name, slug, status, limits', async () => {
+    // Seed three tenants
+    await prisma.tenant.create({
+      data: { name: 'Alpha Corp', slug: 'alpha-corp', status: 'TRIAL', maxUsers: 10, maxActivePropertyEngagements: null, maxDocumentsStorageMb: 500 },
+    })
+    await prisma.tenant.create({
+      data: { name: 'Beta Inc', slug: 'beta-inc', status: 'ACTIVE', maxUsers: null, maxActivePropertyEngagements: 5, maxDocumentsStorageMb: null },
+    })
+    await prisma.tenant.create({
+      data: { name: 'Gamma LLC', slug: 'gamma-llc', status: 'SUSPENDED', maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+    })
+
+    const token = await mintServiceToken()
+
+    const response = await request(app.getHttpServer())
+      .get('/api/internal/platform/tenants')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+
+    const body = response.body as { tenants: Array<{ id: string; name: string; slug: string; status: string; limits: { maxUsers: number | null; maxActivePropertyEngagements: number | null; maxDocumentsStorageMb: number | null } }> }
+
+    expect(body.tenants).toHaveLength(3)
+
+    // All tenants have required fields
+    for (const tenant of body.tenants) {
+      expect(tenant.id).toBeDefined()
+      expect(tenant.name).toBeDefined()
+      expect(tenant.slug).toBeDefined()
+      expect(tenant.status).toBeDefined()
+      expect(tenant.limits).toBeDefined()
+      expect('maxUsers' in tenant.limits).toBe(true)
+      expect('maxActivePropertyEngagements' in tenant.limits).toBe(true)
+      expect('maxDocumentsStorageMb' in tenant.limits).toBe(true)
+    }
+
+    // Verify specific data
+    const alphaEntry = body.tenants.find((t) => t.slug === 'alpha-corp')
+    expect(alphaEntry?.name).toBe('Alpha Corp')
+    expect(alphaEntry?.status).toBe('TRIAL')
+    expect(alphaEntry?.limits.maxUsers).toBe(10)
+    expect(alphaEntry?.limits.maxDocumentsStorageMb).toBe(500)
+  })
+
+  // -------------------------------------------------------------------------
+  // Scenario: Missing or invalid service token is rejected
+  // -------------------------------------------------------------------------
+  it('missing Authorization header → 401', async () => {
+    await request(app.getHttpServer())
+      .get('/api/internal/platform/tenants')
+      .expect(401)
+  })
+
+  it('invalid service token (wrong secret) → 401', async () => {
+    const wrongSigner = new JwtService({ secret: 'wrong-secret-that-is-long-enough' })
+    const badToken = await wrongSigner.signAsync(
+      { iss: 'viewpro-api', aud: 'inmoview-control', sub: 'op', jti: 'bad-jti' },
+      { expiresIn: '120s' },
+    )
+
+    await request(app.getHttpServer())
+      .get('/api/internal/platform/tenants')
+      .set('Authorization', `Bearer ${badToken}`)
+      .expect(401)
+  })
+
+  // -------------------------------------------------------------------------
+  // Scenario: Endpoint is read-only — no outbox events written
+  // -------------------------------------------------------------------------
+  it('GET /internal/platform/tenants does NOT write any outbox rows (read-only)', async () => {
+    const countBefore = await prisma.platformOutboxEvent.count()
+    const token = await mintServiceToken()
+
+    await request(app.getHttpServer())
+      .get('/api/internal/platform/tenants')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+
+    const countAfter = await prisma.platformOutboxEvent.count()
+    expect(countAfter).toBe(countBefore)
+  })
+})
