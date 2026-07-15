@@ -66,7 +66,14 @@ describe('AuthGuard — failure paths clear both cookies (D9, AC7)', () => {
   })
 
   it('valid token: does not clear any cookie and returns true', async () => {
-    const verifyAccessToken = vi.fn().mockResolvedValue({ sub: 'op-1', email: 'op@viewpro.app' })
+    const nowSec = Math.floor(Date.now() / 1000)
+    const verifyAccessToken = vi.fn().mockResolvedValue({
+      sub: 'op-1',
+      email: 'op@viewpro.app',
+      sessionExp: nowSec + 28800,
+      iat: nowSec,
+      exp: nowSec + 600,
+    })
     const { guard, tokenService } = makeGuard({ verifyAccessToken })
     const { context, response } = makeContext({ viewpro_platform_access_token: 'valid.token' })
 
