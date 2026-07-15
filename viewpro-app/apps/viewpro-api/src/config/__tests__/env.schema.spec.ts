@@ -6,10 +6,13 @@ const VALID_SECRET = 'a-sufficiently-long-secret'
 const VALID_CONTROL_SECRET = 'a-sufficiently-long-control-secret'
 const VALID_INMOVIEW_URL = 'http://localhost:3001'
 
+const VALID_STEP_UP_SECRET = 'a-sufficiently-long-step-up-secret'
+
 const VALID_BASE = {
   ACCESS_TOKEN_SECRET: VALID_SECRET,
   PLATFORM_CONTROL_SECRET: VALID_CONTROL_SECRET,
   INMOVIEW_API_INTERNAL_URL: VALID_INMOVIEW_URL,
+  STEP_UP_TOKEN_SECRET: VALID_STEP_UP_SECRET,
 }
 
 describe('validateEnv', () => {
@@ -41,5 +44,27 @@ describe('validateEnv', () => {
   it('rejects a missing INMOVIEW_API_INTERNAL_URL', () => {
     const { INMOVIEW_API_INTERNAL_URL: _, ...rest } = VALID_BASE
     expect(() => validateEnv(rest)).toThrow(/INMOVIEW_API_INTERNAL_URL/)
+  })
+
+  it('rejects a missing STEP_UP_TOKEN_SECRET (required, no default)', () => {
+    const { STEP_UP_TOKEN_SECRET: _, ...rest } = VALID_BASE
+    expect(() => validateEnv(rest)).toThrow(/STEP_UP_TOKEN_SECRET/)
+  })
+
+  it('rejects a STEP_UP_TOKEN_SECRET shorter than 16 chars', () => {
+    expect(() =>
+      validateEnv({ ...VALID_BASE, STEP_UP_TOKEN_SECRET: 'too-short' }),
+    ).toThrow(/STEP_UP_TOKEN_SECRET/)
+  })
+
+  it('STEP_UP_TTL_SECONDS omitted defaults to 300', () => {
+    const config = validateEnv(VALID_BASE) as unknown as { STEP_UP_TTL_SECONDS: number }
+    expect(config.STEP_UP_TTL_SECONDS).toBe(300)
+  })
+
+  it('rejects a STEP_UP_TTL_SECONDS below the 60-second floor', () => {
+    expect(() =>
+      validateEnv({ ...VALID_BASE, STEP_UP_TTL_SECONDS: 10 }),
+    ).toThrow(/STEP_UP_TTL_SECONDS/)
   })
 })
