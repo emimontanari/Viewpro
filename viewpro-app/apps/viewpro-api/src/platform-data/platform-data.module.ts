@@ -12,6 +12,8 @@ import { MetricsService } from './metrics.service'
 import { MetricsController } from './metrics.controller'
 import { TenantRegistryService } from './tenant-registry.service'
 import { TenantRegistryController } from './tenant-registry.controller'
+import { AuditService } from './audit.service'
+import { AuditController } from './audit.controller'
 
 /**
  * PlatformDataModule (viewpro-api) — data-lane consumer module.
@@ -20,20 +22,23 @@ import { TenantRegistryController } from './tenant-registry.controller'
  *  - AuthModule: provides AuthGuard (Phase 4 operator session guard)
  *  - ChangeFeedClient: mints HS256 ingest tokens and GETs InmoView change-feed
  *  - IngestService: idempotent mirror upsert + cursor advance (D7, D8);
- *    routes each event into the platform_tenants projection by eventType (A8/A9)
+ *    routes each event into the platform_tenants projection by eventType (A8/A9);
+ *    routes AUDIT_LOGGED events into platform_audit_log, W2-exempt (A6)
  *  - MirrorRepository: platform_mirror_events CRUD
  *  - CursorRepository: platform_ingest_cursor CRUD
  *  - PlatformTenantRepository: platform_tenants CRUD (A7/A8/A9)
+ *  - AuditLogRepository: platform_audit_log append-only CRUD (A8)
  *  - PlatformDataPollJob: setInterval-based poll loop with overlap guard (D9)
  *  - MetricsService: latest-event-wins aggregate from mirror (D6)
  *  - MetricsController: GET /operators/metrics/summary (Phase 4 AuthGuard)
  *  - TenantRegistryService / TenantRegistryController: GET /operators/tenants (A10/A11)
+ *  - AuditService / AuditController: GET /operators/audit (A9/A10)
  *
  * DatabaseModule is @Global() so PrismaService is available without explicit import.
  */
 @Module({
   imports: [AuthModule],
-  controllers: [MetricsController, TenantRegistryController],
+  controllers: [MetricsController, TenantRegistryController, AuditController],
   providers: [
     ChangeFeedClient,
     MirrorRepository,
@@ -56,6 +61,7 @@ import { TenantRegistryController } from './tenant-registry.controller'
     },
     MetricsService,
     TenantRegistryService,
+    AuditService,
   ],
 })
 export class PlatformDataModule {}

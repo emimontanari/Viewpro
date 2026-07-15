@@ -154,8 +154,6 @@ describe('AuditController (integration — test DB)', () => {
         action: 'TENANT_STATUS_CHANGED',
         tenantId: `t-${i}`,
         actor: { id: 'op-1', type: 'operator', label: 'op-1' },
-        previousValue: null,
-        newValue: null,
         occurredAt: new Date(),
       })),
     })
@@ -179,8 +177,6 @@ describe('AuditController (integration — test DB)', () => {
         action: 'TENANT_STATUS_CHANGED',
         tenantId: `t-${i}`,
         actor: { id: 'op-1', type: 'operator', label: 'op-1' },
-        previousValue: null,
-        newValue: null,
         occurredAt: new Date(),
       })),
     })
