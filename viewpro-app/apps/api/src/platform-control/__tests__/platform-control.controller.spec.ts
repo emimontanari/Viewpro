@@ -126,6 +126,90 @@ describe('PlatformControlController (integration)', () => {
   })
 
   // -------------------------------------------------------------------------
+  // T-05 — RED: cancel scenarios + terminality + ACTIVE⇄SUSPENDED regression
+  //
+  // Spec: admin-tenant-status — Writable-Target Status Policy (Cancel from
+  //   ACTIVE/SUSPENDED/TRIAL); CANCELLED Is Terminal — Server-Side Enforcement
+  //   (all 3 scenarios)
+  // -------------------------------------------------------------------------
+  describe('cancel (targetStatus=CANCELLED) — terminality (R1)', () => {
+    it.each([TenantStatus.ACTIVE, TenantStatus.SUSPENDED, TenantStatus.TRIAL])(
+      'cancel from %s → 200, exactly one TENANT_STATUS_CHANGED + one AUDIT_LOGGED, previousValue.status is the real prior status',
+      async (initialStatus) => {
+        const tenant = await seedTenant(`tenant-cancel-from-${initialStatus.toLowerCase()}-${Date.now()}`)
+        if (initialStatus !== TenantStatus.TRIAL) {
+          await prisma.tenant.update({ where: { id: tenant.id }, data: { status: initialStatus } })
+        }
+        const token = await mintServiceToken()
+
+        const response = await request(app.getHttpServer())
+          .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ targetStatus: 'CANCELLED', idempotencyKey: `key-cancel-${initialStatus}-${Date.now()}` })
+          .expect(200)
+
+        expect(response.body.status).toBe('CANCELLED')
+
+        const updated = await prisma.tenant.findUnique({ where: { id: tenant.id } })
+        expect(updated?.status).toBe(TenantStatus.CANCELLED)
+
+        const events = await prisma.analyticsEvent.findMany({ where: { tenantId: tenant.id } })
+        expect(events).toHaveLength(1)
+        expect(events[0]).toMatchObject({
+          eventName: AnalyticsEventName.TENANT_STATUS_CHANGED,
+          metadata: { previousStatus: initialStatus, newStatus: 'CANCELLED' },
+        })
+      },
+    )
+
+    it('cancel then re-PATCH targetStatus=ACTIVE on the now-CANCELLED tenant → 400; tenant status remains CANCELLED (R1 regression, AC4)', async () => {
+      const tenant = await seedTenant(`tenant-cancel-then-reactivate-${Date.now()}`)
+      await prisma.tenant.update({ where: { id: tenant.id }, data: { status: TenantStatus.ACTIVE } })
+      const token = await mintServiceToken()
+
+      await request(app.getHttpServer())
+        .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ targetStatus: 'CANCELLED', idempotencyKey: `key-cancel-first-${Date.now()}` })
+        .expect(200)
+
+      await request(app.getHttpServer())
+        .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ targetStatus: 'ACTIVE', idempotencyKey: `key-reactivate-${Date.now()}` })
+        .expect(400)
+
+      const tenantAfter = await prisma.tenant.findUnique({ where: { id: tenant.id } })
+      expect(tenantAfter?.status).toBe(TenantStatus.CANCELLED)
+    })
+
+    it('CANCELLED → CANCELLED on an already-cancelled tenant → 400 (NOT the unchanged 200 shape, D2)', async () => {
+      const tenant = await seedTenant(`tenant-cancel-then-cancel-${Date.now()}`)
+      await prisma.tenant.update({ where: { id: tenant.id }, data: { status: TenantStatus.ACTIVE } })
+      const token = await mintServiceToken()
+
+      await request(app.getHttpServer())
+        .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ targetStatus: 'CANCELLED', idempotencyKey: `key-cancel-once-${Date.now()}` })
+        .expect(200)
+
+      await request(app.getHttpServer())
+        .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ targetStatus: 'CANCELLED', idempotencyKey: `key-cancel-twice-${Date.now()}` })
+        .expect(400)
+
+      const tenantAfter = await prisma.tenant.findUnique({ where: { id: tenant.id } })
+      expect(tenantAfter?.status).toBe(TenantStatus.CANCELLED)
+    })
+  })
+
+  // Regression (b): existing ACTIVE ⇄ SUSPENDED tests (above, lines ~91-105)
+  // stay green unmodified — no assertions duplicated here; this comment marks
+  // the regression coverage as intentionally preserved as-is.
+
+  // -------------------------------------------------------------------------
   // Limits endpoint
   // -------------------------------------------------------------------------
 
