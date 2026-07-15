@@ -214,4 +214,98 @@ describe('ChangeFeedClient', () => {
 
     await expect(client.fetchChanges(0)).rejects.toThrow()
   })
+
+  // -------------------------------------------------------------------------
+  // T-21/T-22 — RED: fetchAllTenants (backfill pull) — A12
+  // -------------------------------------------------------------------------
+  it('fetchAllTenants calls GET INMOVIEW_API_INTERNAL_URL/api/internal/platform/tenants', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ tenants: [] }), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', mockFetch)
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await client.fetchAllTenants()
+
+    expect(mockFetch).toHaveBeenCalledOnce()
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe(`${INMOVIEW_API_INTERNAL_URL}/api/internal/platform/tenants`)
+  })
+
+  it('fetchAllTenants mints a service token with the same claims as fetchChanges (iss=viewpro-api, aud=inmoview-control)', async () => {
+    const capturedHeaders: Record<string, string>[] = []
+    const mockFetch = vi.fn().mockImplementation((_url: string, init: RequestInit) => {
+      capturedHeaders.push(init.headers as Record<string, string>)
+      return Promise.resolve(new Response(JSON.stringify({ tenants: [] }), { status: 200 }))
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await client.fetchAllTenants()
+
+    const authHeader = capturedHeaders[0]?.['Authorization'] ?? ''
+    const token = authHeader.replace('Bearer ', '')
+    const verifier = new JwtService({ secret: PLATFORM_CONTROL_SECRET })
+    const payload = await verifier.verifyAsync(token)
+
+    expect(payload.iss).toBe('viewpro-api')
+    expect(payload.aud).toBe('inmoview-control')
+    expect(payload.sub).toBe('system-ingest')
+  })
+
+  it('fetchAllTenants returns the parsed { tenants: [...] } body', async () => {
+    const mockBody = {
+      tenants: [
+        {
+          id: 't-1',
+          name: 'Alpha',
+          slug: 'alpha',
+          status: 'TRIAL',
+          limits: { maxUsers: 5, maxActivePropertyEngagements: 10, maxDocumentsStorageMb: 500 },
+        },
+        {
+          id: 't-2',
+          name: 'Beta',
+          slug: 'beta',
+          status: 'ACTIVE',
+          limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+        },
+      ],
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(mockBody), { status: 200 }),
+    ))
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    const result = await client.fetchAllTenants()
+
+    expect(result.tenants).toHaveLength(2)
+    expect(result.tenants[0]?.id).toBe('t-1')
+    expect(result.tenants[1]?.status).toBe('ACTIVE')
+  })
+
+  it('fetchAllTenants throws on non-2xx response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 }),
+    ))
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await expect(client.fetchAllTenants()).rejects.toThrow()
+  })
 })

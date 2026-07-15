@@ -547,3 +547,142 @@ describe('IngestService — platform_tenants routing (T-14/T-15, A8/A9)', () => 
     expect(statusMirrorRow).not.toBeNull()
   })
 })
+
+/**
+ * T-19 — RED: threat-matrix — replay / duplicate delivery.
+ *
+ * Spec: tenant-registry — threat-matrix "Replay / duplicate delivery" row —
+ *   redelivered TENANT_REGISTERED/TENANT_STATUS_CHANGED → upsert-on-id no-op;
+ *   mirror UNIQUE(sourceEventId) dedup unchanged.
+ */
+describe('IngestService — replay / duplicate-delivery threat-matrix (T-19)', () => {
+  let moduleRef: TestingModule
+  let ingestService: IngestService
+  let prisma: PrismaService
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [IngestService, MirrorRepository, CursorRepository, PlatformTenantRepository],
+    }).compile()
+
+    ingestService = moduleRef.get(IngestService)
+    prisma = moduleRef.get(PrismaService)
+  })
+
+  afterAll(async () => {
+    await moduleRef.close()
+  })
+
+  beforeEach(async () => {
+    await prisma.platformTenant.deleteMany()
+    await prisma.platformMirrorEvent.deleteMany()
+    await prisma.platformIngestCursor.upsert({
+      where: { id: 1 },
+      update: { seqNo: 0 },
+      create: { id: 1, seqNo: 0 },
+    })
+  })
+
+  function makeRegisteredEvent(overrides: Partial<PlatformOutboxEvent> = {}): PlatformOutboxEvent {
+    return {
+      id: 'evt-replay-t1',
+      seqNo: 1,
+      eventType: 'TENANT_REGISTERED',
+      tenantId: 't-replay-1',
+      payload: {
+        id: 't-replay-1',
+        name: 'Replay Co',
+        slug: 'replay-co',
+        newStatus: 'TRIAL',
+        limits: { maxUsers: 5, maxActivePropertyEngagements: 10, maxDocumentsStorageMb: 500 },
+      },
+      occurredAt: new Date().toISOString(),
+      ...overrides,
+    }
+  }
+
+  // Redeliver the SAME TENANT_REGISTERED event id three times (not just
+  // once) → platform_tenants row count MUST stay exactly one across every
+  // redelivery, proving the upsert-on-id dedup holds under repeated replay,
+  // not just a single re-delivery.
+  it('TENANT_REGISTERED redelivered 3x → platform_tenants count unchanged at exactly one row', async () => {
+    const evt = makeRegisteredEvent()
+
+    await ingestService.ingestBatch([evt])
+    const countAfterFirst = await prisma.platformTenant.count({ where: { id: 't-replay-1' } })
+    expect(countAfterFirst).toBe(1)
+
+    await ingestService.ingestBatch([evt])
+    await ingestService.ingestBatch([evt])
+
+    const countAfterReplays = await prisma.platformTenant.count({ where: { id: 't-replay-1' } })
+    expect(countAfterReplays).toBe(1)
+  })
+
+  // Redeliver the SAME TENANT_STATUS_CHANGED event id twice → platform_tenants
+  // row count for that tenant stays exactly one (upsert-on-id, not append).
+  it('TENANT_STATUS_CHANGED redelivered 2x for the same tenant → platform_tenants count unchanged at exactly one row', async () => {
+    const statusEvent = makeEvent({
+      id: 'evt-replay-status-t2',
+      seqNo: 1,
+      eventType: 'TENANT_STATUS_CHANGED',
+      tenantId: 't-replay-2',
+      payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE' },
+    })
+
+    await ingestService.ingestBatch([statusEvent])
+    await ingestService.ingestBatch([statusEvent])
+
+    const count = await prisma.platformTenant.count({ where: { id: 't-replay-2' } })
+    expect(count).toBe(1)
+  })
+
+  // UNIQUE(sourceEventId) is a real DB constraint (not just application-level
+  // upsert behavior) — a direct duplicate-key create for a TENANT_REGISTERED
+  // mirror row must be rejected by Postgres itself (Prisma P2002).
+  it('UNIQUE(sourceEventId) rejects a direct duplicate-key mirror insert for TENANT_REGISTERED', async () => {
+    const evt = makeRegisteredEvent({ id: 'evt-unique-registered' })
+    await ingestService.ingestBatch([evt])
+
+    await expect(
+      prisma.platformMirrorEvent.create({
+        data: {
+          sourceEventId: 'evt-unique-registered',
+          eventType: 'TENANT_REGISTERED',
+          tenantId: 't-replay-1',
+          newStatus: 'TRIAL',
+          occurredAt: new Date(),
+          seqNo: BigInt(999),
+          payload: { newStatus: 'TRIAL' },
+        },
+      }),
+    ).rejects.toThrow()
+  })
+
+  // Same UNIQUE(sourceEventId) enforcement for TENANT_STATUS_CHANGED rows.
+  it('UNIQUE(sourceEventId) rejects a direct duplicate-key mirror insert for TENANT_STATUS_CHANGED', async () => {
+    const statusEvent = makeEvent({
+      id: 'evt-unique-status',
+      seqNo: 1,
+      eventType: 'TENANT_STATUS_CHANGED',
+      tenantId: 't-replay-3',
+      payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE' },
+    })
+    await ingestService.ingestBatch([statusEvent])
+
+    await expect(
+      prisma.platformMirrorEvent.create({
+        data: {
+          sourceEventId: 'evt-unique-status',
+          eventType: 'TENANT_STATUS_CHANGED',
+          tenantId: 't-replay-3',
+          newStatus: 'ACTIVE',
+          occurredAt: new Date(),
+          seqNo: BigInt(998),
+          payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE' },
+        },
+      }),
+    ).rejects.toThrow()
+  })
+})

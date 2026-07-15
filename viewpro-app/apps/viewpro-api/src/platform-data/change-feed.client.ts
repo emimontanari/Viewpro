@@ -2,7 +2,27 @@ import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import { randomUUID } from 'node:crypto'
-import type { ChangeFeedResponse } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
+import type {
+  ChangeFeedResponse,
+  PlatformTenantRegistryLimits,
+  PlatformTenantStatus,
+} from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
+
+/**
+ * Item shape returned by InmoView's GET /internal/platform/tenants (A13) —
+ * mirrors apps/api's PlatformTenantsReadRepository.TenantRegistryItem.
+ */
+export type BackfillTenantItem = {
+  id: string
+  name: string
+  slug: string
+  status: PlatformTenantStatus
+  limits: PlatformTenantRegistryLimits
+}
+
+export type TenantsBackfillResponse = {
+  tenants: BackfillTenantItem[]
+}
 
 /**
  * Options for constructing ChangeFeedClient directly (unit-testable).
@@ -106,6 +126,45 @@ export class ChangeFeedClient {
     }
 
     return response.json() as Promise<ChangeFeedResponse>
+  }
+
+  /**
+   * GET /api/internal/platform/tenants
+   *
+   * Fetches the full bounded batch of tenants from InmoView's internal
+   * registry endpoint (A13) — used by the one-time backfill seed (A12) to
+   * populate `platform_tenants` with pre-existing tenants.
+   *
+   * Mints a service token with the SAME claims as `fetchChanges` (reuses
+   * `mintIngestToken`). Returns the parsed body on 2xx, or throws on non-2xx.
+   */
+  async fetchAllTenants(): Promise<TenantsBackfillResponse> {
+    const baseUrl = this.trimTrailingSlash(this.inmoviewApiInternalUrl)
+    const url = `${baseUrl}/api/internal/platform/tenants`
+    const token = this.mintIngestToken()
+
+    let response: Response
+    try {
+      response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          // Token is NOT logged — only sent in the Authorization header
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    } catch (err) {
+      throw new Error(
+        `Backfill request to InmoView tenants endpoint failed: ${(err as Error).message}`,
+      )
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        `Backfill tenants endpoint returned non-2xx status: ${response.status}`,
+      )
+    }
+
+    return response.json() as Promise<TenantsBackfillResponse>
   }
 
   private trimTrailingSlash(url: string): string {
