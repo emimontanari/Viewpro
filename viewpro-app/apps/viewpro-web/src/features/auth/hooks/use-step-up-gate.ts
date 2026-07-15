@@ -1,0 +1,61 @@
+'use client';
+
+// D11/D13: page-local step-up gate — no global provider (dies with the page,
+// e.g. logout unmount clears it). Holds the stashed retry closure and the
+// StepUpDialog's controlled props. handleStepUpError is the single seam
+// mutation onError handlers call to decide "is this STEP_UP_REQUIRED, and if
+// so, should I re-run the original mutation after the operator re-enters
+// their password?" A wrong password (401 from stepUp) is scoped to this
+// hook's inline error state — it NEVER triggers a logout or redirect (D13,
+// AC7 counterpart on the FE side).
+import * as React from 'react';
+import { isStepUpRequiredError, isApiError, getApiErrorMessage } from '@/lib/api-client';
+import { stepUp } from '@/lib/session';
+
+export function useStepUpGate() {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [isVerifying, setIsVerifying] = React.useState(false);
+  const [error, setError] = React.useState<string | undefined>(undefined);
+  const pendingRetryRef = React.useRef<(() => void) | null>(null);
+
+  const handleStepUpError = React.useCallback((stepUpError: unknown, retry: () => void): boolean => {
+    if (!isStepUpRequiredError(stepUpError)) {
+      return false;
+    }
+
+    // Latest wins: a second destructive action that also 403s while the
+    // modal is already open re-stashes the newer retry closure.
+    pendingRetryRef.current = retry;
+    setError(undefined);
+    setIsOpen(true);
+    return true;
+  }, []);
+
+  const onSubmit = React.useCallback(async (password: string) => {
+    setIsVerifying(true);
+    setError(undefined);
+
+    try {
+      await stepUp(password);
+
+      const retry = pendingRetryRef.current;
+      pendingRetryRef.current = null;
+      setIsOpen(false);
+      retry?.();
+    } catch (submitError) {
+      // Wrong password (401) — or any other stepUp failure — stays inline in
+      // the modal. Never a logout, never a redirect.
+      const message = isApiError(submitError)
+        ? 'Contraseña incorrecta'
+        : getApiErrorMessage(submitError);
+      setError(message);
+    } finally {
+      setIsVerifying(false);
+    }
+  }, []);
+
+  return {
+    dialogProps: { open: isOpen, isVerifying, error, onSubmit },
+    handleStepUpError
+  };
+}
