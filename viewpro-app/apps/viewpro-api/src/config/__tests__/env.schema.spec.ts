@@ -67,4 +67,26 @@ describe('validateEnv', () => {
       validateEnv({ ...VALID_BASE, STEP_UP_TTL_SECONDS: 10 }),
     ).toThrow(/STEP_UP_TTL_SECONDS/)
   })
+
+  it('rejects STEP_UP_TOKEN_SECRET equal to ACCESS_TOKEN_SECRET (cross-token isolation)', () => {
+    expect(() =>
+      validateEnv({ ...VALID_BASE, STEP_UP_TOKEN_SECRET: VALID_SECRET }),
+    ).toThrow(/STEP_UP_TOKEN_SECRET.*ACCESS_TOKEN_SECRET|ACCESS_TOKEN_SECRET.*STEP_UP_TOKEN_SECRET/)
+  })
+
+  it('rejects PLATFORM_CONTROL_SECRET equal to ACCESS_TOKEN_SECRET', () => {
+    expect(() =>
+      validateEnv({ ...VALID_BASE, PLATFORM_CONTROL_SECRET: VALID_SECRET }),
+    ).toThrow(/ACCESS_TOKEN_SECRET.*PLATFORM_CONTROL_SECRET|PLATFORM_CONTROL_SECRET.*ACCESS_TOKEN_SECRET/)
+  })
+
+  it('rejects PLATFORM_CONTROL_SECRET equal to STEP_UP_TOKEN_SECRET', () => {
+    expect(() =>
+      validateEnv({ ...VALID_BASE, PLATFORM_CONTROL_SECRET: VALID_STEP_UP_SECRET }),
+    ).toThrow(/STEP_UP_TOKEN_SECRET.*PLATFORM_CONTROL_SECRET|PLATFORM_CONTROL_SECRET.*STEP_UP_TOKEN_SECRET/)
+  })
+
+  it('accepts all three auth/control secrets when pairwise distinct', () => {
+    expect(() => validateEnv(VALID_BASE)).not.toThrow()
+  })
 })
