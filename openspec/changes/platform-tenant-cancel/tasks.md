@@ -74,7 +74,7 @@ T-01 (RED: repo terminal-variant unit tests)
 
 ## WU-1 — Backend domain gate + terminality + control-lane DTO
 
-### [ ] T-01 — RED: repo terminal-variant unit tests
+### [x] T-01 — RED: repo terminal-variant unit tests
 **Type**: test (RED) · **Spec**: admin-tenant-status — CANCELLED Is Terminal (all 3 scenarios) · **WU**: WU-1, commit 1 · **Depends on**: nothing
 
 - `apps/api/src/admin/__tests__/prisma-admin-tenant-status.repository.spec.ts` — add, following the existing `makeMockTx` pattern:
@@ -85,7 +85,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: new assertions fail (type error or wrong result shape).
 **Commit**: `test(api): RED — repo terminal-variant for CANCELLED current status (D1/D2)`
 
-### [ ] T-02 — GREEN: terminal variant in repository
+### [x] T-02 — GREEN: terminal variant in repository
 **Type**: impl · **Spec**: admin-tenant-status — CANCELLED Is Terminal · **WU**: WU-1, commit 2 · **Depends on**: T-01
 
 - `apps/api/src/admin/admin-tenant-status.repository.ts`: add `| { status: 'terminal'; tenantId: string; currentStatus: TenantStatus; updatedAt: Date }` to `UpdateAdminTenantStatusResult`
@@ -95,7 +95,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: `pnpm --filter @viewpro/api test` — T-01 GREEN, no regressions.
 **Commit**: `feat(api): terminal result variant — CANCELLED rejected before unchanged (D1/D2)`
 
-### [ ] T-03 — RED: service tests — CANCELLED target accepted + terminal → 400
+### [x] T-03 — RED: service tests — CANCELLED target accepted + terminal → 400
 **Type**: test (RED) · **Spec**: admin-tenant-status — Writable-Target Status Policy; CANCELLED Is Terminal · **WU**: WU-1, commit 3 · **Depends on**: T-02
 
 - `apps/api/src/admin/__tests__/admin-tenant-status.service.spec.ts` — add:
@@ -106,7 +106,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: new assertions fail.
 **Commit**: `test(api): RED — service accepts CANCELLED target; maps terminal → 400`
 
-### [ ] T-04 — GREEN: service gate widen + terminal mapping
+### [x] T-04 — GREEN: service gate widen + terminal mapping
 **Type**: impl · **Spec**: admin-tenant-status — Writable-Target Status Policy; CANCELLED Is Terminal · **WU**: WU-1, commit 4 · **Depends on**: T-03
 
 - `apps/api/src/admin/admin-tenant-status.service.ts`:
@@ -117,7 +117,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: `pnpm --filter @viewpro/api test` — T-03 GREEN, no regressions.
 **Commit**: `feat(api): CANCELLED as writable target + terminal → BadRequestException`
 
-### [ ] T-05 — RED: apps/api integration regression — cancel scenarios + terminality + toggle regression
+### [x] T-05 — RED: apps/api integration regression — cancel scenarios + terminality + toggle regression
 **Type**: test (RED) · **Spec**: admin-tenant-status — all MODIFIED/ADDED requirements · **WU**: WU-1, commit 5 · **Depends on**: T-04
 
 - `apps/api/src/platform-control/__tests__/platform-control.controller.spec.ts` — add against `POST /api/internal/platform/tenants/:id/status`:
@@ -130,7 +130,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: new assertions fail before this change lands.
 **Commit**: `test(api): RED — integration: cancel ACTIVE/SUSPENDED/TRIAL→200, CANCELLED→* →400 (R1)`
 
-### [ ] T-06 — GREEN: confirm integration suite green
+### [x] T-06 — GREEN: confirm integration suite green
 **Type**: impl · **Spec**: same as T-05 · **WU**: WU-1, commit 6 · **Depends on**: T-05
 
 - No new production code expected — T-02/T-04 already implement the gate
@@ -139,7 +139,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: T-05 assertions GREEN; full `apps/api` suite GREEN.
 **Commit**: `test(api): GREEN — confirm cancel/terminality integration behavior`
 
-### [ ] T-07 — Verify existing access-cut regression already covers CANCELLED
+### [x] T-07 — Verify existing access-cut regression already covers CANCELLED
 **Type**: verify · **Spec**: admin-tenant-status — Downstream Effects (Members of a newly-CANCELLED tenant are blocked) · **WU**: WU-1, commit 7 · **Depends on**: T-06
 
 - `apps/api/test/tenant-context.e2e-spec.ts:101–119` (`rejects access for suspended and cancelled tenants`) already asserts a CANCELLED tenant's member gets 403 `Tenant is not active` — no code or test change needed (guard is status-agnostic)
@@ -148,7 +148,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: existing e2e assertion passes unmodified.
 **Commit**: `test(api): verify — access-cut guard regression still covers CANCELLED (no change)`
 
-### [ ] T-08 — RED: viewpro-api DTO regression — flip rejected-CANCELLED test, add forward assertions
+### [x] T-08 — RED: viewpro-api DTO regression — flip rejected-CANCELLED test, add forward assertions
 **Type**: test (RED) · **Spec**: platform-control-lane-outbound — Operator Command: Tenant Status (all 3 scenarios) · **WU**: WU-1, commit 8 · **Depends on**: T-07
 
 - `apps/viewpro-api/src/platform-control/__tests__/platform-control.controller.spec.ts`:
@@ -159,7 +159,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: the flipped assertion fails against current `@IsIn(['ACTIVE','SUSPENDED'])`.
 **Commit**: `test(platform-api): RED — DTO forwards CANCELLED; TRIAL still rejected locally`
 
-### [ ] T-09 — GREEN: widen SetTenantStatusDto
+### [x] T-09 — GREEN: widen SetTenantStatusDto
 **Type**: impl · **Spec**: platform-control-lane-outbound — Operator Command: Tenant Status · **WU**: WU-1, commit 9 · **Depends on**: T-08
 
 - `apps/viewpro-api/src/platform-control/dto/set-tenant-status.dto.ts`:
@@ -170,7 +170,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: `pnpm --filter @viewpro/platform-api test` — T-08 GREEN, no regressions.
 **Commit**: `feat(platform-api): widen SetTenantStatusDto to accept CANCELLED (D5)`
 
-### [ ] T-10 — RED: terminality-400 relay test (viewpro-api)
+### [x] T-10 — RED: terminality-400 relay test (viewpro-api)
 **Type**: test (RED) · **Spec**: platform-control-lane-outbound — Terminality Rejection Is Relayed Unchanged · **WU**: WU-1, commit 10 · **Depends on**: T-09
 
 - `apps/viewpro-api/src/platform-control/__tests__/platform-control.controller.spec.ts` — add:
@@ -179,7 +179,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: new assertion fails or is trivially satisfied without proof the generic path is exercised — write it to genuinely fail first (e.g. assert exact 400, not `>= 400`).
 **Commit**: `test(platform-api): RED — terminality 400 relayed via existing generic failure path`
 
-### [ ] T-11 — GREEN: confirm relay green
+### [x] T-11 — GREEN: confirm relay green
 **Type**: impl · **Spec**: same as T-10 · **WU**: WU-1, commit 11 · **Depends on**: T-10
 
 - No new code expected (D3 — verified generic chain). Run the suite; fix only if the generic forwarding path has a gap.
@@ -187,7 +187,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: `pnpm --filter @viewpro/platform-api test` — T-10 GREEN.
 **Commit**: `test(platform-api): GREEN — confirm terminality 400 passthrough (D3)`
 
-### [ ] T-12 — RED: metrics + projection CANCELLED coverage
+### [x] T-12 — RED: metrics + projection CANCELLED coverage
 **Type**: test (RED) · **Spec**: admin-tenant-status — Downstream Effects (projection + metrics scenarios) · **WU**: WU-1, commit 12 · **Depends on**: T-11
 
 - `apps/viewpro-api/src/platform-data/__tests__/metrics.controller.spec.ts` — add, mirroring the existing SUSPENDED-bucket test (lines 130–153): ingest a `TENANT_STATUS_CHANGED` mirror event with `newStatus: 'CANCELLED'` → `byStatus.CANCELLED >= 1`
@@ -196,7 +196,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: new assertions fail before running (bucket/row absent).
 **Commit**: `test(platform-api): RED — byStatus CANCELLED bucket + platform_tenants latestStatus=CANCELLED`
 
-### [ ] T-13 — GREEN: confirm metrics/projection green
+### [x] T-13 — GREEN: confirm metrics/projection green
 **Type**: impl · **Spec**: same as T-12 · **WU**: WU-1, commit 13 · **Depends on**: T-12
 
 - No new code expected (D4 — both paths are status-string-generic). Run the suite; fix only if a gap surfaces.
@@ -204,7 +204,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: `pnpm --filter @viewpro/platform-api test` — T-12 GREEN.
 **Commit**: `test(platform-api): GREEN — confirm CANCELLED flows through metrics/projection unchanged (D4)`
 
-### [ ] T-14 — WU-1 verification + commit
+### [x] T-14 — WU-1 verification + commit
 **Type**: verify · **Spec**: proposal AC1–4, 6, 7 · **WU**: WU-1, commit 14 · **Depends on**: T-13
 
 - `pnpm --filter @viewpro/api test` — all GREEN
@@ -373,10 +373,10 @@ T-01 (RED: repo terminal-variant unit tests)
 
 ## Success Checklist (maps to spec acceptance criteria)
 
-- [ ] Operator cancels ACTIVE/SUSPENDED/TRIAL tenant → 200, `latestStatus = CANCELLED` (T-05, T-06, T-12, T-13)
-- [ ] Access cut for CANCELLED tenant members — existing guard, verified not regressed (T-07)
-- [ ] Cancel audited: `AUDIT_LOGGED` with `action: TENANT_STATUS_CHANGED`, real `previousValue` (T-05, T-06)
-- [ ] Terminality: any `CANCELLED → *` transition (incl. `CANCELLED → CANCELLED`) → 400 server-side, with regression test (T-01–T-06)
+- [x] Operator cancels ACTIVE/SUSPENDED/TRIAL tenant → 200, `latestStatus = CANCELLED` (T-05, T-06, T-12, T-13)
+- [x] Access cut for CANCELLED tenant members — existing guard, verified not regressed (T-07)
+- [x] Cancel audited: `AUDIT_LOGGED` with `action: TENANT_STATUS_CHANGED`, real `previousValue` (T-05, T-06)
+- [x] Terminality: any `CANCELLED → *` transition (incl. `CANCELLED → CANCELLED`) → 400 server-side, with regression test (T-01–T-06)
 - [ ] FE distinct destructive Cancel confirmation for non-CANCELLED tenants; CANCELLED rows show zero status actions (T-15–T-22)
 - [ ] `apps/app-new` legacy console unchanged (T-14, T-22, T-23)
 - [ ] No data archived or deleted — status transition + access-cut only (verified by scope of file changes, no migration/deletion code introduced)
