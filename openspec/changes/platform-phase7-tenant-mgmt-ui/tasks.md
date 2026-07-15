@@ -177,7 +177,7 @@ All RED until T-06.
 
 ---
 
-### [ ] T-07 — RED: `tenants-management-page.spec.tsx` — loading/empty/error/success/pager (PR1 subset)
+### [x] T-07 — RED: `tenants-management-page.spec.tsx` — loading/empty/error/success/pager (PR1 subset)
 **Type**: test (RED)
 **Spec**: Paginated Tenant List (all 4 scenarios); Error Handling (generic list-load failure)
 **WU**: WU-1, commit 7
