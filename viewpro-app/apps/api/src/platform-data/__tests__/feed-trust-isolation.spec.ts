@@ -149,3 +149,67 @@ describe('Change-Feed — trust-isolation + read-only invariants', () => {
     expect(countAfter).toBe(countBefore)
   })
 })
+
+// ---------------------------------------------------------------------------
+// T-19 — RED: threat-matrix — GET /internal/platform/tenants
+//
+// Spec: tenant-registry — threat-matrix applicable rows; A10/A13
+//
+// Scenarios:
+//   1. Correct secret but wrong iss/aud → 401 (cross-service token forgery)
+//   2. Operator cookie (InmoView user session) sent with NO Authorization
+//      header → 401 (token confusion — user↔service; PlatformControlGuard
+//      never reads cookies, so an operator's own session cookie must not
+//      grant access to the internal service-token-guarded route)
+// ---------------------------------------------------------------------------
+describe('Threat matrix — GET /internal/platform/tenants (T-19)', () => {
+  let app: INestApplication
+  let prisma: import('@prisma/client').PrismaClient
+
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test'
+    process.env.PLATFORM_CONTROL_SECRET = PLATFORM_CONTROL_SECRET
+
+    const { createApiApp } = await import('../../bootstrap/create-app.js')
+    app = await createApiApp()
+    await app.init()
+
+    const { PrismaService } = await import('../../database/prisma.service.js')
+    prisma = app.get(PrismaService)
+  })
+
+  afterAll(async () => {
+    await app.close()
+  })
+
+  beforeEach(async () => {
+    await prisma.tenantMembership.deleteMany()
+    await prisma.tenant.deleteMany()
+  })
+
+  it('correct secret, wrong iss/aud → 401 (cross-service token forgery)', async () => {
+    // Signed with the CORRECT PLATFORM_CONTROL_SECRET but claiming a forged
+    // issuer/audience — verifyServiceToken must still reject it.
+    const forgedToken = await serviceSigner.signAsync(
+      { iss: 'attacker-service', aud: 'not-inmoview-control', sub: 'system-ingest', jti: `jti-${Date.now()}` },
+      { expiresIn: '120s' },
+    )
+
+    await request(app.getHttpServer())
+      .get('/api/internal/platform/tenants')
+      .set('Authorization', `Bearer ${forgedToken}`)
+      .expect(401)
+  })
+
+  it('operator cookie (viewpro_access_token) with no Authorization header → 401 (token confusion — user↔service)', async () => {
+    const userToken = await mintUserToken()
+
+    const res = await request(app.getHttpServer())
+      .get('/api/internal/platform/tenants')
+      .set('Cookie', `viewpro_access_token=${userToken}`)
+      // No Authorization header — PlatformControlGuard only reads the
+      // Authorization Bearer header, never cookies.
+
+    expect(res.status).toBe(401)
+  })
+})

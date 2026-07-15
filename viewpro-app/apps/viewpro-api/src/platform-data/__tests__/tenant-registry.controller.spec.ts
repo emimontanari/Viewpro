@@ -6,6 +6,7 @@ import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { ValidationPipe } from '@nestjs/common'
 import { ThrottlerModule } from '@nestjs/throttler'
+import { JwtService } from '@nestjs/jwt'
 import cookieParser from 'cookie-parser'
 import request from 'supertest'
 import { ConfigModule } from '../../config/config.module'
@@ -14,6 +15,17 @@ import { AuthModule } from '../../auth/auth.module'
 import { PrismaService } from '../../database/prisma.service'
 import { TenantRegistryController } from '../tenant-registry.controller'
 import { TenantRegistryService } from '../tenant-registry.service'
+
+const PLATFORM_CONTROL_SECRET = process.env.PLATFORM_CONTROL_SECRET ?? 'test-platform-control-secret-min16'
+const serviceSigner = new JwtService({ secret: PLATFORM_CONTROL_SECRET })
+
+async function mintServiceToken(): Promise<string> {
+  // Same claim shape ChangeFeedClient mints for the InmoView poll/backfill path.
+  return serviceSigner.signAsync(
+    { iss: 'viewpro-api', aud: 'inmoview-control', sub: 'system-ingest', jti: `jti-${Date.now()}` },
+    { expiresIn: '120s' },
+  )
+}
 
 /**
  * T-16 — RED: `TenantRegistryController` tests — pagination, auth, isolation (A10/A11).
@@ -259,6 +271,20 @@ describe('TenantRegistryController (integration — test DB)', () => {
   // Scenario: Unauthenticated request is rejected
   it('GET /api/operators/tenants without token → 401', async () => {
     const res = await request(app.getHttpServer()).get('/api/operators/tenants')
+
+    expect(res.status).toBe(401)
+  })
+
+  // T-19 — threat-matrix: reverse token confusion. A valid InmoView↔viewpro-api
+  // service token (Authorization: Bearer) presented with NO operator cookie
+  // must be rejected — AuthGuard reads only the viewpro_platform_access_token
+  // cookie, never the Authorization header.
+  it('service token (Authorization Bearer) with no operator cookie → 401 (reverse confusion; AuthGuard rejects it)', async () => {
+    const serviceToken = await mintServiceToken()
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/tenants')
+      .set('Authorization', `Bearer ${serviceToken}`)
 
     expect(res.status).toBe(401)
   })

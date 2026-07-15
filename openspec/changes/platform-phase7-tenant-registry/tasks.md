@@ -401,7 +401,7 @@ All RED until T-17.
 
 ## WU-3 — Threat-matrix RED tests + backfill seed + deploy doc + final verification
 
-### [ ] T-19 — RED: threat-matrix RED tests — token forgery, token confusion, replay, cross-tenant (A12/A13/threat-matrix)
+### [x] T-19 — RED: threat-matrix RED tests — token forgery, token confusion, replay, cross-tenant (A12/A13/threat-matrix)
 **Type**: test (RED)
 **Spec**: tenant-registry — threat-matrix applicable rows; A10/A13
 **WU**: WU-3, commit 1
