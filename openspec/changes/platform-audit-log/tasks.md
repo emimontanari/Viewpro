@@ -310,7 +310,7 @@ All RED until T-11.
 
 ## WU-2 — viewpro-api `platform_audit_log` migration + ingest routing + operator feed endpoint
 
-### [ ] T-12 — RED: `platform_audit_log` model + additive migration invariant
+### [x] T-12 — RED: `platform_audit_log` model + additive migration invariant
 **Type**: test (RED)
 **Spec**: platform-audit-log — platform_audit_log Append-Only Projection (schema requirement)
 **WU**: WU-2, commit 1
@@ -326,7 +326,7 @@ All RED until T-13.
 
 ---
 
-### [ ] T-13 — GREEN: `PlatformAuditLog` Prisma model + generate additive migration (A7)
+### [x] T-13 — GREEN: `PlatformAuditLog` Prisma model + generate additive migration (A7)
 **Type**: impl
 **Spec**: platform-audit-log — platform_audit_log Append-Only Projection; A7
 **WU**: WU-2, commit 2
@@ -363,7 +363,7 @@ All RED until T-13.
 
 ---
 
-### [ ] T-14 — RED: `AuditLogRepository.appendFromEvent` — idempotent upsert on `sourceEventId` (regression guard d)
+### [x] T-14 — RED: `AuditLogRepository.appendFromEvent` — idempotent upsert on `sourceEventId` (regression guard d)
 **Type**: test (RED)
 **Spec**: platform-audit-log — platform_audit_log Append-Only Projection (both scenarios); A8
 **WU**: WU-2, commit 3
@@ -380,7 +380,7 @@ All RED until T-15.
 
 ---
 
-### [ ] T-15 — GREEN: `AuditLogRepository` (A8)
+### [x] T-15 — GREEN: `AuditLogRepository` (A8)
 **Type**: impl
 **Spec**: platform-audit-log — platform_audit_log Append-Only Projection; A8
 **WU**: WU-2, commit 4
@@ -429,7 +429,7 @@ All RED until T-15.
 
 ---
 
-### [ ] T-16 — RED: ingest routing — `AUDIT_LOGGED` → `platform_audit_log` ONLY (regression guards a/b/d)
+### [x] T-16 — RED: ingest routing — `AUDIT_LOGGED` → `platform_audit_log` ONLY (regression guards a/b/d)
 **Type**: test (RED)
 **Spec**: platform-data-lane delta — Ingest Routing for AUDIT_LOGGED (all 4 scenarios); Mirror Append — W2 Guard (all 3 scenarios)
 **WU**: WU-2, commit 5
@@ -450,7 +450,7 @@ All RED until T-17.
 
 ---
 
-### [ ] T-17 — GREEN: `AUDIT_LOGGED` branch in `routeToTenantProjection` + wire `AuditLogRepository` into `IngestService`
+### [x] T-17 — GREEN: `AUDIT_LOGGED` branch in `routeToTenantProjection` + wire `AuditLogRepository` into `IngestService`
 **Type**: impl
 **Spec**: platform-data-lane delta — Ingest Routing for AUDIT_LOGGED; A6
 **WU**: WU-2, commit 6
@@ -473,7 +473,7 @@ All RED until T-17.
 
 ---
 
-### [ ] T-18 — RED: `AuditController`/`AuditService` — pagination, auth, isolation (A9/A10)
+### [x] T-18 — RED: `AuditController`/`AuditService` — pagination, auth, isolation (A9/A10)
 **Type**: test (RED)
 **Spec**: platform-audit-log — Operator Audit Feed Endpoint (all 5 scenarios)
 **WU**: WU-2, commit 7
@@ -495,7 +495,7 @@ All RED until T-19.
 
 ---
 
-### [ ] T-19 — GREEN: `AuditController` + `AuditService` + module wiring (A9/A10)
+### [x] T-19 — GREEN: `AuditController` + `AuditService` + module wiring (A9/A10)
 **Type**: impl
 **Spec**: platform-audit-log — Operator Audit Feed Endpoint; A9; A10
 **WU**: WU-2, commit 8
@@ -515,7 +515,7 @@ All RED until T-19.
 
 ---
 
-### [ ] T-20 — RED: integration regression suite — mirror uncorrupted, metrics uncorrupted, tx atomicity end-to-end (regression guards a/b/c/d, full pipeline)
+### [x] T-20 — RED: integration regression suite — mirror uncorrupted, metrics uncorrupted, tx atomicity end-to-end (regression guards a/b/c/d, full pipeline)
 **Type**: test (RED)
 **Spec**: platform-data-lane delta — Tenant status metrics are not corrupted by AUDIT_LOGGED events; platform-audit-log — all transactional-emit and idempotency scenarios (full-pipeline confirmation)
 **WU**: WU-2, commit 9
@@ -533,7 +533,7 @@ All RED until T-21.
 
 ---
 
-### [ ] T-21 — GREEN: confirm regression suite passes (no new production code expected)
+### [x] T-21 — GREEN: confirm regression suite passes (no new production code expected)
 **Type**: impl
 **Spec**: All regression guards a/b/c/d; platform-data-lane delta invariants
 **WU**: WU-2, commit 10
@@ -742,15 +742,15 @@ All RED until T-25.
 - [x] A status change emits exactly one `AUDIT_LOGGED` event in the same `$transaction`; existing `TENANT_STATUS_CHANGED` emit unaffected (T-08, T-09 — acceptance #1)
 - [x] A limits change emits exactly one `AUDIT_LOGGED` event in the same `$transaction` (limits' first-ever outbox emit) (T-10, T-11 — acceptance #2)
 - [x] Each event carries `actor` (WHICH identity), `tenantId`, `action`, `previousValue`/`newValue` (T-06, T-07, T-09, T-11 — acceptance #3)
-- [ ] viewpro-api ingest appends one `platform_audit_log` row per event; re-delivery idempotent on `sourceEventId` (T-14, T-15, T-16, T-20 — acceptance #4)
-- [ ] `GET /operators/audit` returns newest-first (`seqNo` DESC), offset/limit paginated (cap 200), `{total, items}`, from `viewpro_platform` only (T-18, T-19 — acceptance #5)
-- [ ] `GET /operators/audit` is operator-only: 401 without a valid operator session (T-18 — acceptance #6)
+- [x] viewpro-api ingest appends one `platform_audit_log` row per event; re-delivery idempotent on `sourceEventId` (T-14, T-15, T-16, T-20 — acceptance #4)
+- [x] `GET /operators/audit` returns newest-first (`seqNo` DESC), offset/limit paginated (cap 200), `{total, items}`, from `viewpro_platform` only (T-18, T-19 — acceptance #5)
+- [x] `GET /operators/audit` is operator-only: 401 without a valid operator session (T-18 — acceptance #6)
 - [ ] viewpro-web renders a single global, paginated, chronological audit feed (actor/action/tenant/timestamp/old→new) (T-22–T-26 — acceptance #7)
-- [ ] Isolation preserved: no InmoView DB / `analytics_events` read anywhere in viewpro-api or viewpro-web (T-18 isolation check, T-27 checklist #8/#9 — acceptance #8)
-- [ ] `platform_mirror_events` append + cursor/seqNo semantics unchanged; `AUDIT_LOGGED` correctly W2-skipped (T-16, T-20, T-27 checklist #12 — acceptance #9)
-- [ ] No InmoView schema migration — only new outbox rows; only migration is `platform_audit_log` on `viewpro_platform` (T-13, T-27 — acceptance #10)
-- [ ] Regression guard (a): `AUDIT_LOGGED` never in `platform_mirror_events`; metrics status breakdown uncorrupted (T-16, T-20)
-- [ ] Regression guard (b): `TENANT_STATUS_CHANGED` still emits + still projects to `platform_tenants`, unregressed (T-08, T-09, T-16, T-20)
-- [ ] Regression guard (c): limits emit is inside the tx — rollback ⇒ no event (T-10, T-11, T-20)
-- [ ] Regression guard (d): re-delivery idempotency via `platform_audit_log.sourceEventId` (T-14, T-20)
+- [x] Isolation preserved (viewpro-api half): no InmoView DB / `analytics_events` read anywhere in viewpro-api (T-18 isolation check — acceptance #8; viewpro-web half deferred to WU-3/T-27)
+- [x] `platform_mirror_events` append + cursor/seqNo semantics unchanged; `AUDIT_LOGGED` correctly W2-skipped (T-16, T-20 — final T-27 checklist #12 zero-diff confirmation deferred to WU-3)
+- [x] No InmoView schema migration — only new outbox rows; only migration is `platform_audit_log` on `viewpro_platform` (T-13 — acceptance #10)
+- [x] Regression guard (a): `AUDIT_LOGGED` never in `platform_mirror_events`; metrics status breakdown uncorrupted (T-16, T-20)
+- [x] Regression guard (b): `TENANT_STATUS_CHANGED` still emits + still projects to `platform_tenants`, unregressed (T-08, T-09, T-16, T-20)
+- [x] Regression guard (c): limits emit is inside the tx — rollback ⇒ no event (T-10, T-11 — proven by WU-1's existing apps/api suite, reverified GREEN in T-21)
+- [x] Regression guard (d): re-delivery idempotency via `platform_audit_log.sourceEventId` (T-14, T-20)
 - [ ] Coordinated deploy ordering documented in migration SQL (T-27)
