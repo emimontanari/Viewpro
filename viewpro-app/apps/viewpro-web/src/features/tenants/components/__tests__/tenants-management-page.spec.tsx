@@ -539,11 +539,13 @@ describe('TenantsManagementPage — destructive cancel action', () => {
     expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
   });
 
-  it('cancel PATCH → 400 (terminality reject) surfaces the error toast; page stays interactive; list retains pre-failure data', async () => {
+  it('cancel PATCH → 400 (terminality reject) surfaces the SPANISH terminality copy, not the raw English backend message', async () => {
     mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    // The backend returns an English terminality message on a 400 (e.g. cancelling
+    // an already-CANCELLED tenant on a stale list). The all-es-AR UI must NOT surface it raw.
     mockUpdateTenantStatus.mockRejectedValueOnce({
       status: 400,
-      message: 'El inquilino ya está en un estado terminal.'
+      message: 'Cancelled tenant cannot change status'
     });
 
     renderPage();
@@ -554,12 +556,37 @@ describe('TenantsManagementPage — destructive cancel action', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar definitivamente' }));
 
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith('El inquilino ya está en un estado terminal.');
+      expect(mockToast.error).toHaveBeenCalledWith(
+        'El inquilino ya está dado de baja y no puede cambiar de estado.'
+      );
     });
+    // The raw English backend message never surfaces in the es-AR UI.
+    expect(mockToast.error).not.toHaveBeenCalledWith('Cancelled tenant cannot change status');
     // The 400 terminality reject is NOT the 404 "no existe" copy.
     expect(mockToast.error).not.toHaveBeenCalledWith('El inquilino no existe o fue eliminado.');
     expect(mockGetTenantList).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
+  });
+
+  it('closes the confirm dialog after a failed cancel mutation (dialog does not stay open)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce({
+      status: 500,
+      message: 'Error interno del servidor'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-cancel-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-cancel-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar definitivamente' }));
+
+    // On failure the dialog must close (same as onSuccess) — the toast surfaces the error.
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(mockToast.error).toHaveBeenCalledWith('Error interno del servidor');
   });
 });
 
@@ -704,6 +731,10 @@ describe('TenantsManagementPage — mutation error handling', () => {
 
     await waitFor(() => {
       expect(mockToast.error).toHaveBeenCalledWith('Error interno del servidor');
+    });
+    // The suspend confirm dialog closes on failure too (not only on success).
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
     });
     expect(mockGetTenantList).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');

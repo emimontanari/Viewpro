@@ -19,6 +19,7 @@ import { TenantsTable, type TenantAction } from './tenants-table';
 
 const LIMIT = 50;
 const NOT_FOUND_MESSAGE = 'El inquilino no existe o fue eliminado.';
+const TERMINAL_STATUS_MESSAGE = 'El inquilino ya está dado de baja y no puede cambiar de estado.';
 
 function TenantsLoadingSkeleton() {
   return (
@@ -74,7 +75,19 @@ export function TenantsManagementPage() {
       setPendingStatusAction(null);
       await invalidateList();
     },
-    onError: reportMutationError
+    // D15: close the confirm dialog on failure too (mirrors onSuccess), and map a
+    // 400 terminality reject to a Spanish message instead of leaking the raw
+    // English backend copy — same style as the 404 mapping in reportMutationError.
+    onError: (error) => {
+      setPendingStatusAction(null);
+
+      if (isApiError(error) && error.status === 400) {
+        toast.error(TERMINAL_STATUS_MESSAGE);
+        return;
+      }
+
+      reportMutationError(error);
+    }
   });
 
   const limitsMutation = useMutation({
