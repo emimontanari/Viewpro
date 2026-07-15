@@ -2,12 +2,15 @@ import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import type { Response } from 'express'
-import { ACCESS_TOKEN_COOKIE, STEP_UP_TOKEN_COOKIE } from '../auth.constants'
+import { ACCESS_TOKEN_COOKIE, CLOCK_TOLERANCE_SECONDS, STEP_UP_TOKEN_COOKIE } from '../auth.constants'
 
 export type AccessTokenPayload = {
   sub: string
   email: string
+  sessionExp: number
 }
+
+export type VerifiedAccessTokenPayload = AccessTokenPayload & { iat: number; exp: number }
 
 export type StepUpTokenPayload = {
   sub: string
@@ -21,21 +24,45 @@ export class TokenService {
     private readonly configService: ConfigService,
   ) {}
 
-  signAccessToken(payload: AccessTokenPayload): Promise<string> {
-    return this.jwtService.signAsync(payload)
+  // D1/D3 — mints a NEW absolute-deadline claim (login only). The sliding
+  // `exp` is per-call so it always reflects the current idle window.
+  signAccessToken({ sub, email }: { sub: string; email: string }): Promise<string> {
+    const absoluteSessionSeconds =
+      this.configService.get<number>('app.auth.absoluteSessionSeconds') ?? 28800
+    const sessionExp = Math.floor(Date.now() / 1000) + absoluteSessionSeconds
+    return this.jwtService.signAsync(
+      { sub, email, sessionExp },
+      { expiresIn: this.idleTimeoutSeconds() },
+    )
   }
 
-  verifyAccessToken(token: string): Promise<AccessTokenPayload> {
-    return this.jwtService.verifyAsync<AccessTokenPayload>(token)
+  // D3 — builds a FRESH payload object; never spreads `verified` (which
+  // already carries `iat`/`exp` and would make jsonwebtoken throw when
+  // combined with the `expiresIn` sign option). `sessionExp` is copied
+  // byte-identical — never re-minted.
+  reissueAccessToken(verified: VerifiedAccessTokenPayload): Promise<string> {
+    const { sub, email, sessionExp } = verified
+    return this.jwtService.signAsync(
+      { sub, email, sessionExp },
+      { expiresIn: this.idleTimeoutSeconds() },
+    )
+  }
+
+  verifyAccessToken(token: string): Promise<VerifiedAccessTokenPayload> {
+    return this.jwtService.verifyAsync<VerifiedAccessTokenPayload>(token, {
+      clockTolerance: CLOCK_TOLERANCE_SECONDS,
+    })
   }
 
   setAccessCookie(response: Response, token: string): void {
-    const ttlSeconds =
-      this.configService.get<number>('app.auth.accessTokenTtlSeconds') ?? 900
     response.cookie(ACCESS_TOKEN_COOKIE, token, {
       ...this.baseCookieOptions(),
-      maxAge: ttlSeconds * 1000,
+      maxAge: this.idleTimeoutSeconds() * 1000,
     })
+  }
+
+  private idleTimeoutSeconds(): number {
+    return this.configService.get<number>('app.auth.idleTimeoutSeconds') ?? 600
   }
 
   clearAccessCookie(response: Response): void {

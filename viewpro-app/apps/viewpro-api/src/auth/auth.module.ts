@@ -16,13 +16,13 @@ import { StepUpUseCase } from './use-cases/step-up.use-case'
 @Module({
   imports: [
     ConfigModule,
+    // Access token TTL is per-call now (rolling idle deadline — see
+    // TokenService.signAccessToken/reissueAccessToken); the module keeps
+    // only the shared secret as its default.
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('app.auth.accessTokenSecret'),
-        signOptions: {
-          expiresIn: configService.get<number>('app.auth.accessTokenTtlSeconds') ?? 900,
-        },
       }),
     }),
   ],
