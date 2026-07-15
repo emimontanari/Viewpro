@@ -45,7 +45,8 @@ export const appConfig = registerAs('app', () => {
     databaseUrl: process.env.DATABASE_URL,
     auth: {
       accessTokenSecret,
-      accessTokenTtlSeconds: Number(process.env.ACCESS_TOKEN_TTL_SECONDS ?? 900),
+      idleTimeoutSeconds: Number(process.env.IDLE_TIMEOUT_SECONDS ?? 600),
+      absoluteSessionSeconds: Number(process.env.ABSOLUTE_SESSION_SECONDS ?? 28800),
       stepUpTokenSecret,
       stepUpTtlSeconds: Number(process.env.STEP_UP_TTL_SECONDS ?? 300),
     },
