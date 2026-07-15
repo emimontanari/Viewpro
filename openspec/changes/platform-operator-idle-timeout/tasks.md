@@ -66,7 +66,7 @@ T-00 (spike: confirm @nestjs/jwt per-call clockTolerance forwarding — resolved
 
 ## WU-1 — viewpro-api: config + claim + TokenService + AuthGuard + module
 
-### [ ] T-00 — Spike: confirm `@nestjs/jwt` per-call `clockTolerance` forwarding
+### [x] T-00 — Spike: confirm `@nestjs/jwt` per-call `clockTolerance` forwarding
 **Type**: spike/verify
 **Spec**: N/A (design-dependency gate)
 **WU**: WU-1, pre-work (no commit — findings folded into T-01 commit message context)
@@ -79,7 +79,7 @@ T-00 (spike: confirm @nestjs/jwt per-call clockTolerance forwarding — resolved
 
 ---
 
-### [ ] T-01 — RED: env schema idle/absolute config + window-order boot guard tests
+### [x] T-01 — RED: env schema idle/absolute config + window-order boot guard tests
 **Type**: test (RED)
 **Spec**: Idle and Absolute Timeout Are Required, Validated Configuration
 **WU**: WU-1, commit 1
@@ -99,7 +99,7 @@ All RED until T-02.
 
 ---
 
-### [ ] T-02 — GREEN: `IDLE_TIMEOUT_SECONDS`/`ABSOLUTE_SESSION_SECONDS` config + `assertSessionWindowOrder` (D4)
+### [x] T-02 — GREEN: `IDLE_TIMEOUT_SECONDS`/`ABSOLUTE_SESSION_SECONDS` config + `assertSessionWindowOrder` (D4)
 **Type**: impl
 **Spec**: Idle and Absolute Timeout Are Required, Validated Configuration
 **WU**: WU-1, commit 2
@@ -115,7 +115,7 @@ All RED until T-02.
 
 ---
 
-### [ ] T-03 — RED: `TokenService` sessionExp mint/reissue/clockTolerance tests (D1/D3/D4/D6)
+### [x] T-03 — RED: `TokenService` sessionExp mint/reissue/clockTolerance tests (D1/D3/D4/D6)
 **Type**: test (RED)
 **Spec**: Absolute Session Deadline Independent of Activity; Rolling Idle Deadline on Authenticated Activity
 **WU**: WU-1, commit 3
@@ -133,7 +133,7 @@ All RED until T-04.
 
 ---
 
-### [ ] T-04 — GREEN: `sessionExp` claim + `reissueAccessToken` + clockTolerance + per-call `expiresIn` (D1/D3/D4/D6)
+### [x] T-04 — GREEN: `sessionExp` claim + `reissueAccessToken` + clockTolerance + per-call `expiresIn` (D1/D3/D4/D6)
 **Type**: impl
 **Spec**: Absolute Session Deadline Independent of Activity; Rolling Idle Deadline; effective idle window from `IDLE_TIMEOUT_SECONDS`
 **WU**: WU-1, commit 4
@@ -154,7 +154,7 @@ All RED until T-04.
 
 ---
 
-### [ ] T-05 — RED: `AuthGuard` absolute-deadline + legacy-token rejection tests (D2)
+### [x] T-05 — RED: `AuthGuard` absolute-deadline + legacy-token rejection tests (D2)
 **Type**: test (RED)
 **Spec**: Absolute Session Deadline Independent of Activity; Dual-Deadline Rejection Precedence; Tokens Without an Absolute-Deadline Claim Are Rejected
 **WU**: WU-1, commit 5
@@ -170,7 +170,7 @@ All RED until T-06.
 
 ---
 
-### [ ] T-06 — GREEN: `AuthGuard` dual-deadline check order (D2)
+### [x] T-06 — GREEN: `AuthGuard` dual-deadline check order (D2)
 **Type**: impl
 **Spec**: same as T-05 + Dual-Deadline Rejection Precedence
 **WU**: WU-1, commit 6
@@ -187,7 +187,7 @@ All RED until T-06.
 
 ---
 
-### [ ] T-07 — RED: `AuthGuard` threshold re-issue + step-up invariance tests (D2/D5)
+### [x] T-07 — RED: `AuthGuard` threshold re-issue + step-up invariance tests (D2/D5)
 **Type**: test (RED)
 **Spec**: Rolling Idle Deadline on Authenticated Activity; Absolute Session Deadline (byte-identical carry-forward); Step-up Cookie Independence from Access-Session Activity; Symmetric Cookie Clearing on Idle or Absolute Expiry
 **WU**: WU-1, commit 7
@@ -206,7 +206,7 @@ All RED until T-08.
 
 ---
 
-### [ ] T-08 — GREEN: threshold-based access-cookie re-issue on activity (D2/D5)
+### [x] T-08 — GREEN: threshold-based access-cookie re-issue on activity (D2/D5)
 **Type**: impl
 **Spec**: same as T-07
 **WU**: WU-1, commit 8, closes WU-1
@@ -368,12 +368,12 @@ All RED until T-12.
 
 ## Success Checklist (maps to the 8 spec requirements)
 
-- [ ] Rolling Idle Deadline on Authenticated Activity — activity within the idle window keeps the session alive; no activity beyond `IDLE_TIMEOUT_SECONDS` rejects the next request (T-05–T-08)
-- [ ] Absolute Session Deadline Independent of Activity — minted at login, carried forward byte-identical on every re-sign, continuous activity does not survive it (T-03/T-04, T-07)
-- [ ] Dual-Deadline Rejection Precedence — either deadline alone is sufficient to reject, evaluated independently (T-05/T-06)
-- [ ] Symmetric Cookie Clearing on Idle or Absolute Expiry — both cookies cleared on either rejection; a stale cleared cookie is rejected again (T-05–T-08)
-- [ ] Step-up Cookie Independence from Access-Session Activity — re-issue never touches the step-up cookie; a fresh step-up cookie never rescues an idle-expired access session (T-07/T-08)
-- [ ] Tokens Without an Absolute-Deadline Claim Are Rejected — legacy tokens treated as expired, not grandfathered (T-05/T-06)
+- [x] Rolling Idle Deadline on Authenticated Activity — activity within the idle window keeps the session alive; no activity beyond `IDLE_TIMEOUT_SECONDS` rejects the next request (T-05–T-08)
+- [x] Absolute Session Deadline Independent of Activity — minted at login, carried forward byte-identical on every re-sign, continuous activity does not survive it (T-03/T-04, T-07)
+- [x] Dual-Deadline Rejection Precedence — either deadline alone is sufficient to reject, evaluated independently (T-05/T-06)
+- [x] Symmetric Cookie Clearing on Idle or Absolute Expiry — both cookies cleared on either rejection; a stale cleared cookie is rejected again (T-05–T-08)
+- [x] Step-up Cookie Independence from Access-Session Activity — re-issue never touches the step-up cookie; a fresh step-up cookie never rescues an idle-expired access session (T-07/T-08)
+- [x] Tokens Without an Absolute-Deadline Claim Are Rejected — legacy tokens treated as expired, not grandfathered (T-05/T-06)
 - [ ] Global 401 Handling Redirects to Sign-in with Session-Expired Indication — any authenticated 401 redirects; login/step-up/logout 401 and `403 STEP_UP_REQUIRED` do not (T-09–T-12)
-- [ ] Idle and Absolute Timeout Are Required, Validated Configuration — both vars boot-validated with safe defaults; `IDLE_TIMEOUT_SECONDS` alone drives the effective idle window (T-01/T-02)
+- [x] Idle and Absolute Timeout Are Required, Validated Configuration — both vars boot-validated with safe defaults; `IDLE_TIMEOUT_SECONDS` alone drives the effective idle window (T-01/T-02)
 - [ ] No DB migration, no `platform-contract` change, no `apps/api` change; distinct-secrets boot guard unchanged (T-14 checklist items 6–9)
