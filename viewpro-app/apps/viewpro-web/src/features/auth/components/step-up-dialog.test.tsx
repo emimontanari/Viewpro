@@ -30,7 +30,7 @@ describe('StepUpDialog', () => {
     render(<StepUpDialog open isVerifying={false} onSubmit={noop} />);
 
     expect(screen.getByRole('dialog')).toBeTruthy();
-    expect(screen.getByLabelText(/contraseña/i)).toBeTruthy();
+    expect(screen.getByLabelText('Contraseña')).toBeTruthy();
     expect(screen.getByRole('button', { name: /confirmar/i })).toBeTruthy();
   });
 
@@ -38,7 +38,7 @@ describe('StepUpDialog', () => {
     const onSubmit = vi.fn();
     render(<StepUpDialog open isVerifying={false} onSubmit={onSubmit} />);
 
-    fireEvent.change(screen.getByLabelText(/contraseña/i), { target: { value: 'secret1234' } });
+    fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'secret1234' } });
     fireEvent.click(screen.getByRole('button', { name: /confirmar/i }));
 
     expect(onSubmit).toHaveBeenCalledWith('secret1234');
