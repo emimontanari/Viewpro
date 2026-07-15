@@ -203,6 +203,40 @@ describe('PlatformControlController (integration)', () => {
       const tenantAfter = await prisma.tenant.findUnique({ where: { id: tenant.id } })
       expect(tenantAfter?.status).toBe(TenantStatus.CANCELLED)
     })
+
+    it('terminality 400 does NOT burn the idempotency key: retry with the SAME key stays 400, no platform_command_log row committed (R1)', async () => {
+      // 1. Tenant is CANCELLED.
+      const tenant = await seedTenant(`tenant-cancel-key-not-burned-${Date.now()}`)
+      await prisma.tenant.update({ where: { id: tenant.id }, data: { status: TenantStatus.CANCELLED } })
+      const token = await mintServiceToken()
+      const key = `key-terminal-not-burned-${Date.now()}`
+
+      // 2. Attempt to reactivate the CANCELLED tenant with key K → 400 (terminal).
+      await request(app.getHttpServer())
+        .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ targetStatus: 'ACTIVE', idempotencyKey: key })
+        .expect(400)
+
+      // Key NOT burned: no committed command-log row for K (transaction rolled back).
+      const rowAfterFirst = await prisma.platformCommandLog.findUnique({ where: { idempotencyKey: key } })
+      expect(rowAfterFirst).toBeNull()
+
+      // 3. Retry the SAME request with the SAME key K → still 400 (fresh evaluation,
+      //    NOT a replayed cached success), and still no committed command-log row.
+      await request(app.getHttpServer())
+        .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ targetStatus: 'ACTIVE', idempotencyKey: key })
+        .expect(400)
+
+      const rowAfterRetry = await prisma.platformCommandLog.findUnique({ where: { idempotencyKey: key } })
+      expect(rowAfterRetry).toBeNull()
+
+      // Tenant remains CANCELLED throughout.
+      const tenantAfter = await prisma.tenant.findUnique({ where: { id: tenant.id } })
+      expect(tenantAfter?.status).toBe(TenantStatus.CANCELLED)
+    })
   })
 
   // Regression (b): existing ACTIVE ⇄ SUSPENDED tests (above, lines ~91-105)
