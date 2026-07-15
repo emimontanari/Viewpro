@@ -9,16 +9,16 @@ type Props = {
   items: TenantListItem[];
   isMutating: boolean;
   onEditLimits: (item: TenantListItem) => void;
-  onToggleStatus: (item: TenantListItem) => void;
+  onStatusAction: (item: TenantListItem, action: TenantAction) => void;
 };
 
 /**
  * Tenant list table. Read-only columns (name/slug/status/limits, PR1) plus an
- * actions column (edit-limits + status toggle, T-13/WU-2). Rows render in the
- * order received; the API already sorts name ASC. `isMutating` disables both
- * action buttons on every row (double-submit guard, D11).
+ * actions column (edit-limits + status actions, T-13/WU-2, widened D6). Rows
+ * render in the order received; the API already sorts name ASC. `isMutating`
+ * disables every action button on every row (double-submit guard, D11).
  */
-export function TenantsTable({ items, isMutating, onEditLimits, onToggleStatus }: Props) {
+export function TenantsTable({ items, isMutating, onEditLimits, onStatusAction }: Props) {
   return (
     <Table>
       <TableHeader>
@@ -31,7 +31,7 @@ export function TenantsTable({ items, isMutating, onEditLimits, onToggleStatus }
       </TableHeader>
       <TableBody>
         {items.map((item) => {
-          const action = getTenantAction(item);
+          const actions = getTenantActions(item);
 
           return (
             <TableRow key={item.id} data-testid={`tenant-row-${item.id}`}>
@@ -58,17 +58,22 @@ export function TenantsTable({ items, isMutating, onEditLimits, onToggleStatus }
                   >
                     Editar límites
                   </Button>
-                  {action ? (
+                  {actions.map((action) => (
                     <Button
+                      key={action.kind}
                       type='button'
                       size='sm'
-                      variant={action.targetStatus === 'SUSPENDED' ? 'destructive' : 'outline'}
+                      variant={
+                        action.kind === 'cancel' || action.targetStatus === 'SUSPENDED'
+                          ? 'destructive'
+                          : 'outline'
+                      }
                       disabled={isMutating}
-                      onClick={() => onToggleStatus(item)}
+                      onClick={() => onStatusAction(item, action)}
                     >
                       {action.label}
                     </Button>
-                  ) : null}
+                  ))}
                 </div>
               </TableCell>
             </TableRow>
@@ -79,21 +84,36 @@ export function TenantsTable({ items, isMutating, onEditLimits, onToggleStatus }
   );
 }
 
-// Maps the current status to the next PATCH target + button label (copy
-// app-new pattern, D14). CANCELLED has no action — the button is omitted.
-type TenantAction = { targetStatus: TenantStatusAction; label: string };
+// Maps the current status to the available PATCH targets + button labels
+// (copy app-new pattern, D14; widened D6). CANCELLED has no actions — the
+// row renders zero status-action buttons (terminal, per admin-tenant-status).
+export type TenantAction = {
+  kind: 'toggle' | 'cancel';
+  targetStatus: TenantStatusAction;
+  label: string;
+};
 
-export function getTenantAction(item: TenantListItem): TenantAction | null {
+export function getTenantActions(item: TenantListItem): TenantAction[] {
+  const toggle = getToggleAction(item);
+
+  if (!toggle) {
+    return [];
+  }
+
+  return [toggle, { kind: 'cancel', targetStatus: 'CANCELLED', label: 'Dar de baja' }];
+}
+
+function getToggleAction(item: TenantListItem): TenantAction | null {
   if (item.status === 'TRIAL') {
-    return { targetStatus: 'ACTIVE', label: 'Activar' };
+    return { kind: 'toggle', targetStatus: 'ACTIVE', label: 'Activar' };
   }
 
   if (item.status === 'ACTIVE') {
-    return { targetStatus: 'SUSPENDED', label: 'Suspender' };
+    return { kind: 'toggle', targetStatus: 'SUSPENDED', label: 'Suspender' };
   }
 
   if (item.status === 'SUSPENDED') {
-    return { targetStatus: 'ACTIVE', label: 'Reactivar' };
+    return { kind: 'toggle', targetStatus: 'ACTIVE', label: 'Reactivar' };
   }
 
   return null;

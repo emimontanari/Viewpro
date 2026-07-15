@@ -11,9 +11,10 @@
 
 export type TenantStatus = 'TRIAL' | 'ACTIVE' | 'SUSPENDED' | 'CANCELLED';
 
-// PATCH body accepts only these (server SetTenantStatusDto @IsIn) — asymmetric
-// with TenantStatus, which also covers TRIAL/CANCELLED for display (D14).
-export type TenantStatusAction = 'ACTIVE' | 'SUSPENDED';
+// PATCH body accepts these (server SetTenantStatusDto @IsIn, widened D6) —
+// asymmetric with TenantStatus only for TRIAL, which is display-only and
+// never a PATCH target.
+export type TenantStatusAction = 'ACTIVE' | 'SUSPENDED' | 'CANCELLED';
 
 export type TenantLimits = {
   maxUsers: number | null;

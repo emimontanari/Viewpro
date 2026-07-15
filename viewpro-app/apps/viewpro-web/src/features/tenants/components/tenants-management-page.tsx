@@ -9,16 +9,17 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { tenantsKeys, tenantsListOptions } from '@/features/tenants/api/queries';
 import { updateTenantLimits, updateTenantStatus } from '@/features/tenants/api/service';
-import type { TenantLimits, TenantListItem } from '@/features/tenants/api/types';
+import type { TenantLimits, TenantListItem, TenantStatusAction } from '@/features/tenants/api/types';
 import { getApiErrorMessage, isApiError } from '@/lib/api-client';
 import { TenantLimitsDialog } from './tenant-limits-dialog';
 import { TenantStatusConfirmDialog } from './tenant-status-confirm-dialog';
 import { TenantsEmptyState } from './tenants-empty-state';
 import { TenantsPager } from './tenants-pager';
-import { getTenantAction, TenantsTable } from './tenants-table';
+import { TenantsTable, type TenantAction } from './tenants-table';
 
 const LIMIT = 50;
 const NOT_FOUND_MESSAGE = 'El inquilino no existe o fue eliminado.';
+const TERMINAL_STATUS_MESSAGE = 'El inquilino ya está dado de baja y no puede cambiar de estado.';
 
 function TenantsLoadingSkeleton() {
   return (
@@ -43,9 +44,10 @@ function reportMutationError(error: unknown) {
 
 export function TenantsManagementPage() {
   const [offset, setOffset] = React.useState(0);
-  const [pendingStatusTenant, setPendingStatusTenant] = React.useState<TenantListItem | null>(
-    null
-  );
+  const [pendingStatusAction, setPendingStatusAction] = React.useState<{
+    tenant: TenantListItem;
+    targetStatus: TenantStatusAction;
+  } | null>(null);
   const [limitsTenant, setLimitsTenant] = React.useState<TenantListItem | null>(null);
 
   const queryClient = useQueryClient();
@@ -61,7 +63,7 @@ export function TenantsManagementPage() {
   }, [queryClient]);
 
   const statusMutation = useMutation({
-    mutationFn: (input: { tenantId: string; status: 'ACTIVE' | 'SUSPENDED' }) =>
+    mutationFn: (input: { tenantId: string; status: TenantStatusAction }) =>
       updateTenantStatus(input.tenantId, { status: input.status }),
     onSuccess: async (result) => {
       if (result.unchanged) {
@@ -70,10 +72,22 @@ export function TenantsManagementPage() {
         toast.success('Estado del inquilino actualizado.');
       }
 
-      setPendingStatusTenant(null);
+      setPendingStatusAction(null);
       await invalidateList();
     },
-    onError: reportMutationError
+    // D15: close the confirm dialog on failure too (mirrors onSuccess), and map a
+    // 400 terminality reject to a Spanish message instead of leaking the raw
+    // English backend copy — same style as the 404 mapping in reportMutationError.
+    onError: (error) => {
+      setPendingStatusAction(null);
+
+      if (isApiError(error) && error.status === 400) {
+        toast.error(TERMINAL_STATUS_MESSAGE);
+        return;
+      }
+
+      reportMutationError(error);
+    }
   });
 
   const limitsMutation = useMutation({
@@ -102,33 +116,31 @@ export function TenantsManagementPage() {
     setOffset((current) => (data && current + LIMIT < data.total ? current + LIMIT : current));
   }, [data]);
 
-  // D8: SUSPEND is gated behind the AlertDialog confirm; ACTIVATE/reactivate
-  // PATCHes directly.
-  const handleToggleStatus = React.useCallback(
-    (item: TenantListItem) => {
-      const action = getTenantAction(item);
-
-      if (!action) {
+  // D8/D6/D7: ACTIVATE/reactivate (toggle → ACTIVE) PATCHes directly; SUSPEND
+  // (toggle → SUSPENDED) and CANCEL (destructive) are both gated behind the
+  // same AlertDialog confirm — only the copy variant differs.
+  const handleStatusAction = React.useCallback(
+    (item: TenantListItem, action: TenantAction) => {
+      if (action.kind === 'toggle' && action.targetStatus === 'ACTIVE') {
+        statusMutation.mutate({ tenantId: item.id, status: action.targetStatus });
         return;
       }
 
-      if (action.targetStatus === 'SUSPENDED') {
-        setPendingStatusTenant(item);
-        return;
-      }
-
-      statusMutation.mutate({ tenantId: item.id, status: action.targetStatus });
+      setPendingStatusAction({ tenant: item, targetStatus: action.targetStatus });
     },
     [statusMutation]
   );
 
-  const handleConfirmSuspend = React.useCallback(() => {
-    if (!pendingStatusTenant) {
+  const handleConfirmStatusAction = React.useCallback(() => {
+    if (!pendingStatusAction) {
       return;
     }
 
-    statusMutation.mutate({ tenantId: pendingStatusTenant.id, status: 'SUSPENDED' });
-  }, [pendingStatusTenant, statusMutation]);
+    statusMutation.mutate({
+      tenantId: pendingStatusAction.tenant.id,
+      status: pendingStatusAction.targetStatus
+    });
+  }, [pendingStatusAction, statusMutation]);
 
   const handleSaveLimits = React.useCallback(
     (limits: TenantLimits) => {
@@ -171,7 +183,7 @@ export function TenantsManagementPage() {
         items={data.items}
         isMutating={isMutating}
         onEditLimits={setLimitsTenant}
-        onToggleStatus={handleToggleStatus}
+        onStatusAction={handleStatusAction}
       />
       <TenantsPager
         offset={offset}
@@ -182,10 +194,11 @@ export function TenantsManagementPage() {
         onNext={handleNext}
       />
       <TenantStatusConfirmDialog
-        tenant={pendingStatusTenant}
+        tenant={pendingStatusAction?.tenant ?? null}
         isPending={statusMutation.isPending}
-        onCancel={() => setPendingStatusTenant(null)}
-        onConfirm={handleConfirmSuspend}
+        variant={pendingStatusAction?.targetStatus === 'CANCELLED' ? 'cancel' : 'suspend'}
+        onCancel={() => setPendingStatusAction(null)}
+        onConfirm={handleConfirmStatusAction}
       />
       <TenantLimitsDialog
         tenant={limitsTenant}

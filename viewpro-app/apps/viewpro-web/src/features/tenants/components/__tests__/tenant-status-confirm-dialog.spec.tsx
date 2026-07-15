@@ -3,6 +3,8 @@
  * Spec: Status Toggle with Suspend Confirmation — dismissal is gated while the
  * PATCH is in flight (isPending), so Escape cannot hide the "Suspendiendo…"
  * progress underneath an active mutation.
+ * T-18 — RED: variant='cancel' — distinct, permanent/destructive confirmation
+ * copy (D7), sharing the same pending/Escape gating as variant='suspend'.
  */
 
 import * as React from 'react';
@@ -95,5 +97,66 @@ describe('TenantStatusConfirmDialog', () => {
     fireEvent.keyDown(screen.getByRole('alertdialog'), { key: 'Escape', code: 'Escape' });
 
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('TenantStatusConfirmDialog — variant="cancel" (T-18/D7)', () => {
+  it('shows permanent/destructive framing distinct from the suspend copy', () => {
+    render(
+      <TenantStatusConfirmDialog
+        tenant={TENANT}
+        isPending={false}
+        variant='cancel'
+        onCancel={noop}
+        onConfirm={noop}
+      />
+    );
+
+    expect(screen.getByText('Cancelar inquilino definitivamente')).toBeTruthy();
+    expect(screen.getByText(/no se puede deshacer/i)).toBeTruthy();
+    expect(screen.queryByText('Suspender inquilino')).toBeNull();
+  });
+
+  it('confirm button is labeled "Cancelar definitivamente" (pending: "Cancelando…")', () => {
+    const { rerender } = render(
+      <TenantStatusConfirmDialog
+        tenant={TENANT}
+        isPending={false}
+        variant='cancel'
+        onCancel={noop}
+        onConfirm={noop}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Cancelar definitivamente' })).toBeTruthy();
+
+    rerender(
+      <TenantStatusConfirmDialog
+        tenant={TENANT}
+        isPending={true}
+        variant='cancel'
+        onCancel={noop}
+        onConfirm={noop}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /cancelando/i })).toBeDisabled();
+  });
+
+  it('does not cancel on Escape while isPending={true}, same gating as variant="suspend"', () => {
+    const onCancel = vi.fn();
+    render(
+      <TenantStatusConfirmDialog
+        tenant={TENANT}
+        isPending={true}
+        variant='cancel'
+        onCancel={onCancel}
+        onConfirm={noop}
+      />
+    );
+
+    fireEvent.keyDown(screen.getByRole('alertdialog'), { key: 'Escape', code: 'Escape' });
+
+    expect(onCancel).not.toHaveBeenCalled();
   });
 });
