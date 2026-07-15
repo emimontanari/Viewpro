@@ -9,7 +9,8 @@ const STEP_UP_SECRET = 'platform-step-up-secret'
 
 function makeConfigService(overrides: Record<string, unknown> = {}) {
   const defaults: Record<string, unknown> = {
-    'app.auth.accessTokenTtlSeconds': 900,
+    'app.auth.idleTimeoutSeconds': 600,
+    'app.auth.absoluteSessionSeconds': 28800,
     'app.auth.stepUpTokenSecret': STEP_UP_SECRET,
     'app.auth.stepUpTtlSeconds': 300,
     'app.cookies.domain': undefined,
@@ -90,6 +91,71 @@ describe('TokenService — cookie name and security attributes', () => {
 
     // serviceB has a different secret; verifyAccessToken should throw
     await expect(serviceB.verifyAccessToken(token)).rejects.toThrow()
+  })
+})
+
+describe('TokenService — sessionExp mint/reissue/clockTolerance (D1/D3/D4/D6)', () => {
+  let tokenService: TokenService
+  let mockResponse: { cookie: ReturnType<typeof vi.fn>; clearCookie: ReturnType<typeof vi.fn> }
+
+  beforeEach(() => {
+    tokenService = makeTokenService()
+    mockResponse = {
+      cookie: vi.fn(),
+      clearCookie: vi.fn(),
+    }
+  })
+
+  function decode(token: string): Record<string, unknown> {
+    const parts = token.split('.')
+    return JSON.parse(Buffer.from(parts[1] ?? '', 'base64url').toString('utf8'))
+  }
+
+  it('signAccessToken mints sessionExp ~= now + absoluteSessionSeconds and exp ~= now + idleTimeoutSeconds (not 900)', async () => {
+    const nowSec = Math.floor(Date.now() / 1000)
+    const token = await tokenService.signAccessToken({ sub: 'op-1', email: 'op@viewpro.app' })
+
+    const payload = decode(token)
+    expect(payload.sessionExp).toBeGreaterThanOrEqual(nowSec + 28800 - 2)
+    expect(payload.sessionExp).toBeLessThanOrEqual(nowSec + 28800 + 2)
+    expect(payload.exp).toBeGreaterThanOrEqual(nowSec + 600 - 2)
+    expect(payload.exp).toBeLessThanOrEqual(nowSec + 600 + 2)
+    expect(payload.exp).not.toBeGreaterThanOrEqual(nowSec + 900 - 2)
+  })
+
+  it('reissueAccessToken returns a fresh token with the SAME sessionExp and NEW iat/exp, without throwing on an already-signed payload', async () => {
+    const signed = await tokenService.signAccessToken({ sub: 'op-1', email: 'op@viewpro.app' })
+    const verified = await tokenService.verifyAccessToken(signed)
+
+    await new Promise((resolve) => setTimeout(resolve, 1100))
+
+    const reissued = await tokenService.reissueAccessToken(verified)
+    const reissuedPayload = decode(reissued)
+
+    expect(reissuedPayload.sessionExp).toBe(verified.sessionExp)
+    expect(reissuedPayload.iat).not.toBe(verified.iat)
+    expect(reissuedPayload.sub).toBe('op-1')
+    expect(reissuedPayload.email).toBe('op@viewpro.app')
+  })
+
+  it('setAccessCookie maxAge = idleTimeoutSeconds * 1000 (600000, not 900000)', () => {
+    tokenService.setAccessCookie(mockResponse as never, 'some-token')
+
+    const firstCall = mockResponse.cookie.mock.calls[0] ?? []
+    const options = firstCall[2] as { maxAge: number }
+    expect(options.maxAge).toBe(600 * 1000)
+  })
+
+  it('verifyAccessToken resolves a token whose exp is 3s in the past (clockTolerance forwarded)', async () => {
+    const jwtService = new JwtService({ secret: SECRET_A })
+    const almostExpired = await jwtService.signAsync(
+      { sub: 'op-1', email: 'op@viewpro.app', sessionExp: Math.floor(Date.now() / 1000) + 28800 },
+      { expiresIn: -3 },
+    )
+
+    await expect(tokenService.verifyAccessToken(almostExpired)).resolves.toMatchObject({
+      sub: 'op-1',
+    })
   })
 })
 
