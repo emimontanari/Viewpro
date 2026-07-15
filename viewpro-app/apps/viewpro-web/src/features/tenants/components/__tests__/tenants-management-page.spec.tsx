@@ -538,6 +538,29 @@ describe('TenantsManagementPage — destructive cancel action', () => {
     expect(mockGetTenantList).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
   });
+
+  it('cancel PATCH → 400 (terminality reject) surfaces the error toast; page stays interactive; list retains pre-failure data', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce({
+      status: 400,
+      message: 'El inquilino ya está en un estado terminal.'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-cancel-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-cancel-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar definitivamente' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('El inquilino ya está en un estado terminal.');
+    });
+    // The 400 terminality reject is NOT the 404 "no existe" copy.
+    expect(mockToast.error).not.toHaveBeenCalledWith('El inquilino no existe o fue eliminado.');
+    expect(mockGetTenantList).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
+  });
 });
 
 // ─── Limits editing (T-16/WU-2) ────────────────────────────────────────────────
