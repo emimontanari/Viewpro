@@ -53,33 +53,42 @@ vi.mock('sonner', () => ({
 }));
 
 // Mock the table to isolate container logic from tenants-table's own rendering
-// (already covered by tenants-table.spec.tsx, T-05/T-12) while still exercising
-// the real onEditLimits/onToggleStatus/isMutating wiring through this mock.
-// getTenantAction is re-implemented here (mirrors the real, separately-tested
-// helper) because the container imports it directly from this module.
+// (already covered by tenants-table.spec.tsx, T-05/T-12/T-16) while still
+// exercising the real onEditLimits/onStatusAction/isMutating wiring through
+// this mock. getTenantActions is re-implemented here (mirrors the real,
+// separately-tested helper) because the container imports it directly from
+// this module.
+type MockTenantAction = { kind: 'toggle' | 'cancel'; targetStatus: string; label: string };
+
+function mockGetTenantActions(item: TenantListItem): MockTenantAction[] {
+  const toggle: MockTenantAction | null =
+    item.status === 'TRIAL'
+      ? { kind: 'toggle', targetStatus: 'ACTIVE', label: 'Activar' }
+      : item.status === 'ACTIVE'
+        ? { kind: 'toggle', targetStatus: 'SUSPENDED', label: 'Suspender' }
+        : item.status === 'SUSPENDED'
+          ? { kind: 'toggle', targetStatus: 'ACTIVE', label: 'Reactivar' }
+          : null;
+
+  if (!toggle) {
+    return [];
+  }
+
+  return [toggle, { kind: 'cancel', targetStatus: 'CANCELLED', label: 'Dar de baja' }];
+}
+
 vi.mock('../tenants-table', () => ({
-  getTenantAction: (item: TenantListItem) => {
-    if (item.status === 'TRIAL') {
-      return { targetStatus: 'ACTIVE', label: 'Activar' };
-    }
-    if (item.status === 'ACTIVE') {
-      return { targetStatus: 'SUSPENDED', label: 'Suspender' };
-    }
-    if (item.status === 'SUSPENDED') {
-      return { targetStatus: 'ACTIVE', label: 'Reactivar' };
-    }
-    return null;
-  },
+  getTenantActions: (item: TenantListItem) => mockGetTenantActions(item),
   TenantsTable: ({
     items,
     isMutating,
     onEditLimits,
-    onToggleStatus
+    onStatusAction
   }: {
     items: TenantListItem[];
     isMutating: boolean;
     onEditLimits: (item: TenantListItem) => void;
-    onToggleStatus: (item: TenantListItem) => void;
+    onStatusAction: (item: TenantListItem, action: MockTenantAction) => void;
   }) => (
     <div data-testid='tenants-table'>
       {items.map((item) => (
@@ -93,14 +102,21 @@ vi.mock('../tenants-table', () => ({
           >
             editar-{item.id}
           </button>
-          <button
-            type='button'
-            data-testid={`mock-toggle-status-${item.id}`}
-            disabled={isMutating}
-            onClick={() => onToggleStatus(item)}
-          >
-            alternar-{item.id}
-          </button>
+          {mockGetTenantActions(item).map((action) => (
+            <button
+              key={action.kind}
+              type='button'
+              data-testid={
+                action.kind === 'toggle'
+                  ? `mock-toggle-status-${item.id}`
+                  : `mock-cancel-${item.id}`
+              }
+              disabled={isMutating}
+              onClick={() => onStatusAction(item, action)}
+            >
+              {action.kind}-{item.id}
+            </button>
+          ))}
         </div>
       ))}
     </div>
@@ -383,6 +399,144 @@ describe('TenantsManagementPage — status toggle (suspend confirmation)', () =>
     await waitFor(() => {
       expect(mockGetTenantList).toHaveBeenCalledTimes(2);
     });
+  });
+});
+
+// ─── Status toggle — destructive cancel confirmation (T-20/WU-2, D6/D7) ───────
+
+describe('TenantsManagementPage — destructive cancel action', () => {
+  it('clicking "Dar de baja" on an ACTIVE row opens the dialog with the cancel variant and does not PATCH yet', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-cancel-tenant-1'));
+
+    fireEvent.click(screen.getByTestId('mock-cancel-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('Cancelar inquilino definitivamente')).toBeTruthy();
+    expect(within(dialog).getByRole('button', { name: 'Cancelar definitivamente' })).toBeTruthy();
+    expect(mockUpdateTenantStatus).not.toHaveBeenCalled();
+  });
+
+  it('confirming the cancel dialog PATCHes status with {status: CANCELLED}; success invalidates/refetches and closes the dialog', async () => {
+    mockGetTenantList.mockResolvedValueOnce(NON_EMPTY_RESPONSE);
+    mockGetTenantList.mockResolvedValueOnce({
+      total: 60,
+      items: [{ ...ITEM, status: 'CANCELLED' }]
+    });
+    mockUpdateTenantStatus.mockResolvedValueOnce({
+      tenantId: 'tenant-1',
+      previousStatus: 'ACTIVE',
+      status: 'CANCELLED',
+      unchanged: false,
+      updatedAt: '2026-07-15T00:00:00.000Z'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-cancel-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-cancel-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar definitivamente' }));
+
+    await waitFor(() => {
+      expect(mockUpdateTenantStatus).toHaveBeenCalledWith('tenant-1', { status: 'CANCELLED' });
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    await waitFor(() => {
+      expect(mockGetTenantList).toHaveBeenCalledTimes(2);
+    });
+    expect(mockToast.success).toHaveBeenCalled();
+  });
+
+  it('dismissing the cancel dialog issues no PATCH, closes the dialog, row unchanged', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-cancel-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-cancel-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(mockUpdateTenantStatus).not.toHaveBeenCalled();
+    expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
+  });
+
+  it('regression: clicking "Suspender" still opens the dialog with the suspend variant (not cancel)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('Suspender inquilino')).toBeTruthy();
+    expect(within(dialog).queryByText('Cancelar inquilino definitivamente')).toBeNull();
+  });
+
+  it('regression: clicking "Reactivar" on a SUSPENDED row still PATCHes status:ACTIVE directly, no dialog', async () => {
+    mockGetTenantList.mockResolvedValue(SUSPENDED_RESPONSE);
+    mockUpdateTenantStatus.mockResolvedValueOnce({
+      tenantId: 'tenant-2',
+      previousStatus: 'SUSPENDED',
+      status: 'ACTIVE',
+      unchanged: false,
+      updatedAt: '2026-07-15T00:00:00.000Z'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-2'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-2'));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    await waitFor(() => {
+      expect(mockUpdateTenantStatus).toHaveBeenCalledWith('tenant-2', { status: 'ACTIVE' });
+    });
+  });
+
+  it('cancel PATCH → 404 shows the existing "no existe" message; list left unchanged', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce({ status: 404, message: 'Not found' });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-cancel-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-cancel-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar definitivamente' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('El inquilino no existe o fue eliminado.');
+    });
+    expect(mockGetTenantList).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancel PATCH → 500 surfaces a generic error toast; page stays interactive; list retains pre-failure data', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce({
+      status: 500,
+      message: 'Error interno del servidor'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-cancel-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-cancel-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar definitivamente' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('Error interno del servidor');
+    });
+    expect(mockGetTenantList).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
   });
 });
 
