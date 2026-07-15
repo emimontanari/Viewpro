@@ -22,6 +22,14 @@ type ErrorResponseBody = {
 
 export const apiUrl = trimTrailingSlash(process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL);
 
+// D7: a 401 from a login/step-up/logout ATTEMPT means bad credentials, not an
+// expired session — those must stay inline instead of bouncing to sign-in.
+const SESSION_EXEMPT_401_PATHS = ['/auth/login', '/auth/step-up', '/auth/logout'];
+
+// Suppresses duplicate sign-in redirects when several concurrent requests
+// all come back 401 at once (e.g. a page firing multiple queries).
+let redirecting = false;
+
 export function getApiErrorMessage(error: unknown) {
   if (isApiError(error)) {
     return error.message;
@@ -76,6 +84,20 @@ export async function apiRequest<TResponse>(
   const responseBody = await parseJsonResponse(response);
 
   if (!response.ok) {
+    // D7: any authenticated 401 (not a login/step-up/logout attempt) means
+    // the session expired — send the operator back to sign-in. A 403 (e.g.
+    // STEP_UP_REQUIRED) is untouched by construction: this only matches 401.
+    if (
+      response.status === 401 &&
+      typeof window !== 'undefined' &&
+      !SESSION_EXEMPT_401_PATHS.includes(normalizeApiPath(path)) &&
+      !redirecting
+    ) {
+      redirecting = true;
+      const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.assign(`/auth/sign-in?reason=session_expired&redirect_url=${redirectUrl}`);
+    }
+
     throw toApiError(response, responseBody);
   }
 
