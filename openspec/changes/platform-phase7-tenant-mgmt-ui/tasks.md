@@ -345,7 +345,7 @@ All new assertions RED until T-17.
 
 ---
 
-### [ ] T-17 — GREEN: `tenants-management-page.tsx` mutations + `tenant-status-confirm-dialog.tsx`
+### [x] T-17 — GREEN: `tenants-management-page.tsx` mutations + `tenant-status-confirm-dialog.tsx`
 **Type**: impl
 **Spec**: Status Toggle with Suspend Confirmation; Limits Editing via Modal Dialog; Double-Submit Guard; Error Handling; viewpro-api-Only Isolation
 **WU**: WU-2, commit 6

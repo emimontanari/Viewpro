@@ -1,17 +1,24 @@
 'use client';
 
-// PR1 (WU-1): list query + loading/empty/error/pager only — no mutations yet.
-// Mutations, dialogs, and status confirm are added in T-17 (WU-2).
+// Container (D12): owns the list query, status/limits mutations, and dialog
+// state. Presentational children (TenantsTable/TenantsPager/TenantsEmptyState/
+// TenantLimitsDialog/TenantStatusConfirmDialog) are props-in/callbacks-out.
 import * as React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
-import { tenantsListOptions } from '@/features/tenants/api/queries';
-import { getApiErrorMessage } from '@/lib/api-client';
+import { tenantsKeys, tenantsListOptions } from '@/features/tenants/api/queries';
+import { updateTenantLimits, updateTenantStatus } from '@/features/tenants/api/service';
+import type { TenantLimits, TenantListItem } from '@/features/tenants/api/types';
+import { getApiErrorMessage, isApiError } from '@/lib/api-client';
+import { TenantLimitsDialog } from './tenant-limits-dialog';
+import { TenantStatusConfirmDialog } from './tenant-status-confirm-dialog';
 import { TenantsEmptyState } from './tenants-empty-state';
 import { TenantsPager } from './tenants-pager';
-import { TenantsTable } from './tenants-table';
+import { getTenantAction, TenantsTable } from './tenants-table';
 
 const LIMIT = 50;
+const NOT_FOUND_MESSAGE = 'El inquilino no existe o fue eliminado.';
 
 function TenantsLoadingSkeleton() {
   return (
@@ -23,13 +30,69 @@ function TenantsLoadingSkeleton() {
   );
 }
 
+// D15: normalizes a mutation error into a toast message — 404 gets a specific
+// "no existe" copy, every other status falls back to getApiErrorMessage.
+function reportMutationError(error: unknown) {
+  if (isApiError(error) && error.status === 404) {
+    toast.error(NOT_FOUND_MESSAGE);
+    return;
+  }
+
+  toast.error(getApiErrorMessage(error));
+}
+
 export function TenantsManagementPage() {
   const [offset, setOffset] = React.useState(0);
+  const [pendingStatusTenant, setPendingStatusTenant] = React.useState<TenantListItem | null>(
+    null
+  );
+  const [limitsTenant, setLimitsTenant] = React.useState<TenantListItem | null>(null);
+
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error } = useQuery({
     ...tenantsListOptions(offset, LIMIT),
     retry: false
   });
+
+  // D9: never patch optimistically — invalidate + let the active query refetch.
+  const invalidateList = React.useCallback(() => {
+    return queryClient.invalidateQueries({ queryKey: tenantsKeys.all });
+  }, [queryClient]);
+
+  const statusMutation = useMutation({
+    mutationFn: (input: { tenantId: string; status: 'ACTIVE' | 'SUSPENDED' }) =>
+      updateTenantStatus(input.tenantId, { status: input.status }),
+    onSuccess: async (result) => {
+      if (result.unchanged) {
+        toast.info('El inquilino ya tenía ese estado.');
+      } else {
+        toast.success('Estado del inquilino actualizado.');
+      }
+
+      setPendingStatusTenant(null);
+      await invalidateList();
+    },
+    onError: reportMutationError
+  });
+
+  const limitsMutation = useMutation({
+    mutationFn: (input: { tenantId: string; limits: TenantLimits }) =>
+      updateTenantLimits(input.tenantId, input.limits),
+    onSuccess: async (result) => {
+      if (result.unchanged) {
+        toast.info('El inquilino ya tenía esos límites.');
+      } else {
+        toast.success('Límites del inquilino actualizados.');
+      }
+
+      setLimitsTenant(null);
+      await invalidateList();
+    },
+    onError: reportMutationError
+  });
+
+  const isMutating = statusMutation.isPending || limitsMutation.isPending;
 
   const handlePrev = React.useCallback(() => {
     setOffset((current) => Math.max(0, current - LIMIT));
@@ -38,6 +101,45 @@ export function TenantsManagementPage() {
   const handleNext = React.useCallback(() => {
     setOffset((current) => (data && current + LIMIT < data.total ? current + LIMIT : current));
   }, [data]);
+
+  // D8: SUSPEND is gated behind the AlertDialog confirm; ACTIVATE/reactivate
+  // PATCHes directly.
+  const handleToggleStatus = React.useCallback(
+    (item: TenantListItem) => {
+      const action = getTenantAction(item);
+
+      if (!action) {
+        return;
+      }
+
+      if (action.targetStatus === 'SUSPENDED') {
+        setPendingStatusTenant(item);
+        return;
+      }
+
+      statusMutation.mutate({ tenantId: item.id, status: action.targetStatus });
+    },
+    [statusMutation]
+  );
+
+  const handleConfirmSuspend = React.useCallback(() => {
+    if (!pendingStatusTenant) {
+      return;
+    }
+
+    statusMutation.mutate({ tenantId: pendingStatusTenant.id, status: 'SUSPENDED' });
+  }, [pendingStatusTenant, statusMutation]);
+
+  const handleSaveLimits = React.useCallback(
+    (limits: TenantLimits) => {
+      if (!limitsTenant) {
+        return;
+      }
+
+      limitsMutation.mutate({ tenantId: limitsTenant.id, limits });
+    },
+    [limitsTenant, limitsMutation]
+  );
 
   if (isLoading) {
     return <TenantsLoadingSkeleton />;
@@ -65,14 +167,11 @@ export function TenantsManagementPage() {
 
   return (
     <div className='flex flex-col gap-4'>
-      {/* isMutating/onEditLimits/onToggleStatus are wired to real mutations in T-17;
-          this interim no-op wiring only keeps the tree building after T-13's
-          actions column lands ahead of the container's mutation logic. */}
       <TenantsTable
         items={data.items}
-        isMutating={false}
-        onEditLimits={() => {}}
-        onToggleStatus={() => {}}
+        isMutating={isMutating}
+        onEditLimits={setLimitsTenant}
+        onToggleStatus={handleToggleStatus}
       />
       <TenantsPager
         offset={offset}
@@ -80,6 +179,18 @@ export function TenantsManagementPage() {
         total={data.total}
         onPrev={handlePrev}
         onNext={handleNext}
+      />
+      <TenantStatusConfirmDialog
+        tenant={pendingStatusTenant}
+        isPending={statusMutation.isPending}
+        onCancel={() => setPendingStatusTenant(null)}
+        onConfirm={handleConfirmSuspend}
+      />
+      <TenantLimitsDialog
+        tenant={limitsTenant}
+        isSaving={limitsMutation.isPending}
+        onClose={() => setLimitsTenant(null)}
+        onSave={handleSaveLimits}
       />
     </div>
   );

@@ -55,7 +55,21 @@ vi.mock('sonner', () => ({
 // Mock the table to isolate container logic from tenants-table's own rendering
 // (already covered by tenants-table.spec.tsx, T-05/T-12) while still exercising
 // the real onEditLimits/onToggleStatus/isMutating wiring through this mock.
+// getTenantAction is re-implemented here (mirrors the real, separately-tested
+// helper) because the container imports it directly from this module.
 vi.mock('../tenants-table', () => ({
+  getTenantAction: (item: TenantListItem) => {
+    if (item.status === 'TRIAL') {
+      return { targetStatus: 'ACTIVE', label: 'Activar' };
+    }
+    if (item.status === 'ACTIVE') {
+      return { targetStatus: 'SUSPENDED', label: 'Suspender' };
+    }
+    if (item.status === 'SUSPENDED') {
+      return { targetStatus: 'ACTIVE', label: 'Reactivar' };
+    }
+    return null;
+  },
   TenantsTable: ({
     items,
     isMutating,
