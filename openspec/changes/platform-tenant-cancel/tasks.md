@@ -220,7 +220,7 @@ T-01 (RED: repo terminal-variant unit tests)
 
 ## WU-2 — viewpro-web destructive Cancel action
 
-### [ ] T-15 — Widen `TenantStatusAction` type
+### [x] T-15 — Widen `TenantStatusAction` type
 **Type**: impl · **Spec**: operator-tenant-management-ui — Destructive Cancel Action (`TenantStatusAction` widen) · **WU**: WU-2, commit 1 · **Depends on**: T-14
 
 - `apps/viewpro-web/src/features/tenants/api/types.ts`:
@@ -230,7 +230,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: `pnpm --filter viewpro-web typecheck` passes with the widened union.
 **Commit**: `feat(web): widen TenantStatusAction to include CANCELLED`
 
-### [ ] T-16 — RED: tenants-table — getTenantActions + "Dar de baja" button
+### [x] T-16 — RED: tenants-table — getTenantActions + "Dar de baja" button
 **Type**: test (RED) · **Spec**: operator-tenant-management-ui — Destructive Cancel Action; No Status Actions on a CANCELLED Row · **WU**: WU-2, commit 2 · **Depends on**: T-15
 
 - `apps/viewpro-web/src/features/tenants/components/__tests__/tenants-table.spec.tsx`:
@@ -242,7 +242,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: new assertions fail (function/prop don't exist yet).
 **Commit**: `test(web): RED — getTenantActions returns [toggle, cancel]; Dar de baja button (D6)`
 
-### [ ] T-17 — GREEN: tenants-table.tsx impl
+### [x] T-17 — GREEN: tenants-table.tsx impl
 **Type**: impl · **Spec**: same as T-16 · **WU**: WU-2, commit 3 · **Depends on**: T-16
 
 - `apps/viewpro-web/src/features/tenants/components/tenants-table.tsx`:
@@ -255,7 +255,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: `pnpm --filter viewpro-web test` — T-16 GREEN, no regressions.
 **Commit**: `feat(web): getTenantActions + destructive Dar de baja button per row (D6)`
 
-### [ ] T-18 — RED: confirm-dialog variant='cancel' tests
+### [x] T-18 — RED: confirm-dialog variant='cancel' tests
 **Type**: test (RED) · **Spec**: operator-tenant-management-ui — Destructive Cancel Action (distinct confirmation) · **WU**: WU-2, commit 4 · **Depends on**: T-17
 
 - `apps/viewpro-web/src/features/tenants/components/__tests__/tenant-status-confirm-dialog.spec.tsx`:
@@ -266,7 +266,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: new assertions fail (`variant` prop not implemented).
 **Commit**: `test(web): RED — TenantStatusConfirmDialog variant=cancel destructive copy (D7)`
 
-### [ ] T-19 — GREEN: dialog variant prop + copy map
+### [x] T-19 — GREEN: dialog variant prop + copy map
 **Type**: impl · **Spec**: same as T-18 · **WU**: WU-2, commit 5 · **Depends on**: T-18
 
 - `apps/viewpro-web/src/features/tenants/components/tenant-status-confirm-dialog.tsx`:
@@ -278,7 +278,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: `pnpm --filter viewpro-web test` — T-18 GREEN, no regressions.
 **Commit**: `feat(web): TenantStatusConfirmDialog variant=cancel destructive copy (D7)`
 
-### [ ] T-20 — RED: management-page cancel-flow wiring tests
+### [x] T-20 — RED: management-page cancel-flow wiring tests
 **Type**: test (RED) · **Spec**: operator-tenant-management-ui — Destructive Cancel Action (all 4 scenarios); Error Handling (both scenarios) · **WU**: WU-2, commit 6 · **Depends on**: T-19
 
 - `apps/viewpro-web/src/features/tenants/components/__tests__/tenants-management-page.spec.tsx`:
@@ -292,7 +292,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: new assertions fail (wiring not yet implemented).
 **Commit**: `test(web): RED — cancel confirm/dismiss wiring + 404/500 error reuse`
 
-### [ ] T-21 — GREEN: management-page wiring impl
+### [x] T-21 — GREEN: management-page wiring impl
 **Type**: impl · **Spec**: same as T-20 · **WU**: WU-2, commit 7 · **Depends on**: T-20
 
 - `apps/viewpro-web/src/features/tenants/components/tenants-management-page.tsx`:
@@ -306,7 +306,7 @@ T-01 (RED: repo terminal-variant unit tests)
 **Exit**: `pnpm --filter viewpro-web test` — T-20 GREEN, no regressions.
 **Commit**: `feat(web): wire destructive cancel action through TenantsManagementPage (D7)`
 
-### [ ] T-22 — WU-2 verification + commit
+### [x] T-22 — WU-2 verification + commit
 **Type**: verify · **Spec**: proposal AC5 · **WU**: WU-2, commit 8 · **Depends on**: T-21
 
 - `pnpm --filter viewpro-web test` — all GREEN
@@ -377,6 +377,6 @@ T-01 (RED: repo terminal-variant unit tests)
 - [x] Access cut for CANCELLED tenant members — existing guard, verified not regressed (T-07)
 - [x] Cancel audited: `AUDIT_LOGGED` with `action: TENANT_STATUS_CHANGED`, real `previousValue` (T-05, T-06)
 - [x] Terminality: any `CANCELLED → *` transition (incl. `CANCELLED → CANCELLED`) → 400 server-side, with regression test (T-01–T-06)
-- [ ] FE distinct destructive Cancel confirmation for non-CANCELLED tenants; CANCELLED rows show zero status actions (T-15–T-22)
-- [ ] `apps/app-new` legacy console unchanged (T-14, T-22, T-23)
-- [ ] No data archived or deleted — status transition + access-cut only (verified by scope of file changes, no migration/deletion code introduced)
+- [x] FE distinct destructive Cancel confirmation for non-CANCELLED tenants; CANCELLED rows show zero status actions (T-15–T-22)
+- [x] `apps/app-new` legacy console unchanged (T-14, T-22, T-23)
+- [x] No data archived or deleted — status transition + access-cut only (verified by scope of file changes, no migration/deletion code introduced)
