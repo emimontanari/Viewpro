@@ -23,7 +23,16 @@ type Props = {
 
 export function TenantStatusConfirmDialog({ tenant, isPending, onCancel, onConfirm }: Props) {
   return (
-    <AlertDialog open={Boolean(tenant)} onOpenChange={(open) => !open && onCancel()}>
+    <AlertDialog
+      open={Boolean(tenant)}
+      onOpenChange={(open) => {
+        // Gate Escape dismissal while the PATCH is in flight so the
+        // "Suspendiendo…" progress cannot be hidden mid-mutation.
+        if (!open && !isPending) {
+          onCancel();
+        }
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Suspender inquilino</AlertDialogTitle>

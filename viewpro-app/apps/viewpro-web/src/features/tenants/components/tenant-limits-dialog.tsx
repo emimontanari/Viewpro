@@ -54,7 +54,16 @@ export function TenantLimitsDialog({ tenant, isSaving, onClose, onSave }: Props)
   }, [tenant]);
 
   return (
-    <Dialog open={Boolean(tenant)} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={Boolean(tenant)}
+      onOpenChange={(open) => {
+        // Gate X-icon/Escape dismissal while the PATCH is in flight so the
+        // "Guardando límites…" progress cannot be hidden mid-mutation.
+        if (!open && !isSaving) {
+          onClose();
+        }
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Editar límites{tenant ? ` de ${tenant.name}` : ''}</DialogTitle>

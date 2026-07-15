@@ -111,21 +111,23 @@ vi.mock('../tenants-pager', () => ({
   TenantsPager: ({
     offset,
     total,
+    disabled,
     onNext,
     onPrev
   }: {
     offset: number;
     total: number;
+    disabled?: boolean;
     onNext: () => void;
     onPrev: () => void;
   }) => (
     <div data-testid='tenants-pager'>
       <span data-testid='pager-offset'>{offset}</span>
       <span data-testid='pager-total'>{total}</span>
-      <button type='button' onClick={onPrev}>
+      <button type='button' disabled={disabled} onClick={onPrev}>
         prev
       </button>
-      <button type='button' onClick={onNext}>
+      <button type='button' disabled={disabled} onClick={onNext}>
         next
       </button>
     </div>
@@ -462,6 +464,53 @@ describe('TenantsManagementPage — mutation error handling', () => {
     expect(mockGetTenantList).toHaveBeenCalledTimes(1);
   });
 
+  it('502 parse-failure (zod) on a status mutation surfaces the normalized error; page stays interactive', async () => {
+    // Mirrors PARSE_ERROR thrown by api/schemas.ts when parseStatusResponse's
+    // zod safeParse fails on an unexpected control-lane body (apiRequest resolved
+    // OK, but the payload did not match the schema).
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce({
+      status: 502,
+      message: 'Respuesta inesperada del servidor.'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('Respuesta inesperada del servidor.');
+    });
+    // No 404-specific copy leaked; list untouched and still interactive.
+    expect(mockToast.error).not.toHaveBeenCalledWith('El inquilino no existe o fue eliminado.');
+    expect(mockGetTenantList).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
+  });
+
+  it('502 parse-failure (zod) on a limits mutation surfaces the normalized error; page stays interactive', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantLimits.mockRejectedValueOnce({
+      status: 502,
+      message: 'Respuesta inesperada del servidor.'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-edit-limits-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-edit-limits-tenant-1'));
+
+    await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar límites' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('Respuesta inesperada del servidor.');
+    });
+    expect(mockGetTenantList).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
+  });
+
   it('generic (500) mutation failure surfaces an error; page stays interactive; list retains pre-failure data', async () => {
     mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
     mockUpdateTenantStatus.mockRejectedValueOnce({
@@ -515,6 +564,35 @@ describe('TenantsManagementPage — double-submit guard', () => {
 
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+  });
+
+  it('disables the pager (prev/next) while a status mutation is pending', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    let resolveMutation!: (value: AdminTenantStatusUpdateResponse) => void;
+    mockUpdateTenantStatus.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveMutation = resolve;
+      })
+    );
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Suspender' }));
+
+    const pager = await screen.findByTestId('tenants-pager');
+    await waitFor(() => {
+      expect(within(pager).getByRole('button', { name: 'prev' })).toBeDisabled();
+    });
+    expect(within(pager).getByRole('button', { name: 'next' })).toBeDisabled();
+
+    resolveMutation(STATUS_SUCCESS_RESPONSE);
+
+    await waitFor(() => {
+      expect(within(pager).getByRole('button', { name: 'next' })).not.toBeDisabled();
     });
   });
 

@@ -177,6 +177,7 @@ export function TenantsManagementPage() {
         offset={offset}
         limit={LIMIT}
         total={data.total}
+        disabled={isMutating}
         onPrev={handlePrev}
         onNext={handleNext}
       />

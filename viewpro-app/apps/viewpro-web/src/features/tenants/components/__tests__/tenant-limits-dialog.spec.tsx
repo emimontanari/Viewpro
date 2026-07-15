@@ -92,6 +92,24 @@ describe('TenantLimitsDialog', () => {
     expect(screen.getByRole('button', { name: /guardando límites/i })).toBeDisabled();
   });
 
+  it('does not close on Escape while isSaving={true}', () => {
+    const onClose = vi.fn();
+    render(<TenantLimitsDialog tenant={TENANT} isSaving={true} onClose={onClose} onSave={noop} />);
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape', code: 'Escape' });
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('closes on Escape when not saving', () => {
+    const onClose = vi.fn();
+    render(<TenantLimitsDialog tenant={TENANT} isSaving={false} onClose={onClose} onSave={noop} />);
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape', code: 'Escape' });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('re-seeds the form when the tenant prop changes', () => {
     const { rerender } = render(
       <TenantLimitsDialog tenant={TENANT} isSaving={false} onClose={noop} onSave={noop} />
