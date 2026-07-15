@@ -102,7 +102,33 @@ export function validateEnv(config: Record<string, unknown>) {
     throw new Error(formatValidationErrors(errors))
   }
 
+  assertDistinctSecrets(validatedConfig)
+
   return validatedConfig
+}
+
+// Defense-in-depth: cross-token isolation must not rely on operators
+// coincidentally setting different values. If two token/control secrets share
+// a value, a token minted for one lane verifies under another (e.g. a step-up
+// token accepted as an access token). Fail fast at boot naming the collision.
+function assertDistinctSecrets(config: EnvironmentVariables) {
+  const secrets: ReadonlyArray<readonly [name: string, value: string]> = [
+    ['ACCESS_TOKEN_SECRET', config.ACCESS_TOKEN_SECRET],
+    ['STEP_UP_TOKEN_SECRET', config.STEP_UP_TOKEN_SECRET],
+    ['PLATFORM_CONTROL_SECRET', config.PLATFORM_CONTROL_SECRET],
+  ]
+
+  for (let i = 0; i < secrets.length; i++) {
+    const [nameA, valueA] = secrets[i] as readonly [string, string]
+    for (let j = i + 1; j < secrets.length; j++) {
+      const [nameB, valueB] = secrets[j] as readonly [string, string]
+      if (valueA === valueB) {
+        throw new Error(
+          `${nameA} and ${nameB} must be distinct — sharing a value breaks cross-token isolation.`,
+        )
+      }
+    }
+  }
 }
 
 function formatValidationErrors(
