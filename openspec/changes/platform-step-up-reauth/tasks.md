@@ -348,7 +348,7 @@ All RED until T-14.
 
 ## WU-2 — viewpro-web: api-client + modal + gate hook + wiring
 
-### [ ] T-15 — RED: `api-client.ts` `code` field + `isStepUpRequiredError` tests (D12)
+### [x] T-15 — RED: `api-client.ts` `code` field + `isStepUpRequiredError` tests (D12)
 **Type**: test (RED)
 **Spec**: operator-step-up-auth — Frontend Step-up Prompt for Destructive Actions (403 re-opens modal, precondition)
 **WU**: WU-2, commit 1
@@ -367,7 +367,7 @@ All RED until T-16.
 
 ---
 
-### [ ] T-16 — GREEN: `ApiError.code` + `isStepUpRequiredError` (D12)
+### [x] T-16 — GREEN: `ApiError.code` + `isStepUpRequiredError` (D12)
 **Type**: impl
 **Spec**: operator-step-up-auth — Frontend Step-up Prompt for Destructive Actions
 **WU**: WU-2, commit 2
@@ -385,7 +385,7 @@ All RED until T-16.
 
 ---
 
-### [ ] T-17 — RED: `session.stepUp(password)` test
+### [x] T-17 — RED: `session.stepUp(password)` test
 **Type**: test (RED)
 **Spec**: operator-step-up-auth — Frontend Step-up Prompt for Destructive Actions
 **WU**: WU-2, commit 3
@@ -399,7 +399,7 @@ All RED until T-18.
 
 ---
 
-### [ ] T-18 — GREEN: `session.ts` `stepUp()`
+### [x] T-18 — GREEN: `session.ts` `stepUp()`
 **Type**: impl
 **Spec**: operator-step-up-auth — Frontend Step-up Prompt for Destructive Actions
 **WU**: WU-2, commit 4
@@ -413,7 +413,7 @@ All RED until T-18.
 
 ---
 
-### [ ] T-19 — RED: `StepUpDialog` component tests (D11)
+### [x] T-19 — RED: `StepUpDialog` component tests (D11)
 **Type**: test (RED)
 **Spec**: operator-step-up-auth — Frontend Step-up Prompt for Destructive Actions (wrong-password scenario)
 **WU**: WU-2, commit 5
@@ -431,7 +431,7 @@ All RED until T-20.
 
 ---
 
-### [ ] T-20 — GREEN: `step-up-dialog.tsx` (D11)
+### [x] T-20 — GREEN: `step-up-dialog.tsx` (D11)
 **Type**: impl
 **Spec**: operator-step-up-auth — Frontend Step-up Prompt for Destructive Actions
 **WU**: WU-2, commit 6
@@ -445,7 +445,7 @@ All RED until T-20.
 
 ---
 
-### [ ] T-21 — RED: `useStepUpGate()` hook tests (D11, D13)
+### [x] T-21 — RED: `useStepUpGate()` hook tests (D11, D13)
 **Type**: test (RED)
 **Spec**: operator-step-up-auth — Frontend Step-up Prompt for Destructive Actions (all 5 scenarios)
 **WU**: WU-2, commit 7
@@ -464,7 +464,7 @@ All RED until T-22.
 
 ---
 
-### [ ] T-22 — GREEN: `use-step-up-gate.ts` (D11, D13)
+### [x] T-22 — GREEN: `use-step-up-gate.ts` (D11, D13)
 **Type**: impl
 **Spec**: operator-step-up-auth — Frontend Step-up Prompt for Destructive Actions
 **WU**: WU-2, commit 8
@@ -478,7 +478,7 @@ All RED until T-22.
 
 ---
 
-### [ ] T-23 — RED: `tenants-management-page.tsx` step-up wiring tests (AC8, all 5 FE scenarios)
+### [x] T-23 — RED: `tenants-management-page.tsx` step-up wiring tests (AC8, all 5 FE scenarios)
 **Type**: test (RED)
 **Spec**: operator-step-up-auth — Frontend Step-up Prompt for Destructive Actions (all 5 scenarios)
 **WU**: WU-2, commit 9
@@ -497,7 +497,7 @@ All RED until T-24.
 
 ---
 
-### [ ] T-24 — GREEN: wire `useStepUpGate` into both mutations + render `StepUpDialog` (D13)
+### [x] T-24 — GREEN: wire `useStepUpGate` into both mutations + render `StepUpDialog` (D13)
 **Type**: impl
 **Spec**: operator-step-up-auth — Frontend Step-up Prompt for Destructive Actions
 **WU**: WU-2, commit 10
@@ -593,7 +593,7 @@ All RED until T-24.
 - [x] Cross-operator step-up rejected — `sub` bound to `request.user.id` (T-09, T-11)
 - [x] `logout()` and `AuthGuard`-failure clear BOTH cookies symmetrically (T-13, T-14)
 - [x] `StepUpGuard` never bypasses `AuthGuard` — unauthenticated + present step-up cookie → 401, not 403 (T-13, T-14)
-- [ ] FE prompts for password before a destructive action unless a fresh step-up is server-confirmed valid; threads through status/limits mutations (T-19–T-24)
-- [ ] `403 STEP_UP_REQUIRED` mid-session re-opens the modal — never logs out, never redirects to sign-in (T-21, T-22, T-23)
+- [x] FE prompts for password before a destructive action unless a fresh step-up is server-confirmed valid; threads through status/limits mutations (T-19–T-24)
+- [x] `403 STEP_UP_REQUIRED` mid-session re-opens the modal — never logs out, never redirects to sign-in (T-21, T-22, T-23)
 - [ ] Operator-lane only — legacy `/admin` lane and its DTOs unchanged (T-25 checklist item 8)
 - [ ] No schema migration, no `platform-contract` change (T-25 checklist items 6–7)
