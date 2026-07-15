@@ -196,7 +196,7 @@ All RED until T-08.
 
 ---
 
-### [ ] T-08 — GREEN: `tenants-management-page.tsx` — list query + pager wiring (no mutations)
+### [x] T-08 — GREEN: `tenants-management-page.tsx` — list query + pager wiring (no mutations)
 **Type**: impl
 **Spec**: Paginated Tenant List (all 4 scenarios); Error Handling (list load)
 **WU**: WU-1, commit 8
