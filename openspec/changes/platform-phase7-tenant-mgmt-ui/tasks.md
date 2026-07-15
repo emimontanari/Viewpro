@@ -360,7 +360,7 @@ All new assertions RED until T-17.
 
 ---
 
-### [ ] T-18 — Nav: add "Inquilinos" entry to `config/nav-config.ts`
+### [x] T-18 — Nav: add "Inquilinos" entry to `config/nav-config.ts`
 **Type**: impl (mechanical, no RED required — additive config data, no new branching logic)
 **Spec**: Paginated Tenant List (page discoverability, proposal AC8)
 **WU**: WU-2, commit 7
