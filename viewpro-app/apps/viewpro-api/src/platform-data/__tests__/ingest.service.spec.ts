@@ -7,6 +7,7 @@ import { IngestService } from '../ingest.service'
 import { MirrorRepository } from '../mirror.repository'
 import { CursorRepository } from '../cursor.repository'
 import { PlatformTenantRepository } from '../platform-tenant.repository'
+import { AuditLogRepository } from '../audit-log.repository'
 import type { PlatformOutboxEvent } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 
 /**
@@ -38,7 +39,7 @@ describe('IngestService (integration — test DB)', () => {
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
       imports: [ConfigModule, DatabaseModule],
-      providers: [IngestService, MirrorRepository, CursorRepository, PlatformTenantRepository],
+      providers: [IngestService, MirrorRepository, CursorRepository, PlatformTenantRepository, AuditLogRepository],
     }).compile()
 
     ingestService = moduleRef.get(IngestService)
@@ -128,6 +129,7 @@ describe('IngestService (integration — test DB)', () => {
         { provide: MirrorRepository, useValue: throwingMirrorRepo },
         CursorRepository,
         PlatformTenantRepository,
+        AuditLogRepository,
       ],
     }).compile()
 
@@ -252,6 +254,7 @@ describe('IngestService (integration — test DB)', () => {
         { provide: MirrorRepository, useValue: partialMirrorRepo },
         CursorRepository,
         PlatformTenantRepository,
+        AuditLogRepository,
       ],
     }).compile()
 
@@ -301,6 +304,7 @@ describe('IngestService (integration — test DB)', () => {
         { provide: MirrorRepository, useValue: retryMirrorRepo },
         CursorRepository,
         PlatformTenantRepository,
+        AuditLogRepository,
       ],
     }).compile()
 
@@ -347,7 +351,7 @@ describe('IngestService — platform_tenants routing (T-14/T-15, A8/A9)', () => 
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
       imports: [ConfigModule, DatabaseModule],
-      providers: [IngestService, MirrorRepository, CursorRepository, PlatformTenantRepository],
+      providers: [IngestService, MirrorRepository, CursorRepository, PlatformTenantRepository, AuditLogRepository],
     }).compile()
 
     ingestService = moduleRef.get(IngestService)
@@ -563,7 +567,7 @@ describe('IngestService — replay / duplicate-delivery threat-matrix (T-19)', (
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
       imports: [ConfigModule, DatabaseModule],
-      providers: [IngestService, MirrorRepository, CursorRepository, PlatformTenantRepository],
+      providers: [IngestService, MirrorRepository, CursorRepository, PlatformTenantRepository, AuditLogRepository],
     }).compile()
 
     ingestService = moduleRef.get(IngestService)
@@ -684,5 +688,164 @@ describe('IngestService — replay / duplicate-delivery threat-matrix (T-19)', (
         },
       }),
     ).rejects.toThrow()
+  })
+})
+
+/**
+ * T-16 — RED: ingest routing — `AUDIT_LOGGED` → `platform_audit_log` ONLY
+ * (regression guards a/b/d).
+ *
+ * Spec: platform-data-lane delta — Ingest Routing for AUDIT_LOGGED (all 4
+ *   scenarios); Mirror Append — W2 Guard (all 3 scenarios)
+ */
+describe('IngestService — AUDIT_LOGGED routing (T-16/T-17)', () => {
+  let moduleRef: TestingModule
+  let ingestService: IngestService
+  let cursorRepo: CursorRepository
+  let auditLogRepo: AuditLogRepository
+  let prisma: PrismaService
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [
+        IngestService,
+        MirrorRepository,
+        CursorRepository,
+        PlatformTenantRepository,
+        AuditLogRepository,
+      ],
+    }).compile()
+
+    ingestService = moduleRef.get(IngestService)
+    cursorRepo = moduleRef.get(CursorRepository)
+    auditLogRepo = moduleRef.get(AuditLogRepository)
+    prisma = moduleRef.get(PrismaService)
+  })
+
+  afterAll(async () => {
+    await moduleRef.close()
+  })
+
+  beforeEach(async () => {
+    await prisma.platformAuditLog.deleteMany()
+    await prisma.platformTenant.deleteMany()
+    await prisma.platformMirrorEvent.deleteMany()
+    await prisma.platformIngestCursor.upsert({
+      where: { id: 1 },
+      update: { seqNo: 0 },
+      create: { id: 1, seqNo: 0 },
+    })
+  })
+
+  function makeAuditEvent(overrides: Partial<PlatformOutboxEvent> = {}): PlatformOutboxEvent {
+    return {
+      id: 'evt-audit-route-1',
+      seqNo: 1,
+      eventType: 'AUDIT_LOGGED',
+      tenantId: 't-audit-1',
+      payload: {
+        action: 'TENANT_STATUS_CHANGED',
+        previousValue: { status: 'TRIAL' },
+        newValue: { status: 'ACTIVE' },
+        actor: { id: 'op-1', type: 'operator', label: 'op-1' },
+      },
+      occurredAt: new Date().toISOString(),
+      ...overrides,
+    }
+  }
+
+  // AUDIT_LOGGED → AuditLogRepository.appendFromEvent called once; no
+  // platform_mirror_events row; no platform_tenants write (routing isolation).
+  it('AUDIT_LOGGED event → exactly one platform_audit_log row; ZERO platform_mirror_events rows; ZERO platform_tenants change', async () => {
+    const evt = makeAuditEvent()
+
+    await ingestService.ingestBatch([evt])
+
+    const auditRows = await prisma.platformAuditLog.findMany({ where: { sourceEventId: evt.id } })
+    expect(auditRows).toHaveLength(1)
+
+    const mirrorRows = await prisma.platformMirrorEvent.findMany({ where: { sourceEventId: evt.id } })
+    expect(mirrorRows).toHaveLength(0)
+
+    const tenantRow = await prisma.platformTenant.findUnique({ where: { id: 't-audit-1' } })
+    expect(tenantRow).toBeNull()
+  })
+
+  // Re-delivery of the same AUDIT_LOGGED sourceEventId → still exactly one
+  // platform_audit_log row (idempotent via the @unique, NOT the mirror — d).
+  it('re-delivery of the same AUDIT_LOGGED sourceEventId → still exactly one platform_audit_log row, no error', async () => {
+    const evt = makeAuditEvent({ id: 'evt-audit-route-replay' })
+
+    await ingestService.ingestBatch([evt])
+    await expect(ingestService.ingestBatch([evt])).resolves.toBeUndefined()
+
+    const auditRows = await prisma.platformAuditLog.findMany({
+      where: { sourceEventId: 'evt-audit-route-replay' },
+    })
+    expect(auditRows).toHaveLength(1)
+  })
+
+  // ingestBatch advances the cursor to seqNo=N after processing a batch
+  // containing only one AUDIT_LOGGED event (non-stalling — no newStatus guard applies).
+  it('a batch containing only one AUDIT_LOGGED event → cursor advances to that seqNo (non-stalling)', async () => {
+    await ingestService.ingestBatch([makeAuditEvent({ id: 'evt-audit-cursor', seqNo: 9 })])
+
+    const cursor = await cursorRepo.getCursor()
+    expect(cursor).toBe(9)
+  })
+
+  // Regression guard (b): TENANT_REGISTERED + TENANT_STATUS_CHANGED +
+  // AUDIT_LOGGED in the same batch → platform_tenants reflects registration/
+  // status routing EXACTLY as before this change; platform_audit_log gains
+  // exactly one row (for the AUDIT_LOGGED event only); cursor advances past all.
+  it('mixed batch (TENANT_REGISTERED + TENANT_STATUS_CHANGED + AUDIT_LOGGED) → each routes to the right projection; cursor advances past all', async () => {
+    const registeredEvent: PlatformOutboxEvent = {
+      id: 'evt-mixed-registered',
+      seqNo: 1,
+      eventType: 'TENANT_REGISTERED',
+      tenantId: 't-mixed',
+      payload: {
+        id: 't-mixed',
+        name: 'Mixed Realty',
+        slug: 'mixed-realty',
+        newStatus: 'TRIAL',
+        limits: { maxUsers: 5, maxActivePropertyEngagements: 10, maxDocumentsStorageMb: 500 },
+      },
+      occurredAt: new Date().toISOString(),
+    }
+    const statusEvent: PlatformOutboxEvent = {
+      id: 'evt-mixed-status',
+      seqNo: 2,
+      eventType: 'TENANT_STATUS_CHANGED',
+      tenantId: 't-mixed',
+      payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE' },
+      occurredAt: new Date().toISOString(),
+    }
+    const auditEvent = makeAuditEvent({ id: 'evt-mixed-audit', seqNo: 3, tenantId: 't-mixed' })
+
+    await ingestService.ingestBatch([registeredEvent, statusEvent, auditEvent])
+
+    const tenantRow = await prisma.platformTenant.findUnique({ where: { id: 't-mixed' } })
+    expect(tenantRow?.latestStatus).toBe('ACTIVE')
+    expect(tenantRow?.name).toBe('Mixed Realty')
+
+    const auditRows = await prisma.platformAuditLog.findMany({ where: { tenantId: 't-mixed' } })
+    expect(auditRows).toHaveLength(1)
+
+    // Mirror gets the two TENANT_* events but NOT the AUDIT_LOGGED one (W2-skip, unregressed).
+    const mirrorRows = await prisma.platformMirrorEvent.findMany({ where: { tenantId: 't-mixed' } })
+    expect(mirrorRows).toHaveLength(2)
+
+    const cursor = await cursorRepo.getCursor()
+    expect(cursor).toBe(3)
+  })
+
+  // Direct repository proof (no ingest wiring ambiguity): appendFromEvent is
+  // reachable and callable on the injected AuditLogRepository instance.
+  it('AuditLogRepository is wired and directly callable', async () => {
+    await expect(
+      auditLogRepo.appendFromEvent(makeAuditEvent({ id: 'evt-audit-direct' })),
+    ).resolves.toBeUndefined()
   })
 })
