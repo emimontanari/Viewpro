@@ -49,6 +49,7 @@ export class AuthController {
   @HttpCode(200)
   logout(@Res({ passthrough: true }) response: Response) {
     this.tokenService.clearAccessCookie(response)
+    this.tokenService.clearStepUpCookie(response)
     return { success: true }
   }
 

@@ -104,14 +104,23 @@ describe('POST /api/auth/step-up (integration)', () => {
     expect(stepUpCookie).toBeUndefined()
   })
 
-  it('no viewpro_platform_access_token cookie → 401, no step-up cookie set', async () => {
+  it('no viewpro_platform_access_token cookie → 401, no LIVE step-up cookie set', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/auth/step-up')
       .send({ password: SEEDED_PASSWORD })
 
     expect(res.status).toBe(401)
+    // T-14 (D9/AC7): AuthGuard's failure path clears both cookies symmetrically,
+    // so a `viewpro_platform_stepup_token=` header MAY be present, but only as
+    // an expired clear (no live/valid step-up token is ever issued here).
     const stepUpCookie = extractCookie(res.headers as Record<string, unknown>, 'viewpro_platform_stepup_token')
-    expect(stepUpCookie).toBeUndefined()
+    if (stepUpCookie) {
+      const hasMaxAgeZero = /max-age=0/i.test(stepUpCookie)
+      const expiresMatch = stepUpCookie.match(/expires=([^;]+)/i)
+      const expiresValue = expiresMatch?.[1]
+      const hasExpiredDate = expiresValue !== undefined && new Date(expiresValue).getTime() <= Date.now()
+      expect(hasMaxAgeZero || hasExpiredDate).toBe(true)
+    }
   })
 })
 
