@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vites
 import { execSync } from 'node:child_process'
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
-import { ValidationPipe } from '@nestjs/common'
+import { HttpException, ValidationPipe } from '@nestjs/common'
 import { ThrottlerModule } from '@nestjs/throttler'
 import cookieParser from 'cookie-parser'
 import request from 'supertest'
@@ -181,7 +181,7 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
     expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
   })
 
-  it('PATCH with targetStatus=CANCELLED → 400 locally, no outbound call made', async () => {
+  it('PATCH with status=CANCELLED → 200, forwards targetStatus=CANCELLED to InmoView', async () => {
     const cookie = await getSessionCookie()
 
     const res = await request(app.getHttpServer())
@@ -189,7 +189,34 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
       .set('Cookie', cookie)
       .send({ status: 'CANCELLED' })
 
+    expect(res.status).toBe(200)
+    expect(mockClient.postTenantStatus).toHaveBeenCalledOnce()
+    const [tenantId, cmd] = mockClient.postTenantStatus.mock.calls[0] as [string, { targetStatus: string }]
+    expect(tenantId).toBe('tenant-1')
+    expect(cmd.targetStatus).toBe('CANCELLED')
+  })
+
+  // -------------------------------------------------------------------------
+  // T-10 — RED: terminality 400 relayed via existing generic failure path
+  //
+  // Spec: platform-control-lane-outbound — Terminality Rejection Is Relayed
+  //   Unchanged
+  // -------------------------------------------------------------------------
+  it('InmoView terminality rejection (400) is relayed to the operator as an exact 400, via the generic failure path', async () => {
+    mockClient.postTenantStatus.mockRejectedValueOnce(
+      new HttpException({ statusCode: 400, message: 'Cancelled tenant cannot change status' }, 400),
+    )
+    const cookie = await getSessionCookie()
+
+    const res = await request(app.getHttpServer())
+      .patch('/api/operators/tenants/tenant-1/status')
+      .set('Cookie', cookie)
+      .send({ status: 'ACTIVE' })
+
+    // Exact 400 — not merely >= 400 — proves the real downstream status
+    // code is preserved, not collapsed to a generic 500.
     expect(res.status).toBe(400)
-    expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
+    // No special-casing/retry: the client was invoked exactly once.
+    expect(mockClient.postTenantStatus).toHaveBeenCalledOnce()
   })
 })

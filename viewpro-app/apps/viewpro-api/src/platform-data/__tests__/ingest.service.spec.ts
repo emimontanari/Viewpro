@@ -435,6 +435,28 @@ describe('IngestService — platform_tenants routing (T-14/T-15, A8/A9)', () => 
     expect(row?.name).toBe('Acme Renamed')
   })
 
+  // T-12 — RED: platform_tenants.latestStatus reflects CANCELLED
+  // (platform-tenant-cancel, D6)
+  //
+  // Spec: admin-tenant-status — Downstream Effects (platform_tenants
+  //   projection reflects the CANCELLED status)
+  it('TENANT_STATUS_CHANGED newStatus=CANCELLED for an existing tenant → latestStatus === CANCELLED', async () => {
+    await ingestService.ingestBatch([makeRegisteredEvent({ id: 'evt-registered-cancel-t1', tenantId: 't-1' })])
+
+    await ingestService.ingestBatch([
+      makeEvent({
+        id: 'evt-cancel-t1',
+        seqNo: 2,
+        eventType: 'TENANT_STATUS_CHANGED',
+        tenantId: 't-1',
+        payload: { previousStatus: 'ACTIVE', newStatus: 'CANCELLED' },
+      }),
+    ])
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-1' } })
+    expect(row?.latestStatus).toBe('CANCELLED')
+  })
+
   // Scenario A9: TENANT_STATUS_CHANGED for a not-yet-registered tenant → create-if-missing
   it('TENANT_STATUS_CHANGED for an absent tenant → row created with id + latestStatus (A9)', async () => {
     await ingestService.ingestBatch([

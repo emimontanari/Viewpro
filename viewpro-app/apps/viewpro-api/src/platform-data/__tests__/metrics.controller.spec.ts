@@ -204,6 +204,34 @@ describe('MetricsController (integration — test DB)', () => {
     expect((res.body.byStatus as Record<string, number>)['TRIAL']).toBeGreaterThanOrEqual(1)
   })
 
+  // T-12 — RED: byStatus CANCELLED bucket (platform-tenant-cancel, D6)
+  //
+  // Spec: admin-tenant-status — Downstream Effects (Metrics byStatus bucket
+  //   includes CANCELLED)
+  it('after ingesting TENANT_STATUS_CHANGED newStatus=CANCELLED for t-1 → byStatus.CANCELLED >= 1', async () => {
+    await prisma.platformMirrorEvent.create({
+      data: {
+        sourceEventId: 'evt-cancelled-t1',
+        eventType: 'TENANT_STATUS_CHANGED',
+        tenantId: 't-1',
+        newStatus: 'CANCELLED',
+        occurredAt: new Date(),
+        seqNo: 1,
+        payload: { previousStatus: 'ACTIVE', newStatus: 'CANCELLED' },
+      },
+    })
+
+    const cookie = await getSessionCookie()
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/metrics/summary')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(200)
+    expect(res.body.tenants).toBeGreaterThanOrEqual(1)
+    expect((res.body.byStatus as Record<string, number>)['CANCELLED']).toBeGreaterThanOrEqual(1)
+  })
+
   // Latest-event-wins: if t-1 has two events (ACTIVE then SUSPENDED), report SUSPENDED
   it('latest-event-wins: second event for same tenant overrides the first in summary', async () => {
     await prisma.platformMirrorEvent.createMany({

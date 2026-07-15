@@ -25,6 +25,12 @@ export type UpdateAdminTenantStatusResult =
       currentStatus: TenantStatus
       updatedAt: Date
     }
+  | {
+      status: 'terminal'
+      tenantId: string
+      currentStatus: TenantStatus
+      updatedAt: Date
+    }
   | { status: 'notFound' }
 
 export type AdminTenantStatusRepository = {

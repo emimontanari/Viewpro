@@ -10,7 +10,11 @@ import {
   type AdminTenantStatusUpdateResponse,
 } from './responses/admin-tenant-status.response'
 
-const ALLOWED_TARGET_STATUSES = new Set<TenantStatus>([TenantStatus.ACTIVE, TenantStatus.SUSPENDED])
+const ALLOWED_TARGET_STATUSES = new Set<TenantStatus>([
+  TenantStatus.ACTIVE,
+  TenantStatus.SUSPENDED,
+  TenantStatus.CANCELLED,
+])
 
 @Injectable()
 export class AdminTenantStatusService {
@@ -50,6 +54,11 @@ export class AdminTenantStatusService {
 
     if (result.status === 'notFound') {
       throw new NotFoundException('Tenant not found')
+    }
+
+    // D1/D2: current status is CANCELLED — terminal, reject before any success shape.
+    if (result.status === 'terminal') {
+      throw new BadRequestException('Cancelled tenant cannot change status')
     }
 
     return mapAdminTenantStatusUpdateResponse({

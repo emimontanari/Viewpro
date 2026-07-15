@@ -824,6 +824,14 @@ describe("Admin access (e2e)", () => {
 			.expect(400);
 	});
 
+	// platform-tenant-cancel: CANCELLED is an operator-control-lane capability
+	// only (POST /internal/platform/tenants/:id/status). The legacy /admin route
+	// is being deprecated and must NOT expose irreversible cancellation — its DTO
+	// (@IsIn(['ACTIVE','SUSPENDED'])) rejects CANCELLED with a 400 validation
+	// error. This assertion is covered by the "rejects unsupported tenant status"
+	// it.each above (CANCELLED case). The operator-lane cancel path is covered by
+	// platform-control.controller.spec.ts.
+
 	it("returns 404 when updating an unknown tenant status", async () => {
 		const { agent: adminAgent, userId: adminUserId } =
 			await registerTenantSession(
