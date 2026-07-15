@@ -20,10 +20,29 @@ const SEEDED_PASSWORD = 'auth-me-test-password'
 const ACCESS_TOKEN_SECRET =
   process.env.ACCESS_TOKEN_SECRET ?? 'test-access-token-secret-min16'
 
-// Build an already-expired token using a separate JwtService with negative expiresIn
-async function buildExpiredToken(payload: { sub: string; email: string }) {
+// Builds an access token with fully explicit iat/exp/sessionExp claims —
+// deterministic, no fake timers. `noTimestamp: true` stops jsonwebtoken from
+// overwriting the explicit `iat`; omitting `sessionExp` from the overrides
+// signs a legacy token without the absolute-deadline claim (AC9).
+async function buildAccessToken(overrides: {
+  sub: string
+  email: string
+  iat?: number
+  exp?: number
+  sessionExp?: number
+}) {
   const jwtService = new JwtService({ secret: ACCESS_TOKEN_SECRET })
-  return jwtService.signAsync(payload, { expiresIn: -1 })
+  const nowSec = Math.floor(Date.now() / 1000)
+  const payload: Record<string, unknown> = {
+    sub: overrides.sub,
+    email: overrides.email,
+    iat: overrides.iat ?? nowSec,
+    exp: overrides.exp ?? nowSec + 600,
+  }
+  if (overrides.sessionExp !== undefined) {
+    payload.sessionExp = overrides.sessionExp
+  }
+  return jwtService.signAsync(payload, { noTimestamp: true })
 }
 
 describe('GET /api/auth/me', () => {
@@ -96,11 +115,15 @@ describe('GET /api/auth/me', () => {
     expect(response.body.operator).toBeUndefined()
   })
 
-  // Scenario 3: Expired/tampered cookie → 401
-  it('GET /api/auth/me with expired token returns 401 and no operator data', async () => {
-    const expiredToken = await buildExpiredToken({
+  // Scenario 3: Expired (idle) token, valid future sessionExp → 401 (idle wins)
+  it('GET /api/auth/me with an idle-expired token returns 401 and no operator data', async () => {
+    const nowSec = Math.floor(Date.now() / 1000)
+    const expiredToken = await buildAccessToken({
       sub: 'some-id',
       email: 'expired@viewpro.app',
+      iat: nowSec - 700,
+      exp: nowSec - 100, // well past CLOCK_TOLERANCE_SECONDS (5s)
+      sessionExp: nowSec + 28800, // absolute deadline still far away
     })
 
     const response = await request(app.getHttpServer())
@@ -119,6 +142,44 @@ describe('GET /api/auth/me', () => {
     const response = await request(app.getHttpServer())
       .get('/api/auth/me')
       .set('Cookie', 'viewpro_platform_access_token=invalid.tampered.token; Path=/; HttpOnly')
+
+    expect(response.status).toBe(401)
+    expect(response.body.operator).toBeUndefined()
+  })
+
+  // KEY new case (AC3): valid sliding exp, but sessionExp already past → 401
+  it('GET /api/auth/me with a valid sliding exp but a past sessionExp returns 401 (absolute deadline)', async () => {
+    const nowSec = Math.floor(Date.now() / 1000)
+    const token = await buildAccessToken({
+      sub: 'some-id',
+      email: 'absolute-expired@viewpro.app',
+      iat: nowSec - 10,
+      exp: nowSec + 600, // sliding exp still valid
+      sessionExp: nowSec - 10, // absolute deadline already past
+    })
+
+    const response = await request(app.getHttpServer())
+      .get('/api/auth/me')
+      .set('Cookie', `viewpro_platform_access_token=${token}; Path=/; HttpOnly`)
+
+    expect(response.status).toBe(401)
+    expect(response.body.operator).toBeUndefined()
+  })
+
+  // Legacy/AC9: a token signed without a sessionExp claim is treated as expired
+  it('GET /api/auth/me with a token lacking the sessionExp claim returns 401 (not grandfathered)', async () => {
+    const nowSec = Math.floor(Date.now() / 1000)
+    const token = await buildAccessToken({
+      sub: 'some-id',
+      email: 'legacy@viewpro.app',
+      iat: nowSec - 10,
+      exp: nowSec + 600,
+      // sessionExp intentionally omitted
+    })
+
+    const response = await request(app.getHttpServer())
+      .get('/api/auth/me')
+      .set('Cookie', `viewpro_platform_access_token=${token}; Path=/; HttpOnly`)
 
     expect(response.status).toBe(401)
     expect(response.body.operator).toBeUndefined()
