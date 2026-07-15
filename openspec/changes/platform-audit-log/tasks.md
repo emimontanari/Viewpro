@@ -83,7 +83,7 @@ T-01 (contract: AuditActor + AuditLoggedPayload + widen eventType/payload union)
 
 ## WU-1 — platform-contract union + shared actor helper + InmoView emit sites
 
-### [ ] T-01 — Widen `platform-contract` data/ with `AuditActor` + `AuditLoggedPayload`
+### [x] T-01 — Widen `platform-contract` data/ with `AuditActor` + `AuditLoggedPayload`
 **Type**: impl
 **Spec**: platform-data-lane delta — AUDIT_LOGGED Event Type
 **WU**: WU-1, commit 1
@@ -101,7 +101,7 @@ T-01 (contract: AuditActor + AuditLoggedPayload + widen eventType/payload union)
 
 ---
 
-### [ ] T-02 — RED: compile-time assertions — AUDIT_LOGGED union coverage + payload shape
+### [x] T-02 — RED: compile-time assertions — AUDIT_LOGGED union coverage + payload shape
 **Type**: test (RED)
 **Spec**: platform-data-lane delta — Contract accepts AUDIT_LOGGED as a valid eventType (both scenarios)
 **WU**: WU-1, commit 2
@@ -119,7 +119,7 @@ All RED until T-03 implements the assertions.
 
 ---
 
-### [ ] T-03 — GREEN: implement compile-time assertions; confirm typecheck
+### [x] T-03 — GREEN: implement compile-time assertions; confirm typecheck
 **Type**: impl
 **Spec**: platform-data-lane delta — Contract continues to accept the existing event types
 **WU**: WU-1, commit 3
@@ -133,7 +133,7 @@ All RED until T-03 implements the assertions.
 
 ---
 
-### [ ] T-04 — RED: unit tests — `PlatformOutboxWriter` accepts the `AUDIT_LOGGED` input arm
+### [x] T-04 — RED: unit tests — `PlatformOutboxWriter` accepts the `AUDIT_LOGGED` input arm
 **Type**: test (RED)
 **Spec**: platform-data-lane delta — writer accepts AUDIT_LOGGED alongside the existing two event types
 **WU**: WU-1, commit 4
@@ -150,7 +150,7 @@ All RED until T-05.
 
 ---
 
-### [ ] T-05 — GREEN: widen `PlatformOutboxWriter.OutboxEventInput` union with a 3rd arm
+### [x] T-05 — GREEN: widen `PlatformOutboxWriter.OutboxEventInput` union with a 3rd arm
 **Type**: impl
 **Spec**: platform-data-lane delta — writer union
 **WU**: WU-1, commit 5
@@ -167,7 +167,7 @@ All RED until T-05.
 
 ---
 
-### [ ] T-06 — RED: unit tests — shared `toAuditActor` mapper (operator/user, label=id)
+### [x] T-06 — RED: unit tests — shared `toAuditActor` mapper (operator/user, label=id)
 **Type**: test (RED)
 **Spec**: platform-audit-log — Audit Actor Identity Carries a Display Label In-Payload (both actor-type scenarios)
 **WU**: WU-1, commit 6
@@ -184,7 +184,7 @@ All RED until T-07.
 
 ---
 
-### [ ] T-07 — GREEN: shared `audit-actor.ts` helper (Q5)
+### [x] T-07 — GREEN: shared `audit-actor.ts` helper (Q5)
 **Type**: impl
 **Spec**: platform-audit-log — Audit Actor Identity Carries a Display Label In-Payload; Q5
 **WU**: WU-1, commit 7
@@ -210,7 +210,7 @@ All RED until T-07.
 
 ---
 
-### [ ] T-08 — RED: unit/integration tests — status repo emits `AUDIT_LOGGED` as a 2nd emit in-tx; rollback ⇒ neither event (regression guard b)
+### [x] T-08 — RED: unit/integration tests — status repo emits `AUDIT_LOGGED` as a 2nd emit in-tx; rollback ⇒ neither event (regression guard b)
 **Type**: test (RED)
 **Spec**: platform-audit-log — Status Change Audit Event — Transactional Emit (all 3 scenarios)
 **WU**: WU-1, commit 8
@@ -229,7 +229,7 @@ All RED until T-09.
 
 ---
 
-### [ ] T-09 — GREEN: status repo emits `AUDIT_LOGGED` as a 2nd emit (in the same tx)
+### [x] T-09 — GREEN: status repo emits `AUDIT_LOGGED` as a 2nd emit (in the same tx)
 **Type**: impl
 **Spec**: platform-audit-log — Status Change Audit Event — Transactional Emit
 **WU**: WU-1, commit 9
@@ -258,7 +258,7 @@ All RED until T-09.
 
 ---
 
-### [ ] T-10 — RED: unit/integration tests — limits repo emits its first-ever `AUDIT_LOGGED`; rollback ⇒ no event (regression guard c)
+### [x] T-10 — RED: unit/integration tests — limits repo emits its first-ever `AUDIT_LOGGED`; rollback ⇒ no event (regression guard c)
 **Type**: test (RED)
 **Spec**: platform-audit-log — Limits Change Audit Event — Transactional Emit (both scenarios)
 **WU**: WU-1, commit 10
@@ -277,7 +277,7 @@ All RED until T-11.
 
 ---
 
-### [ ] T-11 — GREEN: inject `PlatformOutboxWriter` into limits repo; emit `AUDIT_LOGGED` on `updated`
+### [x] T-11 — GREEN: inject `PlatformOutboxWriter` into limits repo; emit `AUDIT_LOGGED` on `updated`
 **Type**: impl
 **Spec**: platform-audit-log — Limits Change Audit Event — Transactional Emit; A4
 **WU**: WU-1, commit 11
@@ -739,9 +739,9 @@ All RED until T-25.
 
 ## Success Checklist (maps to spec acceptance criteria)
 
-- [ ] A status change emits exactly one `AUDIT_LOGGED` event in the same `$transaction`; existing `TENANT_STATUS_CHANGED` emit unaffected (T-08, T-09 — acceptance #1)
-- [ ] A limits change emits exactly one `AUDIT_LOGGED` event in the same `$transaction` (limits' first-ever outbox emit) (T-10, T-11 — acceptance #2)
-- [ ] Each event carries `actor` (WHICH identity), `tenantId`, `action`, `previousValue`/`newValue` (T-06, T-07, T-09, T-11 — acceptance #3)
+- [x] A status change emits exactly one `AUDIT_LOGGED` event in the same `$transaction`; existing `TENANT_STATUS_CHANGED` emit unaffected (T-08, T-09 — acceptance #1)
+- [x] A limits change emits exactly one `AUDIT_LOGGED` event in the same `$transaction` (limits' first-ever outbox emit) (T-10, T-11 — acceptance #2)
+- [x] Each event carries `actor` (WHICH identity), `tenantId`, `action`, `previousValue`/`newValue` (T-06, T-07, T-09, T-11 — acceptance #3)
 - [ ] viewpro-api ingest appends one `platform_audit_log` row per event; re-delivery idempotent on `sourceEventId` (T-14, T-15, T-16, T-20 — acceptance #4)
 - [ ] `GET /operators/audit` returns newest-first (`seqNo` DESC), offset/limit paginated (cap 200), `{total, items}`, from `viewpro_platform` only (T-18, T-19 — acceptance #5)
 - [ ] `GET /operators/audit` is operator-only: 401 without a valid operator session (T-18 — acceptance #6)
