@@ -139,7 +139,9 @@ void _assertAuditPayloadShape
 
 /**
  * Negative: AuditActor['type'] is 'operator' | 'user' — a literal 'admin' is NOT
- * assignable. RED: without @ts-expect-error, this line fails `tsc --noEmit`.
+ * assignable. The @ts-expect-error suppresses the type error; if the type were
+ * widened to `string`, tsc would warn that the expect-error is unnecessary.
  */
+// @ts-expect-error — 'admin' is not assignable to AuditActor['type']
 const _assertBadActorType: AuditActor['type'] = 'admin'
 void _assertBadActorType
