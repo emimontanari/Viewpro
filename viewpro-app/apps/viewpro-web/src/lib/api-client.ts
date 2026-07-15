@@ -5,6 +5,7 @@ const DEFAULT_API_URL = 'http://localhost:3002/api';
 export type ApiError = {
   status: number;
   message: string;
+  code?: string;
   details?: unknown;
 };
 
@@ -16,6 +17,7 @@ type ErrorResponseBody = {
   message?: string | string[];
   error?: string;
   statusCode?: number;
+  code?: string;
 };
 
 export const apiUrl = trimTrailingSlash(process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL);
@@ -41,6 +43,13 @@ export function isApiError(error: unknown): error is ApiError {
     'message' in error &&
     typeof (error as { message?: unknown }).message === 'string'
   );
+}
+
+// D12: distinguishes a step-up-gated 403 from every other error so callers can
+// re-open the step-up modal instead of treating it as a generic failure (or,
+// worse, a 401 that would trigger a logout).
+export function isStepUpRequiredError(error: unknown): error is ApiError {
+  return isApiError(error) && error.status === 403 && error.code === 'STEP_UP_REQUIRED';
 }
 
 export async function apiRequest<TResponse>(
@@ -97,6 +106,7 @@ function toApiError(response: Response, body: unknown): ApiError {
     : parsedBody?.message || parsedBody?.error || response.statusText || 'La solicitud falló.';
 
   return {
+    code: parsedBody?.code,
     details: body,
     message,
     status: response.status
@@ -108,7 +118,12 @@ function isErrorResponseBody(body: unknown): body is ErrorResponseBody {
     return false;
   }
 
-  const candidate = body as { error?: unknown; message?: unknown; statusCode?: unknown };
+  const candidate = body as {
+    error?: unknown;
+    message?: unknown;
+    statusCode?: unknown;
+    code?: unknown;
+  };
   const hasValidMessage =
     candidate.message === undefined ||
     typeof candidate.message === 'string' ||
@@ -117,8 +132,9 @@ function isErrorResponseBody(body: unknown): body is ErrorResponseBody {
   const hasValidError = candidate.error === undefined || typeof candidate.error === 'string';
   const hasValidStatusCode =
     candidate.statusCode === undefined || typeof candidate.statusCode === 'number';
+  const hasValidCode = candidate.code === undefined || typeof candidate.code === 'string';
 
-  return hasValidMessage && hasValidError && hasValidStatusCode;
+  return hasValidMessage && hasValidError && hasValidStatusCode && hasValidCode;
 }
 
 function normalizeApiPath(path: string) {
