@@ -122,3 +122,79 @@ describe('PrismaAdminTenantStatusRepository — AUDIT_LOGGED 2nd emit (T-08)', (
     expect(outboxWriter.emit).not.toHaveBeenCalled()
   })
 })
+
+// ---------------------------------------------------------------------------
+// T-01 — RED: repo terminal-variant for CANCELLED current status (D1/D2)
+//
+// Spec: admin-tenant-status — CANCELLED Is Terminal — Server-Side Enforcement
+//   (all 3 scenarios)
+// ---------------------------------------------------------------------------
+
+describe('PrismaAdminTenantStatusRepository — terminal variant for CANCELLED current status (D1/D2)', () => {
+  const CANCELLED_ROW: TenantRow = {
+    id: 'tenant-cancelled-1',
+    status: 'CANCELLED' as TenantStatus,
+    updatedAt: new Date('2026-03-01T00:00:00Z'),
+    name: 'Cancelled Co',
+    slug: 'cancelled-co',
+  }
+
+  it('CANCELLED → ACTIVE: returns terminal, tenant.update NOT called, outboxWriter.emit NOT called', async () => {
+    const tx = makeMockTx(CANCELLED_ROW)
+    const outboxWriter = makeOutboxWriterStub()
+    const repo = new PrismaAdminTenantStatusRepository({} as never, outboxWriter as never)
+    const actor: CommandActor = { type: 'operator', operatorId: 'op-1' }
+
+    const result = await repo.updateTenantStatus(
+      { tenantId: CANCELLED_ROW.id, targetStatus: 'ACTIVE' as TenantStatus, actor, now: NOW },
+      tx,
+    )
+
+    expect(result).toEqual({
+      status: 'terminal',
+      tenantId: CANCELLED_ROW.id,
+      currentStatus: 'CANCELLED',
+      updatedAt: CANCELLED_ROW.updatedAt,
+    })
+    expect((tx as unknown as { tenant: { update: ReturnType<typeof vi.fn> } }).tenant.update).not.toHaveBeenCalled()
+    expect(outboxWriter.emit).not.toHaveBeenCalled()
+  })
+
+  it('CANCELLED → SUSPENDED: returns terminal, zero writes', async () => {
+    const tx = makeMockTx(CANCELLED_ROW)
+    const outboxWriter = makeOutboxWriterStub()
+    const repo = new PrismaAdminTenantStatusRepository({} as never, outboxWriter as never)
+    const actor: CommandActor = { type: 'operator', operatorId: 'op-1' }
+
+    const result = await repo.updateTenantStatus(
+      { tenantId: CANCELLED_ROW.id, targetStatus: 'SUSPENDED' as TenantStatus, actor, now: NOW },
+      tx,
+    )
+
+    expect(result).toEqual({
+      status: 'terminal',
+      tenantId: CANCELLED_ROW.id,
+      currentStatus: 'CANCELLED',
+      updatedAt: CANCELLED_ROW.updatedAt,
+    })
+    expect((tx as unknown as { tenant: { update: ReturnType<typeof vi.fn> } }).tenant.update).not.toHaveBeenCalled()
+    expect(outboxWriter.emit).not.toHaveBeenCalled()
+  })
+
+  it('CANCELLED → CANCELLED: returns terminal (NOT unchanged:true) — proves ordering (D2)', async () => {
+    const tx = makeMockTx(CANCELLED_ROW)
+    const outboxWriter = makeOutboxWriterStub()
+    const repo = new PrismaAdminTenantStatusRepository({} as never, outboxWriter as never)
+    const actor: CommandActor = { type: 'operator', operatorId: 'op-1' }
+
+    const result = await repo.updateTenantStatus(
+      { tenantId: CANCELLED_ROW.id, targetStatus: 'CANCELLED' as TenantStatus, actor, now: NOW },
+      tx,
+    )
+
+    expect(result.status).toBe('terminal')
+    expect(result).not.toMatchObject({ status: 'unchanged' })
+    expect((tx as unknown as { tenant: { update: ReturnType<typeof vi.fn> } }).tenant.update).not.toHaveBeenCalled()
+    expect(outboxWriter.emit).not.toHaveBeenCalled()
+  })
+})
