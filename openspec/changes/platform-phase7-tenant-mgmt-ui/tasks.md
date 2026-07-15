@@ -322,7 +322,7 @@ All RED until T-15.
 
 ---
 
-### [ ] T-16 — RED: `tenants-management-page.spec.tsx` — mutations, suspend confirm, unchanged, 404
+### [x] T-16 — RED: `tenants-management-page.spec.tsx` — mutations, suspend confirm, unchanged, 404
 **Type**: test (RED)
 **Spec**: Status Toggle with Suspend Confirmation (all 4 scenarios); Limits Editing via Modal Dialog (scenarios 2, 3); Double-Submit Guard; Error Handling (both scenarios)
 **WU**: WU-2, commit 5
