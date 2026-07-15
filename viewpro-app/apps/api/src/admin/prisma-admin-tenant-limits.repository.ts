@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { AnalyticsActorType, AnalyticsEventName, type Prisma } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
+import { PlatformOutboxWriter } from '../platform-data/platform-outbox-writer'
+import { toAuditActor } from './audit-actor'
 import type {
   AdminTenantLimits,
   AdminTenantLimitsRepository,
@@ -18,7 +20,10 @@ type LockedTenantLimitsRow = {
 
 @Injectable()
 export class PrismaAdminTenantLimitsRepository implements AdminTenantLimitsRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    private readonly outboxWriter: PlatformOutboxWriter,
+  ) {}
 
   async updateTenantLimits(
     input: UpdateAdminTenantLimitsInput,
@@ -79,6 +84,20 @@ export class PrismaAdminTenantLimitsRepository implements AdminTenantLimitsRepos
           },
           occurredAt: input.now,
         },
+      })
+
+      // platform-audit-log (T-11, A4): first-ever outbox emit from this repo,
+      // same tx as the domain mutation — rollback ⇒ no event.
+      await this.outboxWriter.emit(client, {
+        eventType: 'AUDIT_LOGGED',
+        tenantId: tenant.id,
+        payload: {
+          action: 'TENANT_LIMITS_UPDATED',
+          previousValue: previousLimits,
+          newValue: updatedLimits,
+          actor: toAuditActor(input.actor),
+        },
+        occurredAt: input.now,
       })
 
       return {

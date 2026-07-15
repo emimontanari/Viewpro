@@ -132,6 +132,110 @@ describe('PlatformOutboxWriter — TENANT_REGISTERED input shape (T-04/T-05)', (
   })
 })
 
+// ---------------------------------------------------------------------------
+// T-04 — RED: PlatformOutboxWriter accepts the AUDIT_LOGGED input arm (platform-audit-log)
+//
+// Spec: platform-data-lane delta — AUDIT_LOGGED Event Type; writer union
+//   - emit(tx, { eventType: 'AUDIT_LOGGED', ... }) calls create with correct fields
+//   - emit(tx, {...TENANT_STATUS_CHANGED...}) and emit(tx, {...TENANT_REGISTERED...})
+//     still accepted (regression)
+//   - All three still acquire pg_advisory_xact_lock(OUTBOX_LOCK_KEY)
+// ---------------------------------------------------------------------------
+
+describe('PlatformOutboxWriter — AUDIT_LOGGED input shape (T-04/T-05)', () => {
+  it('emit with AUDIT_LOGGED calls tx.platformOutboxEvent.create with all payload fields', async () => {
+    const writer = new PlatformOutboxWriter()
+    const mockCreate = vi.fn().mockResolvedValue({ id: 'row-audit', seqNo: 4n })
+    const tx = makeMockTx({ create: mockCreate })
+
+    const occurredAt = new Date('2026-02-01T00:00:00Z')
+
+    await writer.emit(tx, {
+      eventType: 'AUDIT_LOGGED',
+      tenantId: 'tenant-abc',
+      payload: {
+        action: 'TENANT_STATUS_CHANGED',
+        previousValue: { status: 'TRIAL' },
+        newValue: { status: 'ACTIVE' },
+        actor: { id: 'op-1', type: 'operator', label: 'op-1' },
+      },
+      occurredAt,
+    })
+
+    expect(mockCreate).toHaveBeenCalledOnce()
+    expect(mockCreate).toHaveBeenCalledWith({
+      data: {
+        eventType: 'AUDIT_LOGGED',
+        tenantId: 'tenant-abc',
+        payload: {
+          action: 'TENANT_STATUS_CHANGED',
+          previousValue: { status: 'TRIAL' },
+          newValue: { status: 'ACTIVE' },
+          actor: { id: 'op-1', type: 'operator', label: 'op-1' },
+        },
+        occurredAt,
+      },
+    })
+  })
+
+  it('[regression] emit with TENANT_STATUS_CHANGED and TENANT_REGISTERED still accepted after AUDIT_LOGGED widening', async () => {
+    const writer = new PlatformOutboxWriter()
+    const mockCreate = vi.fn().mockResolvedValue({ id: 'row-sc', seqNo: 5n })
+    const tx = makeMockTx({ create: mockCreate })
+
+    await writer.emit(tx, {
+      eventType: 'TENANT_STATUS_CHANGED',
+      tenantId: 'tenant-abc',
+      payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE' },
+      occurredAt: new Date(),
+    })
+    await writer.emit(tx, {
+      eventType: 'TENANT_REGISTERED',
+      tenantId: 'tenant-new',
+      payload: {
+        id: 'tenant-new',
+        name: 'New Corp',
+        slug: 'new-corp',
+        newStatus: 'TRIAL',
+        limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+      },
+      occurredAt: new Date(),
+    })
+
+    expect(mockCreate).toHaveBeenCalledTimes(2)
+    expect(mockCreate.mock.calls[0]![0].data.eventType).toBe('TENANT_STATUS_CHANGED')
+    expect(mockCreate.mock.calls[1]![0].data.eventType).toBe('TENANT_REGISTERED')
+  })
+
+  it('[C1] AUDIT_LOGGED emit also acquires pg_advisory_xact_lock BEFORE create', async () => {
+    const writer = new PlatformOutboxWriter()
+    const callOrder: string[] = []
+    const mockExecuteRaw = vi.fn().mockImplementation(() => {
+      callOrder.push('advisory-lock')
+      return Promise.resolve(1)
+    })
+    const mockCreate = vi.fn().mockImplementation(() => {
+      callOrder.push('create')
+      return Promise.resolve({ id: 'row-audit', seqNo: 4n })
+    })
+    const tx = makeMockTx({ create: mockCreate, executeRaw: mockExecuteRaw })
+
+    await writer.emit(tx, {
+      eventType: 'AUDIT_LOGGED',
+      tenantId: 'tenant-abc',
+      payload: {
+        action: 'TENANT_LIMITS_UPDATED',
+        previousValue: { maxUsers: 10 },
+        newValue: { maxUsers: 25 },
+        actor: { id: 'u-1', type: 'user', label: 'u-1' },
+      },
+      occurredAt: new Date(),
+    })
+
+    expect(callOrder).toEqual(['advisory-lock', 'create'])
+  })
+})
+
 describe('PlatformOutboxWriter', () => {
   it('calls tx.platformOutboxEvent.create with the correct eventType, tenantId, payload, occurredAt', async () => {
     const writer = new PlatformOutboxWriter()

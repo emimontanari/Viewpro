@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { AnalyticsActorType, AnalyticsEventName, type Prisma, type TenantStatus } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import { PlatformOutboxWriter } from '../platform-data/platform-outbox-writer'
+import { toAuditActor } from './audit-actor'
 import type {
   AdminTenantStatusRepository,
   UpdateAdminTenantStatusInput,
@@ -92,6 +93,20 @@ export class PrismaAdminTenantStatusRepository implements AdminTenantStatusRepos
           newStatus: input.targetStatus,
           name: tenant.name,
           slug: tenant.slug,
+        },
+        occurredAt: input.now,
+      })
+
+      // platform-audit-log (T-09): 2nd emit, same tx — generic audit trail
+      // alongside the existing tenant-registry TENANT_STATUS_CHANGED emit.
+      await this.outboxWriter.emit(client, {
+        eventType: 'AUDIT_LOGGED',
+        tenantId: tenant.id,
+        payload: {
+          action: 'TENANT_STATUS_CHANGED',
+          previousValue: { status: tenant.status },
+          newValue: { status: input.targetStatus },
+          actor: toAuditActor(input.actor),
         },
         occurredAt: input.now,
       })
