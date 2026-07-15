@@ -801,7 +801,6 @@ describe("Admin access (e2e)", () => {
 
 	it.each([
 		TenantStatus.TRIAL,
-		TenantStatus.CANCELLED,
 		"NOT_A_STATUS",
 	])("rejects unsupported tenant status %s with 400", async (status) => {
 		const { agent: adminAgent, userId: adminUserId } =
@@ -822,6 +821,50 @@ describe("Admin access (e2e)", () => {
 			.patch(`/api/admin/tenants/${target.tenantId}/status`)
 			.send({ status })
 			.expect(400);
+	});
+
+	// D8 (platform-tenant-cancel): CANCELLED is now a writable target status
+	// through the same shared AdminTenantStatusService gate this legacy /admin
+	// route uses — this is an accepted side effect of widening the gate, not a
+	// new legacy-console code path. The route's own DTO (@IsEnum(TenantStatus))
+	// already accepted CANCELLED before this change; only the domain gate was
+	// rejecting it. See openspec/changes/platform-tenant-cancel/design.md (D8).
+	it("allows VIEWPRO_ADMIN to cancel a tenant via the legacy /admin route (D8)", async () => {
+		const { agent: adminAgent, userId: adminUserId } =
+			await registerTenantSession(
+				"status-cancel-admin@example.com",
+				"Status Cancel Admin Homes",
+			);
+		await prisma.user.update({
+			where: { id: adminUserId },
+			data: { globalRole: GlobalRole.VIEWPRO_ADMIN },
+		});
+		const target = await registerTenantSession(
+			"status-cancel-target@example.com",
+			"Status Cancel Target Homes",
+		);
+
+		const cancelResponse = await adminAgent
+			.patch(`/api/admin/tenants/${target.tenantId}/status`)
+			.send({ status: TenantStatus.CANCELLED })
+			.expect(200);
+
+		expect(cancelResponse.body).toEqual({
+			tenantId: target.tenantId,
+			previousStatus: TenantStatus.TRIAL,
+			status: TenantStatus.CANCELLED,
+			unchanged: false,
+			updatedAt: expect.any(String),
+		});
+		await expectTenantStatus(target.tenantId, TenantStatus.CANCELLED);
+
+		// Terminality: a cancelled tenant can never change status again, even via
+		// this legacy route.
+		await adminAgent
+			.patch(`/api/admin/tenants/${target.tenantId}/status`)
+			.send({ status: TenantStatus.ACTIVE })
+			.expect(400);
+		await expectTenantStatus(target.tenantId, TenantStatus.CANCELLED);
 	});
 
 	it("returns 404 when updating an unknown tenant status", async () => {
