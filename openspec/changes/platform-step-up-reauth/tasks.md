@@ -79,7 +79,7 @@ T-00 (spike: confirm @nestjs/jwt per-call secret override — resolved above, no
 
 ## WU-1 — viewpro-api: endpoint + guard + config + cookie hygiene
 
-### [ ] T-00 — Spike: confirm `@nestjs/jwt` per-call `secret` override
+### [x] T-00 — Spike: confirm `@nestjs/jwt` per-call `secret` override
 **Type**: spike/verify
 **Spec**: N/A (design-dependency gate)
 **WU**: WU-1, pre-work (no commit — findings folded into T-01 commit message context)
@@ -92,7 +92,7 @@ T-00 (spike: confirm @nestjs/jwt per-call secret override — resolved above, no
 
 ---
 
-### [ ] T-01 — RED: env schema step-up config tests
+### [x] T-01 — RED: env schema step-up config tests
 **Type**: test (RED)
 **Spec**: operator-step-up-auth — Step-up Endpoint (TTL); AC10 (no migration/no contract change is unaffected by config)
 **WU**: WU-1, commit 1
@@ -110,7 +110,7 @@ All RED until T-02.
 
 ---
 
-### [ ] T-02 — GREEN: add `STEP_UP_TOKEN_SECRET`/`STEP_UP_TTL_SECONDS` config + cookie constant
+### [x] T-02 — GREEN: add `STEP_UP_TOKEN_SECRET`/`STEP_UP_TTL_SECONDS` config + cookie constant
 **Type**: impl
 **Spec**: operator-step-up-auth — Step-up Endpoint; Step-up Freshness (5-min window)
 **WU**: WU-1, commit 2
@@ -127,7 +127,7 @@ All RED until T-02.
 
 ---
 
-### [ ] T-03 — RED: `TokenService` step-up sign/verify/cookie tests (D1–D3)
+### [x] T-03 — RED: `TokenService` step-up sign/verify/cookie tests (D1–D3)
 **Type**: test (RED)
 **Spec**: operator-step-up-auth — Step-up Endpoint (cookie shape); Cookie Hygiene; threat matrix — Token confusion
 **WU**: WU-1, commit 3
@@ -147,7 +147,7 @@ All RED until T-04.
 
 ---
 
-### [ ] T-04 — GREEN: `TokenService` step-up sign/verify/cookie methods (D1–D3)
+### [x] T-04 — GREEN: `TokenService` step-up sign/verify/cookie methods (D1–D3)
 **Type**: impl
 **Spec**: operator-step-up-auth — Step-up Endpoint; Cookie Hygiene
 **WU**: WU-1, commit 4
@@ -166,7 +166,7 @@ All RED until T-04.
 
 ---
 
-### [ ] T-05 — RED: dummy-hash extraction + `StepUpUseCase` + `findById` unit tests (D7)
+### [x] T-05 — RED: dummy-hash extraction + `StepUpUseCase` + `findById` unit tests (D7)
 **Type**: test (RED)
 **Spec**: operator-step-up-auth — Step-up Endpoint (both scenarios); threat matrix — Brute force / enumeration
 **WU**: WU-1, commit 5
@@ -185,7 +185,7 @@ All RED until T-06.
 
 ---
 
-### [ ] T-06 — GREEN: `security/dummy-password-hash.ts` + `IOperatorRepository.findById` + `step-up.dto.ts` + `StepUpUseCase` (D7)
+### [x] T-06 — GREEN: `security/dummy-password-hash.ts` + `IOperatorRepository.findById` + `step-up.dto.ts` + `StepUpUseCase` (D7)
 **Type**: impl
 **Spec**: operator-step-up-auth — Step-up Endpoint
 **WU**: WU-1, commit 6
@@ -204,7 +204,7 @@ All RED until T-06.
 
 ---
 
-### [ ] T-07 — RED: `POST /auth/step-up` integration tests (D6, D8)
+### [x] T-07 — RED: `POST /auth/step-up` integration tests (D6, D8)
 **Type**: test (RED)
 **Spec**: operator-step-up-auth — Step-up Endpoint — Password Re-verification (all 3 scenarios)
 **WU**: WU-1, commit 7
@@ -222,7 +222,7 @@ All RED until T-08.
 
 ---
 
-### [ ] T-08 — GREEN: `POST /auth/step-up` route + `auth.module.ts` wiring
+### [x] T-08 — GREEN: `POST /auth/step-up` route + `auth.module.ts` wiring
 **Type**: impl
 **Spec**: operator-step-up-auth — Step-up Endpoint — Password Re-verification
 **WU**: WU-1, commit 8
@@ -237,7 +237,7 @@ All RED until T-08.
 
 ---
 
-### [ ] T-09 — RED: `StepUpGuard` unit tests (D4–D6)
+### [x] T-09 — RED: `StepUpGuard` unit tests (D4–D6)
 **Type**: test (RED)
 **Spec**: operator-step-up-auth — StepUpGuard Gates Destructive Tenant Routes; Reactivate Is Exempt; Cross-Operator Step-up Rejection
 **WU**: WU-1, commit 9
@@ -257,7 +257,7 @@ All RED until T-10.
 
 ---
 
-### [ ] T-10 — GREEN: `step-up.guard.ts` + `@StepUpStatusTargets` decorator (D4–D6)
+### [x] T-10 — GREEN: `step-up.guard.ts` + `@StepUpStatusTargets` decorator (D4–D6)
 **Type**: impl
 **Spec**: operator-step-up-auth — StepUpGuard Gates Destructive Tenant Routes; Reactivate Is Exempt; Cross-Operator Step-up Rejection
 **WU**: WU-1, commit 10
@@ -274,7 +274,7 @@ All RED until T-10.
 
 ---
 
-### [ ] T-11 — RED: destructive-route integration tests — gated/exempt/reusable/expired/cross-operator/body-manipulation (AC2–AC6, threat matrix)
+### [x] T-11 — RED: destructive-route integration tests — gated/exempt/reusable/expired/cross-operator/body-manipulation (AC2–AC6, threat matrix)
 **Type**: test (RED)
 **Spec**: operator-step-up-auth — StepUpGuard Gates Destructive Tenant Routes (all 5 scenarios); Reactivate Is Exempt; Step-up Freshness (both scenarios); Cross-Operator Step-up Rejection
 **WU**: WU-1, commit 11
@@ -298,7 +298,7 @@ All RED until T-12.
 
 ---
 
-### [ ] T-12 — GREEN: wire `StepUpGuard` on the 2 destructive routes + export from `AuthModule`
+### [x] T-12 — GREEN: wire `StepUpGuard` on the 2 destructive routes + export from `AuthModule`
 **Type**: impl
 **Spec**: operator-step-up-auth — StepUpGuard Gates Destructive Tenant Routes; Reactivate Is Exempt
 **WU**: WU-1, commit 12
@@ -315,7 +315,7 @@ All RED until T-12.
 
 ---
 
-### [ ] T-13 — RED: cookie-hygiene + guard-ordering tests (AC7, threat matrix — stale cookie, StepUpGuard-never-bypasses)
+### [x] T-13 — RED: cookie-hygiene + guard-ordering tests (AC7, threat matrix — stale cookie, StepUpGuard-never-bypasses)
 **Type**: test (RED)
 **Spec**: operator-step-up-auth — Cookie Hygiene — Symmetric Clear on Logout and Auth Failure (both scenarios); StepUpGuard Never Bypasses AuthGuard
 **WU**: WU-1, commit 13
@@ -331,7 +331,7 @@ All RED until T-14.
 
 ---
 
-### [ ] T-14 — GREEN: symmetric cookie clear on `logout()` and `AuthGuard` failure (D9)
+### [x] T-14 — GREEN: symmetric cookie clear on `logout()` and `AuthGuard` failure (D9)
 **Type**: impl
 **Spec**: operator-step-up-auth — Cookie Hygiene — Symmetric Clear on Logout and Auth Failure
 **WU**: WU-1, commit 14
@@ -584,15 +584,15 @@ All RED until T-24.
 
 ## Success Checklist (maps to spec acceptance criteria)
 
-- [ ] Correct password → `POST /auth/step-up` 200 + step-up cookie (httpOnly, `stepUp:true`, `sub`, ~5min exp) (T-07, T-08)
-- [ ] Wrong password → 401, no cookie set; unauthenticated → 401 before password check (T-07, T-08)
-- [ ] Destructive route (status SUSPENDED/CANCELLED, limits) without step-up → 403 `STEP_UP_REQUIRED`, no mutation, no InmoView call, no outbox event (T-11, T-12)
-- [ ] Same routes WITH fresh step-up → 200, existing behavior (terminality, audit, outbox) unaffected (T-11, T-12)
-- [ ] Reactivate (→ACTIVE) succeeds with NO step-up (T-11, T-12)
-- [ ] Step-up cookie reusable across multiple destructive actions within 5 min; rejected after expiry (T-11)
-- [ ] Cross-operator step-up rejected — `sub` bound to `request.user.id` (T-09, T-11)
-- [ ] `logout()` and `AuthGuard`-failure clear BOTH cookies symmetrically (T-13, T-14)
-- [ ] `StepUpGuard` never bypasses `AuthGuard` — unauthenticated + present step-up cookie → 401, not 403 (T-13, T-14)
+- [x] Correct password → `POST /auth/step-up` 200 + step-up cookie (httpOnly, `stepUp:true`, `sub`, ~5min exp) (T-07, T-08)
+- [x] Wrong password → 401, no cookie set; unauthenticated → 401 before password check (T-07, T-08)
+- [x] Destructive route (status SUSPENDED/CANCELLED, limits) without step-up → 403 `STEP_UP_REQUIRED`, no mutation, no InmoView call, no outbox event (T-11, T-12)
+- [x] Same routes WITH fresh step-up → 200, existing behavior (terminality, audit, outbox) unaffected (T-11, T-12)
+- [x] Reactivate (→ACTIVE) succeeds with NO step-up (T-11, T-12)
+- [x] Step-up cookie reusable across multiple destructive actions within 5 min; rejected after expiry (T-11)
+- [x] Cross-operator step-up rejected — `sub` bound to `request.user.id` (T-09, T-11)
+- [x] `logout()` and `AuthGuard`-failure clear BOTH cookies symmetrically (T-13, T-14)
+- [x] `StepUpGuard` never bypasses `AuthGuard` — unauthenticated + present step-up cookie → 401, not 403 (T-13, T-14)
 - [ ] FE prompts for password before a destructive action unless a fresh step-up is server-confirmed valid; threads through status/limits mutations (T-19–T-24)
 - [ ] `403 STEP_UP_REQUIRED` mid-session re-opens the modal — never logs out, never redirects to sign-in (T-21, T-22, T-23)
 - [ ] Operator-lane only — legacy `/admin` lane and its DTOs unchanged (T-25 checklist item 8)
