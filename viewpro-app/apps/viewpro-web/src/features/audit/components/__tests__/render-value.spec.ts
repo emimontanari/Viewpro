@@ -1,0 +1,82 @@
+/**
+ * T-22 — RED: renderValue() defensive rendering tests
+ * Spec: design Testing Strategy — renderValue renders old→new without
+ *   throwing on unexpected/malformed shapes (R4)
+ *
+ * Tests cover:
+ *   - null/undefined → '—'
+ *   - plain object → key:value lines (per-field, e.g. limits deltas)
+ *   - primitives (string/number/boolean) → String(v)
+ *   - never throws regardless of input shape
+ *   - action label map (Q4): known actions map to es-AR labels, unmapped
+ *     values render raw
+ */
+
+import { describe, it, expect } from 'vitest';
+import { renderValue, actionLabel } from '../render-value';
+
+describe('renderValue()', () => {
+  it('renders null as em-dash', () => {
+    expect(renderValue(null)).toBe('—');
+  });
+
+  it('renders undefined as em-dash', () => {
+    expect(renderValue(undefined)).toBe('—');
+  });
+
+  it('renders a plain object as key:value lines', () => {
+    const result = renderValue({ status: 'ACTIVE' });
+
+    expect(result).toContain('status');
+    expect(result).toContain('ACTIVE');
+  });
+
+  it('renders a multi-field object with one line per field (limits delta)', () => {
+    const result = renderValue({
+      maxUsers: 10,
+      maxActivePropertyEngagements: 50,
+      maxDocumentsStorageMb: 1024
+    });
+
+    expect(result).toContain('maxUsers');
+    expect(result).toContain('10');
+    expect(result).toContain('maxActivePropertyEngagements');
+    expect(result).toContain('50');
+    expect(result).toContain('maxDocumentsStorageMb');
+    expect(result).toContain('1024');
+  });
+
+  it('renders a string primitive via String(v)', () => {
+    expect(renderValue('ACTIVE')).toBe('ACTIVE');
+  });
+
+  it('renders a number primitive via String(v)', () => {
+    expect(renderValue(42)).toBe('42');
+  });
+
+  it('renders a boolean primitive via String(v)', () => {
+    expect(renderValue(true)).toBe('true');
+  });
+
+  it('never throws on an empty object', () => {
+    expect(() => renderValue({})).not.toThrow();
+  });
+
+  it('never throws on an array', () => {
+    expect(() => renderValue([1, 2, 3])).not.toThrow();
+  });
+});
+
+describe('actionLabel()', () => {
+  it('maps TENANT_STATUS_CHANGED to "Estado"', () => {
+    expect(actionLabel('TENANT_STATUS_CHANGED')).toBe('Estado');
+  });
+
+  it('maps TENANT_LIMITS_UPDATED to "Límites"', () => {
+    expect(actionLabel('TENANT_LIMITS_UPDATED')).toBe('Límites');
+  });
+
+  it('renders an unmapped action raw (no throw)', () => {
+    expect(actionLabel('SOME_FUTURE_ACTION')).toBe('SOME_FUTURE_ACTION');
+  });
+});
