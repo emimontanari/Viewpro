@@ -163,6 +163,57 @@ describe('Outbox write integration — $transaction atomicity', () => {
   })
 
   // -------------------------------------------------------------------------
+  // T-08 — RED: status change also emits AUDIT_LOGGED as a 2nd outbox row,
+  // in the SAME transaction as TENANT_STATUS_CHANGED (regression guard b).
+  //
+  // Spec: platform-audit-log — Status Change Audit Event — Transactional Emit
+  // -------------------------------------------------------------------------
+  it('[T-08] updated branch: exactly one TENANT_STATUS_CHANGED AND exactly one AUDIT_LOGGED outbox row', async () => {
+    const tenant = await seedTenant(`outbox-audit-status-${Date.now()}`, TenantStatus.TRIAL)
+    const token = await mintServiceToken()
+
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'ACTIVE', idempotencyKey: `outbox-audit-status-${Date.now()}` })
+      .expect(200)
+
+    const rows = await prisma.platformOutboxEvent.findMany({ where: { tenantId: tenant.id } })
+    expect(rows).toHaveLength(2)
+
+    const statusRow = rows.find((r) => r.eventType === 'TENANT_STATUS_CHANGED')
+    const auditRow = rows.find((r) => r.eventType === 'AUDIT_LOGGED')
+    expect(statusRow).toBeDefined()
+    expect(auditRow).toBeDefined()
+
+    const auditPayload = auditRow!.payload as Record<string, unknown>
+    expect(auditPayload.action).toBe('TENANT_STATUS_CHANGED')
+    expect(auditPayload.previousValue).toEqual({ status: 'TRIAL' })
+    expect(auditPayload.newValue).toEqual({ status: 'ACTIVE' })
+    expect(auditPayload.actor).toBeDefined()
+  })
+
+  // -------------------------------------------------------------------------
+  // T-08 — RED: rolled-back status transaction leaves no AUDIT_LOGGED row
+  // (in addition to the pre-existing no-TENANT_STATUS_CHANGED-row assertion)
+  // -------------------------------------------------------------------------
+  it('[T-08] invalid request (400) leaves zero AUDIT_LOGGED rows (rolled-back tx)', async () => {
+    const tenant = await seedTenant(`outbox-audit-rollback-${Date.now()}`)
+    const token = await mintServiceToken()
+
+    await request(app.getHttpServer())
+      .post(`/api/internal/platform/tenants/${tenant.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetStatus: 'NOT_VALID_STATUS', idempotencyKey: `outbox-audit-rollback-${Date.now()}` })
+      .expect(400)
+
+    const auditRows = await prisma.platformOutboxEvent.findMany({
+      where: { tenantId: tenant.id, eventType: 'AUDIT_LOGGED' },
+    })
+    expect(auditRows).toHaveLength(0)
+  })
+
+  // -------------------------------------------------------------------------
   // Scenario: outbox row commits atomically WITH the tenant update and analyticsEvent
   // -------------------------------------------------------------------------
   it('outbox row, tenant update, and analyticsEvent all committed in the same tx', async () => {
