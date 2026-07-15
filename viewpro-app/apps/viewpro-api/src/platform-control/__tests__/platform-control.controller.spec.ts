@@ -415,5 +415,24 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
       expect(res.status).toBe(400)
       expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
     })
+
+    // -----------------------------------------------------------------------
+    // T-13 — RED: StepUpGuard never bypasses AuthGuard — 401 wins over 403
+    //
+    // Spec: operator-step-up-auth — StepUpGuard Never Bypasses AuthGuard
+    // -----------------------------------------------------------------------
+    it('no access cookie but a valid, fresh step-up cookie present → 401 (NOT the STEP_UP_REQUIRED 403 shape)', async () => {
+      const cookie = await getSessionCookie()
+      const stepUpCookie = await getStepUpCookie(cookie)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', stepUpCookie)
+        .send({ status: 'SUSPENDED' })
+
+      expect(res.status).toBe(401)
+      expect(res.body.code).not.toBe('STEP_UP_REQUIRED')
+      expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
+    })
   })
 })

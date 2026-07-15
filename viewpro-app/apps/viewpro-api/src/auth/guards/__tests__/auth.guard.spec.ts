@@ -1,0 +1,80 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { UnauthorizedException } from '@nestjs/common'
+import type { ExecutionContext } from '@nestjs/common'
+import { AuthGuard } from '../auth.guard'
+import type { TokenService } from '../../tokens/token.service'
+
+/**
+ * T-13 — RED: AuthGuard failure paths clear BOTH cookies before throwing 401
+ * (D9, AC7).
+ */
+
+function makeContext(cookies: Record<string, string | undefined>) {
+  const request = { cookies, user: undefined }
+  const response = { clearCookie: vi.fn() }
+
+  const context = {
+    switchToHttp: () => ({
+      getRequest: () => request,
+      getResponse: () => response,
+    }),
+  } as unknown as ExecutionContext
+
+  return { context, response }
+}
+
+function makeGuard(options: { verifyAccessToken?: ReturnType<typeof vi.fn> }) {
+  const tokenService = {
+    verifyAccessToken: options.verifyAccessToken ?? vi.fn(),
+    clearAccessCookie: vi.fn((response: { clearCookie: (...args: unknown[]) => void }) => {
+      response.clearCookie('viewpro_platform_access_token', { httpOnly: true })
+    }),
+    clearStepUpCookie: vi.fn((response: { clearCookie: (...args: unknown[]) => void }) => {
+      response.clearCookie('viewpro_platform_stepup_token', { httpOnly: true })
+    }),
+  }
+
+  return { guard: new AuthGuard(tokenService as unknown as TokenService), tokenService }
+}
+
+describe('AuthGuard — failure paths clear both cookies (D9, AC7)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('missing access token: clears both cookies via getResponse(), then throws UnauthorizedException', async () => {
+    const { guard, tokenService } = makeGuard({})
+    const { context, response } = makeContext({})
+
+    await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
+
+    expect(tokenService.clearAccessCookie).toHaveBeenCalledWith(response)
+    expect(tokenService.clearStepUpCookie).toHaveBeenCalledWith(response)
+    expect(response.clearCookie).toHaveBeenCalledTimes(2)
+  })
+
+  it('verify throws (expired/tampered token): clears both cookies, then throws UnauthorizedException', async () => {
+    const verifyAccessToken = vi.fn().mockRejectedValue(new Error('invalid'))
+    const { guard, tokenService } = makeGuard({ verifyAccessToken })
+    const { context, response } = makeContext({ viewpro_platform_access_token: 'tampered.token' })
+
+    await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
+
+    expect(tokenService.clearAccessCookie).toHaveBeenCalledWith(response)
+    expect(tokenService.clearStepUpCookie).toHaveBeenCalledWith(response)
+    expect(response.clearCookie).toHaveBeenCalledTimes(2)
+  })
+
+  it('valid token: does not clear any cookie and returns true', async () => {
+    const verifyAccessToken = vi.fn().mockResolvedValue({ sub: 'op-1', email: 'op@viewpro.app' })
+    const { guard, tokenService } = makeGuard({ verifyAccessToken })
+    const { context, response } = makeContext({ viewpro_platform_access_token: 'valid.token' })
+
+    const result = await guard.canActivate(context)
+
+    expect(result).toBe(true)
+    expect(tokenService.clearAccessCookie).not.toHaveBeenCalled()
+    expect(tokenService.clearStepUpCookie).not.toHaveBeenCalled()
+    expect(response.clearCookie).not.toHaveBeenCalled()
+  })
+})
