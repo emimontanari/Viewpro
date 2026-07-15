@@ -3,6 +3,7 @@ import type { PlatformOutboxEvent } from '@viewpro/platform-contract' with { 're
 import { MirrorRepository } from './mirror.repository'
 import { CursorRepository } from './cursor.repository'
 import { PlatformTenantRepository } from './platform-tenant.repository'
+import { AuditLogRepository } from './audit-log.repository'
 
 /**
  * IngestService — processes a batch of outbox events from the change-feed.
@@ -20,6 +21,13 @@ import { PlatformTenantRepository } from './platform-tenant.repository'
  *     - TENANT_STATUS_CHANGED → latestStatus (+ name/slug) upsert, create-if-missing (A9)
  *     - any other eventType   → skipped without error
  *
+ * A6 (platform-audit-log): AUDIT_LOGGED events have no `newStatus` field, so
+ *   they must NOT go through the TENANT_* newStatus-guarded branches. They
+ *   are routed EXCLUSIVELY to `platform_audit_log` via AuditLogRepository —
+ *   never to `platform_tenants`. The mirror upsert above already W2-skips
+ *   AUDIT_LOGGED (no `newStatus`) with ZERO MirrorRepository code change
+ *   (A5) — this keeps MetricsService's latest-event-wins query uncorrupted.
+ *
  * Feed error handling: a failure during any single event's upsert causes the
  *   entire batch to be logged-and-skipped. The cursor does NOT advance, so the
  *   poller retries the same batch on the next tick.
@@ -32,6 +40,7 @@ export class IngestService {
     private readonly mirrorRepo: MirrorRepository,
     private readonly cursorRepo: CursorRepository,
     private readonly tenantRepo: PlatformTenantRepository,
+    private readonly auditLogRepo: AuditLogRepository,
   ) {}
 
   /**
@@ -82,6 +91,13 @@ export class IngestService {
    * continues to hold for the projection as well).
    */
   private async routeToTenantProjection(event: PlatformOutboxEvent): Promise<void> {
+    // A6: AUDIT_LOGGED has no newStatus — must NOT go through the TENANT_*
+    // newStatus guards below. Routes exclusively to platform_audit_log.
+    if (event.eventType === 'AUDIT_LOGGED') {
+      await this.auditLogRepo.appendFromEvent(event)
+      return
+    }
+
     if (event.eventType === 'TENANT_REGISTERED') {
       const payload = event.payload as { newStatus?: string } & Record<string, unknown>
       if (!payload.newStatus) {

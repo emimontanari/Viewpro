@@ -6,6 +6,7 @@ import { IngestService } from './ingest.service'
 import { MirrorRepository } from './mirror.repository'
 import { CursorRepository } from './cursor.repository'
 import { PlatformTenantRepository } from './platform-tenant.repository'
+import { AuditLogRepository } from './audit-log.repository'
 import { PlatformDataPollJob } from './platform-data-poll-job'
 import { MetricsService } from './metrics.service'
 import { MetricsController } from './metrics.controller'
@@ -38,6 +39,7 @@ import { TenantRegistryController } from './tenant-registry.controller'
     MirrorRepository,
     CursorRepository,
     PlatformTenantRepository,
+    AuditLogRepository,
     IngestService,
     {
       provide: PlatformDataPollJob,
