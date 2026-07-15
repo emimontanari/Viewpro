@@ -57,6 +57,17 @@ class EnvironmentVariables {
   @MinLength(16)
   PLATFORM_CONTROL_SECRET!: string
 
+  // Required — distinct secret for the step-up ("sudo mode") re-auth cookie.
+  // A missing/weak secret means forgeable step-up tokens. No default.
+  @IsString()
+  @MinLength(16)
+  STEP_UP_TOKEN_SECRET!: string
+
+  @IsInt()
+  @Min(60)
+  @Type(() => Number)
+  STEP_UP_TTL_SECONDS = 300
+
   @IsInt()
   @Min(1)
   @Type(() => Number)
