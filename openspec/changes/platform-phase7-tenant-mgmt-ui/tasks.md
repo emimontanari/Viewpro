@@ -105,7 +105,7 @@ Sequential rationale: the module is built strictly bottom-up (types/schemas → 
 
 ---
 
-### [ ] T-03 — RED: api layer unit tests — types, zod schemas, service, queries
+### [x] T-03 — RED: api layer unit tests — types, zod schemas, service, queries
 **Type**: test (RED)
 **Spec**: Paginated Tenant List (scenarios 1, 3); Status Toggle with Suspend Confirmation (PATCH body shape); Limits Editing via Modal Dialog (PATCH body shape); viewpro-api-Only Isolation (all requests via `apiRequest`)
 **WU**: WU-1, commit 3
