@@ -75,6 +75,14 @@ export function StepUpDialog({ open, isVerifying, error, onSubmit, onOpenChange 
             {error ? <p className='text-destructive text-sm'>{error}</p> : null}
           </div>
           <DialogFooter>
+            <Button
+              type='button'
+              variant='outline'
+              disabled={isVerifying}
+              onClick={() => onOpenChange?.(false)}
+            >
+              Cancelar
+            </Button>
             <Button type='submit' disabled={isVerifying}>
               {isVerifying ? 'Verificando…' : 'Confirmar'}
             </Button>

@@ -31,6 +31,21 @@ export function useStepUpGate() {
     return true;
   }, []);
 
+  // Operator dismissed the modal (Escape / overlay / X-icon / Cancel button).
+  // Abandon cleanly: drop the stashed retry so a later, unrelated destructive
+  // action can never accidentally reuse it, clear any inline wrong-password
+  // error, and close. Dismissing NEVER runs the pending mutation and NEVER
+  // triggers a logout — it is a pure cancel of the in-progress step-up.
+  const onOpenChange = React.useCallback((nextOpen: boolean) => {
+    if (nextOpen) {
+      return;
+    }
+
+    pendingRetryRef.current = null;
+    setError(undefined);
+    setIsOpen(false);
+  }, []);
+
   const onSubmit = React.useCallback(async (password: string) => {
     setIsVerifying(true);
     setError(undefined);
@@ -55,7 +70,7 @@ export function useStepUpGate() {
   }, []);
 
   return {
-    dialogProps: { open: isOpen, isVerifying, error, onSubmit },
+    dialogProps: { open: isOpen, isVerifying, error, onSubmit, onOpenChange },
     handleStepUpError
   };
 }
