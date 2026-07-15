@@ -80,7 +80,12 @@ describe('Outbox write integration — $transaction atomicity', () => {
       .send({ targetStatus: 'ACTIVE', idempotencyKey: `outbox-commit-${Date.now()}` })
       .expect(200)
 
-    const rows = await prisma.platformOutboxEvent.findMany({ where: { tenantId: tenant.id } })
+    // platform-audit-log (T-09): the status change now ALSO emits a 2nd
+    // AUDIT_LOGGED row in the same tx (see the [T-08] tests below) — filter to
+    // TENANT_STATUS_CHANGED to keep this regression test's assertion precise.
+    const rows = await prisma.platformOutboxEvent.findMany({
+      where: { tenantId: tenant.id, eventType: 'TENANT_STATUS_CHANGED' },
+    })
 
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({
@@ -132,7 +137,11 @@ describe('Outbox write integration — $transaction atomicity', () => {
       .send({ targetStatus: 'ACTIVE', idempotencyKey: `t06-name-slug-${uniqueSuffix}` })
       .expect(200)
 
-    const rows = await prisma.platformOutboxEvent.findMany({ where: { tenantId: tenant.id } })
+    // platform-audit-log (T-09): filter to TENANT_STATUS_CHANGED — the status
+    // change now also emits a 2nd AUDIT_LOGGED row in the same tx.
+    const rows = await prisma.platformOutboxEvent.findMany({
+      where: { tenantId: tenant.id, eventType: 'TENANT_STATUS_CHANGED' },
+    })
     expect(rows).toHaveLength(1)
 
     const payload = rows[0]!.payload as Record<string, unknown>
@@ -234,6 +243,8 @@ describe('Outbox write integration — $transaction atomicity', () => {
 
     expect(updatedTenant?.status).toBe(TenantStatus.SUSPENDED)
     expect(analyticsEvents).toHaveLength(1)
-    expect(outboxRows).toHaveLength(1)
+    // platform-audit-log (T-09): TENANT_STATUS_CHANGED + its 2nd AUDIT_LOGGED emit.
+    expect(outboxRows).toHaveLength(2)
+    expect(outboxRows.map((r) => r.eventType).sort()).toEqual(['AUDIT_LOGGED', 'TENANT_STATUS_CHANGED'])
   })
 })
