@@ -468,7 +468,7 @@ All RED until T-22.
 
 ---
 
-### [ ] T-23 — Coordinated deploy documentation + final verification
+### [x] T-23 — Coordinated deploy documentation + final verification
 **Type**: verify
 **Spec**: All invariants; proposal acceptance criteria 1–8; coordinated deploy §6 / R3
 **WU**: WU-3, commit 5
@@ -536,17 +536,17 @@ All RED until T-22.
 
 ## Success Checklist (maps to spec acceptance criteria)
 
-- [ ] Registering a tenant → one `TENANT_REGISTERED` outbox row in same `$transaction`; rollback ⇒ no row (T-08, T-09)
-- [ ] Rolled-back registration leaves zero outbox rows (T-08, T-09)
-- [ ] No InmoView schema migration required — only new outbox rows + widened SELECT (T-13 migration is viewpro-api only)
-- [ ] `TENANT_STATUS_CHANGED` payload includes `name` and `slug` (T-06, T-07)
-- [ ] viewpro-api ingest upserts `platform_tenants` from `TENANT_REGISTERED` (id/name/slug/latestStatus/limits); re-delivery idempotent (T-14, T-15)
-- [ ] Status-change updates `latestStatus` (+ name/slug when present); creates row if missing (T-14, T-15)
-- [ ] `platform_mirror_events` append still runs for both event types; metrics unaffected (T-14)
-- [ ] Unknown `eventType` skipped; cursor advances; no error (T-14)
-- [ ] `GET /operators/tenants` → 200 + `{ total, items }` paginated, sorted name ASC, from `viewpro_platform` only; 401 without operator session (T-16, T-17)
-- [ ] `GET /operators/tenants` makes zero InmoView DB reads (T-16 isolation check)
-- [ ] `GET /internal/platform/tenants` 401 on missing/invalid service token; read-only (T-10, T-11)
-- [ ] Backfill seed populates all pre-existing tenants once; re-run is a no-op (T-21, T-22)
-- [ ] Operator cookie rejected by `PlatformControlGuard`; service token rejected by `AuthGuard` (T-19, T-20)
-- [ ] Coordinated deploy ordering documented in migration SQL (T-23)
+- [x] Registering a tenant → one `TENANT_REGISTERED` outbox row in same `$transaction`; rollback ⇒ no row (T-08, T-09)
+- [x] Rolled-back registration leaves zero outbox rows (T-08, T-09)
+- [x] No InmoView schema migration required — only new outbox rows + widened SELECT (T-13 migration is viewpro-api only)
+- [x] `TENANT_STATUS_CHANGED` payload includes `name` and `slug` (T-06, T-07)
+- [x] viewpro-api ingest upserts `platform_tenants` from `TENANT_REGISTERED` (id/name/slug/latestStatus/limits); re-delivery idempotent (T-14, T-15)
+- [x] Status-change updates `latestStatus` (+ name/slug when present); creates row if missing (T-14, T-15)
+- [x] `platform_mirror_events` append still runs for both event types; metrics unaffected (T-14)
+- [x] Unknown `eventType` skipped; cursor advances; no error (T-14)
+- [x] `GET /operators/tenants` → 200 + `{ total, items }` paginated, sorted name ASC, from `viewpro_platform` only; 401 without operator session (T-16, T-17)
+- [x] `GET /operators/tenants` makes zero InmoView DB reads (T-16 isolation check)
+- [x] `GET /internal/platform/tenants` 401 on missing/invalid service token; read-only (T-10, T-11)
+- [x] Backfill seed populates all pre-existing tenants once; re-run is a no-op (T-21, T-22)
+- [x] Operator cookie rejected by `PlatformControlGuard`; service token rejected by `AuthGuard` (T-19, T-20)
+- [x] Coordinated deploy ordering documented in migration SQL (T-23)
