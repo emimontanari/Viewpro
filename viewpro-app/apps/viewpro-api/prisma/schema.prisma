@@ -65,3 +65,22 @@ model PlatformTenant {
 
   @@map("platform_tenants")
 }
+
+/// Append-only audit trail projection for AUDIT_LOGGED events (vision D3).
+/// sourceEventId's own unique constraint is the SOLE dedup mechanism for this
+/// event type — AUDIT_LOGGED is never written to platform_mirror_events (A5/A6).
+model PlatformAuditLog {
+  id            String   @id @default(uuid())
+  sourceEventId String   @unique
+  seqNo         BigInt
+  action        String
+  tenantId      String
+  actor         Json
+  previousValue Json?
+  newValue      Json?
+  occurredAt    DateTime
+  createdAt     DateTime @default(now())
+
+  @@index([seqNo])
+  @@map("platform_audit_log")
+}

@@ -53,15 +53,14 @@ describe('platform_audit_log migration (additive invariant)', () => {
     )
   })
 
-  it('sourceEventId has a unique constraint on platform_audit_log', async () => {
-    const rows = await prisma.$queryRaw<Array<{ constraint_type: string }>>`
-      SELECT tc.constraint_type
-      FROM information_schema.table_constraints tc
-      JOIN information_schema.key_column_usage kcu
-        ON tc.constraint_name = kcu.constraint_name
-      WHERE tc.table_name = 'platform_audit_log'
-        AND kcu.column_name = 'sourceEventId'
-        AND tc.constraint_type = 'UNIQUE'
+  it('sourceEventId has a unique index on platform_audit_log', async () => {
+    // Prisma's @unique compiles to a UNIQUE INDEX (not a table CONSTRAINT), so
+    // this checks pg_indexes rather than information_schema.table_constraints.
+    const rows = await prisma.$queryRaw<Array<{ indexdef: string }>>`
+      SELECT indexdef FROM pg_indexes
+      WHERE tablename = 'platform_audit_log'
+        AND indexdef ILIKE '%UNIQUE%'
+        AND indexdef ILIKE '%sourceEventId%'
     `
     expect(rows.length).toBeGreaterThanOrEqual(1)
   })
