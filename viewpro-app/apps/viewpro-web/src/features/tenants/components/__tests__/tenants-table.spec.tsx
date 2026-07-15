@@ -229,7 +229,7 @@ describe('TenantsTable — actions column (T-12/WU-2)', () => {
   it('an ACTIVE row shows both "Suspender" and "Dar de baja" buttons', () => {
     render(
       <TenantsTable
-        items={ITEMS}
+        items={[ITEMS[0]]}
         isMutating={false}
         onEditLimits={noop}
         onStatusAction={noop}
