@@ -225,7 +225,7 @@ All RED until T-10.
 
 ---
 
-### [ ] T-10 — GREEN: `app/dashboard/tenants/page.tsx`
+### [x] T-10 — GREEN: `app/dashboard/tenants/page.tsx`
 **Type**: impl
 **Spec**: Paginated Tenant List (page reachability)
 **WU**: WU-1, commit 10
