@@ -2,6 +2,8 @@ import { Body, Controller, HttpCode, Param, Patch, Req, UseGuards } from '@nestj
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { AuthGuard, type AuthenticatedRequest } from '../auth/guards/auth.guard'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
+import { StepUpGuard, StepUpStatusTargets } from '../auth/guards/step-up.guard'
+// biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { PlatformControlClient } from './platform-control.client'
 // biome-ignore lint/style/useImportType: Nest validation needs runtime DTO metadata.
 import { SetTenantStatusDto } from './dto/set-tenant-status.dto'
@@ -27,6 +29,8 @@ export class PlatformControlController {
    */
   @Patch(':tenantId/status')
   @HttpCode(200)
+  @UseGuards(StepUpGuard)
+  @StepUpStatusTargets(['SUSPENDED', 'CANCELLED'])
   async updateTenantStatus(
     @Param('tenantId') tenantId: string,
     @Body() body: SetTenantStatusDto,
@@ -43,6 +47,7 @@ export class PlatformControlController {
    */
   @Patch(':tenantId/limits')
   @HttpCode(200)
+  @UseGuards(StepUpGuard)
   async updateTenantLimits(
     @Param('tenantId') tenantId: string,
     @Body() body: SetTenantLimitsDto,

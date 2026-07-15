@@ -9,6 +9,7 @@ import { PASSWORD_HASHER } from './security/password-hasher'
 import { TokenService } from './tokens/token.service'
 import { AuthGuard } from './guards/auth.guard'
 import { AuthThrottlerGuard } from './guards/auth-throttler.guard'
+import { StepUpGuard } from './guards/step-up.guard'
 import { LoginUseCase } from './use-cases/login.use-case'
 import { StepUpUseCase } from './use-cases/step-up.use-case'
 
@@ -30,11 +31,12 @@ import { StepUpUseCase } from './use-cases/step-up.use-case'
     TokenService,
     AuthGuard,
     AuthThrottlerGuard,
+    StepUpGuard,
     LoginUseCase,
     StepUpUseCase,
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },
     { provide: OPERATOR_REPOSITORY, useClass: PrismaOperatorRepository },
   ],
-  exports: [AuthGuard, TokenService],
+  exports: [AuthGuard, StepUpGuard, TokenService],
 })
 export class AuthModule {}
