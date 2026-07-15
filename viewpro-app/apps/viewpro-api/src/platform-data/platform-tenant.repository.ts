@@ -25,6 +25,16 @@ export class PlatformTenantRepository {
   async upsertFromRegistered(payload: TenantRegisteredPayload): Promise<void> {
     const { id, name, slug, newStatus, limits } = payload
 
+    // Defensive guard: a REGISTERED payload may arrive with `limits` missing or
+    // undefined. Treat that as all-null limits instead of throwing a TypeError
+    // on the destructure — an ingest throw here would poison the whole batch and
+    // stall the cursor (head-of-line blocking).
+    const safeLimits = limits ?? {
+      maxUsers: null,
+      maxActivePropertyEngagements: null,
+      maxDocumentsStorageMb: null,
+    }
+
     await this.prisma.platformTenant.upsert({
       where: { id },
       create: {
@@ -32,17 +42,17 @@ export class PlatformTenantRepository {
         name,
         slug,
         latestStatus: newStatus,
-        maxUsers: limits.maxUsers,
-        maxActivePropertyEngagements: limits.maxActivePropertyEngagements,
-        maxDocumentsStorageMb: limits.maxDocumentsStorageMb,
+        maxUsers: safeLimits.maxUsers,
+        maxActivePropertyEngagements: safeLimits.maxActivePropertyEngagements,
+        maxDocumentsStorageMb: safeLimits.maxDocumentsStorageMb,
       },
       update: {
         name,
         slug,
         latestStatus: newStatus,
-        maxUsers: limits.maxUsers,
-        maxActivePropertyEngagements: limits.maxActivePropertyEngagements,
-        maxDocumentsStorageMb: limits.maxDocumentsStorageMb,
+        maxUsers: safeLimits.maxUsers,
+        maxActivePropertyEngagements: safeLimits.maxActivePropertyEngagements,
+        maxDocumentsStorageMb: safeLimits.maxDocumentsStorageMb,
       },
     })
   }

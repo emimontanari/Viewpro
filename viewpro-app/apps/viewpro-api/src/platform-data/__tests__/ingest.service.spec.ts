@@ -475,6 +475,55 @@ describe('IngestService — platform_tenants routing (T-14/T-15, A8/A9)', () => 
     expect(cursor).toBe(5)
   })
 
+  // Defensive ingest: a TENANT_REGISTERED payload with newStatus present but
+  // limits undefined must NOT throw (no TypeError on the limits destructure),
+  // the cursor must still advance, and later events in the same batch must
+  // still be processed (no head-of-line blocking from a poison event).
+  it('TENANT_REGISTERED with limits undefined → does not throw, cursor advances, later events still processed', async () => {
+    const poisonEvent = {
+      id: 'evt-registered-no-limits',
+      seqNo: 7,
+      eventType: 'TENANT_REGISTERED',
+      tenantId: 't-no-limits',
+      payload: {
+        id: 't-no-limits',
+        name: 'NoLimits Realty',
+        slug: 'no-limits-realty',
+        newStatus: 'TRIAL',
+        // limits intentionally omitted (undefined)
+      },
+      occurredAt: new Date().toISOString(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any as PlatformOutboxEvent
+
+    // A later, well-formed event in the SAME batch must still be processed.
+    const laterEvent = makeEvent({
+      id: 'evt-status-after-poison',
+      seqNo: 8,
+      eventType: 'TENANT_STATUS_CHANGED',
+      tenantId: 't-after-poison',
+      payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE' },
+    })
+
+    await expect(ingestService.ingestBatch([poisonEvent, laterEvent])).resolves.toBeUndefined()
+
+    // The projection row was written with all-null limits (well-formed-enough).
+    const poisonRow = await prisma.platformTenant.findUnique({ where: { id: 't-no-limits' } })
+    expect(poisonRow).not.toBeNull()
+    expect(poisonRow?.latestStatus).toBe('TRIAL')
+    expect(poisonRow?.maxUsers).toBeNull()
+    expect(poisonRow?.maxActivePropertyEngagements).toBeNull()
+    expect(poisonRow?.maxDocumentsStorageMb).toBeNull()
+
+    // The later event was still processed (projection + mirror).
+    const laterRow = await prisma.platformTenant.findUnique({ where: { id: 't-after-poison' } })
+    expect(laterRow?.latestStatus).toBe('ACTIVE')
+
+    // The cursor advanced past both events (no head-of-line blocking).
+    const cursor = await cursorRepo.getCursor()
+    expect(cursor).toBe(8)
+  })
+
   // Both event types append to platform_mirror_events (platform-data-lane delta)
   it('both TENANT_REGISTERED and TENANT_STATUS_CHANGED append a row to platform_mirror_events', async () => {
     await ingestService.ingestBatch([

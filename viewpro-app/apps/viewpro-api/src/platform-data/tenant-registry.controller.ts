@@ -9,6 +9,26 @@ const DEFAULT_OFFSET = 0
 const DEFAULT_LIMIT = 50
 
 /**
+ * Sanitize an offset query param: default 0; must be a finite integer >= 0.
+ * Malformed input (`abc` → NaN, `-1` → negative, `1.5` → non-integer) degrades
+ * to the default rather than reaching Prisma `skip` and throwing a 500.
+ */
+function sanitizeOffset(raw?: string): number {
+  const parsed = raw !== undefined ? Number(raw) : DEFAULT_OFFSET
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : DEFAULT_OFFSET
+}
+
+/**
+ * Sanitize a limit query param: default 50; must be a finite integer >= 1.
+ * Malformed input degrades to the default. The 200 cap (A11) stays enforced by
+ * TenantRegistryService.
+ */
+function sanitizeLimit(raw?: string): number {
+  const parsed = raw !== undefined ? Number(raw) : DEFAULT_LIMIT
+  return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : DEFAULT_LIMIT
+}
+
+/**
  * TenantRegistryController — operator-facing tenant list (A10/A11).
  *
  * Protected by Phase 4 AuthGuard (viewpro_platform_access_token cookie).
@@ -30,9 +50,6 @@ export class TenantRegistryController {
     @Query('offset') offset?: string,
     @Query('limit') limit?: string,
   ): Promise<TenantRegistryList> {
-    const parsedOffset = offset !== undefined ? Number(offset) : DEFAULT_OFFSET
-    const parsedLimit = limit !== undefined ? Number(limit) : DEFAULT_LIMIT
-
-    return this.tenantRegistryService.listTenants(parsedOffset, parsedLimit)
+    return this.tenantRegistryService.listTenants(sanitizeOffset(offset), sanitizeLimit(limit))
   }
 }

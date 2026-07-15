@@ -178,6 +178,84 @@ describe('TenantRegistryController (integration — test DB)', () => {
     expect(res.body.items).toHaveLength(200)
   })
 
+  // Malformed pagination params must degrade gracefully to defaults (never 500).
+  it('?offset=abc → 200 with a valid page (offset defaults to 0), not 500', async () => {
+    await seedThreeTenants()
+    const cookie = await getSessionCookie()
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/tenants?offset=abc')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(200)
+    expect(res.body.total).toBe(3)
+    expect(res.body.items).toHaveLength(3)
+    expect(res.body.items[0].name).toBe('Alpha Realty')
+  })
+
+  it('?offset=-1 → 200 with a valid page (negative offset defaults to 0), not 500', async () => {
+    await seedThreeTenants()
+    const cookie = await getSessionCookie()
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/tenants?offset=-1')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(200)
+    expect(res.body.total).toBe(3)
+    expect(res.body.items).toHaveLength(3)
+    expect(res.body.items[0].name).toBe('Alpha Realty')
+  })
+
+  it('?limit=1.5 → 200 with a valid page (non-integer limit floored), not 500', async () => {
+    await seedThreeTenants()
+    const cookie = await getSessionCookie()
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/tenants?limit=1.5')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(200)
+    expect(res.body.total).toBe(3)
+    // floor(1.5) === 1 → exactly one item on the first page
+    expect(res.body.items).toHaveLength(1)
+    expect(res.body.items[0].name).toBe('Alpha Realty')
+  })
+
+  it('?limit=abc → 200 with a valid page (limit defaults to 50), not 500', async () => {
+    await seedThreeTenants()
+    const cookie = await getSessionCookie()
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/tenants?limit=abc')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(200)
+    expect(res.body.total).toBe(3)
+    expect(res.body.items).toHaveLength(3)
+  })
+
+  // A11: the 200 cap still holds even when the requested limit is malformed-but-large.
+  it('?limit=1000 → capped at 200 items (cap still holds after sanitization)', async () => {
+    await prisma.platformTenant.createMany({
+      data: Array.from({ length: 202 }, (_, i) => ({
+        id: `cap2-tenant-${String(i).padStart(3, '0')}`,
+        name: `Cap2 Tenant ${String(i).padStart(3, '0')}`,
+        slug: `cap2-tenant-${i}`,
+        latestStatus: 'ACTIVE',
+      })),
+    })
+    const cookie = await getSessionCookie()
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/tenants?limit=1000')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(200)
+    expect(res.body.total).toBe(202)
+    expect(res.body.items).toHaveLength(200)
+  })
+
   // Scenario: Unauthenticated request is rejected
   it('GET /api/operators/tenants without token → 401', async () => {
     const res = await request(app.getHttpServer()).get('/api/operators/tenants')
