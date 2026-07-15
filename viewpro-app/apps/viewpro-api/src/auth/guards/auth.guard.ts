@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import type { Request } from 'express'
-import { ACCESS_TOKEN_COOKIE, CLOCK_TOLERANCE_SECONDS } from '../auth.constants'
+import { ACCESS_TOKEN_COOKIE, CLOCK_TOLERANCE_SECONDS, IDLE_REISSUE_THRESHOLD } from '../auth.constants'
 import { TokenService } from '../tokens/token.service'
 
 export type AuthenticatedRequest = Request & {
@@ -10,7 +11,10 @@ export type AuthenticatedRequest = Request & {
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly tokenService: TokenService) {}
+  constructor(
+    private readonly tokenService: TokenService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>()
@@ -46,6 +50,18 @@ export class AuthGuard implements CanActivate {
     }
 
     request.user = { id: payload.sub, email: payload.email }
+
+    // 4. Threshold-based re-issue (D5) — the LAST statement before
+    // `return true`. Structurally unreachable from any reject path above,
+    // so a response can never carry both a set and a clear for the access
+    // cookie (R5/AC8). Re-issue never touches the step-up cookie (AC6).
+    const idleTimeoutSeconds = this.configService.get<number>('app.auth.idleTimeoutSeconds') ?? 600
+    if (now - payload.iat >= idleTimeoutSeconds * IDLE_REISSUE_THRESHOLD) {
+      const response = context.switchToHttp().getResponse()
+      const freshToken = await this.tokenService.reissueAccessToken(payload)
+      this.tokenService.setAccessCookie(response, freshToken)
+    }
+
     return true
   }
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { UnauthorizedException } from '@nestjs/common'
 import type { ExecutionContext } from '@nestjs/common'
+import type { ConfigService } from '@nestjs/config'
 import { AuthGuard } from '../auth.guard'
 import type { TokenService } from '../../tokens/token.service'
 
@@ -23,9 +24,15 @@ function makeContext(cookies: Record<string, string | undefined>) {
   return { context, response }
 }
 
-function makeGuard(options: { verifyAccessToken?: ReturnType<typeof vi.fn> }) {
+function makeGuard(options: {
+  verifyAccessToken?: ReturnType<typeof vi.fn>
+  reissueAccessToken?: ReturnType<typeof vi.fn>
+  setAccessCookie?: ReturnType<typeof vi.fn>
+}) {
   const tokenService = {
     verifyAccessToken: options.verifyAccessToken ?? vi.fn(),
+    reissueAccessToken: options.reissueAccessToken ?? vi.fn().mockResolvedValue('fresh.token'),
+    setAccessCookie: options.setAccessCookie ?? vi.fn(),
     clearAccessCookie: vi.fn((response: { clearCookie: (...args: unknown[]) => void }) => {
       response.clearCookie('viewpro_platform_access_token', { httpOnly: true })
     }),
@@ -33,8 +40,16 @@ function makeGuard(options: { verifyAccessToken?: ReturnType<typeof vi.fn> }) {
       response.clearCookie('viewpro_platform_stepup_token', { httpOnly: true })
     }),
   }
+  const configService = { get: vi.fn().mockReturnValue(600) }
 
-  return { guard: new AuthGuard(tokenService as unknown as TokenService), tokenService }
+  return {
+    guard: new AuthGuard(
+      tokenService as unknown as TokenService,
+      configService as unknown as ConfigService,
+    ),
+    tokenService,
+    configService,
+  }
 }
 
 describe('AuthGuard — failure paths clear both cookies (D9, AC7)', () => {

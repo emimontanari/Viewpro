@@ -42,7 +42,12 @@ async function buildAccessToken(overrides: {
   if (overrides.sessionExp !== undefined) {
     payload.sessionExp = overrides.sessionExp
   }
-  return jwtService.signAsync(payload, { noTimestamp: true })
+  // No `noTimestamp` option: jsonwebtoken's sign() computes
+  // `timestamp = payload.iat || now()` and only overwrites `payload.iat`
+  // when NOT set — an explicit numeric `iat` in the payload is preserved
+  // as-is. `noTimestamp: true` would instead unconditionally DELETE
+  // `payload.iat` (jsonwebtoken sign.js), destroying the explicit value.
+  return jwtService.signAsync(payload)
 }
 
 describe('GET /api/auth/me', () => {
