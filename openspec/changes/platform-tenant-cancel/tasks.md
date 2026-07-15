@@ -321,7 +321,7 @@ T-01 (RED: repo terminal-variant unit tests)
 
 ## Final Verification
 
-### [ ] T-23 — Cross-app final verification
+### [x] T-23 — Cross-app final verification
 **Type**: verify · **Spec**: All invariants; proposal acceptance criteria 1–7 · **Depends on**: T-22
 
 1. `pnpm --filter @viewpro/api test` — all GREEN
