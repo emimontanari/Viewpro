@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { tenantsKeys, tenantsListOptions } from '@/features/tenants/api/queries';
 import { updateTenantLimits, updateTenantStatus } from '@/features/tenants/api/service';
-import type { TenantLimits, TenantListItem } from '@/features/tenants/api/types';
+import type { TenantLimits, TenantListItem, TenantStatusAction } from '@/features/tenants/api/types';
 import { getApiErrorMessage, isApiError } from '@/lib/api-client';
 import { TenantLimitsDialog } from './tenant-limits-dialog';
 import { TenantStatusConfirmDialog } from './tenant-status-confirm-dialog';
@@ -61,7 +61,7 @@ export function TenantsManagementPage() {
   }, [queryClient]);
 
   const statusMutation = useMutation({
-    mutationFn: (input: { tenantId: string; status: 'ACTIVE' | 'SUSPENDED' }) =>
+    mutationFn: (input: { tenantId: string; status: TenantStatusAction }) =>
       updateTenantStatus(input.tenantId, { status: input.status }),
     onSuccess: async (result) => {
       if (result.unchanged) {
