@@ -40,6 +40,18 @@ export class PrismaAdminTenantStatusRepository implements AdminTenantStatusRepos
         return { status: 'notFound' }
       }
 
+      // D1/D2: CANCELLED is terminal — reject ANY transition from a CANCELLED
+      // current status, BEFORE the `unchanged` check, so CANCELLED → CANCELLED
+      // is also terminal (never the `unchanged: true` success shape).
+      if (tenant.status === 'CANCELLED') {
+        return {
+          status: 'terminal',
+          tenantId: tenant.id,
+          currentStatus: tenant.status,
+          updatedAt: tenant.updatedAt,
+        }
+      }
+
       if (tenant.status === input.targetStatus) {
         return {
           status: 'unchanged',
