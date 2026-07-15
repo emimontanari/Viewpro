@@ -15,7 +15,7 @@ import { TenantLimitsDialog } from './tenant-limits-dialog';
 import { TenantStatusConfirmDialog } from './tenant-status-confirm-dialog';
 import { TenantsEmptyState } from './tenants-empty-state';
 import { TenantsPager } from './tenants-pager';
-import { getTenantAction, TenantsTable } from './tenants-table';
+import { TenantsTable, type TenantAction } from './tenants-table';
 
 const LIMIT = 50;
 const NOT_FOUND_MESSAGE = 'El inquilino no existe o fue eliminado.';
@@ -43,9 +43,10 @@ function reportMutationError(error: unknown) {
 
 export function TenantsManagementPage() {
   const [offset, setOffset] = React.useState(0);
-  const [pendingStatusTenant, setPendingStatusTenant] = React.useState<TenantListItem | null>(
-    null
-  );
+  const [pendingStatusAction, setPendingStatusAction] = React.useState<{
+    tenant: TenantListItem;
+    targetStatus: TenantStatusAction;
+  } | null>(null);
   const [limitsTenant, setLimitsTenant] = React.useState<TenantListItem | null>(null);
 
   const queryClient = useQueryClient();
@@ -70,7 +71,7 @@ export function TenantsManagementPage() {
         toast.success('Estado del inquilino actualizado.');
       }
 
-      setPendingStatusTenant(null);
+      setPendingStatusAction(null);
       await invalidateList();
     },
     onError: reportMutationError
@@ -102,33 +103,31 @@ export function TenantsManagementPage() {
     setOffset((current) => (data && current + LIMIT < data.total ? current + LIMIT : current));
   }, [data]);
 
-  // D8: SUSPEND is gated behind the AlertDialog confirm; ACTIVATE/reactivate
-  // PATCHes directly.
-  const handleToggleStatus = React.useCallback(
-    (item: TenantListItem) => {
-      const action = getTenantAction(item);
-
-      if (!action) {
+  // D8/D6/D7: ACTIVATE/reactivate (toggle → ACTIVE) PATCHes directly; SUSPEND
+  // (toggle → SUSPENDED) and CANCEL (destructive) are both gated behind the
+  // same AlertDialog confirm — only the copy variant differs.
+  const handleStatusAction = React.useCallback(
+    (item: TenantListItem, action: TenantAction) => {
+      if (action.kind === 'toggle' && action.targetStatus === 'ACTIVE') {
+        statusMutation.mutate({ tenantId: item.id, status: action.targetStatus });
         return;
       }
 
-      if (action.targetStatus === 'SUSPENDED') {
-        setPendingStatusTenant(item);
-        return;
-      }
-
-      statusMutation.mutate({ tenantId: item.id, status: action.targetStatus });
+      setPendingStatusAction({ tenant: item, targetStatus: action.targetStatus });
     },
     [statusMutation]
   );
 
-  const handleConfirmSuspend = React.useCallback(() => {
-    if (!pendingStatusTenant) {
+  const handleConfirmStatusAction = React.useCallback(() => {
+    if (!pendingStatusAction) {
       return;
     }
 
-    statusMutation.mutate({ tenantId: pendingStatusTenant.id, status: 'SUSPENDED' });
-  }, [pendingStatusTenant, statusMutation]);
+    statusMutation.mutate({
+      tenantId: pendingStatusAction.tenant.id,
+      status: pendingStatusAction.targetStatus
+    });
+  }, [pendingStatusAction, statusMutation]);
 
   const handleSaveLimits = React.useCallback(
     (limits: TenantLimits) => {
@@ -171,7 +170,7 @@ export function TenantsManagementPage() {
         items={data.items}
         isMutating={isMutating}
         onEditLimits={setLimitsTenant}
-        onToggleStatus={handleToggleStatus}
+        onStatusAction={handleStatusAction}
       />
       <TenantsPager
         offset={offset}
@@ -182,10 +181,11 @@ export function TenantsManagementPage() {
         onNext={handleNext}
       />
       <TenantStatusConfirmDialog
-        tenant={pendingStatusTenant}
+        tenant={pendingStatusAction?.tenant ?? null}
         isPending={statusMutation.isPending}
-        onCancel={() => setPendingStatusTenant(null)}
-        onConfirm={handleConfirmSuspend}
+        variant={pendingStatusAction?.targetStatus === 'CANCELLED' ? 'cancel' : 'suspend'}
+        onCancel={() => setPendingStatusAction(null)}
+        onConfirm={handleConfirmStatusAction}
       />
       <TenantLimitsDialog
         tenant={limitsTenant}
