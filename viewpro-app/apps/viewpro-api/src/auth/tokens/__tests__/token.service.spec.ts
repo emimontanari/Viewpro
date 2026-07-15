@@ -1,14 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { JwtService } from '@nestjs/jwt'
 import { TokenService } from '../token.service'
-import { ACCESS_TOKEN_COOKIE } from '../../auth.constants'
+import { ACCESS_TOKEN_COOKIE, STEP_UP_TOKEN_COOKIE } from '../../auth.constants'
 
 const SECRET_A = 'platform-secret-a'
 const SECRET_B = 'inmoview-secret-b'
+const STEP_UP_SECRET = 'platform-step-up-secret'
 
 function makeConfigService(overrides: Record<string, unknown> = {}) {
   const defaults: Record<string, unknown> = {
     'app.auth.accessTokenTtlSeconds': 900,
+    'app.auth.stepUpTokenSecret': STEP_UP_SECRET,
+    'app.auth.stepUpTtlSeconds': 300,
     'app.cookies.domain': undefined,
     'app.cookies.secure': false,
   }
@@ -18,9 +21,9 @@ function makeConfigService(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function makeTokenService(secret = SECRET_A) {
+function makeTokenService(secret = SECRET_A, configOverrides: Record<string, unknown> = {}) {
   const jwtService = new JwtService({ secret, signOptions: { expiresIn: 900 } })
-  return new TokenService(jwtService, makeConfigService() as never)
+  return new TokenService(jwtService, makeConfigService(configOverrides) as never)
 }
 
 describe('TokenService — cookie name and security attributes', () => {
@@ -87,5 +90,85 @@ describe('TokenService — cookie name and security attributes', () => {
 
     // serviceB has a different secret; verifyAccessToken should throw
     await expect(serviceB.verifyAccessToken(token)).rejects.toThrow()
+  })
+})
+
+describe('TokenService — step-up sign/verify/cookie (D1-D3)', () => {
+  let tokenService: TokenService
+  let mockResponse: { cookie: ReturnType<typeof vi.fn>; clearCookie: ReturnType<typeof vi.fn> }
+
+  beforeEach(() => {
+    tokenService = makeTokenService()
+    mockResponse = {
+      cookie: vi.fn(),
+      clearCookie: vi.fn(),
+    }
+  })
+
+  it('signStepUpToken returns a JWT with stepUp:true and sub claims', async () => {
+    const token = await tokenService.signStepUpToken({ sub: 'op-123' })
+
+    expect(typeof token).toBe('string')
+    const parts = token.split('.')
+    expect(parts).toHaveLength(3)
+    const payload = JSON.parse(Buffer.from(parts[1] ?? '', 'base64url').toString('utf8'))
+    expect(payload.sub).toBe('op-123')
+    expect(payload.stepUp).toBe(true)
+  })
+
+  it('verifyStepUpToken resolves a token signed with the step-up secret', async () => {
+    const token = await tokenService.signStepUpToken({ sub: 'op-123' })
+
+    const payload = await tokenService.verifyStepUpToken(token)
+
+    expect(payload.sub).toBe('op-123')
+    expect(payload.stepUp).toBe(true)
+  })
+
+  it('a step-up token (STEP_UP_TOKEN_SECRET) fails verifyAccessToken (cross-verify direction 1)', async () => {
+    const stepUpToken = await tokenService.signStepUpToken({ sub: 'op-123' })
+
+    await expect(tokenService.verifyAccessToken(stepUpToken)).rejects.toThrow()
+  })
+
+  it('an access token (ACCESS_TOKEN_SECRET) fails verifyStepUpToken (cross-verify direction 2)', async () => {
+    const accessToken = await tokenService.signAccessToken({ sub: 'op-123', email: 'op@viewpro.app' })
+
+    await expect(tokenService.verifyStepUpToken(accessToken)).rejects.toThrow()
+  })
+
+  it('setStepUpCookie uses exactly the STEP_UP_TOKEN_COOKIE constant as cookie name', () => {
+    tokenService.setStepUpCookie(mockResponse as never, 'some-token')
+
+    const firstCall = mockResponse.cookie.mock.calls[0] ?? []
+    expect(firstCall[0]).toBe(STEP_UP_TOKEN_COOKIE)
+    expect(firstCall[0]).toBe('viewpro_platform_stepup_token')
+  })
+
+  it('setStepUpCookie sets httpOnly: true and sameSite: lax', () => {
+    tokenService.setStepUpCookie(mockResponse as never, 'some-token')
+
+    const firstCall = mockResponse.cookie.mock.calls[0] ?? []
+    const options = firstCall[2] as { httpOnly: boolean; sameSite: string }
+    expect(options.httpOnly).toBe(true)
+    expect(options.sameSite).toBe('lax')
+  })
+
+  it('setStepUpCookie sets maxAge = STEP_UP_TTL_SECONDS * 1000', () => {
+    tokenService.setStepUpCookie(mockResponse as never, 'some-token')
+
+    const firstCall = mockResponse.cookie.mock.calls[0] ?? []
+    const options = firstCall[2] as { maxAge: number }
+    expect(options.maxAge).toBe(300 * 1000)
+  })
+
+  it('clearStepUpCookie calls clearCookie with STEP_UP_TOKEN_COOKIE and base cookie options', () => {
+    tokenService.clearStepUpCookie(mockResponse as never)
+
+    const firstCall = mockResponse.clearCookie.mock.calls[0] ?? []
+    expect(firstCall[0]).toBe(STEP_UP_TOKEN_COOKIE)
+    const options = firstCall[1] as { httpOnly: boolean; sameSite: string }
+    expect(options.httpOnly).toBe(true)
+    expect(options.sameSite).toBe('lax')
   })
 })

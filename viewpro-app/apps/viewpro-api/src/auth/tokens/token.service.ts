@@ -2,11 +2,16 @@ import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import type { Response } from 'express'
-import { ACCESS_TOKEN_COOKIE } from '../auth.constants'
+import { ACCESS_TOKEN_COOKIE, STEP_UP_TOKEN_COOKIE } from '../auth.constants'
 
 export type AccessTokenPayload = {
   sub: string
   email: string
+}
+
+export type StepUpTokenPayload = {
+  sub: string
+  stepUp: true
 }
 
 @Injectable()
@@ -35,6 +40,35 @@ export class TokenService {
 
   clearAccessCookie(response: Response): void {
     response.clearCookie(ACCESS_TOKEN_COOKIE, this.baseCookieOptions())
+  }
+
+  signStepUpToken({ sub }: { sub: string }): Promise<string> {
+    return this.jwtService.signAsync(
+      { sub, stepUp: true },
+      {
+        secret: this.configService.get<string>('app.auth.stepUpTokenSecret'),
+        expiresIn: this.configService.get<number>('app.auth.stepUpTtlSeconds'),
+      },
+    )
+  }
+
+  verifyStepUpToken(token: string): Promise<StepUpTokenPayload> {
+    return this.jwtService.verifyAsync<StepUpTokenPayload>(token, {
+      secret: this.configService.get<string>('app.auth.stepUpTokenSecret'),
+    })
+  }
+
+  setStepUpCookie(response: Response, token: string): void {
+    const ttlSeconds =
+      this.configService.get<number>('app.auth.stepUpTtlSeconds') ?? 300
+    response.cookie(STEP_UP_TOKEN_COOKIE, token, {
+      ...this.baseCookieOptions(),
+      maxAge: ttlSeconds * 1000,
+    })
+  }
+
+  clearStepUpCookie(response: Response): void {
+    response.clearCookie(STEP_UP_TOKEN_COOKIE, this.baseCookieOptions())
   }
 
   private baseCookieOptions() {

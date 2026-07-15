@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { ValidationPipe } from '@nestjs/common'
 import { ThrottlerModule } from '@nestjs/throttler'
+import cookieParser from 'cookie-parser'
 import request from 'supertest'
 import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
@@ -37,6 +38,7 @@ describe('AuthController (integration)', () => {
     }).compile()
 
     app = moduleFixture.createNestApplication()
+    app.use(cookieParser())
     app.setGlobalPrefix('api')
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
     await app.init()
@@ -157,5 +159,54 @@ describe('AuthController (integration)', () => {
       // No cookie attached — should still succeed (unguarded endpoint)
 
     expect(response.status).toBe(200)
+  })
+
+  // -------------------------------------------------------------------------
+  // T-13 — RED: cookie-hygiene — POST /auth/logout clears BOTH cookies (AC7)
+  //
+  // Spec: operator-step-up-auth — Cookie Hygiene — Symmetric Clear on Logout
+  //   and Auth Failure
+  // -------------------------------------------------------------------------
+  it('POST /api/auth/logout after a valid step-up cookie was set clears BOTH cookies', async () => {
+    const loginResponse = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: SEEDED_EMAIL, password: SEEDED_PASSWORD })
+    expect(loginResponse.status).toBe(200)
+
+    const loginCookies = loginResponse.headers['set-cookie'] as string[] | string | undefined
+    const accessCookie = (
+      (Array.isArray(loginCookies) ? loginCookies : [loginCookies ?? '']).find((c) =>
+        c.startsWith('viewpro_platform_access_token='),
+      ) ?? ''
+    )
+      .split(';')[0]
+      ?.trim()
+
+    const stepUpResponse = await request(app.getHttpServer())
+      .post('/api/auth/step-up')
+      .set('Cookie', accessCookie ?? '')
+      .send({ password: SEEDED_PASSWORD })
+    expect(stepUpResponse.status).toBe(200)
+
+    const logoutResponse = await request(app.getHttpServer())
+      .post('/api/auth/logout')
+      .set('Cookie', accessCookie ?? '')
+
+    const setCookieHeader = logoutResponse.headers['set-cookie'] as string[] | string | undefined
+    const cookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader ?? '']
+
+    const clearedAccessCookie = cookies.find((c) => c.startsWith('viewpro_platform_access_token='))
+    const clearedStepUpCookie = cookies.find((c) => c.startsWith('viewpro_platform_stepup_token='))
+
+    expect(clearedAccessCookie).toBeDefined()
+    expect(clearedStepUpCookie).toBeDefined()
+
+    for (const cookie of [clearedAccessCookie, clearedStepUpCookie]) {
+      const hasMaxAgeZero = /max-age=0/i.test(cookie ?? '')
+      const expiresMatch = (cookie ?? '').match(/expires=([^;]+)/i)
+      const expiresValue = expiresMatch?.[1]
+      const hasExpiredDate = expiresValue !== undefined && new Date(expiresValue).getTime() <= Date.now()
+      expect(hasMaxAgeZero || hasExpiredDate).toBe(true)
+    }
   })
 })

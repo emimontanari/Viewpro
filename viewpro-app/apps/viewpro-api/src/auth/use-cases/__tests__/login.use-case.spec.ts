@@ -29,6 +29,7 @@ describe('LoginUseCase', () => {
   beforeEach(() => {
     operatorRepository = {
       findByEmail: vi.fn(),
+      findById: vi.fn(),
     }
     passwordHasher = {
       hash: vi.fn(),

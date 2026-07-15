@@ -22,6 +22,15 @@ export const appConfig = registerAs('app', () => {
     )
   }
 
+  // Required — distinct secret for the step-up ("sudo mode") re-auth cookie.
+  // No insecure default: a missing/blank secret means forgeable step-up tokens.
+  const stepUpTokenSecret = process.env.STEP_UP_TOKEN_SECRET
+  if (!stepUpTokenSecret) {
+    throw new Error(
+      'STEP_UP_TOKEN_SECRET is required and has no default. Set it in the environment.',
+    )
+  }
+
   const inmoviewApiInternalUrl = process.env.INMOVIEW_API_INTERNAL_URL
   if (!inmoviewApiInternalUrl) {
     throw new Error(
@@ -37,6 +46,8 @@ export const appConfig = registerAs('app', () => {
     auth: {
       accessTokenSecret,
       accessTokenTtlSeconds: Number(process.env.ACCESS_TOKEN_TTL_SECONDS ?? 900),
+      stepUpTokenSecret,
+      stepUpTtlSeconds: Number(process.env.STEP_UP_TTL_SECONDS ?? 300),
     },
     authRateLimit: {
       login: {

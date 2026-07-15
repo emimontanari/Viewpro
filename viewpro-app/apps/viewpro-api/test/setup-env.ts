@@ -13,6 +13,7 @@ loadEnvFile(resolve(process.cwd(), '.env.test'))
 process.env.DATABASE_URL ??=
   'postgresql://viewpro_platform:viewpro_platform@localhost:5434/viewpro_platform_test'
 process.env.ACCESS_TOKEN_SECRET ??= 'test-access-token-secret'
+process.env.STEP_UP_TOKEN_SECRET ??= 'test-step-up-token-secret-min16'
 process.env.COOKIE_DOMAIN ??= 'localhost'
 process.env.COOKIE_SECURE ??= 'false'
 process.env.PLATFORM_CONTROL_SECRET ??= 'test-platform-control-secret-min16'
