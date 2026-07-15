@@ -258,7 +258,7 @@ All RED until T-10.
 
 ## WU-2 — mutations: status confirm + limits dialog + nav (PR 2)
 
-### [ ] T-12 — RED: `tenants-table.spec.tsx` — actions column + `isMutating` guard
+### [x] T-12 — RED: `tenants-table.spec.tsx` — actions column + `isMutating` guard
 **Type**: test (RED)
 **Spec**: Status Toggle with Suspend Confirmation (button present); Limits Editing via Modal Dialog (edit-limits button present); Double-Submit Guard
 **WU**: WU-2, commit 1
