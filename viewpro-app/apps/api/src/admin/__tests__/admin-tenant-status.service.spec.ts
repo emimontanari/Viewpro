@@ -117,4 +117,58 @@ describe('AdminTenantStatusService — CommandActor dual-actor attribution', () 
       ).rejects.toThrow(NotFoundException)
     })
   })
+
+  // -------------------------------------------------------------------------
+  // T-03 — RED: service accepts CANCELLED target; maps terminal → 400
+  //
+  // Spec: admin-tenant-status — Writable-Target Status Policy; CANCELLED Is
+  //   Terminal — Server-Side Enforcement
+  // -------------------------------------------------------------------------
+  describe('CANCELLED target policy (D1/D2)', () => {
+    it('CANCELLED targetStatus no longer throws at ALLOWED_TARGET_STATUSES check — repo stub is called', async () => {
+      const actor: CommandActor = { type: 'operator', operatorId: 'op-1' }
+
+      await service.updateTenantStatus({
+        tenantId: TENANT_ID,
+        targetStatus: TenantStatus.CANCELLED,
+        actor,
+      })
+
+      expect(repoStub.updateTenantStatus).toHaveBeenCalledOnce()
+    })
+
+    it('repo returns terminal → service rejects with BadRequestException; repo was called once (post-read rejection, not pre-check short-circuit)', async () => {
+      repoStub.updateTenantStatus.mockResolvedValueOnce({
+        status: 'terminal',
+        tenantId: TENANT_ID,
+        currentStatus: TenantStatus.CANCELLED,
+        updatedAt: new Date(),
+      })
+      const actor: CommandActor = { type: 'operator', operatorId: 'op-1' }
+
+      await expect(
+        service.updateTenantStatus({
+          tenantId: TENANT_ID,
+          targetStatus: TenantStatus.ACTIVE,
+          actor,
+        }),
+      ).rejects.toThrow(BadRequestException)
+
+      expect(repoStub.updateTenantStatus).toHaveBeenCalledOnce()
+    })
+
+    it('regression: TRIAL still throws BadRequestException as an unpermitted target', async () => {
+      const actor: CommandActor = { type: 'user', userId: 'u-1' }
+
+      await expect(
+        service.updateTenantStatus({
+          tenantId: TENANT_ID,
+          targetStatus: 'TRIAL' as TenantStatus,
+          actor,
+        }),
+      ).rejects.toThrow(BadRequestException)
+
+      expect(repoStub.updateTenantStatus).not.toHaveBeenCalled()
+    })
+  })
 })
