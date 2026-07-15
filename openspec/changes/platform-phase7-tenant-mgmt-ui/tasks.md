@@ -308,7 +308,7 @@ All RED until T-15.
 
 ---
 
-### [ ] T-15 — GREEN: `tenant-limits-dialog.tsx`
+### [x] T-15 — GREEN: `tenant-limits-dialog.tsx`
 **Type**: impl
 **Spec**: Limits Editing via Modal Dialog (all 3 scenarios)
 **WU**: WU-2, commit 4
