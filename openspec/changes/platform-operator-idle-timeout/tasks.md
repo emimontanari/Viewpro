@@ -226,7 +226,7 @@ All RED until T-08.
 
 ## WU-2 — viewpro-web: 401 interceptor + sign-in copy + doc
 
-### [ ] T-09 — RED: `api-client.ts` 401 interceptor tests (D7)
+### [x] T-09 — RED: `api-client.ts` 401 interceptor tests (D7)
 **Type**: test (RED)
 **Spec**: Global 401 Handling Redirects to Sign-in with Session-Expired Indication
 **WU**: WU-2, commit 1
@@ -246,7 +246,7 @@ All RED until T-10.
 
 ---
 
-### [ ] T-10 — GREEN: `apiRequest` 401 interceptor → sign-in redirect (D7)
+### [x] T-10 — GREEN: `apiRequest` 401 interceptor → sign-in redirect (D7)
 **Type**: impl
 **Spec**: Global 401 Handling Redirects to Sign-in with Session-Expired Indication
 **WU**: WU-2, commit 2
@@ -264,7 +264,7 @@ All RED until T-10.
 
 ---
 
-### [ ] T-11 — RED: `sign-in-view` `session_expired` Alert tests (D8)
+### [x] T-11 — RED: `sign-in-view` `session_expired` Alert tests (D8)
 **Type**: test (RED)
 **Spec**: Global 401 Handling Redirects to Sign-in with Session-Expired Indication
 **WU**: WU-2, commit 3
@@ -281,7 +281,7 @@ All RED until T-12.
 
 ---
 
-### [ ] T-12 — GREEN: `sign-in-view.tsx` renders `reason=session_expired` Alert (D8)
+### [x] T-12 — GREEN: `sign-in-view.tsx` renders `reason=session_expired` Alert (D8)
 **Type**: impl
 **Spec**: same as T-11
 **WU**: WU-2, commit 4
@@ -295,7 +295,7 @@ All RED until T-12.
 
 ---
 
-### [ ] T-13 — Docs: correct `auth.md`
+### [x] T-13 — Docs: correct `auth.md`
 **Type**: docs
 **Spec**: proposal §2.6 doc cleanup (no formal requirement; no RED/GREEN)
 **WU**: WU-2, commit 5
@@ -374,6 +374,6 @@ All RED until T-12.
 - [x] Symmetric Cookie Clearing on Idle or Absolute Expiry — both cookies cleared on either rejection; a stale cleared cookie is rejected again (T-05–T-08)
 - [x] Step-up Cookie Independence from Access-Session Activity — re-issue never touches the step-up cookie; a fresh step-up cookie never rescues an idle-expired access session (T-07/T-08)
 - [x] Tokens Without an Absolute-Deadline Claim Are Rejected — legacy tokens treated as expired, not grandfathered (T-05/T-06)
-- [ ] Global 401 Handling Redirects to Sign-in with Session-Expired Indication — any authenticated 401 redirects; login/step-up/logout 401 and `403 STEP_UP_REQUIRED` do not (T-09–T-12)
+- [x] Global 401 Handling Redirects to Sign-in with Session-Expired Indication — any authenticated 401 redirects; login/step-up/logout 401 and `403 STEP_UP_REQUIRED` do not (T-09–T-12)
 - [x] Idle and Absolute Timeout Are Required, Validated Configuration — both vars boot-validated with safe defaults; `IDLE_TIMEOUT_SECONDS` alone drives the effective idle window (T-01/T-02)
 - [ ] No DB migration, no `platform-contract` change, no `apps/api` change; distinct-secrets boot guard unchanged (T-14 checklist items 6–9)
