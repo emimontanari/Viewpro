@@ -144,7 +144,7 @@ All RED until T-04 (no implementation exists yet).
 
 ---
 
-### [ ] T-05 — RED: `tenants-table.spec.tsx` — read-only rendering
+### [x] T-05 — RED: `tenants-table.spec.tsx` — read-only rendering
 **Type**: test (RED)
 **Spec**: Paginated Tenant List (scenario 1: renders name/slug/status/limits, name ASC)
 **WU**: WU-1, commit 5
