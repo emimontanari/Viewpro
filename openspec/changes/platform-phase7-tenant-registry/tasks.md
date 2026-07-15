@@ -421,7 +421,7 @@ All RED until T-20.
 
 ---
 
-### [ ] T-20 — GREEN: confirm threat mitigations pass (no code changes expected)
+### [x] T-20 — GREEN: confirm threat mitigations pass (no code changes expected)
 **Type**: impl
 **Spec**: tenant-registry — threat-matrix; isolation invariant
 **WU**: WU-3, commit 2
