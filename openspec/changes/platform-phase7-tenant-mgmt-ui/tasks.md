@@ -378,7 +378,7 @@ All new assertions RED until T-17.
 
 ---
 
-### [ ] T-19 — Final verification: full suite, typecheck, build, isolation
+### [x] T-19 — Final verification: full suite, typecheck, build, isolation
 **Type**: verify
 **Spec**: All 6 requirements + all invariants; proposal acceptance criteria 1–10
 **WU**: WU-2, commit 8
@@ -431,18 +431,18 @@ All new assertions RED until T-17.
 
 ## Success Checklist (maps to spec acceptance criteria)
 
-- [ ] Tenant list renders from `GET /operators/tenants?offset&limit` (`{total,items}`), name ASC (T-05, T-06, T-07, T-08)
-- [ ] Pager navigates offset/limit pages; requested `limit` never exceeds 200 (T-06, T-07, T-08, T-19)
-- [ ] Empty registry (`total===0`) shows an empty-state instead of a table row (T-06, T-07, T-08)
-- [ ] Suspend requires an explicit confirmation step before `PATCH .../status` fires; Activate PATCHes directly (T-16, T-17)
-- [ ] `unchanged:true` on a status/limits mutation handled gracefully — no error, list still reflects the returned value (T-16, T-17)
-- [ ] List is invalidated and refetched (never patched optimistically) after a successful status or limits mutation (T-16, T-17)
-- [ ] Limits modal opens pre-filled from the row; clearing a field sends `null`; save PATCHes and refreshes the list (T-14, T-15, T-16, T-17)
-- [ ] The acting button for any in-flight mutation is disabled until it settles (T-12, T-13, T-14, T-15, T-16, T-17)
-- [ ] 404 on a mutation shows a clear "no existe" message; the list stays unchanged (T-16, T-17)
-- [ ] Generic (500) mutation failure surfaces an error without crashing the page; list retains pre-failure data (T-16, T-17)
-- [ ] Every request goes through `apiRequest` to viewpro-api only — no BFF route, no InmoView call (T-03, T-04, T-19)
-- [ ] No role-based hiding of any list/status/limits action (T-13, T-17, T-19 — `globalRole`/`isAdmin` grep is empty)
-- [ ] FE-owned response types (`AdminTenant{Status,Limits}UpdateResponse`) are locally defined; `@viewpro/platform-contract` `SetTenant*Result` is NOT imported (T-04, T-19)
-- [ ] New nav entry links to the tenant-management page (T-18, T-19)
-- [ ] Full `pnpm --filter viewpro-web test` + `typecheck` + `build` green with no regressions in `features/metrics/` (T-19)
+- [x] Tenant list renders from `GET /operators/tenants?offset&limit` (`{total,items}`), name ASC (T-05, T-06, T-07, T-08)
+- [x] Pager navigates offset/limit pages; requested `limit` never exceeds 200 (T-06, T-07, T-08, T-19)
+- [x] Empty registry (`total===0`) shows an empty-state instead of a table row (T-06, T-07, T-08)
+- [x] Suspend requires an explicit confirmation step before `PATCH .../status` fires; Activate PATCHes directly (T-16, T-17)
+- [x] `unchanged:true` on a status/limits mutation handled gracefully — no error, list still reflects the returned value (T-16, T-17)
+- [x] List is invalidated and refetched (never patched optimistically) after a successful status or limits mutation (T-16, T-17)
+- [x] Limits modal opens pre-filled from the row; clearing a field sends `null`; save PATCHes and refreshes the list (T-14, T-15, T-16, T-17)
+- [x] The acting button for any in-flight mutation is disabled until it settles (T-12, T-13, T-14, T-15, T-16, T-17)
+- [x] 404 on a mutation shows a clear "no existe" message; the list stays unchanged (T-16, T-17)
+- [x] Generic (500) mutation failure surfaces an error without crashing the page; list retains pre-failure data (T-16, T-17)
+- [x] Every request goes through `apiRequest` to viewpro-api only — no BFF route, no InmoView call (T-03, T-04, T-19)
+- [x] No role-based hiding of any list/status/limits action (T-13, T-17, T-19 — `globalRole`/`isAdmin` grep is empty)
+- [x] FE-owned response types (`AdminTenant{Status,Limits}UpdateResponse`) are locally defined; `@viewpro/platform-contract` `SetTenant*Result` is NOT imported (T-04, T-19)
+- [x] New nav entry links to the tenant-management page (T-18, T-19)
+- [x] Full `pnpm --filter viewpro-web test` + `typecheck` + `build` green with no regressions in `features/metrics/` (T-19)
