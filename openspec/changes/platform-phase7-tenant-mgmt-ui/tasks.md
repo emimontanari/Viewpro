@@ -127,7 +127,7 @@ All RED until T-04 (no implementation exists yet).
 
 ---
 
-### [ ] T-04 — GREEN: implement `api/types.ts` + `api/schemas.ts` + `api/service.ts` + `api/queries.ts`
+### [x] T-04 — GREEN: implement `api/types.ts` + `api/schemas.ts` + `api/service.ts` + `api/queries.ts`
 **Type**: impl
 **Spec**: Paginated Tenant List; Status Toggle with Suspend Confirmation; Limits Editing via Modal Dialog; viewpro-api-Only Isolation
 **WU**: WU-1, commit 4
