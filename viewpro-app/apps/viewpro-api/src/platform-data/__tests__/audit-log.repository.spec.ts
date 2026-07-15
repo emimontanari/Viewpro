@@ -59,14 +59,15 @@ describe('AuditLogRepository (integration — test DB)', () => {
 
     const rows = await prisma.platformAuditLog.findMany({ where: { sourceEventId: 'evt-audit-1' } })
     expect(rows).toHaveLength(1)
-    const row = rows[0]
-    expect(row.action).toBe('TENANT_STATUS_CHANGED')
-    expect(row.tenantId).toBe('t-1')
-    expect(row.actor).toEqual({ id: 'op-1', type: 'operator', label: 'op-1' })
-    expect(row.previousValue).toEqual({ status: 'TRIAL' })
-    expect(row.newValue).toEqual({ status: 'ACTIVE' })
-    expect(row.occurredAt).toBeInstanceOf(Date)
-    expect(row.seqNo).toBe(1n)
+    const row = rows.at(0)
+    expect(row).toBeDefined()
+    expect(row?.action).toBe('TENANT_STATUS_CHANGED')
+    expect(row?.tenantId).toBe('t-1')
+    expect(row?.actor).toEqual({ id: 'op-1', type: 'operator', label: 'op-1' })
+    expect(row?.previousValue).toEqual({ status: 'TRIAL' })
+    expect(row?.newValue).toEqual({ status: 'ACTIVE' })
+    expect(row?.occurredAt).toBeInstanceOf(Date)
+    expect(row?.seqNo).toBe(1n)
   })
 
   it('re-invoking appendFromEvent with the SAME sourceEventId → still exactly one row, no error (idempotent)', async () => {
