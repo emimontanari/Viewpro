@@ -10,4 +10,8 @@ export class PrismaOperatorRepository implements IOperatorRepository {
   findByEmail(email: string): Promise<Operator | null> {
     return this.prisma.operator.findUnique({ where: { email } })
   }
+
+  findById(id: string): Promise<Operator | null> {
+    return this.prisma.operator.findUnique({ where: { id } })
+  }
 }
