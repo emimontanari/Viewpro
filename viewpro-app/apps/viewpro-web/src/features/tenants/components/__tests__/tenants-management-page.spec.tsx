@@ -807,10 +807,15 @@ describe('TenantsManagementPage — double-submit guard', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Suspender' }));
 
     const pager = await screen.findByTestId('tenants-pager');
+    // {hidden: true}: the pager is a background sibling of the still-open
+    // AlertDialog, so Radix marks it aria-hidden while the confirm dialog is
+    // pending — this is correct a11y behavior (D13 keeps the confirm dialog
+    // genuinely open/pending rather than self-closing on click), it just
+    // means role queries here must opt in to hidden elements.
     await waitFor(() => {
-      expect(within(pager).getByRole('button', { name: 'prev' })).toBeDisabled();
+      expect(within(pager).getByRole('button', { name: 'prev', hidden: true })).toBeDisabled();
     });
-    expect(within(pager).getByRole('button', { name: 'next' })).toBeDisabled();
+    expect(within(pager).getByRole('button', { name: 'next', hidden: true })).toBeDisabled();
 
     resolveMutation(STATUS_SUCCESS_RESPONSE);
 
@@ -865,9 +870,10 @@ describe('TenantsManagementPage — step-up gate wiring', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Contraseña')).toBeTruthy();
     });
-    // The underlying suspend confirm dialog stays open — not cleared like a
+    // The underlying suspend confirm dialog stays open (still mounted, just
+    // aria-hidden behind the stacked StepUpDialog) — not cleared like a
     // normal mutation failure.
-    expect(screen.getByRole('alertdialog')).toBeTruthy();
+    expect(screen.getByRole('alertdialog', { hidden: true })).toBeTruthy();
     expect(mockToast.error).not.toHaveBeenCalled();
   });
 
@@ -960,8 +966,9 @@ describe('TenantsManagementPage — step-up gate wiring', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Contraseña')).toBeTruthy();
     });
-    // The limits dialog stays open too (2 open Dialogs: limits + step-up).
-    expect(screen.getAllByRole('dialog')).toHaveLength(2);
+    // The limits dialog stays open too (2 mounted Dialogs: limits + step-up —
+    // the limits one is aria-hidden behind the stacked StepUpDialog).
+    expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(2);
     expect(mockToast.error).not.toHaveBeenCalled();
   });
 });
