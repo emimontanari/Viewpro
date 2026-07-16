@@ -10,10 +10,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StepUpDialog } from '@/features/auth/components/step-up-dialog';
 import { useStepUpGate } from '@/features/auth/hooks/use-step-up-gate';
 import { tenantsKeys, tenantsListOptions } from '@/features/tenants/api/queries';
-import { updateTenantLimits, updateTenantStatus } from '@/features/tenants/api/service';
-import type { TenantLimits, TenantListItem, TenantStatusAction } from '@/features/tenants/api/types';
+import { assignTenantPlan, updateTenantLimits, updateTenantStatus } from '@/features/tenants/api/service';
+import type {
+  TenantLimits,
+  TenantListItem,
+  TenantPlan,
+  TenantStatusAction
+} from '@/features/tenants/api/types';
 import { getApiErrorMessage, isApiError } from '@/lib/api-client';
 import { TenantLimitsDialog } from './tenant-limits-dialog';
+import { TenantPlanDialog } from './tenant-plan-dialog';
 import { TenantStatusConfirmDialog } from './tenant-status-confirm-dialog';
 import { TenantsEmptyState } from './tenants-empty-state';
 import { TenantsPager } from './tenants-pager';
@@ -51,6 +57,7 @@ export function TenantsManagementPage() {
     targetStatus: TenantStatusAction;
   } | null>(null);
   const [limitsTenant, setLimitsTenant] = React.useState<TenantListItem | null>(null);
+  const [planTenant, setPlanTenant] = React.useState<TenantListItem | null>(null);
 
   const queryClient = useQueryClient();
   const stepUpGate = useStepUpGate();
@@ -126,7 +133,26 @@ export function TenantsManagementPage() {
     }
   });
 
-  const isMutating = statusMutation.isPending || limitsMutation.isPending;
+  // platform-manual-plans (Slice 4, Part 2) — mirrors limitsMutation, incl.
+  // the same step-up-first gate and invalidate-not-patch refetch pattern (D9).
+  const planMutation = useMutation({
+    mutationFn: (input: { tenantId: string; plan: TenantPlan }) =>
+      assignTenantPlan(input.tenantId, { plan: input.plan }),
+    onSuccess: async () => {
+      toast.success('Plan de la inmobiliaria asignado.');
+      setPlanTenant(null);
+      await invalidateList();
+    },
+    onError: (error, variables) => {
+      if (stepUpGate.handleStepUpError(error, () => planMutation.mutate(variables))) {
+        return;
+      }
+
+      reportMutationError(error);
+    }
+  });
+
+  const isMutating = statusMutation.isPending || limitsMutation.isPending || planMutation.isPending;
 
   const handlePrev = React.useCallback(() => {
     setOffset((current) => Math.max(0, current - LIMIT));
@@ -173,6 +199,17 @@ export function TenantsManagementPage() {
     [limitsTenant, limitsMutation]
   );
 
+  const handleAssignPlan = React.useCallback(
+    (plan: TenantPlan) => {
+      if (!planTenant) {
+        return;
+      }
+
+      planMutation.mutate({ tenantId: planTenant.id, plan });
+    },
+    [planTenant, planMutation]
+  );
+
   if (isLoading) {
     return <TenantsLoadingSkeleton />;
   }
@@ -204,6 +241,7 @@ export function TenantsManagementPage() {
         isMutating={isMutating}
         onEditLimits={setLimitsTenant}
         onStatusAction={handleStatusAction}
+        onAssignPlan={setPlanTenant}
       />
       <TenantsPager
         offset={offset}
@@ -225,6 +263,12 @@ export function TenantsManagementPage() {
         isSaving={limitsMutation.isPending}
         onClose={() => setLimitsTenant(null)}
         onSave={handleSaveLimits}
+      />
+      <TenantPlanDialog
+        tenant={planTenant}
+        isSaving={planMutation.isPending}
+        onClose={() => setPlanTenant(null)}
+        onAssign={handleAssignPlan}
       />
       <StepUpDialog {...stepUpGate.dialogProps} />
     </div>

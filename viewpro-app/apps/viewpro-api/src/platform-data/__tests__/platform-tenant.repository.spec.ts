@@ -254,3 +254,199 @@ describe('PlatformTenantRepository — applyLimitsChange (integration — test D
     }
   })
 })
+
+/**
+ * platform-manual-plans (Slice 4, Part 2) — RED: `setPlan` write + the
+ * drift-clear recompute folded into `applyLimitsChange` (design D5).
+ *
+ * Spec: Assign-plan action drives the existing limits control lane;
+ *   Plan-label drift on raw limit edit (both scenarios).
+ * Design D5: single choke point — every limits change (raw edit AND
+ *   assign-plan's own push) recomputes plan-vs-limits match at ingest.
+ */
+describe('PlatformTenantRepository — setPlan + drift-clear (integration — test DB)', () => {
+  let moduleRef: TestingModule
+  let repo: PlatformTenantRepository
+  let prisma: PrismaService
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [PlatformTenantRepository],
+    }).compile()
+
+    repo = moduleRef.get(PlatformTenantRepository)
+    prisma = moduleRef.get(PrismaService)
+  })
+
+  afterAll(async () => {
+    await moduleRef.close()
+  })
+
+  beforeEach(async () => {
+    await prisma.platformTenant.deleteMany()
+  })
+
+  it('setPlan writes the plan column', async () => {
+    await repo.upsertFromRegistered(
+      makeRegisteredPayload({
+        id: 't-plan-set',
+        limits: { maxUsers: 3, maxActivePropertyEngagements: 25, maxDocumentsStorageMb: 500 },
+      }),
+    )
+
+    await repo.setPlan('t-plan-set', 'BASICO')
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-plan-set' } })
+    expect(row?.plan).toBe('BASICO')
+  })
+
+  it('setPlan on a missing projection row → does NOT throw, logs a WARNING, and creates no row', async () => {
+    // Robustness guard (mirrors applyLimitsChange's zero-match posture): the
+    // assign-plan flow pushes limits to InmoView FIRST (enforced), THEN calls
+    // setPlan. For a not-yet-projected / backfill-window tenant, no
+    // platform_tenants row exists — an update() would throw Prisma P2025 and
+    // 500 AFTER a successful side effect. setPlan must instead drop the label
+    // write observably (warn) without throwing or fabricating a partial row.
+    const warnSpy = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined)
+
+    try {
+      await expect(repo.setPlan('t-plan-set-missing', 'BASICO')).resolves.toBeUndefined()
+
+      expect(warnSpy).toHaveBeenCalledTimes(1)
+      expect(warnSpy.mock.calls[0]?.[0]).toContain('t-plan-set-missing')
+      expect(warnSpy.mock.calls[0]?.[0]).toContain('BASICO')
+
+      const row = await prisma.platformTenant.findUnique({ where: { id: 't-plan-set-missing' } })
+      expect(row).toBeNull()
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
+
+  it('upsertFromRegistered UPDATE path with limits that diverge from the stored plan clears the plan label (universal drift choke point)', async () => {
+    await repo.upsertFromRegistered(
+      makeRegisteredPayload({
+        id: 't-plan-reg-drift',
+        limits: { maxUsers: 3, maxActivePropertyEngagements: 25, maxDocumentsStorageMb: 500 },
+      }),
+    )
+    await repo.setPlan('t-plan-reg-drift', 'BASICO')
+
+    // A re-delivered TENANT_REGISTERED whose limits diverge from BASICO's
+    // preset must clear the stored plan too — upsertFromRegistered's UPDATE
+    // branch overwrites the limit columns and MUST flow through the same drift
+    // recompute as applyLimitsChange (D5 single choke point).
+    await repo.upsertFromRegistered(
+      makeRegisteredPayload({
+        id: 't-plan-reg-drift',
+        limits: { maxUsers: 3, maxActivePropertyEngagements: 25, maxDocumentsStorageMb: 1000 },
+      }),
+    )
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-plan-reg-drift' } })
+    expect(row?.plan).toBeNull()
+  })
+
+  it('upsertFromRegistered UPDATE path with limits that still match the stored plan keeps the plan label', async () => {
+    await repo.upsertFromRegistered(
+      makeRegisteredPayload({
+        id: 't-plan-reg-nodrift',
+        limits: { maxUsers: 3, maxActivePropertyEngagements: 25, maxDocumentsStorageMb: 500 },
+      }),
+    )
+    await repo.setPlan('t-plan-reg-nodrift', 'BASICO')
+
+    // Re-delivery carrying the exact BASICO preset must NOT self-clear.
+    await repo.upsertFromRegistered(
+      makeRegisteredPayload({
+        id: 't-plan-reg-nodrift',
+        limits: { maxUsers: 3, maxActivePropertyEngagements: 25, maxDocumentsStorageMb: 500 },
+      }),
+    )
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-plan-reg-nodrift' } })
+    expect(row?.plan).toBe('BASICO')
+  })
+
+  it('raw-edit to limits that no longer match the stored plan clears the plan label', async () => {
+    await repo.upsertFromRegistered(
+      makeRegisteredPayload({
+        id: 't-plan-drift',
+        limits: { maxUsers: 3, maxActivePropertyEngagements: 25, maxDocumentsStorageMb: 500 },
+      }),
+    )
+    await repo.setPlan('t-plan-drift', 'BASICO')
+
+    // Raw edit to 3/25/1000 — no longer matches BASICO's 500 MB preset.
+    await repo.applyLimitsChange('t-plan-drift', {
+      maxUsers: 3,
+      maxActivePropertyEngagements: 25,
+      maxDocumentsStorageMb: 1000,
+    })
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-plan-drift' } })
+    expect(row?.plan).toBeNull()
+  })
+
+  it('raw-edit to limits that still match the stored plan keeps the plan label', async () => {
+    await repo.upsertFromRegistered(
+      makeRegisteredPayload({
+        id: 't-plan-nodrift',
+        limits: { maxUsers: 3, maxActivePropertyEngagements: 25, maxDocumentsStorageMb: 500 },
+      }),
+    )
+    await repo.setPlan('t-plan-nodrift', 'BASICO')
+
+    // Same exact values re-applied — no actual change.
+    await repo.applyLimitsChange('t-plan-nodrift', {
+      maxUsers: 3,
+      maxActivePropertyEngagements: 25,
+      maxDocumentsStorageMb: 500,
+    })
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-plan-nodrift' } })
+    expect(row?.plan).toBe('BASICO')
+  })
+
+  it("regression: assign-plan's own limits push re-matches its own tier and must NOT self-clear the label", async () => {
+    await repo.upsertFromRegistered(
+      makeRegisteredPayload({
+        id: 't-plan-self-assign',
+        limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+      }),
+    )
+
+    // Simulates the assign-plan endpoint's own ordering: setPlan first (as
+    // the controller does after the lane push succeeds), THEN the
+    // TENANT_LIMITS_CHANGED ingest for that very push arrives and calls
+    // applyLimitsChange with the SAME preset the plan was just set to.
+    await repo.setPlan('t-plan-self-assign', 'PROFESIONAL')
+    await repo.applyLimitsChange('t-plan-self-assign', {
+      maxUsers: 10,
+      maxActivePropertyEngagements: 100,
+      maxDocumentsStorageMb: 5000,
+    })
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-plan-self-assign' } })
+    expect(row?.plan).toBe('PROFESIONAL')
+  })
+
+  it('a tenant with no assigned plan is unaffected by applyLimitsChange (plan stays null)', async () => {
+    await repo.upsertFromRegistered(
+      makeRegisteredPayload({
+        id: 't-plan-none',
+        limits: { maxUsers: 5, maxActivePropertyEngagements: 10, maxDocumentsStorageMb: 500 },
+      }),
+    )
+
+    await repo.applyLimitsChange('t-plan-none', {
+      maxUsers: 25,
+      maxActivePropertyEngagements: 100,
+      maxDocumentsStorageMb: 5000,
+    })
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-plan-none' } })
+    expect(row?.plan).toBeNull()
+  })
+})

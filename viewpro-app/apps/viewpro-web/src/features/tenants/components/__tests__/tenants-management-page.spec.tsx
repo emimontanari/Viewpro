@@ -41,7 +41,8 @@ import type {
 vi.mock('@/features/tenants/api/service', () => ({
   getTenantList: vi.fn(),
   updateTenantStatus: vi.fn(),
-  updateTenantLimits: vi.fn()
+  updateTenantLimits: vi.fn(),
+  assignTenantPlan: vi.fn()
 }));
 
 vi.mock('sonner', () => ({
@@ -86,16 +87,19 @@ function mockGetTenantActions(item: TenantListItem): MockTenantAction[] {
 
 vi.mock('../tenants-table', () => ({
   getTenantActions: (item: TenantListItem) => mockGetTenantActions(item),
+  PLAN_LABELS: { BASICO: 'Básico', PROFESIONAL: 'Profesional', EMPRESA: 'Empresa' },
   TenantsTable: ({
     items,
     isMutating,
     onEditLimits,
-    onStatusAction
+    onStatusAction,
+    onAssignPlan
   }: {
     items: TenantListItem[];
     isMutating: boolean;
     onEditLimits: (item: TenantListItem) => void;
     onStatusAction: (item: TenantListItem, action: MockTenantAction) => void;
+    onAssignPlan: (item: TenantListItem) => void;
   }) => (
     <div data-testid='tenants-table'>
       {items.map((item) => (
@@ -108,6 +112,14 @@ vi.mock('../tenants-table', () => ({
             onClick={() => onEditLimits(item)}
           >
             editar-{item.id}
+          </button>
+          <button
+            type='button'
+            data-testid={`mock-assign-plan-${item.id}`}
+            disabled={isMutating}
+            onClick={() => onAssignPlan(item)}
+          >
+            asignar-plan-{item.id}
           </button>
           {mockGetTenantActions(item).map((action) => (
             <button
@@ -161,13 +173,19 @@ vi.mock('../tenants-empty-state', () => ({
   TenantsEmptyState: () => <div data-testid='tenants-empty-state'>vacío</div>
 }));
 
-import { getTenantList, updateTenantLimits, updateTenantStatus } from '@/features/tenants/api/service';
+import {
+  assignTenantPlan,
+  getTenantList,
+  updateTenantLimits,
+  updateTenantStatus
+} from '@/features/tenants/api/service';
 import { stepUp } from '@/lib/session';
 import { TenantsManagementPage } from '../tenants-management-page';
 
 const mockGetTenantList = vi.mocked(getTenantList);
 const mockUpdateTenantStatus = vi.mocked(updateTenantStatus);
 const mockUpdateTenantLimits = vi.mocked(updateTenantLimits);
+const mockAssignTenantPlan = vi.mocked(assignTenantPlan);
 const mockToast = vi.mocked(toast);
 const mockStepUp = vi.mocked(stepUp);
 
@@ -183,7 +201,8 @@ const ITEM: TenantListItem = {
   slug: 'acme-realty',
   status: 'ACTIVE',
   limits: { maxUsers: 10, maxActivePropertyEngagements: 50, maxDocumentsStorageMb: 1024 },
-  trialEndsAt: null
+  trialEndsAt: null,
+  plan: null
 };
 
 const SUSPENDED_ITEM: TenantListItem = {
@@ -192,7 +211,8 @@ const SUSPENDED_ITEM: TenantListItem = {
   slug: 'beta-homes',
   status: 'SUSPENDED',
   limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
-  trialEndsAt: null
+  trialEndsAt: null,
+  plan: null
 };
 
 const NON_EMPTY_RESPONSE: TenantListResponse = { total: 60, items: [ITEM] };
@@ -211,6 +231,15 @@ const LIMITS_SUCCESS_RESPONSE: AdminTenantLimitsUpdateResponse = {
   tenantId: 'tenant-1',
   previousLimits: ITEM.limits,
   limits: { maxUsers: 10, maxActivePropertyEngagements: 50, maxDocumentsStorageMb: 1024 },
+  unchanged: false,
+  updatedAt: '2026-07-15T00:00:00.000Z'
+};
+
+// PATCH .../plan returns the SAME opaque limits-update passthrough shape.
+const PLAN_SUCCESS_RESPONSE: AdminTenantLimitsUpdateResponse = {
+  tenantId: 'tenant-1',
+  previousLimits: ITEM.limits,
+  limits: { maxUsers: 10, maxActivePropertyEngagements: 100, maxDocumentsStorageMb: 5000 },
   unchanged: false,
   updatedAt: '2026-07-15T00:00:00.000Z'
 };
@@ -639,6 +668,114 @@ describe('TenantsManagementPage — limits editing via modal dialog', () => {
         maxDocumentsStorageMb: 1024
       });
     });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    await waitFor(() => {
+      expect(mockGetTenantList).toHaveBeenCalledTimes(2);
+    });
+  });
+});
+
+// ─── Plan assignment (platform-manual-plans, Slice 4, Part 2) ─────────────────
+//
+// RED: planMutation mirrors limitsMutation, incl. step-up handling and the
+// invalidate-not-patch refetch pattern (D7/D9).
+
+describe('TenantsManagementPage — plan assignment via modal dialog', () => {
+  it('clicking "Asignar plan" opens the real TenantPlanDialog', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-assign-plan-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-assign-plan-tenant-1'));
+
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+    expect(screen.getByLabelText('Plan')).toBeTruthy();
+  });
+
+  it('submitting the dialog assigns the selected plan; success closes and refetches', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockAssignTenantPlan.mockResolvedValueOnce(PLAN_SUCCESS_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-assign-plan-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-assign-plan-tenant-1'));
+
+    await screen.findByRole('dialog');
+    fireEvent.change(screen.getByLabelText('Plan'), { target: { value: 'PROFESIONAL' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Asignar plan' }));
+
+    await waitFor(() => {
+      expect(mockAssignTenantPlan).toHaveBeenCalledWith('tenant-1', { plan: 'PROFESIONAL' });
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    await waitFor(() => {
+      expect(mockGetTenantList).toHaveBeenCalledTimes(2);
+    });
+    expect(mockToast.success).toHaveBeenCalled();
+  });
+
+  it('404 on a plan mutation shows a clear "no existe" message; list is left unchanged', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockAssignTenantPlan.mockRejectedValueOnce({ status: 404, message: 'Not found' });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-assign-plan-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-assign-plan-tenant-1'));
+
+    await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Asignar plan' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('La inmobiliaria no existe o fue eliminada.');
+    });
+    expect(mockGetTenantList).toHaveBeenCalledTimes(1);
+  });
+
+  it('a 403 STEP_UP_REQUIRED on assignTenantPlan opens the shared StepUpDialog — no error toast, dialog stays open', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockAssignTenantPlan.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-assign-plan-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-assign-plan-tenant-1'));
+
+    await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Asignar plan' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Contraseña')).toBeTruthy();
+    });
+    // The plan dialog stays mounted (aria-hidden behind the stacked
+    // StepUpDialog) — same pattern as the limits dialog's step-up handling.
+    expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(2);
+    expect(mockToast.error).not.toHaveBeenCalled();
+  });
+
+  it('correct password retries the original assignTenantPlan mutation with the same variables; success closes both dialogs and refetches', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockAssignTenantPlan.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
+    mockAssignTenantPlan.mockResolvedValueOnce(PLAN_SUCCESS_RESPONSE);
+    mockStepUp.mockResolvedValueOnce({ success: true });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-assign-plan-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-assign-plan-tenant-1'));
+
+    await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Asignar plan' }));
+
+    await waitFor(() => screen.getByLabelText('Contraseña'));
+    fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'secret1234' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+
+    await waitFor(() => {
+      expect(mockAssignTenantPlan).toHaveBeenCalledTimes(2);
+    });
+    expect(mockAssignTenantPlan).toHaveBeenNthCalledWith(2, 'tenant-1', { plan: 'BASICO' });
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull();
     });

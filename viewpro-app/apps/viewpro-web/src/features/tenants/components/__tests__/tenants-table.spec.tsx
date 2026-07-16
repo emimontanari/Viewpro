@@ -42,7 +42,8 @@ const TRIAL_ITEM: TenantListItem = {
   slug: 'trial-co',
   status: 'TRIAL',
   limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
-  trialEndsAt: null
+  trialEndsAt: null,
+  plan: null
 };
 
 const ITEMS: TenantListItem[] = [
@@ -52,7 +53,8 @@ const ITEMS: TenantListItem[] = [
     slug: 'acme-realty',
     status: 'ACTIVE',
     limits: { maxUsers: 10, maxActivePropertyEngagements: 50, maxDocumentsStorageMb: 1024 },
-    trialEndsAt: null
+    trialEndsAt: null,
+    plan: 'BASICO'
   },
   {
     id: 'tenant-2',
@@ -60,7 +62,8 @@ const ITEMS: TenantListItem[] = [
     slug: 'beta-homes',
     status: 'SUSPENDED',
     limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
-    trialEndsAt: null
+    trialEndsAt: null,
+    plan: null
   }
 ];
 
@@ -70,12 +73,17 @@ const CANCELLED_ITEM: TenantListItem = {
   slug: 'cancelled-co',
   status: 'CANCELLED',
   limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
-  trialEndsAt: null
+  trialEndsAt: null,
+  plan: null
 };
 
 const CANCEL_ACTION = { kind: 'cancel', targetStatus: 'CANCELLED', label: 'Dar de baja' };
 
 function noop() {
+  // used as a default no-op handler where the test does not assert calls
+}
+
+function noopAssignPlan() {
   // used as a default no-op handler where the test does not assert calls
 }
 
@@ -91,7 +99,13 @@ async function openRowMenu(rowIndex: number) {
 describe('TenantsTable — read-only rendering', () => {
   it('renders one row per item', () => {
     render(
-      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
+      <TenantsTable
+        items={ITEMS}
+        isMutating={false}
+        onEditLimits={noop}
+        onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
+      />
     );
 
     expect(screen.getByTestId('tenant-row-tenant-1')).toBeTruthy();
@@ -100,7 +114,13 @@ describe('TenantsTable — read-only rendering', () => {
 
   it('renders name and slug per row', () => {
     render(
-      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
+      <TenantsTable
+        items={ITEMS}
+        isMutating={false}
+        onEditLimits={noop}
+        onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
+      />
     );
 
     expect(screen.getByText('Acme Realty')).toBeTruthy();
@@ -111,7 +131,13 @@ describe('TenantsTable — read-only rendering', () => {
 
   it('renders the "Inmobiliaria" column header', () => {
     render(
-      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
+      <TenantsTable
+        items={ITEMS}
+        isMutating={false}
+        onEditLimits={noop}
+        onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
+      />
     );
 
     expect(screen.getByRole('columnheader', { name: 'Inmobiliaria' })).toBeTruthy();
@@ -119,7 +145,13 @@ describe('TenantsTable — read-only rendering', () => {
 
   it('renders a status badge per row', () => {
     render(
-      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
+      <TenantsTable
+        items={ITEMS}
+        isMutating={false}
+        onEditLimits={noop}
+        onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
+      />
     );
 
     expect(screen.getByTestId('tenant-status-tenant-1').textContent).toMatch(/activo/i);
@@ -128,7 +160,13 @@ describe('TenantsTable — read-only rendering', () => {
 
   it('renders the limits summary with 3 values', () => {
     render(
-      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
+      <TenantsTable
+        items={ITEMS}
+        isMutating={false}
+        onEditLimits={noop}
+        onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
+      />
     );
 
     const limits = screen.getByTestId('tenant-limits-tenant-1').textContent ?? '';
@@ -137,9 +175,58 @@ describe('TenantsTable — read-only rendering', () => {
     expect(limits).toContain('1.024');
   });
 
+  // platform-manual-plans (Slice 4, Part 2) — RED: Plan column.
+  it('renders the plan label for a row with an assigned plan (D10)', () => {
+    render(
+      <TenantsTable
+        items={ITEMS}
+        isMutating={false}
+        onEditLimits={noop}
+        onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
+      />
+    );
+
+    expect(screen.getByTestId('tenant-plan-tenant-1').textContent).toBe('Básico');
+  });
+
+  it('renders the neutral placeholder "—" for a row with no assigned plan', () => {
+    render(
+      <TenantsTable
+        items={ITEMS}
+        isMutating={false}
+        onEditLimits={noop}
+        onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
+      />
+    );
+
+    expect(screen.getByTestId('tenant-plan-tenant-2').textContent).toBe('—');
+  });
+
+  it('renders the "Plan" column header', () => {
+    render(
+      <TenantsTable
+        items={ITEMS}
+        isMutating={false}
+        onEditLimits={noop}
+        onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
+      />
+    );
+
+    expect(screen.getByRole('columnheader', { name: 'Plan' })).toBeTruthy();
+  });
+
   it('shows "Sin límite" for null limit values', () => {
     render(
-      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
+      <TenantsTable
+        items={ITEMS}
+        isMutating={false}
+        onEditLimits={noop}
+        onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
+      />
     );
 
     const limits = screen.getByTestId('tenant-limits-tenant-2').textContent ?? '';
@@ -148,7 +235,13 @@ describe('TenantsTable — read-only rendering', () => {
 
   it('renders rows in the order received (server already sorts name ASC)', () => {
     render(
-      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
+      <TenantsTable
+        items={ITEMS}
+        isMutating={false}
+        onEditLimits={noop}
+        onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
+      />
     );
 
     const rows = screen.getAllByTestId(/tenant-row-/);
@@ -160,7 +253,13 @@ describe('TenantsTable — read-only rendering', () => {
 describe('TenantsTable — dropdown actions', () => {
   it('renders one actions trigger per row', () => {
     render(
-      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
+      <TenantsTable
+        items={ITEMS}
+        isMutating={false}
+        onEditLimits={noop}
+        onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
+      />
     );
 
     expect(screen.getAllByRole('button', { name: 'Abrir menú' })).toHaveLength(2);
@@ -174,6 +273,7 @@ describe('TenantsTable — dropdown actions', () => {
         isMutating={false}
         onEditLimits={onEditLimits}
         onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
       />
     );
 
@@ -191,6 +291,7 @@ describe('TenantsTable — dropdown actions', () => {
         isMutating={false}
         onEditLimits={noop}
         onStatusAction={onStatusAction}
+        onAssignPlan={noopAssignPlan}
       />
     );
 
@@ -211,6 +312,7 @@ describe('TenantsTable — dropdown actions', () => {
         isMutating={false}
         onEditLimits={noop}
         onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
       />
     );
 
@@ -226,6 +328,7 @@ describe('TenantsTable — dropdown actions', () => {
         isMutating={false}
         onEditLimits={noop}
         onStatusAction={onStatusAction}
+        onAssignPlan={noopAssignPlan}
       />
     );
 
@@ -244,6 +347,7 @@ describe('TenantsTable — dropdown actions', () => {
         isMutating={false}
         onEditLimits={noop}
         onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
       />
     );
 
@@ -259,6 +363,7 @@ describe('TenantsTable — dropdown actions', () => {
         isMutating={false}
         onEditLimits={noop}
         onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
       />
     );
 
@@ -269,9 +374,34 @@ describe('TenantsTable — dropdown actions', () => {
     ).toBeNull();
   });
 
+  // platform-manual-plans (Slice 4, Part 2) — RED: "Asignar plan" dropdown item.
+  it('opening a row menu exposes "Asignar plan" which emits onAssignPlan(row)', async () => {
+    const onAssignPlan = vi.fn();
+    render(
+      <TenantsTable
+        items={ITEMS}
+        isMutating={false}
+        onEditLimits={noop}
+        onStatusAction={noop}
+        onAssignPlan={onAssignPlan}
+      />
+    );
+
+    const user = await openRowMenu(0);
+    await user.click(await screen.findByRole('menuitem', { name: 'Asignar plan' }));
+
+    expect(onAssignPlan).toHaveBeenCalledWith(ITEMS[0]);
+  });
+
   it('isMutating={true} disables every action item in the row menu (double-submit guard, AC6)', async () => {
     render(
-      <TenantsTable items={[ITEMS[0]]} isMutating={true} onEditLimits={noop} onStatusAction={noop} />
+      <TenantsTable
+        items={[ITEMS[0]]}
+        isMutating={true}
+        onEditLimits={noop}
+        onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
+      />
     );
 
     await openRowMenu(0);
@@ -368,6 +498,7 @@ describe('TenantsTable — trial end line (TRIAL rows only)', () => {
           isMutating={false}
           onEditLimits={noop}
           onStatusAction={noop}
+          onAssignPlan={noopAssignPlan}
         />
       );
 
@@ -388,6 +519,7 @@ describe('TenantsTable — trial end line (TRIAL rows only)', () => {
           isMutating={false}
           onEditLimits={noop}
           onStatusAction={noop}
+          onAssignPlan={noopAssignPlan}
         />
       );
 
@@ -402,6 +534,7 @@ describe('TenantsTable — trial end line (TRIAL rows only)', () => {
         isMutating={false}
         onEditLimits={noop}
         onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
       />
     );
 
@@ -420,6 +553,7 @@ describe('TenantsTable — trial end line (TRIAL rows only)', () => {
         isMutating={false}
         onEditLimits={noop}
         onStatusAction={noop}
+        onAssignPlan={noopAssignPlan}
       />
     );
 

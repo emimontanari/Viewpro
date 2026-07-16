@@ -6,6 +6,7 @@ import type {
   AdminTenantStatusUpdateResponse,
   TenantListResponse,
   UpdateTenantLimitsPayload,
+  UpdateTenantPlanPayload,
   UpdateTenantStatusPayload
 } from './types';
 
@@ -49,6 +50,26 @@ export async function updateTenantLimits(
   payload: UpdateTenantLimitsPayload
 ): Promise<AdminTenantLimitsUpdateResponse> {
   const raw = await apiRequest<unknown>(`/operators/tenants/${encodeURIComponent(tenantId)}/limits`, {
+    method: 'PATCH',
+    body: payload
+  });
+
+  return parseLimitsResponse(raw);
+}
+
+/**
+ * PATCH /operators/tenants/:id/plan
+ *
+ * platform-manual-plans (Slice 4, Part 2) — assign a plan tier. The server
+ * returns the SAME opaque limits-update passthrough shape as .../limits (the
+ * controller forwards the limits-lane result verbatim) — reuses
+ * parseLimitsResponse rather than a duplicate schema (D4/D6/D7).
+ */
+export async function assignTenantPlan(
+  tenantId: string,
+  payload: UpdateTenantPlanPayload
+): Promise<AdminTenantLimitsUpdateResponse> {
+  const raw = await apiRequest<unknown>(`/operators/tenants/${encodeURIComponent(tenantId)}/plan`, {
     method: 'PATCH',
     body: payload
   });

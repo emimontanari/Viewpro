@@ -69,6 +69,13 @@ model PlatformTenant {
   maxActivePropertyEngagements Int?
   maxDocumentsStorageMb        Int?
   trialEndsAt                  DateTime?
+  /// platform-manual-plans (Slice 4, Part 2), design D4 — the ONLY
+  /// command-written column in this otherwise event-sourced projection.
+  /// Written by `PlatformTenantRepository.setPlan` (assign-plan endpoint)
+  /// and cleared by the drift-clear recompute in `applyLimitsChange` (D5).
+  /// `upsertFromRegistered`/`upsertFromStatusChange` never reference `plan`
+  /// — no clobber risk, same discipline as `trialEndsAt` present-only.
+  plan                         String?
   updatedAt                    DateTime  @updatedAt
 
   @@map("platform_tenants")

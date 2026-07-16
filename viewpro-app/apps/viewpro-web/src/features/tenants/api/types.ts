@@ -22,6 +22,11 @@ export type TenantLimits = {
   maxDocumentsStorageMb: number | null;
 };
 
+// platform-manual-plans (Slice 4, Part 2) — fixed three-tier catalog (D10).
+// The plan name lives ONLY in viewpro-api/viewpro-web (Design B isolation) —
+// InmoView never sees it, only the resolved limit numbers.
+export type TenantPlan = 'BASICO' | 'PROFESIONAL' | 'EMPRESA';
+
 // GET /operators/tenants?offset&limit → TenantRegistryList
 export type TenantListItem = {
   id: string;
@@ -30,6 +35,7 @@ export type TenantListItem = {
   status: TenantStatus; // = platform_tenants.latestStatus (server types it `string`; FE narrows)
   limits: TenantLimits;
   trialEndsAt: string | null; // ISO string, or null when absent (informational only)
+  plan: TenantPlan | null; // = platform_tenants.plan (server types it `string | null`; FE narrows)
 };
 
 export type TenantListResponse = {
@@ -40,6 +46,7 @@ export type TenantListResponse = {
 // PATCH bodies
 export type UpdateTenantStatusPayload = { status: TenantStatusAction };
 export type UpdateTenantLimitsPayload = TenantLimits;
+export type UpdateTenantPlanPayload = { plan: TenantPlan };
 
 // PATCH responses — passthrough of InmoView control-lane bodies (server type: unknown).
 export type AdminTenantStatusUpdateResponse = {

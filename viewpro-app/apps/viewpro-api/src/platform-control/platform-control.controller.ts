@@ -8,11 +8,16 @@ import { PlatformPermissionGuard } from '../permissions/platform-permission.guar
 import { PLATFORM_PERMISSIONS } from '../permissions/platform-permissions.constants'
 import { RequirePlatformPermission } from '../permissions/require-platform-permission.decorator'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
+import { PlatformTenantRepository } from '../platform-data/platform-tenant.repository'
+import { PLAN_CATALOG } from '../platform-plans/plan-catalog'
+// biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { PlatformControlClient } from './platform-control.client'
 // biome-ignore lint/style/useImportType: Nest validation needs runtime DTO metadata.
 import { SetTenantStatusDto } from './dto/set-tenant-status.dto'
 // biome-ignore lint/style/useImportType: Nest validation needs runtime DTO metadata.
 import { SetTenantLimitsDto } from './dto/set-tenant-limits.dto'
+// biome-ignore lint/style/useImportType: Nest validation needs runtime DTO metadata.
+import { SetTenantPlanDto } from './dto/set-tenant-plan.dto'
 
 /**
  * PlatformControlController (viewpro-api) — operator-facing control-lane endpoints.
@@ -28,7 +33,10 @@ import { SetTenantLimitsDto } from './dto/set-tenant-limits.dto'
 @Controller('operators/tenants')
 @UseGuards(AuthGuard, PlatformPermissionGuard)
 export class PlatformControlController {
-  constructor(private readonly client: PlatformControlClient) {}
+  constructor(
+    private readonly client: PlatformControlClient,
+    private readonly tenantRepo: PlatformTenantRepository,
+  ) {}
 
   /**
    * PATCH /operators/tenants/:tenantId/status
@@ -74,5 +82,38 @@ export class PlatformControlController {
       idempotencyKey,
       operatorId,
     )
+  }
+
+  /**
+   * PATCH /operators/tenants/:tenantId/plan
+   *
+   * platform-manual-plans (Slice 4, Part 2) — assign-plan (D6/D7/D8): resolves
+   * the tier's preset limits from PLAN_CATALOG, pushes them through the
+   * EXISTING limits control lane (idempotent via platform_command_log — no
+   * parallel path), and ONLY on success writes the `plan` label ViewPro-side.
+   * Reuses TENANT_LIMITS_WRITE (D8, no new permission) and the same guard
+   * stack as .../limits.
+   *
+   * Ordering (D7): limits-push first, plan-write second. A lane failure
+   * propagates as an HttpException with no plan write (enforced limits
+   * unaffected, fully retryable). A successful lane result — including
+   * `unchanged: true` — always writes the plan.
+   */
+  @Patch(':tenantId/plan')
+  @HttpCode(200)
+  @RequirePlatformPermission(PLATFORM_PERMISSIONS.TENANT_LIMITS_WRITE)
+  @UseGuards(StepUpGuard)
+  async updateTenantPlan(
+    @Param('tenantId') tenantId: string,
+    @Body() body: SetTenantPlanDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<unknown> {
+    const operatorId = request.user!.id
+    const idempotencyKey = crypto.randomUUID()
+    const limits = PLAN_CATALOG[body.plan]
+
+    const result = await this.client.postTenantLimits(tenantId, limits, idempotencyKey, operatorId)
+    await this.tenantRepo.setPlan(tenantId, body.plan)
+    return result
   }
 }

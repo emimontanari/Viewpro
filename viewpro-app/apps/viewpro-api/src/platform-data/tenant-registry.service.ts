@@ -9,6 +9,10 @@ export type TenantRegistryItem = {
   status: string
   limits: PlatformTenantRegistryLimits
   trialEndsAt: string | null
+  // platform-manual-plans (Slice 4, Part 2) — command-written label (D4).
+  // Never a known-tier-only union here: the column is a raw string,
+  // narrowed to PlanCode only at the FE edge (mirrors `status`'s pattern).
+  plan: string | null
 }
 
 export type TenantRegistryList = {
@@ -59,6 +63,7 @@ export class TenantRegistryService {
           maxDocumentsStorageMb: row.maxDocumentsStorageMb,
         },
         trialEndsAt: row.trialEndsAt?.toISOString() ?? null,
+        plan: row.plan,
       })),
     }
   }

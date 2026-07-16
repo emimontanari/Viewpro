@@ -382,6 +382,31 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
       expect(res.status).toBe(200)
     })
 
+    // platform-manual-plans (Slice 4, Part 2) — Task 37 verification:
+    // "Activar" (TRIAL→ACTIVE) stays fully decoupled from plan assignment —
+    // regression only, no new production code. Confirms the non-goal
+    // explicitly called out in the spec: activation never assigns/requires a
+    // plan and never triggers step-up (same AC6 exemption as above).
+    it('activating a TRIAL tenant (status:ACTIVE) does not assign a plan and requires no step-up (decoupled, spec non-goal)', async () => {
+      await prisma.platformTenant.upsert({
+        where: { id: 'tenant-1' },
+        create: { id: 'tenant-1', name: 'Tenant One', slug: 'tenant-1', latestStatus: 'TRIAL' },
+        update: { plan: null, latestStatus: 'TRIAL' },
+      })
+      const cookie = await getSessionCookie()
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', cookie)
+        .send({ status: 'ACTIVE' })
+
+      expect(res.status).toBe(200)
+      expect(mockClient.postTenantLimits).not.toHaveBeenCalled()
+
+      const row = await prisma.platformTenant.findUnique({ where: { id: 'tenant-1' } })
+      expect(row?.plan).toBeNull()
+    })
+
     it('a step-up cookie is reusable: limits then status(SUSPENDED) succeed with a single POST /auth/step-up (AC4 reusable)', async () => {
       const cookie = await getSessionCookie()
       const stepUpCookie = await getStepUpCookie(cookie)
@@ -610,6 +635,157 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
       expect(res.status).toBe(403)
       expect(res.body.code).toBe('PERMISSION_DENIED')
       expect(mockClient.postTenantLimits).not.toHaveBeenCalled()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // platform-manual-plans (Slice 4, Part 2) — RED: PATCH .../plan
+  //
+  // Spec: Assign-plan action drives the existing limits control lane;
+  //   Assign-plan authorization matches limits-write authorization.
+  // Design: D6 (reuses PlatformPermissionGuard(TENANT_LIMITS_WRITE) +
+  //   StepUpGuard, same guard stack as .../limits), D7 (limits-push-first
+  //   ordering, failure semantics, 'unchanged' still writes plan).
+  // -------------------------------------------------------------------------
+  describe('PATCH /operators/tenants/:id/plan', () => {
+    beforeEach(async () => {
+      // setPlan targets an existing platform_tenants row (command-written
+      // seam, D4) — seed/reset it directly, independent of the mocked
+      // control-lane client.
+      await prisma.platformTenant.upsert({
+        where: { id: 'tenant-1' },
+        create: { id: 'tenant-1', name: 'Tenant One', slug: 'tenant-1', latestStatus: 'ACTIVE' },
+        update: { plan: null },
+      })
+    })
+
+    it('PATCH /api/operators/tenants/:id/plan without session → 401 AUTH_REQUIRED, no outbound call', async () => {
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/plan')
+        .send({ plan: 'BASICO' })
+
+      expect(res.status).toBe(401)
+      expect(res.body.code).toBe('AUTH_REQUIRED')
+      expect(mockClient.postTenantLimits).not.toHaveBeenCalled()
+    })
+
+    it('assign-plan when the projection row is absent → limits push still happens and the endpoint does NOT 500 (setPlan tolerates the missing row)', async () => {
+      // Backfill/deploy window: the tenant has no platform_tenants row yet. The
+      // control-lane limits push runs first (enforced) and setPlan must not
+      // 500 on the missing row — the endpoint returns its normal success shape.
+      await prisma.platformTenant.deleteMany({ where: { id: 'tenant-unprojected' } })
+      const cookie = await getSessionCookie()
+      const stepUpCookie = await getStepUpCookie(cookie)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-unprojected/plan')
+        .set('Cookie', `${cookie}; ${stepUpCookie}`)
+        .send({ plan: 'BASICO' })
+
+      expect(res.status).toBe(200)
+      expect(mockClient.postTenantLimits).toHaveBeenCalledOnce()
+
+      // No partial row fabricated by the label write.
+      const row = await prisma.platformTenant.findUnique({ where: { id: 'tenant-unprojected' } })
+      expect(row).toBeNull()
+    })
+
+    it('ANALYST (no TENANT_LIMITS_WRITE) → 403 PERMISSION_DENIED, no outbound call, no plan write', async () => {
+      const cookie = await getSessionCookieFor(TEST_EMAIL_ANALYST, TEST_PASSWORD_ANALYST)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/plan')
+        .set('Cookie', cookie)
+        .send({ plan: 'BASICO' })
+
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('PERMISSION_DENIED')
+      expect(mockClient.postTenantLimits).not.toHaveBeenCalled()
+
+      const row = await prisma.platformTenant.findUnique({ where: { id: 'tenant-1' } })
+      expect(row?.plan).toBeNull()
+    })
+
+    it('OPERATIONS without step-up cookie → 403 STEP_UP_REQUIRED, no outbound call', async () => {
+      const cookie = await getSessionCookieFor(TEST_EMAIL_OPERATIONS, TEST_PASSWORD_OPERATIONS)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/plan')
+        .set('Cookie', cookie)
+        .send({ plan: 'BASICO' })
+
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('STEP_UP_REQUIRED')
+      expect(mockClient.postTenantLimits).not.toHaveBeenCalled()
+    })
+
+    it("unknown plan value → 400 from DTO validation, never reaches the handler (no outbound call)", async () => {
+      const cookie = await getSessionCookie()
+      const stepUpCookie = await getStepUpCookie(cookie)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/plan')
+        .set('Cookie', `${cookie}; ${stepUpCookie}`)
+        .send({ plan: 'GARBAGE' })
+
+      expect(res.status).toBe(400)
+      expect(mockClient.postTenantLimits).not.toHaveBeenCalled()
+    })
+
+    it('lane failure (postTenantLimits throws) → surfaced as error, NO plan write (limits-push-first ordering, D7)', async () => {
+      mockClient.postTenantLimits.mockRejectedValueOnce(
+        new HttpException({ statusCode: 502, message: 'Control-lane request to InmoView failed' }, 502),
+      )
+      const cookie = await getSessionCookie()
+      const stepUpCookie = await getStepUpCookie(cookie)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/plan')
+        .set('Cookie', `${cookie}; ${stepUpCookie}`)
+        .send({ plan: 'BASICO' })
+
+      expect(res.status).toBe(502)
+
+      const row = await prisma.platformTenant.findUnique({ where: { id: 'tenant-1' } })
+      expect(row?.plan).toBeNull()
+    })
+
+    it('success path → resolves BASICO preset limits, pushes via the existing limits lane, then writes plan', async () => {
+      const cookie = await getSessionCookie()
+      const stepUpCookie = await getStepUpCookie(cookie)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/plan')
+        .set('Cookie', `${cookie}; ${stepUpCookie}`)
+        .send({ plan: 'BASICO' })
+
+      expect(res.status).toBe(200)
+      expect(mockClient.postTenantLimits).toHaveBeenCalledOnce()
+      const [tenantId, limits] = mockClient.postTenantLimits.mock.calls[0] as [
+        string,
+        { maxUsers: number | null; maxActivePropertyEngagements: number | null; maxDocumentsStorageMb: number | null },
+      ]
+      expect(tenantId).toBe('tenant-1')
+      expect(limits).toEqual({ maxUsers: 3, maxActivePropertyEngagements: 25, maxDocumentsStorageMb: 500 })
+
+      const row = await prisma.platformTenant.findUnique({ where: { id: 'tenant-1' } })
+      expect(row?.plan).toBe('BASICO')
+    })
+
+    it("lane result 'unchanged: true' still writes the plan column (D7)", async () => {
+      mockClient.postTenantLimits.mockResolvedValueOnce({ unchanged: true })
+      const cookie = await getSessionCookie()
+      const stepUpCookie = await getStepUpCookie(cookie)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/plan')
+        .set('Cookie', `${cookie}; ${stepUpCookie}`)
+        .send({ plan: 'PROFESIONAL' })
+
+      expect(res.status).toBe(200)
+
+      const row = await prisma.platformTenant.findUnique({ where: { id: 'tenant-1' } })
+      expect(row?.plan).toBe('PROFESIONAL')
     })
   })
 })

@@ -22,7 +22,7 @@ vi.mock('@/lib/api-client', () => ({
 }));
 
 import { apiRequest } from '@/lib/api-client';
-import { getTenantList, updateTenantStatus, updateTenantLimits } from '../service';
+import { getTenantList, updateTenantStatus, updateTenantLimits, assignTenantPlan } from '../service';
 import { parseStatusResponse, parseLimitsResponse } from '../schemas';
 import { tenantsKeys, tenantsListOptions } from '../queries';
 import type { TenantListResponse, TenantListItem } from '../types';
@@ -39,7 +39,8 @@ const MOCK_ITEM: TenantListItem = {
     maxActivePropertyEngagements: 50,
     maxDocumentsStorageMb: 1024
   },
-  trialEndsAt: null
+  trialEndsAt: null,
+  plan: null
 };
 
 const MOCK_LIST_RESPONSE: TenantListResponse = {
@@ -177,6 +178,52 @@ describe('updateTenantLimits()', () => {
     const [, options] = mockApiRequest.mock.calls[0];
     expect(options).toMatchObject({
       body: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null }
+    });
+  });
+});
+
+// ─── assignTenantPlan() ──────────────────────────────────────────────────────
+//
+// platform-manual-plans (Slice 4, Part 2) — RED: PATCH .../plan request shape
+// + zod response parsing. The wire response is the SAME opaque limits-update
+// passthrough shape as .../limits (the controller returns the limits-lane
+// result verbatim) — no plan-specific response schema needed (DRY, reuses
+// parseLimitsResponse).
+
+describe('assignTenantPlan()', () => {
+  it('calls PATCH /operators/tenants/:id/plan with { plan }', async () => {
+    mockApiRequest.mockResolvedValueOnce(MOCK_LIMITS_RESPONSE);
+
+    await assignTenantPlan('tenant-1', { plan: 'BASICO' });
+
+    expect(mockApiRequest).toHaveBeenCalledOnce();
+    const [path, options] = mockApiRequest.mock.calls[0];
+    expect(path).toBe('/operators/tenants/tenant-1/plan');
+    expect(options).toMatchObject({ method: 'PATCH', body: { plan: 'BASICO' } });
+  });
+
+  it('returns the parsed AdminTenantLimitsUpdateResponse (shared shape)', async () => {
+    mockApiRequest.mockResolvedValueOnce(MOCK_LIMITS_RESPONSE);
+
+    const result = await assignTenantPlan('tenant-1', { plan: 'PROFESIONAL' });
+
+    expect(result).toEqual(MOCK_LIMITS_RESPONSE);
+  });
+
+  it('encodes the tenant id in the path', async () => {
+    mockApiRequest.mockResolvedValueOnce(MOCK_LIMITS_RESPONSE);
+
+    await assignTenantPlan('tenant with spaces', { plan: 'EMPRESA' });
+
+    const [path] = mockApiRequest.mock.calls[0];
+    expect(path).toBe('/operators/tenants/tenant%20with%20spaces/plan');
+  });
+
+  it('throws a normalized {status:502} error on a malformed response', async () => {
+    mockApiRequest.mockResolvedValueOnce({});
+
+    await expect(assignTenantPlan('tenant-1', { plan: 'BASICO' })).rejects.toMatchObject({
+      status: 502
     });
   });
 });

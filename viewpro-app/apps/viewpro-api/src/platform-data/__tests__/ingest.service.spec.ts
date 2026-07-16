@@ -1250,3 +1250,109 @@ describe('IngestService — TENANT_LIMITS_CHANGED routing (platform-manual-plans
     await registryModule.close()
   })
 })
+
+/**
+ * platform-manual-plans (Slice 4, Part 2) — Task 36 verification: the
+ * TENANT_LIMITS_CHANGED ingest choke point (D1/D5) is exercised end to end
+ * through `ingestService.ingestBatch`, not just the repository directly —
+ * closing the loop between the assign-plan endpoint's own round-trip and the
+ * drift-clear recompute.
+ *
+ * Spec: Plan-label drift on raw limit edit (both scenarios); Assign-plan
+ *   action drives the existing limits control lane (isolation scenario).
+ * Design D5: single choke point — assign-plan's own push re-matches its own
+ *   tier and must NOT self-clear; a raw edit that no longer matches DOES
+ *   clear it.
+ */
+describe('IngestService — plan drift-clear at ingest (platform-manual-plans Part 2, D5)', () => {
+  let moduleRef: TestingModule
+  let ingestService: IngestService
+  let tenantRepo: PlatformTenantRepository
+  let prisma: PrismaService
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [IngestService, MirrorRepository, CursorRepository, PlatformTenantRepository, AuditLogRepository],
+    }).compile()
+
+    ingestService = moduleRef.get(IngestService)
+    tenantRepo = moduleRef.get(PlatformTenantRepository)
+    prisma = moduleRef.get(PrismaService)
+  })
+
+  afterAll(async () => {
+    await moduleRef.close()
+  })
+
+  beforeEach(async () => {
+    await prisma.platformTenant.deleteMany()
+    await prisma.platformMirrorEvent.deleteMany()
+    await prisma.platformIngestCursor.upsert({
+      where: { id: 1 },
+      update: { seqNo: 0 },
+      create: { id: 1, seqNo: 0 },
+    })
+  })
+
+  function makeRegisteredEvent(overrides: Partial<PlatformOutboxEvent> = {}): PlatformOutboxEvent {
+    return {
+      id: 'evt-plan-drift-registered',
+      seqNo: 1,
+      eventType: 'TENANT_REGISTERED',
+      tenantId: 't-plan-drift-ingest',
+      payload: {
+        id: 't-plan-drift-ingest',
+        name: 'Plan Drift Realty',
+        slug: 'plan-drift-realty',
+        newStatus: 'TRIAL',
+        limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+      },
+      occurredAt: new Date().toISOString(),
+      ...overrides,
+    }
+  }
+
+  it("regression: assign-plan's own round-trip through ingest re-matches its own tier and does NOT self-clear the plan", async () => {
+    await ingestService.ingestBatch([makeRegisteredEvent()])
+
+    // Simulates the assign-plan endpoint's own ordering (D7): the control
+    // lane push already landed InmoView-side and setPlan was called
+    // ViewPro-side; THEN the resulting TENANT_LIMITS_CHANGED event for that
+    // very push arrives via ingest, carrying the SAME PROFESIONAL preset.
+    await tenantRepo.setPlan('t-plan-drift-ingest', 'PROFESIONAL')
+    await ingestService.ingestBatch([
+      {
+        id: 'evt-plan-drift-selfpush',
+        seqNo: 2,
+        eventType: 'TENANT_LIMITS_CHANGED',
+        tenantId: 't-plan-drift-ingest',
+        payload: { limits: { maxUsers: 10, maxActivePropertyEngagements: 100, maxDocumentsStorageMb: 5000 } },
+        occurredAt: new Date().toISOString(),
+      },
+    ])
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-plan-drift-ingest' } })
+    expect(row?.plan).toBe('PROFESIONAL')
+  })
+
+  it('a raw-edit-shaped TENANT_LIMITS_CHANGED that no longer matches the stored plan clears it, via the real ingest path', async () => {
+    await ingestService.ingestBatch([makeRegisteredEvent()])
+    await tenantRepo.setPlan('t-plan-drift-ingest', 'BASICO')
+
+    // Raw-edit shaped event: limits diverge from BASICO's 3/25/500 preset.
+    await ingestService.ingestBatch([
+      {
+        id: 'evt-plan-drift-rawedit',
+        seqNo: 2,
+        eventType: 'TENANT_LIMITS_CHANGED',
+        tenantId: 't-plan-drift-ingest',
+        payload: { limits: { maxUsers: 3, maxActivePropertyEngagements: 25, maxDocumentsStorageMb: 999 } },
+        occurredAt: new Date().toISOString(),
+      },
+    ])
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-plan-drift-ingest' } })
+    expect(row?.plan).toBeNull()
+  })
+})
