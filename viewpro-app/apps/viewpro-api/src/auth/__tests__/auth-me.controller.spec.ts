@@ -272,6 +272,11 @@ describe('AuthController.getMe — operator status enforcement (unit)', () => {
     const operatorRepository: IOperatorRepository = {
       findById: vi.fn().mockResolvedValue(findByIdResult),
       findByEmail: vi.fn(),
+      create: vi.fn(),
+      list: vi.fn(),
+      updateRole: vi.fn(),
+      updateStatus: vi.fn(),
+      countActiveOwners: vi.fn(),
     }
     const controller = new AuthController(
       undefined as never,
