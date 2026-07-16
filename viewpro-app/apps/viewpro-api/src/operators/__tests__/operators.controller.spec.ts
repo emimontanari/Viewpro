@@ -330,6 +330,31 @@ describe('OperatorsController (viewpro-api) — operators/manage (T1.3.11)', () 
   })
 
   // ---------------------------------------------------------------------
+  // 404 — well-formed but nonexistent target (JD FIX 2: not a 500)
+  // ---------------------------------------------------------------------
+  describe('404 on nonexistent target (JD FIX 2)', () => {
+    it('PATCH .../:id/role with a well-formed but nonexistent id → 404 (not 500)', async () => {
+      const { combined } = await ownerSession()
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/manage/op-nonexistent-jd-404/role')
+        .set('Cookie', combined)
+        .send({ role: 'ANALYST' })
+
+      expect(res.status).toBe(404)
+    })
+
+    it('PATCH .../:id/status with a well-formed but nonexistent id → 404 (not 500)', async () => {
+      const { combined } = await ownerSession()
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/manage/op-nonexistent-jd-404/status')
+        .set('Cookie', combined)
+        .send({ status: 'SUSPENDED' })
+
+      expect(res.status).toBe(404)
+    })
+  })
+
+  // ---------------------------------------------------------------------
   // 422 self-target and last-OWNER on both PATCH routes
   // ---------------------------------------------------------------------
   describe('422 guardrails on PATCH routes', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { UnprocessableEntityException } from '@nestjs/common'
+import { NotFoundException, UnprocessableEntityException } from '@nestjs/common'
 import { ChangeRoleOperatorUseCase } from '../change-role-operator.use-case'
 import type { IOperatorRepository } from '../../../auth/repositories/operator.repository'
 import type { AuditLogRepository } from '../../../platform-data/audit-log.repository'
@@ -45,7 +45,16 @@ describe('ChangeRoleOperatorUseCase (T1.3.5)', () => {
   beforeEach(() => {
     operatorRepository = {
       findByEmail: vi.fn(),
-      findById: vi.fn(),
+      // Default: target exists (the 404 pre-check passes). Individual tests
+      // override this to null to exercise the not-found path.
+      findById: vi.fn().mockResolvedValue({
+        id: TARGET_ID,
+        email: 'target@viewpro.app',
+        role: 'OPERATIONS',
+        status: 'ACTIVE',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
       create: vi.fn(),
       list: vi.fn(),
       updateRole: vi.fn().mockResolvedValue({
@@ -71,6 +80,19 @@ describe('ChangeRoleOperatorUseCase (T1.3.5)', () => {
     expect(error).toBeInstanceOf(UnprocessableEntityException)
     expect(operatorRepository.updateRole).not.toHaveBeenCalled()
     expect(prisma.$transaction).not.toHaveBeenCalled()
+  })
+
+  // JD FIX 2: a well-formed but nonexistent target id must yield a clean 404
+  // NotFoundException — never an unhandled Prisma P2025 → HTTP 500.
+  it('nonexistent target (findById → null) → 404 NotFoundException, updateRole never attempted', async () => {
+    const prisma = makeFakePrismaResolvingOwners([{ id: TARGET_ID }, { id: 'other-owner' }])
+    operatorRepository.findById = vi.fn().mockResolvedValue(null)
+    const useCase = new ChangeRoleOperatorUseCase(operatorRepository, prisma, auditLogRepo as AuditLogRepository)
+
+    const error = await useCase.execute('op-does-not-exist', 'ANALYST', ACTOR).catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(NotFoundException)
+    expect(operatorRepository.updateRole).not.toHaveBeenCalled()
   })
 
   it('last-OWNER rejected: demoting the sole active OWNER → 422, updateRole never applied', async () => {
