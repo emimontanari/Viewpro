@@ -217,4 +217,53 @@ describe('apiRequest — 401 session-expired interceptor (D7)', () => {
     expect(results.every((result) => result.status === 'rejected')).toBe(true);
     expect(assignSpy).toHaveBeenCalledTimes(1);
   });
+
+  // JD CRITICAL — sign-in 401 redirect loop. /auth/me is the SessionProvider
+  // session probe fired on every route (including /auth/sign-in); its 401 is
+  // handled softly by session-context (router.push, a no-op on sign-in). The
+  // hard-redirect interceptor must NOT also handle it, or a logged-out visitor
+  // loops forever: assign → reload → remount → /auth/me 401 → assign …
+  it('does NOT redirect for a 401 from /auth/me (session probe stays soft)', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      jsonResponse(401, { statusCode: 401, message: 'Authentication required' })
+    );
+    const apiRequestFn = await loadApiRequest();
+
+    await expect(apiRequestFn('/auth/me')).rejects.toMatchObject({ status: 401 });
+
+    expect(assignSpy).not.toHaveBeenCalled();
+  });
+
+  it('does NOT redirect when already on an /auth/* route (belt-and-suspenders loop guard)', async () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...originalLocation, pathname: '/auth/sign-in', search: '', assign: assignSpy }
+    });
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      jsonResponse(401, { statusCode: 401, message: 'Authentication required' })
+    );
+    const apiRequestFn = await loadApiRequest();
+
+    await expect(apiRequestFn('/operators/tenants')).rejects.toMatchObject({ status: 401 });
+
+    expect(assignSpy).not.toHaveBeenCalled();
+  });
+
+  it('still redirects for a 401 from an authenticated feature path on a /dashboard page', async () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...originalLocation, pathname: '/dashboard', search: '', assign: assignSpy }
+    });
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      jsonResponse(401, { statusCode: 401, message: 'Authentication required' })
+    );
+    const apiRequestFn = await loadApiRequest();
+
+    await expect(apiRequestFn('/operators/tenants')).rejects.toMatchObject({ status: 401 });
+
+    expect(assignSpy).toHaveBeenCalledTimes(1);
+    expect(assignSpy).toHaveBeenCalledWith(
+      '/auth/sign-in?reason=session_expired&redirect_url=%2Fdashboard'
+    );
+  });
 });

@@ -24,11 +24,37 @@ export const apiUrl = trimTrailingSlash(process.env.NEXT_PUBLIC_API_URL ?? DEFAU
 
 // D7: a 401 from a login/step-up/logout ATTEMPT means bad credentials, not an
 // expired session — those must stay inline instead of bouncing to sign-in.
-const SESSION_EXEMPT_401_PATHS = ['/auth/login', '/auth/step-up', '/auth/logout'];
+// `/auth/me` is the SessionProvider session probe fired on EVERY route
+// (including /auth/sign-in): its 401 is already handled softly by
+// session-context (router.push, a client-side no-op on the sign-in page).
+// Letting the hard-redirect interceptor also handle it loops a logged-out
+// visitor forever (assign → reload → remount → /auth/me 401 → assign …), so
+// the probe is exempt here — the interceptor exists for 401s on AUTHENTICATED
+// FEATURE requests (tenants/audit/limits) that have no other handler.
+const SESSION_EXEMPT_401_PATHS = ['/auth/login', '/auth/step-up', '/auth/logout', '/auth/me'];
 
 // Suppresses duplicate sign-in redirects when several concurrent requests
 // all come back 401 at once (e.g. a page firing multiple queries).
 let redirecting = false;
+
+// Sends the operator back to sign-in with a session-expired indication,
+// preserving the current location as `redirect_url`. SSR-safe, deduped, and —
+// belt-and-suspenders against the sign-in 401 loop — a no-op when the browser
+// is already on any `/auth/*` route (so even a future exempt-list miss can
+// never bounce the sign-in page onto itself).
+export function redirectToSignIn() {
+  if (typeof window === 'undefined' || redirecting) {
+    return;
+  }
+
+  if (window.location.pathname.startsWith('/auth/')) {
+    return;
+  }
+
+  redirecting = true;
+  const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
+  window.location.assign(`/auth/sign-in?reason=session_expired&redirect_url=${redirectUrl}`);
+}
 
 export function getApiErrorMessage(error: unknown) {
   if (isApiError(error)) {
@@ -84,18 +110,11 @@ export async function apiRequest<TResponse>(
   const responseBody = await parseJsonResponse(response);
 
   if (!response.ok) {
-    // D7: any authenticated 401 (not a login/step-up/logout attempt) means
+    // D7: any authenticated 401 (not a login/step-up/logout/me attempt) means
     // the session expired — send the operator back to sign-in. A 403 (e.g.
     // STEP_UP_REQUIRED) is untouched by construction: this only matches 401.
-    if (
-      response.status === 401 &&
-      typeof window !== 'undefined' &&
-      !SESSION_EXEMPT_401_PATHS.includes(normalizeApiPath(path)) &&
-      !redirecting
-    ) {
-      redirecting = true;
-      const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
-      window.location.assign(`/auth/sign-in?reason=session_expired&redirect_url=${redirectUrl}`);
+    if (response.status === 401 && !SESSION_EXEMPT_401_PATHS.includes(normalizeApiPath(path))) {
+      redirectToSignIn();
     }
 
     throw toApiError(response, responseBody);
