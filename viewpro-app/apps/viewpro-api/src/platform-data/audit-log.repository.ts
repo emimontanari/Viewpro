@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
+import type { Prisma } from '@prisma-platform/client'
 import { PrismaService } from '../database/prisma.service'
 import type { PlatformOutboxEvent } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 
@@ -58,6 +59,47 @@ export class AuditLogRepository {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         newValue: payload.newValue as any,
         occurredAt: new Date(event.occurredAt),
+      },
+    })
+  }
+
+  /**
+   * appendNative — writes a ViewPro-native operator-management audit entry
+   * (platform-operator-management A4, Decision 1). Always `source:
+   * VIEWPRO_NATIVE` and `sourceEventId: null` — Postgres allows multiple NULLs
+   * in a unique column, so this NEVER collides with (or dedupes against) the
+   * InmoView-outbox `appendFromEvent` path above, which is left untouched.
+   *
+   * Atomicity (JD FIX 1): accepts an optional transaction client so the native
+   * audit write commits-or-rolls-back TOGETHER with the operator mutation that
+   * produced it (create/role/status). When `tx` is provided the row is written
+   * via that transaction; otherwise it falls back to `this.prisma` (standalone
+   * write, e.g. tests). Mirrors the tx-threading of the operator repo methods.
+   */
+  async appendNative(
+    entry: {
+      action: 'OPERATOR_CREATED' | 'OPERATOR_ROLE_CHANGED' | 'OPERATOR_SUSPENDED' | 'OPERATOR_REACTIVATED'
+      actor: { id: string; email: string }
+      target: { id: string; email: string }
+      previousValue?: unknown
+      newValue?: unknown
+    },
+    tx: Prisma.TransactionClient | PrismaService = this.prisma,
+  ): Promise<void> {
+    await tx.platformAuditLog.create({
+      data: {
+        sourceEventId: null,
+        source: 'VIEWPRO_NATIVE',
+        action: entry.action,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        actor: entry.actor as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        target: entry.target as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        previousValue: (entry.previousValue ?? null) as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        newValue: (entry.newValue ?? null) as any,
+        occurredAt: new Date(),
       },
     })
   }

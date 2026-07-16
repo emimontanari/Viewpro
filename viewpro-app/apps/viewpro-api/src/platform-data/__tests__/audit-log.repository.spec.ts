@@ -141,3 +141,211 @@ describe('AuditLogRepository (integration — test DB)', () => {
     expect(rows).toHaveLength(0)
   })
 })
+
+/**
+ * T1.1.1 — RED: `PlatformAuditLog` schema gains nullable `sourceEventId`/
+ * `seqNo`/`tenantId`, a `source` (`INMOVIEW_OUTBOX | VIEWPRO_NATIVE`)
+ * discriminator defaulting to `INMOVIEW_OUTBOX`, and a nullable `target`
+ * Json column — so ViewPro-native audit writes (no source outbox event) can
+ * coexist with InmoView-outbox rows without breaking the sourceEventId
+ * unique-dedup path (Postgres allows multiple NULLs in a unique column).
+ *
+ * Design: Decision 1 (sdd/platform-operator-management/design)
+ */
+describe('PlatformAuditLog schema — native-audit support (nullable columns + source discriminator)', () => {
+  let moduleRef: TestingModule
+  let prisma: PrismaService
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+    }).compile()
+
+    prisma = moduleRef.get(PrismaService)
+  })
+
+  afterAll(async () => {
+    await moduleRef.close()
+  })
+
+  beforeEach(async () => {
+    await prisma.platformAuditLog.deleteMany()
+  })
+
+  it('sourceEventId/seqNo/tenantId accept null (nullable columns for native writes)', async () => {
+    const row = await prisma.platformAuditLog.create({
+      data: {
+        sourceEventId: null,
+        seqNo: null,
+        tenantId: null,
+        action: 'OPERATOR_CREATED',
+        actor: { id: 'op-1' },
+        occurredAt: new Date(),
+      },
+    })
+
+    expect(row.sourceEventId).toBeNull()
+    expect(row.seqNo).toBeNull()
+    expect(row.tenantId).toBeNull()
+  })
+
+  it('source column defaults to INMOVIEW_OUTBOX when omitted (existing ingest rows unaffected)', async () => {
+    const row = await prisma.platformAuditLog.create({
+      data: {
+        sourceEventId: 'evt-source-default-1',
+        seqNo: 1,
+        action: 'TENANT_STATUS_CHANGED',
+        tenantId: 't-1',
+        actor: { id: 'op-1' },
+        occurredAt: new Date(),
+      },
+    })
+
+    expect(row.source).toBe('INMOVIEW_OUTBOX')
+  })
+
+  it('source column accepts VIEWPRO_NATIVE explicitly, and the nullable target Json column stores structured data', async () => {
+    const row = await prisma.platformAuditLog.create({
+      data: {
+        sourceEventId: null,
+        source: 'VIEWPRO_NATIVE',
+        action: 'OPERATOR_CREATED',
+        actor: { id: 'op-1', email: 'owner@viewpro.app' },
+        target: { id: 'op-2', email: 'new@viewpro.app' },
+        occurredAt: new Date(),
+      },
+    })
+
+    expect(row.source).toBe('VIEWPRO_NATIVE')
+    expect(row.target).toEqual({ id: 'op-2', email: 'new@viewpro.app' })
+  })
+
+  // Regression guard (dedup invariant, Decision 1): two native rows with
+  // sourceEventId: null must NOT collide with each other or with an
+  // outbox-sourced row's populated sourceEventId — Postgres unique indexes
+  // permit multiple NULLs.
+  it('two native rows with sourceEventId: null coexist (no unique-constraint collision)', async () => {
+    await prisma.platformAuditLog.create({
+      data: {
+        sourceEventId: null,
+        source: 'VIEWPRO_NATIVE',
+        action: 'OPERATOR_CREATED',
+        actor: { id: 'op-1' },
+        occurredAt: new Date(),
+      },
+    })
+
+    await expect(
+      prisma.platformAuditLog.create({
+        data: {
+          sourceEventId: null,
+          source: 'VIEWPRO_NATIVE',
+          action: 'OPERATOR_SUSPENDED',
+          actor: { id: 'op-1' },
+          occurredAt: new Date(),
+        },
+      }),
+    ).resolves.toMatchObject({ sourceEventId: null })
+
+    const rows = await prisma.platformAuditLog.findMany({ where: { sourceEventId: null } })
+    expect(rows).toHaveLength(2)
+  })
+})
+
+/**
+ * T1.1.3 — RED: `AuditLogRepository.appendNative(entry)` — writes a
+ * VIEWPRO_NATIVE row with sourceEventId: null, and does NOT collide with the
+ * existing outbox `appendFromEvent` sourceEventId-deduped path.
+ *
+ * Spec: Operator-Management Audit Trail — Existing ingest audit unaffected
+ */
+describe('AuditLogRepository.appendNative (T1.1.3)', () => {
+  let moduleRef: TestingModule
+  let repo: AuditLogRepository
+  let prisma: PrismaService
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [AuditLogRepository],
+    }).compile()
+
+    repo = moduleRef.get(AuditLogRepository)
+    prisma = moduleRef.get(PrismaService)
+  })
+
+  afterAll(async () => {
+    await moduleRef.close()
+  })
+
+  beforeEach(async () => {
+    await prisma.platformAuditLog.deleteMany()
+  })
+
+  it('appendNative writes a VIEWPRO_NATIVE row with sourceEventId null and the given actor/target/action', async () => {
+    await repo.appendNative({
+      action: 'OPERATOR_CREATED',
+      actor: { id: 'op-owner-1', email: 'owner@viewpro.app' },
+      target: { id: 'op-new-1', email: 'new@viewpro.app' },
+    })
+
+    const rows = await prisma.platformAuditLog.findMany({ where: { action: 'OPERATOR_CREATED' } })
+    expect(rows).toHaveLength(1)
+    const row = rows.at(0)
+    expect(row?.source).toBe('VIEWPRO_NATIVE')
+    expect(row?.sourceEventId).toBeNull()
+    expect(row?.actor).toEqual({ id: 'op-owner-1', email: 'owner@viewpro.app' })
+    expect(row?.target).toEqual({ id: 'op-new-1', email: 'new@viewpro.app' })
+  })
+
+  it('regression: appendNative (null sourceEventId) does not collide with appendFromEvent (populated sourceEventId), and re-appendFromEvent still dedupes', async () => {
+    await repo.appendFromEvent({
+      id: 'evt-audit-regression-1',
+      seqNo: 1,
+      eventType: 'AUDIT_LOGGED',
+      tenantId: 't-1',
+      payload: {
+        action: 'TENANT_STATUS_CHANGED',
+        previousValue: { status: 'TRIAL' },
+        newValue: { status: 'ACTIVE' },
+        actor: { id: 'op-1', type: 'operator', label: 'op-1' },
+      },
+      occurredAt: new Date().toISOString(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+
+    await repo.appendNative({
+      action: 'OPERATOR_SUSPENDED',
+      actor: { id: 'op-owner-1', email: 'owner@viewpro.app' },
+      target: { id: 'op-2', email: 'target@viewpro.app' },
+    })
+
+    // Both rows persisted, no collision.
+    const allRows = await prisma.platformAuditLog.findMany()
+    expect(allRows).toHaveLength(2)
+
+    // Re-delivering the SAME outbox event still dedupes (no-op, no error, no new row).
+    await repo.appendFromEvent({
+      id: 'evt-audit-regression-1',
+      seqNo: 1,
+      eventType: 'AUDIT_LOGGED',
+      tenantId: 't-1',
+      payload: {
+        action: 'TENANT_STATUS_CHANGED',
+        previousValue: { status: 'TRIAL' },
+        newValue: { status: 'ACTIVE' },
+        actor: { id: 'op-1', type: 'operator', label: 'op-1' },
+      },
+      occurredAt: new Date().toISOString(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+
+    const rowsAfterReplay = await prisma.platformAuditLog.findMany({
+      where: { sourceEventId: 'evt-audit-regression-1' },
+    })
+    expect(rowsAfterReplay).toHaveLength(1)
+
+    const allRowsAfterReplay = await prisma.platformAuditLog.findMany()
+    expect(allRowsAfterReplay).toHaveLength(2)
+  })
+})

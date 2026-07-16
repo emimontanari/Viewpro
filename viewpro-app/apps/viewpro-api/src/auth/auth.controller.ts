@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common'
+import type { PlatformOperatorRole } from '@prisma-platform/client'
 import type { Response } from 'express'
 import { AUTH_REQUIRED_CODE } from './auth.constants'
 import { LoginDto } from './dto/login.dto'
@@ -10,7 +11,7 @@ import { TokenService } from './tokens/token.service'
 import { LoginUseCase } from './use-cases/login.use-case'
 import { StepUpUseCase } from './use-cases/step-up.use-case'
 
-export type OperatorMeResponse = { operator: { id: string; email: string } }
+export type OperatorMeResponse = { operator: { id: string; email: string; role: PlatformOperatorRole } }
 
 // Same stable 401 body the AuthGuard emits on session expiry. A non-ACTIVE or
 // removed operator is treated as a terminated session so the FE (which keys on
@@ -77,6 +78,8 @@ export class AuthController {
     if (!operator || operator.status !== 'ACTIVE') {
       throw new UnauthorizedException(AUTH_REQUIRED_RESPONSE)
     }
-    return { operator: { id: operator.id, email: operator.email } }
+    // operator.role is already fetched by the findById above — zero extra
+    // query — for console nav-gating (PART 2, platform-operator-management).
+    return { operator: { id: operator.id, email: operator.email, role: operator.role } }
   }
 }

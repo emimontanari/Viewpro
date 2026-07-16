@@ -31,6 +31,11 @@ describe('StepUpUseCase', () => {
     operatorRepository = {
       findByEmail: vi.fn(),
       findById: vi.fn(),
+      create: vi.fn(),
+      list: vi.fn(),
+      updateRole: vi.fn(),
+      updateStatus: vi.fn(),
+      countActiveOwners: vi.fn(),
     }
     passwordHasher = {
       hash: vi.fn(),
