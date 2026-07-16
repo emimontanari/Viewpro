@@ -216,6 +216,7 @@ model Tenant {
   name                         String
   slug                         String       @unique
   status                       TenantStatus @default(TRIAL)
+  trialEndsAt                  DateTime?
   whatsappPhone                String?
   maxUsers                     Int?
   maxActivePropertyEngagements Int?
