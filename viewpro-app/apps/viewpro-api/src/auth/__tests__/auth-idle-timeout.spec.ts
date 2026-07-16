@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { execSync } from 'node:child_process'
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { ValidationPipe } from '@nestjs/common'
@@ -9,6 +10,7 @@ import request from 'supertest'
 import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
 import { AuthModule } from '../auth.module'
+import { OPERATOR_REPOSITORY, type IOperatorRepository } from '../repositories/operator.repository'
 
 /**
  * T-07 — RED: AuthGuard threshold re-issue, sessionExp carry-forward, and
@@ -19,9 +21,14 @@ import { AuthModule } from '../auth.module'
  * Access-Session Activity; Symmetric Cookie Clearing on Idle or Absolute
  * Expiry.
  *
- * GET /api/auth/me never touches the DB (see auth-me.controller.spec.ts),
- * so hand-signed tokens exercise the guard without seeding an operator.
+ * GET /api/auth/me now re-checks the operator's CURRENT status in the DB
+ * (session-terminating hardening), so the 200-path tests sign tokens whose
+ * `sub` is a seeded ACTIVE operator's real id. The 401-path tests reject in
+ * the AuthGuard (before getMe), so their `sub` need not resolve to a row.
  */
+
+const SEEDED_EMAIL = 'auth-idle-test@viewpro.app'
+const SEEDED_PASSWORD = 'auth-idle-test-password'
 
 const ACCESS_TOKEN_SECRET =
   process.env.ACCESS_TOKEN_SECRET ?? 'test-access-token-secret-min16'
@@ -89,8 +96,18 @@ function isCleared(setCookieHeader: string): boolean {
 
 describe('GET /api/auth/me — idle-timeout re-issue, sessionExp carry-forward, step-up invariance', () => {
   let app: INestApplication
+  let operatorId: string
 
   beforeAll(async () => {
+    execSync('pnpm db:seed', {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        SEED_OPERATOR_EMAIL: SEEDED_EMAIL,
+        SEED_OPERATOR_PASSWORD: SEEDED_PASSWORD,
+      },
+    })
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule,
@@ -105,6 +122,13 @@ describe('GET /api/auth/me — idle-timeout re-issue, sessionExp carry-forward, 
     app.setGlobalPrefix('api')
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
     await app.init()
+
+    const operatorRepository = app.get<IOperatorRepository>(OPERATOR_REPOSITORY)
+    const operator = await operatorRepository.findByEmail(SEEDED_EMAIL)
+    if (!operator) {
+      throw new Error(`Seeded operator ${SEEDED_EMAIL} not found`)
+    }
+    operatorId = operator.id
   })
 
   afterAll(async () => {
@@ -115,7 +139,7 @@ describe('GET /api/auth/me — idle-timeout re-issue, sessionExp carry-forward, 
     const nowSec = Math.floor(Date.now() / 1000)
     const sessionExp = nowSec + 28800
     const token = await buildAccessToken({
-      sub: 'op-threshold',
+      sub: operatorId,
       email: 'threshold@viewpro.app',
       iat: nowSec - 400, // >= 300s threshold (600 * 0.5)
       exp: nowSec + 200,
@@ -144,7 +168,7 @@ describe('GET /api/auth/me — idle-timeout re-issue, sessionExp carry-forward, 
   it('fresh iat (< 300s since last sign) → 200, NO access-token Set-Cookie present (AC5 no-churn)', async () => {
     const nowSec = Math.floor(Date.now() / 1000)
     const token = await buildAccessToken({
-      sub: 'op-fresh',
+      sub: operatorId,
       email: 'fresh@viewpro.app',
       iat: nowSec,
       exp: nowSec + IDLE_TIMEOUT_SECONDS,
@@ -164,13 +188,13 @@ describe('GET /api/auth/me — idle-timeout re-issue, sessionExp carry-forward, 
   it('threshold re-issue alongside a valid step-up cookie: Set-Cookie names ONLY the access cookie, step-up cookie untouched (AC6)', async () => {
     const nowSec = Math.floor(Date.now() / 1000)
     const accessToken = await buildAccessToken({
-      sub: 'op-stepup',
+      sub: operatorId,
       email: 'stepup@viewpro.app',
       iat: nowSec - 400,
       exp: nowSec + 200,
       sessionExp: nowSec + 28800,
     })
-    const stepUpToken = await buildStepUpToken('op-stepup')
+    const stepUpToken = await buildStepUpToken(operatorId)
 
     const response = await request(app.getHttpServer())
       .get('/api/auth/me')
