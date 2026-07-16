@@ -659,6 +659,27 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
       })
     })
 
+    it('assign-plan when the projection row is absent → limits push still happens and the endpoint does NOT 500 (setPlan tolerates the missing row)', async () => {
+      // Backfill/deploy window: the tenant has no platform_tenants row yet. The
+      // control-lane limits push runs first (enforced) and setPlan must not
+      // 500 on the missing row — the endpoint returns its normal success shape.
+      await prisma.platformTenant.deleteMany({ where: { id: 'tenant-unprojected' } })
+      const cookie = await getSessionCookie()
+      const stepUpCookie = await getStepUpCookie(cookie)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-unprojected/plan')
+        .set('Cookie', `${cookie}; ${stepUpCookie}`)
+        .send({ plan: 'BASICO' })
+
+      expect(res.status).toBe(200)
+      expect(mockClient.postTenantLimits).toHaveBeenCalledOnce()
+
+      // No partial row fabricated by the label write.
+      const row = await prisma.platformTenant.findUnique({ where: { id: 'tenant-unprojected' } })
+      expect(row).toBeNull()
+    })
+
     it('ANALYST (no TENANT_LIMITS_WRITE) → 403 PERMISSION_DENIED, no outbound call, no plan write', async () => {
       const cookie = await getSessionCookieFor(TEST_EMAIL_ANALYST, TEST_PASSWORD_ANALYST)
 
