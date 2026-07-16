@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client'
 import type {
   TenantRegisteredPayload,
   AuditLoggedPayload,
+  TenantLimitsChangedPayload,
 } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 
 /**
@@ -33,6 +34,12 @@ type OutboxEventInput =
       eventType: 'AUDIT_LOGGED'
       tenantId: string
       payload: AuditLoggedPayload
+      occurredAt: Date
+    }
+  | {
+      eventType: 'TENANT_LIMITS_CHANGED'
+      tenantId: string
+      payload: TenantLimitsChangedPayload
       occurredAt: Date
     }
 
