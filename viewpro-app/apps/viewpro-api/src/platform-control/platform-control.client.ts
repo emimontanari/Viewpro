@@ -83,7 +83,7 @@ export class PlatformControlClient {
     idempotencyKey: string,
     operatorId: string,
   ): Promise<unknown> {
-    const url = `${this.trimTrailingSlash(this.inmoviewApiInternalUrl)}/api/internal/platform/tenants/${tenantId}/status`
+    const url = `${this.trimTrailingSlash(this.inmoviewApiInternalUrl)}/api/internal/platform/tenants/${encodeURIComponent(tenantId)}/status`
     return this.post(url, { targetStatus: command.targetStatus, idempotencyKey }, operatorId)
   }
 
@@ -99,7 +99,7 @@ export class PlatformControlClient {
     idempotencyKey: string,
     operatorId: string,
   ): Promise<unknown> {
-    const url = `${this.trimTrailingSlash(this.inmoviewApiInternalUrl)}/api/internal/platform/tenants/${tenantId}/limits`
+    const url = `${this.trimTrailingSlash(this.inmoviewApiInternalUrl)}/api/internal/platform/tenants/${encodeURIComponent(tenantId)}/limits`
     return this.post(url, { limits, idempotencyKey }, operatorId)
   }
 
