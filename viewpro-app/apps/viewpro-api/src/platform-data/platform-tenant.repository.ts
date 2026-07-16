@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../database/prisma.service'
 import type {
   TenantRegisteredPayload,
   TenantStatusChangedPayload,
+  PlatformTenantRegistryLimits,
 } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 
 /**
@@ -16,6 +17,8 @@ import type {
  */
 @Injectable()
 export class PlatformTenantRepository {
+  private readonly logger = new Logger(PlatformTenantRepository.name)
+
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -92,6 +95,48 @@ export class PlatformTenantRepository {
         ...(payload.slug !== undefined ? { slug: payload.slug } : {}),
       },
     })
+  }
+
+  /**
+   * platform-manual-plans (Slice 4, Part 1) — TENANT_LIMITS_CHANGED →
+   * full overwrite of the 3 limit columns (design D3).
+   *
+   * Full overwrite, not present-only: the event carries the full truth, and
+   * `null` (unlimited) is a legitimate target value — a present-only update
+   * would make it impossible to clear a limit back to unlimited.
+   *
+   * Update-if-exists only (no create-if-missing): a limits event can't
+   * fabricate a valid `latestStatus` row — seqNo ordering guarantees
+   * TENANT_REGISTERED is always ingested first for a real tenant, so a
+   * missing row here means the event is stale/out-of-order and is silently
+   * skipped rather than creating a partial row.
+   */
+  async applyLimitsChange(
+    tenantId: string,
+    limits: PlatformTenantRegistryLimits,
+  ): Promise<void> {
+    const { count } = await this.prisma.platformTenant.updateMany({
+      where: { id: tenantId },
+      data: {
+        maxUsers: limits.maxUsers,
+        maxActivePropertyEngagements: limits.maxActivePropertyEngagements,
+        maxDocumentsStorageMb: limits.maxDocumentsStorageMb,
+      },
+    })
+
+    // Observability for the zero-match drop: update-if-exists means a
+    // TENANT_LIMITS_CHANGED for a tenant with no projection row matches ZERO
+    // rows and is silently skipped (no create — a limits event carries no
+    // `latestStatus`, so no valid row can be fabricated). That drop is
+    // intentional and non-stalling (no throw, cursor still advances), but it
+    // must not be invisible: without a trace the limits change is permanently
+    // lost from the projection. Emit a warning so a pre-projection/backfill-
+    // window tenant is diagnosable.
+    if (count === 0) {
+      this.logger.warn(
+        `TENANT_LIMITS_CHANGED received for tenant ${tenantId} with no platform_tenants projection row — limits update dropped (likely a pre-projection/backfill-window tenant)`,
+      )
+    }
   }
 }
 

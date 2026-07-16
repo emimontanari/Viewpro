@@ -100,6 +100,17 @@ export class PrismaAdminTenantLimitsRepository implements AdminTenantLimitsRepos
         occurredAt: input.now,
       })
 
+      // platform-manual-plans (Slice 4, Part 1): ALSO emit TENANT_LIMITS_CHANGED
+      // in the SAME tx so ViewPro's platform_tenants projection stops going
+      // stale (previously only AUDIT_LOGGED was emitted, which ingest never
+      // routes into the projection). 'updated' path only — never 'unchanged'.
+      await this.outboxWriter.emit(client, {
+        eventType: 'TENANT_LIMITS_CHANGED',
+        tenantId: tenant.id,
+        payload: { limits: updatedLimits },
+        occurredAt: input.now,
+      })
+
       return {
         status: 'updated',
         tenantId: updatedTenant.id,

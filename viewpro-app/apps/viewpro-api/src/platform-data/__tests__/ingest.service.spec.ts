@@ -8,6 +8,7 @@ import { MirrorRepository } from '../mirror.repository'
 import { CursorRepository } from '../cursor.repository'
 import { PlatformTenantRepository } from '../platform-tenant.repository'
 import { AuditLogRepository } from '../audit-log.repository'
+import { TenantRegistryService } from '../tenant-registry.service'
 import type { PlatformOutboxEvent } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 
 /**
@@ -986,5 +987,266 @@ describe('IngestService — AUDIT_LOGGED routing (T-16/T-17)', () => {
 
     const cursor = await cursorRepo.getCursor()
     expect(cursor).toBe(21)
+  })
+})
+
+/**
+ * platform-manual-plans (Slice 4, Part 1) — RED: ingest routing for
+ * TENANT_LIMITS_CHANGED (staleness fix).
+ *
+ * Spec: ViewPro projects TENANT_LIMITS_CHANGED into platform_tenants
+ * Design D1: branched BEFORE mirrorRepo.upsertEvent (same pattern as
+ *   AUDIT_LOGGED) — a limits event must never enter the mirror/W2 guard.
+ */
+describe('IngestService — TENANT_LIMITS_CHANGED routing (platform-manual-plans Part 1)', () => {
+  let moduleRef: TestingModule
+  let ingestService: IngestService
+  let cursorRepo: CursorRepository
+  let prisma: PrismaService
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [IngestService, MirrorRepository, CursorRepository, PlatformTenantRepository, AuditLogRepository],
+    }).compile()
+
+    ingestService = moduleRef.get(IngestService)
+    cursorRepo = moduleRef.get(CursorRepository)
+    prisma = moduleRef.get(PrismaService)
+  })
+
+  afterAll(async () => {
+    await moduleRef.close()
+  })
+
+  beforeEach(async () => {
+    await prisma.platformTenant.deleteMany()
+    await prisma.platformMirrorEvent.deleteMany()
+    await prisma.platformIngestCursor.upsert({
+      where: { id: 1 },
+      update: { seqNo: 0 },
+      create: { id: 1, seqNo: 0 },
+    })
+  })
+
+  function makeRegisteredEvent(overrides: Partial<PlatformOutboxEvent> = {}): PlatformOutboxEvent {
+    return {
+      id: 'evt-limits-registered',
+      seqNo: 1,
+      eventType: 'TENANT_REGISTERED',
+      tenantId: 't-limits',
+      payload: {
+        id: 't-limits',
+        name: 'Limits Realty',
+        slug: 'limits-realty',
+        newStatus: 'TRIAL',
+        limits: { maxUsers: 5, maxActivePropertyEngagements: 10, maxDocumentsStorageMb: 500 },
+      },
+      occurredAt: new Date().toISOString(),
+      ...overrides,
+    }
+  }
+
+  function makeLimitsChangedEvent(overrides: Partial<PlatformOutboxEvent> = {}): PlatformOutboxEvent {
+    return {
+      id: 'evt-limits-changed',
+      seqNo: 2,
+      eventType: 'TENANT_LIMITS_CHANGED',
+      tenantId: 't-limits',
+      payload: {
+        limits: { maxUsers: 25, maxActivePropertyEngagements: 100, maxDocumentsStorageMb: 5000 },
+      },
+      occurredAt: new Date().toISOString(),
+      ...overrides,
+    }
+  }
+
+  // Scenario: Operator table reflects updated limits after ingest
+  it('TENANT_LIMITS_CHANGED for a registered tenant → platform_tenants limit columns are updated', async () => {
+    await ingestService.ingestBatch([makeRegisteredEvent()])
+    await ingestService.ingestBatch([makeLimitsChangedEvent()])
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-limits' } })
+    expect(row?.maxUsers).toBe(25)
+    expect(row?.maxActivePropertyEngagements).toBe(100)
+    expect(row?.maxDocumentsStorageMb).toBe(5000)
+  })
+
+  // Design D1 crux: mirror/upsertEvent is NOT invoked for TENANT_LIMITS_CHANGED
+  // (the W2-guard regression this fix targets — a limits event must never
+  // reach the mirror). Cursor still advances (non-stalling).
+  it('TENANT_LIMITS_CHANGED → mirrorRepo.upsertEvent is NOT called; cursor still advances', async () => {
+    const upsertCalls: string[] = []
+    const spyMirrorRepo = {
+      upsertEvent: async (event: PlatformOutboxEvent) => {
+        upsertCalls.push(event.id)
+      },
+    }
+
+    const localModule = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [
+        IngestService,
+        { provide: MirrorRepository, useValue: spyMirrorRepo },
+        CursorRepository,
+        PlatformTenantRepository,
+        AuditLogRepository,
+      ],
+    }).compile()
+
+    const svc = localModule.get(IngestService)
+    const cursorR = localModule.get(CursorRepository)
+
+    await svc.ingestBatch([makeLimitsChangedEvent({ id: 'evt-limits-nomirror', seqNo: 15 })])
+
+    expect(upsertCalls).toHaveLength(0)
+
+    const cursor = await cursorR.getCursor()
+    expect(cursor).toBe(15)
+
+    await localModule.close()
+  })
+
+  // Malformed payload (missing `limits`) must be skipped without throwing or
+  // stalling the batch — a later valid event in the SAME batch still processes.
+  it('malformed TENANT_LIMITS_CHANGED (missing limits) → skipped, no throw, cursor advances, later valid event processed', async () => {
+    await ingestService.ingestBatch([makeRegisteredEvent()])
+
+    const malformedEvent = {
+      id: 'evt-limits-malformed',
+      seqNo: 3,
+      eventType: 'TENANT_LIMITS_CHANGED',
+      tenantId: 't-limits',
+      // limits intentionally omitted (malformed)
+      payload: {},
+      occurredAt: new Date().toISOString(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any as PlatformOutboxEvent
+
+    // Ingest the malformed event alone first — must not throw, must not
+    // touch the limits (still the TENANT_REGISTERED values), cursor advances.
+    await expect(ingestService.ingestBatch([malformedEvent])).resolves.toBeUndefined()
+
+    const rowAfterMalformed = await prisma.platformTenant.findUnique({ where: { id: 't-limits' } })
+    expect(rowAfterMalformed?.maxUsers).toBe(5)
+
+    const cursorAfterMalformed = await cursorRepo.getCursor()
+    expect(cursorAfterMalformed).toBe(3)
+
+    // A later, well-formed event (same batch scenario covered by "no
+    // head-of-line blocking" pattern elsewhere) is still processed normally.
+    const laterEvent = makeLimitsChangedEvent({ id: 'evt-limits-after-malformed', seqNo: 4 })
+    await ingestService.ingestBatch([laterEvent])
+
+    const cursor = await cursorRepo.getCursor()
+    expect(cursor).toBe(4)
+
+    const rowAfterLater = await prisma.platformTenant.findUnique({ where: { id: 't-limits' } })
+    expect(rowAfterLater?.maxUsers).toBe(25)
+  })
+
+  // Non-stalling within a SINGLE batch: a malformed TENANT_LIMITS_CHANGED
+  // followed by a well-formed TENANT_STATUS_CHANGED for a DIFFERENT tenant
+  // in the same batch must not head-of-line-block the later event.
+  it('malformed TENANT_LIMITS_CHANGED does not block a later valid event in the SAME batch', async () => {
+    const malformedEvent = {
+      id: 'evt-limits-malformed-batch',
+      seqNo: 5,
+      eventType: 'TENANT_LIMITS_CHANGED',
+      tenantId: 't-limits-poison',
+      payload: {},
+      occurredAt: new Date().toISOString(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any as PlatformOutboxEvent
+
+    const laterStatusEvent: PlatformOutboxEvent = {
+      id: 'evt-status-after-limits-poison',
+      seqNo: 6,
+      eventType: 'TENANT_STATUS_CHANGED',
+      tenantId: 't-after-limits-poison',
+      payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE' },
+      occurredAt: new Date().toISOString(),
+    }
+
+    await expect(
+      ingestService.ingestBatch([malformedEvent, laterStatusEvent]),
+    ).resolves.toBeUndefined()
+
+    const laterRow = await prisma.platformTenant.findUnique({ where: { id: 't-after-limits-poison' } })
+    expect(laterRow?.latestStatus).toBe('ACTIVE')
+
+    const cursor = await cursorRepo.getCursor()
+    expect(cursor).toBe(6)
+  })
+
+  // Regression: existing AUDIT_LOGGED/TENANT_REGISTERED/TENANT_STATUS_CHANGED
+  // routing and the mirror's existing behavior are unchanged by this addition.
+  it('mixed batch (TENANT_REGISTERED + TENANT_STATUS_CHANGED + TENANT_LIMITS_CHANGED) → each routes correctly; mirror has exactly 2 rows (not the limits event)', async () => {
+    const registeredEvent = makeRegisteredEvent({ id: 'evt-mixed2-registered', seqNo: 1, tenantId: 't-mixed2' })
+    const statusEvent: PlatformOutboxEvent = {
+      id: 'evt-mixed2-status',
+      seqNo: 2,
+      eventType: 'TENANT_STATUS_CHANGED',
+      tenantId: 't-mixed2',
+      payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE' },
+      occurredAt: new Date().toISOString(),
+    }
+    const limitsEvent = makeLimitsChangedEvent({ id: 'evt-mixed2-limits', seqNo: 3, tenantId: 't-mixed2' })
+
+    await ingestService.ingestBatch([registeredEvent, statusEvent, limitsEvent])
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-mixed2' } })
+    expect(row?.latestStatus).toBe('ACTIVE')
+    expect(row?.maxUsers).toBe(25)
+
+    const mirrorRows = await prisma.platformMirrorEvent.findMany({ where: { tenantId: 't-mixed2' } })
+    expect(mirrorRows).toHaveLength(2)
+
+    const cursor = await cursorRepo.getCursor()
+    expect(cursor).toBe(3)
+  })
+
+  // Task 12 — Verification: end-to-end check. Emits TENANT_LIMITS_CHANGED
+  // from an InmoView-shaped event, runs it through ViewPro ingest, then
+  // reads the operator-facing TenantRegistryService (which backs
+  // GET /operators/tenants) and asserts it reflects the new limits with no
+  // staleness — closing the read-model staleness bug end to end.
+  it('E2E: TENANT_LIMITS_CHANGED ingest → TenantRegistryService.listTenants reflects fresh limits (no staleness)', async () => {
+    const registryModule = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [TenantRegistryService],
+    }).compile()
+    const registryService = registryModule.get(TenantRegistryService)
+
+    await ingestService.ingestBatch([
+      makeRegisteredEvent({
+        id: 'evt-e2e-registered',
+        seqNo: 10,
+        tenantId: 't-e2e-fresh',
+        payload: {
+          id: 't-e2e-fresh',
+          name: 'E2E Fresh Realty',
+          slug: 'e2e-fresh-realty',
+          newStatus: 'TRIAL',
+          limits: { maxUsers: 5, maxActivePropertyEngagements: 10, maxDocumentsStorageMb: 500 },
+        },
+      }),
+    ])
+
+    const staleResult = await registryService.listTenants()
+    const staleItem = staleResult.items.find((i) => i.id === 't-e2e-fresh')
+    expect(staleItem?.limits.maxUsers).toBe(5)
+
+    await ingestService.ingestBatch([
+      makeLimitsChangedEvent({ id: 'evt-e2e-limits', seqNo: 11, tenantId: 't-e2e-fresh' }),
+    ])
+
+    const freshResult = await registryService.listTenants()
+    const freshItem = freshResult.items.find((i) => i.id === 't-e2e-fresh')
+    expect(freshItem?.limits.maxUsers).toBe(25)
+    expect(freshItem?.limits.maxActivePropertyEngagements).toBe(100)
+    expect(freshItem?.limits.maxDocumentsStorageMb).toBe(5000)
+
+    await registryModule.close()
   })
 })

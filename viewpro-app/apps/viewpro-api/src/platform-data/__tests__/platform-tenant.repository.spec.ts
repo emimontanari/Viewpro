@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
+import { Logger } from '@nestjs/common'
 import { Test, TestingModule } from '@nestjs/testing'
 import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
@@ -135,5 +136,121 @@ describe('PlatformTenantRepository — trialEndsAt (integration — test DB)', (
 
     const row = await prisma.platformTenant.findUnique({ where: { id: 't-trial-invalid' } })
     expect(row?.trialEndsAt).toBeNull()
+  })
+})
+
+/**
+ * platform-manual-plans (Slice 4, Part 1) — RED: `applyLimitsChange` full
+ * overwrite of the 3 limit columns (update-if-exists only, no create).
+ *
+ * Spec: ViewPro projects TENANT_LIMITS_CHANGED into platform_tenants
+ *   (Operator table reflects updated limits after ingest)
+ * Design D3: full overwrite via `updateMany`, update-if-exists only, null is
+ *   a legitimate target value (unlimited).
+ */
+describe('PlatformTenantRepository — applyLimitsChange (integration — test DB)', () => {
+  let moduleRef: TestingModule
+  let repo: PlatformTenantRepository
+  let prisma: PrismaService
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [PlatformTenantRepository],
+    }).compile()
+
+    repo = moduleRef.get(PlatformTenantRepository)
+    prisma = moduleRef.get(PrismaService)
+  })
+
+  afterAll(async () => {
+    await moduleRef.close()
+  })
+
+  beforeEach(async () => {
+    await prisma.platformTenant.deleteMany()
+  })
+
+  it('existing tenant → overwrites all 3 limit columns with the new values', async () => {
+    await repo.upsertFromRegistered(
+      makeRegisteredPayload({
+        id: 't-limits-overwrite',
+        limits: { maxUsers: 5, maxActivePropertyEngagements: 10, maxDocumentsStorageMb: 500 },
+      }),
+    )
+
+    await repo.applyLimitsChange('t-limits-overwrite', {
+      maxUsers: 25,
+      maxActivePropertyEngagements: 100,
+      maxDocumentsStorageMb: 5000,
+    })
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-limits-overwrite' } })
+    expect(row?.maxUsers).toBe(25)
+    expect(row?.maxActivePropertyEngagements).toBe(100)
+    expect(row?.maxDocumentsStorageMb).toBe(5000)
+  })
+
+  it('null limit values persist as null (unlimited) — not skipped', async () => {
+    await repo.upsertFromRegistered(
+      makeRegisteredPayload({
+        id: 't-limits-null',
+        limits: { maxUsers: 5, maxActivePropertyEngagements: 10, maxDocumentsStorageMb: 500 },
+      }),
+    )
+
+    await repo.applyLimitsChange('t-limits-null', {
+      maxUsers: null,
+      maxActivePropertyEngagements: null,
+      maxDocumentsStorageMb: null,
+    })
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-limits-null' } })
+    expect(row?.maxUsers).toBeNull()
+    expect(row?.maxActivePropertyEngagements).toBeNull()
+    expect(row?.maxDocumentsStorageMb).toBeNull()
+  })
+
+  it('missing tenant → does NOT create a row (update-if-exists only, per D3)', async () => {
+    await expect(
+      repo.applyLimitsChange('t-does-not-exist', {
+        maxUsers: 25,
+        maxActivePropertyEngagements: 100,
+        maxDocumentsStorageMb: 5000,
+      }),
+    ).resolves.toBeUndefined()
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-does-not-exist' } })
+    expect(row).toBeNull()
+  })
+
+  it('missing tenant → logs a WARNING (observability for a dropped limits change) and still does not create a row or throw', async () => {
+    // Reliability guard: a TENANT_LIMITS_CHANGED arriving for a tenantId with no
+    // projection row (deploy/backfill window — its TENANT_REGISTERED fell outside
+    // feed retention and it was never backfilled) matches ZERO rows. The drop must
+    // stay silent to the pipeline (no create, no throw, cursor advances) BUT must
+    // be observable via a warn log that names the tenantId — otherwise the limits
+    // change is permanently lost with no trace.
+    const warnSpy = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined)
+
+    try {
+      await expect(
+        repo.applyLimitsChange('t-limits-drop-missing', {
+          maxUsers: 25,
+          maxActivePropertyEngagements: 100,
+          maxDocumentsStorageMb: 5000,
+        }),
+      ).resolves.toBeUndefined()
+
+      expect(warnSpy).toHaveBeenCalledTimes(1)
+      expect(warnSpy.mock.calls[0]?.[0]).toContain('t-limits-drop-missing')
+
+      const row = await prisma.platformTenant.findUnique({
+        where: { id: 't-limits-drop-missing' },
+      })
+      expect(row).toBeNull()
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 })

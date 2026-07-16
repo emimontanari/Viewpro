@@ -250,11 +250,17 @@ describe('Outbox write integration — $transaction atomicity', () => {
       })
       .expect(200)
 
+    // platform-manual-plans (Slice 4, Part 1): the limits update now ALSO
+    // emits a TENANT_LIMITS_CHANGED row in the same tx (staleness fix).
     const rows = await prisma.platformOutboxEvent.findMany({ where: { tenantId: tenant.id } })
-    expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({ eventType: 'AUDIT_LOGGED', tenantId: tenant.id })
+    expect(rows).toHaveLength(2)
 
-    const payload = rows[0]!.payload as Record<string, unknown>
+    const auditRow = rows.find((r) => r.eventType === 'AUDIT_LOGGED')
+    const limitsChangedRow = rows.find((r) => r.eventType === 'TENANT_LIMITS_CHANGED')
+    expect(auditRow).toBeDefined()
+    expect(limitsChangedRow).toBeDefined()
+
+    const payload = auditRow!.payload as Record<string, unknown>
     expect(payload.action).toBe('TENANT_LIMITS_UPDATED')
     expect(payload.previousValue).toEqual({
       maxUsers: 10,
@@ -267,6 +273,13 @@ describe('Outbox write integration — $transaction atomicity', () => {
       maxDocumentsStorageMb: 100,
     })
     expect(payload.actor).toBeDefined()
+
+    const limitsChangedPayload = limitsChangedRow!.payload as Record<string, unknown>
+    expect(limitsChangedPayload.limits).toEqual({
+      maxUsers: 25,
+      maxActivePropertyEngagements: 5,
+      maxDocumentsStorageMb: 100,
+    })
   })
 
   // -------------------------------------------------------------------------
@@ -299,6 +312,13 @@ describe('Outbox write integration — $transaction atomicity', () => {
       where: { tenantId: tenant.id, eventType: 'AUDIT_LOGGED' },
     })
     expect(rows).toHaveLength(0)
+
+    // platform-manual-plans (Slice 4, Part 1): rollback must also leave zero
+    // TENANT_LIMITS_CHANGED rows (atomic emission — both events or neither).
+    const limitsChangedRows = await prisma.platformOutboxEvent.findMany({
+      where: { tenantId: tenant.id, eventType: 'TENANT_LIMITS_CHANGED' },
+    })
+    expect(limitsChangedRows).toHaveLength(0)
   })
 
   // -------------------------------------------------------------------------

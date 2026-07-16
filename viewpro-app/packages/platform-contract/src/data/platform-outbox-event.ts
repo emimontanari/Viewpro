@@ -45,11 +45,25 @@ export type AuditLoggedPayload = {
   actor: AuditActor
 }
 
+// platform-manual-plans (Slice 4, Part 1): fixes the operator read-model
+// staleness bug — InmoView emits this event in the SAME transaction as a
+// limits change so ViewPro's `platform_tenants` projection stays fresh
+// (previously only AUDIT_LOGGED was emitted, which the ingest never routes
+// into the projection). Carries the full new limits (present-only overwrite
+// semantics on the consumer side); null = unlimited.
+export type TenantLimitsChangedPayload = {
+  limits: PlatformTenantRegistryLimits
+}
+
 export type PlatformOutboxEvent = {
   id: string
   seqNo: number
-  eventType: 'TENANT_STATUS_CHANGED' | 'TENANT_REGISTERED' | 'AUDIT_LOGGED'
+  eventType: 'TENANT_STATUS_CHANGED' | 'TENANT_REGISTERED' | 'AUDIT_LOGGED' | 'TENANT_LIMITS_CHANGED'
   tenantId: string
-  payload: TenantStatusChangedPayload | TenantRegisteredPayload | AuditLoggedPayload
+  payload:
+    | TenantStatusChangedPayload
+    | TenantRegisteredPayload
+    | AuditLoggedPayload
+    | TenantLimitsChangedPayload
   occurredAt: string
 }
