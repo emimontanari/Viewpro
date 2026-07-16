@@ -147,6 +147,62 @@ describe('PlatformControlClient — token minting', () => {
     vi.unstubAllGlobals()
   })
 
+  // Security: a URL-significant tenantId must be percent-encoded so a crafted
+  // path segment cannot re-route the service-token-authenticated internal request.
+  it('postTenantStatus percent-encodes a URL-significant tenantId (no path traversal)', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: 'updated' }), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', mockFetch)
+
+    const client = new PlatformControlClient({
+      inmoviewApiInternalUrl: 'http://localhost:3001',
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await client.postTenantStatus(
+      'a/b',
+      { targetStatus: 'ACTIVE' as const },
+      'idem-key-enc',
+      OPERATOR_ID,
+    )
+
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe(
+      'http://localhost:3001/api/internal/platform/tenants/a%2Fb/status',
+    )
+    expect(url).not.toContain('tenants/a/b/status')
+
+    vi.unstubAllGlobals()
+  })
+
+  it('postTenantLimits percent-encodes a URL-significant tenantId (no path traversal)', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: 'updated' }), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', mockFetch)
+
+    const client = new PlatformControlClient({
+      inmoviewApiInternalUrl: 'http://localhost:3001',
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await client.postTenantLimits(
+      '../x',
+      { maxUsers: 10, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+      'idem-key-enc-2',
+      OPERATOR_ID,
+    )
+
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe(
+      'http://localhost:3001/api/internal/platform/tenants/..%2Fx/limits',
+    )
+    expect(url).not.toContain('tenants/../x/limits')
+
+    vi.unstubAllGlobals()
+  })
+
   it('postTenantLimits calls InmoView limits endpoint', async () => {
     const mockFetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ status: 'updated' }), { status: 200 }),
