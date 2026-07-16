@@ -28,6 +28,24 @@ import { getOperatorStatusAction, OperatorsTable, type OperatorStatusAction } fr
 
 const DUPLICATE_EMAIL_MESSAGE = 'Ese email ya está registrado.';
 
+// 422 guardrail violations carry a stable `code` in the error body; map each
+// to Spanish console copy (mirrors the tenants container's 400/404 Spanish
+// remaps) so the operator never sees the raw English backend message. Unknown
+// codes fall through to getApiErrorMessage — existing behavior is preserved.
+const OPERATOR_GUARDRAIL_MESSAGES: Record<string, string> = {
+  LAST_OWNER_PROTECTED: 'No se puede: debe quedar al menos un OWNER activo.',
+  SELF_DEMOTE_FORBIDDEN: 'No podés cambiar tu propio rol.',
+  SELF_STATUS_CHANGE_FORBIDDEN: 'No podés cambiar tu propio estado.'
+};
+
+function getOperatorErrorMessage(error: unknown): string {
+  if (isApiError(error) && error.code && OPERATOR_GUARDRAIL_MESSAGES[error.code]) {
+    return OPERATOR_GUARDRAIL_MESSAGES[error.code];
+  }
+
+  return getApiErrorMessage(error);
+}
+
 function OperatorsLoadingSkeleton() {
   return (
     <div data-testid='operators-loading-skeleton' className='flex flex-col gap-3'>
@@ -96,11 +114,10 @@ export function OperatorsManagementPage() {
         return;
       }
 
-      // 422 self-demote / last-owner guardrail — surfaced verbatim (English
-      // backend copy, per the operator-console's error-mapping convention
-      // for guardrail violations; unlike tenants' 400 terminality mapping,
-      // no Spanish remap exists for these operator-only codes yet).
-      toast.error(getApiErrorMessage(mutationError));
+      // 422 self-demote / last-owner guardrail — mapped to Spanish console
+      // copy via getOperatorErrorMessage (SELF_DEMOTE_FORBIDDEN /
+      // LAST_OWNER_PROTECTED); unknown codes fall back to getApiErrorMessage.
+      toast.error(getOperatorErrorMessage(mutationError));
     }
   });
 
@@ -120,8 +137,10 @@ export function OperatorsManagementPage() {
         return;
       }
 
+      // 422 self-status-change / last-owner guardrail — mapped to Spanish
+      // console copy via getOperatorErrorMessage; unknown codes fall back.
       setPendingStatusOperator(null);
-      toast.error(getApiErrorMessage(mutationError));
+      toast.error(getOperatorErrorMessage(mutationError));
     }
   });
 
