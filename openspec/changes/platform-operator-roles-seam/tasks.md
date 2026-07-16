@@ -68,7 +68,7 @@ T-01 (RED: operator-schema.spec.ts + seed.spec.ts — role column + OWNER backfi
 
 ## WU-1 — viewpro-api: migration + permissions seam + guard wiring + tests
 
-### [ ] T-01 — RED: `operator-schema.spec.ts` + `seed.spec.ts` — role column + OWNER backfill/seed
+### [x] T-01 — RED: `operator-schema.spec.ts` + `seed.spec.ts` — role column + OWNER backfill/seed
 **Type**: test (RED)
 **Spec**: operator-platform-roles — Every Operator Has a Platform Role; Existing Operators Default to OWNER; Migration Backfills Existing Operators and Seed Sets OWNER Explicitly
 **WU**: WU-1, commit 1
@@ -87,7 +87,7 @@ All RED until T-02 (client not yet regenerated with `role`; column doesn't exist
 
 ---
 
-### [ ] T-02 — GREEN: `schema.prisma` enum+column, migration, `seed.ts` explicit OWNER
+### [x] T-02 — GREEN: `schema.prisma` enum+column, migration, `seed.ts` explicit OWNER
 **Type**: impl
 **Spec**: operator-platform-roles — Every Operator Has a Platform Role; Migration Backfills Existing Operators and Seed Sets OWNER Explicitly
 **WU**: WU-1, commit 2
@@ -110,7 +110,7 @@ All RED until T-02 (client not yet regenerated with `role`; column doesn't exist
 
 ---
 
-### [ ] T-03 — RED: `role-permissions.spec.ts` — exact per-role map, hierarchy, OWNER-only `OPERATORS_MANAGE`
+### [x] T-03 — RED: `role-permissions.spec.ts` — exact per-role map, hierarchy, OWNER-only `OPERATORS_MANAGE`
 **Type**: test (RED)
 **Spec**: operator-platform-roles — Role Hierarchy — OPERATIONS Excludes PLATFORM_OPERATORS_MANAGE
 **WU**: WU-1, commit 3
@@ -128,7 +128,7 @@ All RED until T-04.
 
 ---
 
-### [ ] T-04 — GREEN: `platform-permissions.constants.ts` + `role-permissions.ts`
+### [x] T-04 — GREEN: `platform-permissions.constants.ts` + `role-permissions.ts`
 **Type**: impl
 **Spec**: operator-platform-roles — Role Hierarchy — OPERATIONS Excludes PLATFORM_OPERATORS_MANAGE; OWNER role holds all defined platform permissions
 **WU**: WU-1, commit 4
@@ -184,7 +184,7 @@ All RED until T-04.
 
 ---
 
-### [ ] T-05 — RED: `platform-permission.guard.spec.ts` — fail-closed, missing user, missing/SUSPENDED operator, role×permission matrix
+### [x] T-05 — RED: `platform-permission.guard.spec.ts` — fail-closed, missing user, missing/SUSPENDED operator, role×permission matrix
 **Type**: test (RED)
 **Spec**: operator-platform-roles — Protected Routes Fail Closed When No Permission Is Declared; Read/Write Routes Require the Declared Permission; Guard Order Keeps 401/403 Distinct (unit-level 401 branch)
 **WU**: WU-1, commit 5
@@ -204,7 +204,7 @@ All RED until T-06.
 
 ---
 
-### [ ] T-06 — GREEN: `require-platform-permission.decorator.ts` + `platform-permission.guard.ts` + `permissions.module.ts`
+### [x] T-06 — GREEN: `require-platform-permission.decorator.ts` + `platform-permission.guard.ts` + `permissions.module.ts`
 **Type**: impl
 **Spec**: operator-platform-roles — Protected Routes Fail Closed When No Permission Is Declared; Read/Write Routes Require the Declared Permission
 **WU**: WU-1, commit 6
@@ -265,7 +265,7 @@ All RED until T-06.
 
 ---
 
-### [ ] T-07 — RED: `platform-control.controller.spec.ts` — WRITE routes: role×permission, guard order, role-change mid-session, SUSPENDED lockout
+### [x] T-07 — RED: `platform-control.controller.spec.ts` — WRITE routes: role×permission, guard order, role-change mid-session, SUSPENDED lockout
 **Type**: test (RED)
 **Spec**: operator-platform-roles — Write Routes Require the Declared WRITE Permission; ANALYST Is Denied and Nothing Mutates; Guard Order Keeps 401, Permission-403, and Step-up-403 Distinct; A Role Change Takes Effect on the Operator's Very Next Request
 **WU**: WU-1, commit 7
@@ -288,7 +288,7 @@ All RED until T-08.
 
 ---
 
-### [ ] T-08 — GREEN: wire `AuthGuard`+`PlatformPermissionGuard`+`@RequirePlatformPermission` on `platform-control.controller.ts`
+### [x] T-08 — GREEN: wire `AuthGuard`+`PlatformPermissionGuard`+`@RequirePlatformPermission` on `platform-control.controller.ts`
 **Type**: impl
 **Spec**: operator-platform-roles — Write Routes Require the Declared WRITE Permission; Guard Order Keeps 401, Permission-403, and Step-up-403 Distinct
 **WU**: WU-1, commit 8
@@ -306,7 +306,7 @@ All RED until T-08.
 
 ---
 
-### [ ] T-09 — RED: metrics/tenant-registry/audit controller specs — READ routes: ANALYST/OPERATIONS/OWNER all 200
+### [x] T-09 — RED: metrics/tenant-registry/audit controller specs — READ routes: ANALYST/OPERATIONS/OWNER all 200
 **Type**: test (RED)
 **Spec**: operator-platform-roles — Read Routes Require the Declared READ Permission
 **WU**: WU-1, commit 9
@@ -326,7 +326,7 @@ All RED until T-10.
 
 ---
 
-### [ ] T-10 — GREEN: wire guard+annotations on the 3 read controllers + `PermissionsModule` import in `platform-data.module.ts`
+### [x] T-10 — GREEN: wire guard+annotations on the 3 read controllers + `PermissionsModule` import in `platform-data.module.ts`
 **Type**: impl
 **Spec**: operator-platform-roles — Read Routes Require the Declared READ Permission
 **WU**: WU-1, commit 10
@@ -343,7 +343,7 @@ All RED until T-10.
 
 ---
 
-## T-11 — Final verification
+## [x] T-11 — Final verification
 
 **Type**: verify
 **Spec**: All invariants; proposal acceptance criteria 1–8; operator-platform-roles all 9 requirements
@@ -399,15 +399,15 @@ All RED until T-10.
 
 ## Success Checklist (maps to proposal acceptance criteria 1–8 + spec invariants)
 
-- [ ] Every protected `operators/*` route enforces its declared permission via `PlatformPermissionGuard` (AC1) (T-08, T-10)
-- [ ] OWNER (the only role today) passes all routes with zero behavior change; every pre-existing test stays green (AC2) (T-08, T-10)
-- [ ] ANALYST is allowed the 3 READ routes and denied (403 `PERMISSION_DENIED`) both WRITE routes, with no mutation/outbox/control-lane call on denial (AC3) (T-07, T-09)
-- [ ] OPERATIONS is allowed both WRITE routes and denied anything requiring `PLATFORM_OPERATORS_MANAGE` (AC4) (T-07, T-03)
-- [ ] `PLATFORM_OPERATORS_MANAGE` is declared for OWNER but no route uses it (AC5) (T-03, T-11 checklist item 9)
-- [ ] Guard order holds: unauthenticated → 401; authenticated-but-unauthorized → 403 `PERMISSION_DENIED`; step-up still required and distinct (403 `STEP_UP_REQUIRED`) on destructive routes (AC6) (T-07, T-08)
-- [ ] Post-migration, the seeded operator reads back `role = OWNER`; seed sets OWNER explicitly (AC7) (T-01, T-02)
-- [ ] Diff invariants: exactly one schema change (`Operator.role`), zero `platform-contract`/`apps/api`/`viewpro-web` change (AC8) (T-11 checklist items 5–8)
-- [ ] A role change takes effect on the operator's very next request, no re-login, no token dependency (spec Requirement 6) (T-07)
-- [ ] A route with no declared permission fails closed (deny), never silently authorizes (spec Requirement 7) (T-05)
-- [ ] A SUSPENDED operator with a valid session is denied on every guarded route (status-hardening, D6) (T-07)
-- [ ] Step-up and idle-timeout regressions from prior slices stay green (T-11 checklist items 3–4)
+- [x] Every protected `operators/*` route enforces its declared permission via `PlatformPermissionGuard` (AC1) (T-08, T-10)
+- [x] OWNER (the only role today) passes all routes with zero behavior change; every pre-existing test stays green (AC2) (T-08, T-10)
+- [x] ANALYST is allowed the 3 READ routes and denied (403 `PERMISSION_DENIED`) both WRITE routes, with no mutation/outbox/control-lane call on denial (AC3) (T-07, T-09)
+- [x] OPERATIONS is allowed both WRITE routes and denied anything requiring `PLATFORM_OPERATORS_MANAGE` (AC4) (T-07, T-03)
+- [x] `PLATFORM_OPERATORS_MANAGE` is declared for OWNER but no route uses it (AC5) (T-03, T-11 checklist item 9)
+- [x] Guard order holds: unauthenticated → 401; authenticated-but-unauthorized → 403 `PERMISSION_DENIED`; step-up still required and distinct (403 `STEP_UP_REQUIRED`) on destructive routes (AC6) (T-07, T-08)
+- [x] Post-migration, the seeded operator reads back `role = OWNER`; seed sets OWNER explicitly (AC7) (T-01, T-02)
+- [x] Diff invariants: exactly one schema change (`Operator.role`), zero `platform-contract`/`apps/api`/`viewpro-web` change (AC8) (T-11 checklist items 5–8)
+- [x] A role change takes effect on the operator's very next request, no re-login, no token dependency (spec Requirement 6) (T-07)
+- [x] A route with no declared permission fails closed (deny), never silently authorizes (spec Requirement 7) (T-05)
+- [x] A SUSPENDED operator with a valid session is denied on every guarded route (status-hardening, D6) (T-07)
+- [x] Step-up and idle-timeout regressions from prior slices stay green (T-11 checklist items 3–4)
