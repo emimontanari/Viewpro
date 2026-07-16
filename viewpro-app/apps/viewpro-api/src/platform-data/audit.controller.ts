@@ -2,6 +2,10 @@ import { Controller, Get, Query, UseGuards } from '@nestjs/common'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { AuthGuard } from '../auth/guards/auth.guard'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
+import { PlatformPermissionGuard } from '../permissions/platform-permission.guard'
+import { PLATFORM_PERMISSIONS } from '../permissions/platform-permissions.constants'
+import { RequirePlatformPermission } from '../permissions/require-platform-permission.decorator'
+// biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { AuditService } from './audit.service'
 import type { AuditFeedList } from './audit.service'
 
@@ -31,14 +35,15 @@ function sanitizeLimit(raw?: string): number {
 /**
  * AuditController — operator-facing global audit feed (A9/A10).
  *
- * Protected by Phase 4 AuthGuard (viewpro_platform_access_token cookie).
+ * Protected by Phase 4 AuthGuard (viewpro_platform_access_token cookie) and
+ * PlatformPermissionGuard (D4 — operator-platform-roles).
  * Serves data EXCLUSIVELY from `platform_audit_log` — never from InmoView.
  *
  * Q3: no `tenantId` query param — the feed is intentionally global-only; any
  * such param is accepted but ignored (no filtering effect).
  */
 @Controller('operators/audit')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PlatformPermissionGuard)
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
@@ -49,6 +54,7 @@ export class AuditController {
    * Defaults: offset=0, limit=50 (capped at 200 — A9).
    */
   @Get()
+  @RequirePlatformPermission(PLATFORM_PERMISSIONS.AUDIT_READ)
   async list(
     @Query('offset') offset?: string,
     @Query('limit') limit?: string,
