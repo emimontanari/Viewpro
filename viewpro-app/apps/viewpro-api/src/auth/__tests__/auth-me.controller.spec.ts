@@ -290,14 +290,27 @@ describe('AuthController.getMe — operator status enforcement (unit)', () => {
   const req = (id: string, email: string) =>
     ({ user: { id, email } }) as AuthenticatedRequest
 
-  it('ACTIVE operator → returns { operator: { id, email } } (unchanged shape)', async () => {
+  // T1.4.2 — updated: getMe() now additionally returns `role` (id/email
+  // remain unchanged; this is an additive shape change, not a regression).
+  it('ACTIVE operator → returns { operator: { id, email, role } }', async () => {
     const { controller } = makeController(
-      makeOperator({ id: 'op-me-1', email: 'me@viewpro.app' }),
+      makeOperator({ id: 'op-me-1', email: 'me@viewpro.app', role: 'OWNER' }),
     )
 
     const result = await controller.getMe(req('op-me-1', 'me@viewpro.app'))
 
-    expect(result).toEqual({ operator: { id: 'op-me-1', email: 'me@viewpro.app' } })
+    expect(result).toEqual({ operator: { id: 'op-me-1', email: 'me@viewpro.app', role: 'OWNER' } })
+  })
+
+  // T1.4.1 — RED: role reflects the actual DB role, not a hardcoded default.
+  it('ACTIVE ANALYST operator → role reflects the actual DB role, not a hardcoded default', async () => {
+    const { controller } = makeController(
+      makeOperator({ id: 'op-me-2', email: 'analyst@viewpro.app', role: 'ANALYST' }),
+    )
+
+    const result = await controller.getMe(req('op-me-2', 'analyst@viewpro.app'))
+
+    expect(result).toEqual({ operator: { id: 'op-me-2', email: 'analyst@viewpro.app', role: 'ANALYST' } })
   })
 
   it('SUSPENDED operator (valid token) → 401 UnauthorizedException with code AUTH_REQUIRED', async () => {
