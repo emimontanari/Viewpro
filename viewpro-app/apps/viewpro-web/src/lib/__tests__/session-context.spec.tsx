@@ -39,7 +39,7 @@ import { SessionProvider, useSession } from '../session-context';
 const mockGetSession = vi.mocked(getSession);
 const mockLogout = vi.mocked(logout);
 
-const MOCK_SESSION: Session = { operator: { id: 'op-1', email: 'admin@viewpro.app' } };
+const MOCK_SESSION: Session = { operator: { id: 'op-1', email: 'admin@viewpro.app', role: 'OWNER' } };
 
 // Helper: render inside a fresh QueryClient + SessionProvider
 function renderWithSession(ui: React.ReactNode) {

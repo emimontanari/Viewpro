@@ -1,9 +1,14 @@
-// WU-1 stub — will be expanded in WU-2 (T-09/T-10).
 // Operator-only session: no memberships, no tenant context (D2).
 import { apiRequest } from './api-client';
 
+export type OperatorRole = 'OWNER' | 'OPERATIONS' | 'ANALYST';
+
+// platform-operator-management (A4, PR2) — `role` now returned by GET/POST
+// /auth/me and /auth/login (backend PR1, T1.4.2). Consumed client-side by
+// app-sidebar's nav-gating filter (Design Decision 6) — the server-side
+// guard remains the real enforcement; this is UX only.
 export type Session = {
-  operator: { id: string; email: string };
+  operator: { id: string; email: string; role: OperatorRole };
 };
 
 export type LoginInput = {
