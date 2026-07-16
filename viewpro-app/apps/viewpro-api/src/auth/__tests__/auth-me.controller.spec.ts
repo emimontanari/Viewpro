@@ -119,6 +119,10 @@ describe('GET /api/auth/me', () => {
 
     expect(response.status).toBe(401)
     expect(response.body.operator).toBeUndefined()
+    // Cross-service contract (JD hardening): the AuthGuard 401 body carries a
+    // stable machine-readable code so the FE distinguishes session-expiry from
+    // a wrong-password 401 without string-matching the human message.
+    expect(response.body.code).toBe('AUTH_REQUIRED')
   })
 
   // Scenario 3: Expired (idle) token, valid future sessionExp → 401 (idle wins)
@@ -141,6 +145,7 @@ describe('GET /api/auth/me', () => {
 
     expect(response.status).toBe(401)
     expect(response.body.operator).toBeUndefined()
+    expect(response.body.code).toBe('AUTH_REQUIRED')
   })
 
   // Scenario 3b: Tampered/invalid token → 401
@@ -151,6 +156,7 @@ describe('GET /api/auth/me', () => {
 
     expect(response.status).toBe(401)
     expect(response.body.operator).toBeUndefined()
+    expect(response.body.code).toBe('AUTH_REQUIRED')
   })
 
   // KEY new case (AC3): valid sliding exp, but sessionExp already past → 401
@@ -170,6 +176,7 @@ describe('GET /api/auth/me', () => {
 
     expect(response.status).toBe(401)
     expect(response.body.operator).toBeUndefined()
+    expect(response.body.code).toBe('AUTH_REQUIRED')
   })
 
   // Legacy/AC9: a token signed without a sessionExp claim is treated as expired
@@ -189,6 +196,7 @@ describe('GET /api/auth/me', () => {
 
     expect(response.status).toBe(401)
     expect(response.body.operator).toBeUndefined()
+    expect(response.body.code).toBe('AUTH_REQUIRED')
   })
 
   // Additive regression: existing POST /api/auth/login unaffected

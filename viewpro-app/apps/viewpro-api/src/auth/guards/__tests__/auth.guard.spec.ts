@@ -57,11 +57,26 @@ describe('AuthGuard — failure paths clear both cookies (D9, AC7)', () => {
     vi.clearAllMocks()
   })
 
+  // Cross-service contract (JD hardening): every AuthGuard reject must carry a
+  // stable, machine-readable `code: 'AUTH_REQUIRED'` in its 401 body so the FE
+  // can distinguish a session-expiry 401 from a wrong-password 401 WITHOUT
+  // string-matching the human message. Pinning it here fails a backend test on
+  // any future message/shape change instead of silently regressing the FE.
+  async function expectAuthRequired401(promise: Promise<unknown>) {
+    await expect(promise).rejects.toThrow(UnauthorizedException)
+    const error = (await promise.catch((thrown: unknown) => thrown)) as UnauthorizedException
+    expect(error.getResponse()).toMatchObject({
+      statusCode: 401,
+      code: 'AUTH_REQUIRED',
+      message: 'Authentication required',
+    })
+  }
+
   it('missing access token: clears both cookies via getResponse(), then throws UnauthorizedException', async () => {
     const { guard, tokenService } = makeGuard({})
     const { context, response } = makeContext({})
 
-    await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
+    await expectAuthRequired401(guard.canActivate(context))
 
     expect(tokenService.clearAccessCookie).toHaveBeenCalledWith(response)
     expect(tokenService.clearStepUpCookie).toHaveBeenCalledWith(response)
@@ -73,7 +88,7 @@ describe('AuthGuard — failure paths clear both cookies (D9, AC7)', () => {
     const { guard, tokenService } = makeGuard({ verifyAccessToken })
     const { context, response } = makeContext({ viewpro_platform_access_token: 'tampered.token' })
 
-    await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
+    await expectAuthRequired401(guard.canActivate(context))
 
     expect(tokenService.clearAccessCookie).toHaveBeenCalledWith(response)
     expect(tokenService.clearStepUpCookie).toHaveBeenCalledWith(response)
@@ -97,7 +112,26 @@ describe('AuthGuard — failure paths clear both cookies (D9, AC7)', () => {
     const { guard, tokenService } = makeGuard({ verifyAccessToken })
     const { context, response } = makeContext({ viewpro_platform_access_token: 'nan.session.token' })
 
-    await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
+    await expectAuthRequired401(guard.canActivate(context))
+
+    expect(tokenService.clearAccessCookie).toHaveBeenCalledWith(response)
+    expect(tokenService.clearStepUpCookie).toHaveBeenCalledWith(response)
+    expect(response.clearCookie).toHaveBeenCalledTimes(2)
+  })
+
+  it('past absolute deadline (sessionExp already elapsed): clears both cookies, then throws 401 AUTH_REQUIRED', async () => {
+    const nowSec = Math.floor(Date.now() / 1000)
+    const verifyAccessToken = vi.fn().mockResolvedValue({
+      sub: 'op-1',
+      email: 'op@viewpro.app',
+      sessionExp: nowSec - 3600, // absolute deadline already elapsed
+      iat: nowSec - 10,
+      exp: nowSec + 600, // sliding exp still valid
+    })
+    const { guard, tokenService } = makeGuard({ verifyAccessToken })
+    const { context, response } = makeContext({ viewpro_platform_access_token: 'absolute.expired.token' })
+
+    await expectAuthRequired401(guard.canActivate(context))
 
     expect(tokenService.clearAccessCookie).toHaveBeenCalledWith(response)
     expect(tokenService.clearStepUpCookie).toHaveBeenCalledWith(response)
