@@ -334,6 +334,10 @@ describe('getTrialEndLabel', () => {
   it('trialEndsAt exactly now → "Trial vencido" (boundary, triangulation)', () => {
     expect(getTrialEndLabel(NOW.toISOString(), NOW)).toBe('Trial vencido');
   });
+
+  it('malformed/unparseable trialEndsAt → "—" (fail safe, mirrors null)', () => {
+    expect(getTrialEndLabel('not-a-date', NOW)).toBe('—');
+  });
 });
 
 describe('TenantsTable — trial end line (TRIAL rows only)', () => {
