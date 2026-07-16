@@ -10,7 +10,7 @@ type Props = {
 
 /**
  * Global audit feed table (read-only, no mutations). Columns: Actor, Acción
- * (Q4 label map), Inquilino, Fecha, Cambio (old→new via renderValue, R4).
+ * (Q4 label map), Inmobiliaria, Fecha, Cambio (old→new via renderValue, R4).
  * Rows render in the order received — the API already sorts seqNo DESC.
  */
 export function AuditTable({ items }: Props) {
@@ -20,7 +20,7 @@ export function AuditTable({ items }: Props) {
         <TableRow>
           <TableHead>Actor</TableHead>
           <TableHead>Acción</TableHead>
-          <TableHead>Inquilino</TableHead>
+          <TableHead>Inmobiliaria</TableHead>
           <TableHead>Fecha</TableHead>
           <TableHead>Cambio</TableHead>
         </TableRow>

@@ -17,7 +17,7 @@ export const navGroups: NavGroup[] = [
         items: []
       },
       {
-        title: 'Inquilinos',
+        title: 'Inmobiliarias',
         url: '/dashboard/tenants',
         icon: 'listDetails',
         isActive: false,

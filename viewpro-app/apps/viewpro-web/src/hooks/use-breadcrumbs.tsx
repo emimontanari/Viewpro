@@ -62,7 +62,9 @@ function getBreadcrumbTitle(segment: string) {
   }
 
   const labels: Record<string, string> = {
-    owner: 'Mis propiedades'
+    owner: 'Mis propiedades',
+    tenants: 'Inmobiliarias',
+    audit: 'Auditoría'
   };
 
   return labels[segment] ?? segment.charAt(0).toUpperCase() + segment.slice(1);

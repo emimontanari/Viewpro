@@ -12,7 +12,7 @@ export function MetricsEmptyState() {
       <CardContent className='flex flex-col items-center justify-center py-12 text-center'>
         <p className='text-muted-foreground text-lg font-medium'>Todavía no hay métricas</p>
         <p className='text-muted-foreground mt-1 text-sm'>
-          Las métricas aparecerán cuando se registren inquilinos en la plataforma.
+          Las métricas aparecerán cuando se registren inmobiliarias en la plataforma.
         </p>
       </CardContent>
     </Card>

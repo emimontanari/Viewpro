@@ -429,7 +429,7 @@ describe('TenantsManagementPage — destructive cancel action', () => {
     fireEvent.click(screen.getByTestId('mock-cancel-tenant-1'));
 
     const dialog = await screen.findByRole('alertdialog');
-    expect(within(dialog).getByText('Cancelar inquilino definitivamente')).toBeTruthy();
+    expect(within(dialog).getByText('Cancelar inmobiliaria definitivamente')).toBeTruthy();
     expect(within(dialog).getByRole('button', { name: 'Cancelar definitivamente' })).toBeTruthy();
     expect(mockUpdateTenantStatus).not.toHaveBeenCalled();
   });
@@ -492,8 +492,8 @@ describe('TenantsManagementPage — destructive cancel action', () => {
     fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
 
     const dialog = await screen.findByRole('alertdialog');
-    expect(within(dialog).getByText('Suspender inquilino')).toBeTruthy();
-    expect(within(dialog).queryByText('Cancelar inquilino definitivamente')).toBeNull();
+    expect(within(dialog).getByText('Suspender inmobiliaria')).toBeTruthy();
+    expect(within(dialog).queryByText('Cancelar inmobiliaria definitivamente')).toBeNull();
   });
 
   it('regression: clicking "Reactivar" on a SUSPENDED row still PATCHes status:ACTIVE directly, no dialog', async () => {
@@ -528,7 +528,7 @@ describe('TenantsManagementPage — destructive cancel action', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar definitivamente' }));
 
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith('El inquilino no existe o fue eliminado.');
+      expect(mockToast.error).toHaveBeenCalledWith('La inmobiliaria no existe o fue eliminada.');
     });
     expect(mockGetTenantList).toHaveBeenCalledTimes(1);
   });
@@ -572,13 +572,13 @@ describe('TenantsManagementPage — destructive cancel action', () => {
 
     await waitFor(() => {
       expect(mockToast.error).toHaveBeenCalledWith(
-        'El inquilino ya está dado de baja y no puede cambiar de estado.'
+        'La inmobiliaria ya está dada de baja y no puede cambiar de estado.'
       );
     });
     // The raw English backend message never surfaces in the es-AR UI.
     expect(mockToast.error).not.toHaveBeenCalledWith('Cancelled tenant cannot change status');
     // The 400 terminality reject is NOT the 404 "no existe" copy.
-    expect(mockToast.error).not.toHaveBeenCalledWith('El inquilino no existe o fue eliminado.');
+    expect(mockToast.error).not.toHaveBeenCalledWith('La inmobiliaria no existe o fue eliminada.');
     expect(mockGetTenantList).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
   });
@@ -661,7 +661,7 @@ describe('TenantsManagementPage — mutation error handling', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Suspender' }));
 
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith('El inquilino no existe o fue eliminado.');
+      expect(mockToast.error).toHaveBeenCalledWith('La inmobiliaria no existe o fue eliminada.');
     });
     expect(mockGetTenantList).toHaveBeenCalledTimes(1);
   });
@@ -678,7 +678,7 @@ describe('TenantsManagementPage — mutation error handling', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Guardar límites' }));
 
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith('El inquilino no existe o fue eliminado.');
+      expect(mockToast.error).toHaveBeenCalledWith('La inmobiliaria no existe o fue eliminada.');
     });
     expect(mockGetTenantList).toHaveBeenCalledTimes(1);
   });
@@ -704,7 +704,7 @@ describe('TenantsManagementPage — mutation error handling', () => {
       expect(mockToast.error).toHaveBeenCalledWith('Respuesta inesperada del servidor.');
     });
     // No 404-specific copy leaked; list untouched and still interactive.
-    expect(mockToast.error).not.toHaveBeenCalledWith('El inquilino no existe o fue eliminado.');
+    expect(mockToast.error).not.toHaveBeenCalledWith('La inmobiliaria no existe o fue eliminada.');
     expect(mockGetTenantList).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
   });

@@ -9,5 +9,9 @@ export const auditKeys = {
 export const auditFeedOptions = (offset: number, limit: number) =>
   queryOptions({
     queryKey: auditKeys.list(offset, limit),
-    queryFn: () => getAuditFeed(offset, limit)
+    queryFn: () => getAuditFeed(offset, limit),
+    // Live refresh so the audit feed picks up new entries as they are recorded.
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: 'always'
   });

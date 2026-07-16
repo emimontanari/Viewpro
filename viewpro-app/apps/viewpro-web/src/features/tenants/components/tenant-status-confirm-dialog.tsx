@@ -31,16 +31,16 @@ const COPY: Record<
   { title: string; description: (name: string) => string; confirmLabel: string; pendingLabel: string }
 > = {
   suspend: {
-    title: 'Suspender inquilino',
+    title: 'Suspender inmobiliaria',
     description: (name) =>
       `Esta acción bloquea el acceso operativo de ${name} hasta que lo reactives.`,
     confirmLabel: 'Suspender',
     pendingLabel: 'Suspendiendo…'
   },
   cancel: {
-    title: 'Cancelar inquilino definitivamente',
+    title: 'Cancelar inmobiliaria definitivamente',
     description: (name) =>
-      `Esta acción da de baja a ${name} de forma permanente y no se puede deshacer. El inquilino perderá el acceso operativo.`,
+      `Esta acción da de baja a ${name} de forma permanente y no se puede deshacer. La inmobiliaria perderá el acceso operativo.`,
     confirmLabel: 'Cancelar definitivamente',
     pendingLabel: 'Cancelando…'
   }
@@ -71,7 +71,7 @@ export function TenantStatusConfirmDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>{copy.title}</AlertDialogTitle>
           <AlertDialogDescription>
-            {copy.description(tenant?.name ?? 'este inquilino')}
+            {copy.description(tenant?.name ?? 'esta inmobiliaria')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

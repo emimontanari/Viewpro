@@ -8,8 +8,8 @@ import { TenantsManagementPage } from '@/features/tenants/components/tenants-man
 export default function TenantsPage() {
   return (
     <PageContainer
-      pageTitle='Inquilinos'
-      pageDescription='Gestioná el estado y los límites de cada inquilino de la plataforma ViewPro.'
+      pageTitle='Inmobiliarias'
+      pageDescription='Gestioná el estado y los límites de cada inmobiliaria de la plataforma ViewPro.'
     >
       <TenantsManagementPage />
     </PageContainer>

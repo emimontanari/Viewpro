@@ -8,5 +8,9 @@ export const metricsKeys = {
 
 export const metricsSummaryOptions = queryOptions({
   queryKey: metricsKeys.summary(),
-  queryFn: getMetricsSummary
+  queryFn: getMetricsSummary,
+  // Live refresh so the dashboard counts track data-lane status changes.
+  refetchInterval: 5000,
+  refetchIntervalInBackground: false,
+  refetchOnWindowFocus: 'always'
 });

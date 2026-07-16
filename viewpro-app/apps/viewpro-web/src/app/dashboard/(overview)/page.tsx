@@ -29,7 +29,7 @@ export default function DashboardPage() {
   return (
     <PageContainer
       pageTitle='Panel de control'
-      pageDescription='Métricas de inquilinos en la plataforma ViewPro.'
+      pageDescription='Métricas de inmobiliarias en la plataforma ViewPro.'
     >
       {isLoading && <MetricsLoadingSkeleton />}
 

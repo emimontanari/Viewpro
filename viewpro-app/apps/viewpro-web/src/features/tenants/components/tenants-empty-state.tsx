@@ -10,9 +10,9 @@ export function TenantsEmptyState() {
   return (
     <Card className='border-dashed'>
       <CardContent className='flex flex-col items-center justify-center py-12 text-center'>
-        <p className='text-muted-foreground text-lg font-medium'>Todavía no hay inquilinos</p>
+        <p className='text-muted-foreground text-lg font-medium'>Todavía no hay inmobiliarias</p>
         <p className='text-muted-foreground mt-1 text-sm'>
-          Los inquilinos aparecerán aquí cuando se registren en la plataforma.
+          Las inmobiliarias aparecerán aquí cuando se registren en la plataforma.
         </p>
       </CardContent>
     </Card>

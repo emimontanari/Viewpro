@@ -30,7 +30,7 @@ export function MetricsSummaryCards({ data }: Props) {
         <Card>
           <CardHeader>
             <CardTitle className='text-sm font-medium text-muted-foreground'>
-              Total de inquilinos
+              Total de inmobiliarias
             </CardTitle>
           </CardHeader>
           <CardContent>

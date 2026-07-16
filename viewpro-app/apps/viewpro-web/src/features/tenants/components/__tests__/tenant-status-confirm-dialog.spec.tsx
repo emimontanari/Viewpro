@@ -112,9 +112,9 @@ describe('TenantStatusConfirmDialog — variant="cancel" (T-18/D7)', () => {
       />
     );
 
-    expect(screen.getByText('Cancelar inquilino definitivamente')).toBeTruthy();
+    expect(screen.getByText('Cancelar inmobiliaria definitivamente')).toBeTruthy();
     expect(screen.getByText(/no se puede deshacer/i)).toBeTruthy();
-    expect(screen.queryByText('Suspender inquilino')).toBeNull();
+    expect(screen.queryByText('Suspender inmobiliaria')).toBeNull();
   });
 
   it('confirm button is labeled "Cancelar definitivamente" (pending: "Cancelando…")', () => {

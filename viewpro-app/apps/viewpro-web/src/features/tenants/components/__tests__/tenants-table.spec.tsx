@@ -1,30 +1,36 @@
 /**
- * T-05 — RED: TenantsTable component tests (read-only rendering, PR1 scope)
- * T-12 — RED: actions column + isMutating guard (PR2/WU-2 scope)
- * T-16 — RED: getTenantActions + destructive "Dar de baja" button (D6)
- * Spec: Paginated Tenant List (scenario 1: renders name/slug/status/limits, name ASC);
- *   Status Toggle with Suspend Confirmation (button present); Limits Editing via Modal
- *   Dialog (edit-limits button present); Double-Submit Guard; Destructive Cancel
- *   Action; No Status Actions on a CANCELLED Row
+ * TenantsTable component tests — @tanstack/react-table + dropdown row actions
+ * (mirrors the InmoView products-table pattern).
  *
  * Tests cover:
  *   - Renders one row per item with name, slug, status badge, limits summary
  *   - "Sin límite" shown for null limit values
  *   - Rows render in the order received (no client re-sort)
- *   - "Editar límites" button per row emits onEditLimits(row) on click
- *   - getTenantActions(item) returns [toggle, cancel] for TRIAL/ACTIVE/SUSPENDED, [] for CANCELLED
- *   - Status-action buttons per row emit onStatusAction(row, action)
- *   - "Dar de baja" button renders for every non-CANCELLED row and emits the cancel action
- *   - No status-action buttons (toggle or cancel) for CANCELLED
- *   - isMutating={true} disables every button on every row
+ *   - Each row exposes an actions dropdown ("Abrir menú")
+ *   - Opening a row's menu shows "Editar límites" + the status-based items;
+ *     clicking an item emits onEditLimits(row) / onStatusAction(row, action)
+ *   - The destructive "Dar de baja" item renders for every non-CANCELLED row
+ *   - No status-action items (toggle or cancel) for a CANCELLED row
+ *   - isMutating={true} disables every action item in the row menu
+ *   - getTenantActions(item) → [toggle, cancel] for TRIAL/ACTIVE/SUSPENDED, [] for CANCELLED
  */
 
 import * as React from 'react';
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import type { TenantListItem } from '@/features/tenants/api/types';
 import { getTenantActions, TenantsTable } from '../tenants-table';
+
+// Radix DropdownMenu relies on pointer-capture + scrollIntoView APIs that jsdom
+// does not implement; polyfill them so the menu can open under userEvent.
+beforeAll(() => {
+  Element.prototype.hasPointerCapture = vi.fn(() => false);
+  Element.prototype.setPointerCapture = vi.fn();
+  Element.prototype.releasePointerCapture = vi.fn();
+  Element.prototype.scrollIntoView = vi.fn();
+});
 
 const TRIAL_ITEM: TenantListItem = {
   id: 'tenant-0',
@@ -65,15 +71,19 @@ function noop() {
   // used as a default no-op handler where the test does not assert calls
 }
 
+// Opens the actions menu for a given row index (menus render in row order) and
+// returns the userEvent instance for follow-up interactions.
+async function openRowMenu(rowIndex: number) {
+  const user = userEvent.setup();
+  const triggers = screen.getAllByRole('button', { name: 'Abrir menú' });
+  await user.click(triggers[rowIndex]);
+  return user;
+}
+
 describe('TenantsTable — read-only rendering', () => {
   it('renders one row per item', () => {
     render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-      />
+      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
     );
 
     expect(screen.getByTestId('tenant-row-tenant-1')).toBeTruthy();
@@ -82,12 +92,7 @@ describe('TenantsTable — read-only rendering', () => {
 
   it('renders name and slug per row', () => {
     render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-      />
+      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
     );
 
     expect(screen.getByText('Acme Realty')).toBeTruthy();
@@ -96,14 +101,17 @@ describe('TenantsTable — read-only rendering', () => {
     expect(screen.getByText('beta-homes')).toBeTruthy();
   });
 
+  it('renders the "Inmobiliaria" column header', () => {
+    render(
+      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
+    );
+
+    expect(screen.getByRole('columnheader', { name: 'Inmobiliaria' })).toBeTruthy();
+  });
+
   it('renders a status badge per row', () => {
     render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-      />
+      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
     );
 
     expect(screen.getByTestId('tenant-status-tenant-1').textContent).toMatch(/activo/i);
@@ -112,12 +120,7 @@ describe('TenantsTable — read-only rendering', () => {
 
   it('renders the limits summary with 3 values', () => {
     render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-      />
+      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
     );
 
     const limits = screen.getByTestId('tenant-limits-tenant-1').textContent ?? '';
@@ -128,12 +131,7 @@ describe('TenantsTable — read-only rendering', () => {
 
   it('shows "Sin límite" for null limit values', () => {
     render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-      />
+      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
     );
 
     const limits = screen.getByTestId('tenant-limits-tenant-2').textContent ?? '';
@@ -142,12 +140,7 @@ describe('TenantsTable — read-only rendering', () => {
 
   it('renders rows in the order received (server already sorts name ASC)', () => {
     render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-      />
+      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
     );
 
     const rows = screen.getAllByTestId(/tenant-row-/);
@@ -156,8 +149,16 @@ describe('TenantsTable — read-only rendering', () => {
   });
 });
 
-describe('TenantsTable — actions column (T-12/WU-2)', () => {
-  it('renders an "Editar límites" button per row that emits onEditLimits(row)', () => {
+describe('TenantsTable — dropdown actions', () => {
+  it('renders one actions trigger per row', () => {
+    render(
+      <TenantsTable items={ITEMS} isMutating={false} onEditLimits={noop} onStatusAction={noop} />
+    );
+
+    expect(screen.getAllByRole('button', { name: 'Abrir menú' })).toHaveLength(2);
+  });
+
+  it('opening a row menu exposes "Editar límites" which emits onEditLimits(row)', async () => {
     const onEditLimits = vi.fn();
     render(
       <TenantsTable
@@ -168,26 +169,26 @@ describe('TenantsTable — actions column (T-12/WU-2)', () => {
       />
     );
 
-    const buttons = screen.getAllByRole('button', { name: 'Editar límites' });
-    expect(buttons).toHaveLength(2);
+    const user = await openRowMenu(0);
+    await user.click(await screen.findByRole('menuitem', { name: 'Editar límites' }));
 
-    fireEvent.click(buttons[0]);
     expect(onEditLimits).toHaveBeenCalledWith(ITEMS[0]);
   });
 
-  it('renders a status-action button labeled "Suspender" for an ACTIVE row and emits onStatusAction(row, toggle action)', () => {
+  it('an ACTIVE row menu shows "Suspender" which emits onStatusAction(row, toggle action)', async () => {
     const onStatusAction = vi.fn();
     render(
       <TenantsTable
-        items={ITEMS}
+        items={[ITEMS[0]]}
         isMutating={false}
         onEditLimits={noop}
         onStatusAction={onStatusAction}
       />
     );
 
-    const button = screen.getByRole('button', { name: 'Suspender' });
-    fireEvent.click(button);
+    const user = await openRowMenu(0);
+    await user.click(await screen.findByRole('menuitem', { name: 'Suspender' }));
+
     expect(onStatusAction).toHaveBeenCalledWith(ITEMS[0], {
       kind: 'toggle',
       targetStatus: 'SUSPENDED',
@@ -195,38 +196,40 @@ describe('TenantsTable — actions column (T-12/WU-2)', () => {
     });
   });
 
-  it('renders a status-action button labeled "Reactivar" for a SUSPENDED row', () => {
+  it('a SUSPENDED row menu shows "Reactivar"', async () => {
     render(
       <TenantsTable
-        items={ITEMS}
+        items={[ITEMS[1]]}
         isMutating={false}
         onEditLimits={noop}
         onStatusAction={noop}
       />
     );
 
-    expect(screen.getByRole('button', { name: 'Reactivar' })).toBeTruthy();
+    await openRowMenu(0);
+    expect(await screen.findByRole('menuitem', { name: 'Reactivar' })).toBeTruthy();
   });
 
-  it('renders a destructive "Dar de baja" button for every non-CANCELLED row and emits onStatusAction(row, cancel action) on click', () => {
+  it('renders a destructive "Dar de baja" item that emits onStatusAction(row, cancel action)', async () => {
     const onStatusAction = vi.fn();
     render(
       <TenantsTable
-        items={ITEMS}
+        items={[ITEMS[0]]}
         isMutating={false}
         onEditLimits={noop}
         onStatusAction={onStatusAction}
       />
     );
 
-    const buttons = screen.getAllByRole('button', { name: 'Dar de baja' });
-    expect(buttons).toHaveLength(2);
+    const user = await openRowMenu(0);
+    const cancelItem = await screen.findByRole('menuitem', { name: 'Dar de baja' });
+    expect(cancelItem.getAttribute('data-variant')).toBe('destructive');
 
-    fireEvent.click(buttons[0]);
+    await user.click(cancelItem);
     expect(onStatusAction).toHaveBeenCalledWith(ITEMS[0], CANCEL_ACTION);
   });
 
-  it('an ACTIVE row shows both "Suspender" and "Dar de baja" buttons', () => {
+  it('an ACTIVE row menu shows both "Suspender" and "Dar de baja"', async () => {
     render(
       <TenantsTable
         items={[ITEMS[0]]}
@@ -236,11 +239,12 @@ describe('TenantsTable — actions column (T-12/WU-2)', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: 'Suspender' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Dar de baja' })).toBeTruthy();
+    await openRowMenu(0);
+    expect(await screen.findByRole('menuitem', { name: 'Suspender' })).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: 'Dar de baja' })).toBeTruthy();
   });
 
-  it('renders no status-action buttons (toggle or cancel) for a CANCELLED row', () => {
+  it('a CANCELLED row menu shows no status-action items (only "Editar límites")', async () => {
     render(
       <TenantsTable
         items={[CANCELLED_ITEM]}
@@ -250,30 +254,27 @@ describe('TenantsTable — actions column (T-12/WU-2)', () => {
       />
     );
 
+    await openRowMenu(0);
+    expect(await screen.findByRole('menuitem', { name: 'Editar límites' })).toBeTruthy();
     expect(
-      screen.queryByRole('button', { name: /suspender|activar|reactivar|dar de baja/i })
+      screen.queryByRole('menuitem', { name: /suspender|activar|reactivar|dar de baja/i })
     ).toBeNull();
-    // Edit-limits button still renders for a CANCELLED row.
-    expect(screen.getByRole('button', { name: 'Editar límites' })).toBeTruthy();
   });
 
-  it('isMutating={true} disables every action button on every row (double-submit guard, AC6)', () => {
+  it('isMutating={true} disables every action item in the row menu (double-submit guard, AC6)', async () => {
     render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={true}
-        onEditLimits={noop}
-        onStatusAction={noop}
-      />
+      <TenantsTable items={[ITEMS[0]]} isMutating={true} onEditLimits={noop} onStatusAction={noop} />
     );
 
-    for (const button of screen.getAllByRole('button')) {
-      expect(button).toBeDisabled();
+    await openRowMenu(0);
+
+    for (const item of await screen.findAllByRole('menuitem')) {
+      expect(item.getAttribute('aria-disabled')).toBe('true');
     }
   });
 });
 
-describe('TenantsTable — getTenantActions (T-16/D6)', () => {
+describe('TenantsTable — getTenantActions (D6)', () => {
   it('TRIAL row → [toggle(ACTIVE, "Activar"), cancel(CANCELLED, "Dar de baja")]', () => {
     expect(getTenantActions(TRIAL_ITEM)).toEqual([
       { kind: 'toggle', targetStatus: 'ACTIVE', label: 'Activar' },

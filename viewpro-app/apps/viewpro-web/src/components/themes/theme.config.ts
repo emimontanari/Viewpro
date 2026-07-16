@@ -6,7 +6,7 @@ export const DEFAULT_THEME = 'inmoview';
 
 export const THEMES = [
   {
-    name: 'InmoView',
+    name: 'ViewPro',
     value: 'inmoview'
   },
   {

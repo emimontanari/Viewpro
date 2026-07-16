@@ -3,7 +3,7 @@
  * Spec: Paginated Tenant List (page reachability, scenario 1)
  *
  * Asserts the route renders <TenantsManagementPage/> inside
- * <PageContainer pageTitle="Inquilinos" .../> (D16). Not yet linked from
+ * <PageContainer pageTitle="Inmobiliarias" .../> (D16). Not yet linked from
  * nav-config.ts (T-18, WU-2) — reachable only by direct URL in PR1.
  */
 
@@ -20,10 +20,10 @@ vi.mock('@/features/tenants/components/tenants-management-page', () => ({
 import TenantsPage from '../page';
 
 describe('/dashboard/tenants route', () => {
-  it('renders TenantsManagementPage inside PageContainer with pageTitle="Inquilinos"', () => {
+  it('renders TenantsManagementPage inside PageContainer with pageTitle="Inmobiliarias"', () => {
     render(<TenantsPage />);
 
-    expect(screen.getByRole('heading', { name: 'Inquilinos' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Inmobiliarias' })).toBeTruthy();
     expect(screen.getByTestId('tenants-management-page')).toBeTruthy();
   });
 });

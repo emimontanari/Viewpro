@@ -1,9 +1,15 @@
 'use client';
 
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  type ColumnDef
+} from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { TenantListItem, TenantStatus, TenantStatusAction } from '@/features/tenants/api/types';
+import { TenantCellAction } from './tenant-cell-action';
 
 type Props = {
   items: TenantListItem[];
@@ -12,81 +18,111 @@ type Props = {
   onStatusAction: (item: TenantListItem, action: TenantAction) => void;
 };
 
+// Callbacks + guard threaded to each cell via the table instance's `meta`
+// (react-table's escape hatch for passing container state into ColumnDef cells).
+type TenantsTableMeta = {
+  isMutating: boolean;
+  onEditLimits: (item: TenantListItem) => void;
+  onStatusAction: (item: TenantListItem, action: TenantAction) => void;
+};
+
+export const columns: ColumnDef<TenantListItem>[] = [
+  {
+    id: 'name',
+    header: 'Inmobiliaria',
+    cell: ({ row }) => (
+      <div className='space-y-1'>
+        <p className='font-medium'>{row.original.name}</p>
+        <p className='text-muted-foreground text-xs'>{row.original.slug}</p>
+      </div>
+    )
+  },
+  {
+    id: 'status',
+    header: 'Estado',
+    cell: ({ row }) => (
+      <StatusBadge status={row.original.status} testId={`tenant-status-${row.original.id}`} />
+    )
+  },
+  {
+    id: 'limits',
+    header: 'Límites',
+    cell: ({ row }) => (
+      <TenantLimitsSummary limits={row.original.limits} testId={`tenant-limits-${row.original.id}`} />
+    )
+  },
+  {
+    id: 'actions',
+    header: 'Acciones',
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as TenantsTableMeta;
+
+      return (
+        <TenantCellAction
+          item={row.original}
+          isMutating={meta.isMutating}
+          onEditLimits={meta.onEditLimits}
+          onStatusAction={meta.onStatusAction}
+        />
+      );
+    }
+  }
+];
+
 /**
- * Tenant list table. Read-only columns (name/slug/status/limits, PR1) plus an
- * actions column (edit-limits + status actions, T-13/WU-2, widened D6). Rows
+ * Tenant list table. Built with @tanstack/react-table (mirrors the InmoView
+ * products-table pattern): read-only columns (name/slug/status/limits) plus a
+ * dropdown actions column (TenantCellAction, fed by getTenantActions). Rows
  * render in the order received; the API already sorts name ASC. `isMutating`
- * disables every action button on every row (double-submit guard, D11).
+ * disables every row action while a mutation is in flight (double-submit guard).
  */
 export function TenantsTable({ items, isMutating, onEditLimits, onStatusAction }: Props) {
+  const table = useReactTable({
+    data: items,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    meta: { isMutating, onEditLimits, onStatusAction } satisfies TenantsTableMeta
+  });
+
   return (
     <Table>
       <TableHeader>
-        <TableRow>
-          <TableHead>Inquilino</TableHead>
-          <TableHead>Estado</TableHead>
-          <TableHead>Límites</TableHead>
-          <TableHead className='text-right'>Acciones</TableHead>
-        </TableRow>
+        {table.getHeaderGroups().map((headerGroup) => (
+          <TableRow key={headerGroup.id}>
+            {headerGroup.headers.map((header) => (
+              <TableHead
+                key={header.id}
+                className={header.column.id === 'actions' ? 'text-right' : undefined}
+              >
+                {header.isPlaceholder
+                  ? null
+                  : flexRender(header.column.columnDef.header, header.getContext())}
+              </TableHead>
+            ))}
+          </TableRow>
+        ))}
       </TableHeader>
       <TableBody>
-        {items.map((item) => {
-          const actions = getTenantActions(item);
-
-          return (
-            <TableRow key={item.id} data-testid={`tenant-row-${item.id}`}>
-              <TableCell>
-                <div className='space-y-1'>
-                  <p className='font-medium'>{item.name}</p>
-                  <p className='text-muted-foreground text-xs'>{item.slug}</p>
-                </div>
+        {table.getRowModel().rows.map((row) => (
+          <TableRow key={row.id} data-testid={`tenant-row-${row.original.id}`}>
+            {row.getVisibleCells().map((cell) => (
+              <TableCell
+                key={cell.id}
+                className={cell.column.id === 'actions' ? 'text-right' : undefined}
+              >
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </TableCell>
-              <TableCell>
-                <StatusBadge status={item.status} testId={`tenant-status-${item.id}`} />
-              </TableCell>
-              <TableCell>
-                <TenantLimitsSummary limits={item.limits} testId={`tenant-limits-${item.id}`} />
-              </TableCell>
-              <TableCell className='text-right'>
-                <div className='flex justify-end gap-2'>
-                  <Button
-                    type='button'
-                    size='sm'
-                    variant='outline'
-                    disabled={isMutating}
-                    onClick={() => onEditLimits(item)}
-                  >
-                    Editar límites
-                  </Button>
-                  {actions.map((action) => (
-                    <Button
-                      key={action.kind}
-                      type='button'
-                      size='sm'
-                      variant={
-                        action.kind === 'cancel' || action.targetStatus === 'SUSPENDED'
-                          ? 'destructive'
-                          : 'outline'
-                      }
-                      disabled={isMutating}
-                      onClick={() => onStatusAction(item, action)}
-                    >
-                      {action.label}
-                    </Button>
-                  ))}
-                </div>
-              </TableCell>
-            </TableRow>
-          );
-        })}
+            ))}
+          </TableRow>
+        ))}
       </TableBody>
     </Table>
   );
 }
 
-// Maps the current status to the available PATCH targets + button labels
+// Maps the current status to the available PATCH targets + item labels
 // (copy app-new pattern, D14; widened D6). CANCELLED has no actions — the
-// row renders zero status-action buttons (terminal, per admin-tenant-status).
+// row renders zero status-action items (terminal, per admin-tenant-status).
 export type TenantAction = {
   kind: 'toggle' | 'cancel';
   targetStatus: TenantStatusAction;

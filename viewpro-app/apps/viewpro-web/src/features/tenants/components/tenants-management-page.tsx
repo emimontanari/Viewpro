@@ -20,8 +20,8 @@ import { TenantsPager } from './tenants-pager';
 import { TenantsTable, type TenantAction } from './tenants-table';
 
 const LIMIT = 50;
-const NOT_FOUND_MESSAGE = 'El inquilino no existe o fue eliminado.';
-const TERMINAL_STATUS_MESSAGE = 'El inquilino ya está dado de baja y no puede cambiar de estado.';
+const NOT_FOUND_MESSAGE = 'La inmobiliaria no existe o fue eliminada.';
+const TERMINAL_STATUS_MESSAGE = 'La inmobiliaria ya está dada de baja y no puede cambiar de estado.';
 
 function TenantsLoadingSkeleton() {
   return (
@@ -70,9 +70,9 @@ export function TenantsManagementPage() {
       updateTenantStatus(input.tenantId, { status: input.status }),
     onSuccess: async (result) => {
       if (result.unchanged) {
-        toast.info('El inquilino ya tenía ese estado.');
+        toast.info('La inmobiliaria ya tenía ese estado.');
       } else {
-        toast.success('Estado del inquilino actualizado.');
+        toast.success('Estado de la inmobiliaria actualizado.');
       }
 
       setPendingStatusAction(null);
@@ -106,9 +106,9 @@ export function TenantsManagementPage() {
       updateTenantLimits(input.tenantId, input.limits),
     onSuccess: async (result) => {
       if (result.unchanged) {
-        toast.info('El inquilino ya tenía esos límites.');
+        toast.info('La inmobiliaria ya tenía esos límites.');
       } else {
-        toast.success('Límites del inquilino actualizados.');
+        toast.success('Límites de la inmobiliaria actualizados.');
       }
 
       setLimitsTenant(null);
@@ -183,7 +183,7 @@ export function TenantsManagementPage() {
         data-testid='tenants-error'
         className='border-destructive/30 bg-destructive/5 rounded-xl border p-6'
       >
-        <p className='text-destructive font-semibold'>No se pudieron cargar los inquilinos</p>
+        <p className='text-destructive font-semibold'>No se pudieron cargar las inmobiliarias</p>
         <p className='text-muted-foreground mt-1 text-sm'>{getApiErrorMessage(error)}</p>
       </div>
     );
