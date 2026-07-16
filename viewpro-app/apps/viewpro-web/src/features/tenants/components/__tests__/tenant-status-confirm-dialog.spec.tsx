@@ -19,7 +19,8 @@ const TENANT: TenantListItem = {
   name: 'Acme Realty',
   slug: 'acme-realty',
   status: 'ACTIVE',
-  limits: { maxUsers: 10, maxActivePropertyEngagements: 50, maxDocumentsStorageMb: 1024 }
+  limits: { maxUsers: 10, maxActivePropertyEngagements: 50, maxDocumentsStorageMb: 1024 },
+  trialEndsAt: null
 };
 
 function noop() {

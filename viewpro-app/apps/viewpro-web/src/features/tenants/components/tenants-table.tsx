@@ -41,7 +41,17 @@ export const columns: ColumnDef<TenantListItem>[] = [
     id: 'status',
     header: 'Estado',
     cell: ({ row }) => (
-      <StatusBadge status={row.original.status} testId={`tenant-status-${row.original.id}`} />
+      <div className='space-y-1'>
+        <StatusBadge status={row.original.status} testId={`tenant-status-${row.original.id}`} />
+        {row.original.status === 'TRIAL' && (
+          <p
+            className='text-muted-foreground text-xs'
+            data-testid={`tenant-trial-${row.original.id}`}
+          >
+            {getTrialEndLabel(row.original.trialEndsAt, new Date())}
+          </p>
+        )}
+      </div>
     )
   },
   {
@@ -217,4 +227,29 @@ function formatStorageLimit(value: number | null) {
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat('es-AR').format(value);
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// Purely informational trial-end label (nothing enforces the date this
+// slice). `now` is an explicit param so the rendering call site controls
+// the clock (real Date at render time) while tests inject a fixed value.
+export function getTrialEndLabel(trialEndsAt: string | null, now: Date): string {
+  if (trialEndsAt === null) {
+    return '—';
+  }
+
+  const trialEndsAtMs = new Date(trialEndsAt).getTime();
+  if (Number.isNaN(trialEndsAtMs)) {
+    return '—';
+  }
+
+  const msRemaining = trialEndsAtMs - now.getTime();
+
+  if (msRemaining <= 0) {
+    return 'Trial vencido';
+  }
+
+  const daysRemaining = Math.ceil(msRemaining / MS_PER_DAY);
+  return daysRemaining === 1 ? 'Vence en 1 día' : `Vence en ${daysRemaining} días`;
 }

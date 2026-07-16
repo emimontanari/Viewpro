@@ -29,13 +29,14 @@ describe('platform_tenants migration (additive invariant)', () => {
     await moduleRef.close()
   })
 
-  it('platform_tenants table exists with id/name/slug/latestStatus/limits/updatedAt columns', async () => {
+  it('platform_tenants table exists with id/name/slug/latestStatus/limits/trialEndsAt/updatedAt columns', async () => {
     const rows = await prisma.$queryRaw<Array<{ column_name: string }>>`
       SELECT column_name FROM information_schema.columns
       WHERE table_name = 'platform_tenants'
     `
     const columns = rows.map((r) => r.column_name).sort()
 
+    // platform-self-service-onboarding: additive `trialEndsAt` column.
     expect(columns).toEqual(
       [
         'id',
@@ -45,6 +46,7 @@ describe('platform_tenants migration (additive invariant)', () => {
         'maxUsers',
         'maxActivePropertyEngagements',
         'maxDocumentsStorageMb',
+        'trialEndsAt',
         'updatedAt',
       ].sort(),
     )

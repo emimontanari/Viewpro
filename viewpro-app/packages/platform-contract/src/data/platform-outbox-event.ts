@@ -22,6 +22,10 @@ export type TenantRegisteredPayload = {
   // MirrorRepository W2 guard (which skips events with empty newStatus).
   newStatus: PlatformTenantStatus
   limits: PlatformTenantRegistryLimits
+  // Additive optional enrichment (A3) — absent in legacy rows/producers;
+  // present from the trial-onboarding slice onward. ISO 8601 UTC string
+  // (matches `PlatformOutboxEvent.occurredAt` wire convention).
+  trialEndsAt?: string
 }
 
 // Q1/Q5 (platform-audit-log): discriminates who performed a mutation.

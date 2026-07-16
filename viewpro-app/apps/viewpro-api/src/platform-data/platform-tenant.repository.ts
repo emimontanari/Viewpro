@@ -23,7 +23,7 @@ export class PlatformTenantRepository {
    * Re-delivery of the same event is idempotent (upsert on id).
    */
   async upsertFromRegistered(payload: TenantRegisteredPayload): Promise<void> {
-    const { id, name, slug, newStatus, limits } = payload
+    const { id, name, slug, newStatus, limits, trialEndsAt } = payload
 
     // Defensive guard: a REGISTERED payload may arrive with `limits` missing or
     // undefined. Treat that as all-null limits instead of throwing a TypeError
@@ -35,6 +35,10 @@ export class PlatformTenantRepository {
       maxDocumentsStorageMb: null,
     }
 
+    // Guarded parse: an invalid/unparseable string is treated as absent rather
+    // than thrown (same non-stalling-ingest posture as the limits guard above).
+    const parsedTrialEndsAt = parseTrialEndsAt(trialEndsAt)
+
     await this.prisma.platformTenant.upsert({
       where: { id },
       create: {
@@ -45,6 +49,7 @@ export class PlatformTenantRepository {
         maxUsers: safeLimits.maxUsers,
         maxActivePropertyEngagements: safeLimits.maxActivePropertyEngagements,
         maxDocumentsStorageMb: safeLimits.maxDocumentsStorageMb,
+        trialEndsAt: parsedTrialEndsAt,
       },
       update: {
         name,
@@ -53,6 +58,12 @@ export class PlatformTenantRepository {
         maxUsers: safeLimits.maxUsers,
         maxActivePropertyEngagements: safeLimits.maxActivePropertyEngagements,
         maxDocumentsStorageMb: safeLimits.maxDocumentsStorageMb,
+        // PRESENT-ONLY update — never null out an already-projected trialEndsAt
+        // when the payload lacks the field (mirrors upsertFromStatusChange's
+        // name/slug spread pattern below). scripts/backfill-platform-tenants.ts
+        // builds payloads WITHOUT trialEndsAt; an unconditional update would
+        // wipe an already-set date on every backfill re-run.
+        ...(parsedTrialEndsAt !== null ? { trialEndsAt: parsedTrialEndsAt } : {}),
       },
     })
   }
@@ -82,4 +93,19 @@ export class PlatformTenantRepository {
       },
     })
   }
+}
+
+/**
+ * Parses `trialEndsAt` (ISO 8601 UTC string) into a `Date`, or `null` when
+ * absent or unparseable. An invalid string is treated identically to an
+ * absent field — never thrown (non-stalling-ingest guard, mirrors the
+ * `limits` guard above).
+ */
+function parseTrialEndsAt(trialEndsAt: string | undefined): Date | null {
+  if (trialEndsAt === undefined) {
+    return null
+  }
+
+  const parsed = new Date(trialEndsAt)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
 }

@@ -61,14 +61,15 @@ model PlatformIngestCursor {
 /// `latestStatus` is a plain String (mirrors platform_mirror_events.newStatus) —
 /// the contract union enforces valid values, avoiding an enum migration (A7).
 model PlatformTenant {
-  id                           String   @id
+  id                           String    @id
   name                         String
   slug                         String
   latestStatus                 String
   maxUsers                     Int?
   maxActivePropertyEngagements Int?
   maxDocumentsStorageMb        Int?
-  updatedAt                    DateTime @updatedAt
+  trialEndsAt                  DateTime?
+  updatedAt                    DateTime  @updatedAt
 
   @@map("platform_tenants")
 }

@@ -38,7 +38,8 @@ const MOCK_ITEM: TenantListItem = {
     maxUsers: 10,
     maxActivePropertyEngagements: 50,
     maxDocumentsStorageMb: 1024
-  }
+  },
+  trialEndsAt: null
 };
 
 const MOCK_LIST_RESPONSE: TenantListResponse = {

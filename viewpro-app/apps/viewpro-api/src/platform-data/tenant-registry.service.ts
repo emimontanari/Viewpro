@@ -8,6 +8,7 @@ export type TenantRegistryItem = {
   slug: string
   status: string
   limits: PlatformTenantRegistryLimits
+  trialEndsAt: string | null
 }
 
 export type TenantRegistryList = {
@@ -57,6 +58,7 @@ export class TenantRegistryService {
           maxActivePropertyEngagements: row.maxActivePropertyEngagements,
           maxDocumentsStorageMb: row.maxDocumentsStorageMb,
         },
+        trialEndsAt: row.trialEndsAt?.toISOString() ?? null,
       })),
     }
   }

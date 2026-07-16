@@ -149,6 +149,48 @@ describe('PrismaAuthRegistrationRepository — TENANT_REGISTERED emit (T-08/T-09
     expect(emittedEvent.occurredAt).toBeDefined()
   })
 
+  it('captures a single `now` and sets trialEndsAt = now + 14 days on both tenant.create data and the emitted payload', async () => {
+    const FIXED = new Date('2026-07-16T13:33:38.492Z')
+    vi.useFakeTimers()
+    vi.setSystemTime(FIXED)
+
+    try {
+      const tenantCreate = vi.fn().mockResolvedValue(mockTenant)
+      const mockPrisma = makeMockPrismaService({ tenantCreate })
+      const mockWriter = makeMockOutboxWriter()
+
+      let repo: RegistrationRepoClass
+      try {
+        repo = new PrismaAuthRegistrationRepository(mockPrisma as any, mockWriter as any)
+      } catch {
+        repo = new PrismaAuthRegistrationRepository(mockPrisma as any)
+      }
+
+      await repo.registerTenant({
+        email: 'owner@acme.com',
+        passwordHash: 'hashed',
+        firstName: 'Alice',
+        lastName: 'Smith',
+        tenantName: 'Acme Corp',
+        tenantSlug: 'acme-corp',
+        role: TenantRole.PRINCIPAL_MANAGER,
+      })
+
+      const expectedTrialEndsAt = new Date('2026-07-30T13:33:38.492Z')
+
+      // tenant.create data carries the computed trialEndsAt
+      const [createArgs] = tenantCreate.mock.calls[0]!
+      expect(createArgs.data.trialEndsAt).toEqual(expectedTrialEndsAt)
+
+      // emitted payload carries the SAME value, ISO-serialized, plus occurredAt = now
+      const [_tx, emittedEvent] = mockWriter.emit.mock.calls[0]!
+      expect(emittedEvent.payload.trialEndsAt).toBe(expectedTrialEndsAt.toISOString())
+      expect(emittedEvent.occurredAt).toBe(FIXED.toISOString())
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('rolled-back tx (tenant.create throws): outboxWriter.emit NOT called', async () => {
     const mockPrisma = makeMockPrismaServiceWithRollback()
     const mockWriter = makeMockOutboxWriter()

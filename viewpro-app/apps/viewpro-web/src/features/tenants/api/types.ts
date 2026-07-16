@@ -29,6 +29,7 @@ export type TenantListItem = {
   slug: string;
   status: TenantStatus; // = platform_tenants.latestStatus (server types it `string`; FE narrows)
   limits: TenantLimits;
+  trialEndsAt: string | null; // ISO string, or null when absent (informational only)
 };
 
 export type TenantListResponse = {

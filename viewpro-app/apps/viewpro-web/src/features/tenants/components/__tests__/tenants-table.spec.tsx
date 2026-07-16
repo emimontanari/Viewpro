@@ -13,6 +13,10 @@
  *   - No status-action items (toggle or cancel) for a CANCELLED row
  *   - isMutating={true} disables every action item in the row menu
  *   - getTenantActions(item) → [toggle, cancel] for TRIAL/ACTIVE/SUSPENDED, [] for CANCELLED
+ *   - getTrialEndLabel(trialEndsAt, now) → "Vence en X días"/"Vence en 1 día"/
+ *     "Trial vencido"/"—"
+ *   - TRIAL rows render the trial-end line under the status badge; non-TRIAL
+ *     rows render no trial line regardless of trialEndsAt
  */
 
 import * as React from 'react';
@@ -21,7 +25,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { TenantListItem } from '@/features/tenants/api/types';
-import { getTenantActions, TenantsTable } from '../tenants-table';
+import { getTenantActions, getTrialEndLabel, TenantsTable } from '../tenants-table';
 
 // Radix DropdownMenu relies on pointer-capture + scrollIntoView APIs that jsdom
 // does not implement; polyfill them so the menu can open under userEvent.
@@ -37,7 +41,8 @@ const TRIAL_ITEM: TenantListItem = {
   name: 'Trial Co',
   slug: 'trial-co',
   status: 'TRIAL',
-  limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null }
+  limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+  trialEndsAt: null
 };
 
 const ITEMS: TenantListItem[] = [
@@ -46,14 +51,16 @@ const ITEMS: TenantListItem[] = [
     name: 'Acme Realty',
     slug: 'acme-realty',
     status: 'ACTIVE',
-    limits: { maxUsers: 10, maxActivePropertyEngagements: 50, maxDocumentsStorageMb: 1024 }
+    limits: { maxUsers: 10, maxActivePropertyEngagements: 50, maxDocumentsStorageMb: 1024 },
+    trialEndsAt: null
   },
   {
     id: 'tenant-2',
     name: 'Beta Homes',
     slug: 'beta-homes',
     status: 'SUSPENDED',
-    limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null }
+    limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+    trialEndsAt: null
   }
 ];
 
@@ -62,7 +69,8 @@ const CANCELLED_ITEM: TenantListItem = {
   name: 'Cancelled Co',
   slug: 'cancelled-co',
   status: 'CANCELLED',
-  limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null }
+  limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+  trialEndsAt: null
 };
 
 const CANCEL_ACTION = { kind: 'cancel', targetStatus: 'CANCELLED', label: 'Dar de baja' };
@@ -298,5 +306,123 @@ describe('TenantsTable — getTenantActions (D6)', () => {
 
   it('CANCELLED row → []', () => {
     expect(getTenantActions(CANCELLED_ITEM)).toEqual([]);
+  });
+});
+
+describe('getTrialEndLabel', () => {
+  const NOW = new Date('2026-07-16T12:00:00.000Z');
+
+  it('null trialEndsAt → "—"', () => {
+    expect(getTrialEndLabel(null, NOW)).toBe('—');
+  });
+
+  it('trialEndsAt 5 days in the future → "Vence en 5 días"', () => {
+    const future = new Date(NOW.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString();
+    expect(getTrialEndLabel(future, NOW)).toBe('Vence en 5 días');
+  });
+
+  it('trialEndsAt exactly 1 day in the future → "Vence en 1 día" (singular, triangulation)', () => {
+    const oneDay = new Date(NOW.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString();
+    expect(getTrialEndLabel(oneDay, NOW)).toBe('Vence en 1 día');
+  });
+
+  it('trialEndsAt in the past → "Trial vencido"', () => {
+    const past = new Date(NOW.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    expect(getTrialEndLabel(past, NOW)).toBe('Trial vencido');
+  });
+
+  it('trialEndsAt exactly now → "Trial vencido" (boundary, triangulation)', () => {
+    expect(getTrialEndLabel(NOW.toISOString(), NOW)).toBe('Trial vencido');
+  });
+
+  it('malformed/unparseable trialEndsAt → "—" (fail safe, mirrors null)', () => {
+    expect(getTrialEndLabel('not-a-date', NOW)).toBe('—');
+  });
+});
+
+describe('TenantsTable — trial end line (TRIAL rows only)', () => {
+  const NOW = new Date('2026-07-16T12:00:00.000Z');
+
+  // Each `it` below sets/restores its own fake timer (setSystemTime/useRealTimers)
+  // rather than a shared beforeEach/afterEach, since only 2 of the 4 tests need it.
+  function withFakeNow<T>(run: () => T): T {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    try {
+      return run();
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+
+  it('TRIAL row with a future trialEndsAt renders "Vence en X días" under the status badge', () => {
+    withFakeNow(() => {
+      const trialItem: TenantListItem = {
+        ...TRIAL_ITEM,
+        trialEndsAt: new Date(NOW.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString()
+      };
+
+      render(
+        <TenantsTable
+          items={[trialItem]}
+          isMutating={false}
+          onEditLimits={noop}
+          onStatusAction={noop}
+        />
+      );
+
+      expect(screen.getByTestId('tenant-trial-tenant-0').textContent).toBe('Vence en 3 días');
+    });
+  });
+
+  it('TRIAL row with a past trialEndsAt renders "Trial vencido"', () => {
+    withFakeNow(() => {
+      const trialItem: TenantListItem = {
+        ...TRIAL_ITEM,
+        trialEndsAt: new Date(NOW.getTime() - 24 * 60 * 60 * 1000).toISOString()
+      };
+
+      render(
+        <TenantsTable
+          items={[trialItem]}
+          isMutating={false}
+          onEditLimits={noop}
+          onStatusAction={noop}
+        />
+      );
+
+      expect(screen.getByTestId('tenant-trial-tenant-0').textContent).toBe('Trial vencido');
+    });
+  });
+
+  it('TRIAL row with null trialEndsAt renders "—"', () => {
+    render(
+      <TenantsTable
+        items={[TRIAL_ITEM]}
+        isMutating={false}
+        onEditLimits={noop}
+        onStatusAction={noop}
+      />
+    );
+
+    expect(screen.getByTestId('tenant-trial-tenant-0').textContent).toBe('—');
+  });
+
+  it('non-TRIAL row renders NO trial line, even when trialEndsAt is set', () => {
+    const activeWithTrialEndsAt: TenantListItem = {
+      ...ITEMS[0]!,
+      trialEndsAt: new Date(NOW.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString()
+    };
+
+    render(
+      <TenantsTable
+        items={[activeWithTrialEndsAt]}
+        isMutating={false}
+        onEditLimits={noop}
+        onStatusAction={noop}
+      />
+    );
+
+    expect(screen.queryByTestId(`tenant-trial-${activeWithTrialEndsAt.id}`)).toBeNull();
   });
 });
