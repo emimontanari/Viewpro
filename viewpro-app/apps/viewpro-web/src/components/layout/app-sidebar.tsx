@@ -36,6 +36,21 @@ type AppSidebarProps = {
   navGroupsConfig?: NavGroup[];
 };
 
+/**
+ * Pure filter (Design Decision 6, platform-operator-management A4): keeps an
+ * item when it has no `access.role`, or when `access.role` matches the given
+ * operator role. Groups with zero remaining items are dropped so no empty
+ * group label renders.
+ */
+export function filterNavGroupsByRole(groups: NavGroup[], operatorRole: string | undefined): NavGroup[] {
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.access?.role || item.access.role === operatorRole)
+    }))
+    .filter((group) => group.items.length > 0);
+}
+
 export default function AppSidebar({ navGroupsConfig = navGroups }: AppSidebarProps = {}) {
   const pathname = usePathname();
   const { session, signOut } = useSession();
@@ -48,6 +63,14 @@ export default function AppSidebar({ navGroupsConfig = navGroups }: AppSidebarPr
         fullName: operator.email
       }
     : null;
+
+  // Design Decision 6 (platform-operator-management, A4): filter nav items by
+  // the current operator's role. An item with no `access` field always
+  // renders; an item with `access: { role }` only renders when it matches the
+  // current operator's role. Groups left with zero items after filtering are
+  // dropped entirely (no dangling group label). Server-side 403 is the real
+  // enforcement — this filter is UX only.
+  const visibleNavGroups = filterNavGroupsByRole(navGroupsConfig, operator?.role);
 
   return (
     <Sidebar collapsible='icon'>
@@ -69,7 +92,7 @@ export default function AppSidebar({ navGroupsConfig = navGroups }: AppSidebarPr
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent className='overflow-x-hidden'>
-        {navGroupsConfig.map((group) => (
+        {visibleNavGroups.map((group) => (
           <SidebarGroup key={group.label || 'ungrouped'} className='py-0'>
             {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
             <SidebarMenu>
