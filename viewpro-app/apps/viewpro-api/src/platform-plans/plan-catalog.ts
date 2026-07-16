@@ -10,23 +10,27 @@ import type { PlatformTenantRegistryLimits } from '@viewpro/platform-contract' w
  */
 export type PlanCode = 'BASICO' | 'PROFESIONAL' | 'EMPRESA'
 
-export const PLAN_CATALOG: Record<PlanCode, PlatformTenantRegistryLimits> = {
-  BASICO: {
+// Deeply frozen: the catalog is a shared exported singleton passed by
+// reference into the control-lane call. Freezing the outer map AND each tier
+// object turns any accidental future mutation into a no-op (throws in strict
+// mode) instead of a silent corruption of everyone's copy. No behavior change.
+export const PLAN_CATALOG: Record<PlanCode, PlatformTenantRegistryLimits> = Object.freeze({
+  BASICO: Object.freeze({
     maxUsers: 3,
     maxActivePropertyEngagements: 25,
     maxDocumentsStorageMb: 500,
-  },
-  PROFESIONAL: {
+  }),
+  PROFESIONAL: Object.freeze({
     maxUsers: 10,
     maxActivePropertyEngagements: 100,
     maxDocumentsStorageMb: 5000,
-  },
-  EMPRESA: {
+  }),
+  EMPRESA: Object.freeze({
     maxUsers: null,
     maxActivePropertyEngagements: null,
     maxDocumentsStorageMb: null,
-  },
-}
+  }),
+})
 
 /**
  * Pure reverse-lookup: does `limits` exactly match `plan`'s preset in

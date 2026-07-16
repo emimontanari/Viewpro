@@ -659,6 +659,16 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
       })
     })
 
+    it('PATCH /api/operators/tenants/:id/plan without session → 401 AUTH_REQUIRED, no outbound call', async () => {
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/plan')
+        .send({ plan: 'BASICO' })
+
+      expect(res.status).toBe(401)
+      expect(res.body.code).toBe('AUTH_REQUIRED')
+      expect(mockClient.postTenantLimits).not.toHaveBeenCalled()
+    })
+
     it('assign-plan when the projection row is absent → limits push still happens and the endpoint does NOT 500 (setPlan tolerates the missing row)', async () => {
       // Backfill/deploy window: the tenant has no platform_tenants row yet. The
       // control-lane limits push runs first (enforced) and setPlan must not

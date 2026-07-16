@@ -32,6 +32,18 @@ describe('PLAN_CATALOG', () => {
       maxDocumentsStorageMb: null,
     })
   })
+
+  it('is deeply frozen — an accidental mutation attempt does not alter the catalog', () => {
+    expect(Object.isFrozen(PLAN_CATALOG)).toBe(true)
+    expect(Object.isFrozen(PLAN_CATALOG.BASICO)).toBe(true)
+
+    // A stray mutation must be a silent no-op (frozen), never a corruption of
+    // the shared singleton passed by reference into the control-lane call.
+    expect(() => {
+      ;(PLAN_CATALOG.BASICO as { maxUsers: number | null }).maxUsers = 999
+    }).toThrow()
+    expect(PLAN_CATALOG.BASICO.maxUsers).toBe(3)
+  })
 })
 
 describe('planMatchesLimits', () => {
