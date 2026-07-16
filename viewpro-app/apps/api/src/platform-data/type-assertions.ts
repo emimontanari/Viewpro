@@ -9,6 +9,7 @@ import type {
   AuditActor,
   AuditLoggedPayload,
   TenantRegisteredPayload,
+  TenantLimitsChangedPayload,
 } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 import type { TenantStatus, Tenant } from '@prisma/client'
 
@@ -180,3 +181,74 @@ const _assertLegacyPayloadStillAssignable: TenantRegisteredPayload = {
   limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
 }
 void _assertLegacyPayloadStillAssignable
+
+// ---------------------------------------------------------------------------
+// platform-manual-plans (Slice 4, Part 1) — TENANT_LIMITS_CHANGED outbox
+// event: eventType union member + TenantLimitsChangedPayload shape.
+// ---------------------------------------------------------------------------
+
+/**
+ * Positive: TENANT_LIMITS_CHANGED is a valid eventType in the widened union.
+ * Compile error here → the contract union was not widened.
+ */
+type _AssertTenantLimitsChangedInUnion =
+  ['TENANT_LIMITS_CHANGED'] extends [PlatformOutboxEvent['eventType']] ? true : never
+
+const _assertLimitsChanged: _AssertTenantLimitsChangedInUnion = true
+void _assertLimitsChanged
+
+/**
+ * Regression: TENANT_STATUS_CHANGED, TENANT_REGISTERED, and AUDIT_LOGGED
+ * remain assignable after widening the union with TENANT_LIMITS_CHANGED.
+ */
+type _AssertTenantStatusChangedStillInUnionAfterLimits =
+  ['TENANT_STATUS_CHANGED'] extends [PlatformOutboxEvent['eventType']] ? true : never
+
+const _assertTenantStatusChangedStillAfterLimits: _AssertTenantStatusChangedStillInUnionAfterLimits = true
+void _assertTenantStatusChangedStillAfterLimits
+
+type _AssertTenantRegisteredStillInUnionAfterLimits =
+  ['TENANT_REGISTERED'] extends [PlatformOutboxEvent['eventType']] ? true : never
+
+const _assertTenantRegisteredStillAfterLimits: _AssertTenantRegisteredStillInUnionAfterLimits = true
+void _assertTenantRegisteredStillAfterLimits
+
+type _AssertAuditLoggedStillInUnionAfterLimits =
+  ['AUDIT_LOGGED'] extends [PlatformOutboxEvent['eventType']] ? true : never
+
+const _assertAuditLoggedStillAfterLimits: _AssertAuditLoggedStillInUnionAfterLimits = true
+void _assertAuditLoggedStillAfterLimits
+
+/**
+ * Positive: TenantLimitsChangedPayload is assignable to PlatformOutboxEvent['payload'].
+ */
+type _AssertTenantLimitsChangedPayloadInUnion =
+  [TenantLimitsChangedPayload] extends [PlatformOutboxEvent['payload']] ? true : never
+
+const _assertLimitsChangedPayload: _AssertTenantLimitsChangedPayloadInUnion = true
+void _assertLimitsChangedPayload
+
+/**
+ * Literal-shape assertion: TenantLimitsChangedPayload carries the three
+ * nullable limit fields (mirrors PlatformTenantRegistryLimits exactly).
+ */
+const _assertLimitsChangedPayloadShape: TenantLimitsChangedPayload = {
+  limits: { maxUsers: 10, maxActivePropertyEngagements: 25, maxDocumentsStorageMb: 500 },
+}
+void _assertLimitsChangedPayloadShape
+
+/**
+ * Literal-shape assertion: null (unlimited) is valid for every limit field.
+ */
+const _assertLimitsChangedPayloadNullShape: TenantLimitsChangedPayload = {
+  limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+}
+void _assertLimitsChangedPayloadNullShape
+
+/**
+ * Negative: an unrelated literal eventType is still NOT assignable after the
+ * union was widened with TENANT_LIMITS_CHANGED.
+ */
+// @ts-expect-error — 'UNKNOWN_TYPE' is not assignable to the eventType union
+const _assertUnknownStillRejectedAfterLimits: PlatformOutboxEvent['eventType'] = 'UNKNOWN_TYPE'
+void _assertUnknownStillRejectedAfterLimits
