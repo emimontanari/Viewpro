@@ -124,7 +124,13 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
     await prisma.operator.update({ where: { email: TEST_EMAIL_ROLE_CHANGE }, data: { role: 'OPERATIONS' } })
 
     seedOperator(TEST_EMAIL_SUSPEND, TEST_PASSWORD_SUSPEND)
-    // OWNER by default — has every permission until suspended mid-test.
+    // OWNER by default — has every permission until suspended mid-test. Reset
+    // explicitly on every run: a prior run's SUSPENDED mutation persists
+    // across test executions (upsert's `update: {}` never resets it).
+    await prisma.operator.update({
+      where: { email: TEST_EMAIL_SUSPEND },
+      data: { status: 'ACTIVE', role: 'OWNER' },
+    })
   })
 
   afterAll(async () => {
