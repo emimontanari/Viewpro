@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
+import { Logger } from '@nestjs/common'
 import { Test, TestingModule } from '@nestjs/testing'
 import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
@@ -221,5 +222,35 @@ describe('PlatformTenantRepository — applyLimitsChange (integration — test D
 
     const row = await prisma.platformTenant.findUnique({ where: { id: 't-does-not-exist' } })
     expect(row).toBeNull()
+  })
+
+  it('missing tenant → logs a WARNING (observability for a dropped limits change) and still does not create a row or throw', async () => {
+    // Reliability guard: a TENANT_LIMITS_CHANGED arriving for a tenantId with no
+    // projection row (deploy/backfill window — its TENANT_REGISTERED fell outside
+    // feed retention and it was never backfilled) matches ZERO rows. The drop must
+    // stay silent to the pipeline (no create, no throw, cursor advances) BUT must
+    // be observable via a warn log that names the tenantId — otherwise the limits
+    // change is permanently lost with no trace.
+    const warnSpy = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined)
+
+    try {
+      await expect(
+        repo.applyLimitsChange('t-limits-drop-missing', {
+          maxUsers: 25,
+          maxActivePropertyEngagements: 100,
+          maxDocumentsStorageMb: 5000,
+        }),
+      ).resolves.toBeUndefined()
+
+      expect(warnSpy).toHaveBeenCalledTimes(1)
+      expect(warnSpy.mock.calls[0]?.[0]).toContain('t-limits-drop-missing')
+
+      const row = await prisma.platformTenant.findUnique({
+        where: { id: 't-limits-drop-missing' },
+      })
+      expect(row).toBeNull()
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 })
