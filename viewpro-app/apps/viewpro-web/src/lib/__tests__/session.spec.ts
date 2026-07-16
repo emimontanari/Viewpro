@@ -23,7 +23,7 @@ import { login, getSession, logout, stepUp, type Session } from '../session';
 const mockApiRequest = vi.mocked(apiRequest);
 
 const MOCK_OPERATOR_SESSION: Session = {
-  operator: { id: 'op-1', email: 'admin@viewpro.app' }
+  operator: { id: 'op-1', email: 'admin@viewpro.app', role: 'OWNER' }
 };
 
 beforeEach(() => {
@@ -47,12 +47,12 @@ describe('login()', () => {
     });
   });
 
-  it('returns { operator: { id, email } } on success', async () => {
+  it('returns { operator: { id, email, role } } on success', async () => {
     mockApiRequest.mockResolvedValueOnce(MOCK_OPERATOR_SESSION);
 
     const result = await login({ email: 'admin@viewpro.app', password: 'secret1234' });
 
-    expect(result).toEqual({ operator: { id: 'op-1', email: 'admin@viewpro.app' } });
+    expect(result).toEqual({ operator: { id: 'op-1', email: 'admin@viewpro.app', role: 'OWNER' } });
   });
 
   it('throws on 401 — no session object returned', async () => {
@@ -80,12 +80,12 @@ describe('getSession()', () => {
     expect(options === undefined || (options as { method?: string }).method !== 'POST').toBe(true);
   });
 
-  it('returns { operator: { id, email } } on 200', async () => {
+  it('returns { operator: { id, email, role } } on 200', async () => {
     mockApiRequest.mockResolvedValueOnce(MOCK_OPERATOR_SESSION);
 
     const result = await getSession();
 
-    expect(result).toEqual({ operator: { id: 'op-1', email: 'admin@viewpro.app' } });
+    expect(result).toEqual({ operator: { id: 'op-1', email: 'admin@viewpro.app', role: 'OWNER' } });
   });
 
   it('throws on 401 — no session object returned', async () => {
@@ -145,18 +145,29 @@ describe('stepUp()', () => {
 // ─── Session type invariant ──────────────────────────────────────────────────
 
 describe('Session type — operator-only shape', () => {
-  it('Session contains operator with id and email', () => {
-    const session: Session = { operator: { id: 'op-1', email: 'admin@viewpro.app' } };
+  it('Session contains operator with id, email, and role', () => {
+    const session: Session = { operator: { id: 'op-1', email: 'admin@viewpro.app', role: 'OWNER' } };
     expect(session.operator.id).toBe('op-1');
     expect(session.operator.email).toBe('admin@viewpro.app');
+    expect(session.operator.role).toBe('OWNER');
   });
 
   it('Session does NOT have user, memberships, or permissions at runtime', () => {
-    const session: Session = { operator: { id: 'op-1', email: 'admin@viewpro.app' } };
+    const session: Session = { operator: { id: 'op-1', email: 'admin@viewpro.app', role: 'OWNER' } };
     // Runtime check — these keys must be absent
     expect('user' in session).toBe(false);
     expect('memberships' in session).toBe(false);
     expect('permissions' in session).toBe(false);
     expect('tenant' in session).toBe(false);
+  });
+
+  it('operator.role accepts OWNER, OPERATIONS, and ANALYST (triangulation)', () => {
+    const owner: Session = { operator: { id: 'op-1', email: 'a@viewpro.app', role: 'OWNER' } };
+    const operations: Session = { operator: { id: 'op-2', email: 'b@viewpro.app', role: 'OPERATIONS' } };
+    const analyst: Session = { operator: { id: 'op-3', email: 'c@viewpro.app', role: 'ANALYST' } };
+
+    expect(owner.operator.role).toBe('OWNER');
+    expect(operations.operator.role).toBe('OPERATIONS');
+    expect(analyst.operator.role).toBe('ANALYST');
   });
 });
