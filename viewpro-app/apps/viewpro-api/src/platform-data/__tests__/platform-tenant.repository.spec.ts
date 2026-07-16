@@ -93,6 +93,39 @@ describe('PlatformTenantRepository — trialEndsAt (integration — test DB)', (
     expect(row?.trialEndsAt).toEqual(new Date('2026-07-30T00:00:00.000Z'))
   })
 
+  it('create + trialEndsAt explicit JSON null → PlatformTenant.trialEndsAt is null (not 1970 epoch)', async () => {
+    // The wire payload is ingested via an unvalidated cast, so an explicit
+    // JSON `null` (`"trialEndsAt": null`) can reach the repository even though
+    // the contract type is `string | undefined`. It must be treated identically
+    // to an absent field — never coerced to `new Date(null)` (epoch 1970).
+    await repo.upsertFromRegistered(
+      makeRegisteredPayload({
+        id: 't-trial-null',
+        trialEndsAt: null as unknown as string,
+      }),
+    )
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-trial-null' } })
+    expect(row?.trialEndsAt).toBeNull()
+  })
+
+  it('update + trialEndsAt explicit JSON null → preserves the existing stored value (no 1970 overwrite)', async () => {
+    await repo.upsertFromRegistered(
+      makeRegisteredPayload({ id: 't-trial-null-update', trialEndsAt: '2026-07-30T00:00:00.000Z' }),
+    )
+
+    // Re-delivery carrying an explicit JSON null must not overwrite the real date.
+    await repo.upsertFromRegistered(
+      makeRegisteredPayload({
+        id: 't-trial-null-update',
+        trialEndsAt: null as unknown as string,
+      }),
+    )
+
+    const row = await prisma.platformTenant.findUnique({ where: { id: 't-trial-null-update' } })
+    expect(row?.trialEndsAt).toEqual(new Date('2026-07-30T00:00:00.000Z'))
+  })
+
   it('invalid trialEndsAt string → treated as absent (create: null, no throw)', async () => {
     await expect(
       repo.upsertFromRegistered(
