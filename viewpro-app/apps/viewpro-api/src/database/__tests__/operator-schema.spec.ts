@@ -17,11 +17,11 @@ describe('Operator schema shape', () => {
     expect(fields).not.toContain('invitedBy')
   })
 
-  it('role field defaults to OWNER (locks the migration-backfill contract, D9/R3)', () => {
+  it('role field defaults to least-privilege ANALYST going forward (JD hardening, secure-by-default)', () => {
     const roleField = Prisma.dmmf.datamodel.models
       .find((m) => m.name === 'Operator')
       ?.fields.find((f) => f.name === 'role')
 
-    expect(roleField?.default).toBe('OWNER')
+    expect(roleField?.default).toBe('ANALYST')
   })
 })
