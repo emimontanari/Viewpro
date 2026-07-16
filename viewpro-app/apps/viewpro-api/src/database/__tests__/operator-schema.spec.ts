@@ -9,12 +9,19 @@ describe('Operator schema shape', () => {
 
     expect(fields).toBeDefined()
 
-    const expected = ['id', 'email', 'passwordHash', 'status', 'createdAt', 'updatedAt']
+    const expected = ['id', 'email', 'passwordHash', 'status', 'role', 'createdAt', 'updatedAt']
     expect(fields?.sort()).toEqual(expected.sort())
 
     // Guardrails: fields that must NOT exist in this slice
-    expect(fields).not.toContain('role')
     expect(fields).not.toContain('refreshToken')
     expect(fields).not.toContain('invitedBy')
+  })
+
+  it('role field defaults to OWNER (locks the migration-backfill contract, D9/R3)', () => {
+    const roleField = Prisma.dmmf.datamodel.models
+      .find((m) => m.name === 'Operator')
+      ?.fields.find((f) => f.name === 'role')
+
+    expect(roleField?.default).toBe('OWNER')
   })
 })
