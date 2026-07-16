@@ -34,12 +34,18 @@ import { useStepUpGate } from './use-step-up-gate';
 const mockStepUp = vi.mocked(stepUp);
 const mockRedirectToSignIn = vi.mocked(redirectToSignIn);
 
-// Backend 401 shapes on /auth/step-up (both status 401, no `code`):
-//   - wrong password → StepUpUseCase throws UnauthorizedException('Invalid password')
-//   - expired session → AuthGuard throws UnauthorizedException('Authentication
-//     required') BEFORE the password is ever checked, and clears both cookies.
+// Backend 401 shapes on /auth/step-up (both status 401):
+//   - wrong password → StepUpUseCase throws UnauthorizedException('Invalid
+//     password'), NO `code`.
+//   - expired session → AuthGuard throws with the STABLE code AUTH_REQUIRED
+//     BEFORE the password is ever checked, and clears both cookies. The FE keys
+//     off that code, not the human message (JD).
 const WRONG_PASSWORD_401 = { status: 401, message: 'Invalid password' };
-const SESSION_EXPIRED_401 = { status: 401, message: 'Authentication required' };
+const SESSION_EXPIRED_401 = { status: 401, code: 'AUTH_REQUIRED', message: 'Authentication required' };
+// Anti-regression: a 401 whose message is "Authentication required" but that
+// carries NO `code` must be treated as a wrong password (inline), proving the
+// gate no longer relies on the message string.
+const MESSAGE_ONLY_401 = { status: 401, message: 'Authentication required' };
 
 const STEP_UP_ERROR = { status: 403, code: 'STEP_UP_REQUIRED', message: 'Step-up verification required' };
 const OTHER_ERROR = { status: 500, message: 'Error interno del servidor' };
@@ -139,6 +145,28 @@ describe('useStepUpGate — onSubmit (wrong password)', () => {
     expect(result.current.dialogProps.error).toBe('Contraseña incorrecta');
     expect(retry).not.toHaveBeenCalled();
     // A genuine wrong password must NEVER bounce to sign-in (D13).
+    expect(mockRedirectToSignIn).not.toHaveBeenCalled();
+  });
+
+  // JD anti-regression: a 401 whose message happens to be "Authentication
+  // required" but that carries NO `code` is NOT a session expiry — the gate
+  // keys off the AUTH_REQUIRED code, not the message. It must stay inline.
+  it('treats a message-only 401 (no AUTH_REQUIRED code) as wrong password, not a session expiry', async () => {
+    mockStepUp.mockRejectedValueOnce(MESSAGE_ONLY_401);
+    const { result } = renderHook(() => useStepUpGate());
+    const retry = vi.fn();
+
+    act(() => {
+      result.current.handleStepUpError(STEP_UP_ERROR, retry);
+    });
+
+    await act(async () => {
+      await result.current.dialogProps.onSubmit('correct-password');
+    });
+
+    expect(result.current.dialogProps.open).toBe(true);
+    expect(result.current.dialogProps.error).toBe('Contraseña incorrecta');
+    expect(retry).not.toHaveBeenCalled();
     expect(mockRedirectToSignIn).not.toHaveBeenCalled();
   });
 });

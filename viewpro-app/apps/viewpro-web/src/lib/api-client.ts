@@ -92,16 +92,16 @@ export function isApiError(error: unknown): error is ApiError {
 }
 
 // The API's AuthGuard rejects an expired/absent ACCESS session with a 401
-// carrying the exact message "Authentication required" — thrown BEFORE any
-// handler runs and with no error `code`. This distinguishes a session-expiry
-// 401 from a DOMAIN 401 such as a wrong step-up password (StepUpUseCase →
-// "Invalid password"). Callers on interceptor-exempt paths (e.g. /auth/step-up)
-// use this to still bounce an EXPIRED session to sign-in without misreading a
-// genuine wrong password as an expiry.
-const AUTH_GUARD_401_MESSAGE = 'Authentication required';
-
+// carrying the STABLE error code AUTH_REQUIRED — thrown BEFORE any handler runs,
+// for every reject path (missing/invalid token, missing/non-finite sessionExp,
+// past absolute deadline). Keying off the code (not the human message)
+// distinguishes a session-expiry 401 from a DOMAIN 401 such as a wrong step-up
+// password (StepUpUseCase → "Invalid password", NO code) and survives copy
+// changes. Callers on interceptor-exempt paths (e.g. /auth/step-up) use this to
+// still bounce an EXPIRED session to sign-in without misreading a genuine wrong
+// password as an expiry.
 export function isSessionExpiredError(error: unknown): error is ApiError {
-  return isApiError(error) && error.status === 401 && error.message === AUTH_GUARD_401_MESSAGE;
+  return isApiError(error) && error.status === 401 && error.code === 'AUTH_REQUIRED';
 }
 
 // D12: distinguishes a step-up-gated 403 from every other error so callers can

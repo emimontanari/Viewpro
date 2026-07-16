@@ -11,7 +11,12 @@
  */
 
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { apiRequest, isStepUpRequiredError, type ApiError } from '../api-client';
+import {
+  apiRequest,
+  isSessionExpiredError,
+  isStepUpRequiredError,
+  type ApiError
+} from '../api-client';
 
 function jsonResponse(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -84,6 +89,47 @@ describe('isStepUpRequiredError (D12)', () => {
     expect(isStepUpRequiredError(null)).toBe(false);
     expect(isStepUpRequiredError(undefined)).toBe(false);
     expect(isStepUpRequiredError('STEP_UP_REQUIRED')).toBe(false);
+  });
+});
+
+// JD — session-expiry is now keyed off the STABLE backend `code` AUTH_REQUIRED
+// (thrown by AuthGuard for every reject path), NOT off the human message
+// string. This decouples the FE from copy changes and from the wrong-password
+// 401 (StepUpUseCase → "Invalid password", NO code), which must stay inline.
+describe('isSessionExpiredError (JD)', () => {
+  it('is true for a 401 with code AUTH_REQUIRED', () => {
+    const error: ApiError = { status: 401, code: 'AUTH_REQUIRED', message: 'Authentication required' };
+    expect(isSessionExpiredError(error)).toBe(true);
+  });
+
+  // Anti-regression: proves we NO LONGER rely on the message string. A 401
+  // whose body message is "Authentication required" but carries NO `code` must
+  // NOT be treated as a session expiry.
+  it('is false for a 401 with the message but NO code (message no longer drives it)', () => {
+    const error: ApiError = { status: 401, message: 'Authentication required' };
+    expect(isSessionExpiredError(error)).toBe(false);
+  });
+
+  it('is false for a wrong-password 401 (no code, "Invalid password")', () => {
+    const error: ApiError = { status: 401, message: 'Invalid password' };
+    expect(isSessionExpiredError(error)).toBe(false);
+  });
+
+  it('is false for a 401 carrying a different code', () => {
+    const error: ApiError = { status: 401, code: 'SOME_OTHER_CODE', message: 'Nope' };
+    expect(isSessionExpiredError(error)).toBe(false);
+  });
+
+  it('is false for a 403 carrying AUTH_REQUIRED (status must be 401)', () => {
+    const error: ApiError = { status: 403, code: 'AUTH_REQUIRED', message: 'Authentication required' };
+    expect(isSessionExpiredError(error)).toBe(false);
+  });
+
+  it('is false for non-ApiError values', () => {
+    expect(isSessionExpiredError(new Error('network'))).toBe(false);
+    expect(isSessionExpiredError(null)).toBe(false);
+    expect(isSessionExpiredError(undefined)).toBe(false);
+    expect(isSessionExpiredError('AUTH_REQUIRED')).toBe(false);
   });
 });
 
