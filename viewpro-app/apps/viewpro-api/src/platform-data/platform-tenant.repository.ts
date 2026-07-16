@@ -70,6 +70,15 @@ export class PlatformTenantRepository {
         ...(parsedTrialEndsAt !== null ? { trialEndsAt: parsedTrialEndsAt } : {}),
       },
     })
+
+    // D5 universal choke point: the UPDATE branch above also overwrites the
+    // three limit columns, so a TENANT_REGISTERED whose limits diverge from an
+    // already-assigned plan must clear the stale label too — exactly as
+    // applyLimitsChange does. Safe no-op on the create path: a brand-new tenant
+    // has no plan, and recomputePlanDrift's `if (!storedPlan) return` guard
+    // short-circuits. When the new limits still match the stored tier the pure
+    // reverse-lookup keeps the label untouched.
+    await this.recomputePlanDrift(id, safeLimits)
   }
 
   /**
@@ -145,10 +154,13 @@ export class PlatformTenantRepository {
 
   /**
    * platform-manual-plans (Slice 4, Part 2) — D5: single choke point for the
-   * plan-vs-limits drift recompute. Every limits change flows through
-   * `applyLimitsChange` — including assign-plan's OWN push (via the
-   * TENANT_LIMITS_CHANGED it triggers) — so this one recompute covers both:
+   * plan-vs-limits drift recompute. Every write that overwrites the limit
+   * columns funnels through here — both `applyLimitsChange`
+   * (TENANT_LIMITS_CHANGED, including assign-plan's OWN push) AND
+   * `upsertFromRegistered`'s UPDATE branch (TENANT_REGISTERED re-delivery) — so
+   * this one recompute covers:
    *  - a raw limits edit that no longer matches the stored plan → cleared
+   *  - a TENANT_REGISTERED whose limits diverge from the stored plan → cleared
    *  - assign-plan's own push, which re-matches its own tier → kept, no
    *    self-clear (order-insensitive: setPlan may run before or after this)
    *
@@ -184,10 +196,26 @@ export class PlatformTenantRepository {
    * the limits control-lane push succeeds (design D7 ordering).
    */
   async setPlan(tenantId: string, plan: PlanCode): Promise<void> {
-    await this.prisma.platformTenant.update({
+    // Non-throwing on a missing row (mirrors applyLimitsChange's zero-match
+    // posture): the assign-plan flow pushes the tier's limits to InmoView
+    // FIRST (enforced), THEN calls setPlan. For a not-yet-projected /
+    // backfill-window tenant no platform_tenants row exists — a plain
+    // update() would throw Prisma P2025 and 500 AFTER the successful,
+    // already-enforced limits side effect (and every retry would 500 again).
+    // updateMany matches zero rows instead of throwing, so the endpoint stays
+    // idempotent and successful; the plan LABEL is simply not stored (the
+    // limits are already enforced, and a later TENANT_REGISTERED will project
+    // the row) — surfaced via a warn so it is diagnosable.
+    const { count } = await this.prisma.platformTenant.updateMany({
       where: { id: tenantId },
       data: { plan },
     })
+
+    if (count === 0) {
+      this.logger.warn(
+        `setPlan(${plan}) for tenant ${tenantId} matched no platform_tenants projection row — plan label not stored (likely a pre-projection/backfill-window tenant; limits were already enforced control-lane-side)`,
+      )
+    }
   }
 }
 
