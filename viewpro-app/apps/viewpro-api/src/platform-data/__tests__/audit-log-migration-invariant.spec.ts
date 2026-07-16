@@ -30,7 +30,10 @@ describe('platform_audit_log migration (additive invariant)', () => {
     await moduleRef.close()
   })
 
-  it('platform_audit_log table exists with id/sourceEventId/seqNo/action/tenantId/actor/previousValue/newValue/occurredAt/createdAt columns', async () => {
+  // T1.1.2 — updated for the additive audit_log_native_source migration
+  // (platform-operator-management, Decision 1): +`source`, +`target`.
+  // sourceEventId/seqNo/tenantId are now nullable but remain present.
+  it('platform_audit_log table exists with id/sourceEventId/seqNo/action/tenantId/actor/target/previousValue/newValue/occurredAt/createdAt/source columns', async () => {
     const rows = await prisma.$queryRaw<Array<{ column_name: string }>>`
       SELECT column_name FROM information_schema.columns
       WHERE table_name = 'platform_audit_log'
@@ -45,10 +48,12 @@ describe('platform_audit_log migration (additive invariant)', () => {
         'action',
         'tenantId',
         'actor',
+        'target',
         'previousValue',
         'newValue',
         'occurredAt',
         'createdAt',
+        'source',
       ].sort(),
     )
   })
