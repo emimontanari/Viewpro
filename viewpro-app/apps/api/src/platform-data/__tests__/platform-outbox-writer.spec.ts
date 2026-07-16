@@ -236,6 +236,94 @@ describe('PlatformOutboxWriter — AUDIT_LOGGED input shape (T-04/T-05)', () => 
   })
 })
 
+// ---------------------------------------------------------------------------
+// platform-manual-plans (Slice 4, Part 1) — RED: PlatformOutboxWriter accepts
+// the TENANT_LIMITS_CHANGED input arm (staleness fix)
+//
+// Spec: TENANT_LIMITS_CHANGED outbox event / Atomic emission on limits change
+//   - emit(tx, { eventType: 'TENANT_LIMITS_CHANGED', ... }) calls create with
+//     correct fields
+//   - emit(tx, {...AUDIT_LOGGED...}) still accepted (regression)
+//   - Both acquire pg_advisory_xact_lock(OUTBOX_LOCK_KEY)
+// ---------------------------------------------------------------------------
+
+describe('PlatformOutboxWriter — TENANT_LIMITS_CHANGED input shape (platform-manual-plans Part 1)', () => {
+  it('emit with TENANT_LIMITS_CHANGED calls tx.platformOutboxEvent.create with all payload fields', async () => {
+    const writer = new PlatformOutboxWriter()
+    const mockCreate = vi.fn().mockResolvedValue({ id: 'row-limits', seqNo: 6n })
+    const tx = makeMockTx({ create: mockCreate })
+
+    const occurredAt = new Date('2026-03-01T00:00:00Z')
+
+    await writer.emit(tx, {
+      eventType: 'TENANT_LIMITS_CHANGED',
+      tenantId: 'tenant-limits',
+      payload: {
+        limits: { maxUsers: 25, maxActivePropertyEngagements: 5, maxDocumentsStorageMb: 100 },
+      },
+      occurredAt,
+    })
+
+    expect(mockCreate).toHaveBeenCalledOnce()
+    expect(mockCreate).toHaveBeenCalledWith({
+      data: {
+        eventType: 'TENANT_LIMITS_CHANGED',
+        tenantId: 'tenant-limits',
+        payload: {
+          limits: { maxUsers: 25, maxActivePropertyEngagements: 5, maxDocumentsStorageMb: 100 },
+        },
+        occurredAt,
+      },
+    })
+  })
+
+  it('[regression] emit with AUDIT_LOGGED still accepted after TENANT_LIMITS_CHANGED widening', async () => {
+    const writer = new PlatformOutboxWriter()
+    const mockCreate = vi.fn().mockResolvedValue({ id: 'row-audit-2', seqNo: 7n })
+    const tx = makeMockTx({ create: mockCreate })
+
+    await writer.emit(tx, {
+      eventType: 'AUDIT_LOGGED',
+      tenantId: 'tenant-abc',
+      payload: {
+        action: 'TENANT_LIMITS_UPDATED',
+        previousValue: { maxUsers: 10 },
+        newValue: { maxUsers: 25 },
+        actor: { id: 'op-1', type: 'operator', label: 'op-1' },
+      },
+      occurredAt: new Date(),
+    })
+
+    expect(mockCreate).toHaveBeenCalledOnce()
+    expect(mockCreate.mock.calls[0]![0].data.eventType).toBe('AUDIT_LOGGED')
+  })
+
+  it('[C1] TENANT_LIMITS_CHANGED emit also acquires pg_advisory_xact_lock BEFORE create', async () => {
+    const writer = new PlatformOutboxWriter()
+    const callOrder: string[] = []
+    const mockExecuteRaw = vi.fn().mockImplementation(() => {
+      callOrder.push('advisory-lock')
+      return Promise.resolve(1)
+    })
+    const mockCreate = vi.fn().mockImplementation(() => {
+      callOrder.push('create')
+      return Promise.resolve({ id: 'row-limits', seqNo: 6n })
+    })
+    const tx = makeMockTx({ create: mockCreate, executeRaw: mockExecuteRaw })
+
+    await writer.emit(tx, {
+      eventType: 'TENANT_LIMITS_CHANGED',
+      tenantId: 'tenant-limits',
+      payload: {
+        limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+      },
+      occurredAt: new Date(),
+    })
+
+    expect(callOrder).toEqual(['advisory-lock', 'create'])
+  })
+})
+
 describe('PlatformOutboxWriter', () => {
   it('calls tx.platformOutboxEvent.create with the correct eventType, tenantId, payload, occurredAt', async () => {
     const writer = new PlatformOutboxWriter()
