@@ -8,6 +8,7 @@ import type {
   PlatformTenantRegistryLimits,
   AuditActor,
   AuditLoggedPayload,
+  TenantRegisteredPayload,
 } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 import type { TenantStatus, Tenant } from '@prisma/client'
 
@@ -145,3 +146,37 @@ void _assertAuditPayloadShape
 // @ts-expect-error — 'admin' is not assignable to AuditActor['type']
 const _assertBadActorType: AuditActor['type'] = 'admin'
 void _assertBadActorType
+
+// ---------------------------------------------------------------------------
+// platform-self-service-onboarding — TenantRegisteredPayload['trialEndsAt']
+// additive-optional field (A3-style enrichment)
+// ---------------------------------------------------------------------------
+
+/**
+ * Positive: TenantRegisteredPayload['trialEndsAt'] is `string | undefined`
+ * (ISO 8601 UTC, additive-optional — matches `occurredAt: string` convention).
+ * Compile error here → the contract field was not added, or its type drifted.
+ */
+type _AssertTrialEndsAtIsOptionalString =
+  [TenantRegisteredPayload['trialEndsAt']] extends [string | undefined]
+    ? [string | undefined] extends [TenantRegisteredPayload['trialEndsAt']]
+      ? true
+      : never
+    : never
+
+const _assertTrialEndsAtType: _AssertTrialEndsAtIsOptionalString = true
+void _assertTrialEndsAtType
+
+/**
+ * Positive: a legacy TENANT_REGISTERED payload literal without `trialEndsAt`
+ * remains assignable — the field is additive-optional, not required (A3
+ * backward-compatibility guarantee).
+ */
+const _assertLegacyPayloadStillAssignable: TenantRegisteredPayload = {
+  id: 'tenant-legacy',
+  name: 'Legacy Co',
+  slug: 'legacy-co',
+  newStatus: 'TRIAL',
+  limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+}
+void _assertLegacyPayloadStillAssignable
