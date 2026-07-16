@@ -30,6 +30,13 @@ import { AuditLogRepository } from './audit-log.repository'
  *   holds by construction, keeping MetricsService's latest-event-wins query
  *   uncorrupted with ZERO MirrorRepository code change (A5).
  *
+ * platform-manual-plans (Slice 4, Part 1) — D1: TENANT_LIMITS_CHANGED is
+ *   likewise branched BEFORE the mirror upsert (same pattern as AUDIT_LOGGED)
+ *   and routed straight to the `platform_tenants` projection via
+ *   `routeToTenantProjection`. It also has no `newStatus` field, so it must
+ *   never reach the mirror's W2 guard either — the same false-warning and
+ *   metrics-corruption risk applies.
+ *
  * Feed error handling: a failure during any single event's upsert causes the
  *   entire batch to be logged-and-skipped. The cursor does NOT advance, so the
  *   poller retries the same batch on the next tick.
@@ -68,6 +75,14 @@ export class IngestService {
         // is never written to platform_mirror_events) holds by construction.
         if (event.eventType === 'AUDIT_LOGGED') {
           await this.auditLogRepo.appendFromEvent(event)
+          continue
+        }
+        // D1 (platform-manual-plans Part 1): TENANT_LIMITS_CHANGED is routed
+        // straight to the projection, BEFORE (instead of) the mirror upsert —
+        // it must never reach the mirror's W2 guard (mirrors the AUDIT_LOGGED
+        // branch above).
+        if (event.eventType === 'TENANT_LIMITS_CHANGED') {
+          await this.routeToTenantProjection(event)
           continue
         }
         await this.mirrorRepo.upsertEvent(event)
@@ -125,6 +140,20 @@ export class IngestService {
       await this.tenantRepo.upsertFromStatusChange(
         event.tenantId,
         event.payload as Parameters<PlatformTenantRepository['upsertFromStatusChange']>[1],
+      )
+      return
+    }
+
+    if (event.eventType === 'TENANT_LIMITS_CHANGED') {
+      // Malformed payload (missing `limits`) is skipped without throwing —
+      // non-stalling ingest posture, same as the newStatus guards above.
+      const payload = event.payload as { limits?: unknown } & Record<string, unknown>
+      if (!payload.limits) {
+        return
+      }
+      await this.tenantRepo.applyLimitsChange(
+        event.tenantId,
+        payload.limits as Parameters<PlatformTenantRepository['applyLimitsChange']>[1],
       )
       return
     }
