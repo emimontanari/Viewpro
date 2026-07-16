@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module'
 import { ConfigModule } from './config/config.module'
 import { DatabaseModule } from './database/database.module'
 import { HealthModule } from './health/health.module'
+import { OperatorsModule } from './operators/operators.module'
 import { PlatformControlModule } from './platform-control/platform-control.module'
 import { PlatformDataModule } from './platform-data/platform-data.module'
 
@@ -25,6 +26,7 @@ import { PlatformDataModule } from './platform-data/platform-data.module'
     HealthModule,
     PlatformControlModule,
     PlatformDataModule,
+    OperatorsModule,
   ],
 })
 export class AppModule {}
