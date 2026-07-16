@@ -40,7 +40,14 @@ import { AuditController } from './audit.controller'
   imports: [AuthModule],
   controllers: [MetricsController, TenantRegistryController, AuditController],
   providers: [
-    ChangeFeedClient,
+    // ChangeFeedClient's constructor is typed (ConfigService | Options) for a
+    // dual DI/unit-test construction mode. A union param emits `Object` under
+    // emitDecoratorMetadata, which Nest cannot resolve — so wire it explicitly.
+    {
+      provide: ChangeFeedClient,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => new ChangeFeedClient(configService),
+    },
     MirrorRepository,
     CursorRepository,
     PlatformTenantRepository,

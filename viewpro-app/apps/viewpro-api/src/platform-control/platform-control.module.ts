@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { AuthModule } from '../auth/auth.module'
 import { PlatformControlClient } from './platform-control.client'
 import { PlatformControlController } from './platform-control.controller'
@@ -17,6 +18,15 @@ import { PlatformControlController } from './platform-control.controller'
 @Module({
   imports: [AuthModule],
   controllers: [PlatformControlController],
-  providers: [PlatformControlClient],
+  // PlatformControlClient's constructor is typed (ConfigService | Options) for a
+  // dual DI/unit-test construction mode. A union param emits `Object` under
+  // emitDecoratorMetadata, which Nest cannot resolve — so wire it explicitly.
+  providers: [
+    {
+      provide: PlatformControlClient,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => new PlatformControlClient(configService),
+    },
+  ],
 })
 export class PlatformControlModule {}
