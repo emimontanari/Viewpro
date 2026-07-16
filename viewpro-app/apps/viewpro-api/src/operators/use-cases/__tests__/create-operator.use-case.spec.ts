@@ -159,13 +159,11 @@ describe('CreateOperatorUseCase (T1.3.1)', () => {
     const atomicRepo: IOperatorRepository = {
       ...operatorRepository,
       create: vi.fn(
-        async (
-          input: { email: string; passwordHash: string; role: string },
-          tx?: { __staged?: Array<{ id: string; email: string }> },
-        ) => {
+        async (input: { email: string; passwordHash: string; role: string }, tx?: unknown) => {
           const row = { id: 'op-new-1', email: input.email }
-          if (tx?.__staged) {
-            tx.__staged.push(row) // atomic path — committed only if the tx resolves
+          const staged = (tx as { __staged?: Array<{ id: string; email: string }> } | undefined)?.__staged
+          if (staged) {
+            staged.push(row) // atomic path — committed only if the tx resolves
           } else {
             committed.push(row) // non-atomic path — durably committed immediately
           }

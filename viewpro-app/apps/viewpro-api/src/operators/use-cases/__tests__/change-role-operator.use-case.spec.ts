@@ -142,8 +142,8 @@ describe('ChangeRoleOperatorUseCase (T1.3.5)', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any),
       updateRole: vi.fn(
-        async (id: string, role: string, tx?: { __staged?: Set<string> }) => {
-          tx?.__staged?.add(id)
+        async (id: string, role: string, tx?: unknown) => {
+          ;(tx as { __staged?: Set<string> } | undefined)?.__staged?.add(id)
           return {
             id,
             email: 'target@viewpro.app',

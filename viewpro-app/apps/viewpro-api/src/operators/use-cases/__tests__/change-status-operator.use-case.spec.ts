@@ -156,8 +156,8 @@ describe('ChangeStatusOperatorUseCase (T1.3.7)', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any),
       updateStatus: vi.fn(
-        async (id: string, status: string, tx?: { __staged?: Set<string> }) => {
-          tx?.__staged?.add(id)
+        async (id: string, status: string, tx?: unknown) => {
+          ;(tx as { __staged?: Set<string> } | undefined)?.__staged?.add(id)
           return {
             id,
             email: 'target@viewpro.app',
