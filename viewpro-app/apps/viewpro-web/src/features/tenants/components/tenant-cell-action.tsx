@@ -17,6 +17,7 @@ type Props = {
   isMutating: boolean;
   onEditLimits: (item: TenantListItem) => void;
   onStatusAction: (item: TenantListItem, action: TenantAction) => void;
+  onAssignPlan: (item: TenantListItem) => void;
 };
 
 /**
@@ -27,7 +28,13 @@ type Props = {
  * destructive cancel action is rendered with the destructive item variant.
  * Every item is disabled while a mutation is in flight (double-submit guard).
  */
-export function TenantCellAction({ item, isMutating, onEditLimits, onStatusAction }: Props) {
+export function TenantCellAction({
+  item,
+  isMutating,
+  onEditLimits,
+  onStatusAction,
+  onAssignPlan
+}: Props) {
   const actions = getTenantActions(item);
 
   return (
@@ -42,6 +49,9 @@ export function TenantCellAction({ item, isMutating, onEditLimits, onStatusActio
         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
         <DropdownMenuItem disabled={isMutating} onClick={() => onEditLimits(item)}>
           Editar límites
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={isMutating} onClick={() => onAssignPlan(item)}>
+          Asignar plan
         </DropdownMenuItem>
         {actions.map((action) => (
           <DropdownMenuItem

@@ -8,7 +8,12 @@ import {
 } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { TenantListItem, TenantStatus, TenantStatusAction } from '@/features/tenants/api/types';
+import type {
+  TenantListItem,
+  TenantPlan,
+  TenantStatus,
+  TenantStatusAction
+} from '@/features/tenants/api/types';
 import { TenantCellAction } from './tenant-cell-action';
 
 type Props = {
@@ -16,6 +21,7 @@ type Props = {
   isMutating: boolean;
   onEditLimits: (item: TenantListItem) => void;
   onStatusAction: (item: TenantListItem, action: TenantAction) => void;
+  onAssignPlan: (item: TenantListItem) => void;
 };
 
 // Callbacks + guard threaded to each cell via the table instance's `meta`
@@ -24,6 +30,7 @@ type TenantsTableMeta = {
   isMutating: boolean;
   onEditLimits: (item: TenantListItem) => void;
   onStatusAction: (item: TenantListItem, action: TenantAction) => void;
+  onAssignPlan: (item: TenantListItem) => void;
 };
 
 export const columns: ColumnDef<TenantListItem>[] = [
@@ -62,6 +69,13 @@ export const columns: ColumnDef<TenantListItem>[] = [
     )
   },
   {
+    id: 'plan',
+    header: 'Plan',
+    cell: ({ row }) => (
+      <span data-testid={`tenant-plan-${row.original.id}`}>{getPlanLabel(row.original.plan)}</span>
+    )
+  },
+  {
     id: 'actions',
     header: 'Acciones',
     cell: ({ row, table }) => {
@@ -73,6 +87,7 @@ export const columns: ColumnDef<TenantListItem>[] = [
           isMutating={meta.isMutating}
           onEditLimits={meta.onEditLimits}
           onStatusAction={meta.onStatusAction}
+          onAssignPlan={meta.onAssignPlan}
         />
       );
     }
@@ -86,12 +101,12 @@ export const columns: ColumnDef<TenantListItem>[] = [
  * render in the order received; the API already sorts name ASC. `isMutating`
  * disables every row action while a mutation is in flight (double-submit guard).
  */
-export function TenantsTable({ items, isMutating, onEditLimits, onStatusAction }: Props) {
+export function TenantsTable({ items, isMutating, onEditLimits, onStatusAction, onAssignPlan }: Props) {
   const table = useReactTable({
     data: items,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    meta: { isMutating, onEditLimits, onStatusAction } satisfies TenantsTableMeta
+    meta: { isMutating, onEditLimits, onStatusAction, onAssignPlan } satisfies TenantsTableMeta
   });
 
   return (
@@ -215,6 +230,25 @@ export function getStatusLabel(status: string) {
   };
 
   return labels[status as TenantStatus] ?? status;
+}
+
+// platform-manual-plans (Slice 4, Part 2) — D10: fixed catalog, static copy
+// (no per-tenant translation needed — only 3 tiers exist).
+export const PLAN_LABELS: Record<TenantPlan, string> = {
+  BASICO: 'Básico',
+  PROFESIONAL: 'Profesional',
+  EMPRESA: 'Empresa'
+};
+
+// Neutral placeholder ("—") for an unassigned plan, mirrors getTrialEndLabel's
+// null-safe pattern. An unexpected raw value renders as-is rather than
+// throwing (mirrors getStatusLabel — the server column is a raw string).
+export function getPlanLabel(plan: string | null): string {
+  if (plan === null) {
+    return '—';
+  }
+
+  return PLAN_LABELS[plan as TenantPlan] ?? plan;
 }
 
 function formatLimitValue(value: number | null) {
