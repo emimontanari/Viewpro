@@ -97,12 +97,17 @@ export class PlatformTenantRepository {
 
 /**
  * Parses `trialEndsAt` (ISO 8601 UTC string) into a `Date`, or `null` when
- * absent or unparseable. An invalid string is treated identically to an
+ * absent or unparseable. An invalid value is treated identically to an
  * absent field — never thrown (non-stalling-ingest guard, mirrors the
  * `limits` guard above).
+ *
+ * The wire payload is ingested via an unvalidated cast, so an explicit JSON
+ * `null` (`"trialEndsAt": null`) can reach here — the param type is widened to
+ * reflect that. `null` must be treated as absent, NOT fall through to
+ * `new Date(null)` (epoch 1970, whose getTime() is 0, not NaN).
  */
-function parseTrialEndsAt(trialEndsAt: string | undefined): Date | null {
-  if (trialEndsAt === undefined) {
+function parseTrialEndsAt(trialEndsAt: string | null | undefined): Date | null {
+  if (trialEndsAt === undefined || trialEndsAt === null) {
     return null
   }
 
