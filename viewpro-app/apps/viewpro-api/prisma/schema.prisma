@@ -13,13 +13,20 @@ enum OperatorStatus {
   SUSPENDED
 }
 
+enum PlatformOperatorRole {
+  OWNER
+  OPERATIONS
+  ANALYST
+}
+
 model Operator {
-  id           String         @id @default(uuid())
-  email        String         @unique
+  id           String               @id @default(uuid())
+  email        String               @unique
   passwordHash String
-  status       OperatorStatus @default(ACTIVE)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  status       OperatorStatus       @default(ACTIVE)
+  role         PlatformOperatorRole @default(OWNER)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 }
 
 /// Mirror of InmoView platform outbox events — deduped by sourceEventId (D5, D8).

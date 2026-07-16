@@ -15,6 +15,7 @@ function makeActiveOperator() {
     email: OPERATOR_EMAIL,
     passwordHash: PASSWORD_HASH,
     status: 'ACTIVE' as const,
+    role: 'OWNER' as const,
     createdAt: new Date(),
     updatedAt: new Date(),
   }
