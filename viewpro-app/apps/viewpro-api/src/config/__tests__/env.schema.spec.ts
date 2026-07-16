@@ -89,4 +89,42 @@ describe('validateEnv', () => {
   it('accepts all three auth/control secrets when pairwise distinct', () => {
     expect(() => validateEnv(VALID_BASE)).not.toThrow()
   })
+
+  it('IDLE_TIMEOUT_SECONDS omitted defaults to 600', () => {
+    const config = validateEnv(VALID_BASE) as unknown as { IDLE_TIMEOUT_SECONDS: number }
+    expect(config.IDLE_TIMEOUT_SECONDS).toBe(600)
+  })
+
+  it('ABSOLUTE_SESSION_SECONDS omitted defaults to 28800', () => {
+    const config = validateEnv(VALID_BASE) as unknown as { ABSOLUTE_SESSION_SECONDS: number }
+    expect(config.ABSOLUTE_SESSION_SECONDS).toBe(28800)
+  })
+
+  it('rejects an IDLE_TIMEOUT_SECONDS below the 60-second floor', () => {
+    expect(() =>
+      validateEnv({ ...VALID_BASE, IDLE_TIMEOUT_SECONDS: 10 }),
+    ).toThrow(/IDLE_TIMEOUT_SECONDS/)
+  })
+
+  it('rejects an ABSOLUTE_SESSION_SECONDS below the 300-second floor', () => {
+    expect(() =>
+      validateEnv({ ...VALID_BASE, ABSOLUTE_SESSION_SECONDS: 100 }),
+    ).toThrow(/ABSOLUTE_SESSION_SECONDS/)
+  })
+
+  it('rejects ABSOLUTE_SESSION_SECONDS <= IDLE_TIMEOUT_SECONDS (window-order boot guard)', () => {
+    expect(() =>
+      validateEnv({
+        ...VALID_BASE,
+        IDLE_TIMEOUT_SECONDS: 600,
+        ABSOLUTE_SESSION_SECONDS: 600,
+      }),
+    ).toThrow(/ABSOLUTE_SESSION_SECONDS.*IDLE_TIMEOUT_SECONDS|IDLE_TIMEOUT_SECONDS.*ABSOLUTE_SESSION_SECONDS/)
+  })
+
+  it('rejects STEP_UP_TOKEN_SECRET equal to ACCESS_TOKEN_SECRET (assertDistinctSecrets regression pin)', () => {
+    expect(() =>
+      validateEnv({ ...VALID_BASE, STEP_UP_TOKEN_SECRET: VALID_SECRET }),
+    ).toThrow(/STEP_UP_TOKEN_SECRET.*ACCESS_TOKEN_SECRET|ACCESS_TOKEN_SECRET.*STEP_UP_TOKEN_SECRET/)
+  })
 })

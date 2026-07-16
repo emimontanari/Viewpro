@@ -33,7 +33,12 @@ class EnvironmentVariables {
   @IsInt()
   @Min(60)
   @Type(() => Number)
-  ACCESS_TOKEN_TTL_SECONDS = 900
+  IDLE_TIMEOUT_SECONDS = 600
+
+  @IsInt()
+  @Min(300)
+  @Type(() => Number)
+  ABSOLUTE_SESSION_SECONDS = 28800
 
   @IsOptional()
   @IsString()
@@ -103,6 +108,7 @@ export function validateEnv(config: Record<string, unknown>) {
   }
 
   assertDistinctSecrets(validatedConfig)
+  assertSessionWindowOrder(validatedConfig)
 
   return validatedConfig
 }
@@ -128,6 +134,19 @@ function assertDistinctSecrets(config: EnvironmentVariables) {
         )
       }
     }
+  }
+}
+
+// Defense-in-depth: a re-issued access token must always renew inside the
+// absolute session cap, never outlive it. If the absolute window were ever
+// configured at or below the idle window, every re-issue would immediately
+// be past the absolute deadline on the very next request. Fail fast at boot
+// naming both vars.
+function assertSessionWindowOrder(config: EnvironmentVariables) {
+  if (config.ABSOLUTE_SESSION_SECONDS <= config.IDLE_TIMEOUT_SECONDS) {
+    throw new Error(
+      `ABSOLUTE_SESSION_SECONDS (${config.ABSOLUTE_SESSION_SECONDS}) must be greater than IDLE_TIMEOUT_SECONDS (${config.IDLE_TIMEOUT_SECONDS}).`,
+    )
   }
 }
 
