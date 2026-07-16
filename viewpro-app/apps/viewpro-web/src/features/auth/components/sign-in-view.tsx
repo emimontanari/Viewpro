@@ -21,15 +21,21 @@ type SignInValues = {
 
 const DEFAULT_SIGN_IN_REDIRECT = '/dashboard';
 
+// D8: shown when the operator lands on sign-in via the api-client 401
+// interceptor's `reason=session_expired` redirect (D7).
+const SESSION_EXPIRED_COPY = 'Tu sesión expiró. Iniciá sesión de nuevo para continuar.';
+
 const signInSchema = z.object({
   email: z.email('Ingresá un email válido.'),
   password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.')
 });
 
-function SignInForm() {
+export function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(() =>
+    searchParams.get('reason') === 'session_expired' ? SESSION_EXPIRED_COPY : null
+  );
   const { FormTextField } = useFormFields<SignInValues>();
   const form = useAppForm({
     defaultValues: {

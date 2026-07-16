@@ -9,7 +9,13 @@
 // hook's inline error state — it NEVER triggers a logout or redirect (D13,
 // AC7 counterpart on the FE side).
 import * as React from 'react';
-import { isStepUpRequiredError, isApiError, getApiErrorMessage } from '@/lib/api-client';
+import {
+  isStepUpRequiredError,
+  isApiError,
+  isSessionExpiredError,
+  getApiErrorMessage,
+  redirectToSignIn
+} from '@/lib/api-client';
 import { stepUp } from '@/lib/session';
 
 export function useStepUpGate() {
@@ -58,8 +64,22 @@ export function useStepUpGate() {
       setIsOpen(false);
       retry?.();
     } catch (submitError) {
-      // Wrong password (401) — or any other stepUp failure — stays inline in
-      // the modal. Never a logout, never a redirect.
+      // /auth/step-up is exempt from the global 401 interceptor, so an ACCESS
+      // session that expired mid-modal surfaces here as an AuthGuard 401
+      // ("Authentication required", thrown BEFORE the password is checked and
+      // clearing both cookies). Treating that like a wrong password would tell
+      // the operator their CORRECT password is invalid forever. Distinguish it
+      // and bounce to sign-in — reusing the same mechanism as the api-client
+      // interceptor — instead of showing the inline error (JD).
+      if (isSessionExpiredError(submitError)) {
+        pendingRetryRef.current = null;
+        setIsOpen(false);
+        redirectToSignIn();
+        return;
+      }
+
+      // Wrong password (401 "Invalid password") — or any other stepUp failure —
+      // stays inline in the modal. Never a logout, never a redirect.
       const message = isApiError(submitError)
         ? 'Contraseña incorrecta'
         : getApiErrorMessage(submitError);
