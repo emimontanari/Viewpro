@@ -13,6 +13,7 @@ import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
 import { AuthModule } from '../../auth/auth.module'
 import { PrismaService } from '../../database/prisma.service'
+import { PermissionsModule } from '../../permissions/permissions.module'
 import { TenantRegistryController } from '../tenant-registry.controller'
 import { TenantRegistryService } from '../tenant-registry.service'
 
@@ -36,6 +37,12 @@ async function mintServiceToken(): Promise<string> {
 const TEST_EMAIL = 'tenant-registry-test@viewpro.app'
 const TEST_PASSWORD = 'tenant-registry-test-password'
 
+// T-09 — role fixtures for PlatformPermissionGuard READ-route coverage.
+const TEST_EMAIL_ANALYST = 'tenant-registry-test-analyst@viewpro.app'
+const TEST_PASSWORD_ANALYST = 'tenant-registry-test-analyst-password'
+const TEST_EMAIL_OPERATIONS = 'tenant-registry-test-operations@viewpro.app'
+const TEST_PASSWORD_OPERATIONS = 'tenant-registry-test-operations-password'
+
 function extractPlatformCookie(headers: Record<string, unknown>): string {
   const raw = headers['set-cookie'] as string[] | string | undefined
   const arr = Array.isArray(raw) ? raw : [raw ?? '']
@@ -47,15 +54,19 @@ describe('TenantRegistryController (integration — test DB)', () => {
   let app: INestApplication
   let prisma: PrismaService
 
-  beforeAll(async () => {
+  function seedOperator(email: string, password: string): void {
     execSync('pnpm db:seed', {
       cwd: process.cwd(),
       env: {
         ...process.env,
-        SEED_OPERATOR_EMAIL: TEST_EMAIL,
-        SEED_OPERATOR_PASSWORD: TEST_PASSWORD,
+        SEED_OPERATOR_EMAIL: email,
+        SEED_OPERATOR_PASSWORD: password,
       },
     })
+  }
+
+  beforeAll(async () => {
+    seedOperator(TEST_EMAIL, TEST_PASSWORD)
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -63,6 +74,7 @@ describe('TenantRegistryController (integration — test DB)', () => {
         ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
         DatabaseModule,
         AuthModule,
+        PermissionsModule,
       ],
       controllers: [TenantRegistryController],
       providers: [TenantRegistryService],
@@ -75,6 +87,13 @@ describe('TenantRegistryController (integration — test DB)', () => {
     await app.init()
 
     prisma = moduleFixture.get(PrismaService)
+
+    // T-09 — role fixtures seeded directly via Prisma (no real signup exists).
+    seedOperator(TEST_EMAIL_ANALYST, TEST_PASSWORD_ANALYST)
+    await prisma.operator.update({ where: { email: TEST_EMAIL_ANALYST }, data: { role: 'ANALYST' } })
+
+    seedOperator(TEST_EMAIL_OPERATIONS, TEST_PASSWORD_OPERATIONS)
+    await prisma.operator.update({ where: { email: TEST_EMAIL_OPERATIONS }, data: { role: 'OPERATIONS' } })
   })
 
   afterAll(async () => {
@@ -85,14 +104,18 @@ describe('TenantRegistryController (integration — test DB)', () => {
     await prisma.platformTenant.deleteMany()
   })
 
-  async function getSessionCookie(): Promise<string> {
+  async function getSessionCookieFor(email: string, password: string): Promise<string> {
     const res = await request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ email: TEST_EMAIL, password: TEST_PASSWORD })
+      .send({ email, password })
     if (res.status !== 200) {
       throw new Error(`Login failed: ${res.status} ${JSON.stringify(res.body)}`)
     }
     return extractPlatformCookie(res.headers as Record<string, unknown>)
+  }
+
+  async function getSessionCookie(): Promise<string> {
+    return getSessionCookieFor(TEST_EMAIL, TEST_PASSWORD)
   }
 
   async function seedThreeTenants() {
@@ -323,5 +346,31 @@ describe('TenantRegistryController (integration — test DB)', () => {
       changeFeedClientResolved = false
     }
     expect(changeFeedClientResolved).toBe(false)
+  })
+
+  // -------------------------------------------------------------------------
+  // T-09 — RED: PlatformPermissionGuard READ-route coverage (AC3 READ half)
+  //
+  // Spec: operator-platform-roles — Read Routes Require the Declared READ
+  //   Permission
+  // -------------------------------------------------------------------------
+  it('ANALYST session → GET /api/operators/tenants → 200', async () => {
+    const cookie = await getSessionCookieFor(TEST_EMAIL_ANALYST, TEST_PASSWORD_ANALYST)
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/tenants')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(200)
+  })
+
+  it('OPERATIONS session → GET /api/operators/tenants → 200', async () => {
+    const cookie = await getSessionCookieFor(TEST_EMAIL_OPERATIONS, TEST_PASSWORD_OPERATIONS)
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/tenants')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(200)
   })
 })
