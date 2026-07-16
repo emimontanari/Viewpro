@@ -239,7 +239,12 @@ export function getTrialEndLabel(trialEndsAt: string | null, now: Date): string 
     return '—';
   }
 
-  const msRemaining = new Date(trialEndsAt).getTime() - now.getTime();
+  const trialEndsAtMs = new Date(trialEndsAt).getTime();
+  if (Number.isNaN(trialEndsAtMs)) {
+    return '—';
+  }
+
+  const msRemaining = trialEndsAtMs - now.getTime();
 
   if (msRemaining <= 0) {
     return 'Trial vencido';
