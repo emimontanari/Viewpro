@@ -32,17 +32,24 @@ export class ChangeRoleOperatorUseCase {
       throw new UnprocessableEntityException(SELF_DEMOTE_RESPONSE)
     }
 
-    const updated = await withLastOwnerGuard(this.prisma, targetId, (tx) =>
-      this.operatorRepository.updateRole(targetId, newRole, tx),
-    )
+    // Atomicity (JD FIX 1): the FOR-UPDATE guard, the role mutation, and the
+    // native audit write all run in the SAME transaction (the one opened by
+    // withLastOwnerGuard). If the audit write throws, the role change rolls
+    // back — no silent audit gap on this highest-privilege action.
+    return withLastOwnerGuard(this.prisma, targetId, async (tx) => {
+      const updated = await this.operatorRepository.updateRole(targetId, newRole, tx)
 
-    await this.auditLogRepo.appendNative({
-      action: 'OPERATOR_ROLE_CHANGED',
-      actor,
-      target: { id: updated.id, email: updated.email },
-      newValue: { role: newRole },
+      await this.auditLogRepo.appendNative(
+        {
+          action: 'OPERATOR_ROLE_CHANGED',
+          actor,
+          target: { id: updated.id, email: updated.email },
+          newValue: { role: newRole },
+        },
+        tx,
+      )
+
+      return updated
     })
-
-    return updated
   }
 }

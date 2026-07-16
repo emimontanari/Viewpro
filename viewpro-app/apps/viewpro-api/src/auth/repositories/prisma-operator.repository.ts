@@ -26,8 +26,11 @@ export class PrismaOperatorRepository implements IOperatorRepository {
     return this.prisma.operator.findUnique({ where: { id } })
   }
 
-  create(input: { email: string; passwordHash: string; role: PlatformOperatorRole }): Promise<OperatorSummary> {
-    return this.prisma.operator.create({
+  create(
+    input: { email: string; passwordHash: string; role: PlatformOperatorRole },
+    tx: Prisma.TransactionClient | PrismaService = this.prisma,
+  ): Promise<OperatorSummary> {
+    return tx.operator.create({
       data: {
         email: input.email.trim().toLowerCase(),
         passwordHash: input.passwordHash,

@@ -34,16 +34,23 @@ export class ChangeStatusOperatorUseCase {
       throw new UnprocessableEntityException(SELF_SUSPEND_RESPONSE)
     }
 
-    const updated = await withLastOwnerGuard(this.prisma, targetId, (tx) =>
-      this.operatorRepository.updateStatus(targetId, newStatus, tx),
-    )
+    // Atomicity (JD FIX 1): the FOR-UPDATE guard, the status mutation, and the
+    // native audit write all run in the SAME transaction (the one opened by
+    // withLastOwnerGuard). If the audit write throws, the status change rolls
+    // back — no silent audit gap on this highest-privilege action.
+    return withLastOwnerGuard(this.prisma, targetId, async (tx) => {
+      const updated = await this.operatorRepository.updateStatus(targetId, newStatus, tx)
 
-    await this.auditLogRepo.appendNative({
-      action: newStatus === 'SUSPENDED' ? 'OPERATOR_SUSPENDED' : 'OPERATOR_REACTIVATED',
-      actor,
-      target: { id: updated.id, email: updated.email },
+      await this.auditLogRepo.appendNative(
+        {
+          action: newStatus === 'SUSPENDED' ? 'OPERATOR_SUSPENDED' : 'OPERATOR_REACTIVATED',
+          actor,
+          target: { id: updated.id, email: updated.email },
+        },
+        tx,
+      )
+
+      return updated
     })
-
-    return updated
   }
 }

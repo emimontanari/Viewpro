@@ -8,7 +8,10 @@ export type OperatorSummary = Omit<Operator, 'passwordHash'>
 export type IOperatorRepository = {
   findByEmail(email: string): Promise<Operator | null>
   findById(id: string): Promise<Operator | null>
-  create(input: { email: string; passwordHash: string; role: PlatformOperatorRole }): Promise<OperatorSummary>
+  create(
+    input: { email: string; passwordHash: string; role: PlatformOperatorRole },
+    tx?: Prisma.TransactionClient,
+  ): Promise<OperatorSummary>
   list(): Promise<OperatorSummary[]>
   updateRole(id: string, role: PlatformOperatorRole, tx?: Prisma.TransactionClient): Promise<OperatorSummary>
   updateStatus(id: string, status: OperatorStatus, tx?: Prisma.TransactionClient): Promise<OperatorSummary>

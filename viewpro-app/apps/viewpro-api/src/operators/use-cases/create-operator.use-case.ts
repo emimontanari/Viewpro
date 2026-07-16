@@ -2,6 +2,7 @@ import { ConflictException, Inject, Injectable } from '@nestjs/common'
 import type { PlatformOperatorRole } from '@prisma-platform/client'
 import { OPERATOR_REPOSITORY, type IOperatorRepository, type OperatorSummary } from '../../auth/repositories/operator.repository'
 import { PASSWORD_HASHER, type IPasswordHasher } from '../../auth/security/password-hasher'
+import { PrismaService } from '../../database/prisma.service'
 import { AuditLogRepository } from '../../platform-data/audit-log.repository'
 
 const DUPLICATE_EMAIL_RESPONSE = {
@@ -24,6 +25,11 @@ export type OperatorActor = { id: string; email: string }
  * seed script's direct argon2 call), persists the EXPLICITLY chosen role
  * (least-privilege — never relies on the ANALYST DB default), normalizes the
  * email, and appends a native audit entry on success.
+ *
+ * Atomicity (JD FIX 1): the operator INSERT and its native audit write run in a
+ * SINGLE `prisma.$transaction`, so they commit-or-roll-back together. If the
+ * audit write throws, the operator row is NOT durably created (no silent audit
+ * gap on the highest-privilege action, and no 500 for a partially-applied op).
  */
 @Injectable()
 export class CreateOperatorUseCase {
@@ -31,19 +37,35 @@ export class CreateOperatorUseCase {
     @Inject(OPERATOR_REPOSITORY) private readonly operatorRepository: IOperatorRepository,
     @Inject(PASSWORD_HASHER) private readonly passwordHasher: IPasswordHasher,
     private readonly auditLogRepo: AuditLogRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   async execute(input: CreateOperatorInput, actor: OperatorActor): Promise<OperatorSummary> {
     const passwordHash = await this.passwordHasher.hash(input.tempPassword)
     const normalizedEmail = input.email.trim().toLowerCase()
 
-    let created: OperatorSummary
     try {
-      created = await this.operatorRepository.create({
-        email: normalizedEmail,
-        passwordHash,
-        // Explicit — never rely on the ANALYST DB default (least-privilege).
-        role: input.role,
+      return await this.prisma.$transaction(async (tx) => {
+        const created = await this.operatorRepository.create(
+          {
+            email: normalizedEmail,
+            passwordHash,
+            // Explicit — never rely on the ANALYST DB default (least-privilege).
+            role: input.role,
+          },
+          tx,
+        )
+
+        await this.auditLogRepo.appendNative(
+          {
+            action: 'OPERATOR_CREATED',
+            actor,
+            target: { id: created.id, email: created.email },
+          },
+          tx,
+        )
+
+        return created
       })
     } catch (err) {
       if (isDuplicateEmailError(err)) {
@@ -51,14 +73,6 @@ export class CreateOperatorUseCase {
       }
       throw err
     }
-
-    await this.auditLogRepo.appendNative({
-      action: 'OPERATOR_CREATED',
-      actor,
-      target: { id: created.id, email: created.email },
-    })
-
-    return created
   }
 }
 

@@ -126,6 +126,7 @@ describe('CreateOperatorUseCase (T1.3.1)', () => {
         actor: ACTOR,
         target: { id: result.id, email: result.email },
       }),
+      expect.anything(),
     )
   })
 
