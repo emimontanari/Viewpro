@@ -5,6 +5,7 @@ import type {
   TenantStatusChangedPayload,
   PlatformTenantRegistryLimits,
 } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
+import { PLAN_CATALOG, planMatchesLimits, type PlanCode } from '../platform-plans/plan-catalog'
 
 /**
  * PlatformTenantRepository — persists the `platform_tenants` registry
@@ -136,8 +137,62 @@ export class PlatformTenantRepository {
       this.logger.warn(
         `TENANT_LIMITS_CHANGED received for tenant ${tenantId} with no platform_tenants projection row — limits update dropped (likely a pre-projection/backfill-window tenant)`,
       )
+      return
+    }
+
+    await this.recomputePlanDrift(tenantId, limits)
+  }
+
+  /**
+   * platform-manual-plans (Slice 4, Part 2) — D5: single choke point for the
+   * plan-vs-limits drift recompute. Every limits change flows through
+   * `applyLimitsChange` — including assign-plan's OWN push (via the
+   * TENANT_LIMITS_CHANGED it triggers) — so this one recompute covers both:
+   *  - a raw limits edit that no longer matches the stored plan → cleared
+   *  - assign-plan's own push, which re-matches its own tier → kept, no
+   *    self-clear (order-insensitive: setPlan may run before or after this)
+   *
+   * A stored `plan` value that is not a known `PlanCode` (legacy/corrupt
+   * data) is treated as non-matching and cleared rather than throwing.
+   */
+  private async recomputePlanDrift(
+    tenantId: string,
+    limits: PlatformTenantRegistryLimits,
+  ): Promise<void> {
+    const row = await this.prisma.platformTenant.findUnique({
+      where: { id: tenantId },
+      select: { plan: true },
+    })
+
+    const storedPlan = row?.plan
+    if (!storedPlan) {
+      return
+    }
+
+    const matches = isPlanCode(storedPlan) && planMatchesLimits(storedPlan, limits)
+    if (!matches) {
+      await this.prisma.platformTenant.update({
+        where: { id: tenantId },
+        data: { plan: null },
+      })
     }
   }
+
+  /**
+   * platform-manual-plans (Slice 4, Part 2) — command-written seam (D4):
+   * the ONLY write path for `plan`, called by the assign-plan endpoint AFTER
+   * the limits control-lane push succeeds (design D7 ordering).
+   */
+  async setPlan(tenantId: string, plan: PlanCode): Promise<void> {
+    await this.prisma.platformTenant.update({
+      where: { id: tenantId },
+      data: { plan },
+    })
+  }
+}
+
+function isPlanCode(value: string): value is PlanCode {
+  return value in PLAN_CATALOG
 }
 
 /**
