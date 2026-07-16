@@ -37,6 +37,18 @@ const SESSION_EXEMPT_401_PATHS = ['/auth/login', '/auth/step-up', '/auth/logout'
 // all come back 401 at once (e.g. a page firing multiple queries).
 let redirecting = false;
 
+// bfcache: a document restored from the back/forward cache keeps module state,
+// so `redirecting` would stay `true` after a prior redirect and silently
+// swallow a later legitimate session-expiry redirect. Reset it on
+// pageshow/pagehide so a restored page can redirect again. SSR-safe.
+if (typeof window !== 'undefined') {
+  const resetRedirecting = () => {
+    redirecting = false;
+  };
+  window.addEventListener('pageshow', resetRedirecting);
+  window.addEventListener('pagehide', resetRedirecting);
+}
+
 // Sends the operator back to sign-in with a session-expired indication,
 // preserving the current location as `redirect_url`. SSR-safe, deduped, and —
 // belt-and-suspenders against the sign-in 401 loop — a no-op when the browser

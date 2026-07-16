@@ -266,4 +266,27 @@ describe('apiRequest — 401 session-expired interceptor (D7)', () => {
       '/auth/sign-in?reason=session_expired&redirect_url=%2Fdashboard'
     );
   });
+
+  // JD WARNING — the `redirecting` dedupe flag is never reset, so a document
+  // restored from the bfcache (back/forward) keeps it `true` and would silently
+  // swallow a later legitimate session-expiry redirect. A `pageshow` resets it.
+  it('resets the dedupe flag on pageshow so a bfcache-restored page can redirect again', async () => {
+    vi.mocked(global.fetch).mockImplementation(() =>
+      Promise.resolve(jsonResponse(401, { statusCode: 401, message: 'Unauthorized' }))
+    );
+    const apiRequestFn = await loadApiRequest();
+
+    await expect(apiRequestFn('/operators/tenants')).rejects.toMatchObject({ status: 401 });
+    expect(assignSpy).toHaveBeenCalledTimes(1);
+
+    // A second 401 without a reset would be swallowed by the sticky flag.
+    await expect(apiRequestFn('/operators/audit')).rejects.toMatchObject({ status: 401 });
+    expect(assignSpy).toHaveBeenCalledTimes(1);
+
+    // Simulate a bfcache restore.
+    window.dispatchEvent(new Event('pageshow'));
+
+    await expect(apiRequestFn('/operators/limits')).rejects.toMatchObject({ status: 401 });
+    expect(assignSpy).toHaveBeenCalledTimes(2);
+  });
 });
