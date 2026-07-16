@@ -29,6 +29,17 @@ export const navGroups: NavGroup[] = [
         icon: 'clock',
         isActive: false,
         items: []
+      },
+      // platform-operator-management (A4, PR2) — OWNER-only surface (Design
+      // Decision 6). `access.role` is enforced client-side by app-sidebar's
+      // filterNavGroupsByRole; the server-side 403 remains the real guard.
+      {
+        title: 'Operadores',
+        url: '/dashboard/operators',
+        icon: 'user',
+        isActive: false,
+        items: [],
+        access: { role: 'OWNER' }
       }
     ]
   }
