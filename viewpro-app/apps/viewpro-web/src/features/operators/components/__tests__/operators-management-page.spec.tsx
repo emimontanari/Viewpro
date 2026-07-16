@@ -347,7 +347,7 @@ describe('OperatorsManagementPage — role change', () => {
     expect(mockToast.success).toHaveBeenCalled();
   });
 
-  it('a 422 SELF_DEMOTE_FORBIDDEN guardrail surfaces as a toast with the reason', async () => {
+  it('a 422 SELF_DEMOTE_FORBIDDEN guardrail surfaces a Spanish toast (not the English code)', async () => {
     mockGetOperatorList.mockResolvedValue(NON_EMPTY_LIST);
     mockUpdateOperatorRole.mockRejectedValueOnce({
       status: 422,
@@ -363,7 +363,7 @@ describe('OperatorsManagementPage — role change', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Guardar rol' }));
 
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith('You cannot change your own role');
+      expect(mockToast.error).toHaveBeenCalledWith('No podés cambiar tu propio rol.');
     });
     expect(mockGetOperatorList).toHaveBeenCalledTimes(1);
   });
@@ -420,7 +420,7 @@ describe('OperatorsManagementPage — status toggle', () => {
     });
   });
 
-  it('a 422 LAST_OWNER_PROTECTED guardrail surfaces as a toast with the reason; dialog closes', async () => {
+  it('a 422 LAST_OWNER_PROTECTED guardrail surfaces a Spanish toast (not the English code); dialog closes', async () => {
     mockGetOperatorList.mockResolvedValue(NON_EMPTY_LIST);
     mockUpdateOperatorStatus.mockRejectedValueOnce({
       status: 422,
@@ -437,8 +437,32 @@ describe('OperatorsManagementPage — status toggle', () => {
 
     await waitFor(() => {
       expect(mockToast.error).toHaveBeenCalledWith(
-        'This action would leave the platform with zero active OWNER operators'
+        'No se puede: debe quedar al menos un OWNER activo.'
       );
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(mockGetOperatorList).toHaveBeenCalledTimes(1);
+  });
+
+  it('a 422 SELF_STATUS_CHANGE_FORBIDDEN guardrail surfaces a Spanish toast (not the English code); dialog closes', async () => {
+    mockGetOperatorList.mockResolvedValue(NON_EMPTY_LIST);
+    mockUpdateOperatorStatus.mockRejectedValueOnce({
+      status: 422,
+      code: 'SELF_STATUS_CHANGE_FORBIDDEN',
+      message: 'You cannot change your own status'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-status-action-op-1'));
+    fireEvent.click(screen.getByTestId('mock-status-action-op-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('No podés cambiar tu propio estado.');
     });
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).toBeNull();
