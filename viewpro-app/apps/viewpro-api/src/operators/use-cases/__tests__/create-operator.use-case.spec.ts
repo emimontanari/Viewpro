@@ -4,6 +4,7 @@ import { CreateOperatorUseCase } from '../create-operator.use-case'
 import type { IOperatorRepository } from '../../../auth/repositories/operator.repository'
 import type { IPasswordHasher } from '../../../auth/security/password-hasher'
 import type { AuditLogRepository } from '../../../platform-data/audit-log.repository'
+import type { PrismaService } from '../../../database/prisma.service'
 
 /**
  * T1.3.1 — RED: `CreateOperatorUseCase` — Argon2 hash via the DI
@@ -17,11 +18,20 @@ class P2002Error extends Error {
   code = 'P2002'
 }
 
+// Fake prisma whose $transaction simply runs the callback with a throwaway tx
+// client — enough for the happy-path tests that don't assert on rollback.
+function makeFakePrisma(): PrismaService {
+  return {
+    $transaction: vi.fn((cb: (tx: unknown) => unknown) => cb({})),
+  } as unknown as PrismaService
+}
+
 describe('CreateOperatorUseCase (T1.3.1)', () => {
   let useCase: CreateOperatorUseCase
   let operatorRepository: IOperatorRepository
   let passwordHasher: IPasswordHasher
   let auditLogRepo: Pick<AuditLogRepository, 'appendNative'>
+  let prisma: PrismaService
 
   beforeEach(() => {
     operatorRepository = {
@@ -47,11 +57,13 @@ describe('CreateOperatorUseCase (T1.3.1)', () => {
     auditLogRepo = {
       appendNative: vi.fn().mockResolvedValue(undefined),
     }
+    prisma = makeFakePrisma()
 
     useCase = new CreateOperatorUseCase(
       operatorRepository,
       passwordHasher,
       auditLogRepo as AuditLogRepository,
+      prisma,
     )
   })
 
@@ -64,6 +76,7 @@ describe('CreateOperatorUseCase (T1.3.1)', () => {
     expect(passwordHasher.hash).toHaveBeenCalledWith('a-strong-temp-pw12')
     expect(operatorRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({ passwordHash: '$argon2id$hashed-temp-password' }),
+      expect.anything(),
     )
   })
 
@@ -73,7 +86,10 @@ describe('CreateOperatorUseCase (T1.3.1)', () => {
       ACTOR,
     )
 
-    expect(operatorRepository.create).toHaveBeenCalledWith(expect.objectContaining({ role: 'OWNER' }))
+    expect(operatorRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'OWNER' }),
+      expect.anything(),
+    )
   })
 
   it('normalizes email (lowercase/trim) before passing to the repository', async () => {
@@ -84,6 +100,7 @@ describe('CreateOperatorUseCase (T1.3.1)', () => {
 
     expect(operatorRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({ email: 'mixedcase@viewpro.app' }),
+      expect.anything(),
     )
   })
 
@@ -119,5 +136,70 @@ describe('CreateOperatorUseCase (T1.3.1)', () => {
     )
 
     expect(result).not.toHaveProperty('passwordHash')
+  })
+
+  // JD FIX 1 (atomicity): the operator INSERT and its native audit write must
+  // commit-or-rollback together in ONE transaction. If the audit write throws,
+  // the operator row must NOT be durably created (no silent audit gap).
+  it('rolls back the operator creation if the native audit write fails (single transaction)', async () => {
+    // Model commit semantics: a mutation that runs inside a tx is only
+    // "committed" once the $transaction callback resolves; a mutation with no
+    // tx commits immediately (the current, non-atomic behavior).
+    const committed: Array<{ id: string; email: string }> = []
+    const atomicPrisma = {
+      $transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => {
+        const staged: Array<{ id: string; email: string }> = []
+        const result = await cb({ __staged: staged })
+        committed.push(...staged)
+        return result
+      }),
+    } as unknown as PrismaService
+
+    const atomicRepo: IOperatorRepository = {
+      ...operatorRepository,
+      create: vi.fn(
+        async (
+          input: { email: string; passwordHash: string; role: string },
+          tx?: { __staged?: Array<{ id: string; email: string }> },
+        ) => {
+          const row = { id: 'op-new-1', email: input.email }
+          if (tx?.__staged) {
+            tx.__staged.push(row) // atomic path — committed only if the tx resolves
+          } else {
+            committed.push(row) // non-atomic path — durably committed immediately
+          }
+          return {
+            id: row.id,
+            email: row.email,
+            role: 'ANALYST',
+            status: 'ACTIVE',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any
+        },
+      ),
+    }
+
+    const failingAudit = {
+      appendNative: vi.fn().mockRejectedValue(new Error('audit sink down')),
+    }
+
+    const atomicUseCase = new CreateOperatorUseCase(
+      atomicRepo,
+      passwordHasher,
+      failingAudit as unknown as AuditLogRepository,
+      atomicPrisma,
+    )
+
+    await expect(
+      atomicUseCase.execute(
+        { email: 'atomic@viewpro.app', role: 'ANALYST', tempPassword: 'a-strong-temp-pw12' },
+        ACTOR,
+      ),
+    ).rejects.toThrow()
+
+    // The operator must NOT remain committed when the audit write failed.
+    expect(committed).toHaveLength(0)
   })
 })
