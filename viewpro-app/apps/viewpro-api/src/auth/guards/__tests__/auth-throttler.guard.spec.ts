@@ -175,7 +175,6 @@ describe('app.config.ts — cookie secure flag enforcement', () => {
     const mockConfigProd = {
       get: (key: string, fallback?: unknown) => {
         if (key === 'app.cookies.secure') return true
-        if (key === 'app.auth.accessTokenTtlSeconds') return 900
         if (key === 'app.cookies.domain') return undefined
         return fallback
       },
@@ -192,7 +191,6 @@ describe('app.config.ts — cookie secure flag enforcement', () => {
     const mockConfigDev = {
       get: (key: string, fallback?: unknown) => {
         if (key === 'app.cookies.secure') return false
-        if (key === 'app.auth.accessTokenTtlSeconds') return 900
         if (key === 'app.cookies.domain') return undefined
         return fallback
       },

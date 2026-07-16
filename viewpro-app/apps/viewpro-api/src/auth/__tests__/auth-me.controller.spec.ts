@@ -21,9 +21,10 @@ const ACCESS_TOKEN_SECRET =
   process.env.ACCESS_TOKEN_SECRET ?? 'test-access-token-secret-min16'
 
 // Builds an access token with fully explicit iat/exp/sessionExp claims —
-// deterministic, no fake timers. `noTimestamp: true` stops jsonwebtoken from
-// overwriting the explicit `iat`; omitting `sessionExp` from the overrides
-// signs a legacy token without the absolute-deadline claim (AC9).
+// deterministic, no fake timers. An explicit numeric `iat` in the payload is
+// preserved by jsonwebtoken's sign() (see the inline note below); omitting
+// `sessionExp` from the overrides signs a legacy token without the
+// absolute-deadline claim (AC9).
 async function buildAccessToken(overrides: {
   sub: string
   email: string
