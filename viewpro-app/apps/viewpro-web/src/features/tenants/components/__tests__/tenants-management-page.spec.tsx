@@ -182,7 +182,8 @@ const ITEM: TenantListItem = {
   name: 'Acme Realty',
   slug: 'acme-realty',
   status: 'ACTIVE',
-  limits: { maxUsers: 10, maxActivePropertyEngagements: 50, maxDocumentsStorageMb: 1024 }
+  limits: { maxUsers: 10, maxActivePropertyEngagements: 50, maxDocumentsStorageMb: 1024 },
+  trialEndsAt: null
 };
 
 const SUSPENDED_ITEM: TenantListItem = {
@@ -190,7 +191,8 @@ const SUSPENDED_ITEM: TenantListItem = {
   name: 'Beta Homes',
   slug: 'beta-homes',
   status: 'SUSPENDED',
-  limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null }
+  limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+  trialEndsAt: null
 };
 
 const NON_EMPTY_RESPONSE: TenantListResponse = { total: 60, items: [ITEM] };

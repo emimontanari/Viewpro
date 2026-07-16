@@ -37,7 +37,8 @@ const TRIAL_ITEM: TenantListItem = {
   name: 'Trial Co',
   slug: 'trial-co',
   status: 'TRIAL',
-  limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null }
+  limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+  trialEndsAt: null
 };
 
 const ITEMS: TenantListItem[] = [
@@ -46,14 +47,16 @@ const ITEMS: TenantListItem[] = [
     name: 'Acme Realty',
     slug: 'acme-realty',
     status: 'ACTIVE',
-    limits: { maxUsers: 10, maxActivePropertyEngagements: 50, maxDocumentsStorageMb: 1024 }
+    limits: { maxUsers: 10, maxActivePropertyEngagements: 50, maxDocumentsStorageMb: 1024 },
+    trialEndsAt: null
   },
   {
     id: 'tenant-2',
     name: 'Beta Homes',
     slug: 'beta-homes',
     status: 'SUSPENDED',
-    limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null }
+    limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+    trialEndsAt: null
   }
 ];
 
@@ -62,7 +65,8 @@ const CANCELLED_ITEM: TenantListItem = {
   name: 'Cancelled Co',
   slug: 'cancelled-co',
   status: 'CANCELLED',
-  limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null }
+  limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+  trialEndsAt: null
 };
 
 const CANCEL_ACTION = { kind: 'cancel', targetStatus: 'CANCELLED', label: 'Dar de baja' };
