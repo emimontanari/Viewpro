@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import type { TenantRole } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
 import { PlatformOutboxWriter } from '../../platform-data/platform-outbox-writer'
+import { computeTrialEndsAt } from '../utils/trial'
 import type {
   AuthRegistrationRepository,
   RegisteredTenantRecord,
@@ -17,6 +18,12 @@ export class PrismaAuthRegistrationRepository implements AuthRegistrationReposit
 
   async registerTenant(input: RegisterTenantRecordInput): Promise<RegisteredTenantRecord> {
     return this.prisma.$transaction(async (tx) => {
+      // Single `now` capture, reused for trialEndsAt (create data + payload)
+      // AND occurredAt below — keeps "persisted value === emitted value" as
+      // one atomic invariant next to the outbox emit (design decision).
+      const now = new Date()
+      const trialEndsAt = computeTrialEndsAt(now)
+
       const user = await tx.user.create({
         data: {
           email: input.email,
@@ -30,6 +37,7 @@ export class PrismaAuthRegistrationRepository implements AuthRegistrationReposit
         data: {
           name: input.tenantName,
           slug: input.tenantSlug,
+          trialEndsAt,
         },
       })
 
@@ -58,8 +66,9 @@ export class PrismaAuthRegistrationRepository implements AuthRegistrationReposit
             maxActivePropertyEngagements: tenant.maxActivePropertyEngagements,
             maxDocumentsStorageMb: tenant.maxDocumentsStorageMb,
           },
+          trialEndsAt: trialEndsAt.toISOString(),
         },
-        occurredAt: new Date().toISOString(),
+        occurredAt: now.toISOString(),
       })
 
       return { user, memberships: [membership] }
