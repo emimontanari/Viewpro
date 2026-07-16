@@ -2,14 +2,18 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { execSync } from 'node:child_process'
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
-import { ValidationPipe } from '@nestjs/common'
+import { UnauthorizedException, ValidationPipe } from '@nestjs/common'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { JwtService } from '@nestjs/jwt'
+import type { Operator } from '@prisma-platform/client'
 import cookieParser from 'cookie-parser'
 import request from 'supertest'
 import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
+import { AuthController } from '../auth.controller'
 import { AuthModule } from '../auth.module'
+import type { AuthenticatedRequest } from '../guards/auth.guard'
+import type { IOperatorRepository } from '../repositories/operator.repository'
 import { LoginUseCase } from '../use-cases/login.use-case'
 
 // Operator seeded by this test suite
@@ -210,9 +214,10 @@ describe('GET /api/auth/me', () => {
     expect(response.body.operator.email).toBe(SEEDED_EMAIL)
   })
 
-  // No DB query: spy on the LoginUseCase (the only component touching the DB in auth).
-  // GET /auth/me must succeed without touching the use case (no DB call).
-  it('GET /api/auth/me does NOT call any Prisma/database method', async () => {
+  // GET /auth/me re-checks the operator's CURRENT status (session-terminating
+  // hardening), but must NOT run the login use case. LoginUseCase.execute is
+  // the login/authentication path — /me only reads the operator row.
+  it('GET /api/auth/me does NOT invoke the login use case', async () => {
     const loginUseCase = app.get(LoginUseCase)
     const executeSpy = vi.spyOn(loginUseCase, 'execute')
 
@@ -241,9 +246,80 @@ describe('GET /api/auth/me', () => {
       .set('Cookie', cookieValue)
 
     expect(response.status).toBe(200)
-    // LoginUseCase.execute is the only path to the DB in auth; it must NOT be called
+    // The login use case must NOT be invoked by /me.
     expect(executeSpy).not.toHaveBeenCalled()
 
     executeSpy.mockRestore()
+  })
+})
+
+// Unit-level coverage of the session-terminating status re-check in getMe.
+// A valid access token no longer implies an ACTIVE session: a SUSPENDED or
+// removed operator must receive a 401 AUTH_REQUIRED so the FE logs them out.
+describe('AuthController.getMe — operator status enforcement (unit)', () => {
+  const makeOperator = (overrides: Partial<Operator> = {}): Operator => ({
+    id: 'op-me-1',
+    email: 'me@viewpro.app',
+    passwordHash: '$argon2id$hashed',
+    status: 'ACTIVE',
+    role: 'OWNER',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  })
+
+  const makeController = (findByIdResult: Operator | null) => {
+    const operatorRepository: IOperatorRepository = {
+      findById: vi.fn().mockResolvedValue(findByIdResult),
+      findByEmail: vi.fn(),
+    }
+    const controller = new AuthController(
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      operatorRepository,
+    )
+    return { controller, operatorRepository }
+  }
+
+  const req = (id: string, email: string) =>
+    ({ user: { id, email } }) as AuthenticatedRequest
+
+  it('ACTIVE operator → returns { operator: { id, email } } (unchanged shape)', async () => {
+    const { controller } = makeController(
+      makeOperator({ id: 'op-me-1', email: 'me@viewpro.app' }),
+    )
+
+    const result = await controller.getMe(req('op-me-1', 'me@viewpro.app'))
+
+    expect(result).toEqual({ operator: { id: 'op-me-1', email: 'me@viewpro.app' } })
+  })
+
+  it('SUSPENDED operator (valid token) → 401 UnauthorizedException with code AUTH_REQUIRED', async () => {
+    const { controller } = makeController(makeOperator({ status: 'SUSPENDED' }))
+
+    const error = await controller
+      .getMe(req('op-me-1', 'me@viewpro.app'))
+      .catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(UnauthorizedException)
+    expect((error as UnauthorizedException).getResponse()).toMatchObject({
+      statusCode: 401,
+      code: 'AUTH_REQUIRED',
+    })
+  })
+
+  it('operator row no longer exists → 401 UnauthorizedException with code AUTH_REQUIRED', async () => {
+    const { controller } = makeController(null)
+
+    const error = await controller
+      .getMe(req('gone', 'gone@viewpro.app'))
+      .catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(UnauthorizedException)
+    expect((error as UnauthorizedException).getResponse()).toMatchObject({
+      statusCode: 401,
+      code: 'AUTH_REQUIRED',
+    })
   })
 })
