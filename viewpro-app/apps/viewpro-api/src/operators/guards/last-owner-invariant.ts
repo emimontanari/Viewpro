@@ -23,6 +23,14 @@ const LAST_OWNER_RESPONSE = {
  * Rejects with a 422 UnprocessableEntityException (code LAST_OWNER_PROTECTED)
  * if excluding `targetId` from the locked ACTIVE-OWNER set would leave zero
  * remaining ACTIVE OWNERs. Resolves (void) otherwise.
+ *
+ * NOTE: this check is direction-AGNOSTIC and deliberately CONSERVATIVE. It
+ * looks only at whether `targetId` is the sole remaining ACTIVE OWNER — not at
+ * whether the pending mutation actually reduces the ACTIVE-OWNER count. So it
+ * conservatively blocks ANY role/status mutation targeting the sole ACTIVE
+ * OWNER, INCLUDING no-ops (e.g. reactivating/re-promoting an already ACTIVE
+ * sole OWNER). This over-rejection is intentional fail-closed behavior (never
+ * risk leaving the platform with zero active OWNERs), NOT false-positive-free.
  */
 export async function assertNotLastActiveOwner(tx: Prisma.TransactionClient, targetId: string): Promise<void> {
   const lockedOwners = await tx.$queryRaw<Array<{ id: string }>>`

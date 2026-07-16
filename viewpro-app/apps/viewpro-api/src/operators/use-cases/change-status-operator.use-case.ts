@@ -21,11 +21,18 @@ const OPERATOR_NOT_FOUND_RESPONSE = {
 /**
  * ChangeStatusOperatorUseCase (platform-operator-management, A4).
  *
- * Guard order: self-target check (actor.id === targetId) FIRST, before any
- * DB read — then the race-safe last-OWNER invariant (Decision 2), applied
- * inside the SAME transaction as the status update (withLastOwnerGuard).
- * Applies uniformly to suspend AND reactivate: reactivating never reduces the
- * ACTIVE-OWNER count, so the guard is a no-op false-positive-free check there.
+ * Guard order: self-target check (actor.id === targetId, 422) FIRST, before
+ * any DB read — then a not-found pre-check (404, JD FIX 2) — then the race-safe
+ * last-OWNER invariant (Decision 2, 422), applied inside the SAME transaction
+ * as the status update (withLastOwnerGuard).
+ *
+ * The last-OWNER guard is intentionally CONSERVATIVE (fail-closed): it blocks
+ * ANY status mutation targeting the sole ACTIVE OWNER — including no-ops and
+ * reactivations that do not actually reduce the ACTIVE-OWNER count — because it
+ * only checks whether the target is the sole ACTIVE OWNER, not the direction of
+ * the change. This can over-reject a harmless no-op reactivation of the sole
+ * ACTIVE OWNER, which is an accepted, deliberate safety tradeoff (never leave
+ * the platform with zero active OWNERs), NOT a false-positive-free check.
  */
 @Injectable()
 export class ChangeStatusOperatorUseCase {
