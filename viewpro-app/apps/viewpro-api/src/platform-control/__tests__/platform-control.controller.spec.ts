@@ -382,6 +382,31 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
       expect(res.status).toBe(200)
     })
 
+    // platform-manual-plans (Slice 4, Part 2) — Task 37 verification:
+    // "Activar" (TRIAL→ACTIVE) stays fully decoupled from plan assignment —
+    // regression only, no new production code. Confirms the non-goal
+    // explicitly called out in the spec: activation never assigns/requires a
+    // plan and never triggers step-up (same AC6 exemption as above).
+    it('activating a TRIAL tenant (status:ACTIVE) does not assign a plan and requires no step-up (decoupled, spec non-goal)', async () => {
+      await prisma.platformTenant.upsert({
+        where: { id: 'tenant-1' },
+        create: { id: 'tenant-1', name: 'Tenant One', slug: 'tenant-1', latestStatus: 'TRIAL' },
+        update: { plan: null, latestStatus: 'TRIAL' },
+      })
+      const cookie = await getSessionCookie()
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', cookie)
+        .send({ status: 'ACTIVE' })
+
+      expect(res.status).toBe(200)
+      expect(mockClient.postTenantLimits).not.toHaveBeenCalled()
+
+      const row = await prisma.platformTenant.findUnique({ where: { id: 'tenant-1' } })
+      expect(row?.plan).toBeNull()
+    })
+
     it('a step-up cookie is reusable: limits then status(SUSPENDED) succeed with a single POST /auth/step-up (AC4 reusable)', async () => {
       const cookie = await getSessionCookie()
       const stepUpCookie = await getStepUpCookie(cookie)
