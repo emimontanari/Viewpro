@@ -35,8 +35,12 @@ export class AuthGuard implements CanActivate {
     }
 
     // 2. Legacy/AC9 — a token without a sessionExp claim is treated as
-    // expired, never grandfathered as valid.
-    if (typeof payload.sessionExp !== 'number') {
+    // expired, never grandfathered as valid. Number.isFinite (not a bare
+    // `typeof === 'number'`) also rejects NaN/±Infinity, keeping the
+    // absolute-deadline invariant self-contained: `typeof NaN === 'number'`
+    // is true and `now > NaN + tol` is false, which would otherwise leak an
+    // infinite session.
+    if (!Number.isFinite(payload.sessionExp)) {
       this.clearBothCookies(context)
       throw new UnauthorizedException('Authentication required')
     }

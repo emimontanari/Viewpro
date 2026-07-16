@@ -80,6 +80,30 @@ describe('AuthGuard — failure paths clear both cookies (D9, AC7)', () => {
     expect(response.clearCookie).toHaveBeenCalledTimes(2)
   })
 
+  it('non-finite sessionExp (NaN): clears both cookies, then throws UnauthorizedException', async () => {
+    // Defense-in-depth — a NaN sessionExp is unreachable in production (JSON
+    // can't encode NaN, env validation blocks it), but the guard's invariant
+    // must be self-contained: `typeof NaN === 'number'` is true, so a bare
+    // typeof check would let it slip through and `now > NaN + tol` is false,
+    // yielding an infinite session. Number.isFinite closes that.
+    const nowSec = Math.floor(Date.now() / 1000)
+    const verifyAccessToken = vi.fn().mockResolvedValue({
+      sub: 'op-1',
+      email: 'op@viewpro.app',
+      sessionExp: NaN,
+      iat: nowSec,
+      exp: nowSec + 600,
+    })
+    const { guard, tokenService } = makeGuard({ verifyAccessToken })
+    const { context, response } = makeContext({ viewpro_platform_access_token: 'nan.session.token' })
+
+    await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
+
+    expect(tokenService.clearAccessCookie).toHaveBeenCalledWith(response)
+    expect(tokenService.clearStepUpCookie).toHaveBeenCalledWith(response)
+    expect(response.clearCookie).toHaveBeenCalledTimes(2)
+  })
+
   it('valid token: does not clear any cookie and returns true', async () => {
     const nowSec = Math.floor(Date.now() / 1000)
     const verifyAccessToken = vi.fn().mockResolvedValue({
