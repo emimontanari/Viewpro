@@ -1,12 +1,21 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import type { Request } from 'express'
-import { ACCESS_TOKEN_COOKIE, CLOCK_TOLERANCE_SECONDS, IDLE_REISSUE_THRESHOLD } from '../auth.constants'
+import { ACCESS_TOKEN_COOKIE, AUTH_REQUIRED_CODE, CLOCK_TOLERANCE_SECONDS, IDLE_REISSUE_THRESHOLD } from '../auth.constants'
 import { TokenService } from '../tokens/token.service'
 
 export type AuthenticatedRequest = Request & {
   user?: { id: string; email: string }
   cookies?: Record<string, string | undefined>
+}
+
+// Coded 401 body shared by all AuthGuard reject sites (mirrors the
+// StepUpGuard's STEP_UP_REQUIRED_RESPONSE shape). The `code` is the stable,
+// machine-readable contract the FE keys off; `message` stays human-facing.
+const AUTH_REQUIRED_RESPONSE = {
+  statusCode: 401,
+  code: AUTH_REQUIRED_CODE,
+  message: 'Authentication required',
 }
 
 @Injectable()
@@ -22,7 +31,7 @@ export class AuthGuard implements CanActivate {
 
     if (!token) {
       this.clearBothCookies(context)
-      throw new UnauthorizedException('Authentication required')
+      throw new UnauthorizedException(AUTH_REQUIRED_RESPONSE)
     }
 
     // 1. Sliding idle deadline (`exp`), clock-tolerant.
@@ -31,7 +40,7 @@ export class AuthGuard implements CanActivate {
       payload = await this.tokenService.verifyAccessToken(token)
     } catch {
       this.clearBothCookies(context)
-      throw new UnauthorizedException('Authentication required')
+      throw new UnauthorizedException(AUTH_REQUIRED_RESPONSE)
     }
 
     // 2. Legacy/AC9 — a token without a sessionExp claim is treated as
@@ -42,7 +51,7 @@ export class AuthGuard implements CanActivate {
     // infinite session.
     if (!Number.isFinite(payload.sessionExp)) {
       this.clearBothCookies(context)
-      throw new UnauthorizedException('Authentication required')
+      throw new UnauthorizedException(AUTH_REQUIRED_RESPONSE)
     }
 
     // 3. Absolute deadline (D2) — evaluated independently of the sliding
@@ -50,7 +59,7 @@ export class AuthGuard implements CanActivate {
     const now = Math.floor(Date.now() / 1000)
     if (now > payload.sessionExp + CLOCK_TOLERANCE_SECONDS) {
       this.clearBothCookies(context)
-      throw new UnauthorizedException('Authentication required')
+      throw new UnauthorizedException(AUTH_REQUIRED_RESPONSE)
     }
 
     request.user = { id: payload.sub, email: payload.email }
