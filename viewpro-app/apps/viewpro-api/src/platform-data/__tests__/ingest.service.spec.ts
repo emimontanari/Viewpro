@@ -8,6 +8,7 @@ import { MirrorRepository } from '../mirror.repository'
 import { CursorRepository } from '../cursor.repository'
 import { PlatformTenantRepository } from '../platform-tenant.repository'
 import { AuditLogRepository } from '../audit-log.repository'
+import { TenantRegistryService } from '../tenant-registry.service'
 import type { PlatformOutboxEvent } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 
 /**
@@ -1203,5 +1204,49 @@ describe('IngestService — TENANT_LIMITS_CHANGED routing (platform-manual-plans
 
     const cursor = await cursorRepo.getCursor()
     expect(cursor).toBe(3)
+  })
+
+  // Task 12 — Verification: end-to-end check. Emits TENANT_LIMITS_CHANGED
+  // from an InmoView-shaped event, runs it through ViewPro ingest, then
+  // reads the operator-facing TenantRegistryService (which backs
+  // GET /operators/tenants) and asserts it reflects the new limits with no
+  // staleness — closing the read-model staleness bug end to end.
+  it('E2E: TENANT_LIMITS_CHANGED ingest → TenantRegistryService.listTenants reflects fresh limits (no staleness)', async () => {
+    const registryModule = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [TenantRegistryService],
+    }).compile()
+    const registryService = registryModule.get(TenantRegistryService)
+
+    await ingestService.ingestBatch([
+      makeRegisteredEvent({
+        id: 'evt-e2e-registered',
+        seqNo: 10,
+        tenantId: 't-e2e-fresh',
+        payload: {
+          id: 't-e2e-fresh',
+          name: 'E2E Fresh Realty',
+          slug: 'e2e-fresh-realty',
+          newStatus: 'TRIAL',
+          limits: { maxUsers: 5, maxActivePropertyEngagements: 10, maxDocumentsStorageMb: 500 },
+        },
+      }),
+    ])
+
+    const staleResult = await registryService.listTenants()
+    const staleItem = staleResult.items.find((i) => i.id === 't-e2e-fresh')
+    expect(staleItem?.limits.maxUsers).toBe(5)
+
+    await ingestService.ingestBatch([
+      makeLimitsChangedEvent({ id: 'evt-e2e-limits', seqNo: 11, tenantId: 't-e2e-fresh' }),
+    ])
+
+    const freshResult = await registryService.listTenants()
+    const freshItem = freshResult.items.find((i) => i.id === 't-e2e-fresh')
+    expect(freshItem?.limits.maxUsers).toBe(25)
+    expect(freshItem?.limits.maxActivePropertyEngagements).toBe(100)
+    expect(freshItem?.limits.maxDocumentsStorageMb).toBe(5000)
+
+    await registryModule.close()
   })
 })
