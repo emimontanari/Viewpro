@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../database/prisma.service'
 import type {
   TenantRegisteredPayload,
@@ -17,6 +17,8 @@ import type {
  */
 @Injectable()
 export class PlatformTenantRepository {
+  private readonly logger = new Logger(PlatformTenantRepository.name)
+
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -113,7 +115,7 @@ export class PlatformTenantRepository {
     tenantId: string,
     limits: PlatformTenantRegistryLimits,
   ): Promise<void> {
-    await this.prisma.platformTenant.updateMany({
+    const { count } = await this.prisma.platformTenant.updateMany({
       where: { id: tenantId },
       data: {
         maxUsers: limits.maxUsers,
@@ -121,6 +123,20 @@ export class PlatformTenantRepository {
         maxDocumentsStorageMb: limits.maxDocumentsStorageMb,
       },
     })
+
+    // Observability for the zero-match drop: update-if-exists means a
+    // TENANT_LIMITS_CHANGED for a tenant with no projection row matches ZERO
+    // rows and is silently skipped (no create — a limits event carries no
+    // `latestStatus`, so no valid row can be fabricated). That drop is
+    // intentional and non-stalling (no throw, cursor still advances), but it
+    // must not be invisible: without a trace the limits change is permanently
+    // lost from the projection. Emit a warning so a pre-projection/backfill-
+    // window tenant is diagnosable.
+    if (count === 0) {
+      this.logger.warn(
+        `TENANT_LIMITS_CHANGED received for tenant ${tenantId} with no platform_tenants projection row — limits update dropped (likely a pre-projection/backfill-window tenant)`,
+      )
+    }
   }
 }
 
