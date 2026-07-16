@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { AuthModule } from '../auth/auth.module'
+import { PermissionsModule } from '../permissions/permissions.module'
 import { ChangeFeedClient } from './change-feed.client'
 import { IngestService } from './ingest.service'
 import { MirrorRepository } from './mirror.repository'
@@ -20,6 +21,7 @@ import { AuditController } from './audit.controller'
  *
  * Wires:
  *  - AuthModule: provides AuthGuard (Phase 4 operator session guard)
+ *  - PermissionsModule: provides PlatformPermissionGuard (D4 — operator-platform-roles)
  *  - ChangeFeedClient: mints HS256 ingest tokens and GETs InmoView change-feed
  *  - IngestService: idempotent mirror upsert + cursor advance (D7, D8);
  *    routes each event into the platform_tenants projection by eventType (A8/A9);
@@ -37,7 +39,7 @@ import { AuditController } from './audit.controller'
  * DatabaseModule is @Global() so PrismaService is available without explicit import.
  */
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, PermissionsModule],
   controllers: [MetricsController, TenantRegistryController, AuditController],
   providers: [
     // ChangeFeedClient's constructor is typed (ConfigService | Options) for a

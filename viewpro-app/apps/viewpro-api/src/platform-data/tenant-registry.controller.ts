@@ -2,6 +2,10 @@ import { Controller, Get, Query, UseGuards } from '@nestjs/common'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { AuthGuard } from '../auth/guards/auth.guard'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
+import { PlatformPermissionGuard } from '../permissions/platform-permission.guard'
+import { PLATFORM_PERMISSIONS } from '../permissions/platform-permissions.constants'
+import { RequirePlatformPermission } from '../permissions/require-platform-permission.decorator'
+// biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { TenantRegistryService } from './tenant-registry.service'
 import type { TenantRegistryList } from './tenant-registry.service'
 
@@ -31,11 +35,12 @@ function sanitizeLimit(raw?: string): number {
 /**
  * TenantRegistryController — operator-facing tenant list (A10/A11).
  *
- * Protected by Phase 4 AuthGuard (viewpro_platform_access_token cookie).
+ * Protected by Phase 4 AuthGuard (viewpro_platform_access_token cookie) and
+ * PlatformPermissionGuard (D4 — operator-platform-roles).
  * Serves data EXCLUSIVELY from `platform_tenants` — never from InmoView.
  */
 @Controller('operators/tenants')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PlatformPermissionGuard)
 export class TenantRegistryController {
   constructor(private readonly tenantRegistryService: TenantRegistryService) {}
 
@@ -46,6 +51,7 @@ export class TenantRegistryController {
    * limit=50 (capped at 200 — A11).
    */
   @Get()
+  @RequirePlatformPermission(PLATFORM_PERMISSIONS.TENANTS_READ)
   async list(
     @Query('offset') offset?: string,
     @Query('limit') limit?: string,

@@ -10,6 +10,8 @@ import request from 'supertest'
 import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
 import { AuthModule } from '../../auth/auth.module'
+import { PrismaService } from '../../database/prisma.service'
+import { PermissionsModule } from '../../permissions/permissions.module'
 import { PlatformControlModule } from '../platform-control.module'
 import { PlatformControlClient } from '../platform-control.client'
 
@@ -37,6 +39,16 @@ const TEST_PASSWORD = 'platform-ctrl-test-password'
 const TEST_EMAIL_B = 'platform-ctrl-test-operator-b@viewpro.app'
 const TEST_PASSWORD_B = 'platform-ctrl-test-operator-b-password'
 
+// T-07 — role fixtures for PlatformPermissionGuard integration coverage.
+const TEST_EMAIL_ANALYST = 'platform-ctrl-test-analyst@viewpro.app'
+const TEST_PASSWORD_ANALYST = 'platform-ctrl-test-analyst-password'
+const TEST_EMAIL_OPERATIONS = 'platform-ctrl-test-operations@viewpro.app'
+const TEST_PASSWORD_OPERATIONS = 'platform-ctrl-test-operations-password'
+const TEST_EMAIL_ROLE_CHANGE = 'platform-ctrl-test-role-change@viewpro.app'
+const TEST_PASSWORD_ROLE_CHANGE = 'platform-ctrl-test-role-change-password'
+const TEST_EMAIL_SUSPEND = 'platform-ctrl-test-suspend@viewpro.app'
+const TEST_PASSWORD_SUSPEND = 'platform-ctrl-test-suspend-password'
+
 function extractCookie(headers: Record<string, unknown>, name: string): string {
   const raw = headers['set-cookie'] as string[] | string | undefined
   const arr = Array.isArray(raw) ? raw : [raw ?? '']
@@ -50,10 +62,22 @@ function extractPlatformCookie(headers: Record<string, unknown>): string {
 
 describe('PlatformControlController (viewpro-api) — operator endpoints', () => {
   let app: INestApplication
+  let prisma: PrismaService
   let mockClient: {
     mintServiceToken: ReturnType<typeof vi.fn>
     postTenantStatus: ReturnType<typeof vi.fn>
     postTenantLimits: ReturnType<typeof vi.fn>
+  }
+
+  function seedOperator(email: string, password: string): void {
+    execSync('pnpm db:seed', {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        SEED_OPERATOR_EMAIL: email,
+        SEED_OPERATOR_PASSWORD: password,
+      },
+    })
   }
 
   beforeAll(async () => {
@@ -69,6 +93,7 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
         ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
         DatabaseModule,
         AuthModule,
+        PermissionsModule,
         PlatformControlModule,
       ],
     })
@@ -82,22 +107,29 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
     await app.init()
 
-    // Seed test operators (idempotent upsert)
-    execSync('pnpm db:seed', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        SEED_OPERATOR_EMAIL: TEST_EMAIL,
-        SEED_OPERATOR_PASSWORD: TEST_PASSWORD,
-      },
-    })
-    execSync('pnpm db:seed', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        SEED_OPERATOR_EMAIL: TEST_EMAIL_B,
-        SEED_OPERATOR_PASSWORD: TEST_PASSWORD_B,
-      },
+    prisma = moduleFixture.get(PrismaService)
+
+    // Seed test operators (idempotent upsert) — production seed stays OWNER-only.
+    seedOperator(TEST_EMAIL, TEST_PASSWORD)
+    seedOperator(TEST_EMAIL_B, TEST_PASSWORD_B)
+
+    // T-07 — role fixtures seeded directly via Prisma (no real signup exists).
+    seedOperator(TEST_EMAIL_ANALYST, TEST_PASSWORD_ANALYST)
+    await prisma.operator.update({ where: { email: TEST_EMAIL_ANALYST }, data: { role: 'ANALYST' } })
+
+    seedOperator(TEST_EMAIL_OPERATIONS, TEST_PASSWORD_OPERATIONS)
+    await prisma.operator.update({ where: { email: TEST_EMAIL_OPERATIONS }, data: { role: 'OPERATIONS' } })
+
+    seedOperator(TEST_EMAIL_ROLE_CHANGE, TEST_PASSWORD_ROLE_CHANGE)
+    await prisma.operator.update({ where: { email: TEST_EMAIL_ROLE_CHANGE }, data: { role: 'OPERATIONS' } })
+
+    seedOperator(TEST_EMAIL_SUSPEND, TEST_PASSWORD_SUSPEND)
+    // OWNER by default — has every permission until suspended mid-test. Reset
+    // explicitly on every run: a prior run's SUSPENDED mutation persists
+    // across test executions (upsert's `update: {}` never resets it).
+    await prisma.operator.update({
+      where: { email: TEST_EMAIL_SUSPEND },
+      data: { status: 'ACTIVE', role: 'OWNER' },
     })
   })
 
@@ -433,6 +465,151 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
       expect(res.status).toBe(401)
       expect(res.body.code).not.toBe('STEP_UP_REQUIRED')
       expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // T-07 — RED: write routes gated by PlatformPermissionGuard
+  //
+  // Spec: operator-platform-roles — Write Routes Require the Declared WRITE
+  //   Permission; ANALYST Is Denied and Nothing Mutates; Guard Order Keeps
+  //   401, Permission-403, and Step-up-403 Distinct; A Role Change Takes
+  //   Effect on the Operator's Very Next Request
+  // Design: D1, D6, D7
+  // -------------------------------------------------------------------------
+  describe('PlatformPermissionGuard on write routes', () => {
+    it('ANALYST, no step-up cookie: PATCH .../status → 403 PERMISSION_DENIED, no mutation (b — WRITE half)', async () => {
+      const cookie = await getSessionCookieFor(TEST_EMAIL_ANALYST, TEST_PASSWORD_ANALYST)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', cookie)
+        .send({ status: 'SUSPENDED' })
+
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('PERMISSION_DENIED')
+      expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
+    })
+
+    it('ANALYST: PATCH .../limits → 403 PERMISSION_DENIED, no mutation', async () => {
+      const cookie = await getSessionCookieFor(TEST_EMAIL_ANALYST, TEST_PASSWORD_ANALYST)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/limits')
+        .set('Cookie', cookie)
+        .send({ maxUsers: 10, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null })
+
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('PERMISSION_DENIED')
+      expect(mockClient.postTenantLimits).not.toHaveBeenCalled()
+    })
+
+    it('OPERATIONS, WITH a fresh step-up cookie: PATCH .../status → 200, downstream called once (c)', async () => {
+      const cookie = await getSessionCookieFor(TEST_EMAIL_OPERATIONS, TEST_PASSWORD_OPERATIONS)
+      const stepUpCookie = await getStepUpCookieFor(cookie, TEST_PASSWORD_OPERATIONS)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', `${cookie}; ${stepUpCookie}`)
+        .send({ status: 'SUSPENDED' })
+
+      expect(res.status).toBe(200)
+      expect(mockClient.postTenantStatus).toHaveBeenCalledOnce()
+    })
+
+    it('OPERATIONS, WITH a fresh step-up cookie: PATCH .../limits → 200, downstream called once', async () => {
+      const cookie = await getSessionCookieFor(TEST_EMAIL_OPERATIONS, TEST_PASSWORD_OPERATIONS)
+      const stepUpCookie = await getStepUpCookieFor(cookie, TEST_PASSWORD_OPERATIONS)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/limits')
+        .set('Cookie', `${cookie}; ${stepUpCookie}`)
+        .send({ maxUsers: 10, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null })
+
+      expect(res.status).toBe(200)
+      expect(mockClient.postTenantLimits).toHaveBeenCalledOnce()
+    })
+
+    it('OPERATIONS, WITHOUT a step-up cookie: PATCH .../limits → 403 STEP_UP_REQUIRED (permission passed, step-up still gates)', async () => {
+      const cookie = await getSessionCookieFor(TEST_EMAIL_OPERATIONS, TEST_PASSWORD_OPERATIONS)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/limits')
+        .set('Cookie', cookie)
+        .send({ maxUsers: 10, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null })
+
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('STEP_UP_REQUIRED')
+      expect(mockClient.postTenantLimits).not.toHaveBeenCalled()
+    })
+
+    it('guard order: ANALYST, no step-up cookie: PATCH .../status → 403 with code !== STEP_UP_REQUIRED (permission guard stops the request before step-up ever evaluates, e)', async () => {
+      const cookie = await getSessionCookieFor(TEST_EMAIL_ANALYST, TEST_PASSWORD_ANALYST)
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', cookie)
+        .send({ status: 'SUSPENDED' })
+
+      expect(res.status).toBe(403)
+      expect(res.body.code).not.toBe('STEP_UP_REQUIRED')
+      expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
+    })
+
+    it('guard order: OWNER (default role), no step-up cookie: PATCH .../status → still 403 STEP_UP_REQUIRED (permission passes, step-up still gates, e)', async () => {
+      const cookie = await getSessionCookie()
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', cookie)
+        .send({ status: 'SUSPENDED' })
+
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('STEP_UP_REQUIRED')
+      expect(mockClient.postTenantStatus).not.toHaveBeenCalled()
+    })
+
+    it('role change mid-session: OPERATIONS→ANALYST denies the very next request on the same still-valid cookies, no re-login (f, D1)', async () => {
+      const cookie = await getSessionCookieFor(TEST_EMAIL_ROLE_CHANGE, TEST_PASSWORD_ROLE_CHANGE)
+      const stepUpCookie = await getStepUpCookieFor(cookie, TEST_PASSWORD_ROLE_CHANGE)
+
+      const firstRes = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/limits')
+        .set('Cookie', `${cookie}; ${stepUpCookie}`)
+        .send({ maxUsers: 10, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null })
+      expect(firstRes.status).toBe(200)
+
+      await prisma.operator.update({
+        where: { email: TEST_EMAIL_ROLE_CHANGE },
+        data: { role: 'ANALYST' },
+      })
+
+      const secondRes = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/status')
+        .set('Cookie', `${cookie}; ${stepUpCookie}`)
+        .send({ status: 'SUSPENDED' })
+
+      expect(secondRes.status).toBe(403)
+      expect(secondRes.body.code).toBe('PERMISSION_DENIED')
+    })
+
+    it('SUSPENDED lockout: an OWNER operator loses access mid-session on the same still-valid access cookie (g, D6)', async () => {
+      const cookie = await getSessionCookieFor(TEST_EMAIL_SUSPEND, TEST_PASSWORD_SUSPEND)
+      const stepUpCookie = await getStepUpCookieFor(cookie, TEST_PASSWORD_SUSPEND)
+
+      await prisma.operator.update({
+        where: { email: TEST_EMAIL_SUSPEND },
+        data: { status: 'SUSPENDED' },
+      })
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/operators/tenants/tenant-1/limits')
+        .set('Cookie', `${cookie}; ${stepUpCookie}`)
+        .send({ maxUsers: 10, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null })
+
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('PERMISSION_DENIED')
+      expect(mockClient.postTenantLimits).not.toHaveBeenCalled()
     })
   })
 })

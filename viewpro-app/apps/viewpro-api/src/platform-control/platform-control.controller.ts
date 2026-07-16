@@ -4,6 +4,10 @@ import { AuthGuard, type AuthenticatedRequest } from '../auth/guards/auth.guard'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { StepUpGuard, StepUpStatusTargets } from '../auth/guards/step-up.guard'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
+import { PlatformPermissionGuard } from '../permissions/platform-permission.guard'
+import { PLATFORM_PERMISSIONS } from '../permissions/platform-permissions.constants'
+import { RequirePlatformPermission } from '../permissions/require-platform-permission.decorator'
+// biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { PlatformControlClient } from './platform-control.client'
 // biome-ignore lint/style/useImportType: Nest validation needs runtime DTO metadata.
 import { SetTenantStatusDto } from './dto/set-tenant-status.dto'
@@ -13,13 +17,16 @@ import { SetTenantLimitsDto } from './dto/set-tenant-limits.dto'
 /**
  * PlatformControlController (viewpro-api) — operator-facing control-lane endpoints.
  *
- * Protected by Phase 4 AuthGuard (viewpro_platform_access_token cookie).
+ * Protected by Phase 4 AuthGuard (viewpro_platform_access_token cookie) and
+ * PlatformPermissionGuard (D4 — operator-platform-roles). Class-level guard
+ * order is AuthGuard(401) → PlatformPermissionGuard(403 PERMISSION_DENIED) →
+ * method-level StepUpGuard(403 STEP_UP_REQUIRED) on both destructive PATCHes.
  * Generates a fresh idempotencyKey per request and delegates to PlatformControlClient,
  * which mints a short-lived HS256 service token and forwards to InmoView's internal
  * control-lane endpoints.
  */
 @Controller('operators/tenants')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PlatformPermissionGuard)
 export class PlatformControlController {
   constructor(private readonly client: PlatformControlClient) {}
 
@@ -29,6 +36,7 @@ export class PlatformControlController {
    */
   @Patch(':tenantId/status')
   @HttpCode(200)
+  @RequirePlatformPermission(PLATFORM_PERMISSIONS.TENANT_STATUS_WRITE)
   @UseGuards(StepUpGuard)
   @StepUpStatusTargets(['SUSPENDED', 'CANCELLED'])
   async updateTenantStatus(
@@ -47,6 +55,7 @@ export class PlatformControlController {
    */
   @Patch(':tenantId/limits')
   @HttpCode(200)
+  @RequirePlatformPermission(PLATFORM_PERMISSIONS.TENANT_LIMITS_WRITE)
   @UseGuards(StepUpGuard)
   async updateTenantLimits(
     @Param('tenantId') tenantId: string,

@@ -30,6 +30,7 @@ async function main() {
       email,
       passwordHash,
       status: 'ACTIVE',
+      role: 'OWNER',
     },
   })
 

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Operator" ALTER COLUMN "role" SET DEFAULT 'ANALYST';

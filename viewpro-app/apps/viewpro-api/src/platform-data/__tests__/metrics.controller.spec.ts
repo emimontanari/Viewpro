@@ -10,6 +10,7 @@ import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
 import { AuthModule } from '../../auth/auth.module'
 import { PrismaService } from '../../database/prisma.service'
+import { PermissionsModule } from '../../permissions/permissions.module'
 import { MetricsController } from '../metrics.controller'
 import { MetricsService } from '../metrics.service'
 
@@ -24,6 +25,12 @@ import { MetricsService } from '../metrics.service'
 const TEST_EMAIL = 'metrics-ctrl-test@viewpro.app'
 const TEST_PASSWORD = 'metrics-ctrl-test-password'
 
+// T-09 — role fixtures for PlatformPermissionGuard READ-route coverage.
+const TEST_EMAIL_ANALYST = 'metrics-ctrl-test-analyst@viewpro.app'
+const TEST_PASSWORD_ANALYST = 'metrics-ctrl-test-analyst-password'
+const TEST_EMAIL_OPERATIONS = 'metrics-ctrl-test-operations@viewpro.app'
+const TEST_PASSWORD_OPERATIONS = 'metrics-ctrl-test-operations-password'
+
 function extractPlatformCookie(headers: Record<string, unknown>): string {
   const raw = headers['set-cookie'] as string[] | string | undefined
   const arr = Array.isArray(raw) ? raw : [raw ?? '']
@@ -35,16 +42,20 @@ describe('MetricsController (integration — test DB)', () => {
   let app: INestApplication
   let prisma: PrismaService
 
-  beforeAll(async () => {
-    // Seed a test operator
+  function seedOperator(email: string, password: string): void {
     execSync('pnpm db:seed', {
       cwd: process.cwd(),
       env: {
         ...process.env,
-        SEED_OPERATOR_EMAIL: TEST_EMAIL,
-        SEED_OPERATOR_PASSWORD: TEST_PASSWORD,
+        SEED_OPERATOR_EMAIL: email,
+        SEED_OPERATOR_PASSWORD: password,
       },
     })
+  }
+
+  beforeAll(async () => {
+    // Seed a test operator
+    seedOperator(TEST_EMAIL, TEST_PASSWORD)
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -52,6 +63,7 @@ describe('MetricsController (integration — test DB)', () => {
         ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
         DatabaseModule,
         AuthModule,
+        PermissionsModule,
       ],
       controllers: [MetricsController],
       providers: [MetricsService],
@@ -64,6 +76,13 @@ describe('MetricsController (integration — test DB)', () => {
     await app.init()
 
     prisma = moduleFixture.get(PrismaService)
+
+    // T-09 — role fixtures seeded directly via Prisma (no real signup exists).
+    seedOperator(TEST_EMAIL_ANALYST, TEST_PASSWORD_ANALYST)
+    await prisma.operator.update({ where: { email: TEST_EMAIL_ANALYST }, data: { role: 'ANALYST' } })
+
+    seedOperator(TEST_EMAIL_OPERATIONS, TEST_PASSWORD_OPERATIONS)
+    await prisma.operator.update({ where: { email: TEST_EMAIL_OPERATIONS }, data: { role: 'OPERATIONS' } })
   })
 
   afterAll(async () => {
@@ -80,14 +99,18 @@ describe('MetricsController (integration — test DB)', () => {
     })
   })
 
-  async function getSessionCookie(): Promise<string> {
+  async function getSessionCookieFor(email: string, password: string): Promise<string> {
     const res = await request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ email: TEST_EMAIL, password: TEST_PASSWORD })
+      .send({ email, password })
     if (res.status !== 200) {
       throw new Error(`Login failed: ${res.status} ${JSON.stringify(res.body)}`)
     }
     return extractPlatformCookie(res.headers as Record<string, unknown>)
+  }
+
+  async function getSessionCookie(): Promise<string> {
+    return getSessionCookieFor(TEST_EMAIL, TEST_PASSWORD)
   }
 
   // Scenario: Unauthenticated request is rejected (spec scenario 2)
@@ -267,5 +290,31 @@ describe('MetricsController (integration — test DB)', () => {
     expect((res.body.byStatus as Record<string, number>)['SUSPENDED']).toBe(1)
     expect((res.body.byStatus as Record<string, number>)['ACTIVE']).toBeUndefined()
     expect(res.body.tenants).toBe(1)
+  })
+
+  // -------------------------------------------------------------------------
+  // T-09 — RED: PlatformPermissionGuard READ-route coverage (AC3 READ half)
+  //
+  // Spec: operator-platform-roles — Read Routes Require the Declared READ
+  //   Permission
+  // -------------------------------------------------------------------------
+  it('ANALYST session → GET /api/operators/metrics/summary → 200', async () => {
+    const cookie = await getSessionCookieFor(TEST_EMAIL_ANALYST, TEST_PASSWORD_ANALYST)
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/metrics/summary')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(200)
+  })
+
+  it('OPERATIONS session → GET /api/operators/metrics/summary → 200', async () => {
+    const cookie = await getSessionCookieFor(TEST_EMAIL_OPERATIONS, TEST_PASSWORD_OPERATIONS)
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/metrics/summary')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(200)
   })
 })

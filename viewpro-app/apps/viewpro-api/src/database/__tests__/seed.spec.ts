@@ -29,6 +29,12 @@ describe('Prisma seed', () => {
     expect(operator?.passwordHash.length).toBeGreaterThan(0)
   })
 
+  it('seeds the operator with an explicit OWNER role (D9 — post-migration backfill proxy)', async () => {
+    const operator = await prisma.operator.findFirst()
+
+    expect(operator?.role).toBe('OWNER')
+  })
+
   it('seed is idempotent — re-running does not create a duplicate', async () => {
     execSync('pnpm db:seed', {
       cwd: process.cwd(),
