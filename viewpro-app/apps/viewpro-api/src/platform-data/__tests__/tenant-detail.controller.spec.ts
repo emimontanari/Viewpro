@@ -143,6 +143,21 @@ describe('TenantDetailController (integration — test DB, mocked InmoView clien
     expect(mockFetchTenantSummary).toHaveBeenCalledWith('tenant-1', 10, 5)
   })
 
+  // JD FIX 2: the passthrough must cap the forwarded limit at 100 so a huge
+  // limit cannot drive an unbounded query on the InmoView side (defense in
+  // depth — the cap holds even if the InmoView route were bypassed).
+  it('clamps an over-max limit down to 100 before forwarding to InmoView', async () => {
+    mockFetchTenantSummary.mockResolvedValueOnce(mockSummary)
+    const cookie = await getSessionCookie()
+
+    await request(app.getHttpServer())
+      .get('/api/operators/tenants/tenant-1/summary?offset=0&limit=100000000')
+      .set('Cookie', cookie)
+      .expect(200)
+
+    expect(mockFetchTenantSummary).toHaveBeenCalledWith('tenant-1', 0, 100)
+  })
+
   // Scenario: Unauthenticated request is rejected
   it('GET /api/operators/tenants/:id/summary without a session → 401', async () => {
     const res = await request(app.getHttpServer()).get('/api/operators/tenants/tenant-1/summary')
