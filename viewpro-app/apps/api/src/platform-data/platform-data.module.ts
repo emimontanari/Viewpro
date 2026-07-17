@@ -11,6 +11,8 @@ import { MOVEMENTS_REPOSITORY } from '../movements/movements.repository.js'
 import { PrismaMovementsRepository } from '../movements/prisma-movements.repository.js'
 import { DOCUMENTS_REPOSITORY } from '../documents/documents.repository.js'
 import { PrismaDocumentsRepository } from '../documents/prisma-documents.repository.js'
+import { MEMBERSHIP_ACTIVITY_REPOSITORY } from '../memberships/membership-activity.repository.js'
+import { PrismaMembershipActivityRepository } from '../memberships/prisma-membership-activity.repository.js'
 
 /**
  * PlatformDataModule — data-lane publisher (read side + outbox writer).
@@ -40,6 +42,19 @@ import { PrismaDocumentsRepository } from '../documents/prisma-documents.reposit
  *    acceptable, contained trade-off to avoid a much larger forwardRef blast radius
  *    across TenantContextModule/DocumentsModule/MovementsModule.
  *
+ *  - platform-user-activity-capture (D2): GetPlatformTenantActivityUseCase now
+ *    also depends on MEMBERSHIP_ACTIVITY_REPOSITORY (3-source merge). The
+ *    design doc assumed `MembershipsModule` (which already exports this
+ *    token) was reachable via AnalyticsModule — but AnalyticsModule is
+ *    NEVER imported here (see the circular-import deviation above), so that
+ *    wiring path does not apply to this module's DI graph. Following the
+ *    SAME pattern as MOVEMENTS_REPOSITORY/DOCUMENTS_REPOSITORY above,
+ *    PrismaMembershipActivityRepository is bound directly: it is a plain
+ *    `@Injectable()` Prisma-only class with no module-level AuthModule
+ *    dependency (MembershipsModule itself has zero imports), so this
+ *    duplicates only one more stateless binding — the identical trade-off
+ *    already accepted for the other two repositories.
+ *
  * Design D2: PlatformDataModule is a SIBLING to PlatformControlModule.
  * It reuses PlatformControlGuard by providing it directly — no JwtModule import.
  * The guard reads PLATFORM_CONTROL_SECRET from process.env via verifyServiceToken.
@@ -54,6 +69,7 @@ import { PrismaDocumentsRepository } from '../documents/prisma-documents.reposit
     PlatformControlGuard,
     { provide: MOVEMENTS_REPOSITORY, useClass: PrismaMovementsRepository },
     { provide: DOCUMENTS_REPOSITORY, useClass: PrismaDocumentsRepository },
+    { provide: MEMBERSHIP_ACTIVITY_REPOSITORY, useClass: PrismaMembershipActivityRepository },
     GetPilotSummaryUseCase,
     GetPlatformTenantActivityUseCase,
   ],
