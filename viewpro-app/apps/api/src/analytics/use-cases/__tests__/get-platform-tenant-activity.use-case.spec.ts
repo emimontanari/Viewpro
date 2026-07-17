@@ -127,6 +127,7 @@ const activityDocumentRequest = {
 function makeRepositories(overrides?: {
 	movements?: Partial<{ items: unknown[]; total: number }>;
 	documents?: Partial<{ items: unknown[]; total: number }>;
+	memberships?: Partial<{ items: unknown[]; total: number }>;
 }) {
 	const movementsRepository = {
 		findManyByTenant: vi.fn().mockResolvedValue({
@@ -140,8 +141,14 @@ function makeRepositories(overrides?: {
 			total: overrides?.documents?.total ?? 0,
 		}),
 	};
+	const membershipActivityRepository = {
+		findManyByTenant: vi.fn().mockResolvedValue({
+			items: overrides?.memberships?.items ?? [],
+			total: overrides?.memberships?.total ?? 0,
+		}),
+	};
 
-	return { movementsRepository, documentsRepository };
+	return { movementsRepository, documentsRepository, membershipActivityRepository };
 }
 
 function makeMovementAt(id: string, iso: string) {
@@ -152,13 +159,28 @@ function makeDocumentAt(id: string, iso: string) {
 	return { ...activityDocumentRequest, id, createdAt: new Date(iso) };
 }
 
+const activityMembership = {
+	event: "JOINED" as const,
+	id: "membership-1",
+	tenantId: "tenant-1",
+	createdAt: new Date("2026-05-24T10:00:00.000Z"),
+	user: { id: "member-1", email: "member@example.com", firstName: "Member" },
+};
+
+function makeMembershipAt(id: string, iso: string) {
+	return { ...activityMembership, id, createdAt: new Date(iso) };
+}
+
 /**
  * Repository doubles that honour page/pageSize the way the real Prisma repos
  * do (newest-first slices). `items` MUST be passed newest-first.
+ * `membershipItems` defaults to an empty stream — existing (pre-3-source)
+ * call sites keep passing only movements/documents.
  */
 function makePaginatingRepositories(
 	movementItems: unknown[],
 	documentItems: unknown[],
+	membershipItems: unknown[] = [],
 ) {
 	const movementsRepository = {
 		findManyByTenant: vi.fn(
@@ -182,16 +204,28 @@ function makePaginatingRepositories(
 			},
 		),
 	};
+	const membershipActivityRepository = {
+		findManyByTenant: vi.fn(
+			({ page, pageSize }: { page: number; pageSize: number }) => {
+				const start = (page - 1) * pageSize;
+				return Promise.resolve({
+					items: membershipItems.slice(start, start + pageSize),
+					total: membershipItems.length,
+				});
+			},
+		),
+	};
 
-	return { movementsRepository, documentsRepository };
+	return { movementsRepository, documentsRepository, membershipActivityRepository };
 }
 
 describe("GetPlatformTenantActivityUseCase", () => {
 	it("calls both repositories with canViewAll: true and the platform-internal sentinel userId (bypasses per-agent scoping)", async () => {
-		const { movementsRepository, documentsRepository } = makeRepositories();
+		const { movementsRepository, documentsRepository, membershipActivityRepository } = makeRepositories();
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
+			membershipActivityRepository as never,
 		);
 
 		await useCase.execute({ tenantId: "tenant-1", offset: 0, limit: 20 });
@@ -221,10 +255,11 @@ describe("GetPlatformTenantActivityUseCase", () => {
 	});
 
 	it("fetches the [0, offset+limit) window from EACH stream (page 1, pageSize = offset+limit) so the merged slice is globally ordered", async () => {
-		const { movementsRepository, documentsRepository } = makeRepositories();
+		const { movementsRepository, documentsRepository, membershipActivityRepository } = makeRepositories();
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
+			membershipActivityRepository as never,
 		);
 
 		await useCase.execute({ tenantId: "tenant-1", offset: 25, limit: 10 });
@@ -252,11 +287,12 @@ describe("GetPlatformTenantActivityUseCase", () => {
 			makeDocumentAt("d-2", "2026-05-02T10:00:00.000Z"),
 			makeDocumentAt("d-1", "2026-05-01T10:00:00.000Z"),
 		];
-		const { movementsRepository, documentsRepository } =
+		const { movementsRepository, documentsRepository, membershipActivityRepository } =
 			makePaginatingRepositories(movements, documents);
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
+			membershipActivityRepository as never,
 		);
 
 		const result = await useCase.execute({
@@ -279,11 +315,12 @@ describe("GetPlatformTenantActivityUseCase", () => {
 			makeDocumentAt("d-12", "2026-05-01T12:00:00.000Z"),
 			makeDocumentAt("d-10", "2026-05-01T10:00:00.000Z"),
 		];
-		const { movementsRepository, documentsRepository } =
+		const { movementsRepository, documentsRepository, membershipActivityRepository } =
 			makePaginatingRepositories(movements, documents);
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
+			membershipActivityRepository as never,
 		);
 
 		const result = await useCase.execute({
@@ -310,11 +347,12 @@ describe("GetPlatformTenantActivityUseCase", () => {
 			makeDocumentAt("d-12", "2026-05-01T12:00:00.000Z"),
 			makeDocumentAt("d-10", "2026-05-01T10:00:00.000Z"),
 		];
-		const { movementsRepository, documentsRepository } =
+		const { movementsRepository, documentsRepository, membershipActivityRepository } =
 			makePaginatingRepositories(movements, documents);
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
+			membershipActivityRepository as never,
 		);
 
 		const page1 = await useCase.execute({
@@ -344,13 +382,14 @@ describe("GetPlatformTenantActivityUseCase", () => {
 	});
 
 	it("merges movements + document requests, mapped and sorted via compareActivityItems (newest first)", async () => {
-		const { movementsRepository, documentsRepository } = makeRepositories({
+		const { movementsRepository, documentsRepository, membershipActivityRepository } = makeRepositories({
 			movements: { items: [activityMovement], total: 1 },
 			documents: { items: [activityDocumentRequest], total: 1 },
 		});
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
+			membershipActivityRepository as never,
 		);
 
 		const result = await useCase.execute({
@@ -377,10 +416,11 @@ describe("GetPlatformTenantActivityUseCase", () => {
 	});
 
 	it("defaults offset to 0 and limit to 20 when neither is provided", async () => {
-		const { movementsRepository, documentsRepository } = makeRepositories();
+		const { movementsRepository, documentsRepository, membershipActivityRepository } = makeRepositories();
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
+			membershipActivityRepository as never,
 		);
 
 		await useCase.execute({ tenantId: "tenant-1" });
@@ -418,11 +458,12 @@ describe("GetPlatformTenantActivityUseCase", () => {
 
 	it("returns a correct PARTIAL last page (never wrong items) when offset < MAX_FETCH_WINDOW < offset+limit", async () => {
 		const { movements, documents } = buildWindowBoundaryStreams();
-		const { movementsRepository, documentsRepository } =
+		const { movementsRepository, documentsRepository, membershipActivityRepository } =
 			makePaginatingRepositories(movements, documents);
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
+			membershipActivityRepository as never,
 		);
 
 		// window = 200; offset 190 + limit 20 straddles the fetched window.
@@ -445,11 +486,12 @@ describe("GetPlatformTenantActivityUseCase", () => {
 
 	it("returns an EMPTY page (never wrong items) when offset >= MAX_FETCH_WINDOW", async () => {
 		const { movements, documents } = buildWindowBoundaryStreams();
-		const { movementsRepository, documentsRepository } =
+		const { movementsRepository, documentsRepository, membershipActivityRepository } =
 			makePaginatingRepositories(movements, documents);
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
+			membershipActivityRepository as never,
 		);
 
 		// offset 210 is beyond the fetched window (200) → honest empty page.
@@ -467,11 +509,12 @@ describe("GetPlatformTenantActivityUseCase", () => {
 
 	it("returns a correct full page when offset+limit <= MAX_FETCH_WINDOW", async () => {
 		const { movements, documents } = buildWindowBoundaryStreams();
-		const { movementsRepository, documentsRepository } =
+		const { movementsRepository, documentsRepository, membershipActivityRepository } =
 			makePaginatingRepositories(movements, documents);
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
+			membershipActivityRepository as never,
 		);
 
 		const result = await useCase.execute({
@@ -484,5 +527,109 @@ describe("GetPlatformTenantActivityUseCase", () => {
 			movements.slice(100, 120).map((movement) => movement.id),
 		);
 		expect(result.items).toHaveLength(20);
+	});
+
+	/**
+	 * platform-user-activity-capture — 3-source merge (membership joins the
+	 * existing movement + document-request streams). Task 2.3: newest-first
+	 * interleave across all three, `total` = sum of the three, and the
+	 * MAX_FETCH_WINDOW pagination invariant (D2) generalizes to k=3 sources
+	 * unmodified.
+	 */
+	it("calls the membership activity repository with the same page/pageSize window as the other two streams", async () => {
+		const { movementsRepository, documentsRepository, membershipActivityRepository } =
+			makeRepositories();
+		const useCase = new GetPlatformTenantActivityUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+			membershipActivityRepository as never,
+		);
+
+		await useCase.execute({ tenantId: "tenant-1", offset: 25, limit: 10 });
+
+		expect(membershipActivityRepository.findManyByTenant).toHaveBeenCalledWith(
+			expect.objectContaining({ tenantId: "tenant-1", page: 1, pageSize: 35 }),
+		);
+	});
+
+	it("interleaves membership events newest-first WITH movements and document requests (not appended after)", async () => {
+		const { movementsRepository, documentsRepository, membershipActivityRepository } =
+			makeRepositories({
+				movements: { items: [activityMovement], total: 1 }, // 2026-05-22
+				documents: { items: [activityDocumentRequest], total: 1 }, // 2026-05-23
+				memberships: {
+					items: [makeMembershipAt("membership-newest", "2026-05-24T10:00:00.000Z")],
+					total: 1,
+				},
+			});
+		const useCase = new GetPlatformTenantActivityUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+			membershipActivityRepository as never,
+		);
+
+		const result = await useCase.execute({
+			tenantId: "tenant-1",
+			offset: 0,
+			limit: 20,
+		});
+
+		expect(result.items.map((item) => item.kind)).toEqual([
+			"membership",
+			"document_request",
+			"movement",
+		]);
+	});
+
+	it("total equals the sum of movements + document requests + membership events", async () => {
+		const { movementsRepository, documentsRepository, membershipActivityRepository } =
+			makeRepositories({
+				movements: { items: [activityMovement], total: 3 },
+				documents: { items: [activityDocumentRequest], total: 2 },
+				memberships: {
+					items: [makeMembershipAt("membership-1", "2026-05-24T10:00:00.000Z")],
+					total: 4,
+				},
+			});
+		const useCase = new GetPlatformTenantActivityUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+			membershipActivityRepository as never,
+		);
+
+		const result = await useCase.execute({ tenantId: "tenant-1", offset: 0, limit: 20 });
+
+		expect(result.total).toBe(9);
+	});
+
+	it("preserves the MAX_FETCH_WINDOW pagination invariant with three sources: returns at most `limit` items and never a wrong item past the fetched window", async () => {
+		const base = Date.parse("2026-06-01T00:00:00.000Z");
+		const movements = Array.from({ length: 80 }, (_, i) =>
+			makeMovementAt(`m-${i}`, new Date(base + (300 - i) * 60_000).toISOString()),
+		);
+		const documents = Array.from({ length: 80 }, (_, i) =>
+			makeDocumentAt(`d-${i}`, new Date(base - (i + 1) * 60_000).toISOString()),
+		);
+		const memberships = Array.from({ length: 80 }, (_, i) =>
+			makeMembershipAt(`mem-${i}`, new Date(base - (200 + i) * 60_000).toISOString()),
+		);
+		const { movementsRepository, documentsRepository, membershipActivityRepository } =
+			makePaginatingRepositories(movements, documents, memberships);
+		const useCase = new GetPlatformTenantActivityUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+			membershipActivityRepository as never,
+		);
+
+		// True global order (newest-first): all 80 movements, then all 80
+		// documents, then all 80 memberships. A page fully inside the movements
+		// stream must return exactly those movements, in order.
+		const result = await useCase.execute({ tenantId: "tenant-1", offset: 10, limit: 20 });
+
+		expect(result.items.map((item) => item.id)).toEqual(
+			movements.slice(10, 30).map((movement) => movement.id),
+		);
+		expect(result.items).toHaveLength(20);
+		expect(result.total).toBe(240);
 	});
 });
