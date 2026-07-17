@@ -242,4 +242,29 @@ describe('TenantDetailViewPage — activity pagination ("Cargar más")', () => {
     // total=3 and we now have 3 items loaded → no more pages.
     expect(screen.queryByRole('button', { name: /cargar más/i })).toBeNull();
   });
+
+  it('"Cargar más" disappears when a load-more returns an empty page even if total > loaded (backend depth cap)', async () => {
+    // total (3) stays above the loaded count, but the backend serves no more
+    // rows (its browsable-depth cap) → the button must not linger fetching empty.
+    mockGetTenantDetail.mockResolvedValueOnce(PAGE_1_RESPONSE); // 2 items, total 3
+    mockGetTenantDetail.mockResolvedValueOnce({
+      ...PAGE_1_RESPONSE,
+      activity: { total: 3, items: [] }
+    });
+
+    const user = userEvent.setup();
+    renderDetailPage('tenant-1');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /cargar más/i })).toBeTruthy();
+    });
+
+    await user.click(screen.getByRole('button', { name: /cargar más/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /cargar más/i })).toBeNull();
+    });
+    // The two already-loaded items remain; the empty page added nothing.
+    expect(screen.getByTestId('tenant-activity-item-movement-1')).toBeTruthy();
+  });
 });

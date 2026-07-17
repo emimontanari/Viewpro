@@ -32,12 +32,18 @@ export function TenantDetailViewPage({ tenantId }: Props) {
   const [items, setItems] = React.useState<TenantActivityItem[]>([]);
   const [total, setTotal] = React.useState(0);
   const [isLoadingMore, setIsLoadingMore] = React.useState(false);
+  // The backend caps the browsable feed at a fixed depth while `total` keeps
+  // reporting the true count, so `items.length < total` alone can leave a
+  // "Cargar más" that fetches an empty page. Once a load-more returns zero new
+  // items we mark the feed exhausted and hide the button.
+  const [reachedEnd, setReachedEnd] = React.useState(false);
   const seededTenantIdRef = React.useRef<string | null>(null);
 
   if (data && seededTenantIdRef.current !== tenantId) {
     seededTenantIdRef.current = tenantId;
     setItems(data.activity.items);
     setTotal(data.activity.total);
+    setReachedEnd(false);
   }
 
   async function handleLoadMore() {
@@ -50,6 +56,9 @@ export function TenantDetailViewPage({ tenantId }: Props) {
       const nextPage = await getTenantDetail(tenantId, items.length, ACTIVITY_PAGE_SIZE);
       setItems((previous) => [...previous, ...nextPage.activity.items]);
       setTotal(nextPage.activity.total);
+      if (nextPage.activity.items.length === 0) {
+        setReachedEnd(true);
+      }
     } finally {
       setIsLoadingMore(false);
     }
@@ -72,7 +81,7 @@ export function TenantDetailViewPage({ tenantId }: Props) {
       <TenantDetailStatCards summary={data} />
       <TenantActivityFeed
         items={items}
-        hasMore={items.length < total}
+        hasMore={items.length < total && !reachedEnd}
         isLoadingMore={isLoadingMore}
         onLoadMore={handleLoadMore}
       />
