@@ -68,11 +68,24 @@ export class GetPlatformTenantActivityUseCase {
     const offset = Math.max(input.offset ?? DEFAULT_OFFSET, 0)
 
     // Each stream is independently paginated, so to produce a correctly ordered
-    // combined page for [offset, offset+limit) we must fetch the whole
-    // [0, offset+limit) window from EACH stream (page 1), merge, sort, and
-    // slice — mirroring ListActivityFeedUseCase's merged "all" branch. The
-    // window is bounded so a large offset can never make the Prisma `take`
+    // combined page for [offset, offset+limit) we fetch the [0, offset+limit)
+    // window from EACH stream (page 1), merge, sort, and slice — mirroring
+    // ListActivityFeedUseCase's merged "all" branch. The window is bounded by
+    // MAX_FETCH_WINDOW so a large offset can never make the Prisma `take`
     // unbounded (DoS guard).
+    //
+    // Invariant: the global top-N is a subset of (movements' top-N ∪ documents'
+    // top-N), so the FIRST `pageSize` positions of the merged/sorted array are
+    // the true global order — but positions BEYOND `pageSize` are NOT reliable
+    // (rows that truly rank there may never have been fetched). The slice upper
+    // bound is therefore capped at `pageSize` (the fetched window), NEVER
+    // `offset + limit`. Consequences: a full page when offset+limit <= window;
+    // a correct PARTIAL last page when offset < window < offset+limit; an EMPTY
+    // page when offset >= window. The feed is thus browsable only to the
+    // MAX_FETCH_WINDOW most-recent merged items; deeper pages return empty —
+    // never wrong/unrelated items. `total` remains the true combined count and
+    // MAY exceed the browsable window: a known, honest depth limit, not silent
+    // corruption.
     const pageSize = Math.min(offset + limit, MAX_FETCH_WINDOW)
 
     const [movementFeed, documentFeed] = await Promise.all([
@@ -97,7 +110,7 @@ export class GetPlatformTenantActivityUseCase {
       ...documentFeed.items.map(mapActivityFeedDocumentRequest),
     ]
       .sort(compareActivityItems)
-      .slice(offset, offset + limit)
+      .slice(offset, pageSize)
 
     return {
       total: movementFeed.total + documentFeed.total,
