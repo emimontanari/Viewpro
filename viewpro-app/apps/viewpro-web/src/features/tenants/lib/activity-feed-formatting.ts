@@ -61,31 +61,76 @@ export type TenantActivityItemDescription = {
 };
 
 /**
+ * describeMembershipActivityItem — renders a `kind: 'membership'` item
+ * (platform-user-activity-capture). `subject` (who the event is about) and
+ * `actor` (who performed it, or absent) are read defensively via the same
+ * `readActorName` helper used for `createdBy`/`requestedBy` above.
+ */
+function describeMembershipActivityItem(item: TenantActivityItem): TenantActivityItemDescription {
+  const subjectLabel = readActorName(item.subject, 'Usuario');
+  const actorLabel = readActorName(item.actor, FALLBACK_ACTOR);
+
+  switch (item.membershipEvent) {
+    case 'INVITED':
+      return {
+        title: `Usuario invitado · ${subjectLabel}`,
+        subtitle: `Invitado por ${actorLabel}`
+      };
+    case 'JOINED':
+      return {
+        title: `Usuario se unió · ${subjectLabel}`,
+        subtitle: 'Se unió al equipo'
+      };
+    case 'DEACTIVATED':
+      return {
+        title: `Usuario desactivado · ${subjectLabel}`,
+        subtitle: `Desactivado por ${actorLabel}`
+      };
+    default:
+      return {
+        title: `Actividad de usuario · ${subjectLabel}`,
+        subtitle: 'Actividad del equipo'
+      };
+  }
+}
+
+/**
  * Derives a display title + subtitle from a merged activity feed item.
  * Never throws — every nested field access is defensive (the item's shape is
  * only guaranteed for `kind`/`id`/`createdAt`).
+ *
+ * Discriminates EXHAUSTIVELY on every known `kind` (movement/document_request/
+ * membership) — a `membership` item is never rendered via the
+ * documentRequest/requestedBy fallback path (platform-user-activity-capture).
+ * A genuinely unknown future `kind` still falls back to the document-request
+ * branch, preserving the "never throws" contract.
  */
 export function describeTenantActivityItem(item: TenantActivityItem): TenantActivityItemDescription {
   const { title: propertyTitle } = readProperty(item);
 
-  if (item.kind === 'movement') {
-    const rawType = readString(item.type, 'Movimiento');
-    const actor = readActorName(item.createdBy, FALLBACK_ACTOR);
+  switch (item.kind) {
+    case 'movement': {
+      const rawType = readString(item.type, 'Movimiento');
+      const actor = readActorName(item.createdBy, FALLBACK_ACTOR);
 
-    return {
-      title: `${formatMovementType(rawType)} · ${propertyTitle}`,
-      subtitle: `Registrado por ${actor}`
-    };
+      return {
+        title: `${formatMovementType(rawType)} · ${propertyTitle}`,
+        subtitle: `Registrado por ${actor}`
+      };
+    }
+    case 'membership':
+      return describeMembershipActivityItem(item);
+    default: {
+      const documentRequest = item.documentRequest as DocumentRequestSummary | undefined;
+      const documentTitle = readString(documentRequest?.title, FALLBACK_DOCUMENT_TITLE);
+      const actor = readActorName(item.requestedBy, FALLBACK_ACTOR);
+
+      return {
+        title: `${documentTitle} · ${propertyTitle}`,
+        subtitle: `Solicitado por ${actor}`
+      };
+    }
   }
-
-  const documentRequest = item.documentRequest as DocumentRequestSummary | undefined;
-  const documentTitle = readString(documentRequest?.title, FALLBACK_DOCUMENT_TITLE);
-  const actor = readActorName(item.requestedBy, FALLBACK_ACTOR);
-
-  return {
-    title: `${documentTitle} · ${propertyTitle}`,
-    subtitle: `Solicitado por ${actor}`
-  };
 }
 
 const ACTIVITY_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat('es-AR', {

@@ -1,8 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { DOCUMENTS_REPOSITORY, type DocumentsRepository } from '../../documents/documents.repository'
+import {
+  MEMBERSHIP_ACTIVITY_REPOSITORY,
+  type MembershipActivityRepository,
+} from '../../memberships/membership-activity.repository'
 import { MOVEMENTS_REPOSITORY, type MovementsRepository } from '../../movements/movements.repository'
 import {
   mapActivityFeedDocumentRequest,
+  mapActivityFeedMembership,
   mapActivityFeedMovement,
   type ActivityFeedItemResponse,
 } from '../responses/activity-feed.response'
@@ -44,15 +49,23 @@ export type GetPlatformTenantActivityResponse = {
 
 /**
  * GetPlatformTenantActivityUseCase — platform-only, on-demand merged
- * (Movement + DocumentRequest) activity feed for an explicit tenantId.
+ * (Movement + DocumentRequest + MembershipActivity) activity feed for an
+ * explicit tenantId.
  *
  * Design D3 (platform-tenant-tracking): cannot reuse `ListActivityFeedUseCase`
  * directly — its signature requires `TenantContext` + `CurrentUser` and
  * enforces human permission checks plus per-user assignment scoping, which is
  * semantically wrong for a platform caller with no acting user. This use-case
- * composes the two repositories directly with `canViewAll: true`, which
- * bypasses the per-agent filter entirely, and reuses the existing pure
- * mappers + sort comparator — no query-logic duplication.
+ * composes the repositories directly with `canViewAll: true`, which bypasses
+ * the per-agent filter entirely, and reuses the existing pure mappers + sort
+ * comparator — no query-logic duplication.
+ *
+ * platform-user-activity-capture (D2): extended from a 2-source to a
+ * 3-source merge by adding `MembershipActivityRepository` (derived
+ * INVITED/JOINED/DEACTIVATED events, zero new writes/migration). The
+ * "global top-K ⊆ union of each stream's local top-K" invariant documented
+ * below generalizes to any finite number of sorted-desc streams, so adding a
+ * third source requires no change to the bounding/slicing logic itself.
  */
 @Injectable()
 export class GetPlatformTenantActivityUseCase {
@@ -61,6 +74,8 @@ export class GetPlatformTenantActivityUseCase {
     private readonly movementsRepository: MovementsRepository,
     @Inject(DOCUMENTS_REPOSITORY)
     private readonly documentsRepository: DocumentsRepository,
+    @Inject(MEMBERSHIP_ACTIVITY_REPOSITORY)
+    private readonly membershipActivityRepository: MembershipActivityRepository,
   ) {}
 
   async execute(input: GetPlatformTenantActivityInput): Promise<GetPlatformTenantActivityResponse> {
@@ -75,20 +90,21 @@ export class GetPlatformTenantActivityUseCase {
     // unbounded (DoS guard).
     //
     // Invariant: the global top-N is a subset of (movements' top-N ∪ documents'
-    // top-N), so the FIRST `pageSize` positions of the merged/sorted array are
-    // the true global order — but positions BEYOND `pageSize` are NOT reliable
-    // (rows that truly rank there may never have been fetched). The slice upper
-    // bound is therefore capped at `pageSize` (the fetched window), NEVER
-    // `offset + limit`. Consequences: a full page when offset+limit <= window;
-    // a correct PARTIAL last page when offset < window < offset+limit; an EMPTY
-    // page when offset >= window. The feed is thus browsable only to the
-    // MAX_FETCH_WINDOW most-recent merged items; deeper pages return empty —
-    // never wrong/unrelated items. `total` remains the true combined count and
-    // MAY exceed the browsable window: a known, honest depth limit, not silent
-    // corruption.
+    // top-N ∪ membership-events' top-N) — this holds for any finite number of
+    // sorted-desc streams, not just two — so the FIRST `pageSize` positions of
+    // the merged/sorted array are the true global order — but positions BEYOND
+    // `pageSize` are NOT reliable (rows that truly rank there may never have
+    // been fetched). The slice upper bound is therefore capped at `pageSize`
+    // (the fetched window), NEVER `offset + limit`. Consequences: a full page
+    // when offset+limit <= window; a correct PARTIAL last page when
+    // offset < window < offset+limit; an EMPTY page when offset >= window. The
+    // feed is thus browsable only to the MAX_FETCH_WINDOW most-recent merged
+    // items; deeper pages return empty — never wrong/unrelated items. `total`
+    // remains the true combined count and MAY exceed the browsable window: a
+    // known, honest depth limit, not silent corruption.
     const pageSize = Math.min(offset + limit, MAX_FETCH_WINDOW)
 
-    const [movementFeed, documentFeed] = await Promise.all([
+    const [movementFeed, documentFeed, membershipFeed] = await Promise.all([
       this.movementsRepository.findManyByTenant({
         tenantId: input.tenantId,
         userId: PLATFORM_INTERNAL_USER_ID,
@@ -103,17 +119,23 @@ export class GetPlatformTenantActivityUseCase {
         page: 1,
         pageSize,
       }),
+      this.membershipActivityRepository.findManyByTenant({
+        tenantId: input.tenantId,
+        page: 1,
+        pageSize,
+      }),
     ])
 
     const items = [
       ...movementFeed.items.map(mapActivityFeedMovement),
       ...documentFeed.items.map(mapActivityFeedDocumentRequest),
+      ...membershipFeed.items.map(mapActivityFeedMembership),
     ]
       .sort(compareActivityItems)
       .slice(offset, pageSize)
 
     return {
-      total: movementFeed.total + documentFeed.total,
+      total: movementFeed.total + documentFeed.total + membershipFeed.total,
       items,
     }
   }

@@ -136,6 +136,108 @@ describe('describeTenantActivityItem()', () => {
   });
 });
 
+describe('describeTenantActivityItem() — membership items (platform-user-activity-capture)', () => {
+  const INVITED_ITEM: TenantActivityItem = {
+    kind: 'membership',
+    id: 'membership-invited:invitation-1',
+    tenantId: 'tenant-1',
+    createdAt: '2026-07-16T10:00:00.000Z',
+    membershipEvent: 'INVITED',
+    subject: { email: 'invitado@example.com', firstName: null },
+    actor: { id: 'inviter-1', email: 'inviter@example.com', firstName: 'Lucía' }
+  };
+
+  const JOINED_ITEM: TenantActivityItem = {
+    kind: 'membership',
+    id: 'membership-joined:membership-1',
+    tenantId: 'tenant-1',
+    createdAt: '2026-07-16T11:00:00.000Z',
+    membershipEvent: 'JOINED',
+    subject: { id: 'member-1', email: 'nuevo@example.com', firstName: 'Martín' },
+    actor: null
+  };
+
+  const DEACTIVATED_ITEM: TenantActivityItem = {
+    kind: 'membership',
+    id: 'membership-deactivated:membership-2',
+    tenantId: 'tenant-1',
+    createdAt: '2026-07-16T12:00:00.000Z',
+    membershipEvent: 'DEACTIVATED',
+    subject: { id: 'member-2', email: 'saliente@example.com', firstName: 'Ana' },
+    actor: { id: 'actor-1', email: 'actor@example.com', firstName: 'Operador Uno' }
+  };
+
+  it('an INVITED item renders "Usuario invitado" with the invitee email + who invited them', () => {
+    const result = describeTenantActivityItem(INVITED_ITEM);
+
+    expect(result.title).toContain('Usuario invitado');
+    expect(result.title).toContain('invitado@example.com');
+    expect(result.subtitle).toContain('Lucía');
+  });
+
+  it('a JOINED item renders "Usuario se unió" with the member name, and NO invited-by actor', () => {
+    const result = describeTenantActivityItem(JOINED_ITEM);
+
+    expect(result.title).toContain('Usuario se unió');
+    expect(result.title).toContain('Martín');
+  });
+
+  it('a DEACTIVATED item renders "Usuario desactivado" with the member + who deactivated them', () => {
+    const result = describeTenantActivityItem(DEACTIVATED_ITEM);
+
+    expect(result.title).toContain('Usuario desactivado');
+    expect(result.title).toContain('Ana');
+    expect(result.subtitle).toContain('Operador Uno');
+  });
+
+  it('a membership item is NEVER rendered via the documentRequest/requestedBy fallback path', () => {
+    const result = describeTenantActivityItem(INVITED_ITEM);
+
+    expect(result.title).not.toContain('Documento');
+    expect(result.subtitle).not.toContain('Solicitado por');
+  });
+
+  it('falls back to email when subject/actor firstName is absent', () => {
+    const item: TenantActivityItem = {
+      ...DEACTIVATED_ITEM,
+      subject: { id: 'member-3', email: 'sin-nombre@example.com' },
+      actor: { id: 'actor-2', email: 'sin-nombre-actor@example.com' }
+    };
+
+    const result = describeTenantActivityItem(item);
+    expect(result.title).toContain('sin-nombre@example.com');
+    expect(result.subtitle).toContain('sin-nombre-actor@example.com');
+  });
+
+  it('degrades gracefully (never throws) when subject/actor are missing entirely', () => {
+    const bareMembership: TenantActivityItem = {
+      kind: 'membership',
+      id: 'membership-invited:bare',
+      createdAt: '2026-07-16T10:00:00.000Z',
+      membershipEvent: 'INVITED'
+    };
+
+    expect(() => describeTenantActivityItem(bareMembership)).not.toThrow();
+    const result = describeTenantActivityItem(bareMembership);
+    expect(result.title.length).toBeGreaterThan(0);
+    expect(result.subtitle.length).toBeGreaterThan(0);
+  });
+});
+
+describe('describeTenantActivityItem() — movement and document_request items are unaffected by the exhaustive switch', () => {
+  it('still renders the movement item exactly as before', () => {
+    const result = describeTenantActivityItem(MOVEMENT_ITEM);
+    expect(result.title).toContain('Depto en Palermo');
+    expect(result.subtitle).toContain('Lucía');
+  });
+
+  it('still renders the document_request item exactly as before', () => {
+    const result = describeTenantActivityItem(DOCUMENT_REQUEST_ITEM);
+    expect(result.title).toContain('Escritura');
+    expect(result.subtitle).toContain('Martín');
+  });
+});
+
 describe('formatActivityTimestamp()', () => {
   it('formats a valid ISO timestamp as an es-AR short date/time string', () => {
     const result = formatActivityTimestamp('2026-07-15T10:00:00.000Z');
