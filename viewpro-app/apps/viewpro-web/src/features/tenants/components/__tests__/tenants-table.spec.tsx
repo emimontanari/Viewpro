@@ -1,34 +1,41 @@
 /**
- * TenantsTable component tests — @tanstack/react-table + dropdown row actions
- * (mirrors the InmoView products-table pattern).
+ * TenantsTable component tests — rebuilt to the Kiranism starter DataTable
+ * format (mirrors OperatorsTable): client-side sorting/filtering/pagination on
+ * top of the shared DataTable / DataTableToolbar / DataTableColumnHeader /
+ * DataTableFacetedFilter / DataTablePagination presentational components.
  *
  * Tests cover:
- *   - Renders one row per item with name, slug, status badge, limits summary
- *   - "Sin límite" shown for null limit values
- *   - Rows render in the order received (no client re-sort)
- *   - Each row exposes an actions dropdown ("Abrir menú")
- *   - Opening a row's menu shows "Editar límites" + the status-based items;
- *     clicking an item emits onEditLimits(row) / onStatusAction(row, action)
- *   - The destructive "Dar de baja" item renders for every non-CANCELLED row
- *   - No status-action items (toggle or cancel) for a CANCELLED row
- *   - isMutating={true} disables every action item in the row menu
+ *   - Rows render an identity cell (avatar initial + name + slug subtitle), a
+ *     colored Estado badge, a colored Plan badge and a compact, contained
+ *     Límites summary (the bleed fix — single truncated line, ∞ for null)
+ *   - Estado badges use the Spanish labels (Activo/Trial/Suspendido/Baja)
+ *   - Plan badges use the Spanish labels (Básico/Profesional/Empresa) and a
+ *     muted "Sin plan" for a null plan
+ *   - Sortable "Inmobiliaria" column header; "Plan"/"Límites" column headers
+ *   - Toolbar: a search input filters rows by name AND slug; a faceted "Estado"
+ *     filter and a faceted "Plan" filter narrow the rows; column view-options;
+ *     a reset appears while a filter is active
+ *   - Client-side pagination footer
+ *   - Row actions dropdown ("Abrir menú") still emits onEditLimits /
+ *     onStatusAction / onAssignPlan and honours the isMutating double-submit
+ *     guard; CANCELLED rows expose no status actions
  *   - getTenantActions(item) → [toggle, cancel] for TRIAL/ACTIVE/SUSPENDED, [] for CANCELLED
- *   - getTrialEndLabel(trialEndsAt, now) → "Vence en X días"/"Vence en 1 día"/
- *     "Trial vencido"/"—"
- *   - TRIAL rows render the trial-end line under the status badge; non-TRIAL
+ *   - getTrialEndLabel(...) → "Vence en X días"/"Vence en 1 día"/"Trial vencido"/"—"
+ *   - TRIAL rows render the trial-end line under the Estado badge; non-TRIAL
  *     rows render no trial line regardless of trialEndsAt
  */
 
 import * as React from 'react';
 import { describe, it, expect, vi, beforeAll } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { TenantListItem } from '@/features/tenants/api/types';
 import { getTenantActions, getTrialEndLabel, TenantsTable } from '../tenants-table';
 
-// Radix DropdownMenu relies on pointer-capture + scrollIntoView APIs that jsdom
-// does not implement; polyfill them so the menu can open under userEvent.
+// Radix DropdownMenu / Popover rely on pointer-capture + scrollIntoView APIs
+// that jsdom does not implement; polyfill them so the menus/popovers can open
+// under userEvent.
 beforeAll(() => {
   Element.prototype.hasPointerCapture = vi.fn(() => false);
   Element.prototype.setPointerCapture = vi.fn();
@@ -87,6 +94,19 @@ function noopAssignPlan() {
   // used as a default no-op handler where the test does not assert calls
 }
 
+function renderTable(props?: Partial<React.ComponentProps<typeof TenantsTable>>) {
+  return render(
+    <TenantsTable
+      items={ITEMS}
+      isMutating={false}
+      onEditLimits={noop}
+      onStatusAction={noop}
+      onAssignPlan={noopAssignPlan}
+      {...props}
+    />
+  );
+}
+
 // Opens the actions menu for a given row index (menus render in row order) and
 // returns the userEvent instance for follow-up interactions.
 async function openRowMenu(rowIndex: number) {
@@ -96,32 +116,9 @@ async function openRowMenu(rowIndex: number) {
   return user;
 }
 
-describe('TenantsTable — read-only rendering', () => {
-  it('renders one row per item', () => {
-    render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
-
-    expect(screen.getByTestId('tenant-row-tenant-1')).toBeTruthy();
-    expect(screen.getByTestId('tenant-row-tenant-2')).toBeTruthy();
-  });
-
-  it('renders name and slug per row', () => {
-    render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+describe('TenantsTable — cell rendering', () => {
+  it('renders name and slug per row (identity cell)', () => {
+    renderTable();
 
     expect(screen.getByText('Acme Realty')).toBeTruthy();
     expect(screen.getByText('acme-realty')).toBeTruthy();
@@ -129,153 +126,183 @@ describe('TenantsTable — read-only rendering', () => {
     expect(screen.getByText('beta-homes')).toBeTruthy();
   });
 
-  it('renders the "Inmobiliaria" column header', () => {
-    render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+  it('renders an avatar initial per row (first letter of the name)', () => {
+    renderTable();
 
-    expect(screen.getByRole('columnheader', { name: 'Inmobiliaria' })).toBeTruthy();
+    expect(screen.getByTestId('tenant-avatar-tenant-1').textContent).toBe('A');
+    expect(screen.getByTestId('tenant-avatar-tenant-2').textContent).toBe('B');
   });
 
-  it('renders a status badge per row', () => {
-    render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+  it('renders a sortable "Inmobiliaria" column header', () => {
+    renderTable();
+
+    expect(screen.getByRole('button', { name: /Inmobiliaria/ })).toBeTruthy();
+  });
+
+  it('renders one actions trigger per row', () => {
+    renderTable();
+
+    expect(screen.getAllByRole('button', { name: 'Abrir menú' })).toHaveLength(2);
+  });
+});
+
+describe('TenantsTable — Estado badge', () => {
+  it('renders the Spanish status label per row', () => {
+    renderTable();
 
     expect(screen.getByTestId('tenant-status-tenant-1').textContent).toMatch(/activo/i);
     expect(screen.getByTestId('tenant-status-tenant-2').textContent).toMatch(/suspendido/i);
   });
 
-  it('renders the limits summary with 3 values', () => {
-    render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+  it('renders "Trial" for a TRIAL row and "Baja" for a CANCELLED row', () => {
+    renderTable({ items: [TRIAL_ITEM, CANCELLED_ITEM] });
 
-    const limits = screen.getByTestId('tenant-limits-tenant-1').textContent ?? '';
-    expect(limits).toContain('10');
-    expect(limits).toContain('50');
-    expect(limits).toContain('1.024');
+    expect(screen.getByTestId('tenant-status-tenant-0').textContent).toMatch(/trial/i);
+    expect(screen.getByTestId('tenant-status-tenant-3').textContent).toMatch(/baja/i);
   });
+});
 
-  // platform-manual-plans (Slice 4, Part 2) — RED: Plan column.
+describe('TenantsTable — Plan badge', () => {
   it('renders the plan label for a row with an assigned plan (D10)', () => {
-    render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+    renderTable();
 
     expect(screen.getByTestId('tenant-plan-tenant-1').textContent).toBe('Básico');
   });
 
-  it('renders the neutral placeholder "—" for a row with no assigned plan', () => {
-    render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+  it('renders a muted "Sin plan" for a row with no assigned plan', () => {
+    renderTable();
 
-    expect(screen.getByTestId('tenant-plan-tenant-2').textContent).toBe('—');
+    expect(screen.getByTestId('tenant-plan-tenant-2').textContent).toBe('Sin plan');
   });
 
   it('renders the "Plan" column header', () => {
-    render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+    renderTable();
 
-    expect(screen.getByRole('columnheader', { name: 'Plan' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Plan/ })).toBeTruthy();
+  });
+});
+
+describe('TenantsTable — Límites summary (compact + contained)', () => {
+  it('renders a single compact line with the three limit values', () => {
+    renderTable();
+
+    const limits = screen.getByTestId('tenant-limits-tenant-1').textContent ?? '';
+    expect(limits).toContain('10');
+    expect(limits).toContain('50');
+    // 1024 MB is formatted as GB (>= 1000), not the raw MB number.
+    expect(limits).toMatch(/GB/);
   });
 
-  it('shows "Sin límite" for null limit values', () => {
-    render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+  it('constrains the cell to a single line (no wide right-aligned <dl>)', () => {
+    renderTable();
+
+    const cell = screen.getByTestId('tenant-limits-tenant-1');
+    // The compact summary is a single element with a max-width + truncate — the
+    // bleed fix. There is no descriptive-list (<dl>) spilling into neighbours.
+    expect(cell.tagName.toLowerCase()).not.toBe('dl');
+    expect(cell.className).toMatch(/truncate/);
+    expect(cell.className).toMatch(/max-w/);
+  });
+
+  it('shows "∞" for each null limit value', () => {
+    renderTable();
 
     const limits = screen.getByTestId('tenant-limits-tenant-2').textContent ?? '';
-    expect(limits.match(/sin límite/gi)?.length).toBe(3);
+    expect((limits.match(/∞/g) ?? []).length).toBe(3);
+  });
+});
+
+describe('TenantsTable — toolbar', () => {
+  it('renders a search input that filters rows by name', async () => {
+    const user = userEvent.setup();
+    renderTable();
+
+    const search = screen.getByPlaceholderText(/Buscar por nombre/i);
+    await user.type(search, 'Beta');
+
+    expect(screen.getByText('Beta Homes')).toBeTruthy();
+    expect(screen.queryByText('Acme Realty')).toBeNull();
   });
 
-  it('renders rows in the order received (server already sorts name ASC)', () => {
-    render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+  it('the search input also matches the slug', async () => {
+    const user = userEvent.setup();
+    renderTable();
 
-    const rows = screen.getAllByTestId(/tenant-row-/);
-    expect(rows[0].getAttribute('data-testid')).toBe('tenant-row-tenant-1');
-    expect(rows[1].getAttribute('data-testid')).toBe('tenant-row-tenant-2');
+    const search = screen.getByPlaceholderText(/Buscar por nombre/i);
+    await user.type(search, 'acme-realty');
+
+    expect(screen.getByText('Acme Realty')).toBeTruthy();
+    expect(screen.queryByText('Beta Homes')).toBeNull();
+  });
+
+  it('faceted "Estado" filter narrows the rows to the selected status', async () => {
+    const user = userEvent.setup();
+    renderTable();
+
+    const toolbar = screen.getByRole('toolbar');
+    await user.click(await within(toolbar).findByRole('button', { name: /Estado/ }));
+    await user.click(await screen.findByRole('option', { name: /Suspendido/ }));
+
+    expect(screen.getByText('Beta Homes')).toBeTruthy();
+    expect(screen.queryByText('Acme Realty')).toBeNull();
+  });
+
+  it('faceted "Plan" filter narrows the rows to the selected plan', async () => {
+    const user = userEvent.setup();
+    renderTable();
+
+    const toolbar = screen.getByRole('toolbar');
+    await user.click(await within(toolbar).findByRole('button', { name: /Plan/ }));
+    await user.click(await screen.findByRole('option', { name: /Básico/ }));
+
+    expect(screen.getByText('Acme Realty')).toBeTruthy();
+    expect(screen.queryByText('Beta Homes')).toBeNull();
+  });
+
+  it('the faceted "Plan" filter offers a "Sin plan" option that narrows to unassigned rows', async () => {
+    const user = userEvent.setup();
+    renderTable();
+
+    const toolbar = screen.getByRole('toolbar');
+    await user.click(await within(toolbar).findByRole('button', { name: /Plan/ }));
+    await user.click(await screen.findByRole('option', { name: /Sin plan/ }));
+
+    expect(screen.getByText('Beta Homes')).toBeTruthy();
+    expect(screen.queryByText('Acme Realty')).toBeNull();
+  });
+
+  it('exposes column view-options', () => {
+    renderTable();
+
+    const toolbar = screen.getByRole('toolbar');
+    expect(within(toolbar).getByRole('button', { name: /Toggle columns/i })).toBeTruthy();
+  });
+
+  it('shows a reset control once a filter is active', async () => {
+    const user = userEvent.setup();
+    renderTable();
+
+    expect(screen.queryByRole('button', { name: /Reset filters/i })).toBeNull();
+
+    await user.type(screen.getByPlaceholderText(/Buscar por nombre/i), 'Beta');
+
+    expect(await screen.findByRole('button', { name: /Reset filters/i })).toBeTruthy();
+  });
+});
+
+describe('TenantsTable — pagination footer', () => {
+  it('renders the client-side pagination footer', () => {
+    renderTable();
+
+    expect(screen.getByText(/Rows per page/i)).toBeTruthy();
+    expect(screen.getByText(/row\(s\) total/i)).toBeTruthy();
   });
 });
 
 describe('TenantsTable — dropdown actions', () => {
-  it('renders one actions trigger per row', () => {
-    render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
-
-    expect(screen.getAllByRole('button', { name: 'Abrir menú' })).toHaveLength(2);
-  });
-
   it('opening a row menu exposes "Editar límites" which emits onEditLimits(row)', async () => {
     const onEditLimits = vi.fn();
-    render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={onEditLimits}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+    renderTable({ onEditLimits });
 
     const user = await openRowMenu(0);
     await user.click(await screen.findByRole('menuitem', { name: 'Editar límites' }));
@@ -283,17 +310,19 @@ describe('TenantsTable — dropdown actions', () => {
     expect(onEditLimits).toHaveBeenCalledWith(ITEMS[0]);
   });
 
+  it('opening a row menu exposes "Asignar plan" which emits onAssignPlan(row)', async () => {
+    const onAssignPlan = vi.fn();
+    renderTable({ onAssignPlan });
+
+    const user = await openRowMenu(0);
+    await user.click(await screen.findByRole('menuitem', { name: 'Asignar plan' }));
+
+    expect(onAssignPlan).toHaveBeenCalledWith(ITEMS[0]);
+  });
+
   it('an ACTIVE row menu shows "Suspender" which emits onStatusAction(row, toggle action)', async () => {
     const onStatusAction = vi.fn();
-    render(
-      <TenantsTable
-        items={[ITEMS[0]]}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={onStatusAction}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+    renderTable({ items: [ITEMS[0]], onStatusAction });
 
     const user = await openRowMenu(0);
     await user.click(await screen.findByRole('menuitem', { name: 'Suspender' }));
@@ -306,15 +335,7 @@ describe('TenantsTable — dropdown actions', () => {
   });
 
   it('a SUSPENDED row menu shows "Reactivar"', async () => {
-    render(
-      <TenantsTable
-        items={[ITEMS[1]]}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+    renderTable({ items: [ITEMS[1]] });
 
     await openRowMenu(0);
     expect(await screen.findByRole('menuitem', { name: 'Reactivar' })).toBeTruthy();
@@ -322,15 +343,7 @@ describe('TenantsTable — dropdown actions', () => {
 
   it('renders a destructive "Dar de baja" item that emits onStatusAction(row, cancel action)', async () => {
     const onStatusAction = vi.fn();
-    render(
-      <TenantsTable
-        items={[ITEMS[0]]}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={onStatusAction}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+    renderTable({ items: [ITEMS[0]], onStatusAction });
 
     const user = await openRowMenu(0);
     const cancelItem = await screen.findByRole('menuitem', { name: 'Dar de baja' });
@@ -340,32 +353,8 @@ describe('TenantsTable — dropdown actions', () => {
     expect(onStatusAction).toHaveBeenCalledWith(ITEMS[0], CANCEL_ACTION);
   });
 
-  it('an ACTIVE row menu shows both "Suspender" and "Dar de baja"', async () => {
-    render(
-      <TenantsTable
-        items={[ITEMS[0]]}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
-
-    await openRowMenu(0);
-    expect(await screen.findByRole('menuitem', { name: 'Suspender' })).toBeTruthy();
-    expect(screen.getByRole('menuitem', { name: 'Dar de baja' })).toBeTruthy();
-  });
-
-  it('a CANCELLED row menu shows no status-action items (only "Editar límites")', async () => {
-    render(
-      <TenantsTable
-        items={[CANCELLED_ITEM]}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+  it('a CANCELLED row menu shows no status-action items (only "Editar límites" / "Asignar plan")', async () => {
+    renderTable({ items: [CANCELLED_ITEM] });
 
     await openRowMenu(0);
     expect(await screen.findByRole('menuitem', { name: 'Editar límites' })).toBeTruthy();
@@ -374,35 +363,8 @@ describe('TenantsTable — dropdown actions', () => {
     ).toBeNull();
   });
 
-  // platform-manual-plans (Slice 4, Part 2) — RED: "Asignar plan" dropdown item.
-  it('opening a row menu exposes "Asignar plan" which emits onAssignPlan(row)', async () => {
-    const onAssignPlan = vi.fn();
-    render(
-      <TenantsTable
-        items={ITEMS}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={onAssignPlan}
-      />
-    );
-
-    const user = await openRowMenu(0);
-    await user.click(await screen.findByRole('menuitem', { name: 'Asignar plan' }));
-
-    expect(onAssignPlan).toHaveBeenCalledWith(ITEMS[0]);
-  });
-
   it('isMutating={true} disables every action item in the row menu (double-submit guard, AC6)', async () => {
-    render(
-      <TenantsTable
-        items={[ITEMS[0]]}
-        isMutating={true}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+    renderTable({ items: [ITEMS[0]], isMutating: true });
 
     await openRowMenu(0);
 
@@ -492,15 +454,7 @@ describe('TenantsTable — trial end line (TRIAL rows only)', () => {
         trialEndsAt: new Date(NOW.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString()
       };
 
-      render(
-        <TenantsTable
-          items={[trialItem]}
-          isMutating={false}
-          onEditLimits={noop}
-          onStatusAction={noop}
-          onAssignPlan={noopAssignPlan}
-        />
-      );
+      renderTable({ items: [trialItem] });
 
       expect(screen.getByTestId('tenant-trial-tenant-0').textContent).toBe('Vence en 3 días');
     });
@@ -513,30 +467,14 @@ describe('TenantsTable — trial end line (TRIAL rows only)', () => {
         trialEndsAt: new Date(NOW.getTime() - 24 * 60 * 60 * 1000).toISOString()
       };
 
-      render(
-        <TenantsTable
-          items={[trialItem]}
-          isMutating={false}
-          onEditLimits={noop}
-          onStatusAction={noop}
-          onAssignPlan={noopAssignPlan}
-        />
-      );
+      renderTable({ items: [trialItem] });
 
       expect(screen.getByTestId('tenant-trial-tenant-0').textContent).toBe('Trial vencido');
     });
   });
 
   it('TRIAL row with null trialEndsAt renders "—"', () => {
-    render(
-      <TenantsTable
-        items={[TRIAL_ITEM]}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+    renderTable({ items: [TRIAL_ITEM] });
 
     expect(screen.getByTestId('tenant-trial-tenant-0').textContent).toBe('—');
   });
@@ -547,15 +485,7 @@ describe('TenantsTable — trial end line (TRIAL rows only)', () => {
       trialEndsAt: new Date(NOW.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString()
     };
 
-    render(
-      <TenantsTable
-        items={[activeWithTrialEndsAt]}
-        isMutating={false}
-        onEditLimits={noop}
-        onStatusAction={noop}
-        onAssignPlan={noopAssignPlan}
-      />
-    );
+    renderTable({ items: [activeWithTrialEndsAt] });
 
     expect(screen.queryByTestId(`tenant-trial-${activeWithTrialEndsAt.id}`)).toBeNull();
   });
