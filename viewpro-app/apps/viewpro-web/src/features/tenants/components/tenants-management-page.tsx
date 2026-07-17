@@ -235,7 +235,10 @@ export function TenantsManagementPage() {
   }
 
   return (
-    <div className='flex flex-col gap-4'>
+    // `flex flex-1 min-h-0` participates in PageContainer's flex-height chain so
+    // the DataTable (which fills its parent via absolute positioning) renders at
+    // a bounded height instead of collapsing (mirrors OperatorsManagementPage).
+    <div className='flex min-h-0 flex-1 flex-col gap-4'>
       <TenantsTable
         items={data.items}
         isMutating={isMutating}
