@@ -22,10 +22,16 @@ vi.mock('@/lib/api-client', () => ({
 }));
 
 import { apiRequest } from '@/lib/api-client';
-import { getTenantList, updateTenantStatus, updateTenantLimits, assignTenantPlan } from '../service';
+import {
+  getTenantList,
+  updateTenantStatus,
+  updateTenantLimits,
+  assignTenantPlan,
+  getTenantDetail
+} from '../service';
 import { parseStatusResponse, parseLimitsResponse } from '../schemas';
-import { tenantsKeys, tenantsListOptions } from '../queries';
-import type { TenantListResponse, TenantListItem } from '../types';
+import { tenantsKeys, tenantsListOptions, tenantDetailOptions } from '../queries';
+import type { TenantListResponse, TenantListItem, TenantDetailResponse } from '../types';
 
 const mockApiRequest = vi.mocked(apiRequest);
 
@@ -225,6 +231,98 @@ describe('assignTenantPlan()', () => {
     await expect(assignTenantPlan('tenant-1', { plan: 'BASICO' })).rejects.toMatchObject({
       status: 502
     });
+  });
+});
+
+// ─── getTenantDetail() (platform-tenant-tracking, T-19/21) ──────────────────
+//
+// GET /operators/tenants/:id/summary?offset&limit — thin passthrough, typed
+// (not zod-validated, matching GET /operators/tenants precedent above — only
+// PATCH responses go through zod since InmoView's PATCH lane is typed
+// `unknown` server-side; this GET route is typed end-to-end).
+
+const MOCK_DETAIL_RESPONSE: TenantDetailResponse = {
+  window: { from: '2026-07-13T00:00:00.000Z', to: '2026-07-20T00:00:00.000Z' },
+  activeEngagements: 12,
+  activeEngagementsWithOwnerVisibleUpdate: 8,
+  activeEngagementUpdatePercentage: 67,
+  documentEvents: { requested: 5, uploaded: 4, approved: 3, rejected: 1 },
+  ownerViewedPropertyCount: 20,
+  activity: {
+    total: 2,
+    items: [
+      { kind: 'movement', id: 'movement-1', createdAt: '2026-07-15T10:00:00.000Z' },
+      { kind: 'document_request', id: 'document-request:doc-1', createdAt: '2026-07-14T09:00:00.000Z' }
+    ]
+  }
+};
+
+describe('getTenantDetail()', () => {
+  it('calls GET /operators/tenants/:id/summary?offset=<offset>&limit=<limit>', async () => {
+    mockApiRequest.mockResolvedValueOnce(MOCK_DETAIL_RESPONSE);
+
+    await getTenantDetail('tenant-1', 0, 20);
+
+    expect(mockApiRequest).toHaveBeenCalledOnce();
+    const [path] = mockApiRequest.mock.calls[0];
+    expect(path).toBe('/operators/tenants/tenant-1/summary?offset=0&limit=20');
+  });
+
+  it('returns the typed TenantDetailResponse as-is', async () => {
+    mockApiRequest.mockResolvedValueOnce(MOCK_DETAIL_RESPONSE);
+
+    const result = await getTenantDetail('tenant-1', 0, 20);
+
+    expect(result).toEqual(MOCK_DETAIL_RESPONSE);
+  });
+
+  it('uses the requested offset/limit for a "load more" page', async () => {
+    mockApiRequest.mockResolvedValueOnce(MOCK_DETAIL_RESPONSE);
+
+    await getTenantDetail('tenant-1', 20, 20);
+
+    const [path] = mockApiRequest.mock.calls[0];
+    expect(path).toBe('/operators/tenants/tenant-1/summary?offset=20&limit=20');
+  });
+
+  it('encodes the tenant id in the path', async () => {
+    mockApiRequest.mockResolvedValueOnce(MOCK_DETAIL_RESPONSE);
+
+    await getTenantDetail('tenant with spaces', 0, 20);
+
+    const [path] = mockApiRequest.mock.calls[0];
+    expect(path).toBe('/operators/tenants/tenant%20with%20spaces/summary?offset=0&limit=20');
+  });
+
+  it('forwards API errors (404/502) without swallowing them', async () => {
+    const apiError = { status: 404, message: 'Tenant not found' };
+    mockApiRequest.mockRejectedValueOnce(apiError);
+
+    await expect(getTenantDetail('missing-tenant', 0, 20)).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+// ─── tenantsKeys.detail / tenantDetailOptions ────────────────────────────────
+
+describe('tenantsKeys.detail', () => {
+  it('detail(tenantId,offset,limit) is ["tenants","detail",tenantId,offset,limit]', () => {
+    expect(tenantsKeys.detail('tenant-1', 0, 20)).toEqual(['tenants', 'detail', 'tenant-1', 0, 20]);
+    expect(tenantsKeys.detail('tenant-1', 20, 20)).toEqual(['tenants', 'detail', 'tenant-1', 20, 20]);
+  });
+});
+
+describe('tenantDetailOptions', () => {
+  it('has queryKey matching tenantsKeys.detail(tenantId,offset,limit)', () => {
+    const options = tenantDetailOptions('tenant-1', 0, 20);
+    expect(options.queryKey).toEqual(['tenants', 'detail', 'tenant-1', 0, 20]);
+  });
+
+  it('has queryFn that delegates to getTenantDetail', async () => {
+    mockApiRequest.mockResolvedValueOnce(MOCK_DETAIL_RESPONSE);
+
+    const result = await getTenantDetail('tenant-1', 0, 20);
+
+    expect(result).toEqual(MOCK_DETAIL_RESPONSE);
   });
 });
 
