@@ -194,5 +194,20 @@ export function mapActivityFeedMembership(record: MembershipActivityRecord) {
 						}
 					: null,
 			};
+		case "ROLE_CHANGED":
+			// id prefix is `member-role-changed:` (singular `member-`, NOT
+			// `membership-`) — matches the proposal verbatim, deliberately
+			// breaking the sibling prefix's naming symmetry. Zero functional
+			// impact: compareActivityItems only needs id.localeCompare stability,
+			// not a shared root string.
+			return {
+				...base,
+				id: `member-role-changed:${record.id}`,
+				membershipEvent: "ROLE_CHANGED" as const,
+				subject: record.subject,
+				actor: record.actor,
+				previousRole: record.previousRole,
+				newRole: record.newRole,
+			};
 	}
 }
