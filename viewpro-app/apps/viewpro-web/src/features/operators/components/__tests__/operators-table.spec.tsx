@@ -19,7 +19,7 @@
 
 import * as React from 'react';
 import { describe, it, expect, vi, beforeAll } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { OperatorListItem } from '@/features/operators/api/types';
@@ -133,7 +133,10 @@ describe('OperatorsTable — toolbar', () => {
     const user = userEvent.setup();
     renderTable();
 
-    await user.click(await screen.findByRole('button', { name: /Rol/ }));
+    // Scope to the toolbar: the sortable column header and the faceted filter
+    // both expose a "Rol" button, so disambiguate by container.
+    const toolbar = screen.getByRole('toolbar');
+    await user.click(await within(toolbar).findByRole('button', { name: /Rol/ }));
     await user.click(await screen.findByRole('option', { name: /Dueño/ }));
 
     expect(screen.getByText('owner@viewpro.app')).toBeTruthy();
@@ -143,8 +146,9 @@ describe('OperatorsTable — toolbar', () => {
   it('exposes a faceted "Estado" filter and column view-options', async () => {
     renderTable();
 
-    expect(await screen.findByRole('button', { name: /Estado/ })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /View/ })).toBeTruthy();
+    const toolbar = screen.getByRole('toolbar');
+    expect(await within(toolbar).findByRole('button', { name: /Estado/ })).toBeTruthy();
+    expect(within(toolbar).getByRole('button', { name: /Toggle columns/i })).toBeTruthy();
   });
 
   it('shows a reset control once a filter is active', async () => {

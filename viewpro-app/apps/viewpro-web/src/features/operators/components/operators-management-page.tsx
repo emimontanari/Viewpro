@@ -207,7 +207,10 @@ export function OperatorsManagementPage() {
   }
 
   return (
-    <div className='flex flex-col gap-4'>
+    // `flex flex-1 min-h-0` participates in PageContainer's flex-height chain so
+    // the DataTable (which fills its parent via absolute positioning) renders at
+    // a bounded height instead of collapsing.
+    <div className='flex min-h-0 flex-1 flex-col gap-4'>
       <div className='flex justify-end'>
         <Button type='button' onClick={() => setIsCreateOpen(true)}>
           Nuevo operador
