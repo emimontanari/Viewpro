@@ -389,4 +389,100 @@ describe("GetPlatformTenantActivityUseCase", () => {
 			expect.objectContaining({ page: 1, pageSize: 20 }),
 		);
 	});
+
+	/**
+	 * MAX_FETCH_WINDOW boundary (window = 200).
+	 *
+	 * Regression: the merged feed fetches at most MAX_FETCH_WINDOW rows per
+	 * stream, so only the FIRST MAX_FETCH_WINDOW positions of the merged/sorted
+	 * array are globally reliable. Slicing with the uncapped `offset + limit`
+	 * indexed BEYOND that window and returned WRONG, unrelated items (e.g.
+	 * documents substituted where un-fetched movements truly rank). The slice
+	 * upper bound must never exceed the fetched window: deep pages degrade to
+	 * empty/partial-correct — never wrong items — while `total` stays the true
+	 * (possibly larger) combined count.
+	 *
+	 * Fixtures: 250 movements ALL newer than 250 documents → true global order
+	 * is m-0..m-249 then d-0..d-249. Only m-0..m-199 / d-0..d-199 are fetched.
+	 */
+	function buildWindowBoundaryStreams() {
+		const base = Date.parse("2026-06-01T00:00:00.000Z");
+		const movements = Array.from({ length: 250 }, (_, i) =>
+			makeMovementAt(`m-${i}`, new Date(base + (500 - i) * 60_000).toISOString()),
+		);
+		const documents = Array.from({ length: 250 }, (_, i) =>
+			makeDocumentAt(`d-${i}`, new Date(base - (i + 1) * 60_000).toISOString()),
+		);
+		return { movements, documents };
+	}
+
+	it("returns a correct PARTIAL last page (never wrong items) when offset < MAX_FETCH_WINDOW < offset+limit", async () => {
+		const { movements, documents } = buildWindowBoundaryStreams();
+		const { movementsRepository, documentsRepository } =
+			makePaginatingRepositories(movements, documents);
+		const useCase = new GetPlatformTenantActivityUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		// window = 200; offset 190 + limit 20 straddles the fetched window.
+		const result = await useCase.execute({
+			tenantId: "tenant-1",
+			offset: 190,
+			limit: 20,
+		});
+
+		// Only positions 190..199 are reliably fetched → exactly m-190..m-199.
+		// The buggy slice(190, 210) appended d-0..d-9 (WRONG — true positions
+		// 200..209 are the un-fetched m-200..m-209).
+		expect(result.items.map((item) => item.id)).toEqual(
+			movements.slice(190, 200).map((movement) => movement.id),
+		);
+		expect(result.items).toHaveLength(10);
+		// total is the true combined count — may exceed the browsable window.
+		expect(result.total).toBe(500);
+	});
+
+	it("returns an EMPTY page (never wrong items) when offset >= MAX_FETCH_WINDOW", async () => {
+		const { movements, documents } = buildWindowBoundaryStreams();
+		const { movementsRepository, documentsRepository } =
+			makePaginatingRepositories(movements, documents);
+		const useCase = new GetPlatformTenantActivityUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		// offset 210 is beyond the fetched window (200) → honest empty page.
+		const result = await useCase.execute({
+			tenantId: "tenant-1",
+			offset: 210,
+			limit: 20,
+		});
+
+		// The buggy slice(210, 230) returned d-10..d-29 (WRONG items).
+		expect(result.items).toEqual([]);
+		// total still reports the full count (honest depth limit, not corruption).
+		expect(result.total).toBe(500);
+	});
+
+	it("returns a correct full page when offset+limit <= MAX_FETCH_WINDOW", async () => {
+		const { movements, documents } = buildWindowBoundaryStreams();
+		const { movementsRepository, documentsRepository } =
+			makePaginatingRepositories(movements, documents);
+		const useCase = new GetPlatformTenantActivityUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		const result = await useCase.execute({
+			tenantId: "tenant-1",
+			offset: 100,
+			limit: 20,
+		});
+
+		expect(result.items.map((item) => item.id)).toEqual(
+			movements.slice(100, 120).map((movement) => movement.id),
+		);
+		expect(result.items).toHaveLength(20);
+	});
 });
