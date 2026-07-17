@@ -111,12 +111,21 @@ function createPrismaDouble(fixtures: {
 			),
 	);
 
+	// platform-role-change-activity (T7) — this spec file's fixtures never
+	// include MEMBER_ROLE_CHANGED events; the double still exposes the
+	// analyticsEvent sub-query as empty so the repository's unconditional 4th
+	// source query does not blow up (dedicated coverage lives in
+	// prisma-membership-activity.repository.role-changed.spec.ts).
+	const analyticsEventFindMany = vi.fn(() => Promise.resolve([]));
+	const analyticsEventCount = vi.fn(() => Promise.resolve(0));
+
 	return {
 		teamInvitation: { findMany: teamInvitationFindMany, count: teamInvitationCount },
 		tenantMembership: {
 			findMany: tenantMembershipFindMany,
 			count: tenantMembershipCount,
 		},
+		analyticsEvent: { findMany: analyticsEventFindMany, count: analyticsEventCount },
 		user: { findMany: userFindMany },
 	};
 }
