@@ -7,21 +7,34 @@ import { z } from 'zod';
 import type { ApiError } from '@/lib/api-client';
 import type { AuditFeedResponse } from './types';
 
+// A4 — the feed is heterogeneous: InmoView-outbox entries carry actor
+// {id,type,label}; VIEWPRO_NATIVE operator-management entries carry actor
+// {id,email} (no type/label). Both variants must parse — one native entry
+// must NOT fail the whole feed. type/label/email are all optional.
 const actorSchema = z.object({
   id: z.string(),
-  type: z.string(),
-  label: z.string()
+  type: z.string().optional(),
+  label: z.string().optional(),
+  email: z.string().optional()
+});
+
+// Present only on VIEWPRO_NATIVE operator actions (null for outbox entries).
+const targetSchema = z.object({
+  id: z.string(),
+  email: z.string().optional()
 });
 
 const itemSchema = z.object({
   id: z.string(),
   action: z.string(),
-  tenantId: z.string(),
+  tenantId: z.string().nullable(),
   actor: actorSchema,
+  target: targetSchema.nullable().optional(),
   previousValue: z.unknown(),
   newValue: z.unknown(),
   occurredAt: z.string(),
-  seqNo: z.number()
+  seqNo: z.number().nullable(),
+  source: z.string().optional()
 });
 
 const feedSchema = z.object({
