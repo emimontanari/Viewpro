@@ -29,6 +29,19 @@ type PropertySummary = { title?: unknown };
 type ActorSummary = { firstName?: unknown; email?: unknown };
 type DocumentRequestSummary = { title?: unknown };
 
+// Spanish TenantRole labels — COPIED (not imported) from
+// apps/app-new/src/features/users/components/team-members-list.tsx `formatRole`
+// (Design B: InmoView-side isolation, no cross-app import).
+const TENANT_ROLE_LABELS: Record<string, string> = {
+  PRINCIPAL_MANAGER: 'Encargado principal',
+  MANAGER: 'Encargado',
+  AGENT: 'Vendedor'
+};
+
+function formatTenantRole(rawRole: unknown): string {
+  return typeof rawRole === 'string' ? (TENANT_ROLE_LABELS[rawRole] ?? rawRole) : 'rol desconocido';
+}
+
 function readString(value: unknown, fallback: string): string {
   return typeof value === 'string' && value.trim().length > 0 ? value : fallback;
 }
@@ -86,6 +99,14 @@ function describeMembershipActivityItem(item: TenantActivityItem): TenantActivit
         title: `Usuario desactivado · ${subjectLabel}`,
         subtitle: `Desactivado por ${actorLabel}`
       };
+    case 'ROLE_CHANGED': {
+      const previousRoleLabel = formatTenantRole(item.previousRole);
+      const newRoleLabel = formatTenantRole(item.newRole);
+      return {
+        title: `Rol cambiado · ${subjectLabel}: ${previousRoleLabel} → ${newRoleLabel}`,
+        subtitle: `Cambiado por ${actorLabel}`
+      };
+    }
     default:
       return {
         title: `Actividad de usuario · ${subjectLabel}`,
