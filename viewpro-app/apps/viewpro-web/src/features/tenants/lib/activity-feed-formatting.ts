@@ -168,3 +168,74 @@ export function formatActivityTimestamp(iso: string): string {
 
   return ACTIVITY_TIMESTAMP_FORMATTER.format(date);
 }
+
+/**
+ * Presentation-only classification of an activity item into one of the four
+ * feed filter buckets (feat/web-tenant-detail-redesign). Reads the item's
+ * STRUCTURED discriminants (kind/type) — not the rendered title — so it stays
+ * in lock-step with describeTenantActivityItem without depending on copy.
+ * Never throws; an unknown future `kind` degrades to the same bucket as the
+ * describe() fallback (document → 'deed').
+ */
+export type ActivityCategory = 'user' | 'deed' | 'update' | 'inquiry';
+
+export function categorizeActivityItem(item: TenantActivityItem): ActivityCategory {
+  switch (item?.kind) {
+    case 'membership':
+      return 'user';
+    case 'movement':
+      return item.type === 'INQUIRY' ? 'inquiry' : 'update';
+    case 'document_request':
+    default:
+      return 'deed';
+  }
+}
+
+const UNKNOWN_DAY_KEY = 'unknown';
+const UNKNOWN_DATE_LABEL = 'Fecha desconocida';
+
+const ACTIVITY_DATE_SEPARATOR_FORMATTER = new Intl.DateTimeFormat('es-AR', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric'
+});
+
+const ACTIVITY_FULL_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat('es-AR', {
+  dateStyle: 'full',
+  timeStyle: 'medium'
+});
+
+/**
+ * Stable per-calendar-day grouping key derived from an item's existing
+ * `createdAt` (YYYY-MM-DD in local time). Malformed/absent dates collapse to a
+ * single neutral bucket so the feed degrades gracefully instead of throwing.
+ */
+export function activityDayKey(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return UNKNOWN_DAY_KEY;
+  }
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/** Human date label for a day separator; neutral label for malformed input. */
+export function formatActivityDateSeparator(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return UNKNOWN_DATE_LABEL;
+  }
+  return ACTIVITY_DATE_SEPARATOR_FORMATTER.format(date);
+}
+
+/** Fuller date/time string for the timestamp `title` tooltip; fails safe to '—'. */
+export function formatActivityFullTimestamp(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+  return ACTIVITY_FULL_TIMESTAMP_FORMATTER.format(date);
+}

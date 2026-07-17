@@ -1,0 +1,362 @@
+/*
+ * Visual redesign of the "Detalle de la inmobiliaria" page
+ * (feat/web-tenant-detail-redesign). Presentation-only.
+ *
+ * Fixed light palette per the design spec (intentionally NOT theme-aware):
+ * the design tokens below are scoped to the two page wrappers (.header / .page)
+ * with new custom-property names that do not clash with the app theme. Both
+ * wrappers declare them so the tokens cascade to every descendant regardless of
+ * which subtree (header is rendered outside the client view container).
+ */
+
+.header,
+.page {
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-tertiary: #64748b;
+  --color-accent: #6d5de7;
+  --color-accent-soft: #eeebfd;
+
+  --event-user: #10b981;
+  --event-user-bg: #ecfdf5;
+  --event-deed: #3b82f6;
+  --event-deed-bg: #eff6ff;
+  --event-update: #f59e0b;
+  --event-update-bg: #fffbeb;
+  --event-inquiry: #8b5cf6;
+  --event-inquiry-bg: #f5f3ff;
+
+  --radius-card: 12px;
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+/* ── Page header ───────────────────────────────────────────────────────── */
+
+.header {
+  margin-bottom: 24px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-text-primary);
+}
+
+.codeBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+  background: #f1f5f9;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.subtitle {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+/* ── KPI cards ─────────────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 1023px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 639px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cardLabel {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--color-text-secondary);
+}
+
+.cardIcon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardValue {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.cardSub {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.cardEmpty {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.badgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.badge {
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.badgeApproved {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.badgeRejected {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+/* ── Activity feed ─────────────────────────────────────────────────────── */
+
+.feedSection {
+  margin-top: 32px;
+}
+
+.feedHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.feedTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.feedCount {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.chip {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.chip:hover {
+  background: var(--color-bg);
+}
+
+.chipActive {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  border-color: transparent;
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.feedCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.separatorItem {
+  list-style: none;
+}
+
+.separator {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-tertiary);
+  padding: 10px 20px;
+  background: var(--color-bg);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color 120ms ease;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: var(--color-bg);
+}
+
+.row:focus-within {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.iconCircle {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.eventUser {
+  background: var(--event-user-bg);
+  color: var(--event-user);
+}
+
+.eventDeed {
+  background: var(--event-deed-bg);
+  color: var(--event-deed);
+}
+
+.eventUpdate {
+  background: var(--event-update-bg);
+  color: var(--event-update);
+}
+
+.eventInquiry {
+  background: var(--event-inquiry-bg);
+  color: var(--event-inquiry);
+}
+
+.rowContent {
+  min-width: 0;
+}
+
+.rowTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.rowSubtitle {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.timestamp {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  text-align: right;
+}
+
+.filterEmpty {
+  padding: 24px 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.loadMoreWrap {
+  margin-top: 16px;
+}
+
+.emptyState {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 24px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+}
