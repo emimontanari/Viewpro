@@ -11,10 +11,18 @@ const FALLBACK_PROPERTY_TITLE = 'Propiedad sin título';
 const FALLBACK_DOCUMENT_TITLE = 'Documento';
 const FALLBACK_ACTOR = 'Operador';
 
+// Complete map of InmoView's MovementType enum → Spanish labels (schema.prisma
+// `enum MovementType`). Unknown values fall back to the raw code (defensive).
 const MOVEMENT_TYPE_LABELS: Record<string, string> = {
+  GENERAL_UPDATE: 'Actualización general',
+  INQUIRY: 'Consulta',
+  VISIT_SCHEDULED: 'Visita agendada',
+  VISIT_COMPLETED: 'Visita realizada',
+  OFFER_RECEIVED: 'Oferta recibida',
+  DOCUMENTATION_UPDATE: 'Actualización de documentación',
   STATUS_CHANGE: 'Cambio de estado',
-  OBSERVATION: 'Observación',
-  OFFER: 'Oferta'
+  ARCHIVED: 'Archivado',
+  RESTORED: 'Restaurado'
 };
 
 type PropertySummary = { title?: unknown };

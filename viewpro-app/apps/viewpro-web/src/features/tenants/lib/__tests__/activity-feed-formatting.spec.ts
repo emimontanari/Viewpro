@@ -84,6 +84,26 @@ describe('describeTenantActivityItem()', () => {
     expect(result.subtitle).toContain('Lucía');
   });
 
+  it('maps every MovementType enum value to a Spanish label (no raw codes leak)', () => {
+    const cases: Array<[string, string]> = [
+      ['GENERAL_UPDATE', 'Actualización general'],
+      ['INQUIRY', 'Consulta'],
+      ['VISIT_SCHEDULED', 'Visita agendada'],
+      ['VISIT_COMPLETED', 'Visita realizada'],
+      ['OFFER_RECEIVED', 'Oferta recibida'],
+      ['DOCUMENTATION_UPDATE', 'Actualización de documentación'],
+      ['STATUS_CHANGE', 'Cambio de estado'],
+      ['ARCHIVED', 'Archivado'],
+      ['RESTORED', 'Restaurado']
+    ];
+
+    for (const [type, label] of cases) {
+      const result = describeTenantActivityItem({ ...MOVEMENT_ITEM, type });
+      expect(result.title).toContain(label);
+      expect(result.title).not.toContain(type); // the raw enum code never renders
+    }
+  });
+
   it('a document_request item derives title from documentRequest + property, subtitle from requestedBy', () => {
     const result = describeTenantActivityItem(DOCUMENT_REQUEST_ITEM);
 
