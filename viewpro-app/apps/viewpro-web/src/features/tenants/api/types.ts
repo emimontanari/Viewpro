@@ -91,17 +91,23 @@ export type TenantDetailDocumentEvents = {
   rejected: number;
 };
 
-// One merged-feed item (Movement | DocumentRequest), mirrors apps/api's
-// ActivityFeedItemResponse union shape-wise but is intentionally kept loose
-// (no full field-by-field type) — matches the SAME convention already used on
-// the ViewPro backend for this exact endpoint
+// One merged-feed item (Movement | DocumentRequest | Membership), mirrors
+// apps/api's ActivityFeedItemResponse union shape-wise but is intentionally
+// kept loose (no full field-by-field type) — matches the SAME convention
+// already used on the ViewPro backend for this exact endpoint
 // (apps/viewpro-api/.../change-feed.client.ts `PlatformActivityFeedItem`).
 // Only `kind`/`id`/`createdAt` are guaranteed; everything else is read
 // defensively at render time (see tenant-detail activity-feed formatting).
+//
+// platform-user-activity-capture — 'membership' added (derived
+// INVITED/JOINED/DEACTIVATED tenant-membership events). `membershipEvent`
+// sub-discriminates within `kind: 'membership'`, mirroring how
+// `type` sub-discriminates within `kind: 'movement'` server-side.
 export type TenantActivityItem = {
-  kind: 'movement' | 'document_request';
+  kind: 'movement' | 'document_request' | 'membership';
   id: string;
   createdAt: string; // ISO string
+  membershipEvent?: 'INVITED' | 'JOINED' | 'DEACTIVATED';
   [key: string]: unknown;
 };
 
