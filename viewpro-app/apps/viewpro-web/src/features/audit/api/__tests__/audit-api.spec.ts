@@ -45,6 +45,24 @@ const MOCK_FEED_RESPONSE: AuditFeedResponse = {
   items: [MOCK_ITEM]
 };
 
+// A4 — the audit feed is HETEROGENEOUS: alongside the InmoView-outbox entries
+// (MOCK_ITEM above), operator-management actions emit VIEWPRO_NATIVE entries
+// with a different shape: actor {id,email} (no type/label), a target
+// {id,email}, tenantId/seqNo null, and a source discriminator. The FE schema
+// must tolerate BOTH so a single native entry never fails the whole feed.
+const MOCK_NATIVE_ITEM = {
+  id: 'audit-native-1',
+  action: 'OPERATOR_CREATED',
+  tenantId: null,
+  actor: { id: 'op-9', email: 'admin@viewpro.local' },
+  target: { id: 'op-10', email: 'demo.operador@viewpro.local' },
+  previousValue: null,
+  newValue: null,
+  occurredAt: '2026-07-15T11:00:00.000Z',
+  seqNo: null,
+  source: 'VIEWPRO_NATIVE'
+};
+
 beforeEach(() => {
   mockApiRequest.mockReset();
 });
@@ -131,6 +149,36 @@ describe('parseAuditFeedResponse()', () => {
     } catch (error) {
       expect(error).toMatchObject({ status: 502 });
     }
+  });
+
+  it('accepts a heterogeneous feed (outbox + native) without throwing', () => {
+    const raw = {
+      total: 2,
+      items: [MOCK_ITEM, MOCK_NATIVE_ITEM]
+    };
+
+    expect(() => parseAuditFeedResponse(raw)).not.toThrow();
+
+    const result = parseAuditFeedResponse(raw);
+    expect(result.items).toHaveLength(2);
+    expect(result.items[1]).toMatchObject({
+      id: 'audit-native-1',
+      action: 'OPERATOR_CREATED',
+      tenantId: null,
+      seqNo: null,
+      source: 'VIEWPRO_NATIVE',
+      actor: { id: 'op-9', email: 'admin@viewpro.local' },
+      target: { id: 'op-10', email: 'demo.operador@viewpro.local' }
+    });
+  });
+
+  it('accepts a lone native entry (actor without type/label, target present)', () => {
+    const raw = {
+      total: 1,
+      items: [MOCK_NATIVE_ITEM]
+    };
+
+    expect(() => parseAuditFeedResponse(raw)).not.toThrow();
   });
 
   it('rejects null', () => {
