@@ -308,4 +308,133 @@ describe('ChangeFeedClient', () => {
 
     await expect(client.fetchAllTenants()).rejects.toThrow()
   })
+
+  // -------------------------------------------------------------------------
+  // platform-tenant-tracking (PR1) — RED: fetchTenantSummary(tenantId, offset, limit)
+  //
+  // Spec: platform-tenant-tracking — "ViewPro tenant summary passthrough"
+  // Design D7: extends ChangeFeedClient (not a new client class), mirrors the
+  //   existing fetchChanges/fetchAllTenants HS256 token-minting.
+  // -------------------------------------------------------------------------
+  it('fetchTenantSummary calls GET INMOVIEW_API_INTERNAL_URL/api/internal/platform/tenants/:id/summary?offset=&limit=', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          window: { from: '2026-05-18T00:00:00.000Z', to: '2026-05-25T00:00:00.000Z' },
+          activeEngagements: 1,
+          activeEngagementsWithOwnerVisibleUpdate: 0,
+          activeEngagementUpdatePercentage: 0,
+          documentEvents: { requested: 0, uploaded: 0, approved: 0, rejected: 0 },
+          ownerViewedPropertyCount: 0,
+          activity: { total: 0, items: [] },
+        }),
+        { status: 200 },
+      ),
+    )
+    vi.stubGlobal('fetch', mockFetch)
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await client.fetchTenantSummary('tenant-1', 0, 20)
+
+    expect(mockFetch).toHaveBeenCalledOnce()
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe(
+      `${INMOVIEW_API_INTERNAL_URL}/api/internal/platform/tenants/tenant-1/summary?offset=0&limit=20`,
+    )
+  })
+
+  it('fetchTenantSummary mints a service token with the same claims as fetchChanges (iss=viewpro-api, aud=inmoview-control)', async () => {
+    const capturedHeaders: Record<string, string>[] = []
+    const mockFetch = vi.fn().mockImplementation((_url: string, init: RequestInit) => {
+      capturedHeaders.push(init.headers as Record<string, string>)
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            window: { from: '2026-05-18T00:00:00.000Z', to: '2026-05-25T00:00:00.000Z' },
+            activeEngagements: 0,
+            activeEngagementsWithOwnerVisibleUpdate: 0,
+            activeEngagementUpdatePercentage: 0,
+            documentEvents: { requested: 0, uploaded: 0, approved: 0, rejected: 0 },
+            ownerViewedPropertyCount: 0,
+            activity: { total: 0, items: [] },
+          }),
+          { status: 200 },
+        ),
+      )
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await client.fetchTenantSummary('tenant-1', 0, 20)
+
+    const authHeader = capturedHeaders[0]?.['Authorization'] ?? ''
+    const token = authHeader.replace('Bearer ', '')
+    const verifier = new JwtService({ secret: PLATFORM_CONTROL_SECRET })
+    const payload = await verifier.verifyAsync(token)
+
+    expect(payload.iss).toBe('viewpro-api')
+    expect(payload.aud).toBe('inmoview-control')
+    expect(payload.sub).toBe('system-ingest')
+  })
+
+  it('fetchTenantSummary returns the parsed summary body (counts + activity)', async () => {
+    const mockBody = {
+      window: { from: '2026-05-18T00:00:00.000Z', to: '2026-05-25T00:00:00.000Z' },
+      activeEngagements: 3,
+      activeEngagementsWithOwnerVisibleUpdate: 1,
+      activeEngagementUpdatePercentage: 33,
+      documentEvents: { requested: 2, uploaded: 1, approved: 1, rejected: 0 },
+      ownerViewedPropertyCount: 4,
+      activity: {
+        total: 1,
+        items: [{ kind: 'movement', id: 'movement-1', createdAt: '2026-05-22T10:00:00.000Z' }],
+      },
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(mockBody), { status: 200 }),
+    ))
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    const result = await client.fetchTenantSummary('tenant-1', 0, 20)
+
+    expect(result.activeEngagements).toBe(3)
+    expect(result.activity.total).toBe(1)
+    expect(result.activity.items).toHaveLength(1)
+  })
+
+  it('fetchTenantSummary throws on non-2xx response (mapped to a typed error by the caller)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }),
+    ))
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await expect(client.fetchTenantSummary('does-not-exist', 0, 20)).rejects.toThrow()
+  })
+
+  it('fetchTenantSummary throws on network failure', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await expect(client.fetchTenantSummary('tenant-1', 0, 20)).rejects.toThrow()
+  })
 })

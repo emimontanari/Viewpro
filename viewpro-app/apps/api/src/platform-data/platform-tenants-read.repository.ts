@@ -50,4 +50,43 @@ export class PlatformTenantsReadRepository {
       },
     }))
   }
+
+  /**
+   * Returns a single tenant by id, or `null` if it does not exist.
+   *
+   * Used by the internal tenant-summary route (platform-tenant-tracking, D4)
+   * to produce a clean 404 for an unknown tenant id — aggregate count queries
+   * on an unknown tenantId silently return 0, so they cannot detect "not found"
+   * on their own.
+   */
+  async findById(tenantId: string): Promise<TenantRegistryItem | null> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        status: true,
+        maxUsers: true,
+        maxActivePropertyEngagements: true,
+        maxDocumentsStorageMb: true,
+      },
+    })
+
+    if (!tenant) {
+      return null
+    }
+
+    return {
+      id: tenant.id,
+      name: tenant.name,
+      slug: tenant.slug,
+      status: tenant.status as PlatformTenantStatus,
+      limits: {
+        maxUsers: tenant.maxUsers,
+        maxActivePropertyEngagements: tenant.maxActivePropertyEngagements,
+        maxDocumentsStorageMb: tenant.maxDocumentsStorageMb,
+      },
+    }
+  }
 }

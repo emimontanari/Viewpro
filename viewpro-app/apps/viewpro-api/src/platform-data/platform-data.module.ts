@@ -15,6 +15,8 @@ import { TenantRegistryService } from './tenant-registry.service'
 import { TenantRegistryController } from './tenant-registry.controller'
 import { AuditService } from './audit.service'
 import { AuditController } from './audit.controller'
+import { TenantDetailService } from './tenant-detail.service'
+import { TenantDetailController } from './tenant-detail.controller'
 
 /**
  * PlatformDataModule (viewpro-api) — data-lane consumer module.
@@ -35,12 +37,15 @@ import { AuditController } from './audit.controller'
  *  - MetricsController: GET /operators/metrics/summary (Phase 4 AuthGuard)
  *  - TenantRegistryService / TenantRegistryController: GET /operators/tenants (A10/A11)
  *  - AuditService / AuditController: GET /operators/audit (A9/A10)
+ *  - TenantDetailService / TenantDetailController: GET /operators/tenants/:id/summary —
+ *    on-demand passthrough to InmoView's signed internal endpoint, no ViewPro table
+ *    read/write (platform-tenant-tracking D8)
  *
  * DatabaseModule is @Global() so PrismaService is available without explicit import.
  */
 @Module({
   imports: [AuthModule, PermissionsModule],
-  controllers: [MetricsController, TenantRegistryController, AuditController],
+  controllers: [MetricsController, TenantRegistryController, AuditController, TenantDetailController],
   providers: [
     // ChangeFeedClient's constructor is typed (ConfigService | Options) for a
     // dual DI/unit-test construction mode. A union param emits `Object` under
@@ -71,6 +76,7 @@ import { AuditController } from './audit.controller'
     MetricsService,
     TenantRegistryService,
     AuditService,
+    TenantDetailService,
   ],
 })
 export class PlatformDataModule {}

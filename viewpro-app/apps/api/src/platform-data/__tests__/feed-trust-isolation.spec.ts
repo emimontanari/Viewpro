@@ -213,3 +213,190 @@ describe('Threat matrix — GET /internal/platform/tenants (T-19)', () => {
     expect(res.status).toBe(401)
   })
 })
+
+// ---------------------------------------------------------------------------
+// platform-tenant-tracking (PR1) — RED: GET /internal/platform/tenants/:id/summary
+//
+// Spec: platform-tenant-tracking — "InmoView internal tenant summary endpoint",
+//       "Trust isolation on the summary endpoint", "Per-tenant scoping"
+//
+// Scenarios:
+//   1. Product user session JWT (no valid service token) → 401/403;
+//      request.user is NEVER populated on this path.
+//   2. Valid platform service token + known tenant → 200; response reflects
+//      only that tenant's counts + activity; request.platformCaller is set,
+//      request.user stays undefined (proven indirectly — the endpoint never
+//      needs a user session cookie to succeed, and no user identity leaks).
+//   3. Valid token + unknown tenant id → clean 404 (not a 500).
+//   4. Cross-tenant isolation: tenant B's data never appears in tenant A's
+//      summary response.
+// ---------------------------------------------------------------------------
+describe('PlatformDataController — GET /internal/platform/tenants/:id/summary (platform-tenant-tracking PR1)', () => {
+  let app: INestApplication
+  let prisma: import('@prisma/client').PrismaClient
+
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test'
+    process.env.PLATFORM_CONTROL_SECRET = PLATFORM_CONTROL_SECRET
+
+    const { createApiApp } = await import('../../bootstrap/create-app.js')
+    app = await createApiApp()
+    await app.init()
+
+    const { PrismaService } = await import('../../database/prisma.service.js')
+    prisma = app.get(PrismaService)
+  })
+
+  afterAll(async () => {
+    await app.close()
+  })
+
+  beforeEach(async () => {
+    await prisma.movement.deleteMany()
+    await prisma.propertyEngagement.deleteMany()
+    await prisma.propertyAsset.deleteMany()
+    await prisma.tenantMembership.deleteMany()
+    await prisma.tenant.deleteMany()
+  })
+
+  async function seedTenantWithMovement(
+    suffix: string,
+  ): Promise<{ tenantId: string; movementObservation: string }> {
+    // Unique per invocation (not just per suffix) — the user table is not
+    // cleaned between tests in this describe block, so a static suffix would
+    // collide with a prior test run's registered email (409 Conflict).
+    const uniqueSuffix = `${suffix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const agent = request.agent(app.getHttpServer())
+    const managerRes = await agent
+      .post('/api/auth/register-tenant')
+      .send({
+        email: `summary-manager-${uniqueSuffix}@test.local`,
+        password: 'password123',
+        firstName: 'Summary',
+        tenantName: `Summary Tenant ${uniqueSuffix}`,
+      })
+      .expect(201)
+
+    const tenantId = managerRes.body.memberships[0].tenant.id as string
+    const managerId = managerRes.body.user.id as string
+
+    const asset = await prisma.propertyAsset.create({
+      data: {
+        title: `Summary Property ${suffix}`,
+        addressLine: 'Calle Falsa 123',
+        city: 'Buenos Aires',
+        province: 'CABA',
+        propertyType: 'HOUSE',
+        createdByUserId: managerId,
+      },
+    })
+
+    const engagement = await prisma.propertyEngagement.create({
+      data: {
+        tenantId,
+        propertyAssetId: asset.id,
+        operationType: 'SALE',
+        status: 'CAPTURE',
+        publishedPriceCents: 100,
+        currency: 'USD',
+        createdByUserId: managerId,
+      },
+    })
+
+    const movementObservation = `Seed movement ${suffix}`
+
+    await agent
+      .post(`/api/property-engagements/${engagement.id}/movements`)
+      .set('x-tenant-id', tenantId)
+      .send({ type: 'INQUIRY', observation: movementObservation })
+      .expect(201)
+
+    return { tenantId, movementObservation }
+  }
+
+  it('product user session JWT (no valid service token) → 401; request.user is never populated', async () => {
+    const { tenantId } = await seedTenantWithMovement('u1')
+    const userToken = await mintUserToken()
+
+    const res = await request(app.getHttpServer())
+      .get(`/api/internal/platform/tenants/${tenantId}/summary`)
+      .set('Authorization', `Bearer ${userToken}`)
+
+    expect(res.status).toBe(401)
+    const bodyStr = JSON.stringify(res.body)
+    expect(bodyStr).not.toContain('user-abc')
+    expect(bodyStr).not.toContain('user@example.com')
+  })
+
+  it('operator/product session cookie with no Authorization header → 401 (guard never reads cookies)', async () => {
+    const { tenantId } = await seedTenantWithMovement('u2')
+    const userToken = await mintUserToken()
+
+    const res = await request(app.getHttpServer())
+      .get(`/api/internal/platform/tenants/${tenantId}/summary`)
+      .set('Cookie', `viewpro_access_token=${userToken}`)
+
+    expect(res.status).toBe(401)
+  })
+
+  it('valid service token + known tenant → 200 with counts + activity for that tenant only; secret never leaks', async () => {
+    const { tenantId, movementObservation } = await seedTenantWithMovement('s1')
+    const token = await mintServiceToken()
+
+    const res = await request(app.getHttpServer())
+      .get(`/api/internal/platform/tenants/${tenantId}/summary?offset=0&limit=20`)
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.activeEngagements).toBe(1)
+    expect(res.body.documentEvents).toEqual({
+      requested: 0,
+      uploaded: 0,
+      approved: 0,
+      rejected: 0,
+    })
+    expect(res.body.activity.total).toBe(1)
+    expect(res.body.activity.items).toHaveLength(1)
+    expect(res.body.activity.items[0]).toMatchObject({
+      kind: 'movement',
+      observation: movementObservation,
+    })
+
+    // request.platformCaller was used to authorize the call (200 reached, no
+    // user session cookie was ever sent) — request.user was never needed nor set.
+    const bodyStr = JSON.stringify(res.body)
+    expect(bodyStr).not.toContain(PLATFORM_CONTROL_SECRET)
+    expect(bodyStr).not.toContain(token)
+  })
+
+  it('valid service token + unknown tenant id → 404, not a 500', async () => {
+    const token = await mintServiceToken()
+
+    const res = await request(app.getHttpServer())
+      .get('/api/internal/platform/tenants/does-not-exist/summary')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(404)
+  })
+
+  it('cross-tenant isolation: tenant B activity/counts never appear in tenant A summary', async () => {
+    const tenantA = await seedTenantWithMovement('iso-a')
+    const tenantB = await seedTenantWithMovement('iso-b')
+    const token = await mintServiceToken()
+
+    const res = await request(app.getHttpServer())
+      .get(`/api/internal/platform/tenants/${tenantA.tenantId}/summary`)
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(200)
+    // Only tenant A's single engagement is counted — tenant B's is excluded.
+    expect(res.body.activeEngagements).toBe(1)
+    expect(res.body.activity.total).toBe(1)
+    expect(res.body.activity.items).toHaveLength(1)
+    expect(res.body.activity.items[0].observation).toBe(tenantA.movementObservation)
+
+    const bodyStr = JSON.stringify(res.body)
+    expect(bodyStr).not.toContain(tenantB.movementObservation)
+    expect(bodyStr).not.toContain(tenantB.tenantId)
+  })
+})

@@ -118,7 +118,7 @@ export class ListActivityFeedUseCase {
   }
 }
 
-function compareActivityItems(left: ActivityFeedItemResponse, right: ActivityFeedItemResponse) {
+export function compareActivityItems(left: ActivityFeedItemResponse, right: ActivityFeedItemResponse) {
   const createdAtDifference = new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
 
   if (createdAtDifference !== 0) {
