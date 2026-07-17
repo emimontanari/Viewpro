@@ -15,6 +15,10 @@ import type { GetPlatformTenantActivityResponse } from '../analytics/use-cases/g
 
 const DEFAULT_SUMMARY_ACTIVITY_OFFSET = 0
 const DEFAULT_SUMMARY_ACTIVITY_LIMIT = 20
+// Hard ceiling on the activity page size — an authenticated caller must not be
+// able to request an arbitrarily large limit that becomes an unbounded Prisma
+// `take` (DoS). Requests above the cap silently degrade to MAX_SUMMARY_ACTIVITY_LIMIT.
+const MAX_SUMMARY_ACTIVITY_LIMIT = 100
 
 /**
  * Sanitize an offset query param: default 0; must be a finite integer >= 0.
@@ -27,11 +31,15 @@ function sanitizeSummaryOffset(raw?: string): number {
 }
 
 /**
- * Sanitize a limit query param: default 20; must be a finite integer >= 1.
+ * Sanitize a limit query param: default 20; clamped to [1, MAX_SUMMARY_ACTIVITY_LIMIT].
+ * Malformed input degrades to the default; an over-max value degrades to the cap.
  */
 function sanitizeSummaryLimit(raw?: string): number {
   const parsed = raw !== undefined ? Number(raw) : DEFAULT_SUMMARY_ACTIVITY_LIMIT
-  return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : DEFAULT_SUMMARY_ACTIVITY_LIMIT
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return DEFAULT_SUMMARY_ACTIVITY_LIMIT
+  }
+  return Math.min(Math.floor(parsed), MAX_SUMMARY_ACTIVITY_LIMIT)
 }
 
 /**

@@ -11,6 +11,10 @@ import type { PlatformTenantSummaryResponse } from './change-feed.client'
 
 const DEFAULT_OFFSET = 0
 const DEFAULT_LIMIT = 20
+// Hard ceiling on the forwarded activity page size — mirrors the InmoView
+// route's MAX_SUMMARY_ACTIVITY_LIMIT so the DoS cap holds on this passthrough
+// too (defense in depth), even if the InmoView route were bypassed.
+const MAX_LIMIT = 100
 
 /**
  * Sanitize an offset query param: default 0; must be a finite integer >= 0.
@@ -25,11 +29,15 @@ function sanitizeOffset(raw?: string): number {
 /**
  * Sanitize a limit query param: default 20 (matches
  * GetPlatformTenantActivityUseCase's own default on the InmoView side);
- * must be a finite integer >= 1.
+ * clamped to [1, MAX_LIMIT]. Malformed input degrades to the default; an
+ * over-max value degrades to the cap.
  */
 function sanitizeLimit(raw?: string): number {
   const parsed = raw !== undefined ? Number(raw) : DEFAULT_LIMIT
-  return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : DEFAULT_LIMIT
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return DEFAULT_LIMIT
+  }
+  return Math.min(Math.floor(parsed), MAX_LIMIT)
 }
 
 /**
