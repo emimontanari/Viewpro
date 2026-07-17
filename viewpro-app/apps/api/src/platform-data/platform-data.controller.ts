@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common'
+import { Controller, Get, NotFoundException, Param, Query, UseGuards } from '@nestjs/common'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { PrismaOutboxRepository } from './platform-outbox.repository'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
@@ -6,6 +6,45 @@ import { PlatformTenantsReadRepository } from './platform-tenants-read.repositor
 import { PlatformControlGuard } from '../platform-control/platform-control.guard'
 import type { ChangeFeedResponse } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
 import type { TenantRegistryItem } from './platform-tenants-read.repository'
+// biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
+import { GetPilotSummaryUseCase } from '../analytics/use-cases/get-pilot-summary.use-case'
+import type { PilotSummaryResponse } from '../analytics/use-cases/get-pilot-summary.use-case'
+// biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
+import { GetPlatformTenantActivityUseCase } from '../analytics/use-cases/get-platform-tenant-activity.use-case'
+import type { GetPlatformTenantActivityResponse } from '../analytics/use-cases/get-platform-tenant-activity.use-case'
+
+const DEFAULT_SUMMARY_ACTIVITY_OFFSET = 0
+const DEFAULT_SUMMARY_ACTIVITY_LIMIT = 20
+
+/**
+ * Sanitize an offset query param: default 0; must be a finite integer >= 0.
+ * Malformed input degrades to the default rather than reaching a repository
+ * `skip` with a NaN/negative value.
+ */
+function sanitizeSummaryOffset(raw?: string): number {
+  const parsed = raw !== undefined ? Number(raw) : DEFAULT_SUMMARY_ACTIVITY_OFFSET
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : DEFAULT_SUMMARY_ACTIVITY_OFFSET
+}
+
+/**
+ * Sanitize a limit query param: default 20; must be a finite integer >= 1.
+ */
+function sanitizeSummaryLimit(raw?: string): number {
+  const parsed = raw !== undefined ? Number(raw) : DEFAULT_SUMMARY_ACTIVITY_LIMIT
+  return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : DEFAULT_SUMMARY_ACTIVITY_LIMIT
+}
+
+/**
+ * Response shape for GET /internal/platform/tenants/:id/summary.
+ * Counts mirror `PilotSummaryResponse` exactly (including the 4-field
+ * `documentEvents` shape, D2) plus one page of the merged activity feed.
+ *
+ * No `packages/platform-contract` type — FE-owned mirrored types are the
+ * established convention for this wire shape (design D6).
+ */
+export type PlatformTenantSummaryResponse = PilotSummaryResponse & {
+  activity: GetPlatformTenantActivityResponse
+}
 
 /**
  * PlatformDataController — read-side change-feed for the data lane.
@@ -29,6 +68,8 @@ export class PlatformDataController {
   constructor(
     private readonly outboxRepository: PrismaOutboxRepository,
     private readonly tenantsReadRepository: PlatformTenantsReadRepository,
+    private readonly getPilotSummaryUseCase: GetPilotSummaryUseCase,
+    private readonly getPlatformTenantActivityUseCase: GetPlatformTenantActivityUseCase,
   ) {}
 
   /**
@@ -72,5 +113,43 @@ export class PlatformDataController {
   async getTenants(): Promise<{ tenants: TenantRegistryItem[] }> {
     const tenants = await this.tenantsReadRepository.findAll()
     return { tenants }
+  }
+
+  /**
+   * GET /internal/platform/tenants/:id/summary?offset=<n>&limit=<n>
+   *
+   * Composes the existing GetPilotSummaryUseCase (counts, unchanged) with the
+   * new GetPlatformTenantActivityUseCase (one page of the merged activity
+   * feed) for an EXPLICIT :id path param — never a session-derived tenantId
+   * (platform-tenant-tracking D1/D3/D4).
+   *
+   * 404 pre-check via `findById`: aggregate count queries silently return 0
+   * for an unknown tenant id, so they cannot detect "not found" on their own.
+   *
+   * Protected by PlatformControlGuard (class-level, unchanged) — this route
+   * adds NO new guard wiring. Trust isolation: request.user is NEVER set on
+   * this path.
+   */
+  @Get('tenants/:id/summary')
+  async getTenantSummary(
+    @Param('id') id: string,
+    @Query('offset') offsetParam?: string,
+    @Query('limit') limitParam?: string,
+  ): Promise<PlatformTenantSummaryResponse> {
+    const tenant = await this.tenantsReadRepository.findById(id)
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found')
+    }
+
+    const offset = sanitizeSummaryOffset(offsetParam)
+    const limit = sanitizeSummaryLimit(limitParam)
+
+    const [summary, activity] = await Promise.all([
+      this.getPilotSummaryUseCase.execute({ tenantId: id }),
+      this.getPlatformTenantActivityUseCase.execute({ tenantId: id, offset, limit }),
+    ])
+
+    return { ...summary, activity }
   }
 }

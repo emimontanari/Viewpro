@@ -9,6 +9,7 @@ import { AnalyticsController } from "./analytics.controller";
 import { AnalyticsCoreModule } from "./analytics-core.module";
 import { GetDashboardSummaryUseCase } from "./use-cases/get-dashboard-summary.use-case";
 import { GetPilotSummaryUseCase } from "./use-cases/get-pilot-summary.use-case";
+import { GetPlatformTenantActivityUseCase } from "./use-cases/get-platform-tenant-activity.use-case";
 import { ListActivityFeedUseCase } from "./use-cases/list-activity-feed.use-case";
 import { ListAnalyticsEventsUseCase } from "./use-cases/list-analytics-events.use-case";
 import { ListInactiveEngagementsUseCase } from "./use-cases/list-inactive-engagements.use-case";
@@ -27,10 +28,11 @@ import { ListInactiveEngagementsUseCase } from "./use-cases/list-inactive-engage
 	providers: [
 		GetPilotSummaryUseCase,
 		GetDashboardSummaryUseCase,
+		GetPlatformTenantActivityUseCase,
 		ListActivityFeedUseCase,
 		ListAnalyticsEventsUseCase,
 		ListInactiveEngagementsUseCase,
 	],
-	exports: [AnalyticsCoreModule],
+	exports: [AnalyticsCoreModule, GetPilotSummaryUseCase, GetPlatformTenantActivityUseCase],
 })
 export class AnalyticsModule {}
