@@ -1,5 +1,12 @@
 import { Injectable } from "@nestjs/common";
-import type { Prisma, TenantMembership } from "@prisma/client";
+import {
+	AnalyticsActorType,
+	AnalyticsEventName,
+	type Prisma,
+	type TenantMembership,
+	type TenantMembershipStatus,
+	type TenantRole,
+} from "@prisma/client";
 // biome-ignore lint/style/useImportType: Nest dependency injection needs runtime metadata.
 import { PrismaService } from "../database/prisma.service";
 import type {
@@ -7,6 +14,13 @@ import type {
 	MembershipWithTenant,
 	MembershipWithUserAndTenant,
 } from "./memberships.repository";
+
+type LockedMembershipRow = {
+	id: string;
+	role: TenantRole;
+	status: TenantMembershipStatus;
+	userId: string;
+};
 
 @Injectable()
 export class PrismaMembershipsRepository implements MembershipsRepository {
@@ -74,21 +88,54 @@ export class PrismaMembershipsRepository implements MembershipsRepository {
 		membershipId: string;
 		tenantId: string;
 		role: "MANAGER" | "AGENT";
+		actorUserId: string;
+		now?: Date;
 	}): Promise<MembershipWithUserAndTenant | null> {
-		const updated = await this.prisma.tenantMembership.updateMany({
-			where: {
-				id: input.membershipId,
-				tenantId: input.tenantId,
-				status: "ACTIVE",
-			},
-			data: { role: input.role },
+		return this.prisma.$transaction(async (client) => {
+			const [locked] = await client.$queryRaw<LockedMembershipRow[]>`
+				SELECT "id", "role", "status", "userId"
+				FROM "tenant_memberships"
+				WHERE "id" = ${input.membershipId} AND "tenantId" = ${input.tenantId}
+				FOR UPDATE
+			`;
+
+			if (!locked || locked.status !== "ACTIVE") {
+				return null;
+			}
+
+			if (locked.role === input.role) {
+				// No-op guard: same role requested — return the current row,
+				// write NOTHING (no UPDATE, no AnalyticsEvent).
+				return client.tenantMembership.findFirst({
+					where: { id: input.membershipId },
+					include: { user: true, tenant: true },
+				});
+			}
+
+			const updated = await client.tenantMembership.update({
+				where: { id: input.membershipId },
+				data: { role: input.role },
+				include: { user: true, tenant: true },
+			});
+
+			await client.analyticsEvent.create({
+				data: {
+					tenantId: input.tenantId,
+					actorType: AnalyticsActorType.INTERNAL_USER,
+					actorUserId: input.actorUserId,
+					actorOperatorId: null,
+					eventName: AnalyticsEventName.MEMBER_ROLE_CHANGED,
+					metadata: {
+						memberUserId: locked.userId,
+						previousRole: locked.role,
+						newRole: input.role,
+					},
+					occurredAt: input.now ?? new Date(),
+				},
+			});
+
+			return updated;
 		});
-
-		if (updated.count === 0) {
-			return null;
-		}
-
-		return this.findByIdForTenant(input.membershipId, input.tenantId);
 	}
 
 	async deactivateForTenant(input: {
