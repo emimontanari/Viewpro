@@ -1,7 +1,7 @@
-/* InmoView brand theme — colors match the InmoView logo (violet-blue gradient). */
+/* ViewPro brand theme — colors match the ViewPro logo (violet-blue gradient). */
 /* Source: tweakcn 'Violate eye'. Scoped to the project's [data-theme] pattern. */
 
-[data-theme='inmoview'] {
+[data-theme='viewpro'] {
   --font-sans: Inter, sans-serif;
   --font-mono: JetBrains Mono, monospace;
   --font-serif: Merriweather, serif;
@@ -62,7 +62,7 @@
   --tracking-normal: -0.01em;
 }
 
-[data-theme='inmoview'].dark {
+[data-theme='viewpro'].dark {
   --font-sans: Inter, sans-serif;
   --font-mono: JetBrains Mono, monospace;
   --font-serif: Merriweather, serif;

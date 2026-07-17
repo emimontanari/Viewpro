@@ -160,7 +160,7 @@ export default function SignInViewPage() {
             className='h-auto w-48 dark:hidden'
           />
           <Image
-            src='/logo-inmoview-dark.png'
+            src='/logo-viewpro-dark.png'
             alt={BRAND.auth.signInLabel}
             width={2048}
             height={1365}

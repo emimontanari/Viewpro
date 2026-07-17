@@ -9,7 +9,7 @@
 @import './themes/zen.css';
 @import './themes/astro-vista.css';
 @import './themes/whatsapp.css';
-@import './themes/inmoview.css';
+@import './themes/viewpro.css';
 
 body {
   @apply overscroll-none;
