@@ -1,4 +1,6 @@
 import { Injectable } from "@nestjs/common";
+import { mapActivityFeedMembership } from "../analytics/responses/activity-feed.response";
+import { compareActivityItems } from "../analytics/use-cases/list-activity-feed.use-case";
 // biome-ignore lint/style/useImportType: Nest dependency injection needs runtime metadata.
 import { PrismaService } from "../database/prisma.service";
 import type {
@@ -12,6 +14,15 @@ import type {
 } from "./membership-activity.repository";
 
 const ACTOR_SELECT = { id: true, email: true, firstName: true } as const;
+
+/**
+ * Hard upper bound on how many rows are fetched from EACH sub-stream in a
+ * single request — mirrors `MAX_FETCH_WINDOW` in
+ * `get-platform-tenant-activity.use-case.ts`. See the merge/slice comment in
+ * `findManyByTenant` for why the slice upper bound is the fetched window,
+ * never the uncapped `offset + pageSize`.
+ */
+const MAX_FETCH_WINDOW = 200;
 
 /**
  * PrismaMembershipActivityRepository — derives INVITED/JOINED/DEACTIVATED
@@ -47,7 +58,16 @@ export class PrismaMembershipActivityRepository
 		input: FindManyMembershipActivityInput,
 	): Promise<{ items: MembershipActivityRecord[]; total: number }> {
 		const { tenantId, pageSize } = input;
-		const skip = Math.max(input.page - 1, 0) * pageSize;
+		// Window-bound merged-stream pagination (mirrors
+		// GetPlatformTenantActivityUseCase). The 3 sub-streams are each ordered
+		// independently, so a per-sub-query `skip = offset` would drop/duplicate
+		// items across pages once page>1. Instead each sub-query is fetched from
+		// skip 0 with `take = min(offset + pageSize, MAX_FETCH_WINDOW)`: the
+		// global top-K of the merge is always a subset of the union of each
+		// sub-stream's own top-K, so this window is sufficient to build the
+		// correct combined page.
+		const offset = Math.max(input.page - 1, 0) * pageSize;
+		const fetchWindow = Math.min(offset + pageSize, MAX_FETCH_WINDOW);
 
 		const [
 			invitationRows,
@@ -60,16 +80,16 @@ export class PrismaMembershipActivityRepository
 			this.prisma.teamInvitation.findMany({
 				where: { tenantId },
 				orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-				skip,
-				take: pageSize,
+				skip: 0,
+				take: fetchWindow,
 				include: { invitedByUser: { select: ACTOR_SELECT } },
 			}),
 			this.prisma.teamInvitation.count({ where: { tenantId } }),
 			this.prisma.tenantMembership.findMany({
 				where: { tenantId, role: { not: "PRINCIPAL_MANAGER" } },
 				orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-				skip,
-				take: pageSize,
+				skip: 0,
+				take: fetchWindow,
 				include: { user: { select: ACTOR_SELECT } },
 			}),
 			this.prisma.tenantMembership.count({
@@ -78,8 +98,8 @@ export class PrismaMembershipActivityRepository
 			this.prisma.tenantMembership.findMany({
 				where: { tenantId, status: "DEACTIVATED", deactivatedAt: { not: null } },
 				orderBy: [{ deactivatedAt: "desc" }, { id: "desc" }],
-				skip,
-				take: pageSize,
+				skip: 0,
+				take: fetchWindow,
 				include: { user: { select: ACTOR_SELECT } },
 			}),
 			this.prisma.tenantMembership.count({
@@ -137,17 +157,26 @@ export class PrismaMembershipActivityRepository
 					: null,
 			}));
 
+		// Sort with the SAME comparator the outer merge uses
+		// (`compareActivityItems` over `mapActivityFeedMembership`'s prefixed id),
+		// so this internal ordering agrees with `GetPlatformTenantActivityUseCase`'s
+		// re-sort down to the tie-break — the outer tie-break is on the PREFIXED
+		// id, not the raw row id, and prefixes differ per event type.
+		//
+		// Slice `[offset, fetchWindow)`: the upper bound is the fetched window,
+		// NEVER the uncapped `offset + pageSize`. Positions beyond the window may
+		// not have been fetched, so a page whose `offset >= fetchWindow` returns
+		// EMPTY rather than wrong/unrelated items, while `total` stays the true
+		// combined count. `page:1` is `[0, pageSize)` — identical to before.
 		const items: MembershipActivityRecord[] = [
 			...invitedRecords,
 			...joinedRecords,
 			...deactivatedRecords,
 		]
-			.sort(
-				(a, b) =>
-					b.createdAt.getTime() - a.createdAt.getTime() ||
-					b.id.localeCompare(a.id),
-			)
-			.slice(0, pageSize);
+			.map((record) => ({ record, mapped: mapActivityFeedMembership(record) }))
+			.sort((a, b) => compareActivityItems(a.mapped, b.mapped))
+			.slice(offset, fetchWindow)
+			.map((entry) => entry.record);
 
 		return {
 			items,
