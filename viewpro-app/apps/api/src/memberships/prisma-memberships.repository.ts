@@ -105,9 +105,11 @@ export class PrismaMembershipsRepository implements MembershipsRepository {
 
 			if (locked.role === input.role) {
 				// No-op guard: same role requested — return the current row,
-				// write NOTHING (no UPDATE, no AnalyticsEvent).
+				// write NOTHING (no UPDATE, no AnalyticsEvent). tenantId is kept
+				// in the WHERE for consistency with the module's unconditional
+				// tenant-scoping discipline (the locked row already matched it).
 				return client.tenantMembership.findFirst({
-					where: { id: input.membershipId },
+					where: { id: input.membershipId, tenantId: input.tenantId },
 					include: { user: true, tenant: true },
 				});
 			}
