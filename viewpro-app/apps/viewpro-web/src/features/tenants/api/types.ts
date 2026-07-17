@@ -64,3 +64,59 @@ export type AdminTenantLimitsUpdateResponse = {
   unchanged: boolean;
   updatedAt: string; // ISO string
 };
+
+/**
+ * FE-owned types for the tenant detail view (platform-tenant-tracking, D6/D9).
+ *
+ * Source: GET /operators/tenants/:id/summary → apps/viewpro-api's
+ * TenantDetailController/TenantDetailService, a pure on-demand passthrough of
+ * InmoView's GET /internal/platform/tenants/:id/summary
+ * (apps/api/src/platform-data/platform-data.controller.ts —
+ * `PlatformTenantSummaryResponse = PilotSummaryResponse & { activity }`).
+ * Mirrored 1:1 here, matching the established FE-owned-type convention above —
+ * no `packages/platform-contract` type for this wire shape.
+ */
+export type TenantDetailWindow = {
+  from: string; // ISO string
+  to: string; // ISO string
+};
+
+// Mirrors PilotSummaryResponse.documentEvents (apps/api's
+// get-pilot-summary.use-case.ts) — 4 distinct AnalyticsEvent counts, NOT a
+// single aggregate.
+export type TenantDetailDocumentEvents = {
+  requested: number;
+  uploaded: number;
+  approved: number;
+  rejected: number;
+};
+
+// One merged-feed item (Movement | DocumentRequest), mirrors apps/api's
+// ActivityFeedItemResponse union shape-wise but is intentionally kept loose
+// (no full field-by-field type) — matches the SAME convention already used on
+// the ViewPro backend for this exact endpoint
+// (apps/viewpro-api/.../change-feed.client.ts `PlatformActivityFeedItem`).
+// Only `kind`/`id`/`createdAt` are guaranteed; everything else is read
+// defensively at render time (see tenant-detail activity-feed formatting).
+export type TenantActivityItem = {
+  kind: 'movement' | 'document_request';
+  id: string;
+  createdAt: string; // ISO string
+  [key: string]: unknown;
+};
+
+export type TenantDetailActivity = {
+  total: number;
+  items: TenantActivityItem[];
+};
+
+// GET /operators/tenants/:id/summary?offset&limit
+export type TenantDetailResponse = {
+  window: TenantDetailWindow;
+  activeEngagements: number;
+  activeEngagementsWithOwnerVisibleUpdate: number;
+  activeEngagementUpdatePercentage: number;
+  documentEvents: TenantDetailDocumentEvents;
+  ownerViewedPropertyCount: number;
+  activity: TenantDetailActivity;
+};

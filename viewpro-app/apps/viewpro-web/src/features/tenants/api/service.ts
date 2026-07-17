@@ -4,6 +4,7 @@ import { parseLimitsResponse, parseStatusResponse } from './schemas';
 import type {
   AdminTenantLimitsUpdateResponse,
   AdminTenantStatusUpdateResponse,
+  TenantDetailResponse,
   TenantListResponse,
   UpdateTenantLimitsPayload,
   UpdateTenantPlanPayload,
@@ -75,4 +76,24 @@ export async function assignTenantPlan(
   });
 
   return parseLimitsResponse(raw);
+}
+
+/**
+ * Fetch a single tenant's counts + one page of its merged activity feed
+ * (platform-tenant-tracking, D9).
+ *
+ * Endpoint: GET /operators/tenants/:id/summary?offset&limit
+ * Auth: viewpro_platform_access_token cookie (credentials:include set by apiRequest).
+ * Typed end-to-end (not zod-validated) — mirrors getTenantList's GET
+ * precedent; only PATCH responses go through zod (InmoView's control-lane
+ * PATCH responses are typed `unknown` server-side, this GET route is not).
+ */
+export async function getTenantDetail(
+  tenantId: string,
+  offset: number,
+  limit: number
+): Promise<TenantDetailResponse> {
+  return apiRequest<TenantDetailResponse>(
+    `/operators/tenants/${encodeURIComponent(tenantId)}/summary?offset=${offset}&limit=${limit}`
+  );
 }
