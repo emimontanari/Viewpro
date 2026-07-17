@@ -142,33 +142,6 @@ vi.mock('../tenants-table', () => ({
   )
 }));
 
-vi.mock('../tenants-pager', () => ({
-  TenantsPager: ({
-    offset,
-    total,
-    disabled,
-    onNext,
-    onPrev
-  }: {
-    offset: number;
-    total: number;
-    disabled?: boolean;
-    onNext: () => void;
-    onPrev: () => void;
-  }) => (
-    <div data-testid='tenants-pager'>
-      <span data-testid='pager-offset'>{offset}</span>
-      <span data-testid='pager-total'>{total}</span>
-      <button type='button' disabled={disabled} onClick={onPrev}>
-        prev
-      </button>
-      <button type='button' disabled={disabled} onClick={onNext}>
-        next
-      </button>
-    </div>
-  )
-}));
-
 vi.mock('../tenants-empty-state', () => ({
   TenantsEmptyState: () => <div data-testid='tenants-empty-state'>vacío</div>
 }));
@@ -273,7 +246,7 @@ describe('TenantsManagementPage — loading state', () => {
 // ─── Success — non-empty ──────────────────────────────────────────────────────
 
 describe('TenantsManagementPage — success with total>0', () => {
-  it('renders TenantsTable and TenantsPager (spec scenario 1)', async () => {
+  it('renders TenantsTable (spec scenario 1)', async () => {
     mockGetTenantList.mockResolvedValueOnce(NON_EMPTY_RESPONSE);
 
     renderPage();
@@ -281,18 +254,17 @@ describe('TenantsManagementPage — success with total>0', () => {
     await waitFor(() => {
       expect(screen.getByTestId('tenants-table')).toBeTruthy();
     });
-    expect(screen.getByTestId('tenants-pager')).toBeTruthy();
     expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
     expect(screen.queryByTestId('tenants-empty-state')).toBeNull();
   });
 
-  it('requests offset=0 limit=50 on first load (limit never exceeds 200)', async () => {
+  it('fetches the list in one page (offset=0, limit=200) — the DataTable paginates client-side', async () => {
     mockGetTenantList.mockResolvedValueOnce(NON_EMPTY_RESPONSE);
 
     renderPage();
 
     await waitFor(() => {
-      expect(mockGetTenantList).toHaveBeenCalledWith(0, 50);
+      expect(mockGetTenantList).toHaveBeenCalledWith(0, 200);
     });
   });
 });
@@ -309,7 +281,6 @@ describe('TenantsManagementPage — success with total===0', () => {
       expect(screen.getByTestId('tenants-empty-state')).toBeTruthy();
     });
     expect(screen.queryByTestId('tenants-table')).toBeNull();
-    expect(screen.queryByTestId('tenants-pager')).toBeNull();
   });
 });
 
@@ -327,32 +298,6 @@ describe('TenantsManagementPage — error state', () => {
     });
     expect(screen.getByTestId('tenants-error').textContent).toContain('Error interno del servidor');
     expect(screen.queryByTestId('tenants-table')).toBeNull();
-  });
-});
-
-// ─── Pager interaction ────────────────────────────────────────────────────────
-
-describe('TenantsManagementPage — pager', () => {
-  it('clicking "next" issues a new query with an increased offset (limit unchanged)', async () => {
-    mockGetTenantList.mockResolvedValueOnce(NON_EMPTY_RESPONSE);
-    mockGetTenantList.mockResolvedValueOnce({ total: 60, items: [ITEM] });
-
-    renderPage();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('tenants-pager')).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'next' }));
-
-    await waitFor(() => {
-      expect(mockGetTenantList).toHaveBeenCalledWith(50, 50);
-    });
-
-    // limit param across every call never exceeds the API's 200 cap
-    for (const call of mockGetTenantList.mock.calls) {
-      expect(call[1]).toBeLessThanOrEqual(200);
-    }
   });
 });
 
@@ -926,40 +871,6 @@ describe('TenantsManagementPage — double-submit guard', () => {
 
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).toBeNull();
-    });
-  });
-
-  it('disables the pager (prev/next) while a status mutation is pending', async () => {
-    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
-    let resolveMutation!: (value: AdminTenantStatusUpdateResponse) => void;
-    mockUpdateTenantStatus.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveMutation = resolve;
-      })
-    );
-
-    renderPage();
-    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
-    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
-
-    const dialog = await screen.findByRole('alertdialog');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Suspender' }));
-
-    const pager = await screen.findByTestId('tenants-pager');
-    // {hidden: true}: the pager is a background sibling of the still-open
-    // AlertDialog, so Radix marks it aria-hidden while the confirm dialog is
-    // pending — this is correct a11y behavior (D13 keeps the confirm dialog
-    // genuinely open/pending rather than self-closing on click), it just
-    // means role queries here must opt in to hidden elements.
-    await waitFor(() => {
-      expect(within(pager).getByRole('button', { name: 'prev', hidden: true })).toBeDisabled();
-    });
-    expect(within(pager).getByRole('button', { name: 'next', hidden: true })).toBeDisabled();
-
-    resolveMutation(STATUS_SUCCESS_RESPONSE);
-
-    await waitFor(() => {
-      expect(within(pager).getByRole('button', { name: 'next' })).not.toBeDisabled();
     });
   });
 

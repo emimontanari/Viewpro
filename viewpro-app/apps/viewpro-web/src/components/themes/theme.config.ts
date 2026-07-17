@@ -2,12 +2,12 @@
  * Default theme that loads when no user preference is set
  * Change this value to set a different default theme
  */
-export const DEFAULT_THEME = 'inmoview';
+export const DEFAULT_THEME = 'viewpro';
 
 export const THEMES = [
   {
     name: 'ViewPro',
-    value: 'inmoview'
+    value: 'viewpro'
   },
   {
     name: 'Claude',

@@ -1,14 +1,25 @@
 'use client';
 
 import {
-  flexRender,
   getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
   useReactTable,
-  type ColumnDef
+  type ColumnDef,
+  type Row
 } from '@tanstack/react-table';
+
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable } from '@/components/ui/table/data-table';
+import { DataTableColumnHeader } from '@/components/ui/table/data-table-column-header';
+import { DataTableToolbar } from '@/components/ui/table/data-table-toolbar';
+import { cn } from '@/lib/utils';
+import type { Option } from '@/types/data-table';
 import type {
+  TenantLimits,
   TenantListItem,
   TenantPlan,
   TenantStatus,
@@ -25,59 +36,123 @@ type Props = {
 };
 
 // Callbacks + guard threaded to each cell via the table instance's `meta`
-// (react-table's escape hatch for passing container state into ColumnDef cells).
-type TenantsTableMeta = {
+// (react-table's escape hatch for passing container state into ColumnDef cells;
+// mirrors OperatorsTableMeta).
+export type TenantsTableMeta = {
   isMutating: boolean;
   onEditLimits: (item: TenantListItem) => void;
   onStatusAction: (item: TenantListItem, action: TenantAction) => void;
   onAssignPlan: (item: TenantListItem) => void;
 };
 
+// Sentinel used as the faceted-filter value for a null (unassigned) plan — the
+// plan accessorFn maps `null → 'NONE'` so the "Sin plan" facet can match it.
+const NO_PLAN = 'NONE';
+
+// Faceted-filter option lists for the toolbar. The `value`s are the raw server
+// enum values (TenantStatus / TenantPlan, plus the NO_PLAN sentinel); the
+// `label`s are the Spanish console copy shown in the faceted-filter popover.
+const STATUS_OPTIONS: Option[] = [
+  { label: 'Activo', value: 'ACTIVE' },
+  { label: 'Trial', value: 'TRIAL' },
+  { label: 'Suspendido', value: 'SUSPENDED' },
+  { label: 'Baja', value: 'CANCELLED' }
+];
+
+const PLAN_OPTIONS: Option[] = [
+  { label: 'Básico', value: 'BASICO' },
+  { label: 'Profesional', value: 'PROFESIONAL' },
+  { label: 'Empresa', value: 'EMPRESA' },
+  { label: 'Sin plan', value: NO_PLAN }
+];
+
+// Faceted-filter predicate: the toolbar stores the selection as a string[]; a
+// row matches when its raw enum value is one of the selected values (mirrors
+// the shadcn/Kiranism faceted-filter contract).
+function includesSelected(row: Row<TenantListItem>, id: string, value: string[]) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return true;
+  }
+
+  return value.includes(row.getValue(id) as string);
+}
+
+// Free-text search predicate for the "Inmobiliaria" column — matches the query
+// against BOTH the name and the slug (the toolbar only wires one text input).
+function searchNameOrSlug(row: Row<TenantListItem>, _id: string, value: string) {
+  const query = String(value ?? '').trim().toLowerCase();
+  if (query.length === 0) {
+    return true;
+  }
+
+  const { name, slug } = row.original;
+  return name.toLowerCase().includes(query) || slug.toLowerCase().includes(query);
+}
+
 export const columns: ColumnDef<TenantListItem>[] = [
   {
     id: 'name',
-    header: 'Inmobiliaria',
-    cell: ({ row }) => (
-      <div className='space-y-1'>
-        <p className='font-medium'>{row.original.name}</p>
-        <p className='text-muted-foreground text-xs'>{row.original.slug}</p>
-      </div>
-    )
+    accessorKey: 'name',
+    header: ({ column }) => <DataTableColumnHeader column={column} title='Inmobiliaria' />,
+    cell: ({ row }) => <TenantIdentity item={row.original} />,
+    enableColumnFilter: true,
+    filterFn: searchNameOrSlug,
+    size: 260,
+    meta: {
+      label: 'Inmobiliaria',
+      variant: 'text',
+      placeholder: 'Buscar por nombre o slug...'
+    }
   },
   {
     id: 'status',
-    header: 'Estado',
-    cell: ({ row }) => (
-      <div className='space-y-1'>
-        <StatusBadge status={row.original.status} testId={`tenant-status-${row.original.id}`} />
-        {row.original.status === 'TRIAL' && (
-          <p
-            className='text-muted-foreground text-xs'
-            data-testid={`tenant-trial-${row.original.id}`}
-          >
-            {getTrialEndLabel(row.original.trialEndsAt, new Date())}
-          </p>
-        )}
-      </div>
-    )
-  },
-  {
-    id: 'limits',
-    header: 'Límites',
-    cell: ({ row }) => (
-      <TenantLimitsSummary limits={row.original.limits} testId={`tenant-limits-${row.original.id}`} />
-    )
+    accessorKey: 'status',
+    header: ({ column }) => <DataTableColumnHeader column={column} title='Estado' />,
+    cell: ({ row }) => <StatusCell item={row.original} />,
+    enableColumnFilter: true,
+    filterFn: includesSelected,
+    size: 150,
+    meta: {
+      label: 'Estado',
+      variant: 'multiSelect',
+      options: STATUS_OPTIONS
+    }
   },
   {
     id: 'plan',
-    header: 'Plan',
+    // Map null → NO_PLAN so the "Sin plan" facet (and sorting) has a value to
+    // match; the cell renders from row.original.plan (not this accessor).
+    accessorFn: (item) => item.plan ?? NO_PLAN,
+    header: ({ column }) => <DataTableColumnHeader column={column} title='Plan' />,
     cell: ({ row }) => (
-      <span data-testid={`tenant-plan-${row.original.id}`}>{getPlanLabel(row.original.plan)}</span>
-    )
+      <PlanBadge plan={row.original.plan} testId={`tenant-plan-${row.original.id}`} />
+    ),
+    enableColumnFilter: true,
+    filterFn: includesSelected,
+    size: 140,
+    meta: {
+      label: 'Plan',
+      variant: 'multiSelect',
+      options: PLAN_OPTIONS
+    }
+  },
+  {
+    id: 'limits',
+    header: ({ column }) => <DataTableColumnHeader column={column} title='Límites' />,
+    cell: ({ row }) => (
+      <TenantLimitsSummary
+        limits={row.original.limits}
+        testId={`tenant-limits-${row.original.id}`}
+      />
+    ),
+    enableSorting: false,
+    enableColumnFilter: false,
+    size: 200,
+    meta: { label: 'Límites' }
   },
   {
     id: 'actions',
-    header: 'Acciones',
+    header: () => <span className='sr-only'>Acciones</span>,
     cell: ({ row, table }) => {
       const meta = table.options.meta as TenantsTableMeta;
 
@@ -90,58 +165,93 @@ export const columns: ColumnDef<TenantListItem>[] = [
           onAssignPlan={meta.onAssignPlan}
         />
       );
-    }
+    },
+    enableSorting: false,
+    enableHiding: false,
+    enableColumnFilter: false,
+    size: 64
   }
 ];
 
 /**
- * Tenant list table. Built with @tanstack/react-table (mirrors the InmoView
- * products-table pattern): read-only columns (name/slug/status/limits) plus a
- * dropdown actions column (TenantCellAction, fed by getTenantActions). Rows
- * render in the order received; the API already sorts name ASC. `isMutating`
- * disables every row action while a mutation is in flight (double-submit guard).
+ * Tenant registry table, rebuilt to the Kiranism starter DataTable format (same
+ * look as OperatorsTable / the demo `/dashboard/users`): an avatar+name identity
+ * cell, colored Estado/Plan badges, a COMPACT + CONTAINED Límites summary (the
+ * bleed fix — a single truncated line with an explicit max-width, replacing the
+ * old wide right-aligned `<dl>` that spilled into the Plan column), a toolbar
+ * (search-by-name/slug + faceted Estado/Plan filters + view-options + reset),
+ * the unchanged TenantCellAction dropdown and a pagination footer.
+ *
+ * Everything is CLIENT-SIDE (TanStack row models over the full `items` array):
+ * sorting, free-text search, faceted filtering, faceting and pagination all run
+ * on the client — no backend change. `isMutating` is threaded to each row's
+ * actions via table `meta` and disables every row action while a mutation is in
+ * flight (double-submit guard).
  */
-export function TenantsTable({ items, isMutating, onEditLimits, onStatusAction, onAssignPlan }: Props) {
+export function TenantsTable({
+  items,
+  isMutating,
+  onEditLimits,
+  onStatusAction,
+  onAssignPlan
+}: Props) {
   const table = useReactTable({
     data: items,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+    initialState: { pagination: { pageSize: 10 } },
     meta: { isMutating, onEditLimits, onStatusAction, onAssignPlan } satisfies TenantsTableMeta
   });
 
   return (
-    <Table>
-      <TableHeader>
-        {table.getHeaderGroups().map((headerGroup) => (
-          <TableRow key={headerGroup.id}>
-            {headerGroup.headers.map((header) => (
-              <TableHead
-                key={header.id}
-                className={header.column.id === 'actions' ? 'text-right' : undefined}
-              >
-                {header.isPlaceholder
-                  ? null
-                  : flexRender(header.column.columnDef.header, header.getContext())}
-              </TableHead>
-            ))}
-          </TableRow>
-        ))}
-      </TableHeader>
-      <TableBody>
-        {table.getRowModel().rows.map((row) => (
-          <TableRow key={row.id} data-testid={`tenant-row-${row.original.id}`}>
-            {row.getVisibleCells().map((cell) => (
-              <TableCell
-                key={cell.id}
-                className={cell.column.id === 'actions' ? 'text-right' : undefined}
-              >
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <DataTable table={table}>
+      <DataTableToolbar table={table} />
+    </DataTable>
+  );
+}
+
+// Avatar-initial + name identity cell (mirrors OperatorIdentity): a circle with
+// the first letter of the name, the name (primary), and the slug (muted
+// subtitle). `min-w-0` + `truncate` keep long names/slugs contained so they
+// never push the neighbouring columns.
+function TenantIdentity({ item }: { item: TenantListItem }) {
+  const initial = item.name.charAt(0).toUpperCase();
+
+  return (
+    <div className='flex items-center gap-3'>
+      <span
+        aria-hidden='true'
+        data-testid={`tenant-avatar-${item.id}`}
+        className='bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-medium'
+      >
+        {initial}
+      </span>
+      <div className='min-w-0'>
+        <p className='truncate font-medium'>{item.name}</p>
+        <p className='text-muted-foreground truncate text-xs'>{item.slug}</p>
+      </div>
+    </div>
+  );
+}
+
+// Estado cell: the colored status badge plus (for TRIAL rows only) a small
+// trial-end sub-line — the trial info is folded into the Estado column rather
+// than a separate column, to keep the table narrow.
+function StatusCell({ item }: { item: TenantListItem }) {
+  return (
+    <div className='space-y-1'>
+      <StatusBadge status={item.status} testId={`tenant-status-${item.id}`} />
+      {item.status === 'TRIAL' && (
+        <p className='text-muted-foreground text-xs' data-testid={`tenant-trial-${item.id}`}>
+          {getTrialEndLabel(item.trialEndsAt, new Date())}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -180,42 +290,108 @@ function getToggleAction(item: TenantListItem): TenantAction | null {
   return null;
 }
 
+// ACTIVE → green/positive; TRIAL → amber/pending; SUSPENDED → red/destructive;
+// CANCELLED ("Baja") → muted/terminal.
 function StatusBadge({ status, testId }: { status: TenantStatus; testId: string }) {
-  const variant =
-    status === 'ACTIVE' ? 'default' : status === 'SUSPENDED' ? 'destructive' : 'outline';
+  if (status === 'ACTIVE') {
+    return (
+      <Badge
+        data-testid={testId}
+        variant='outline'
+        className={cn(
+          'rounded-full border-transparent',
+          'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
+        )}
+      >
+        {getStatusLabel(status)}
+      </Badge>
+    );
+  }
 
+  if (status === 'TRIAL') {
+    return (
+      <Badge
+        data-testid={testId}
+        variant='outline'
+        className={cn(
+          'rounded-full border-transparent',
+          'bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
+        )}
+      >
+        {getStatusLabel(status)}
+      </Badge>
+    );
+  }
+
+  if (status === 'SUSPENDED') {
+    return (
+      <Badge data-testid={testId} variant='destructive' className='rounded-full'>
+        {getStatusLabel(status)}
+      </Badge>
+    );
+  }
+
+  // CANCELLED — terminal/muted.
   return (
-    <Badge data-testid={testId} variant={variant} className='rounded-full'>
+    <Badge
+      data-testid={testId}
+      variant='outline'
+      className='text-muted-foreground rounded-full border-transparent'
+    >
       {getStatusLabel(status)}
     </Badge>
   );
 }
 
-function TenantLimitsSummary({
-  limits,
-  testId
-}: {
-  limits: TenantListItem['limits'];
-  testId: string;
-}) {
-  const rows = [
-    { label: 'Usuarios', value: formatLimitValue(limits.maxUsers) },
-    {
-      label: 'Publicaciones activas',
-      value: formatLimitValue(limits.maxActivePropertyEngagements)
-    },
-    { label: 'Storage documentos', value: formatStorageLimit(limits.maxDocumentsStorageMb) }
-  ];
+// EMPRESA prominent → default; PROFESIONAL → secondary; BASICO muted → outline;
+// null (unassigned) → muted "Sin plan".
+function PlanBadge({ plan, testId }: { plan: TenantPlan | null; testId: string }) {
+  if (plan === null) {
+    return (
+      <Badge
+        data-testid={testId}
+        variant='outline'
+        className='text-muted-foreground rounded-full border-dashed'
+      >
+        Sin plan
+      </Badge>
+    );
+  }
+
+  const variant = plan === 'EMPRESA' ? 'default' : plan === 'PROFESIONAL' ? 'secondary' : 'outline';
 
   return (
-    <dl data-testid={testId} className='text-muted-foreground space-y-1 text-xs'>
-      {rows.map((row) => (
-        <div key={row.label} className='flex min-w-48 justify-between gap-3'>
-          <dt>{row.label}</dt>
-          <dd className='text-foreground font-medium'>{row.value}</dd>
-        </div>
-      ))}
-    </dl>
+    <Badge data-testid={testId} variant={variant} className='rounded-full'>
+      {getPlanLabel(plan)}
+    </Badge>
+  );
+}
+
+// Compact, CONTAINED limits summary — a single truncated line
+// (`10 usr · 50 pub · 1 GB`) with an explicit max-width. This replaces the old
+// wide right-aligned `<dl>` (min-w-48 + justify-between) that was the source of
+// the column bleed. `∞` denotes a null (unlimited) value; the full breakdown is
+// available on hover via the `title` attribute.
+function TenantLimitsSummary({ limits, testId }: { limits: TenantLimits; testId: string }) {
+  const users = formatLimitCount(limits.maxUsers);
+  const engagements = formatLimitCount(limits.maxActivePropertyEngagements);
+  const storage = formatStorageLimit(limits.maxDocumentsStorageMb);
+
+  const compact = `${users} usr · ${engagements} pub · ${storage}`;
+  const full = [
+    `Usuarios: ${users}`,
+    `Publicaciones activas: ${engagements}`,
+    `Storage documentos: ${storage}`
+  ].join('\n');
+
+  return (
+    <span
+      data-testid={testId}
+      title={full}
+      className='text-muted-foreground block max-w-[200px] truncate text-xs whitespace-nowrap'
+    >
+      {compact}
+    </span>
   );
 }
 
@@ -226,7 +402,7 @@ export function getStatusLabel(status: string) {
     TRIAL: 'Trial',
     ACTIVE: 'Activo',
     SUSPENDED: 'Suspendido',
-    CANCELLED: 'Cancelado'
+    CANCELLED: 'Baja'
   };
 
   return labels[status as TenantStatus] ?? status;
@@ -251,12 +427,24 @@ export function getPlanLabel(plan: string | null): string {
   return PLAN_LABELS[plan as TenantPlan] ?? plan;
 }
 
-function formatLimitValue(value: number | null) {
-  return value === null ? 'Sin límite' : formatNumber(value);
+function formatLimitCount(value: number | null) {
+  return value === null ? '∞' : formatNumber(value);
 }
 
+// MB below 1000 render as-is; 1000+ collapse to GB (÷1000 decimal, matching the
+// plan catalog's intent — Profesional 5000 MB reads as "5 GB", not 4,9) with one
+// decimal so the compact line stays short. null → ∞ (unlimited).
 function formatStorageLimit(value: number | null) {
-  return value === null ? 'Sin límite' : `${formatNumber(value)} MB`;
+  if (value === null) {
+    return '∞';
+  }
+
+  if (value >= 1000) {
+    const gigabytes = Math.round((value / 1000) * 10) / 10;
+    return `${formatNumber(gigabytes)} GB`;
+  }
+
+  return `${formatNumber(value)} MB`;
 }
 
 function formatNumber(value: number) {

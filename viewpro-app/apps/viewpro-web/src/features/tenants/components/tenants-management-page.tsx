@@ -1,8 +1,9 @@
 'use client';
 
 // Container (D12): owns the list query, status/limits mutations, and dialog
-// state. Presentational children (TenantsTable/TenantsPager/TenantsEmptyState/
+// state. Presentational children (TenantsTable/TenantsEmptyState/
 // TenantLimitsDialog/TenantStatusConfirmDialog) are props-in/callbacks-out.
+// The list is fetched in one page; the DataTable paginates it client-side.
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -22,10 +23,14 @@ import { TenantLimitsDialog } from './tenant-limits-dialog';
 import { TenantPlanDialog } from './tenant-plan-dialog';
 import { TenantStatusConfirmDialog } from './tenant-status-confirm-dialog';
 import { TenantsEmptyState } from './tenants-empty-state';
-import { TenantsPager } from './tenants-pager';
 import { TenantsTable, type TenantAction } from './tenants-table';
 
-const LIMIT = 50;
+// The list is fetched in one page and paginated client-side by the DataTable's
+// own footer (single, starter-style paginator — the old server-offset pager was
+// removed to avoid a confusing double control). 200 comfortably covers the
+// operator-console tenant volume; true server-side pagination at larger scale is
+// a future enhancement (to fold into the tenant-tracking SDD).
+const LIMIT = 200;
 const NOT_FOUND_MESSAGE = 'La inmobiliaria no existe o fue eliminada.';
 const TERMINAL_STATUS_MESSAGE = 'La inmobiliaria ya está dada de baja y no puede cambiar de estado.';
 
@@ -51,7 +56,6 @@ function reportMutationError(error: unknown) {
 }
 
 export function TenantsManagementPage() {
-  const [offset, setOffset] = React.useState(0);
   const [pendingStatusAction, setPendingStatusAction] = React.useState<{
     tenant: TenantListItem;
     targetStatus: TenantStatusAction;
@@ -63,7 +67,7 @@ export function TenantsManagementPage() {
   const stepUpGate = useStepUpGate();
 
   const { data, isLoading, isError, error } = useQuery({
-    ...tenantsListOptions(offset, LIMIT),
+    ...tenantsListOptions(0, LIMIT),
     retry: false
   });
 
@@ -154,14 +158,6 @@ export function TenantsManagementPage() {
 
   const isMutating = statusMutation.isPending || limitsMutation.isPending || planMutation.isPending;
 
-  const handlePrev = React.useCallback(() => {
-    setOffset((current) => Math.max(0, current - LIMIT));
-  }, []);
-
-  const handleNext = React.useCallback(() => {
-    setOffset((current) => (data && current + LIMIT < data.total ? current + LIMIT : current));
-  }, [data]);
-
   // D8/D6/D7: ACTIVATE/reactivate (toggle → ACTIVE) PATCHes directly; SUSPEND
   // (toggle → SUSPENDED) and CANCEL (destructive) are both gated behind the
   // same AlertDialog confirm — only the copy variant differs.
@@ -235,21 +231,16 @@ export function TenantsManagementPage() {
   }
 
   return (
-    <div className='flex flex-col gap-4'>
+    // `flex flex-1 min-h-0` participates in PageContainer's flex-height chain so
+    // the DataTable (which fills its parent via absolute positioning) renders at
+    // a bounded height instead of collapsing (mirrors OperatorsManagementPage).
+    <div className='flex min-h-0 flex-1 flex-col gap-4'>
       <TenantsTable
         items={data.items}
         isMutating={isMutating}
         onEditLimits={setLimitsTenant}
         onStatusAction={handleStatusAction}
         onAssignPlan={setPlanTenant}
-      />
-      <TenantsPager
-        offset={offset}
-        limit={LIMIT}
-        total={data.total}
-        disabled={isMutating}
-        onPrev={handlePrev}
-        onNext={handleNext}
       />
       <TenantStatusConfirmDialog
         tenant={pendingStatusAction?.tenant ?? null}

@@ -1,15 +1,24 @@
 'use client';
 
 import {
-  flexRender,
   getCoreRowModel,
-  useReactTable,
-  type ColumnDef
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable
 } from '@tanstack/react-table';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { OperatorListItem, OperatorRole, OperatorStatus } from '@/features/operators/api/types';
-import { OperatorCellAction } from './operator-cell-action';
+
+import { DataTable } from '@/components/ui/table/data-table';
+import { DataTableToolbar } from '@/components/ui/table/data-table-toolbar';
+import type { OperatorListItem, OperatorStatus } from '@/features/operators/api/types';
+import { operatorColumns, type OperatorsTableMeta } from './operator-tables/columns';
+
+export {
+  getOperatorRoleLabel,
+  getOperatorStatusLabel
+} from './operator-tables/columns';
 
 export type OperatorStatusAction = {
   targetStatus: OperatorStatus;
@@ -23,99 +32,44 @@ type Props = {
   onStatusAction: (item: OperatorListItem, action: OperatorStatusAction) => void;
 };
 
-// Callbacks + guard threaded to each cell via the table instance's `meta`
-// (mirrors TenantsTableMeta).
-type OperatorsTableMeta = {
-  isMutating: boolean;
-  onChangeRole: (item: OperatorListItem) => void;
-  onStatusAction: (item: OperatorListItem, action: OperatorStatusAction) => void;
-};
-
-export const columns: ColumnDef<OperatorListItem>[] = [
-  {
-    id: 'email',
-    header: 'Email',
-    cell: ({ row }) => <span className='font-medium'>{row.original.email}</span>
-  },
-  {
-    id: 'role',
-    header: 'Rol',
-    cell: ({ row }) => (
-      <RoleBadge role={row.original.role} testId={`operator-role-${row.original.id}`} />
-    )
-  },
-  {
-    id: 'status',
-    header: 'Estado',
-    cell: ({ row }) => (
-      <StatusBadge status={row.original.status} testId={`operator-status-${row.original.id}`} />
-    )
-  },
-  {
-    id: 'actions',
-    header: 'Acciones',
-    cell: ({ row, table }) => {
-      const meta = table.options.meta as OperatorsTableMeta;
-
-      return (
-        <OperatorCellAction
-          item={row.original}
-          isMutating={meta.isMutating}
-          onChangeRole={meta.onChangeRole}
-          onStatusAction={meta.onStatusAction}
-        />
-      );
-    }
-  }
-];
-
 /**
- * Operator roster table. Built with @tanstack/react-table (mirrors
- * TenantsTable): read-only columns (email/role/status) plus a dropdown
- * actions column (OperatorCellAction). Rows render in the order received.
- * `isMutating` disables every row action while a mutation is in flight.
+ * Operator roster table, rebuilt to the Kiranism starter DataTable format
+ * (same look as the demo `/dashboard/users`): sortable column headers, an
+ * avatar+email identity cell, colored Rol/Estado badges, a formatted "Alta"
+ * date, a toolbar (search-by-email + faceted Rol/Estado filters + view-options
+ * + reset), a dropdown actions column (OperatorCellAction) and a pagination
+ * footer.
+ *
+ * Everything is CLIENT-SIDE — the `GET /operators/manage` endpoint has no
+ * pagination/search/filter params, and the roster is small — so sorting,
+ * filtering, faceting and pagination all run on TanStack row models over the
+ * full `items` array (no backend change). The shared `useDataTable` hook is
+ * deliberately NOT used here: it is wired for server-side/manual pagination via
+ * nuqs, which would fight a small client-side list. We render with the shared
+ * presentational `DataTable` / `DataTableToolbar` components instead to get the
+ * starter's visual format.
+ *
+ * `isMutating` is threaded to each row's actions via table `meta` and disables
+ * every row action while a mutation is in flight (double-submit guard).
  */
 export function OperatorsTable({ items, isMutating, onChangeRole, onStatusAction }: Props) {
   const table = useReactTable({
     data: items,
-    columns,
+    columns: operatorColumns,
     getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+    initialState: { pagination: { pageSize: 10 } },
     meta: { isMutating, onChangeRole, onStatusAction } satisfies OperatorsTableMeta
   });
 
   return (
-    <Table>
-      <TableHeader>
-        {table.getHeaderGroups().map((headerGroup) => (
-          <TableRow key={headerGroup.id}>
-            {headerGroup.headers.map((header) => (
-              <TableHead
-                key={header.id}
-                className={header.column.id === 'actions' ? 'text-right' : undefined}
-              >
-                {header.isPlaceholder
-                  ? null
-                  : flexRender(header.column.columnDef.header, header.getContext())}
-              </TableHead>
-            ))}
-          </TableRow>
-        ))}
-      </TableHeader>
-      <TableBody>
-        {table.getRowModel().rows.map((row) => (
-          <TableRow key={row.id} data-testid={`operator-row-${row.original.id}`}>
-            {row.getVisibleCells().map((cell) => (
-              <TableCell
-                key={cell.id}
-                className={cell.column.id === 'actions' ? 'text-right' : undefined}
-              >
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <DataTable table={table}>
+      <DataTableToolbar table={table} />
+    </DataTable>
   );
 }
 
@@ -126,41 +80,4 @@ export function getOperatorStatusAction(item: OperatorListItem): OperatorStatusA
   return item.status === 'ACTIVE'
     ? { targetStatus: 'SUSPENDED', label: 'Suspender' }
     : { targetStatus: 'ACTIVE', label: 'Reactivar' };
-}
-
-function StatusBadge({ status, testId }: { status: OperatorStatus; testId: string }) {
-  const variant = status === 'ACTIVE' ? 'default' : 'destructive';
-
-  return (
-    <Badge data-testid={testId} variant={variant} className='rounded-full'>
-      {getOperatorStatusLabel(status)}
-    </Badge>
-  );
-}
-
-function RoleBadge({ role, testId }: { role: OperatorRole; testId: string }) {
-  return (
-    <Badge data-testid={testId} variant='outline' className='rounded-full'>
-      {getOperatorRoleLabel(role)}
-    </Badge>
-  );
-}
-
-export function getOperatorStatusLabel(status: string) {
-  const labels: Record<OperatorStatus, string> = {
-    ACTIVE: 'Activo',
-    SUSPENDED: 'Suspendido'
-  };
-
-  return labels[status as OperatorStatus] ?? status;
-}
-
-export function getOperatorRoleLabel(role: string) {
-  const labels: Record<OperatorRole, string> = {
-    OWNER: 'Dueño',
-    OPERATIONS: 'Operaciones',
-    ANALYST: 'Analista'
-  };
-
-  return labels[role as OperatorRole] ?? role;
 }
