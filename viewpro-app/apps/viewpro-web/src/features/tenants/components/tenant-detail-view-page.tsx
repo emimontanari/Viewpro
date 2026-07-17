@@ -13,6 +13,7 @@ import { TenantActivityFeed } from './tenant-activity-feed';
 import { TenantDetailErrorState } from './tenant-detail-error-state';
 import { TenantDetailSkeleton } from './tenant-detail-skeleton';
 import { TenantDetailStatCards } from './tenant-detail-stat-cards';
+import styles from './tenant-detail.module.css';
 
 const ACTIVITY_PAGE_SIZE = 20;
 
@@ -77,7 +78,7 @@ export function TenantDetailViewPage({ tenantId }: Props) {
   }
 
   return (
-    <div className='flex min-h-0 flex-1 flex-col gap-6'>
+    <div className={`${styles.page} flex min-h-0 flex-1 flex-col`}>
       <TenantDetailStatCards summary={data} />
       <TenantActivityFeed
         items={items}
