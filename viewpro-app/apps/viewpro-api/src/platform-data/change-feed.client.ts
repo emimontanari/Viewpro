@@ -25,6 +25,57 @@ export type TenantsBackfillResponse = {
 }
 
 /**
+ * One item of the merged activity feed returned by InmoView's tenant-summary
+ * endpoint. Mirrors `ActivityFeedItemResponse` shape-wise but is intentionally
+ * kept loose here (FE-owned mirrored types per design D6 — no shared
+ * `packages/platform-contract` type for this wire shape).
+ */
+export type PlatformActivityFeedItem = {
+  kind: 'movement' | 'document_request'
+  id: string
+  createdAt: string
+  [key: string]: unknown
+}
+
+/**
+ * Response shape for GET /internal/platform/tenants/:id/summary — mirrors
+ * apps/api's `PlatformTenantSummaryResponse` 1:1 (design D6).
+ */
+export type PlatformTenantSummaryResponse = {
+  window: { from: string; to: string }
+  activeEngagements: number
+  activeEngagementsWithOwnerVisibleUpdate: number
+  activeEngagementUpdatePercentage: number
+  documentEvents: {
+    requested: number
+    uploaded: number
+    approved: number
+    rejected: number
+  }
+  ownerViewedPropertyCount: number
+  activity: {
+    total: number
+    items: PlatformActivityFeedItem[]
+  }
+}
+
+/**
+ * Typed error thrown by `fetchTenantSummary`. Carries the upstream HTTP
+ * status (when available) so callers (TenantDetailService) can map InmoView's
+ * 404 to a ViewPro 404 and everything else (other non-2xx, or InmoView being
+ * unreachable — `status` absent) to a 502 (design D8).
+ */
+export class TenantSummaryFetchError extends Error {
+  readonly status?: number
+
+  constructor(message: string, status?: number) {
+    super(message)
+    this.name = 'TenantSummaryFetchError'
+    this.status = status
+  }
+}
+
+/**
  * Options for constructing ChangeFeedClient directly (unit-testable).
  */
 export interface ChangeFeedClientOptions {
@@ -165,6 +216,53 @@ export class ChangeFeedClient {
     }
 
     return response.json() as Promise<TenantsBackfillResponse>
+  }
+
+  /**
+   * GET /api/internal/platform/tenants/:id/summary?offset=<n>&limit=<n>
+   *
+   * Fetches the on-demand counts + activity-feed summary for a single tenant
+   * from InmoView (platform-tenant-tracking D7 — extends this client rather
+   * than adding a new one). Mints a service token with the SAME claims as
+   * `fetchChanges`/`fetchAllTenants` (reuses `mintIngestToken`).
+   *
+   * Throws `TenantSummaryFetchError` on any failure: `status` is set to the
+   * upstream HTTP status for a non-2xx response, and left `undefined` when
+   * InmoView is unreachable (network failure) — the caller (TenantDetailService)
+   * uses this to map InmoView 404 -> 404, everything else -> 502.
+   */
+  async fetchTenantSummary(
+    tenantId: string,
+    offset: number,
+    limit: number,
+  ): Promise<PlatformTenantSummaryResponse> {
+    const baseUrl = this.trimTrailingSlash(this.inmoviewApiInternalUrl)
+    const url = `${baseUrl}/api/internal/platform/tenants/${tenantId}/summary?offset=${offset}&limit=${limit}`
+    const token = this.mintIngestToken()
+
+    let response: Response
+    try {
+      response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          // Token is NOT logged — only sent in the Authorization header
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    } catch (err) {
+      throw new TenantSummaryFetchError(
+        `Tenant-summary request to InmoView failed: ${(err as Error).message}`,
+      )
+    }
+
+    if (!response.ok) {
+      throw new TenantSummaryFetchError(
+        `Tenant-summary endpoint returned non-2xx status: ${response.status}`,
+        response.status,
+      )
+    }
+
+    return response.json() as Promise<PlatformTenantSummaryResponse>
   }
 
   private trimTrailingSlash(url: string): string {
