@@ -58,10 +58,11 @@ export class TeamController {
   @RequirePermissions(PERMISSIONS.TEAM_MANAGE)
   updateMemberRole(
     @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() currentUser: CurrentUserContext,
     @Param('membershipId') membershipId: string,
     @Body() body: UpdateTeamMemberRoleDto,
   ) {
-    return this.updateTeamMemberRoleUseCase.execute(tenant, membershipId, body)
+    return this.updateTeamMemberRoleUseCase.execute(tenant, currentUser, membershipId, body)
   }
 
   @Post('members/:membershipId/deactivate')

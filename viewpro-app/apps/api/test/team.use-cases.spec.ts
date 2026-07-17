@@ -100,7 +100,9 @@ describe("UpdateTeamMemberRoleUseCase", () => {
 		);
 
 		await expect(
-			useCase.execute(tenant, "membership-1", { role: TenantRole.MANAGER }),
+			useCase.execute(tenant, currentUser, "membership-1", {
+				role: TenantRole.MANAGER,
+			}),
 		).resolves.toMatchObject({
 			membershipId: "membership-1",
 			role: TenantRole.MANAGER,
@@ -115,7 +117,35 @@ describe("UpdateTeamMemberRoleUseCase", () => {
 			membershipId: "membership-1",
 			tenantId: "tenant-1",
 			role: TenantRole.MANAGER,
+			actorUserId: "user-current",
 		});
+	});
+
+	it("threads the authenticated user's id through as actorUserId (actor attribution)", async () => {
+		const anotherUser = { id: "user-another", email: "another@example.com" };
+		const membershipsRepository = {
+			findByIdForTenant: vi
+				.fn()
+				.mockResolvedValue(
+					buildMembership({ id: "membership-1", role: TenantRole.AGENT }),
+				),
+			updateRoleForTenant: vi
+				.fn()
+				.mockResolvedValue(
+					buildMembership({ id: "membership-1", role: TenantRole.MANAGER }),
+				),
+		};
+		const useCase = new UpdateTeamMemberRoleUseCase(
+			membershipsRepository as never,
+		);
+
+		await useCase.execute(tenant, anotherUser, "membership-1", {
+			role: TenantRole.MANAGER,
+		});
+
+		expect(membershipsRepository.updateRoleForTenant).toHaveBeenCalledWith(
+			expect.objectContaining({ actorUserId: "user-another" }),
+		);
 	});
 
 	it("requires TEAM_MANAGE permission", async () => {
@@ -130,6 +160,7 @@ describe("UpdateTeamMemberRoleUseCase", () => {
 		await expect(
 			useCase.execute(
 				{ ...tenant, permissions: [PERMISSIONS.TEAM_VIEW] },
+				currentUser,
 				"membership-1",
 				{ role: TenantRole.AGENT },
 			),
@@ -147,7 +178,7 @@ describe("UpdateTeamMemberRoleUseCase", () => {
 		);
 
 		await expect(
-			useCase.execute(tenant, "membership-1", {
+			useCase.execute(tenant, currentUser, "membership-1", {
 				role: TenantRole.PRINCIPAL_MANAGER,
 			}),
 		).rejects.toThrow(BadRequestException);
@@ -164,7 +195,9 @@ describe("UpdateTeamMemberRoleUseCase", () => {
 		);
 
 		await expect(
-			useCase.execute(tenant, "other-membership", { role: TenantRole.AGENT }),
+			useCase.execute(tenant, currentUser, "other-membership", {
+				role: TenantRole.AGENT,
+			}),
 		).rejects.toThrow(NotFoundException);
 		expect(membershipsRepository.updateRoleForTenant).not.toHaveBeenCalled();
 	});
@@ -189,10 +222,14 @@ describe("UpdateTeamMemberRoleUseCase", () => {
 		);
 
 		await expect(
-			useCase.execute(tenant, "inactive", { role: TenantRole.AGENT }),
+			useCase.execute(tenant, currentUser, "inactive", {
+				role: TenantRole.AGENT,
+			}),
 		).rejects.toThrow(BadRequestException);
 		await expect(
-			useCase.execute(tenant, "principal", { role: TenantRole.AGENT }),
+			useCase.execute(tenant, currentUser, "principal", {
+				role: TenantRole.AGENT,
+			}),
 		).rejects.toThrow(BadRequestException);
 		expect(membershipsRepository.updateRoleForTenant).not.toHaveBeenCalled();
 	});
