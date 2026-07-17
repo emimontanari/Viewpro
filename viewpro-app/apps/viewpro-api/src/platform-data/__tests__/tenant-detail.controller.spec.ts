@@ -30,6 +30,14 @@ import { ChangeFeedClient, TenantSummaryFetchError } from '../change-feed.client
 
 const TEST_EMAIL = 'tenant-detail-test@viewpro.app'
 const TEST_PASSWORD = 'tenant-detail-test-password'
+// Second operator used only for the 403 PERMISSION_DENIED coverage. Every
+// active platform role (ANALYST/OPERATIONS/OWNER) grants TENANTS_READ, so the
+// only reachable PERMISSION_DENIED path for this route is a non-ACTIVE
+// operator: the guard resolves role/status via a fresh per-request DB lookup
+// (D1), while AuthGuard only validates the JWT — so logging in while ACTIVE and
+// then suspending yields a request whose effective permission is denied.
+const TEST_EMAIL_DENIED = 'tenant-detail-denied@viewpro.app'
+const TEST_PASSWORD_DENIED = 'tenant-detail-denied-password'
 
 const mockSummary = {
   window: { from: '2026-05-18T00:00:00.000Z', to: '2026-05-25T00:00:00.000Z' },
@@ -69,6 +77,7 @@ describe('TenantDetailController (integration — test DB, mocked InmoView clien
 
   beforeAll(async () => {
     seedOperator(TEST_EMAIL, TEST_PASSWORD)
+    seedOperator(TEST_EMAIL_DENIED, TEST_PASSWORD_DENIED)
 
     mockFetchTenantSummary = vi.fn()
     const mockChangeFeedClient: Pick<ChangeFeedClient, 'fetchTenantSummary'> = {
@@ -163,6 +172,32 @@ describe('TenantDetailController (integration — test DB, mocked InmoView clien
     const res = await request(app.getHttpServer()).get('/api/operators/tenants/tenant-1/summary')
 
     expect(res.status).toBe(401)
+    expect(mockFetchTenantSummary).not.toHaveBeenCalled()
+  })
+
+  // Scenario: Authenticated operator lacking effective TENANTS_READ → 403.
+  // The route is guarded by PlatformPermissionGuard(TENANTS_READ); a non-ACTIVE
+  // operator is denied with PERMISSION_DENIED and never reaches the passthrough.
+  it('authenticated operator without effective TENANTS_READ → 403 PERMISSION_DENIED, no passthrough', async () => {
+    const loginRes = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: TEST_EMAIL_DENIED, password: TEST_PASSWORD_DENIED })
+    expect(loginRes.status).toBe(200)
+    const cookie = extractPlatformCookie(loginRes.headers as Record<string, unknown>)
+
+    // Revoke access AFTER login: the guard's fresh per-request lookup now
+    // resolves a non-ACTIVE operator and denies the request.
+    await prisma.operator.update({
+      where: { email: TEST_EMAIL_DENIED },
+      data: { status: 'SUSPENDED' },
+    })
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/tenants/tenant-1/summary')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(403)
+    expect(res.body.code).toBe('PERMISSION_DENIED')
     expect(mockFetchTenantSummary).not.toHaveBeenCalled()
   })
 
