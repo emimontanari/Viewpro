@@ -431,15 +431,16 @@ function formatLimitCount(value: number | null) {
   return value === null ? '∞' : formatNumber(value);
 }
 
-// MB below 1000 render as-is; 1000+ collapse to GB (÷1024, one decimal) so the
-// compact line stays short. null → ∞ (unlimited).
+// MB below 1000 render as-is; 1000+ collapse to GB (÷1000 decimal, matching the
+// plan catalog's intent — Profesional 5000 MB reads as "5 GB", not 4,9) with one
+// decimal so the compact line stays short. null → ∞ (unlimited).
 function formatStorageLimit(value: number | null) {
   if (value === null) {
     return '∞';
   }
 
   if (value >= 1000) {
-    const gigabytes = Math.round((value / 1024) * 10) / 10;
+    const gigabytes = Math.round((value / 1000) * 10) / 10;
     return `${formatNumber(gigabytes)} GB`;
   }
 
