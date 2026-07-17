@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import type { Prisma, TenantRole } from "@prisma/client";
 import { mapActivityFeedMembership } from "../analytics/responses/activity-feed.response";
 import { compareActivityItems } from "../analytics/use-cases/list-activity-feed.use-case";
 // biome-ignore lint/style/useImportType: Nest dependency injection needs runtime metadata.
@@ -11,7 +12,42 @@ import type {
 	MembershipActivityJoinedRecord,
 	MembershipActivityRecord,
 	MembershipActivityRepository,
+	MembershipActivityRoleChangedRecord,
 } from "./membership-activity.repository";
+
+type ParsedRoleChangedMetadata = {
+	memberUserId: string;
+	previousRole: TenantRole;
+	newRole: TenantRole;
+};
+
+/**
+ * Defensive parser for AnalyticsEvent.metadata on MEMBER_ROLE_CHANGED rows.
+ * The single write path (PrismaMembershipsRepository.updateRoleForTenant)
+ * always sets this shape, so a malformed row should never occur — but per
+ * this file's existing "never throws" philosophy, malformed/legacy metadata
+ * is filtered OUT rather than crashing the whole feed.
+ */
+function parseRoleChangedMetadata(
+	metadata: Prisma.JsonValue,
+): ParsedRoleChangedMetadata | null {
+	if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+		return null;
+	}
+	const value = metadata as Record<string, unknown>;
+	if (
+		typeof value.memberUserId !== "string" ||
+		typeof value.previousRole !== "string" ||
+		typeof value.newRole !== "string"
+	) {
+		return null;
+	}
+	return {
+		memberUserId: value.memberUserId,
+		previousRole: value.previousRole as TenantRole,
+		newRole: value.newRole as TenantRole,
+	};
+}
 
 const ACTOR_SELECT = { id: true, email: true, firstName: true } as const;
 
@@ -76,6 +112,8 @@ export class PrismaMembershipActivityRepository
 			joinedTotal,
 			deactivatedRows,
 			deactivatedTotal,
+			roleChangedRows,
+			roleChangedTotal,
 		] = await Promise.all([
 			this.prisma.teamInvitation.findMany({
 				where: { tenantId },
@@ -105,18 +143,58 @@ export class PrismaMembershipActivityRepository
 			this.prisma.tenantMembership.count({
 				where: { tenantId, status: "DEACTIVATED", deactivatedAt: { not: null } },
 			}),
+			// 4th source (platform-role-change-activity): AnalyticsEvent rows
+			// written by the atomic role-change write path
+			// (prisma-memberships.repository.ts). Direct query — NOT through
+			// AnalyticsRepository.listTenantEvents, which paginates with a
+			// different skip/take shape that doesn't fit this window-bounded
+			// merge (design §4). UNCONDITIONAL top-level tenantId, same
+			// discipline as the 3 sub-queries above.
+			this.prisma.analyticsEvent.findMany({
+				where: { tenantId, eventName: "MEMBER_ROLE_CHANGED" },
+				orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
+				skip: 0,
+				take: fetchWindow,
+			}),
+			this.prisma.analyticsEvent.count({
+				where: { tenantId, eventName: "MEMBER_ROLE_CHANGED" },
+			}),
 		]);
 
-		const deactivatedByUserIds = Array.from(
-			new Set(
-				deactivatedRows
-					.map((row) => row.deactivatedByUserId)
-					.filter((id): id is string => Boolean(id)),
-			),
+		// Malformed/legacy metadata rows (should never occur given the single
+		// write path always sets it) are filtered OUT rather than crashing —
+		// consistent with describeMembershipActivityItem's "never throws"
+		// discipline on the FE side.
+		const parsedRoleChanges = roleChangedRows
+			.map((row) => ({ row, parsed: parseRoleChangedMetadata(row.metadata) }))
+			.filter(
+				(
+					entry,
+				): entry is {
+					row: (typeof roleChangedRows)[number];
+					parsed: ParsedRoleChangedMetadata;
+				} => entry.parsed !== null,
+			);
+
+		const deactivatedByUserIds = deactivatedRows
+			.map((row) => row.deactivatedByUserId)
+			.filter((id): id is string => Boolean(id));
+		// Consolidated batch lookup: covers deactivatedByUser ids AND the
+		// role-changed subject (memberUserId) + actor (actorUserId) ids in ONE
+		// round trip (design §4) — never a second User.findMany call.
+		const lookupIds = Array.from(
+			new Set([
+				...deactivatedByUserIds,
+				...parsedRoleChanges.flatMap(({ row, parsed }) =>
+					row.actorUserId
+						? [parsed.memberUserId, row.actorUserId]
+						: [parsed.memberUserId],
+				),
+			]),
 		);
-		const actorUsers: MembershipActivityActor[] = deactivatedByUserIds.length
+		const actorUsers: MembershipActivityActor[] = lookupIds.length
 			? await this.prisma.user.findMany({
-					where: { id: { in: deactivatedByUserIds } },
+					where: { id: { in: lookupIds } },
 					select: ACTOR_SELECT,
 				})
 			: [];
@@ -157,6 +235,31 @@ export class PrismaMembershipActivityRepository
 					: null,
 			}));
 
+		// subject fallback is a placeholder object (never null) — ROLE_CHANGED's
+		// subject must always exist for the mapper/FE, unlike DEACTIVATED's
+		// optional actor.
+		const roleChangedRecords: MembershipActivityRoleChangedRecord[] =
+			parsedRoleChanges.map(({ row, parsed }) => ({
+				event: "ROLE_CHANGED",
+				id: row.id,
+				tenantId: row.tenantId ?? tenantId,
+				createdAt: row.occurredAt,
+				subject: actorsById.get(parsed.memberUserId) ?? {
+					id: parsed.memberUserId,
+					email: "",
+					firstName: "",
+				},
+				actor: row.actorUserId
+					? (actorsById.get(row.actorUserId) ?? {
+							id: row.actorUserId,
+							email: "",
+							firstName: "",
+						})
+					: null,
+				previousRole: parsed.previousRole,
+				newRole: parsed.newRole,
+			}));
+
 		// Sort with the SAME comparator the outer merge uses
 		// (`compareActivityItems` over `mapActivityFeedMembership`'s prefixed id),
 		// so this internal ordering agrees with `GetPlatformTenantActivityUseCase`'s
@@ -172,6 +275,7 @@ export class PrismaMembershipActivityRepository
 			...invitedRecords,
 			...joinedRecords,
 			...deactivatedRecords,
+			...roleChangedRecords,
 		]
 			.map((record) => ({ record, mapped: mapActivityFeedMembership(record) }))
 			.sort((a, b) => compareActivityItems(a.mapped, b.mapped))
@@ -180,7 +284,7 @@ export class PrismaMembershipActivityRepository
 
 		return {
 			items,
-			total: invitationTotal + joinedTotal + deactivatedTotal,
+			total: invitationTotal + joinedTotal + deactivatedTotal + roleChangedTotal,
 		};
 	}
 }

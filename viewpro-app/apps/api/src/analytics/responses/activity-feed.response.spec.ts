@@ -100,4 +100,57 @@ describe("mapActivityFeedMembership()", () => {
 
 		expect(result.actor).toBeNull();
 	});
+
+	/**
+	 * platform-role-change-activity — RED: ROLE_CHANGED case (T8)
+	 *
+	 * Spec: platform-role-change-activity — "Four-source merged activity feed"
+	 *   scenario "Role-change events interleave correctly".
+	 * Design §5: id prefix is `member-role-changed:<id>` (singular `member-`,
+	 *   NOT `membership-`, per the proposal — breaks sibling prefix symmetry
+	 *   deliberately; has zero functional impact on the tie-break comparator).
+	 */
+	it("maps a ROLE_CHANGED record with the member as subject and the changer as actor", () => {
+		const record: MembershipActivityRecord = {
+			event: "ROLE_CHANGED",
+			id: "event-1",
+			tenantId: "tenant-1",
+			createdAt: new Date("2026-07-10T10:00:00.000Z"),
+			subject: member,
+			actor: deactivator,
+			previousRole: "MANAGER",
+			newRole: "AGENT",
+		};
+
+		const result = mapActivityFeedMembership(record);
+
+		expect(result).toMatchObject({
+			kind: "membership",
+			id: "member-role-changed:event-1",
+			tenantId: "tenant-1",
+			createdAt: "2026-07-10T10:00:00.000Z",
+			membershipEvent: "ROLE_CHANGED",
+			subject: { id: member.id, email: member.email, firstName: member.firstName },
+			actor: { id: deactivator.id, email: deactivator.email, firstName: deactivator.firstName },
+			previousRole: "MANAGER",
+			newRole: "AGENT",
+		});
+	});
+
+	it("maps a ROLE_CHANGED record with a null actor when the actor could not be resolved", () => {
+		const record: MembershipActivityRecord = {
+			event: "ROLE_CHANGED",
+			id: "event-2",
+			tenantId: "tenant-1",
+			createdAt: new Date("2026-07-11T10:00:00.000Z"),
+			subject: member,
+			actor: null,
+			previousRole: "AGENT",
+			newRole: "MANAGER",
+		};
+
+		const result = mapActivityFeedMembership(record);
+
+		expect(result.actor).toBeNull();
+	});
 });

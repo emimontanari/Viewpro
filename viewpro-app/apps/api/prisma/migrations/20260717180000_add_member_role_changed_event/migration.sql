@@ -1,0 +1,1 @@
+ALTER TYPE "AnalyticsEventName" ADD VALUE 'MEMBER_ROLE_CHANGED';

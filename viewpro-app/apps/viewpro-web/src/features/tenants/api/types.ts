@@ -107,7 +107,7 @@ export type TenantActivityItem = {
   kind: 'movement' | 'document_request' | 'membership';
   id: string;
   createdAt: string; // ISO string
-  membershipEvent?: 'INVITED' | 'JOINED' | 'DEACTIVATED';
+  membershipEvent?: 'INVITED' | 'JOINED' | 'DEACTIVATED' | 'ROLE_CHANGED';
   [key: string]: unknown;
 };
 

@@ -224,6 +224,87 @@ describe('describeTenantActivityItem() — membership items (platform-user-activ
   });
 });
 
+describe('describeTenantActivityItem() — ROLE_CHANGED items (platform-role-change-activity, T10)', () => {
+  const ROLE_CHANGED_ITEM: TenantActivityItem = {
+    kind: 'membership',
+    id: 'member-role-changed:event-1',
+    tenantId: 'tenant-1',
+    createdAt: '2026-07-17T10:00:00.000Z',
+    membershipEvent: 'ROLE_CHANGED',
+    subject: { id: 'member-1', email: 'member@example.com', firstName: 'Martín' },
+    actor: { id: 'actor-1', email: 'owner@example.com', firstName: 'Ana' },
+    previousRole: 'MANAGER',
+    newRole: 'AGENT'
+  };
+
+  it('renders "Rol cambiado" with Spanish role labels (not raw enum codes), and NOT the document-request fallback', () => {
+    const result = describeTenantActivityItem(ROLE_CHANGED_ITEM);
+
+    expect(result.title).toBe('Rol cambiado · Martín: Encargado → Vendedor');
+    expect(result.title).not.toContain('MANAGER');
+    expect(result.title).not.toContain('AGENT');
+    expect(result.title).not.toContain('Documento');
+    expect(result.subtitle).toContain('Ana');
+  });
+
+  it('maps every TenantRole enum value to its Spanish label', () => {
+    const cases: Array<[string, string]> = [
+      ['PRINCIPAL_MANAGER', 'Encargado principal'],
+      ['MANAGER', 'Encargado'],
+      ['AGENT', 'Vendedor']
+    ];
+
+    for (const [role, label] of cases) {
+      const result = describeTenantActivityItem({
+        ...ROLE_CHANGED_ITEM,
+        previousRole: role,
+        newRole: role
+      });
+      expect(result.title).toContain(`${label} → ${label}`);
+    }
+  });
+
+  it('degrades gracefully (never throws) when previousRole/newRole are missing', () => {
+    const bareItem: TenantActivityItem = {
+      kind: 'membership',
+      id: 'member-role-changed:bare',
+      createdAt: '2026-07-17T10:00:00.000Z',
+      membershipEvent: 'ROLE_CHANGED'
+    };
+
+    expect(() => describeTenantActivityItem(bareItem)).not.toThrow();
+    const result = describeTenantActivityItem(bareItem);
+    expect(result.title.length).toBeGreaterThan(0);
+  });
+});
+
+describe('describeTenantActivityItem() — movement, document_request, and existing membership items are unaffected by ROLE_CHANGED (T10 regression)', () => {
+  it('still renders the movement item exactly as before', () => {
+    const result = describeTenantActivityItem(MOVEMENT_ITEM);
+    expect(result.title).toContain('Depto en Palermo');
+    expect(result.subtitle).toContain('Lucía');
+  });
+
+  it('still renders the document_request item exactly as before', () => {
+    const result = describeTenantActivityItem(DOCUMENT_REQUEST_ITEM);
+    expect(result.title).toContain('Escritura');
+    expect(result.subtitle).toContain('Martín');
+  });
+
+  it('still renders an INVITED membership item exactly as before', () => {
+    const result = describeTenantActivityItem({
+      kind: 'membership',
+      id: 'membership-invited:invitation-1',
+      tenantId: 'tenant-1',
+      createdAt: '2026-07-16T10:00:00.000Z',
+      membershipEvent: 'INVITED',
+      subject: { email: 'invitado@example.com', firstName: null },
+      actor: { id: 'inviter-1', email: 'inviter@example.com', firstName: 'Lucía' }
+    });
+    expect(result.title).toContain('Usuario invitado');
+  });
+});
+
 describe('describeTenantActivityItem() — movement and document_request items are unaffected by the exhaustive switch', () => {
   it('still renders the movement item exactly as before', () => {
     const result = describeTenantActivityItem(MOVEMENT_ITEM);
