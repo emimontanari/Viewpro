@@ -26,12 +26,20 @@
  */
 
 import * as React from 'react';
-import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { TenantListItem } from '@/features/tenants/api/types';
 import { getTenantActions, getTrialEndLabel, TenantsTable } from '../tenants-table';
+
+// platform-tenant-tracking PR2 (T-25) — the tenant name cell and the
+// "Ver detalle" dropdown item both navigate to /dashboard/tenants/:id.
+const mockRouterPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockRouterPush }),
+  usePathname: () => '/dashboard/tenants'
+}));
 
 // Radix DropdownMenu / Popover rely on pointer-capture + scrollIntoView APIs
 // that jsdom does not implement; polyfill them so the menus/popovers can open
@@ -41,6 +49,10 @@ beforeAll(() => {
   Element.prototype.setPointerCapture = vi.fn();
   Element.prototype.releasePointerCapture = vi.fn();
   Element.prototype.scrollIntoView = vi.fn();
+});
+
+beforeEach(() => {
+  mockRouterPush.mockClear();
 });
 
 const TRIAL_ITEM: TenantListItem = {
@@ -299,6 +311,32 @@ describe('TenantsTable — pagination footer', () => {
   });
 });
 
+describe('TenantsTable — navigation to tenant detail (platform-tenant-tracking, T-25)', () => {
+  it('the tenant name is a link to /dashboard/tenants/:id', () => {
+    renderTable();
+
+    const nameLink = screen.getByRole('link', { name: 'Acme Realty' });
+    expect(nameLink.getAttribute('href')).toBe('/dashboard/tenants/tenant-1');
+  });
+
+  it('each row links to its own tenant id', () => {
+    renderTable();
+
+    expect(screen.getByRole('link', { name: 'Beta Homes' }).getAttribute('href')).toBe(
+      '/dashboard/tenants/tenant-2'
+    );
+  });
+
+  it('opening a row menu exposes "Ver detalle" which navigates to /dashboard/tenants/:id', async () => {
+    renderTable({ items: [ITEMS[0]] });
+
+    const user = await openRowMenu(0);
+    await user.click(await screen.findByRole('menuitem', { name: 'Ver detalle' }));
+
+    expect(mockRouterPush).toHaveBeenCalledWith('/dashboard/tenants/tenant-1');
+  });
+});
+
 describe('TenantsTable — dropdown actions', () => {
   it('opening a row menu exposes "Editar límites" which emits onEditLimits(row)', async () => {
     const onEditLimits = vi.fn();
@@ -363,14 +401,29 @@ describe('TenantsTable — dropdown actions', () => {
     ).toBeNull();
   });
 
-  it('isMutating={true} disables every action item in the row menu (double-submit guard, AC6)', async () => {
+  it('isMutating={true} disables every MUTATING action item in the row menu (double-submit guard, AC6)', async () => {
     renderTable({ items: [ITEMS[0]], isMutating: true });
 
     await openRowMenu(0);
 
-    for (const item of await screen.findAllByRole('menuitem')) {
+    // "Ver detalle" (T-25) is a read-only navigation item, not a mutation —
+    // it is intentionally excluded from the double-submit guard.
+    const mutatingItems = (await screen.findAllByRole('menuitem')).filter(
+      (item) => item.textContent !== 'Ver detalle'
+    );
+    expect(mutatingItems.length).toBeGreaterThan(0);
+    for (const item of mutatingItems) {
       expect(item.getAttribute('aria-disabled')).toBe('true');
     }
+  });
+
+  it('isMutating={true} still leaves "Ver detalle" enabled (navigation is not a mutation, T-25)', async () => {
+    renderTable({ items: [ITEMS[0]], isMutating: true });
+
+    await openRowMenu(0);
+
+    const verDetalle = await screen.findByRole('menuitem', { name: 'Ver detalle' });
+    expect(verDetalle.getAttribute('aria-disabled')).not.toBe('true');
   });
 });
 
