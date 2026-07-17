@@ -18,6 +18,7 @@ import { DataTableColumnHeader } from '@/components/ui/table/data-table-column-h
 import { DataTableToolbar } from '@/components/ui/table/data-table-toolbar';
 import { cn } from '@/lib/utils';
 import type { Option } from '@/types/data-table';
+import Link from 'next/link';
 import type {
   TenantLimits,
   TenantListItem,
@@ -232,7 +233,12 @@ function TenantIdentity({ item }: { item: TenantListItem }) {
         {initial}
       </span>
       <div className='min-w-0'>
-        <p className='truncate font-medium'>{item.name}</p>
+        <Link
+          href={`/dashboard/tenants/${item.id}`}
+          className='block truncate font-medium hover:underline'
+        >
+          {item.name}
+        </Link>
         <p className='text-muted-foreground truncate text-xs'>{item.slug}</p>
       </div>
     </div>

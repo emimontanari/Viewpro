@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import type { TenantListItem } from '@/features/tenants/api/types';
+import { useRouter } from 'next/navigation';
 import { getTenantActions, type TenantAction } from './tenants-table';
 
 type Props = {
@@ -35,6 +36,7 @@ export function TenantCellAction({
   onStatusAction,
   onAssignPlan
 }: Props) {
+  const router = useRouter();
   const actions = getTenantActions(item);
 
   return (
@@ -47,6 +49,9 @@ export function TenantCellAction({
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end'>
         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => router.push(`/dashboard/tenants/${item.id}`)}>
+          Ver detalle
+        </DropdownMenuItem>
         <DropdownMenuItem disabled={isMutating} onClick={() => onEditLimits(item)}>
           Editar límites
         </DropdownMenuItem>
