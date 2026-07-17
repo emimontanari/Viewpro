@@ -111,3 +111,58 @@ describe('AuditTable — renders fetched rows', () => {
     expect(screen.getByTestId('audit-change-audit-4').textContent).toContain('—');
   });
 });
+
+// A4 — the feed is heterogeneous: VIEWPRO_NATIVE operator-management entries
+// have a different shape (actor {id,email}, target {id,email}, tenantId/seqNo
+// null). The table must render BOTH shapes side by side — a native entry must
+// NOT crash the page.
+describe('AuditTable — heterogeneous feed (native + outbox)', () => {
+  const NATIVE_ITEM: AuditLogItem = {
+    id: 'audit-native-1',
+    action: 'OPERATOR_CREATED',
+    tenantId: null,
+    actor: { id: 'op-9', email: 'admin@viewpro.local' },
+    target: { id: 'op-10', email: 'demo.operador@viewpro.local' },
+    previousValue: null,
+    newValue: null,
+    occurredAt: '2026-07-15T11:00:00.000Z',
+    seqNo: null,
+    source: 'VIEWPRO_NATIVE'
+  };
+
+  it('renders both an outbox and a native row without throwing', () => {
+    const items: AuditLogItem[] = [ITEMS[0], NATIVE_ITEM];
+
+    expect(() => render(<AuditTable items={items} />)).not.toThrow();
+    expect(screen.getByTestId('audit-row-audit-1')).toBeTruthy();
+    expect(screen.getByTestId('audit-row-audit-native-1')).toBeTruthy();
+  });
+
+  it('shows the native actor email (no label/type) as the actor line', () => {
+    render(<AuditTable items={[NATIVE_ITEM]} />);
+
+    expect(screen.getByTestId('audit-actor-audit-native-1').textContent).toContain(
+      'admin@viewpro.local'
+    );
+  });
+
+  it('renders "—" for a native entry with a null tenantId', () => {
+    render(<AuditTable items={[NATIVE_ITEM]} />);
+
+    expect(screen.getByTestId('audit-tenant-audit-native-1').textContent).toBe('—');
+  });
+
+  it('maps the native action code to its Spanish label', () => {
+    render(<AuditTable items={[NATIVE_ITEM]} />);
+
+    expect(screen.getByTestId('audit-action-audit-native-1').textContent).toBe('Operador creado');
+  });
+
+  it('shows the target operator email in the change cell', () => {
+    render(<AuditTable items={[NATIVE_ITEM]} />);
+
+    expect(screen.getByTestId('audit-change-audit-native-1').textContent).toContain(
+      'demo.operador@viewpro.local'
+    );
+  });
+});

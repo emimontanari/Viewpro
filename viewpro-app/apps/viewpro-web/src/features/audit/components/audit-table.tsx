@@ -30,21 +30,28 @@ export function AuditTable({ items }: Props) {
           <TableRow key={item.id} data-testid={`audit-row-${item.id}`}>
             <TableCell data-testid={`audit-actor-${item.id}`}>
               <div className='space-y-1'>
-                <p className='font-medium'>{item.actor.label}</p>
-                <p className='text-muted-foreground text-xs'>{item.actor.type}</p>
+                <p className='font-medium'>{actorPrimary(item.actor)}</p>
+                <p className='text-muted-foreground text-xs'>{actorSecondary(item)}</p>
               </div>
             </TableCell>
             <TableCell data-testid={`audit-action-${item.id}`}>
               {actionLabel(item.action)}
             </TableCell>
-            <TableCell data-testid={`audit-tenant-${item.id}`}>{item.tenantId}</TableCell>
+            <TableCell data-testid={`audit-tenant-${item.id}`}>{item.tenantId ?? '—'}</TableCell>
             <TableCell data-testid={`audit-date-${item.id}`}>
               {formatOccurredAt(item.occurredAt)}
             </TableCell>
             <TableCell data-testid={`audit-change-${item.id}`}>
               <div className='text-muted-foreground space-y-1 text-xs whitespace-pre-line'>
-                <div>{renderValue(item.previousValue)}</div>
-                <div className='text-foreground'>→ {renderValue(item.newValue)}</div>
+                {item.target?.email ? (
+                  <div className='text-foreground'>{item.target.email}</div>
+                ) : null}
+                {!item.target?.email || hasValueDelta(item) ? (
+                  <>
+                    <div>{renderValue(item.previousValue)}</div>
+                    <div className='text-foreground'>→ {renderValue(item.newValue)}</div>
+                  </>
+                ) : null}
               </div>
             </TableCell>
           </TableRow>
@@ -52,6 +59,25 @@ export function AuditTable({ items }: Props) {
       </TableBody>
     </Table>
   );
+}
+
+// A4 — heterogeneous actor: outbox carries {type,label}, native carries
+// {email}. Prefer the human label, fall back to email, then the raw id —
+// never render `undefined`.
+function actorPrimary(actor: AuditLogItem['actor']): string {
+  return actor.label ?? actor.email ?? actor.id;
+}
+
+// Secondary line: outbox actor `type`, or a sensible role for native entries.
+function actorSecondary(item: AuditLogItem): string {
+  return item.actor.type ?? (item.source === 'VIEWPRO_NATIVE' ? 'operador' : '');
+}
+
+// Native OPERATOR_CREATED/SUSPENDED/REACTIVATED carry no old→new delta
+// (both null); OPERATOR_ROLE_CHANGED does. Only render the arrow when there is
+// an actual value to show.
+function hasValueDelta(item: AuditLogItem): boolean {
+  return item.previousValue != null || item.newValue != null;
 }
 
 // Malformed occurredAt degrades to the raw string rather than throwing

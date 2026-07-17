@@ -35,7 +35,12 @@ function primitiveToString(v: unknown): string {
 // values render raw rather than throwing.
 const ACTION_LABELS: Record<string, string> = {
   TENANT_STATUS_CHANGED: 'Estado',
-  TENANT_LIMITS_UPDATED: 'Límites'
+  TENANT_LIMITS_UPDATED: 'Límites',
+  // A4 — VIEWPRO_NATIVE operator-management actions.
+  OPERATOR_CREATED: 'Operador creado',
+  OPERATOR_ROLE_CHANGED: 'Rol de operador cambiado',
+  OPERATOR_SUSPENDED: 'Operador suspendido',
+  OPERATOR_REACTIVATED: 'Operador reactivado'
 };
 
 export function actionLabel(action: string): string {
