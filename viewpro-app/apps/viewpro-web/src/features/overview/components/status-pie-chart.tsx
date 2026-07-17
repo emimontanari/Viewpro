@@ -44,7 +44,7 @@ export function StatusPieChart({ byStatus }: Props) {
       <CardContent className='flex flex-1 flex-col gap-4'>
         <ChartContainer
           config={chartConfig}
-          className='mx-auto aspect-square max-h-[240px]'
+          className='mx-auto aspect-square h-[240px] w-[240px]'
         >
           <PieChart>
             <ChartTooltip cursor={false} content={<ChartTooltipContent nameKey='key' hideLabel />} />
