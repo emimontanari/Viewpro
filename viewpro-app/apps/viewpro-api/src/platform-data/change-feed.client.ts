@@ -237,7 +237,9 @@ export class ChangeFeedClient {
     limit: number,
   ): Promise<PlatformTenantSummaryResponse> {
     const baseUrl = this.trimTrailingSlash(this.inmoviewApiInternalUrl)
-    const url = `${baseUrl}/api/internal/platform/tenants/${tenantId}/summary?offset=${offset}&limit=${limit}`
+    // encodeURIComponent the tenantId (consistent with the control-lane client
+    // hardening) so a crafted id segment can't re-route the signed internal call.
+    const url = `${baseUrl}/api/internal/platform/tenants/${encodeURIComponent(tenantId)}/summary?offset=${offset}&limit=${limit}`
     const token = this.mintIngestToken()
 
     let response: Response
