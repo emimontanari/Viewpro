@@ -20,6 +20,17 @@ const PLATFORM_INTERNAL_USER_ID = 'platform-internal'
 const DEFAULT_OFFSET = 0
 const DEFAULT_LIMIT = 20
 
+/**
+ * Hard upper bound on how many rows are fetched from EACH stream in a single
+ * request. The merged-feed fix fetches `offset + limit` rows per stream to
+ * build a correctly ordered combined page; without a cap, a large `offset`
+ * would push the Prisma `take` unbounded (DoS). Deep pages beyond this window
+ * degrade to empty rather than an unbounded query. Callers already clamp
+ * `limit` to 100 (controller sanitizers), so this only guards against a huge
+ * `offset`.
+ */
+const MAX_FETCH_WINDOW = 200
+
 export type GetPlatformTenantActivityInput = {
   tenantId: string
   offset?: number
@@ -54,23 +65,29 @@ export class GetPlatformTenantActivityUseCase {
 
   async execute(input: GetPlatformTenantActivityInput): Promise<GetPlatformTenantActivityResponse> {
     const limit = input.limit ?? DEFAULT_LIMIT
-    const offset = input.offset ?? DEFAULT_OFFSET
-    const page = Math.floor(offset / limit) + 1
-    const pageSize = limit
+    const offset = Math.max(input.offset ?? DEFAULT_OFFSET, 0)
+
+    // Each stream is independently paginated, so to produce a correctly ordered
+    // combined page for [offset, offset+limit) we must fetch the whole
+    // [0, offset+limit) window from EACH stream (page 1), merge, sort, and
+    // slice — mirroring ListActivityFeedUseCase's merged "all" branch. The
+    // window is bounded so a large offset can never make the Prisma `take`
+    // unbounded (DoS guard).
+    const pageSize = Math.min(offset + limit, MAX_FETCH_WINDOW)
 
     const [movementFeed, documentFeed] = await Promise.all([
       this.movementsRepository.findManyByTenant({
         tenantId: input.tenantId,
         userId: PLATFORM_INTERNAL_USER_ID,
         canViewAll: true,
-        page,
+        page: 1,
         pageSize,
       }),
       this.documentsRepository.listActivityRequests({
         tenantId: input.tenantId,
         viewerUserId: PLATFORM_INTERNAL_USER_ID,
         canViewAll: true,
-        page,
+        page: 1,
         pageSize,
       }),
     ])
@@ -78,7 +95,9 @@ export class GetPlatformTenantActivityUseCase {
     const items = [
       ...movementFeed.items.map(mapActivityFeedMovement),
       ...documentFeed.items.map(mapActivityFeedDocumentRequest),
-    ].sort(compareActivityItems)
+    ]
+      .sort(compareActivityItems)
+      .slice(offset, offset + limit)
 
     return {
       total: movementFeed.total + documentFeed.total,
