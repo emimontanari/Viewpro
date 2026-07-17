@@ -144,6 +144,48 @@ function makeRepositories(overrides?: {
 	return { movementsRepository, documentsRepository };
 }
 
+function makeMovementAt(id: string, iso: string) {
+	return { ...activityMovement, id, createdAt: new Date(iso) };
+}
+
+function makeDocumentAt(id: string, iso: string) {
+	return { ...activityDocumentRequest, id, createdAt: new Date(iso) };
+}
+
+/**
+ * Repository doubles that honour page/pageSize the way the real Prisma repos
+ * do (newest-first slices). `items` MUST be passed newest-first.
+ */
+function makePaginatingRepositories(
+	movementItems: unknown[],
+	documentItems: unknown[],
+) {
+	const movementsRepository = {
+		findManyByTenant: vi.fn(
+			({ page, pageSize }: { page: number; pageSize: number }) => {
+				const start = (page - 1) * pageSize;
+				return Promise.resolve({
+					items: movementItems.slice(start, start + pageSize),
+					total: movementItems.length,
+				});
+			},
+		),
+	};
+	const documentsRepository = {
+		listActivityRequests: vi.fn(
+			({ page, pageSize }: { page: number; pageSize: number }) => {
+				const start = (page - 1) * pageSize;
+				return Promise.resolve({
+					items: documentItems.slice(start, start + pageSize),
+					total: documentItems.length,
+				});
+			},
+		),
+	};
+
+	return { movementsRepository, documentsRepository };
+}
+
 describe("GetPlatformTenantActivityUseCase", () => {
 	it("calls both repositories with canViewAll: true and the platform-internal sentinel userId (bypasses per-agent scoping)", async () => {
 		const { movementsRepository, documentsRepository } = makeRepositories();
@@ -178,7 +220,7 @@ describe("GetPlatformTenantActivityUseCase", () => {
 		expect(documentsCallArg.assignedAgentUserId).toBeUndefined();
 	});
 
-	it("converts offset/limit to page/pageSize (page = floor(offset/limit)+1, pageSize = limit)", async () => {
+	it("fetches the [0, offset+limit) window from EACH stream (page 1, pageSize = offset+limit) so the merged slice is globally ordered", async () => {
 		const { movementsRepository, documentsRepository } = makeRepositories();
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
@@ -188,11 +230,117 @@ describe("GetPlatformTenantActivityUseCase", () => {
 		await useCase.execute({ tenantId: "tenant-1", offset: 25, limit: 10 });
 
 		expect(movementsRepository.findManyByTenant).toHaveBeenCalledWith(
-			expect.objectContaining({ page: 3, pageSize: 10 }),
+			expect.objectContaining({ page: 1, pageSize: 35 }),
 		);
 		expect(documentsRepository.listActivityRequests).toHaveBeenCalledWith(
-			expect.objectContaining({ page: 3, pageSize: 10 }),
+			expect.objectContaining({ page: 1, pageSize: 35 }),
 		);
+	});
+
+	it("returns at most `limit` items when BOTH streams have more than `limit` (single page ≤ limit, not 2× limit)", async () => {
+		const movements = [
+			makeMovementAt("m-5", "2026-05-05T09:00:00.000Z"),
+			makeMovementAt("m-4", "2026-05-04T09:00:00.000Z"),
+			makeMovementAt("m-3", "2026-05-03T09:00:00.000Z"),
+			makeMovementAt("m-2", "2026-05-02T09:00:00.000Z"),
+			makeMovementAt("m-1", "2026-05-01T09:00:00.000Z"),
+		];
+		const documents = [
+			makeDocumentAt("d-5", "2026-05-05T10:00:00.000Z"),
+			makeDocumentAt("d-4", "2026-05-04T10:00:00.000Z"),
+			makeDocumentAt("d-3", "2026-05-03T10:00:00.000Z"),
+			makeDocumentAt("d-2", "2026-05-02T10:00:00.000Z"),
+			makeDocumentAt("d-1", "2026-05-01T10:00:00.000Z"),
+		];
+		const { movementsRepository, documentsRepository } =
+			makePaginatingRepositories(movements, documents);
+		const useCase = new GetPlatformTenantActivityUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		const result = await useCase.execute({
+			tenantId: "tenant-1",
+			offset: 0,
+			limit: 3,
+		});
+
+		expect(result.items).toHaveLength(3);
+	});
+
+	it("orders the merged page newest-first ACROSS both streams (interleaved timestamps)", async () => {
+		const movements = [
+			makeMovementAt("m-13", "2026-05-01T13:00:00.000Z"),
+			makeMovementAt("m-11", "2026-05-01T11:00:00.000Z"),
+			makeMovementAt("m-09", "2026-05-01T09:00:00.000Z"),
+		];
+		const documents = [
+			makeDocumentAt("d-14", "2026-05-01T14:00:00.000Z"),
+			makeDocumentAt("d-12", "2026-05-01T12:00:00.000Z"),
+			makeDocumentAt("d-10", "2026-05-01T10:00:00.000Z"),
+		];
+		const { movementsRepository, documentsRepository } =
+			makePaginatingRepositories(movements, documents);
+		const useCase = new GetPlatformTenantActivityUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		const result = await useCase.execute({
+			tenantId: "tenant-1",
+			offset: 0,
+			limit: 3,
+		});
+
+		expect(result.items.map((item) => item.createdAt)).toEqual([
+			"2026-05-01T14:00:00.000Z",
+			"2026-05-01T13:00:00.000Z",
+			"2026-05-01T12:00:00.000Z",
+		]);
+	});
+
+	it("paginates across pages with no overlap or gap (page 2 continues the global order)", async () => {
+		const movements = [
+			makeMovementAt("m-13", "2026-05-01T13:00:00.000Z"),
+			makeMovementAt("m-11", "2026-05-01T11:00:00.000Z"),
+			makeMovementAt("m-09", "2026-05-01T09:00:00.000Z"),
+		];
+		const documents = [
+			makeDocumentAt("d-14", "2026-05-01T14:00:00.000Z"),
+			makeDocumentAt("d-12", "2026-05-01T12:00:00.000Z"),
+			makeDocumentAt("d-10", "2026-05-01T10:00:00.000Z"),
+		];
+		const { movementsRepository, documentsRepository } =
+			makePaginatingRepositories(movements, documents);
+		const useCase = new GetPlatformTenantActivityUseCase(
+			movementsRepository as never,
+			documentsRepository as never,
+		);
+
+		const page1 = await useCase.execute({
+			tenantId: "tenant-1",
+			offset: 0,
+			limit: 2,
+		});
+		const page2 = await useCase.execute({
+			tenantId: "tenant-1",
+			offset: 2,
+			limit: 2,
+		});
+
+		expect(page1.items.map((item) => item.createdAt)).toEqual([
+			"2026-05-01T14:00:00.000Z",
+			"2026-05-01T13:00:00.000Z",
+		]);
+		expect(page2.items.map((item) => item.createdAt)).toEqual([
+			"2026-05-01T12:00:00.000Z",
+			"2026-05-01T11:00:00.000Z",
+		]);
+
+		const overlap = page1.items.some((a) =>
+			page2.items.some((b) => a.id === b.id),
+		);
+		expect(overlap).toBe(false);
 	});
 
 	it("merges movements + document requests, mapped and sorted via compareActivityItems (newest first)", async () => {
