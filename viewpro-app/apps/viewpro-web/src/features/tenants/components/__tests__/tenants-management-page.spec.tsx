@@ -1,0 +1,1047 @@
+/**
+ * T-07 — RED: TenantsManagementPage container tests (PR1 subset — list only)
+ * T-16 — RED: mutations, suspend confirm, unchanged, 404/500 (PR2/WU-2 subset)
+ * Spec: Paginated Tenant List (all 4 scenarios); Error Handling (generic list-load
+ *   failure, 404/500 mutation failure); Status Toggle with Suspend Confirmation
+ *   (all 4 scenarios); Limits Editing via Modal Dialog (scenarios 2, 3);
+ *   Double-Submit Guard
+ *
+ * Tests cover:
+ *   - Loading → skeleton (not an error)
+ *   - Success with total>0 → <TenantsTable/> + <TenantsPager/> rendered
+ *   - Success with total===0 → <TenantsEmptyState/> rendered instead of the table
+ *   - Error (non-401) → inline error card via getApiErrorMessage
+ *   - Clicking "next page" issues a new query with an increased offset;
+ *     requested limit never exceeds 200
+ *   - Toggling status on an ACTIVE row opens the AlertDialog confirm, no PATCH yet
+ *   - Confirming the dialog PATCHes status:SUSPENDED
+ *   - Toggling status on a SUSPENDED row PATCHes status:ACTIVE directly (no confirm)
+ *   - Success invalidates/refetches the list and closes the dialog
+ *   - unchanged:true → info toast, no error, list still refetched
+ *   - Editing limits opens the real TenantLimitsDialog; submitting PATCHes limits
+ *   - 404 on a mutation shows a clear message; list left unchanged
+ *   - Generic (500) mutation failure surfaces an error; list retains pre-failure data
+ *   - The triggering button is disabled for the duration of its mutation
+ */
+
+import * as React from 'react';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { toast } from 'sonner';
+
+import type {
+  AdminTenantLimitsUpdateResponse,
+  AdminTenantStatusUpdateResponse,
+  TenantListItem,
+  TenantListResponse
+} from '@/features/tenants/api/types';
+
+// Mock the api service — queries.ts is real and delegates to this mock.
+vi.mock('@/features/tenants/api/service', () => ({
+  getTenantList: vi.fn(),
+  updateTenantStatus: vi.fn(),
+  updateTenantLimits: vi.fn(),
+  assignTenantPlan: vi.fn()
+}));
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn()
+  }
+}));
+
+// T-23: mock session.stepUp so the real useStepUpGate/StepUpDialog wiring
+// (T-24) can be exercised end-to-end through the container without a real
+// network call.
+vi.mock('@/lib/session', () => ({
+  stepUp: vi.fn()
+}));
+
+// Mock the table to isolate container logic from tenants-table's own rendering
+// (already covered by tenants-table.spec.tsx, T-05/T-12/T-16) while still
+// exercising the real onEditLimits/onStatusAction/isMutating wiring through
+// this mock. getTenantActions is re-implemented here (mirrors the real,
+// separately-tested helper) because the container imports it directly from
+// this module.
+type MockTenantAction = { kind: 'toggle' | 'cancel'; targetStatus: string; label: string };
+
+function mockGetTenantActions(item: TenantListItem): MockTenantAction[] {
+  const toggle: MockTenantAction | null =
+    item.status === 'TRIAL'
+      ? { kind: 'toggle', targetStatus: 'ACTIVE', label: 'Activar' }
+      : item.status === 'ACTIVE'
+        ? { kind: 'toggle', targetStatus: 'SUSPENDED', label: 'Suspender' }
+        : item.status === 'SUSPENDED'
+          ? { kind: 'toggle', targetStatus: 'ACTIVE', label: 'Reactivar' }
+          : null;
+
+  if (!toggle) {
+    return [];
+  }
+
+  return [toggle, { kind: 'cancel', targetStatus: 'CANCELLED', label: 'Dar de baja' }];
+}
+
+vi.mock('../tenants-table', () => ({
+  getTenantActions: (item: TenantListItem) => mockGetTenantActions(item),
+  PLAN_LABELS: { BASICO: 'Básico', PROFESIONAL: 'Profesional', EMPRESA: 'Empresa' },
+  TenantsTable: ({
+    items,
+    isMutating,
+    onEditLimits,
+    onStatusAction,
+    onAssignPlan
+  }: {
+    items: TenantListItem[];
+    isMutating: boolean;
+    onEditLimits: (item: TenantListItem) => void;
+    onStatusAction: (item: TenantListItem, action: MockTenantAction) => void;
+    onAssignPlan: (item: TenantListItem) => void;
+  }) => (
+    <div data-testid='tenants-table'>
+      {items.map((item) => (
+        <div key={item.id}>
+          <span data-testid={`mock-item-${item.id}`}>{item.name}</span>
+          <button
+            type='button'
+            data-testid={`mock-edit-limits-${item.id}`}
+            disabled={isMutating}
+            onClick={() => onEditLimits(item)}
+          >
+            editar-{item.id}
+          </button>
+          <button
+            type='button'
+            data-testid={`mock-assign-plan-${item.id}`}
+            disabled={isMutating}
+            onClick={() => onAssignPlan(item)}
+          >
+            asignar-plan-{item.id}
+          </button>
+          {mockGetTenantActions(item).map((action) => (
+            <button
+              key={action.kind}
+              type='button'
+              data-testid={
+                action.kind === 'toggle'
+                  ? `mock-toggle-status-${item.id}`
+                  : `mock-cancel-${item.id}`
+              }
+              disabled={isMutating}
+              onClick={() => onStatusAction(item, action)}
+            >
+              {action.kind}-{item.id}
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}));
+
+vi.mock('../tenants-empty-state', () => ({
+  TenantsEmptyState: () => <div data-testid='tenants-empty-state'>vacío</div>
+}));
+
+import {
+  assignTenantPlan,
+  getTenantList,
+  updateTenantLimits,
+  updateTenantStatus
+} from '@/features/tenants/api/service';
+import { stepUp } from '@/lib/session';
+import { TenantsManagementPage } from '../tenants-management-page';
+
+const mockGetTenantList = vi.mocked(getTenantList);
+const mockUpdateTenantStatus = vi.mocked(updateTenantStatus);
+const mockUpdateTenantLimits = vi.mocked(updateTenantLimits);
+const mockAssignTenantPlan = vi.mocked(assignTenantPlan);
+const mockToast = vi.mocked(toast);
+const mockStepUp = vi.mocked(stepUp);
+
+const STEP_UP_REQUIRED_ERROR = {
+  status: 403,
+  code: 'STEP_UP_REQUIRED',
+  message: 'Step-up verification required'
+};
+
+const ITEM: TenantListItem = {
+  id: 'tenant-1',
+  name: 'Acme Realty',
+  slug: 'acme-realty',
+  status: 'ACTIVE',
+  limits: { maxUsers: 10, maxActivePropertyEngagements: 50, maxDocumentsStorageMb: 1024 },
+  trialEndsAt: null,
+  plan: null
+};
+
+const SUSPENDED_ITEM: TenantListItem = {
+  id: 'tenant-2',
+  name: 'Beta Homes',
+  slug: 'beta-homes',
+  status: 'SUSPENDED',
+  limits: { maxUsers: null, maxActivePropertyEngagements: null, maxDocumentsStorageMb: null },
+  trialEndsAt: null,
+  plan: null
+};
+
+const NON_EMPTY_RESPONSE: TenantListResponse = { total: 60, items: [ITEM] };
+const SUSPENDED_RESPONSE: TenantListResponse = { total: 1, items: [SUSPENDED_ITEM] };
+const EMPTY_RESPONSE: TenantListResponse = { total: 0, items: [] };
+
+const STATUS_SUCCESS_RESPONSE: AdminTenantStatusUpdateResponse = {
+  tenantId: 'tenant-1',
+  previousStatus: 'ACTIVE',
+  status: 'SUSPENDED',
+  unchanged: false,
+  updatedAt: '2026-07-15T00:00:00.000Z'
+};
+
+const LIMITS_SUCCESS_RESPONSE: AdminTenantLimitsUpdateResponse = {
+  tenantId: 'tenant-1',
+  previousLimits: ITEM.limits,
+  limits: { maxUsers: 10, maxActivePropertyEngagements: 50, maxDocumentsStorageMb: 1024 },
+  unchanged: false,
+  updatedAt: '2026-07-15T00:00:00.000Z'
+};
+
+// PATCH .../plan returns the SAME opaque limits-update passthrough shape.
+const PLAN_SUCCESS_RESPONSE: AdminTenantLimitsUpdateResponse = {
+  tenantId: 'tenant-1',
+  previousLimits: ITEM.limits,
+  limits: { maxUsers: 10, maxActivePropertyEngagements: 100, maxDocumentsStorageMb: 5000 },
+  unchanged: false,
+  updatedAt: '2026-07-15T00:00:00.000Z'
+};
+
+function renderPage() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <TenantsManagementPage />
+    </QueryClientProvider>
+  );
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+// ─── Loading state ────────────────────────────────────────────────────────────
+
+describe('TenantsManagementPage — loading state', () => {
+  it('renders a skeleton while loading (not an error)', () => {
+    mockGetTenantList.mockReturnValue(new Promise(() => {}));
+
+    renderPage();
+
+    expect(screen.getByTestId('tenants-loading-skeleton')).toBeTruthy();
+    expect(screen.queryByTestId('tenants-error')).toBeNull();
+  });
+});
+
+// ─── Success — non-empty ──────────────────────────────────────────────────────
+
+describe('TenantsManagementPage — success with total>0', () => {
+  it('renders TenantsTable (spec scenario 1)', async () => {
+    mockGetTenantList.mockResolvedValueOnce(NON_EMPTY_RESPONSE);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tenants-table')).toBeTruthy();
+    });
+    expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
+    expect(screen.queryByTestId('tenants-empty-state')).toBeNull();
+  });
+
+  it('fetches the list in one page (offset=0, limit=200) — the DataTable paginates client-side', async () => {
+    mockGetTenantList.mockResolvedValueOnce(NON_EMPTY_RESPONSE);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(mockGetTenantList).toHaveBeenCalledWith(0, 200);
+    });
+  });
+});
+
+// ─── Success — empty ──────────────────────────────────────────────────────────
+
+describe('TenantsManagementPage — success with total===0', () => {
+  it('renders TenantsEmptyState instead of the table (spec scenario 4)', async () => {
+    mockGetTenantList.mockResolvedValueOnce(EMPTY_RESPONSE);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tenants-empty-state')).toBeTruthy();
+    });
+    expect(screen.queryByTestId('tenants-table')).toBeNull();
+  });
+});
+
+// ─── Error state ──────────────────────────────────────────────────────────────
+
+describe('TenantsManagementPage — error state', () => {
+  it('renders an inline error card on non-401 failure', async () => {
+    const apiError = { status: 500, message: 'Error interno del servidor' };
+    mockGetTenantList.mockRejectedValueOnce(apiError);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tenants-error')).toBeTruthy();
+    });
+    expect(screen.getByTestId('tenants-error').textContent).toContain('Error interno del servidor');
+    expect(screen.queryByTestId('tenants-table')).toBeNull();
+  });
+});
+
+// ─── Status toggle — suspend confirmation (T-16/WU-2) ─────────────────────────
+
+describe('TenantsManagementPage — status toggle (suspend confirmation)', () => {
+  it('opens the AlertDialog confirm for an ACTIVE row and does not PATCH yet', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    expect(await screen.findByRole('alertdialog')).toBeTruthy();
+    expect(mockUpdateTenantStatus).not.toHaveBeenCalled();
+  });
+
+  it('confirming the dialog PATCHes status with {status: SUSPENDED}', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockResolvedValueOnce(STATUS_SUCCESS_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => {
+      expect(mockUpdateTenantStatus).toHaveBeenCalledWith('tenant-1', { status: 'SUSPENDED' });
+    });
+  });
+
+  it('toggling status on a SUSPENDED row PATCHes status:ACTIVE directly, no confirm dialog', async () => {
+    mockGetTenantList.mockResolvedValue(SUSPENDED_RESPONSE);
+    mockUpdateTenantStatus.mockResolvedValueOnce({
+      tenantId: 'tenant-2',
+      previousStatus: 'SUSPENDED',
+      status: 'ACTIVE',
+      unchanged: false,
+      updatedAt: '2026-07-15T00:00:00.000Z'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-2'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-2'));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    await waitFor(() => {
+      expect(mockUpdateTenantStatus).toHaveBeenCalledWith('tenant-2', { status: 'ACTIVE' });
+    });
+  });
+
+  it('on success: invalidates/refetches the list and closes the dialog', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockResolvedValueOnce(STATUS_SUCCESS_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    await waitFor(() => {
+      expect(mockGetTenantList).toHaveBeenCalledTimes(2);
+    });
+    expect(mockToast.success).toHaveBeenCalled();
+  });
+
+  it('unchanged:true is handled gracefully — info toast, no error, list still refetched', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockResolvedValueOnce({ ...STATUS_SUCCESS_RESPONSE, unchanged: true });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => {
+      expect(mockToast.info).toHaveBeenCalled();
+    });
+    expect(mockToast.error).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockGetTenantList).toHaveBeenCalledTimes(2);
+    });
+  });
+});
+
+// ─── Status toggle — destructive cancel confirmation (T-20/WU-2, D6/D7) ───────
+
+describe('TenantsManagementPage — destructive cancel action', () => {
+  it('clicking "Dar de baja" on an ACTIVE row opens the dialog with the cancel variant and does not PATCH yet', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-cancel-tenant-1'));
+
+    fireEvent.click(screen.getByTestId('mock-cancel-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('Cancelar inmobiliaria definitivamente')).toBeTruthy();
+    expect(within(dialog).getByRole('button', { name: 'Cancelar definitivamente' })).toBeTruthy();
+    expect(mockUpdateTenantStatus).not.toHaveBeenCalled();
+  });
+
+  it('confirming the cancel dialog PATCHes status with {status: CANCELLED}; success invalidates/refetches and closes the dialog', async () => {
+    mockGetTenantList.mockResolvedValueOnce(NON_EMPTY_RESPONSE);
+    mockGetTenantList.mockResolvedValueOnce({
+      total: 60,
+      items: [{ ...ITEM, status: 'CANCELLED' }]
+    });
+    mockUpdateTenantStatus.mockResolvedValueOnce({
+      tenantId: 'tenant-1',
+      previousStatus: 'ACTIVE',
+      status: 'CANCELLED',
+      unchanged: false,
+      updatedAt: '2026-07-15T00:00:00.000Z'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-cancel-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-cancel-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar definitivamente' }));
+
+    await waitFor(() => {
+      expect(mockUpdateTenantStatus).toHaveBeenCalledWith('tenant-1', { status: 'CANCELLED' });
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    await waitFor(() => {
+      expect(mockGetTenantList).toHaveBeenCalledTimes(2);
+    });
+    expect(mockToast.success).toHaveBeenCalled();
+  });
+
+  it('dismissing the cancel dialog issues no PATCH, closes the dialog, row unchanged', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-cancel-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-cancel-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(mockUpdateTenantStatus).not.toHaveBeenCalled();
+    expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
+  });
+
+  it('regression: clicking "Suspender" still opens the dialog with the suspend variant (not cancel)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('Suspender inmobiliaria')).toBeTruthy();
+    expect(within(dialog).queryByText('Cancelar inmobiliaria definitivamente')).toBeNull();
+  });
+
+  it('regression: clicking "Reactivar" on a SUSPENDED row still PATCHes status:ACTIVE directly, no dialog', async () => {
+    mockGetTenantList.mockResolvedValue(SUSPENDED_RESPONSE);
+    mockUpdateTenantStatus.mockResolvedValueOnce({
+      tenantId: 'tenant-2',
+      previousStatus: 'SUSPENDED',
+      status: 'ACTIVE',
+      unchanged: false,
+      updatedAt: '2026-07-15T00:00:00.000Z'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-2'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-2'));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    await waitFor(() => {
+      expect(mockUpdateTenantStatus).toHaveBeenCalledWith('tenant-2', { status: 'ACTIVE' });
+    });
+  });
+
+  it('cancel PATCH → 404 shows the existing "no existe" message; list left unchanged', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce({ status: 404, message: 'Not found' });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-cancel-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-cancel-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar definitivamente' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('La inmobiliaria no existe o fue eliminada.');
+    });
+    expect(mockGetTenantList).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancel PATCH → 500 surfaces a generic error toast; page stays interactive; list retains pre-failure data', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce({
+      status: 500,
+      message: 'Error interno del servidor'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-cancel-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-cancel-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar definitivamente' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('Error interno del servidor');
+    });
+    expect(mockGetTenantList).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
+  });
+
+  it('cancel PATCH → 400 (terminality reject) surfaces the SPANISH terminality copy, not the raw English backend message', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    // The backend returns an English terminality message on a 400 (e.g. cancelling
+    // an already-CANCELLED tenant on a stale list). The all-es-AR UI must NOT surface it raw.
+    mockUpdateTenantStatus.mockRejectedValueOnce({
+      status: 400,
+      message: 'Cancelled tenant cannot change status'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-cancel-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-cancel-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar definitivamente' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith(
+        'La inmobiliaria ya está dada de baja y no puede cambiar de estado.'
+      );
+    });
+    // The raw English backend message never surfaces in the es-AR UI.
+    expect(mockToast.error).not.toHaveBeenCalledWith('Cancelled tenant cannot change status');
+    // The 400 terminality reject is NOT the 404 "no existe" copy.
+    expect(mockToast.error).not.toHaveBeenCalledWith('La inmobiliaria no existe o fue eliminada.');
+    expect(mockGetTenantList).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
+  });
+
+  it('closes the confirm dialog after a failed cancel mutation (dialog does not stay open)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce({
+      status: 500,
+      message: 'Error interno del servidor'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-cancel-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-cancel-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar definitivamente' }));
+
+    // On failure the dialog must close (same as onSuccess) — the toast surfaces the error.
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(mockToast.error).toHaveBeenCalledWith('Error interno del servidor');
+  });
+});
+
+// ─── Limits editing (T-16/WU-2) ────────────────────────────────────────────────
+
+describe('TenantsManagementPage — limits editing via modal dialog', () => {
+  it('clicking "Editar límites" opens the real TenantLimitsDialog', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-edit-limits-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-edit-limits-tenant-1'));
+
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+    expect(screen.getByLabelText('Usuarios')).toHaveValue(10);
+  });
+
+  it('submitting the dialog PATCHes limits with the edited fields; success closes and refetches', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantLimits.mockResolvedValueOnce(LIMITS_SUCCESS_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-edit-limits-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-edit-limits-tenant-1'));
+
+    await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar límites' }));
+
+    await waitFor(() => {
+      expect(mockUpdateTenantLimits).toHaveBeenCalledWith('tenant-1', {
+        maxUsers: 10,
+        maxActivePropertyEngagements: 50,
+        maxDocumentsStorageMb: 1024
+      });
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    await waitFor(() => {
+      expect(mockGetTenantList).toHaveBeenCalledTimes(2);
+    });
+  });
+});
+
+// ─── Plan assignment (platform-manual-plans, Slice 4, Part 2) ─────────────────
+//
+// RED: planMutation mirrors limitsMutation, incl. step-up handling and the
+// invalidate-not-patch refetch pattern (D7/D9).
+
+describe('TenantsManagementPage — plan assignment via modal dialog', () => {
+  it('clicking "Asignar plan" opens the real TenantPlanDialog', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-assign-plan-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-assign-plan-tenant-1'));
+
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+    expect(screen.getByLabelText('Plan')).toBeTruthy();
+  });
+
+  it('submitting the dialog assigns the selected plan; success closes and refetches', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockAssignTenantPlan.mockResolvedValueOnce(PLAN_SUCCESS_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-assign-plan-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-assign-plan-tenant-1'));
+
+    await screen.findByRole('dialog');
+    fireEvent.change(screen.getByLabelText('Plan'), { target: { value: 'PROFESIONAL' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Asignar plan' }));
+
+    await waitFor(() => {
+      expect(mockAssignTenantPlan).toHaveBeenCalledWith('tenant-1', { plan: 'PROFESIONAL' });
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    await waitFor(() => {
+      expect(mockGetTenantList).toHaveBeenCalledTimes(2);
+    });
+    expect(mockToast.success).toHaveBeenCalled();
+  });
+
+  it('404 on a plan mutation shows a clear "no existe" message; list is left unchanged', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockAssignTenantPlan.mockRejectedValueOnce({ status: 404, message: 'Not found' });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-assign-plan-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-assign-plan-tenant-1'));
+
+    await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Asignar plan' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('La inmobiliaria no existe o fue eliminada.');
+    });
+    expect(mockGetTenantList).toHaveBeenCalledTimes(1);
+  });
+
+  it('a 403 STEP_UP_REQUIRED on assignTenantPlan opens the shared StepUpDialog — no error toast, dialog stays open', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockAssignTenantPlan.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-assign-plan-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-assign-plan-tenant-1'));
+
+    await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Asignar plan' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Contraseña')).toBeTruthy();
+    });
+    // The plan dialog stays mounted (aria-hidden behind the stacked
+    // StepUpDialog) — same pattern as the limits dialog's step-up handling.
+    expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(2);
+    expect(mockToast.error).not.toHaveBeenCalled();
+  });
+
+  it('correct password retries the original assignTenantPlan mutation with the same variables; success closes both dialogs and refetches', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockAssignTenantPlan.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
+    mockAssignTenantPlan.mockResolvedValueOnce(PLAN_SUCCESS_RESPONSE);
+    mockStepUp.mockResolvedValueOnce({ success: true });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-assign-plan-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-assign-plan-tenant-1'));
+
+    await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Asignar plan' }));
+
+    await waitFor(() => screen.getByLabelText('Contraseña'));
+    fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'secret1234' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+
+    await waitFor(() => {
+      expect(mockAssignTenantPlan).toHaveBeenCalledTimes(2);
+    });
+    expect(mockAssignTenantPlan).toHaveBeenNthCalledWith(2, 'tenant-1', { plan: 'BASICO' });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    await waitFor(() => {
+      expect(mockGetTenantList).toHaveBeenCalledTimes(2);
+    });
+  });
+});
+
+// ─── Error handling (T-16/WU-2) ────────────────────────────────────────────────
+
+describe('TenantsManagementPage — mutation error handling', () => {
+  it('404 on a status mutation shows a clear "no existe" message; list is left unchanged', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce({ status: 404, message: 'Not found' });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('La inmobiliaria no existe o fue eliminada.');
+    });
+    expect(mockGetTenantList).toHaveBeenCalledTimes(1);
+  });
+
+  it('404 on a limits mutation shows a clear "no existe" message; list is left unchanged', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantLimits.mockRejectedValueOnce({ status: 404, message: 'Not found' });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-edit-limits-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-edit-limits-tenant-1'));
+
+    await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar límites' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('La inmobiliaria no existe o fue eliminada.');
+    });
+    expect(mockGetTenantList).toHaveBeenCalledTimes(1);
+  });
+
+  it('502 parse-failure (zod) on a status mutation surfaces the normalized error; page stays interactive', async () => {
+    // Mirrors PARSE_ERROR thrown by api/schemas.ts when parseStatusResponse's
+    // zod safeParse fails on an unexpected control-lane body (apiRequest resolved
+    // OK, but the payload did not match the schema).
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce({
+      status: 502,
+      message: 'Respuesta inesperada del servidor.'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('Respuesta inesperada del servidor.');
+    });
+    // No 404-specific copy leaked; list untouched and still interactive.
+    expect(mockToast.error).not.toHaveBeenCalledWith('La inmobiliaria no existe o fue eliminada.');
+    expect(mockGetTenantList).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
+  });
+
+  it('502 parse-failure (zod) on a limits mutation surfaces the normalized error; page stays interactive', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantLimits.mockRejectedValueOnce({
+      status: 502,
+      message: 'Respuesta inesperada del servidor.'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-edit-limits-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-edit-limits-tenant-1'));
+
+    await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar límites' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('Respuesta inesperada del servidor.');
+    });
+    expect(mockGetTenantList).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
+  });
+
+  it('generic (500) mutation failure surfaces an error; page stays interactive; list retains pre-failure data', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce({
+      status: 500,
+      message: 'Error interno del servidor'
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('Error interno del servidor');
+    });
+    // The suspend confirm dialog closes on failure too (not only on success).
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(mockGetTenantList).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('mock-item-tenant-1').textContent).toBe('Acme Realty');
+  });
+});
+
+// ─── Double-submit guard (T-16/WU-2) ───────────────────────────────────────────
+
+describe('TenantsManagementPage — double-submit guard', () => {
+  it('disables the confirm button while the status mutation is pending', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    let resolveMutation!: (value: AdminTenantStatusUpdateResponse) => void;
+    mockUpdateTenantStatus.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveMutation = resolve;
+      })
+    );
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    const confirmButton = within(dialog).getByRole('button', { name: 'Suspender' });
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(confirmButton).toBeDisabled();
+    });
+    // Row actions are also disabled while any mutation is in flight (isMutating).
+    expect(screen.getByTestId('mock-toggle-status-tenant-1')).toBeDisabled();
+    expect(screen.getByTestId('mock-edit-limits-tenant-1')).toBeDisabled();
+
+    resolveMutation(STATUS_SUCCESS_RESPONSE);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+  });
+
+  it('disables the save button while the limits mutation is pending', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    let resolveMutation!: (value: AdminTenantLimitsUpdateResponse) => void;
+    mockUpdateTenantLimits.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveMutation = resolve;
+      })
+    );
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-edit-limits-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-edit-limits-tenant-1'));
+
+    await screen.findByRole('dialog');
+    const saveButton = screen.getByRole('button', { name: 'Guardar límites' });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(saveButton).toBeDisabled();
+    });
+
+    resolveMutation(LIMITS_SUCCESS_RESPONSE);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+  });
+});
+
+// ─── Step-up gate wiring (T-23/WU-2, AC8) ──────────────────────────────────────
+
+describe('TenantsManagementPage — step-up gate wiring', () => {
+  it('a 403 STEP_UP_REQUIRED on suspend opens the StepUpDialog and keeps the confirm dialog open — no error toast (AC8 scenario 1)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const confirmDialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Contraseña')).toBeTruthy();
+    });
+    // The underlying suspend confirm dialog stays open (still mounted, just
+    // aria-hidden behind the stacked StepUpDialog) — not cleared like a
+    // normal mutation failure.
+    expect(screen.getByRole('alertdialog', { hidden: true })).toBeTruthy();
+    expect(mockToast.error).not.toHaveBeenCalled();
+  });
+
+  it('correct password retries the ORIGINAL suspend mutation with the same variables; success closes both dialogs and refetches the list (AC8 scenario 2)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
+    mockUpdateTenantStatus.mockResolvedValueOnce(STATUS_SUCCESS_RESPONSE);
+    mockStepUp.mockResolvedValueOnce({ success: true });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const confirmDialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => screen.getByLabelText('Contraseña'));
+    fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'secret1234' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+
+    await waitFor(() => {
+      expect(mockStepUp).toHaveBeenCalledWith('secret1234');
+    });
+    await waitFor(() => {
+      expect(mockUpdateTenantStatus).toHaveBeenCalledTimes(2);
+    });
+    expect(mockUpdateTenantStatus).toHaveBeenNthCalledWith(2, 'tenant-1', { status: 'SUSPENDED' });
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
+    expect(screen.queryByLabelText('Contraseña')).toBeNull();
+    await waitFor(() => {
+      expect(mockGetTenantList).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('wrong password shows an inline error, performs no retry mutation, and keeps the modal open (AC8 scenario 3)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
+    mockStepUp.mockRejectedValueOnce({ status: 401, message: 'Invalid password' });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const confirmDialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => screen.getByLabelText('Contraseña'));
+    fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'wrong-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Contraseña incorrecta')).toBeTruthy();
+    });
+    // Only the original (403) attempt was made — no retried PATCH.
+    expect(mockUpdateTenantStatus).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('Contraseña')).toBeTruthy();
+  });
+
+  it('a suspend mutation that resolves normally never opens the step-up modal (AC8 scenario 4)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockResolvedValueOnce(STATUS_SUCCESS_RESPONSE);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const confirmDialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => {
+      expect(mockToast.success).toHaveBeenCalled();
+    });
+    expect(screen.queryByLabelText('Contraseña')).toBeNull();
+    expect(mockStepUp).not.toHaveBeenCalled();
+  });
+
+  it('cancelling the step-up modal closes it without retrying the mutation, mutating, or logging out (JD)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantStatus.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-toggle-status-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-toggle-status-tenant-1'));
+
+    const confirmDialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Suspender' }));
+
+    await waitFor(() => screen.getByLabelText('Contraseña'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Contraseña')).toBeNull();
+    });
+    // Only the original (403) attempt was made — dismissing never retries the
+    // destructive PATCH and never re-verifies the password (no logout path).
+    expect(mockUpdateTenantStatus).toHaveBeenCalledTimes(1);
+    expect(mockStepUp).not.toHaveBeenCalled();
+  });
+
+  it('a 403 STEP_UP_REQUIRED on updateTenantLimits also opens the shared modal — no logout, no redirect (AC8 scenario 5)', async () => {
+    mockGetTenantList.mockResolvedValue(NON_EMPTY_RESPONSE);
+    mockUpdateTenantLimits.mockRejectedValueOnce(STEP_UP_REQUIRED_ERROR);
+
+    renderPage();
+    await waitFor(() => screen.getByTestId('mock-edit-limits-tenant-1'));
+    fireEvent.click(screen.getByTestId('mock-edit-limits-tenant-1'));
+
+    await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar límites' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Contraseña')).toBeTruthy();
+    });
+    // The limits dialog stays open too (2 mounted Dialogs: limits + step-up —
+    // the limits one is aria-hidden behind the stacked StepUpDialog).
+    expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(2);
+    expect(mockToast.error).not.toHaveBeenCalled();
+  });
+});

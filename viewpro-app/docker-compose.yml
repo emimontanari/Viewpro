@@ -17,5 +17,26 @@ services:
       timeout: 5s
       retries: 10
 
+  # ViewPro platform DB (Design B: physically separate from InmoView's product DB).
+  # Owns operator identity + platform data; never shares an instance with `postgres` above.
+  platform-postgres:
+    image: postgres:16-alpine
+    container_name: viewpro-platform-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: viewpro_platform
+      POSTGRES_PASSWORD: viewpro_platform
+      POSTGRES_DB: viewpro_platform
+    ports:
+      - "5434:5432"
+    volumes:
+      - viewpro_platform_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U viewpro_platform -d viewpro_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   viewpro_postgres_data:
+  viewpro_platform_postgres_data:

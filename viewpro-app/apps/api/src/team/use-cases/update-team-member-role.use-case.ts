@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { TenantRole } from '@prisma/client'
+import type { CurrentUser } from '../../auth/types/current-user'
 import {
   MEMBERSHIPS_REPOSITORY,
   type MembershipsRepository,
@@ -21,6 +22,7 @@ export class UpdateTeamMemberRoleUseCase {
 
   async execute(
     tenant: TenantContext,
+    currentUser: CurrentUser,
     membershipId: string,
     input: UpdateTeamMemberRoleInput,
   ): Promise<TeamMemberResponse> {
@@ -48,6 +50,7 @@ export class UpdateTeamMemberRoleUseCase {
       membershipId,
       tenantId: tenant.tenantId,
       role: input.role,
+      actorUserId: currentUser.id,
     })
 
     if (!updated) {

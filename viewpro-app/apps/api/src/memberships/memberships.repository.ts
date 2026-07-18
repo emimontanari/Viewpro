@@ -41,6 +41,8 @@ export type MembershipsRepository = {
 		membershipId: string;
 		tenantId: string;
 		role: Extract<TenantRole, "MANAGER" | "AGENT">;
+		actorUserId: string;
+		now?: Date;
 	}): Promise<MembershipWithUserAndTenant | null>;
 	deactivateForTenant(input: {
 		membershipId: string;

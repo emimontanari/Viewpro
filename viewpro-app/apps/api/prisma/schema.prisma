@@ -156,6 +156,7 @@ enum AnalyticsActorType {
   INTERNAL_USER
   OWNER
   SYSTEM
+  PLATFORM_OPERATOR
 }
 
 enum AnalyticsEventName {
@@ -170,6 +171,7 @@ enum AnalyticsEventName {
   WHATSAPP_CONTACT_CLICKED
   TENANT_STATUS_CHANGED
   TENANT_LIMITS_UPDATED
+  MEMBER_ROLE_CHANGED
 }
 
 model User {
@@ -215,6 +217,7 @@ model Tenant {
   name                         String
   slug                         String       @unique
   status                       TenantStatus @default(TRIAL)
+  trialEndsAt                  DateTime?
   whatsappPhone                String?
   maxUsers                     Int?
   maxActivePropertyEngagements Int?
@@ -603,6 +606,7 @@ model AnalyticsEvent {
   id                   String             @id @default(uuid())
   tenantId             String?
   actorUserId          String?
+  actorOperatorId      String?
   actorType            AnalyticsActorType
   eventName            AnalyticsEventName
   propertyEngagementId String?
@@ -616,7 +620,31 @@ model AnalyticsEvent {
   @@index([tenantId, occurredAt])
   @@index([propertyEngagementId, occurredAt])
   @@index([actorUserId, occurredAt])
+  @@index([actorOperatorId, occurredAt])
   @@map("analytics_events")
+}
+
+model PlatformCommandLog {
+  id             String   @id @default(uuid())
+  idempotencyKey String   @unique
+  tenantId       String
+  commandType    String
+  result         Json
+  createdAt      DateTime @default(now())
+
+  @@map("platform_command_log")
+}
+
+model PlatformOutboxEvent {
+  id         String   @id @default(uuid())
+  seqNo      BigInt   @default(autoincrement()) @unique
+  eventType  String
+  tenantId   String
+  payload    Json
+  occurredAt DateTime
+
+  @@index([occurredAt, seqNo])
+  @@map("platform_outbox_events")
 }
 
 model StatusChangeRequest {

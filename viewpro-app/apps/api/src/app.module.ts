@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { AdminModule } from './admin/admin.module'
+import { PlatformControlModule } from './platform-control/platform-control.module'
+import { PlatformDataModule } from './platform-data/platform-data.module'
 import { AnalyticsModule } from './analytics/analytics.module'
 import { AuthModule } from './auth/auth.module'
 import { ConfigModule } from './config/config.module'
@@ -55,6 +57,8 @@ import { UsersModule } from './users/users.module'
     NotificationsModule,
     AnalyticsModule,
     AdminModule,
+    PlatformControlModule,
+    PlatformDataModule,
     HealthModule,
     ObservabilityModule,
   ],

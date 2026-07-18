@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { AnalyticsActorType, AnalyticsEventName } from '@prisma/client'
+import { AnalyticsActorType, AnalyticsEventName, type Prisma } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
+import { PlatformOutboxWriter } from '../platform-data/platform-outbox-writer'
+import { toAuditActor } from './audit-actor'
 import type {
   AdminTenantLimits,
   AdminTenantLimitsRepository,
@@ -18,11 +20,17 @@ type LockedTenantLimitsRow = {
 
 @Injectable()
 export class PrismaAdminTenantLimitsRepository implements AdminTenantLimitsRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    private readonly outboxWriter: PlatformOutboxWriter,
+  ) {}
 
-  async updateTenantLimits(input: UpdateAdminTenantLimitsInput): Promise<UpdateAdminTenantLimitsResult> {
-    return this.prisma.$transaction(async (tx) => {
-      const [tenant] = await tx.$queryRaw<LockedTenantLimitsRow[]>`
+  async updateTenantLimits(
+    input: UpdateAdminTenantLimitsInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<UpdateAdminTenantLimitsResult> {
+    const run = async (client: Prisma.TransactionClient): Promise<UpdateAdminTenantLimitsResult> => {
+      const [tenant] = await client.$queryRaw<LockedTenantLimitsRow[]>`
         SELECT "id", "maxUsers", "maxActivePropertyEngagements", "maxDocumentsStorageMb", "updatedAt"
         FROM "tenants"
         WHERE "id" = ${input.tenantId}
@@ -45,17 +53,30 @@ export class PrismaAdminTenantLimitsRepository implements AdminTenantLimitsRepos
         }
       }
 
-      const updatedTenant = await tx.tenant.update({
+      const updatedTenant = await client.tenant.update({
         where: { id: tenant.id },
         data: input.limits,
       })
       const updatedLimits = mapTenantLimits(updatedTenant)
 
-      await tx.analyticsEvent.create({
+      // Stamp audit actor: operator or product user (discriminated union)
+      const actorData =
+        input.actor.type === 'operator'
+          ? {
+              actorType: AnalyticsActorType.PLATFORM_OPERATOR,
+              actorOperatorId: input.actor.operatorId,
+              actorUserId: null,
+            }
+          : {
+              actorType: AnalyticsActorType.INTERNAL_USER,
+              actorOperatorId: null,
+              actorUserId: input.actor.userId,
+            }
+
+      await client.analyticsEvent.create({
         data: {
           tenantId: tenant.id,
-          actorUserId: input.actorUserId,
-          actorType: AnalyticsActorType.INTERNAL_USER,
+          ...actorData,
           eventName: AnalyticsEventName.TENANT_LIMITS_UPDATED,
           metadata: {
             previousLimits,
@@ -65,6 +86,31 @@ export class PrismaAdminTenantLimitsRepository implements AdminTenantLimitsRepos
         },
       })
 
+      // platform-audit-log (T-11, A4): first-ever outbox emit from this repo,
+      // same tx as the domain mutation — rollback ⇒ no event.
+      await this.outboxWriter.emit(client, {
+        eventType: 'AUDIT_LOGGED',
+        tenantId: tenant.id,
+        payload: {
+          action: 'TENANT_LIMITS_UPDATED',
+          previousValue: previousLimits,
+          newValue: updatedLimits,
+          actor: toAuditActor(input.actor),
+        },
+        occurredAt: input.now,
+      })
+
+      // platform-manual-plans (Slice 4, Part 1): ALSO emit TENANT_LIMITS_CHANGED
+      // in the SAME tx so ViewPro's platform_tenants projection stops going
+      // stale (previously only AUDIT_LOGGED was emitted, which ingest never
+      // routes into the projection). 'updated' path only — never 'unchanged'.
+      await this.outboxWriter.emit(client, {
+        eventType: 'TENANT_LIMITS_CHANGED',
+        tenantId: tenant.id,
+        payload: { limits: updatedLimits },
+        occurredAt: input.now,
+      })
+
       return {
         status: 'updated',
         tenantId: updatedTenant.id,
@@ -72,7 +118,11 @@ export class PrismaAdminTenantLimitsRepository implements AdminTenantLimitsRepos
         limits: updatedLimits,
         updatedAt: updatedTenant.updatedAt,
       }
-    })
+    }
+
+    // If an outer transaction is provided, run inside it (no nested $transaction).
+    // Otherwise start an own transaction — preserves the existing /admin behaviour.
+    return tx ? run(tx) : this.prisma.$transaction(run)
   }
 }
 

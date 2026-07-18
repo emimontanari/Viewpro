@@ -8,6 +8,7 @@ import {
 	IsString,
 	Max,
 	Min,
+	MinLength,
 	validateSync,
 } from "class-validator";
 
@@ -142,6 +143,21 @@ class EnvironmentVariables {
 	@Max(1)
 	@Type(() => Number)
 	SENTRY_TRACES_SAMPLE_RATE = 0;
+
+	// Required — no default. Shared with viewpro-api; a weak/missing secret would
+	// let a forged service token drive tenant control commands. Fail fast at boot.
+	@IsString()
+	@MinLength(16)
+	PLATFORM_CONTROL_SECRET!: string;
+
+	// Optional — configurable batch size for GET /internal/platform/changes.
+	// Controller reads process.env.PLATFORM_DATA_BATCH_LIMIT directly at request
+	// time so test overrides take effect without restarting the app.
+	@IsOptional()
+	@IsInt()
+	@Min(1)
+	@Type(() => Number)
+	PLATFORM_DATA_BATCH_LIMIT = 100;
 }
 
 export function validateEnv(config: Record<string, unknown>) {
