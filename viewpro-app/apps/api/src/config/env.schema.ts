@@ -71,6 +71,12 @@ class EnvironmentVariables {
 	@IsString()
 	DATABASE_URL?: string;
 
+	// Direct (non-pooled) connection for Prisma migrations/introspection. In prod
+	// this points at the Neon direct endpoint; dev/test/CI default it to DATABASE_URL.
+	@IsOptional()
+	@IsString()
+	DIRECT_URL?: string;
+
 	@IsOptional()
 	@IsIn(["fake", "local", "s3"])
 	DOCUMENT_STORAGE_DRIVER?: "fake" | "local" | "s3";

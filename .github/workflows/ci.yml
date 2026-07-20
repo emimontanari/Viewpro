@@ -106,6 +106,8 @@ jobs:
       - name: Apply product migrations
         env:
           DATABASE_URL: postgresql://viewpro:viewpro@localhost:5432/viewpro_test?schema=public
+          # schema.prisma now declares directUrl = env("DIRECT_URL"); no pooler in CI, so mirror DATABASE_URL.
+          DIRECT_URL: postgresql://viewpro:viewpro@localhost:5432/viewpro_test?schema=public
         run: pnpm --filter @viewpro/api exec prisma migrate deploy
 
       - name: Apply platform migrations
