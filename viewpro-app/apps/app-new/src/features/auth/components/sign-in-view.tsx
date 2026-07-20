@@ -95,6 +95,14 @@ function SignInForm() {
                 onBlur: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.')
               }}
             />
+            <div className='text-right'>
+              <Link
+                href='/auth/forgot-password'
+                className='text-muted-foreground hover:text-primary text-sm underline underline-offset-4'
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
             <form.SubmitButton className='w-full'>Entrar</form.SubmitButton>
           </form.Form>
         </form.AppForm>
