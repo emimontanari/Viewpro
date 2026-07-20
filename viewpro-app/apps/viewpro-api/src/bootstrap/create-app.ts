@@ -1,15 +1,19 @@
 import { ValidationPipe } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { NestFactory } from '@nestjs/core'
+import { HttpAdapterHost, NestFactory } from '@nestjs/core'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import type { NestExpressApplication } from '@nestjs/platform-express'
 import cookieParser from 'cookie-parser'
 import { AppModule } from '../app.module'
+import { SentryExceptionFilter } from '../common/filters/sentry-exception.filter'
+import { requestIdMiddleware } from '../common/middleware/request-id.middleware'
+import { SentryService } from '../observability/sentry.service'
 import { PLATFORM_BRAND } from './brand.constants'
 
 export async function createPlatformApp() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule)
   const configService = app.get(ConfigService)
+  const sentryService = app.get(SentryService)
 
   // trust proxy: 1 — adjust for your topology if using multiple proxies.
   // With a single reverse proxy (Dokploy/Nginx/Caddy), '1' tells Express to
@@ -17,6 +21,7 @@ export async function createPlatformApp() {
   // required for AuthThrottlerGuard to see the correct IP.
   app.set('trust proxy', 1)
 
+  app.use(requestIdMiddleware)
   app.use(cookieParser())
   app.setGlobalPrefix('api')
 
@@ -32,6 +37,14 @@ export async function createPlatformApp() {
       forbidNonWhitelisted: true,
       transform: true,
     }),
+  )
+
+  app.useGlobalFilters(
+    new SentryExceptionFilter(
+      app.get(HttpAdapterHost).httpAdapter,
+      sentryService,
+      configService.get<string>('app.nodeEnv') ?? 'development',
+    ),
   )
 
   const swaggerConfig = new DocumentBuilder()

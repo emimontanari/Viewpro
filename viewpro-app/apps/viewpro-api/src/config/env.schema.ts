@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Max,
@@ -89,6 +90,20 @@ class EnvironmentVariables {
   @Min(100)
   @Type(() => Number)
   PLATFORM_POLL_INTERVAL_MS = 5000
+
+  @IsOptional()
+  @IsString()
+  SENTRY_DSN?: string
+
+  @IsOptional()
+  @IsString()
+  SENTRY_ENVIRONMENT?: string
+
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  @Type(() => Number)
+  SENTRY_TRACES_SAMPLE_RATE = 0
   // S2: PLATFORM_DATA_BATCH_LIMIT removed — batch size is controlled by the producer
   // (apps/api change-feed endpoint). A consumer-side limit here was dead config that
   // misled operators into thinking they could control pull size from this side.
