@@ -2,7 +2,7 @@
 
 > **Ledger vivo.** Se actualiza en `develop` en cada merge (no va por PR).
 > Fuente de verdad compartida para no perder contexto entre sesiones.
-> Última actualización: 2026-07-20 (Etapa 1: 4/9 — seguridad, CI, /admin, deploy plataforma).
+> Última actualización: 2026-07-20 (Etapa 1: 5/9 — seguridad, CI, /admin, deploy plataforma, observabilidad).
 
 ## Norte
 
@@ -43,7 +43,7 @@ config, y encender el cobro (ya diseñado como planes manuales sin pasarela).
 | ✅ | CI GitHub Actions (typecheck·lint·build·test + audit no bloqueante) | #235 (`2925205`) |
 | ✅ | Quick-win: fix aserción E2E `/admin` ("Admin ViewPro" → "Admin InmoView") | #236 (`582d697`) |
 | ✅ | Deploy de plataforma: reescribir `viewpro-web/Dockerfile` + crear `viewpro-api/Dockerfile` | #237 (`7f1bd7c`) |
-| ⬜ | Sentry en prod + módulo de observabilidad en `viewpro-api` | — |
+| 🟡 | Sentry en prod + módulo de observabilidad en `viewpro-api` | #239 (`99d136b`) — código listo; falta **setear `SENTRY_DSN` en prod** |
 | ⬜ | Backups programados de Neon + restore drill probado | — |
 | ⬜ | Neon *pooled* + `directUrl` en schema.prisma; aislar hosts/secrets de demo; resolver SPOF VPS | — |
 | ⬜ | Seed de operador (`SEED_OPERATOR_EMAIL`) en el deploy del control-plane | — |
