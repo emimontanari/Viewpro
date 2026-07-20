@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import type {
   EmailSender,
+  SendEmailVerificationInput,
   SendOwnerInvitationInput,
   SendPasswordResetInput,
   SendTeamInvitationInput,
@@ -30,6 +31,12 @@ export class NoopEmailSender implements EmailSender {
   async sendPasswordReset(input: SendPasswordResetInput): Promise<void> {
     this.logger.warn(
       `Email sending disabled (RESEND_API_KEY unset): skipping password reset email to ${input.to}`,
+    )
+  }
+
+  async sendEmailVerification(input: SendEmailVerificationInput): Promise<void> {
+    this.logger.warn(
+      `Email sending disabled (RESEND_API_KEY unset): skipping email verification email to ${input.to}`,
     )
   }
 }

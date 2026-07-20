@@ -43,6 +43,7 @@ describe('CreateOwnerInvitationLinkUseCase email', () => {
       sendTeamInvitation: vi.fn(),
       sendOwnerInvitation: vi.fn().mockResolvedValue(undefined),
       sendPasswordReset: vi.fn(),
+      sendEmailVerification: vi.fn(),
     }
     const useCase = new CreateOwnerInvitationLinkUseCase(repo as never, buildConfig(), emailSender)
 
@@ -64,6 +65,7 @@ describe('CreateOwnerInvitationLinkUseCase email', () => {
       sendTeamInvitation: vi.fn(),
       sendOwnerInvitation: vi.fn().mockRejectedValue(new Error('resend down')),
       sendPasswordReset: vi.fn(),
+      sendEmailVerification: vi.fn(),
     }
     const useCase = new CreateOwnerInvitationLinkUseCase(repo as never, buildConfig(), emailSender)
 

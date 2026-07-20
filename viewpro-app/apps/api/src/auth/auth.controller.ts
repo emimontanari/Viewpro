@@ -8,6 +8,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto'
 import { LoginDto } from './dto/login.dto'
 import { RegisterTenantDto } from './dto/register-tenant.dto'
 import { ResetPasswordDto } from './dto/reset-password.dto'
+import { VerifyEmailDto } from './dto/verify-email.dto'
 import { AuthGuard, type AuthenticatedRequest } from './guards/auth.guard'
 import { AuthThrottlerGuard } from './guards/auth-throttler.guard'
 import { TokenService } from './tokens/token.service'
@@ -18,7 +19,9 @@ import { LogoutUseCase } from './use-cases/logout.use-case'
 import { RefreshSessionUseCase } from './use-cases/refresh-session.use-case'
 import { RegisterTenantUseCase } from './use-cases/register-tenant.use-case'
 import { RequestPasswordResetUseCase } from './use-cases/request-password-reset.use-case'
+import { ResendEmailVerificationUseCase } from './use-cases/resend-email-verification.use-case'
 import { ResetPasswordUseCase } from './use-cases/reset-password.use-case'
+import { VerifyEmailUseCase } from './use-cases/verify-email.use-case'
 
 type CookieRequest = Request & { cookies?: Record<string, string | undefined> }
 const authRateLimit = getAuthRateLimitConfig()
@@ -37,6 +40,8 @@ export class AuthController {
     private readonly getCurrentUserUseCase: GetCurrentUserUseCase,
     private readonly requestPasswordResetUseCase: RequestPasswordResetUseCase,
     private readonly resetPasswordUseCase: ResetPasswordUseCase,
+    private readonly verifyEmailUseCase: VerifyEmailUseCase,
+    private readonly resendEmailVerificationUseCase: ResendEmailVerificationUseCase,
     private readonly tokenService: TokenService,
   ) {}
 
@@ -82,6 +87,23 @@ export class AuthController {
   @Throttle(toThrottleOptions(authRateLimit.login))
   async resetPassword(@Body() dto: ResetPasswordDto) {
     await this.resetPasswordUseCase.execute(dto)
+    return { ok: true }
+  }
+
+  @Post('verify-email')
+  @HttpCode(200)
+  @UseGuards(AuthThrottlerGuard)
+  @Throttle(toThrottleOptions(authRateLimit.login))
+  async verifyEmail(@Body() dto: VerifyEmailDto) {
+    await this.verifyEmailUseCase.execute(dto)
+    return { ok: true }
+  }
+
+  @Post('resend-verification')
+  @HttpCode(202)
+  @UseGuards(AuthGuard)
+  async resendVerification(@CurrentUser() user: CurrentUserPayload) {
+    await this.resendEmailVerificationUseCase.execute(user)
     return { ok: true }
   }
 

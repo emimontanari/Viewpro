@@ -145,6 +145,11 @@ class EnvironmentVariables {
 	@Type(() => Number)
 	RESET_TOKEN_TTL_SECONDS = 3600;
 
+	@IsInt()
+	@Min(60)
+	@Type(() => Number)
+	EMAIL_VERIFICATION_TOKEN_TTL_SECONDS = 86400;
+
 	@IsOptional()
 	@IsString()
 	RESEND_API_KEY?: string;
