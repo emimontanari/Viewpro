@@ -2,7 +2,7 @@
 
 > **Ledger vivo.** Se actualiza en `develop` en cada merge (no va por PR).
 > Fuente de verdad compartida para no perder contexto entre sesiones.
-> Última actualización: 2026-07-20.
+> Última actualización: 2026-07-20 (Etapa 1: 3/9 — seguridad, CI, /admin).
 
 ## Norte
 
@@ -41,7 +41,7 @@ config, y encender el cobro (ya diseñado como planes manuales sin pasarela).
 |---|---|---|
 | ✅ | P0 seguridad: guards de producción en env.schema (secreto de sesión + cookies + s3) | #234 (`b4864e6`) |
 | ✅ | CI GitHub Actions (typecheck·lint·build·test + audit no bloqueante) | #235 (`2925205`) |
-| ⬜ | Quick-win: fix aserción E2E `/admin` ("Admin ViewPro" → "Admin InmoView") | — |
+| ✅ | Quick-win: fix aserción E2E `/admin` ("Admin ViewPro" → "Admin InmoView") | #236 (`582d697`) |
 | ⬜ | Deploy de plataforma: reescribir `viewpro-web/Dockerfile` + crear `viewpro-api/Dockerfile` | — |
 | ⬜ | Sentry en prod + módulo de observabilidad en `viewpro-api` | — |
 | ⬜ | Backups programados de Neon + restore drill probado | — |
