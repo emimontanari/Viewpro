@@ -293,7 +293,7 @@ test('viewpro admin can inspect seeded tenant limits', async ({ page }) => {
   await signIn(page, DEMO_ADMIN_EMAIL, '/owner');
   await page.goto('/admin');
 
-  await expect(page.getByRole('heading', { name: 'Admin ViewPro' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Admin InmoView' })).toBeVisible();
   const adminTenants = await getJson<AdminTenantsResponse>(
     page,
     '/api/admin/tenants?page=1&pageSize=10'
