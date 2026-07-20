@@ -43,6 +43,12 @@ USER node
 
 EXPOSE 3001
 
+# Liveness probe (no DB dependency, so a transient DB blip never triggers a
+# restart). Readiness with DB check is exposed separately at /api/health/ready
+# for the load balancer / orchestrator to gate traffic.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "require('http').get('http://127.0.0.1:3001/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+
 # Migrations and demo seed/reset are intentionally explicit deploy/runbook steps.
 # Do not run `prisma migrate` or `demo:seed` from container startup.
 CMD ["node", "dist/main.js"]

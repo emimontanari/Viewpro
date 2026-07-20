@@ -45,6 +45,11 @@ USER node
 
 EXPOSE 3002
 
+# Liveness probe (no DB dependency). Readiness with DB check lives at
+# /api/health/ready for the load balancer / orchestrator to gate traffic.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "require('http').get('http://127.0.0.1:3002/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+
 # Migrations are an explicit deploy/runbook step (pnpm db:platform:migrate).
 # Do not run `prisma migrate` from container startup.
 CMD ["node", "dist/main.js"]
