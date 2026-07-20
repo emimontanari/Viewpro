@@ -1,11 +1,15 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common'
+import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { TenantRole } from '@prisma/client'
+import { EMAIL_SENDER, type EmailSender } from '../../email/email-sender.port'
 import type { RegisterTenantDto } from '../dto/register-tenant.dto'
 import { mapAuthUser } from '../responses/auth-user.response'
 import { mapMembership, type MeResponse } from '../responses/me.response'
 import type { PasswordHasher } from '../security/password-hasher'
 import { PASSWORD_HASHER } from '../security/password-hasher'
 import { TokenService } from '../tokens/token.service'
+import type { EmailVerificationTokenRepository } from '../tokens/email-verification-token.repository'
+import { EMAIL_VERIFICATION_TOKEN_REPOSITORY } from '../tokens/email-verification-token.repository'
 import type { RefreshTokenRepository } from '../tokens/refresh-token.repository'
 import { REFRESH_TOKEN_REPOSITORY } from '../tokens/refresh-token.repository'
 import { normalizeEmail, slugify } from '../utils/slugify'
@@ -24,6 +28,8 @@ export type AuthSessionResult = {
 
 @Injectable()
 export class RegisterTenantUseCase {
+  private readonly logger = new Logger(RegisterTenantUseCase.name)
+
   constructor(
     @Inject(USERS_REPOSITORY) private readonly usersRepository: UsersRepository,
     @Inject(TENANTS_REPOSITORY) private readonly tenantsRepository: TenantsRepository,
@@ -31,7 +37,11 @@ export class RegisterTenantUseCase {
     @Inject(REFRESH_TOKEN_REPOSITORY) private readonly refreshTokenRepository: RefreshTokenRepository,
     @Inject(AUTH_REGISTRATION_REPOSITORY)
     private readonly registrationRepository: AuthRegistrationRepository,
+    @Inject(EMAIL_VERIFICATION_TOKEN_REPOSITORY)
+    private readonly emailVerificationTokenRepository: EmailVerificationTokenRepository,
+    @Inject(EMAIL_SENDER) private readonly emailSender: EmailSender,
     private readonly tokenService: TokenService,
+    private readonly configService: ConfigService,
   ) {}
 
   async execute(dto: RegisterTenantDto): Promise<AuthSessionResult> {
@@ -56,10 +66,36 @@ export class RegisterTenantUseCase {
 
     const { accessToken, refreshToken } = await this.createSession(user.id, user.email)
 
+    await this.sendVerificationEmail(user.id, user.email)
+
     return {
       accessToken,
       refreshToken,
       body: { user: mapAuthUser(user), memberships: memberships.map(mapMembership) },
+    }
+  }
+
+  // Soft (non-blocking) email verification: registration must succeed even if
+  // issuing or delivering the verification email fails.
+  private async sendVerificationEmail(userId: string, email: string) {
+    try {
+      const rawToken = this.tokenService.generateEmailVerificationToken()
+      await this.emailVerificationTokenRepository.create({
+        userId,
+        tokenHash: this.tokenService.hashEmailVerificationToken(rawToken),
+        expiresAt: this.tokenService.getEmailVerificationExpiresAt(),
+      })
+
+      const publicUrl = this.configService.getOrThrow<string>('app.publicUrl')
+      const verificationUrl = `${publicUrl.replace(/\/$/, '')}/auth/verify-email?token=${encodeURIComponent(rawToken)}`
+
+      await this.emailSender.sendEmailVerification({ to: email, verificationUrl })
+    } catch (error) {
+      this.logger.error(
+        `Failed to send email verification to ${email}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
     }
   }
 

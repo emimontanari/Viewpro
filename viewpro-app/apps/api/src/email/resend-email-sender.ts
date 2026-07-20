@@ -2,10 +2,12 @@ import { Injectable } from '@nestjs/common'
 import { Resend } from 'resend'
 import type {
   EmailSender,
+  SendEmailVerificationInput,
   SendOwnerInvitationInput,
   SendPasswordResetInput,
   SendTeamInvitationInput,
 } from './email-sender.port'
+import { renderEmailVerificationEmail } from './templates/email-verification-email'
 import { renderOwnerInvitationEmail, renderTeamInvitationEmail } from './templates/invitation-emails'
 import { renderPasswordResetEmail } from './templates/password-reset-email'
 
@@ -49,6 +51,11 @@ export class ResendEmailSender implements EmailSender {
 
   async sendPasswordReset(input: SendPasswordResetInput): Promise<void> {
     const email = renderPasswordResetEmail({ resetUrl: input.resetUrl })
+    await this.send(input.to, email)
+  }
+
+  async sendEmailVerification(input: SendEmailVerificationInput): Promise<void> {
+    const email = renderEmailVerificationEmail({ verificationUrl: input.verificationUrl })
     await this.send(input.to, email)
   }
 

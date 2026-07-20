@@ -25,4 +25,11 @@ export class PrismaUsersRepository implements UsersRepository {
       data: { passwordHash },
     })
   }
+
+  markEmailVerified(userId: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { emailVerifiedAt: new Date() },
+    })
+  }
 }

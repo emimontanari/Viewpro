@@ -7,4 +7,5 @@ export type UsersRepository = {
   findByEmail(email: string): Promise<User | null>
   findById(id: string): Promise<User | null>
   updatePassword(userId: string, passwordHash: string): Promise<User>
+  markEmailVerified(userId: string): Promise<User>
 }
