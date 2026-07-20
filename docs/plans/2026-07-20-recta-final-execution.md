@@ -3,8 +3,10 @@
 > **Ledger vivo.** Se actualiza en `develop` en cada merge (no va por PR).
 > Fuente de verdad compartida para no perder contexto entre sesiones.
 > Última actualización: 2026-07-20 (Etapa 1: 6 work-units de código entregados — seguridad, CI,
-> /admin, deploy plataforma, observabilidad, directUrl, seed operador. Restan: backups Neon,
-> aislar demo/SPOF, readiness /health. Y 2 switches de deploy: SENTRY_DSN y endpoint pooled en prod).
+> /admin, deploy plataforma, observabilidad, directUrl, seed operador, readiness/health. **Parte de
+> código de Etapa 1 COMPLETA.** Restan solo tareas de infra/ops (necesitan credenciales/topología del
+> usuario): backups Neon + restore drill, aislar hosts/secrets demo vs prod + SPOF VPS. Y 3 switches
+> de deploy: SENTRY_DSN, endpoint pooled en DATABASE_URL prod, correr db:seed del operador).
 
 ## Norte
 
@@ -50,7 +52,7 @@ config, y encender el cobro (ya diseñado como planes manuales sin pasarela).
 | 🟡 | `directUrl` en schema.prisma (apps/api) — código listo | #240 (`4868572`) — falta: usar endpoint pooled en `DATABASE_URL` prod, replicar en viewpro-api al deploy |
 | ⬜ | Aislar hosts/secrets de demo vs prod; resolver SPOF de la VPS única | — |
 | ✅ | Seed de operador documentado + `viewpro-api/.env.example` (seed verificado E2E) | #241 (`f4b6129`) — correr `pnpm --filter @viewpro/platform-api db:seed` en deploy |
-| ⬜ | Readiness real en `/health` + `HEALTHCHECK` en Dockerfiles | — |
+| ✅ | Readiness real en `/health/ready` (SELECT 1) + `HEALTHCHECK` en los 4 Dockerfiles | #242 (`2280883`) |
 
 ## Etapa 2 — Autoservicio + primer cobro (para facturar)
 
