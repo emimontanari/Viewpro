@@ -58,7 +58,7 @@ config, y encender el cobro (ya diseñado como planes manuales sin pasarela).
 
 | Estado | Tarea |
 |---|---|
-| 🟡 | Recuperar contraseña — **backend** (endpoints + token + email best-effort) | #243 (`dd6781f`) — falta FE (pantallas /auth/forgot-password + /auth/reset-password) |
+| ✅ | Recuperar contraseña — backend + frontend (flujo completo E2E) | #243 (`dd6781f`) backend · #244 (`df5f5df`) FE |
 | ⬜ | Verificación de email en registro (doble opt-in) |
 | ⬜ | Definir **precios** por tier + documentar cobro out-of-band + flujo operador TRIAL→ACTIVE |
 | ⬜ | Enforcement de trial por cap + suspensión reversible por falta de pago |
