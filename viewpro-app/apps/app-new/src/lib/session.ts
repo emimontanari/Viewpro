@@ -63,6 +63,20 @@ export function registerTenant(input: RegisterTenantInput) {
   });
 }
 
+export function requestPasswordReset(input: { email: string }) {
+  return apiRequest<{ ok: true }>('/auth/forgot-password', {
+    body: input,
+    method: 'POST'
+  });
+}
+
+export function resetPassword(input: { token: string; password: string }) {
+  return apiRequest<{ ok: true }>('/auth/reset-password', {
+    body: input,
+    method: 'POST'
+  });
+}
+
 export function getSession() {
   return apiRequest<Session>('/auth/me');
 }
