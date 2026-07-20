@@ -1,7 +1,7 @@
 # ============================================
 # Stage 1: Install workspace dependencies
 # Build context: viewpro-app/
-# Command: docker build -f apps/app-new/Dockerfile -t viewpro-app-new .
+# Command: docker build -f apps/viewpro-web/Dockerfile -t viewpro-web .
 # ============================================
 
 ARG NODE_VERSION=22-slim
@@ -23,7 +23,7 @@ COPY apps ./apps
 COPY packages ./packages
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile --filter next-shadcn-dashboard-starter...
+    pnpm install --frozen-lockfile --filter viewpro-web...
 
 # ============================================
 # Stage 2: Build the Next.js application
@@ -42,7 +42,7 @@ RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 
 COPY --from=dependencies /app ./
 
-WORKDIR /app/apps/app-new
+WORKDIR /app/apps/viewpro-web
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -66,18 +66,16 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Copy public assets
-COPY --from=builder --chown=node:node /app/apps/app-new/public ./public
+# Monorepo standalone output nests the entry at apps/viewpro-web/server.js and
+# hoists a shared node_modules to the standalone root (mapped here to /app).
+COPY --from=builder --chown=node:node /app/apps/viewpro-web/.next/standalone ./
 
-# Create .next dir with correct permissions for prerender cache
-RUN mkdir .next && chown node:node .next
-
-# Copy standalone output and static files
-COPY --from=builder --chown=node:node /app/apps/app-new/.next/standalone ./
-COPY --from=builder --chown=node:node /app/apps/app-new/.next/static ./.next/static
+# Static assets and public/ must sit next to the nested server.js, not at /app.
+COPY --from=builder --chown=node:node /app/apps/viewpro-web/.next/static ./apps/viewpro-web/.next/static
+COPY --from=builder --chown=node:node /app/apps/viewpro-web/public ./apps/viewpro-web/public
 
 USER node
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["node", "apps/viewpro-web/server.js"]
