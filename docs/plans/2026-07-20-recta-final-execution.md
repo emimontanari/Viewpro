@@ -2,7 +2,9 @@
 
 > **Ledger vivo.** Se actualiza en `develop` en cada merge (no va por PR).
 > Fuente de verdad compartida para no perder contexto entre sesiones.
-> Última actualización: 2026-07-20 (Etapa 1: 5/9 — seguridad, CI, /admin, deploy plataforma, observabilidad).
+> Última actualización: 2026-07-20 (Etapa 1: 6 work-units de código entregados — seguridad, CI,
+> /admin, deploy plataforma, observabilidad, directUrl. Restan: backups Neon, aislar demo/SPOF,
+> seed operador, readiness /health. Y 2 switches de deploy: SENTRY_DSN y endpoint pooled en prod).
 
 ## Norte
 
@@ -45,7 +47,8 @@ config, y encender el cobro (ya diseñado como planes manuales sin pasarela).
 | ✅ | Deploy de plataforma: reescribir `viewpro-web/Dockerfile` + crear `viewpro-api/Dockerfile` | #237 (`7f1bd7c`) |
 | 🟡 | Sentry en prod + módulo de observabilidad en `viewpro-api` | #239 (`99d136b`) — código listo; falta **setear `SENTRY_DSN` en prod** |
 | ⬜ | Backups programados de Neon + restore drill probado | — |
-| ⬜ | Neon *pooled* + `directUrl` en schema.prisma; aislar hosts/secrets de demo; resolver SPOF VPS | — |
+| 🟡 | `directUrl` en schema.prisma (apps/api) — código listo | #240 (`4868572`) — falta: usar endpoint pooled en `DATABASE_URL` prod, replicar en viewpro-api al deploy |
+| ⬜ | Aislar hosts/secrets de demo vs prod; resolver SPOF de la VPS única | — |
 | ⬜ | Seed de operador (`SEED_OPERATOR_EMAIL`) en el deploy del control-plane | — |
 | ⬜ | Readiness real en `/health` + `HEALTHCHECK` en Dockerfiles | — |
 
