@@ -6,4 +6,5 @@ export type RefreshTokenRepository = {
   create(data: Prisma.RefreshTokenUncheckedCreateInput): Promise<RefreshToken>
   findByTokenHash(tokenHash: string): Promise<RefreshToken | null>
   revoke(id: string, replacedByTokenId?: string): Promise<RefreshToken>
+  revokeAllForUser(userId: string): Promise<void>
 }

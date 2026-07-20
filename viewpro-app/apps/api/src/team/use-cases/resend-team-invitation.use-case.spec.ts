@@ -33,6 +33,7 @@ describe('ResendTeamInvitationUseCase email', () => {
     const emailSender: EmailSender = {
       sendTeamInvitation: vi.fn().mockResolvedValue(undefined),
       sendOwnerInvitation: vi.fn(),
+      sendPasswordReset: vi.fn(),
     }
     const useCase = new ResendTeamInvitationUseCase(repo as never, buildConfig(), emailSender)
 

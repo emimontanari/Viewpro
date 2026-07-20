@@ -16,6 +16,12 @@ export type SendOwnerInvitationInput = {
   expiresAt: Date | string
 }
 
+export type SendPasswordResetInput = {
+  to: string
+  resetUrl: string
+  expiresAt: Date | string
+}
+
 /**
  * Outbound port for transactional invitation emails.
  * Implementations are best-effort: callers must treat a rejected promise as
@@ -24,4 +30,5 @@ export type SendOwnerInvitationInput = {
 export interface EmailSender {
   sendTeamInvitation(input: SendTeamInvitationInput): Promise<void>
   sendOwnerInvitation(input: SendOwnerInvitationInput): Promise<void>
+  sendPasswordReset(input: SendPasswordResetInput): Promise<void>
 }

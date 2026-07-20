@@ -1,7 +1,13 @@
 import { Injectable } from '@nestjs/common'
 import { Resend } from 'resend'
-import type { EmailSender, SendOwnerInvitationInput, SendTeamInvitationInput } from './email-sender.port'
+import type {
+  EmailSender,
+  SendOwnerInvitationInput,
+  SendPasswordResetInput,
+  SendTeamInvitationInput,
+} from './email-sender.port'
 import { renderOwnerInvitationEmail, renderTeamInvitationEmail } from './templates/invitation-emails'
+import { renderPasswordResetEmail } from './templates/password-reset-email'
 
 /** Minimal surface of the resend client that this adapter depends on. */
 export type ResendClient = {
@@ -38,6 +44,11 @@ export class ResendEmailSender implements EmailSender {
 
   async sendOwnerInvitation(input: SendOwnerInvitationInput): Promise<void> {
     const email = renderOwnerInvitationEmail({ invitationUrl: input.invitationUrl })
+    await this.send(input.to, email)
+  }
+
+  async sendPasswordReset(input: SendPasswordResetInput): Promise<void> {
+    const email = renderPasswordResetEmail({ resetUrl: input.resetUrl })
     await this.send(input.to, email)
   }
 

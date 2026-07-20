@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config'
 import { JwtModule } from '@nestjs/jwt'
 import { AnalyticsCoreModule } from '../analytics/analytics-core.module'
 import { DatabaseModule } from '../database/database.module'
+import { EmailModule } from '../email/email.module'
 import { MembershipsModule } from '../memberships/memberships.module'
 import { PlatformDataModule } from '../platform-data/platform-data.module'
 import { TenantsModule } from '../tenants/tenants.module'
@@ -12,7 +13,9 @@ import { AUTH_REGISTRATION_REPOSITORY } from './repositories/auth-registration.r
 import { PrismaAuthRegistrationRepository } from './repositories/prisma-auth-registration.repository'
 import { Argon2PasswordHasher } from './security/argon2-password-hasher'
 import { PASSWORD_HASHER } from './security/password-hasher'
+import { PrismaPasswordResetTokenRepository } from './tokens/prisma-password-reset-token.repository'
 import { PrismaRefreshTokenRepository } from './tokens/prisma-refresh-token.repository'
+import { PASSWORD_RESET_TOKEN_REPOSITORY } from './tokens/password-reset-token.repository'
 import { REFRESH_TOKEN_REPOSITORY } from './tokens/refresh-token.repository'
 import { TokenService } from './tokens/token.service'
 import { AuthGuard } from './guards/auth.guard'
@@ -22,12 +25,15 @@ import { LoginUseCase } from './use-cases/login.use-case'
 import { LogoutUseCase } from './use-cases/logout.use-case'
 import { RefreshSessionUseCase } from './use-cases/refresh-session.use-case'
 import { RegisterTenantUseCase } from './use-cases/register-tenant.use-case'
+import { RequestPasswordResetUseCase } from './use-cases/request-password-reset.use-case'
+import { ResetPasswordUseCase } from './use-cases/reset-password.use-case'
 
 @Module({
   imports: [
     ConfigModule,
     AnalyticsCoreModule,
     DatabaseModule,
+    EmailModule,
     UsersModule,
     TenantsModule,
     MembershipsModule,
@@ -55,8 +61,11 @@ import { RegisterTenantUseCase } from './use-cases/register-tenant.use-case'
     RefreshSessionUseCase,
     LogoutUseCase,
     GetCurrentUserUseCase,
+    RequestPasswordResetUseCase,
+    ResetPasswordUseCase,
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },
     { provide: REFRESH_TOKEN_REPOSITORY, useClass: PrismaRefreshTokenRepository },
+    { provide: PASSWORD_RESET_TOKEN_REPOSITORY, useClass: PrismaPasswordResetTokenRepository },
     { provide: AUTH_REGISTRATION_REPOSITORY, useClass: PrismaAuthRegistrationRepository },
   ],
   exports: [
