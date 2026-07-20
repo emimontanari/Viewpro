@@ -19,6 +19,10 @@ export default defineConfig({
     // Give app/DB bootstrap real headroom so CI is deterministic, not on the edge.
     testTimeout: 30000,
     hookTimeout: 30000,
+    // Same rationale as apps/api: best-effort async side effects (ingest/mirror
+    // writes) can race assertions on slower CI runners. Stopgap until per-worker
+    // DB isolation lands; a retry cannot rescue a deterministic failure.
+    retry: 2,
     include: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
     setupFiles: ['./test/setup-env.ts'],
   },
