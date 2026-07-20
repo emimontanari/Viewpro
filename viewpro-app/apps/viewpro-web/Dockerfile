@@ -78,4 +78,8 @@ USER node
 
 EXPOSE 3000
 
+# Liveness: the Next server responds at all (root redirects to sign-in → <400).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "require('http').get('http://127.0.0.1:3000/',r=>process.exit(r.statusCode<400?0:1)).on('error',()=>process.exit(1))"
+
 CMD ["node", "apps/viewpro-web/server.js"]
