@@ -59,7 +59,7 @@ config, y encender el cobro (ya diseñado como planes manuales sin pasarela).
 | Estado | Tarea |
 |---|---|
 | ✅ | Recuperar contraseña — backend + frontend (flujo completo E2E) | #243 (`dd6781f`) backend · #244 (`df5f5df`) FE |
-| 🟡 | Verificación de email — **backend** (soft/no bloqueante, verify + resend) | #245 (`0789f07`) — falta FE (pantalla /auth/verify-email + banner "verificá tu email") |
+| ✅ | Verificación de email — backend + frontend (soft, verify + banner de reenvío) | #245 (`0789f07`) backend · #246 (`3c09eea`) FE |
 | ⬜ | Definir **precios** por tier + documentar cobro out-of-band + flujo operador TRIAL→ACTIVE |
 | ⬜ | Enforcement de trial por cap + suspensión reversible por falta de pago |
 | ⬜ | Notificaciones críticas por email (pedido de documento, cambio de estado) |
