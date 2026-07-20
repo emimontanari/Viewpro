@@ -12,6 +12,13 @@ import {
 	validateSync,
 } from "class-validator";
 
+// Dev/test default so local runs and the suite work without extra setup.
+// Production must NEVER boot with this value — enforced by assertProductionSecurity.
+const ACCESS_TOKEN_SECRET_DEV_PLACEHOLDER = "change-me-in-real-env";
+
+// Minimum length required for the session-signing secret in production.
+const ACCESS_TOKEN_SECRET_MIN_LENGTH = 32;
+
 class EnvironmentVariables {
 	@IsIn(["development", "test", "production"])
 	NODE_ENV: "development" | "test" | "production" = "development";
@@ -101,13 +108,18 @@ class EnvironmentVariables {
 	@Transform(({ value }) => value === true || value === "true")
 	DOCUMENT_STORAGE_S3_FORCE_PATH_STYLE = false;
 
+	// Signs user session tokens. A weak/known value lets anyone forge a token for
+	// any user of any tenant. Keeps a dev default, but assertProductionSecurity
+	// rejects the placeholder and anything under 32 chars when NODE_ENV=production.
 	@IsString()
-	ACCESS_TOKEN_SECRET = "change-me-in-real-env";
+	ACCESS_TOKEN_SECRET = ACCESS_TOKEN_SECRET_DEV_PLACEHOLDER;
 
 	@IsOptional()
 	@IsString()
 	COOKIE_DOMAIN?: string;
 
+	// Dev default false for http://localhost. assertProductionSecurity requires
+	// true in production so session cookies are never sent over plain HTTP.
 	@IsBoolean()
 	@Transform(({ value }) => value === true || value === "true")
 	COOKIE_SECURE = false;
@@ -173,7 +185,45 @@ export function validateEnv(config: Record<string, unknown>) {
 		throw new Error(formatValidationErrors(errors));
 	}
 
+	assertProductionSecurity(validatedConfig);
+
 	return validatedConfig;
+}
+
+// Cross-field security guards that only apply in production. Per-field decorators
+// keep dev/test permissive; these fail the boot when a real deployment is
+// misconfigured, mirroring the fail-fast contract of PLATFORM_CONTROL_SECRET.
+function assertProductionSecurity(config: EnvironmentVariables) {
+	if (config.NODE_ENV !== "production") {
+		return;
+	}
+
+	const violations: string[] = [];
+
+	if (
+		config.ACCESS_TOKEN_SECRET === ACCESS_TOKEN_SECRET_DEV_PLACEHOLDER ||
+		config.ACCESS_TOKEN_SECRET.length < ACCESS_TOKEN_SECRET_MIN_LENGTH
+	) {
+		violations.push(
+			`ACCESS_TOKEN_SECRET: must be a strong secret of at least ${ACCESS_TOKEN_SECRET_MIN_LENGTH} characters in production (never the placeholder)`,
+		);
+	}
+
+	if (config.COOKIE_SECURE !== true) {
+		violations.push(
+			"COOKIE_SECURE: must be true in production so session cookies require HTTPS",
+		);
+	}
+
+	if (config.DOCUMENT_STORAGE_DRIVER !== "s3") {
+		violations.push(
+			"DOCUMENT_STORAGE_DRIVER: must be 's3' in production (local/fake storage is not allowed)",
+		);
+	}
+
+	if (violations.length > 0) {
+		throw new Error(violations.join("; "));
+	}
 }
 
 function formatValidationErrors(
