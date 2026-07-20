@@ -71,5 +71,10 @@ export const appConfig = registerAs('app', () => {
       // S2: batchLimit removed — batch size is producer-controlled (apps/api endpoint).
       // The consumer-side batchLimit was dead config that misled operators.
     },
+    sentry: {
+      dsn: process.env.SENTRY_DSN,
+      environment: process.env.SENTRY_ENVIRONMENT,
+      tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? 0),
+    },
   }
 })
