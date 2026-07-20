@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+# Cancel superseded runs on the same ref so a fresh push doesn't queue behind stale work.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # The pnpm workspace lives one level below the repo root.
+    working-directory: viewpro-app
+
+jobs:
+  quality:
+    name: Typecheck · Lint · Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: viewpro-app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    services:
+      # Product database (InmoView) — mirrors apps/api/test/setup-env.ts defaults.
+      postgres-product:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: viewpro
+          POSTGRES_PASSWORD: viewpro
+          POSTGRES_DB: viewpro_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U viewpro -d viewpro_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      # Platform database (ViewPro control-plane) — isolated instance on 5434.
+      postgres-platform:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: viewpro_platform
+          POSTGRES_PASSWORD: viewpro_platform
+          POSTGRES_DB: viewpro_platform_test
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd "pg_isready -U viewpro_platform -d viewpro_platform_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: viewpro-app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply product migrations
+        env:
+          DATABASE_URL: postgresql://viewpro:viewpro@localhost:5432/viewpro_test?schema=public
+        run: pnpm --filter @viewpro/api exec prisma migrate deploy
+
+      - name: Apply platform migrations
+        env:
+          DATABASE_URL: postgresql://viewpro_platform:viewpro_platform@localhost:5434/viewpro_platform_test
+        run: pnpm --filter @viewpro/platform-api exec prisma migrate deploy
+
+      # Run test workspaces serially. Each vitest project is already file-serial;
+      # forcing turbo concurrency to 1 stops the backends from contending over the
+      # runner and reproducing the aggregate beforeAll timeout seen locally.
+      - name: Test
+        run: pnpm exec turbo run test --concurrency=1
+
+  audit:
+    name: Dependency audit (non-blocking)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: viewpro-app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Reports known advisories without blocking merge. Flip to a required gate
+      # once the runtime highs (multer et al.) are remediated.
+      - name: Audit (high and above)
+        continue-on-error: true
+        run: pnpm audit --audit-level high
