@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common'
-import type { EmailSender, SendOwnerInvitationInput, SendTeamInvitationInput } from './email-sender.port'
+import type {
+  EmailSender,
+  SendOwnerInvitationInput,
+  SendPasswordResetInput,
+  SendTeamInvitationInput,
+} from './email-sender.port'
 
 /**
  * Fallback EmailSender used when RESEND_API_KEY is not configured.
@@ -19,6 +24,12 @@ export class NoopEmailSender implements EmailSender {
   async sendOwnerInvitation(input: SendOwnerInvitationInput): Promise<void> {
     this.logger.warn(
       `Email sending disabled (RESEND_API_KEY unset): skipping owner invitation email to ${input.to}`,
+    )
+  }
+
+  async sendPasswordReset(input: SendPasswordResetInput): Promise<void> {
+    this.logger.warn(
+      `Email sending disabled (RESEND_API_KEY unset): skipping password reset email to ${input.to}`,
     )
   }
 }

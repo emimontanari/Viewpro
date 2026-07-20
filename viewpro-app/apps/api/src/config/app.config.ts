@@ -83,6 +83,7 @@ export const appConfig = registerAs('app', () => {
       accessTokenSecret: process.env.ACCESS_TOKEN_SECRET ?? 'change-me-in-real-env',
       accessTokenTtlSeconds: Number(process.env.ACCESS_TOKEN_TTL_SECONDS ?? 900),
       refreshTokenTtlSeconds: Number(process.env.REFRESH_TOKEN_TTL_SECONDS ?? 2592000),
+      resetTokenTtlSeconds: Number(process.env.RESET_TOKEN_TTL_SECONDS ?? 3600),
     },
     authRateLimit: getAuthRateLimitConfig(),
     cookies: {
