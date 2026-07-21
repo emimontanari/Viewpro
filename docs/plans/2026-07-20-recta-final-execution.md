@@ -66,7 +66,7 @@ config, y encender el cobro (ya diseñado como planes manuales sin pasarela).
 | ⬜ | Definir **precios** por tier + documentar cobro out-of-band + flujo operador TRIAL→ACTIVE |
 | ⬜ | Enforcement de trial por cap + suspensión reversible por falta de pago |
 | ⬜ | Notificaciones críticas por email (pedido de documento, cambio de estado) |
-| ⬜ | Bump de `multer` (único CVE runtime) → luego pasar audit a gate bloqueante |
+| ✅ | Remediados TODOS los 6 high de producción (multer→2.2, js-yaml, effect, brace-expansion vía overrides + borrar `sort-by` muerto) + audit ahora es **gate bloqueante** (`--prod`) | #248 (`1402e4a`) — multer 2.1.1 NO estaba fixeado (necesitaba ≥2.2.0) |
 | ⬜ | Unificar la doble superficie admin (step-up canónico) |
 
 ## Etapa 3 — Automatización y escala (post primeros clientes)
@@ -103,7 +103,7 @@ Prioridad: **P0** = no dejaría pasar a un cliente de pago. Cada fila mapea a la
 | P1 | ⬜ | Código muerto de template nunca podado (`chat`, `kanban` 1023 líneas, `forms` 829, react-query-demo) — en AMBOS frontends, duplicado sin paquete UI compartido. | `apps/app-new/src/features/{chat,kanban,forms,react-query-demo,elements}/**`, `apps/*/src/components/ui/kanban.tsx`, `apps/*/src/components/forms/demo-form.tsx` | Borrar módulos huérfanos; evaluar paquete UI compartido. → Etapa 3 (limpieza). |
 | P2 | ⬜ | God-components: `property-document-requests.tsx` 1104 líneas / 16 hooks, `operational-homepage.tsx` 962, `product-tables/index.tsx` 859. | `apps/app-new/src/features/**` (rutas citadas) | Split fetch/estado/presentación. → Etapa 3. |
 | P2 | ⬜ | Rot de nombres product↔property — el feature `products` es en realidad `property-engagements` (auto-rotulado "Temporary Product-Named Adapter"). | `apps/app-new/src/features/products/api/service.ts` | Renombrado gradual a `property-engagements`. → Etapa 3. |
-| ℹ️ | — | **Corrección al ledger:** `multer` ya resuelve a `2.1.1` en el lockfile (vía `@nestjs/platform-express 11.1.21`) — el "único high pendiente" (Etapa 2 + follow-up) probablemente ya está remediado transitivamente. | `viewpro-app/pnpm-lock.yaml` | Confirmar con `pnpm audit`; si limpio, cerrar el ítem de Etapa 2 y pasar el audit a gate bloqueante. |
+| ℹ️ | ✅ | **Resuelto (2026-07-21):** al confirmar con `pnpm audit`, multer 2.1.1 NO estaba fixeado (advisory nuevo exige ≥2.2.0). Remediados los 6 high de prod vía overrides + borrar `sort-by`; audit ahora es gate bloqueante `--prod`. | `#248` (`1402e4a`) | Hecho. |
 
 **Nota de atribución (importante para leer el ledger):** el repo tiene 2 pares de apps — `apps/api` + `apps/app-new` (CRM InmoView, tenant-facing) y `apps/viewpro-api` + `apps/viewpro-web` (plataforma/backoffice). Las filas de Etapa 2 (recuperar contraseña, verificación de email) viven en `apps/api`/`app-new`, **no** en `viewpro-api`. `apps/web` está muerto (solo artefactos de build).
 
