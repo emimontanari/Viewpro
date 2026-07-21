@@ -17,6 +17,8 @@ describe("tenant isolation enforcement (integration)", () => {
 	let cls: ClsService;
 	let tenantAId: string;
 	let tenantBId: string;
+	let labelAId: string;
+	let labelBId: string;
 
 	beforeAll(async () => {
 		moduleRef = await Test.createTestingModule({
@@ -40,12 +42,14 @@ describe("tenant isolation enforcement (integration)", () => {
 		tenantAId = tenantA.id;
 		tenantBId = tenantB.id;
 
-		await prisma.tenantMovementOutcomeLabel.create({
+		const labelA = await prisma.tenantMovementOutcomeLabel.create({
 			data: { tenantId: tenantAId, label: "label-A", createdByUserId: user.id },
 		});
-		await prisma.tenantMovementOutcomeLabel.create({
+		const labelB = await prisma.tenantMovementOutcomeLabel.create({
 			data: { tenantId: tenantBId, label: "label-B", createdByUserId: user.id },
 		});
+		labelAId = labelA.id;
+		labelBId = labelB.id;
 	});
 
 	afterAll(async () => {
@@ -92,5 +96,40 @@ describe("tenant isolation enforcement (integration)", () => {
 		const all = await prisma.tenantMovementOutcomeLabel.findMany();
 
 		expect(all.length).toBeGreaterThanOrEqual(2);
+	});
+
+	it("findUnique of the active tenant's own row returns it", async () => {
+		const row = await inTenant(tenantAId, () =>
+			prisma.tenantMovementOutcomeLabel.findUnique({ where: { id: labelAId } }),
+		);
+
+		expect(row?.id).toBe(labelAId);
+	});
+
+	it("findUnique of another tenant's row by id returns null", async () => {
+		const row = await inTenant(tenantAId, () =>
+			prisma.tenantMovementOutcomeLabel.findUnique({ where: { id: labelBId } }),
+		);
+
+		expect(row).toBeNull();
+	});
+
+	it("findUnique of another tenant's row still returns null with a restrictive select", async () => {
+		const row = await inTenant(tenantAId, () =>
+			prisma.tenantMovementOutcomeLabel.findUnique({
+				where: { id: labelBId },
+				select: { id: true, label: true },
+			}),
+		);
+
+		expect(row).toBeNull();
+	});
+
+	it("findUniqueOrThrow of another tenant's row throws (as not found)", async () => {
+		await expect(
+			inTenant(tenantAId, () =>
+				prisma.tenantMovementOutcomeLabel.findUniqueOrThrow({ where: { id: labelBId } }),
+			),
+		).rejects.toThrow();
 	});
 });
