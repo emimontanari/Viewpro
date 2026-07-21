@@ -32,8 +32,11 @@ const TENANT_OWNED_MODELS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Read/aggregate/bulk ops whose `where` accepts a `tenantId` filter. For these
- * the extension INJECTS `where.tenantId` from the ALS when absent (enforce).
+ * Ops whose `where` accepts a `tenantId` filter — the extension INJECTS
+ * `where.tenantId` from the ALS when absent (enforce). This includes unique-keyed
+ * `update`/`delete`: Prisma (>=5) allows extra non-unique filters alongside the
+ * unique key, so `where: { id, tenantId }` targets the row only when it belongs
+ * to the tenant and otherwise raises P2025 (not found) without mutating.
  */
 const WHERE_INJECTABLE_OPERATIONS: ReadonlySet<string> = new Set([
 	"findFirst",
@@ -44,6 +47,8 @@ const WHERE_INJECTABLE_OPERATIONS: ReadonlySet<string> = new Set([
 	"groupBy",
 	"updateMany",
 	"deleteMany",
+	"update",
+	"delete",
 ]);
 
 /**
@@ -57,24 +62,22 @@ const UNIQUE_READ_OPERATIONS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Unique-keyed WRITES (update/delete/upsert). Still WARN only — enforcing these
- * safely needs a pre-write ownership check (deferred to Phase 3c).
+ * `upsert` stays WARN only: its create-or-update semantics make a blind
+ * tenantId injection into the `where` unsafe (a mismatched tenant would fall
+ * through to the create path). Left for a dedicated follow-up.
  */
-const WARN_ONLY_OPERATIONS: ReadonlySet<string> = new Set([
-	"update",
-	"delete",
-	"upsert",
-]);
+const WARN_ONLY_OPERATIONS: ReadonlySet<string> = new Set(["upsert"]);
 
 /**
- * Isolation backstop — Phase 3b (ENFORCE reads/bulk + unique-keyed reads; WARN
- * unique-keyed writes). A Prisma client extension that, for class-A models
- * queried FROM A TENANT-SCOPED REQUEST:
- *  - injects `where.tenantId` (from the ALS) into where-injectable operations;
+ * Isolation backstop — Phase 3c (ENFORCE reads, bulk, unique-keyed reads AND
+ * unique-keyed update/delete; WARN only upsert). A Prisma client extension that,
+ * for class-A models operated on FROM A TENANT-SCOPED REQUEST:
+ *  - injects `where.tenantId` (from the ALS) into where-injectable operations,
+ *    including update/delete — a cross-tenant target raises P2025 (not found)
+ *    without mutating;
  *  - post-fetch-validates findUnique/findUniqueOrThrow: a row belonging to
- *    another tenant is returned as null (findUnique) or a P2025 not-found
- *    (findUniqueOrThrow), closing the by-id read-leak vector;
- *  - still only warns on unique-keyed writes (update/delete/upsert).
+ *    another tenant is returned as null / raised as P2025;
+ *  - only warns on upsert (unsafe to blind-inject; dedicated follow-up).
  *
  * Bypass paths (owner portal, platform control lane, admin, auth/register,
  * seed) never populate the tenant ALS, so `tenantId` is undefined for them and
