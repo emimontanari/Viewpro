@@ -47,27 +47,34 @@ const WHERE_INJECTABLE_OPERATIONS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Ops keyed by a unique field (findUnique/update/delete/upsert). Prisma rejects
- * a non-unique `tenantId` in their `where`, so these still only WARN here and
- * will be enforced by post-fetch validation in a follow-up (Phase 3b).
+ * Unique-keyed READS (findUnique/findUniqueOrThrow). Prisma rejects a non-unique
+ * `tenantId` in their `where`, so instead of injecting we ENFORCE by post-fetch
+ * validation: run the query, then discard a row that belongs to another tenant.
  */
-const WARN_ONLY_OPERATIONS: ReadonlySet<string> = new Set([
+const UNIQUE_READ_OPERATIONS: ReadonlySet<string> = new Set([
 	"findUnique",
 	"findUniqueOrThrow",
+]);
+
+/**
+ * Unique-keyed WRITES (update/delete/upsert). Still WARN only — enforcing these
+ * safely needs a pre-write ownership check (deferred to Phase 3c).
+ */
+const WARN_ONLY_OPERATIONS: ReadonlySet<string> = new Set([
 	"update",
 	"delete",
 	"upsert",
 ]);
 
 /**
- * Isolation backstop — Phase 3a (ENFORCE reads/bulk + WARN by-id). A Prisma
- * client extension that, for class-A models queried FROM A TENANT-SCOPED
- * REQUEST:
- *  - injects `where.tenantId` (from the ALS) into where-injectable operations
- *    when absent, so a forgotten filter can no longer read or bulk-touch
- *    another tenant's rows;
- *  - still only warns on unique-keyed operations (findUnique/update/delete/
- *    upsert), which need post-fetch validation (added in a follow-up).
+ * Isolation backstop — Phase 3b (ENFORCE reads/bulk + unique-keyed reads; WARN
+ * unique-keyed writes). A Prisma client extension that, for class-A models
+ * queried FROM A TENANT-SCOPED REQUEST:
+ *  - injects `where.tenantId` (from the ALS) into where-injectable operations;
+ *  - post-fetch-validates findUnique/findUniqueOrThrow: a row belonging to
+ *    another tenant is returned as null (findUnique) or a P2025 not-found
+ *    (findUniqueOrThrow), closing the by-id read-leak vector;
+ *  - still only warns on unique-keyed writes (update/delete/upsert).
  *
  * Bypass paths (owner portal, platform control lane, admin, auth/register,
  * seed) never populate the tenant ALS, so `tenantId` is undefined for them and
@@ -91,6 +98,16 @@ export function createTenantIsolationExtension(cls: ClsService) {
 						return query(injectTenantId(args, tenantId));
 					}
 
+					if (UNIQUE_READ_OPERATIONS.has(operation)) {
+						return enforceUniqueRead(
+							model,
+							operation,
+							args,
+							query as (args: unknown) => Promise<unknown>,
+							tenantId,
+						);
+					}
+
 					if (WARN_ONLY_OPERATIONS.has(operation) && !hasTenantIdInArgs(args)) {
 						logger.warn(
 							`Query on tenant-owned ${model}.${operation} without a tenantId filter (tenant=${tenantId})`,
@@ -102,6 +119,68 @@ export function createTenantIsolationExtension(cls: ClsService) {
 			},
 		},
 	});
+}
+
+/**
+ * Enforce tenant scope on a unique-keyed read (findUnique/findUniqueOrThrow):
+ * run the query, then discard a row that belongs to another tenant. `tenantId`
+ * is force-selected when the caller used a restrictive `select` so we can always
+ * validate, then stripped from the result to honour the original select.
+ */
+export async function enforceUniqueRead(
+	model: string,
+	operation: string,
+	args: unknown,
+	query: (args: unknown) => Promise<unknown>,
+	tenantId: string,
+): Promise<unknown> {
+	const { scopedArgs, addedTenantId } = ensureTenantIdSelected(args);
+	const result = (await query(scopedArgs)) as Record<string, unknown> | null;
+
+	if (result && result.tenantId !== tenantId) {
+		if (operation === "findUniqueOrThrow") {
+			throw new Prisma.PrismaClientKnownRequestError(
+				`No ${model} found`,
+				{ code: "P2025", clientVersion: Prisma.prismaVersion.client },
+			);
+		}
+		return null;
+	}
+
+	if (result && addedTenantId) {
+		delete result.tenantId;
+	}
+
+	return result;
+}
+
+/**
+ * Ensure the row's `tenantId` will be present in the result so it can be
+ * validated. Only relevant when the caller passed a `select` that omits it;
+ * a query with no select (or with `include`) already returns all scalar fields.
+ */
+function ensureTenantIdSelected(args: unknown): {
+	scopedArgs: unknown;
+	addedTenantId: boolean;
+} {
+	if (!args || typeof args !== "object") {
+		return { scopedArgs: args, addedTenantId: false };
+	}
+
+	const base = args as Record<string, unknown>;
+	const select = base.select;
+
+	if (!select || typeof select !== "object" || "tenantId" in select) {
+		return { scopedArgs: args, addedTenantId: false };
+	}
+
+	return {
+		scopedArgs: {
+			...base,
+			select: { ...(select as Record<string, unknown>), tenantId: true },
+		},
+		addedTenantId: true,
+	};
 }
 
 /**
