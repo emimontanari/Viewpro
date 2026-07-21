@@ -31,35 +31,51 @@ const TENANT_OWNED_MODELS: ReadonlySet<string> = new Set([
 	"StatusChangeRequest",
 ]);
 
-/** Operations that read or mutate existing rows and therefore must be scoped. */
-const SCOPED_OPERATIONS: ReadonlySet<string> = new Set([
+/**
+ * Read/aggregate/bulk ops whose `where` accepts a `tenantId` filter. For these
+ * the extension INJECTS `where.tenantId` from the ALS when absent (enforce).
+ */
+const WHERE_INJECTABLE_OPERATIONS: ReadonlySet<string> = new Set([
 	"findFirst",
 	"findFirstOrThrow",
 	"findMany",
-	"findUnique",
-	"findUniqueOrThrow",
 	"count",
 	"aggregate",
 	"groupBy",
-	"update",
 	"updateMany",
-	"delete",
 	"deleteMany",
+]);
+
+/**
+ * Ops keyed by a unique field (findUnique/update/delete/upsert). Prisma rejects
+ * a non-unique `tenantId` in their `where`, so these still only WARN here and
+ * will be enforced by post-fetch validation in a follow-up (Phase 3b).
+ */
+const WARN_ONLY_OPERATIONS: ReadonlySet<string> = new Set([
+	"findUnique",
+	"findUniqueOrThrow",
+	"update",
+	"delete",
 	"upsert",
 ]);
 
 /**
- * Isolation backstop — Phase 2 (WARN mode). A Prisma client extension that, on
- * every operation over a class-A model FROM A TENANT-SCOPED REQUEST, logs a
- * warning when the args carry no tenantId filter. It NEVER modifies the query.
+ * Isolation backstop — Phase 3a (ENFORCE reads/bulk + WARN by-id). A Prisma
+ * client extension that, for class-A models queried FROM A TENANT-SCOPED
+ * REQUEST:
+ *  - injects `where.tenantId` (from the ALS) into where-injectable operations
+ *    when absent, so a forgotten filter can no longer read or bulk-touch
+ *    another tenant's rows;
+ *  - still only warns on unique-keyed operations (findUnique/update/delete/
+ *    upsert), which need post-fetch validation (added in a follow-up).
  *
  * Bypass paths (owner portal, platform control lane, admin, auth/register,
  * seed) never populate the tenant ALS, so `tenantId` is undefined for them and
- * they never warn — no manual allow-list needed. Phase 3 flips this to enforce.
+ * enforcement/warnings are skipped — no manual allow-list needed.
  */
 export function createTenantIsolationExtension(cls: ClsService) {
 	return Prisma.defineExtension({
-		name: "tenant-isolation-warn",
+		name: "tenant-isolation",
 		query: {
 			$allModels: {
 				async $allOperations({ model, operation, args, query }) {
@@ -67,12 +83,15 @@ export function createTenantIsolationExtension(cls: ClsService) {
 						? cls.get<string | undefined>(TENANT_ID_CLS_KEY)
 						: undefined;
 
-					if (
-						tenantId !== undefined &&
-						TENANT_OWNED_MODELS.has(model) &&
-						SCOPED_OPERATIONS.has(operation) &&
-						!hasTenantIdInArgs(args)
-					) {
+					if (tenantId === undefined || !TENANT_OWNED_MODELS.has(model)) {
+						return query(args);
+					}
+
+					if (WHERE_INJECTABLE_OPERATIONS.has(operation)) {
+						return query(injectTenantId(args, tenantId));
+					}
+
+					if (WARN_ONLY_OPERATIONS.has(operation) && !hasTenantIdInArgs(args)) {
 						logger.warn(
 							`Query on tenant-owned ${model}.${operation} without a tenantId filter (tenant=${tenantId})`,
 						);
@@ -83,6 +102,25 @@ export function createTenantIsolationExtension(cls: ClsService) {
 			},
 		},
 	});
+}
+
+/**
+ * Merge `where.tenantId` into the args when not already present. An explicit
+ * tenantId set by the repository is respected (never overwritten).
+ */
+export function injectTenantId<T>(args: T, tenantId: string): T {
+	const base =
+		args && typeof args === "object" ? (args as Record<string, unknown>) : {};
+	const where =
+		base.where && typeof base.where === "object"
+			? (base.where as Record<string, unknown>)
+			: {};
+
+	if ("tenantId" in where) {
+		return args;
+	}
+
+	return { ...base, where: { ...where, tenantId } } as T;
 }
 
 export function hasTenantIdInArgs(args: unknown): boolean {

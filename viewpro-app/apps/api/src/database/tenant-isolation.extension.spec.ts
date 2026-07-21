@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasTenantIdInArgs } from "./tenant-isolation.extension";
+import { hasTenantIdInArgs, injectTenantId } from "./tenant-isolation.extension";
 
 describe("hasTenantIdInArgs", () => {
 	it("detects a tenantId filter in where", () => {
@@ -20,5 +20,28 @@ describe("hasTenantIdInArgs", () => {
 		expect(hasTenantIdInArgs(null)).toBe(false);
 		expect(hasTenantIdInArgs("nope")).toBe(false);
 		expect(hasTenantIdInArgs({})).toBe(false);
+	});
+});
+
+describe("injectTenantId", () => {
+	it("adds a where.tenantId to empty or undefined args", () => {
+		expect(injectTenantId(undefined, "t-1")).toEqual({ where: { tenantId: "t-1" } });
+		expect(injectTenantId({}, "t-1")).toEqual({ where: { tenantId: "t-1" } });
+	});
+
+	it("merges tenantId with an existing where without dropping conditions", () => {
+		expect(injectTenantId({ where: { status: "ACTIVE" } }, "t-1")).toEqual({
+			where: { status: "ACTIVE", tenantId: "t-1" },
+		});
+	});
+
+	it("preserves other top-level args (select, orderBy, take)", () => {
+		const result = injectTenantId({ take: 10, select: { id: true } }, "t-1");
+		expect(result).toEqual({ take: 10, select: { id: true }, where: { tenantId: "t-1" } });
+	});
+
+	it("respects an explicit tenantId already in where (never overwrites)", () => {
+		const args = { where: { tenantId: "explicit" } };
+		expect(injectTenantId(args, "t-1")).toBe(args);
 	});
 });
