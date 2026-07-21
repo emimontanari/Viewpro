@@ -4,6 +4,7 @@ import type { Request } from 'express'
 import type { AuthenticatedRequest } from '../auth/guards/auth.guard'
 import { MEMBERSHIPS_REPOSITORY, type MembershipsRepository } from '../memberships/memberships.repository'
 import { getPermissionsForRole } from '../permissions/role-permissions'
+import { TenantContextStore } from './tenant-context.store'
 import type { RequestWithTenantContext } from './tenant-context.types'
 
 const TENANT_ID_HEADER = 'x-tenant-id'
@@ -20,6 +21,7 @@ export class TenantMembershipGuard implements CanActivate {
   constructor(
     @Inject(MEMBERSHIPS_REPOSITORY)
     private readonly membershipsRepository: MembershipsRepository,
+    private readonly tenantContextStore: TenantContextStore,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -58,6 +60,10 @@ export class TenantMembershipGuard implements CanActivate {
       permissions: getPermissionsForRole(membership.role),
       userStatus: membership.user.status,
     }
+
+    // Isolation backstop (Phase 1): propagate the validated tenant id into the
+    // request-scoped AsyncLocalStorage so the Prisma layer can enforce it later.
+    this.tenantContextStore.setTenantId(membership.tenant.id)
 
     return true
   }
