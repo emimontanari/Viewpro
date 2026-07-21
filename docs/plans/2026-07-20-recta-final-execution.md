@@ -65,7 +65,7 @@ config, y encender el cobro (ya diseñado como planes manuales sin pasarela).
 | ✅ | Verificación de email — backend + frontend (soft, verify + banner de reenvío) | #245 (`0789f07`) backend · #246 (`3c09eea`) FE |
 | ⬜ | Definir **precios** por tier + documentar cobro out-of-band + flujo operador TRIAL→ACTIVE |
 | ⬜ | Enforcement de trial por cap + suspensión reversible por falta de pago |
-| ⬜ | Notificaciones críticas por email (pedido de documento, cambio de estado) |
+| 🟡 | Notificaciones por email a propietarios (documento pedido/aprobado/rechazado + cambio de estado) — best-effort | #256 (`8b42556`) — internas de equipo quedan in-app (follow-up) |
 | ✅ | Remediados TODOS los 6 high de producción (multer→2.2, js-yaml, effect, brace-expansion vía overrides + borrar `sort-by` muerto) + audit ahora es **gate bloqueante** (`--prod`) | #248 (`1402e4a`) — multer 2.1.1 NO estaba fixeado (necesitaba ≥2.2.0) |
 | ⬜ | Unificar la doble superficie admin (step-up canónico) |
 
