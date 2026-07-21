@@ -122,7 +122,7 @@ jobs:
         run: pnpm exec turbo run test --concurrency=1
 
   audit:
-    name: Dependency audit (non-blocking)
+    name: Dependency audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -142,8 +142,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Reports known advisories without blocking merge. Flip to a required gate
-      # once the runtime highs (multer et al.) are remediated.
-      - name: Audit (high and above)
-        continue-on-error: true
-        run: pnpm audit --audit-level high
+      # Blocking gate on PRODUCTION dependencies only — dev/build tooling
+      # advisories (e.g. @nestjs/cli chain) do not ship to users and must not
+      # red-gate merges. Runtime highs were remediated via pnpm.overrides +
+      # removing the dead sort-by dep.
+      - name: Audit production dependencies (high and above)
+        run: pnpm audit --prod --audit-level high
