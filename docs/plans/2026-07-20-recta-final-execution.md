@@ -7,6 +7,9 @@
 > código de Etapa 1 COMPLETA.** Restan solo tareas de infra/ops (necesitan credenciales/topología del
 > usuario): backups Neon + restore drill, aislar hosts/secrets demo vs prod + SPOF VPS. Y 3 switches
 > de deploy: SENTRY_DSN, endpoint pooled en DATABASE_URL prod, correr db:seed del operador).
+> **Auditoría de código 2026-07-20** (4 frentes en paralelo — backend·frontend·tests·planes-vs-código)
+> agregada abajo (sección "Auditoría de código"): arquitectura de nivel senior, pero 3 hallazgos **P0**
+> a cerrar antes del primer cliente de pago.
 
 ## Norte
 
@@ -77,6 +80,32 @@ config, y encender el cobro (ya diseñado como planes manuales sin pasarela).
 | ⬜ | OpenAPI real, logging estructurado, oxfmt + lint gate |
 | ⬜ | Cerrar ciclo SDD de los 12 cambios de plataforma (verify/archive); reconciliar roadmap |
 | ⬜ | Facturación electrónica AFIP/ARCA (bloqueante legal a mediano plazo) |
+
+---
+
+## Auditoría de código — Recta Final (2026-07-20)
+
+> Auditoría senior de 4 frentes (backend·frontend·tests·planes-vs-código) vía sub-agentes en paralelo.
+> **Veredicto:** la arquitectura es de nivel senior — ports+adapters consistente, seam outbox→mirror CQRS
+> entre `apps/api` y `apps/viewpro-api`, transacciones cuidadas (advisory lock en el outbox-writer),
+> tests de integración reales contra Postgres + catálogo de aislamiento multi-tenant + E2E Playwright
+> con seed, y CI real en la raíz (`.github/workflows/ci.yml`). **La distancia a producción NO es
+> arquitectura** — es una red de seguridad, higiene visible al cliente y un hueco de config.
+
+Prioridad: **P0** = no dejaría pasar a un cliente de pago. Cada fila mapea a la Etapa que le corresponde.
+
+| Prio | Estado | Hallazgo | Evidencia | Acción |
+|---|---|---|---|---|
+| P0 | ⬜ | Aislamiento multi-tenant 100% por convención — sin Postgres RLS ni Prisma `$extends`. Un `WHERE` sin `tenantId` = fuga cross-tenant, sin backstop. Agravado por repos gigantes y `lint` stub. | `apps/api/src/tenant-context/tenant-membership.guard.ts` + cada `where` en `apps/api/src/movements/prisma-movements.repository.ts:66,108,154,229,326` | Red global: RLS o Prisma `$extends` que fuerce `tenantId` en todo query. → Etapa 1. |
+| P0 | ✅ | Dashboard **FALSO** alcanzable dentro del CRM real — data de faker. **Cerrado**: borrada la ruta `/dashboard/overview` (18 archivos) + `mock-api.ts`/`mock-api-users.ts` (solo los usaba overview; build verde). | `#247` (`c622dd5`) | Hecho. → Etapa 1. |
+| ~~P0~~ **P2** | ⬜ | **Corregido (verificado 2026-07-21): NO es un hueco real.** `viewpro-api/src/config/app.config.ts:63` ya fuerza `secure: nodeEnv==='production' || ...` → cookies seguras en prod. Y los 3 secretos son `@MinLength(16)` **sin default** (fail-fast). El gap real es solo defensa-en-profundidad: falta un `assertProductionSecurity()` por consistencia con `apps/api`. | `apps/viewpro-api/src/config/app.config.ts:63`, `env.schema.ts` | Replicar el guard fail-fast en `viewpro-api` (consistencia, no urgente). → Etapa 3. |
+| P1 | ⬜ | `lint` stub (`echo "not configured yet"`) en ambos backends → el gate "Lint" del CI pasa trivialmente; sin red estática para el riesgo P0 de aislamiento. | `apps/api/package.json`, `apps/viewpro-api/package.json` (`"lint"`) | Configurar ESLint real en ambos; volver el gate efectivo. → Etapa 1/2. |
+| P1 | ⬜ | Código muerto de template nunca podado (`chat`, `kanban` 1023 líneas, `forms` 829, react-query-demo) — en AMBOS frontends, duplicado sin paquete UI compartido. | `apps/app-new/src/features/{chat,kanban,forms,react-query-demo,elements}/**`, `apps/*/src/components/ui/kanban.tsx`, `apps/*/src/components/forms/demo-form.tsx` | Borrar módulos huérfanos; evaluar paquete UI compartido. → Etapa 3 (limpieza). |
+| P2 | ⬜ | God-components: `property-document-requests.tsx` 1104 líneas / 16 hooks, `operational-homepage.tsx` 962, `product-tables/index.tsx` 859. | `apps/app-new/src/features/**` (rutas citadas) | Split fetch/estado/presentación. → Etapa 3. |
+| P2 | ⬜ | Rot de nombres product↔property — el feature `products` es en realidad `property-engagements` (auto-rotulado "Temporary Product-Named Adapter"). | `apps/app-new/src/features/products/api/service.ts` | Renombrado gradual a `property-engagements`. → Etapa 3. |
+| ℹ️ | — | **Corrección al ledger:** `multer` ya resuelve a `2.1.1` en el lockfile (vía `@nestjs/platform-express 11.1.21`) — el "único high pendiente" (Etapa 2 + follow-up) probablemente ya está remediado transitivamente. | `viewpro-app/pnpm-lock.yaml` | Confirmar con `pnpm audit`; si limpio, cerrar el ítem de Etapa 2 y pasar el audit a gate bloqueante. |
+
+**Nota de atribución (importante para leer el ledger):** el repo tiene 2 pares de apps — `apps/api` + `apps/app-new` (CRM InmoView, tenant-facing) y `apps/viewpro-api` + `apps/viewpro-web` (plataforma/backoffice). Las filas de Etapa 2 (recuperar contraseña, verificación de email) viven en `apps/api`/`app-new`, **no** en `viewpro-api`. `apps/web` está muerto (solo artefactos de build).
 
 ---
 
