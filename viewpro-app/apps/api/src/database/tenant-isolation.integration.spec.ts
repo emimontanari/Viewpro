@@ -132,4 +132,33 @@ describe("tenant isolation enforcement (integration)", () => {
 			),
 		).rejects.toThrow();
 	});
+
+	it("cannot update another tenant's row by id (throws, no mutation)", async () => {
+		await expect(
+			inTenant(tenantAId, () =>
+				prisma.tenantMovementOutcomeLabel.update({
+					where: { id: labelBId },
+					data: { label: "hijacked" },
+				}),
+			),
+		).rejects.toThrow();
+
+		const untouched = await prisma.tenantMovementOutcomeLabel.findUnique({
+			where: { id: labelBId },
+		});
+		expect(untouched?.label).toBe("label-B");
+	});
+
+	it("cannot delete another tenant's row by id (throws, row survives)", async () => {
+		await expect(
+			inTenant(tenantAId, () =>
+				prisma.tenantMovementOutcomeLabel.delete({ where: { id: labelBId } }),
+			),
+		).rejects.toThrow();
+
+		const survivor = await prisma.tenantMovementOutcomeLabel.findUnique({
+			where: { id: labelBId },
+		});
+		expect(survivor?.id).toBe(labelBId);
+	});
 });
