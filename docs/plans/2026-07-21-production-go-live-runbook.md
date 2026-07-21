@@ -75,7 +75,7 @@ DOCUMENT_STORAGE_S3_SECRET_ACCESS_KEY=<...>
 DOCUMENT_STORAGE_S3_FORCE_PATH_STYLE=true
 DOCUMENT_STORAGE_SIGNING_SECRET=<...>
 ```
-**Storage de imágenes (S3/R2, público) — ⚠️ NO enforzado al boot; si falta, cae a filesystem local y se pierden en el redeploy:**
+**Storage de imágenes (S3/R2, público) — el app FALLA al boot en prod si el driver no es `s3` (validado en `property-images.storage.ts`), así que seteá estas sí o sí:**
 ```
 PROPERTY_IMAGES_STORAGE_DRIVER=s3
 PROPERTY_IMAGES_S3_BUCKET=inmoview-images
@@ -100,7 +100,8 @@ SENTRY_TRACES_SAMPLE_RATE=0.1
 ```
 NODE_ENV=production
 PORT=3002
-DATABASE_URL=<Neon PLATAFORMA — ver gap directUrl, Paso 4>
+DATABASE_URL=<Neon PLATAFORMA pooled>?pgbouncer=true&sslmode=require
+DIRECT_URL=<Neon PLATAFORMA direct>?sslmode=require
 ACCESS_TOKEN_SECRET=<≥16, operador, distinto del de producto>
 STEP_UP_TOKEN_SECRET=<≥16, distinto>
 PLATFORM_CONTROL_SECRET=<= apps/api>
@@ -161,14 +162,14 @@ pnpm install --frozen-lockfile
 DATABASE_URL="<Neon producto DIRECT>" DIRECT_URL="<Neon producto DIRECT>" \
   pnpm --filter @viewpro/api exec prisma migrate deploy
 
-# Plataforma:
-DATABASE_URL="<Neon plataforma DIRECT>" \
+# Plataforma — corre sobre DIRECT_URL (viewpro-api ya soporta directUrl, PR #255):
+DATABASE_URL="<Neon plataforma DIRECT>" DIRECT_URL="<Neon plataforma DIRECT>" \
   pnpm --filter @viewpro/platform-api exec prisma migrate deploy
 ```
 
-> **⚠️ GAP — `viewpro-api` no tiene `directUrl` en su `schema.prisma`.** Si ponés la DB de plataforma detrás del **pooler** de Neon, `migrate deploy` **falla**. Opciones:
-> 1. **Recomendado corto plazo:** usar el endpoint **direct** de Neon en `DATABASE_URL` de la plataforma (sin pooler). La plataforma tiene poco tráfico → aceptable.
-> 2. Agregar `directUrl` a `apps/viewpro-api/prisma/schema.prisma` (espejando `apps/api`, ~5 líneas) antes de deployar — decime y lo hago en un PR.
+> `viewpro-api` ya tiene el split `url`/`directUrl` (PR #255), así que podés poner
+> la DB de plataforma detrás del **pooler** de Neon (`DATABASE_URL` = pooled,
+> `DIRECT_URL` = direct) igual que el producto. Las migraciones corren sobre el direct.
 
 ---
 
@@ -209,10 +210,10 @@ SEED_OPERATOR_PASSWORD="<password fuerte>" \
 
 ---
 
-## Gaps de código conocidos (para decidir antes o después del go-live)
+## Gaps de código (estado 2026-07-21)
 
-1. **`viewpro-api` sin `directUrl`** (Paso 4) — bloquea pooler en la plataforma. Fix ~5 líneas.
-2. **`PROPERTY_IMAGES_STORAGE_DRIVER` no enforzado** al boot — si se olvida, imágenes a filesystem local (se pierden). Setearlo explícito, o agregar el guard.
-3. **`viewpro-api` sin `assertProductionSecurity`** — `COOKIE_SECURE` no se valida al boot (el `app.config` lo fuerza en prod a nivel runtime, así que las cookies SÍ son seguras, pero conviene el guard por consistencia). Defensa en profundidad.
+1. ✅ **`viewpro-api` sin `directUrl`** — CERRADO en PR #255. Ya soporta pooler de Neon.
+2. ✅ **`PROPERTY_IMAGES_STORAGE_DRIVER`** — **falso positivo**: verificado, `property-images.storage.ts` YA falla al boot en prod si el driver no es `s3` (factory al bootstrap). No requería fix.
+3. ✅ **`viewpro-api` sin `assertProductionSecurity`** — CERRADO en PR #255 (fuerza `COOKIE_SECURE=true` al boot en prod, en paridad con apps/api).
 
-Los tres son follow-ups chicos de código — avisá si querés que los cierre en PRs antes de deployar.
+Los tres resueltos/descartados — el runbook queda sin asteriscos de código.
