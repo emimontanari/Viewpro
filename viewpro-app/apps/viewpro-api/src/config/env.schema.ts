@@ -26,6 +26,12 @@ class EnvironmentVariables {
   @IsString()
   DATABASE_URL?: string
 
+  // Direct (non-pooled) connection for Prisma migrations. In prod this points at
+  // the Neon direct endpoint; dev/test/CI default it to DATABASE_URL.
+  @IsOptional()
+  @IsString()
+  DIRECT_URL?: string
+
   // Required — no default. A missing/weak secret means forgeable operator tokens.
   @IsString()
   @MinLength(16)
@@ -124,8 +130,25 @@ export function validateEnv(config: Record<string, unknown>) {
 
   assertDistinctSecrets(validatedConfig)
   assertSessionWindowOrder(validatedConfig)
+  assertProductionSecurity(validatedConfig)
 
   return validatedConfig
+}
+
+// Fail fast when a production deployment is misconfigured. The runtime already
+// forces secure cookies in production (app.config), but requiring COOKIE_SECURE
+// to be explicitly true here surfaces the misconfiguration loudly at boot and
+// keeps parity with the product API's assertProductionSecurity.
+function assertProductionSecurity(config: EnvironmentVariables) {
+  if (config.NODE_ENV !== 'production') {
+    return
+  }
+
+  if (config.COOKIE_SECURE !== true) {
+    throw new Error(
+      'COOKIE_SECURE: must be true in production so operator session cookies require HTTPS.',
+    )
+  }
 }
 
 // Defense-in-depth: cross-token isolation must not rely on operators

@@ -127,4 +127,16 @@ describe('validateEnv', () => {
       validateEnv({ ...VALID_BASE, STEP_UP_TOKEN_SECRET: VALID_SECRET }),
     ).toThrow(/STEP_UP_TOKEN_SECRET.*ACCESS_TOKEN_SECRET|ACCESS_TOKEN_SECRET.*STEP_UP_TOKEN_SECRET/)
   })
+
+  it('rejects COOKIE_SECURE not true in production (assertProductionSecurity)', () => {
+    expect(() =>
+      validateEnv({ ...VALID_BASE, NODE_ENV: 'production' }),
+    ).toThrow(/COOKIE_SECURE/)
+  })
+
+  it('accepts a hardened production config with COOKIE_SECURE=true', () => {
+    expect(() =>
+      validateEnv({ ...VALID_BASE, NODE_ENV: 'production', COOKIE_SECURE: 'true' }),
+    ).not.toThrow()
+  })
 })
