@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { ClsService } from 'nestjs-cls'
 
-const TENANT_ID_KEY = 'tenantId'
+export const TENANT_ID_CLS_KEY = 'tenantId'
 
 /**
  * Request-scoped store for the active tenant id, backed by AsyncLocalStorage
@@ -17,7 +17,7 @@ export class TenantContextStore {
   constructor(private readonly cls: ClsService) {}
 
   setTenantId(tenantId: string): void {
-    this.cls.set(TENANT_ID_KEY, tenantId)
+    this.cls.set(TENANT_ID_CLS_KEY, tenantId)
   }
 
   /**
@@ -30,6 +30,6 @@ export class TenantContextStore {
       return undefined
     }
 
-    return this.cls.get<string | undefined>(TENANT_ID_KEY)
+    return this.cls.get<string | undefined>(TENANT_ID_CLS_KEY)
   }
 }
