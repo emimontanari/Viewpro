@@ -113,6 +113,8 @@ jobs:
       - name: Apply platform migrations
         env:
           DATABASE_URL: postgresql://viewpro_platform:viewpro_platform@localhost:5434/viewpro_platform_test
+          # schema.prisma now declares directUrl = env("DIRECT_URL"); no pooler in CI, so mirror DATABASE_URL.
+          DIRECT_URL: postgresql://viewpro_platform:viewpro_platform@localhost:5434/viewpro_platform_test
         run: pnpm --filter @viewpro/platform-api exec prisma migrate deploy
 
       # Run test workspaces serially. Each vitest project is already file-serial;
