@@ -16,7 +16,7 @@ const logger = new Logger("TenantIsolation");
  *    Document/DocumentVersion — no direct tenantId, scoped relationally (class B).
  *  - User/RefreshToken/PasswordResetToken/EmailVerificationToken — tenant-agnostic.
  */
-const TENANT_OWNED_MODELS: ReadonlySet<string> = new Set([
+export const TENANT_OWNED_MODELS: ReadonlySet<string> = new Set([
 	"TenantMembership",
 	"TeamInvitation",
 	"TenantMovementOutcomeLabel",
