@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing'
+import { ClsModule } from 'nestjs-cls'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
@@ -20,7 +21,7 @@ describe('PlatformTenantsReadRepository.findById', () => {
 
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
-      imports: [ConfigModule, DatabaseModule],
+      imports: [ClsModule.forRoot({ global: true }), ConfigModule, DatabaseModule],
       providers: [PlatformTenantsReadRepository],
     }).compile()
 

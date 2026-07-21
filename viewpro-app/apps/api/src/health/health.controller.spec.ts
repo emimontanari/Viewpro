@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import request from 'supertest'
+import { ClsModule } from 'nestjs-cls'
 import { DatabaseModule } from '../database/database.module'
 import { HealthModule } from './health.module'
 import { ConfigModule } from '../config/config.module'
@@ -11,7 +12,7 @@ describe('HealthController (integration)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [ConfigModule, DatabaseModule, HealthModule],
+      imports: [ClsModule.forRoot({ global: true }), ConfigModule, DatabaseModule, HealthModule],
     }).compile()
 
     app = moduleFixture.createNestApplication()
