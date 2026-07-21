@@ -1,6 +1,22 @@
+import type { ConfigService } from '@nestjs/config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { EmailSender } from '../email/email-sender.port';
+import type { UsersRepository } from '../users/users.repository';
 import type { NotificationsRepository } from './notifications.repository';
 import { NotificationProducerService } from './notification-producer.service';
+
+function makeDeps() {
+	const usersRepository = {
+		findById: vi.fn().mockResolvedValue({ id: 'user-1', email: 'owner@example.com' }),
+	} as unknown as UsersRepository;
+	const emailSender = {
+		sendOwnerNotification: vi.fn().mockResolvedValue(undefined),
+	} as unknown as EmailSender;
+	const configService = {
+		get: vi.fn().mockReturnValue('https://app.inmoview.app'),
+	} as unknown as ConfigService;
+	return { usersRepository, emailSender, configService };
+}
 
 // ---------------------------------------------------------------------------
 // Minimal repository mock
@@ -24,7 +40,8 @@ describe('notifyPropertyStatusChanged — linkHref shape (24.6c)', () => {
 
 	beforeEach(() => {
 		repository = makeRepositoryMock();
-		service = new NotificationProducerService(repository);
+		const { usersRepository, emailSender, configService } = makeDeps();
+		service = new NotificationProducerService(repository, usersRepository, emailSender, configService);
 	});
 
 	// S-P1 — FR-P1/FR-P2: exact deep-link linkHref shape
@@ -80,5 +97,57 @@ describe('notifyPropertyStatusChanged — linkHref shape (24.6c)', () => {
 		const linkHrefs = calls.map((c) => c[0]!.linkHref);
 		expect(new Set(linkHrefs).size).toBe(1);
 		expect(linkHrefs[0]).toBe('/owner/properties/asset-abc?tab=tracking&movement=mov-789');
+	});
+});
+
+describe('owner notification email (best-effort)', () => {
+	function build() {
+		const repository = makeRepositoryMock();
+		const { usersRepository, emailSender, configService } = makeDeps();
+		const service = new NotificationProducerService(
+			repository,
+			usersRepository,
+			emailSender,
+			configService,
+		);
+		return { service, usersRepository, emailSender };
+	}
+
+	const documentInput = {
+		tenantId: 'tenant-1',
+		ownerUserId: 'user-1',
+		propertyEngagementId: 'eng-1',
+		propertyAssetId: 'asset-abc',
+		documentRequestId: 'doc-1',
+		documentTitle: 'DNI frente',
+	};
+
+	it('emails the owner when a document is requested', async () => {
+		const { service, emailSender } = build();
+
+		await service.notifyDocumentRequested(documentInput);
+
+		expect(emailSender.sendOwnerNotification).toHaveBeenCalledTimes(1);
+		const payload = vi.mocked(emailSender.sendOwnerNotification).mock.calls[0]![0];
+		expect(payload.to).toBe('owner@example.com');
+		expect(payload.notificationType).toBe('DOCUMENT_REQUESTED');
+		expect(payload.url).toContain('/owner/properties/asset-abc');
+		expect(payload.url).toContain('https://app.inmoview.app');
+	});
+
+	it('does not email when the owner user is missing', async () => {
+		const { service, usersRepository, emailSender } = build();
+		vi.mocked(usersRepository.findById).mockResolvedValue(null);
+
+		await service.notifyDocumentRequested(documentInput);
+
+		expect(emailSender.sendOwnerNotification).not.toHaveBeenCalled();
+	});
+
+	it('never throws when email delivery fails (best-effort)', async () => {
+		const { service, emailSender } = build();
+		vi.mocked(emailSender.sendOwnerNotification).mockRejectedValue(new Error('smtp down'));
+
+		await expect(service.notifyDocumentRequested(documentInput)).resolves.toBeUndefined();
 	});
 });

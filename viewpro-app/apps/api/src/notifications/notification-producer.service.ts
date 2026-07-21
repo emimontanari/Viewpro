@@ -1,5 +1,8 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { NotificationType, type PropertyEngagementStatus } from "@prisma/client";
+import { EMAIL_SENDER, type EmailSender } from "../email/email-sender.port";
+import { USERS_REPOSITORY, type UsersRepository } from "../users/users.repository";
 import {
 	NOTIFICATIONS_REPOSITORY,
 	type CreateOwnerNotificationInput,
@@ -66,6 +69,11 @@ export class NotificationProducerService {
 	constructor(
 		@Inject(NOTIFICATIONS_REPOSITORY)
 		private readonly notificationsRepository: NotificationsRepository,
+		@Inject(USERS_REPOSITORY)
+		private readonly usersRepository: UsersRepository,
+		@Inject(EMAIL_SENDER)
+		private readonly emailSender: EmailSender,
+		private readonly configService: ConfigService,
 	) {}
 
 	notifyDocumentRequested(
@@ -132,6 +140,9 @@ export class NotificationProducerService {
 			return;
 		}
 
+		const body = formatStatusChangeBody(input.previousStatus, input.newStatus);
+		const linkHref = `/owner/properties/${input.propertyAssetId}?tab=tracking&movement=${input.movementId}`;
+
 		try {
 			await Promise.all(
 				recipientUserIds.map((recipientUserId) =>
@@ -140,8 +151,8 @@ export class NotificationProducerService {
 						recipientUserId,
 						type: NotificationType.PROPERTY_STATUS_CHANGED,
 						title: "Property status updated",
-						body: formatStatusChangeBody(input.previousStatus, input.newStatus),
-						linkHref: `/owner/properties/${input.propertyAssetId}?tab=tracking&movement=${input.movementId}`,
+						body,
+						linkHref,
 						propertyEngagementId: input.propertyEngagementId,
 						propertyAssetId: input.propertyAssetId,
 						movementId: input.movementId,
@@ -155,6 +166,17 @@ export class NotificationProducerService {
 				}`,
 			);
 		}
+
+		await Promise.all(
+			recipientUserIds.map((recipientUserId) =>
+				this.sendOwnerEmail(
+					recipientUserId,
+					NotificationType.PROPERTY_STATUS_CHANGED,
+					body,
+					linkHref,
+				),
+			),
+		);
 	}
 
 	/**
@@ -254,6 +276,8 @@ export class NotificationProducerService {
 			return;
 		}
 
+		const linkHref = `/owner/properties/${input.propertyAssetId}?tab=documents&doc=${input.documentRequestId}`;
+
 		try {
 			await this.notificationsRepository.createOwner({
 				tenantId: input.tenantId,
@@ -261,7 +285,7 @@ export class NotificationProducerService {
 				type: config.type,
 				title: config.title,
 				body: input.documentTitle,
-				linkHref: `/owner/properties/${input.propertyAssetId}?tab=documents&doc=${input.documentRequestId}`,
+				linkHref,
 				propertyEngagementId: input.propertyEngagementId,
 				propertyAssetId: input.propertyAssetId,
 				documentRequestId: input.documentRequestId,
@@ -269,6 +293,43 @@ export class NotificationProducerService {
 		} catch (error) {
 			this.logger.warn(
 				`Failed to create ${config.type} owner notification: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
+		}
+
+		await this.sendOwnerEmail(input.ownerUserId, config.type, input.documentTitle, linkHref);
+	}
+
+	/**
+	 * Best-effort email to the owner mirroring the in-app notification. Owners are
+	 * external and often not in the app, so email is the primary channel. A missing
+	 * user, missing email config, or delivery failure never breaks the flow.
+	 */
+	private async sendOwnerEmail(
+		recipientUserId: string,
+		notificationType: NotificationType,
+		body: string,
+		linkHref: string,
+	): Promise<void> {
+		try {
+			const user = await this.usersRepository.findById(recipientUserId);
+			if (!user) {
+				return;
+			}
+
+			const publicUrl = this.configService.get<string>("app.publicUrl") ?? "";
+			const url = `${publicUrl.replace(/\/$/, "")}${linkHref}`;
+
+			await this.emailSender.sendOwnerNotification({
+				to: user.email,
+				notificationType,
+				body,
+				url,
+			});
+		} catch (error) {
+			this.logger.warn(
+				`Failed to send owner notification email (${notificationType}): ${
 					error instanceof Error ? error.message : String(error)
 				}`,
 			);

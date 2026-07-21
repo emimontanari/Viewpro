@@ -1,8 +1,10 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
+import { EmailModule } from "../email/email.module";
 import { MembershipsModule } from "../memberships/memberships.module";
 import { PermissionsModule } from "../permissions/permissions.module";
 import { TenantContextModule } from "../tenant-context/tenant-context.module";
+import { UsersModule } from "../users/users.module";
 import { NotificationProducerService } from "./notification-producer.service";
 import { NotificationsController } from "./notifications.controller";
 import { OwnerNotificationsController } from "./owner-notifications.controller";
@@ -20,9 +22,11 @@ import { MarkOwnerNotificationReadUseCase } from "./use-cases/mark-owner-notific
 @Module({
 	imports: [
 		AuthModule,
+		EmailModule,
 		MembershipsModule,
 		PermissionsModule,
 		TenantContextModule,
+		UsersModule,
 	],
 	controllers: [NotificationsController, OwnerNotificationsController],
 	providers: [
