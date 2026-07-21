@@ -3,6 +3,7 @@ import type {
   EmailSender,
   SendEmailVerificationInput,
   SendOwnerInvitationInput,
+  SendOwnerNotificationInput,
   SendPasswordResetInput,
   SendTeamInvitationInput,
 } from './email-sender.port'
@@ -37,6 +38,12 @@ export class NoopEmailSender implements EmailSender {
   async sendEmailVerification(input: SendEmailVerificationInput): Promise<void> {
     this.logger.warn(
       `Email sending disabled (RESEND_API_KEY unset): skipping email verification email to ${input.to}`,
+    )
+  }
+
+  async sendOwnerNotification(input: SendOwnerNotificationInput): Promise<void> {
+    this.logger.warn(
+      `Email sending disabled (RESEND_API_KEY unset): skipping owner notification email to ${input.to}`,
     )
   }
 }

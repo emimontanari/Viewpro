@@ -4,10 +4,12 @@ import type {
   EmailSender,
   SendEmailVerificationInput,
   SendOwnerInvitationInput,
+  SendOwnerNotificationInput,
   SendPasswordResetInput,
   SendTeamInvitationInput,
 } from './email-sender.port'
 import { renderEmailVerificationEmail } from './templates/email-verification-email'
+import { renderOwnerNotificationEmail } from './templates/owner-notification-email'
 import { renderOwnerInvitationEmail, renderTeamInvitationEmail } from './templates/invitation-emails'
 import { renderPasswordResetEmail } from './templates/password-reset-email'
 
@@ -56,6 +58,15 @@ export class ResendEmailSender implements EmailSender {
 
   async sendEmailVerification(input: SendEmailVerificationInput): Promise<void> {
     const email = renderEmailVerificationEmail({ verificationUrl: input.verificationUrl })
+    await this.send(input.to, email)
+  }
+
+  async sendOwnerNotification(input: SendOwnerNotificationInput): Promise<void> {
+    const email = renderOwnerNotificationEmail({
+      notificationType: input.notificationType,
+      body: input.body,
+      url: input.url,
+    })
     await this.send(input.to, email)
   }
 

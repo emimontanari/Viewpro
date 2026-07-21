@@ -44,6 +44,7 @@ describe('CreateTeamInvitationUseCase email', () => {
       sendOwnerInvitation: vi.fn().mockResolvedValue(undefined),
       sendPasswordReset: vi.fn(),
       sendEmailVerification: vi.fn(),
+      sendOwnerNotification: vi.fn(),
     }
     const useCase = new CreateTeamInvitationUseCase(repo as never, buildConfig(), emailSender)
 
@@ -73,6 +74,7 @@ describe('CreateTeamInvitationUseCase email', () => {
       sendOwnerInvitation: vi.fn(),
       sendPasswordReset: vi.fn(),
       sendEmailVerification: vi.fn(),
+      sendOwnerNotification: vi.fn(),
     }
     const useCase = new CreateTeamInvitationUseCase(repo as never, buildConfig(), emailSender)
 

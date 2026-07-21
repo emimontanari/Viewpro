@@ -1,3 +1,4 @@
+import type { NotificationType } from '@prisma/client'
 import type { TeamInvitationRole } from '../team/responses/team-invitation.response'
 
 export const EMAIL_SENDER = Symbol('EMAIL_SENDER')
@@ -27,6 +28,13 @@ export type SendEmailVerificationInput = {
   verificationUrl: string
 }
 
+export type SendOwnerNotificationInput = {
+  to: string
+  notificationType: NotificationType
+  body: string
+  url: string
+}
+
 /**
  * Outbound port for transactional invitation emails.
  * Implementations are best-effort: callers must treat a rejected promise as
@@ -37,4 +45,5 @@ export interface EmailSender {
   sendOwnerInvitation(input: SendOwnerInvitationInput): Promise<void>
   sendPasswordReset(input: SendPasswordResetInput): Promise<void>
   sendEmailVerification(input: SendEmailVerificationInput): Promise<void>
+  sendOwnerNotification(input: SendOwnerNotificationInput): Promise<void>
 }
