@@ -1,0 +1,76 @@
+name: DB Backup (prod → R2)
+
+# Logical nightly backups of both production Neon databases, uploaded to
+# Cloudflare R2 (bucket: inmoview-backups). Independent of Neon PITR — these
+# dumps survive even if a Neon project is deleted.
+#
+# Restore: gunzip < dump.sql.gz | psql "<target DIRECT_URL>"
+#
+# Required repo secrets:
+#   NEON_PROD_DIRECT_URL      - inmoview-prod DIRECT (unpooled) connection string
+#   NEON_PLATFORM_DIRECT_URL  - viewpro-platform-prod DIRECT connection string
+#   R2_S3_ENDPOINT            - https://<account>.r2.cloudflarestorage.com
+#   R2_ACCESS_KEY_ID          - R2 S3 access key
+#   R2_SECRET_ACCESS_KEY      - R2 S3 secret key
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # 06:00 UTC daily (~03:00 ART)
+  workflow_dispatch: {} # allow manual runs
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      R2_ENDPOINT: ${{ secrets.R2_S3_ENDPOINT }}
+      BUCKET: inmoview-backups
+    steps:
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          pg_dump --version
+
+      - name: Dump and upload both databases
+        run: |
+          set -euo pipefail
+          STAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+          dump_one() {
+            local name="$1" url="$2"
+            local file="${name}-${STAMP}.sql.gz"
+            echo "Dumping ${name}..."
+            pg_dump --no-owner --no-privileges "$url" | gzip -9 > "$file"
+            local size; size=$(du -h "$file" | cut -f1)
+            echo "  ${file} (${size})"
+            aws s3 cp "$file" "s3://${BUCKET}/${name}/${file}" --endpoint-url "$R2_ENDPOINT" --only-show-errors
+            echo "  uploaded → s3://${BUCKET}/${name}/${file}"
+          }
+          dump_one "inmoview-prod" "${{ secrets.NEON_PROD_DIRECT_URL }}"
+          dump_one "viewpro-platform-prod" "${{ secrets.NEON_PLATFORM_DIRECT_URL }}"
+
+      - name: Prune backups older than 30 days
+        run: |
+          set -euo pipefail
+          CUTOFF=$(date -u -d '30 days ago' +%s)
+          for prefix in inmoview-prod viewpro-platform-prod; do
+            aws s3api list-objects-v2 --bucket "$BUCKET" --prefix "${prefix}/" \
+              --endpoint-url "$R2_ENDPOINT" --query 'Contents[].{Key:Key,LastModified:LastModified}' --output json 2>/dev/null \
+              | jq -c '.[]?' | while read -r obj; do
+                  key=$(echo "$obj" | jq -r '.Key')
+                  lm=$(date -u -d "$(echo "$obj" | jq -r '.LastModified')" +%s)
+                  if [ "$lm" -lt "$CUTOFF" ]; then
+                    echo "pruning $key"
+                    aws s3 rm "s3://${BUCKET}/${key}" --endpoint-url "$R2_ENDPOINT" --only-show-errors
+                  fi
+                done
+          done
