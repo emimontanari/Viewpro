@@ -1,5 +1,12 @@
 # Production Go-Live Runbook — ViewPro / InmoView
 
+> ✅ **EJECUTADO 2026-07-22 — PRODUCCIÓN VIVA.** Los 4 servicios corriendo con TLS:
+> `app.inmoview.app` (Vercel) · `api.inmoview.app` (Dokploy) · `console.inmoview.app` (Vercel) ·
+> `api-console.inmoview.app` (Dokploy). Neon x2 migradas, R2 storage, Sentry x3, Resend emails.
+> Operador seedeado. Smoke E2E verificado en prod: registrar inmobiliaria → aparece en consola (3s) →
+> activar TRIAL→ACTIVE → operar → step-up+baja → forgot-password envía email real. IDs/secretos en el
+> `deploy-secrets.env` de la sesión. Restan solo tareas de Paso 7 (backups Neon, HTTPS panel Dokploy).
+>
 > Checklist secuenciado para llevar `develop` a producción. Ejecutá los pasos en orden.
 > Fuente de verdad de env vars: los `env.schema.ts` de cada backend (fallan al boot si faltan).
 > Basado en el deploy de demo (2026-07-11) + los 6 T-0 gates del equipo. Fecha: 2026-07-21.
