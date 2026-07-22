@@ -23,7 +23,11 @@
 
 import { describe, it, expect } from 'vitest';
 import type { TenantActivityItem } from '../../api/types';
-import { describeTenantActivityItem, formatActivityTimestamp } from '../activity-feed-formatting';
+import {
+  buildTenantActivityDetail,
+  describeTenantActivityItem,
+  formatActivityTimestamp
+} from '../activity-feed-formatting';
 
 const MOVEMENT_ITEM: TenantActivityItem = {
   kind: 'movement',
@@ -331,5 +335,81 @@ describe('formatActivityTimestamp()', () => {
 
   it('a malformed timestamp fails safe to "—"', () => {
     expect(formatActivityTimestamp('not-a-date')).toBe('—');
+  });
+});
+
+describe('buildTenantActivityDetail', () => {
+  const toMap = (fields: { label: string; value: string }[]) =>
+    Object.fromEntries(fields.map((field) => [field.label, field.value]));
+
+  it('surfaces who/when plus the movement technical fields', () => {
+    const detail = toMap(
+      buildTenantActivityDetail({
+        ...MOVEMENT_ITEM,
+        type: 'OFFER_RECEIVED',
+        observation: 'Ofertaron por la propiedad',
+        nextStep: 'Llamar al propietario',
+        previousStatus: 'INQUIRIES_AND_VISITS',
+        newStatus: 'OFFER_NEGOTIATION',
+        interestLevel: 'HIGH',
+        visitCount: 2,
+        offerAmountCents: 15000000,
+        source: 'MANUAL'
+      })
+    );
+
+    expect(detail['Registrado por']).toBe('Lucía (agente@example.com)');
+    expect(detail['Fecha y hora']).not.toBe('—');
+    expect(detail['Tipo']).toBe('Oferta recibida');
+    expect(detail['Observación']).toBe('Ofertaron por la propiedad');
+    expect(detail['Próximo paso']).toBe('Llamar al propietario');
+    expect(detail['Cambio de estado']).toBe('Consultas y visitas → Negociación de oferta');
+    expect(detail['Nivel de interés']).toBe('Alto');
+    expect(detail['Visitas']).toBe('2');
+    expect(detail['Oferta']).toContain('150.000');
+    expect(detail['Origen']).toBe('Manual');
+    expect(detail['Propiedad']).toBe('Depto en Palermo');
+    expect(detail['Dirección']).toBe('Av. Santa Fe 1234, CABA, Buenos Aires');
+  });
+
+  it('omits absent movement fields instead of emitting blanks', () => {
+    const detail = toMap(buildTenantActivityDetail(MOVEMENT_ITEM));
+
+    expect(detail['Observación']).toBe('Se actualizó el estado');
+    expect('Próximo paso' in detail).toBe(false);
+    expect('Oferta' in detail).toBe(false);
+    expect('Cambio de estado' in detail).toBe(false);
+  });
+
+  it('surfaces the requested document and uploaded file for a document request', () => {
+    const detail = toMap(
+      buildTenantActivityDetail({
+        ...DOCUMENT_REQUEST_ITEM,
+        requestedBy: { id: 'user-2', email: 'encargado@example.com', firstName: 'Marta' },
+        documentRequest: {
+          title: 'Escritura',
+          description: 'Escritura de la propiedad',
+          status: 'SUBMITTED',
+          currentVersion: { originalFilename: 'escritura.pdf', status: 'UPLOADED' }
+        }
+      })
+    );
+
+    expect(detail['Solicitado por']).toBe('Marta (encargado@example.com)');
+    expect(detail['Documento']).toBe('Escritura');
+    expect(detail['Estado']).toBe('Enviado');
+    expect(detail['Archivo']).toBe('escritura.pdf · Subido');
+  });
+
+  it('never throws on a malformed item and still returns the timestamp', () => {
+    const detail = toMap(
+      buildTenantActivityDetail({
+        kind: 'movement',
+        id: 'x',
+        createdAt: 'not-a-date'
+      } as TenantActivityItem)
+    );
+
+    expect(detail['Fecha y hora']).toBe('—');
   });
 });
