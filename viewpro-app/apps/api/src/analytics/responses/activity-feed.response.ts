@@ -1,4 +1,5 @@
 import type { ActivityDocumentRequestRecord } from "../../documents/documents.repository";
+import type { MembershipActivityRecord } from "../../memberships/membership-activity.repository";
 import type { ActivityMovementWithRelations } from "../../movements/movements.repository";
 
 export type ActivityMovementItemResponse = ReturnType<
@@ -7,9 +8,13 @@ export type ActivityMovementItemResponse = ReturnType<
 export type ActivityDocumentRequestItemResponse = ReturnType<
 	typeof mapActivityFeedDocumentRequest
 >;
+export type ActivityMembershipItemResponse = ReturnType<
+	typeof mapActivityFeedMembership
+>;
 export type ActivityFeedItemResponse =
 	| ActivityMovementItemResponse
-	| ActivityDocumentRequestItemResponse;
+	| ActivityDocumentRequestItemResponse
+	| ActivityMembershipItemResponse;
 
 export function mapActivityFeedMovement(
 	movement: ActivityMovementWithRelations,
@@ -120,4 +125,89 @@ export function mapActivityFeedDocumentRequest(
 				: null,
 		},
 	};
+}
+
+/**
+ * mapActivityFeedMembership — maps a derived membership lifecycle record
+ * (INVITED/JOINED/DEACTIVATED, `memberships/membership-activity.repository.ts`)
+ * into the merged activity feed's item shape.
+ *
+ * One `kind: 'membership'` value, sub-discriminated by `membershipEvent` —
+ * mirrors how `movement.type` sub-discriminates within `kind: 'movement'`
+ * (design D1). `subject` is who the event is about; `actor` is who performed
+ * it, or `null` when there is none to show (JOINED has no actor — D1c
+ * deliberately rejects an invited-by heuristic in favor of the sibling
+ * INVITED event's real FK).
+ *
+ * The globally-unique `membership-{invited,joined,deactivated}:` id prefix
+ * is applied HERE, not in the repository — required by `compareActivityItems`'
+ * `id.localeCompare` tie-break, same discipline as the `document-request:`
+ * prefix above.
+ */
+export function mapActivityFeedMembership(record: MembershipActivityRecord) {
+	const base = {
+		kind: "membership" as const,
+		tenantId: record.tenantId,
+		createdAt: record.createdAt.toISOString(),
+	};
+
+	switch (record.event) {
+		case "INVITED":
+			return {
+				...base,
+				id: `membership-invited:${record.id}`,
+				membershipEvent: "INVITED" as const,
+				subject: { email: record.email, firstName: null },
+				actor: {
+					id: record.invitedByUser.id,
+					email: record.invitedByUser.email,
+					firstName: record.invitedByUser.firstName,
+				},
+			};
+		case "JOINED":
+			return {
+				...base,
+				id: `membership-joined:${record.id}`,
+				membershipEvent: "JOINED" as const,
+				subject: {
+					id: record.user.id,
+					email: record.user.email,
+					firstName: record.user.firstName,
+				},
+				actor: null,
+			};
+		case "DEACTIVATED":
+			return {
+				...base,
+				id: `membership-deactivated:${record.id}`,
+				membershipEvent: "DEACTIVATED" as const,
+				subject: {
+					id: record.user.id,
+					email: record.user.email,
+					firstName: record.user.firstName,
+				},
+				actor: record.deactivatedByUser
+					? {
+							id: record.deactivatedByUser.id,
+							email: record.deactivatedByUser.email,
+							firstName: record.deactivatedByUser.firstName,
+						}
+					: null,
+			};
+		case "ROLE_CHANGED":
+			// id prefix is `member-role-changed:` (singular `member-`, NOT
+			// `membership-`) — matches the proposal verbatim, deliberately
+			// breaking the sibling prefix's naming symmetry. Zero functional
+			// impact: compareActivityItems only needs id.localeCompare stability,
+			// not a shared root string.
+			return {
+				...base,
+				id: `member-role-changed:${record.id}`,
+				membershipEvent: "ROLE_CHANGED" as const,
+				subject: record.subject,
+				actor: record.actor,
+				previousRole: record.previousRole,
+				newRole: record.newRole,
+			};
+	}
 }

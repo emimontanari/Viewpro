@@ -150,8 +150,8 @@ export function TeamManagementSection({ members, pendingInvitations }: TeamManag
           <div className='space-y-1.5'>
             <CardTitle>Miembros del equipo</CardTitle>
             <CardDescription>
-              Esta lista usa membresías reales del tenant. Creá una invitación para sumar un manager
-              o agente.
+              Esta lista usa membresías reales del tenant. Creá una invitación para sumar un encargado
+              o vendedor.
             </CardDescription>
           </div>
           {canManageTeam ? (

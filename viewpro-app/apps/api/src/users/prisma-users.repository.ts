@@ -18,4 +18,18 @@ export class PrismaUsersRepository implements UsersRepository {
   findById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id } })
   }
+
+  updatePassword(userId: string, passwordHash: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    })
+  }
+
+  markEmailVerified(userId: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { emailVerifiedAt: new Date() },
+    })
+  }
 }

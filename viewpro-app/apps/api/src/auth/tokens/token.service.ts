@@ -41,6 +41,33 @@ export class TokenService {
     return new Date(Date.now() + ttlSeconds * 1000)
   }
 
+  generatePasswordResetToken(): string {
+    return randomBytes(32).toString('base64url')
+  }
+
+  hashPasswordResetToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex')
+  }
+
+  getPasswordResetExpiresAt(): Date {
+    const ttlSeconds = this.configService.get<number>('app.auth.resetTokenTtlSeconds') ?? 3600
+    return new Date(Date.now() + ttlSeconds * 1000)
+  }
+
+  generateEmailVerificationToken(): string {
+    return randomBytes(32).toString('base64url')
+  }
+
+  hashEmailVerificationToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex')
+  }
+
+  getEmailVerificationExpiresAt(): Date {
+    const ttlSeconds =
+      this.configService.get<number>('app.auth.emailVerificationTokenTtlSeconds') ?? 86400
+    return new Date(Date.now() + ttlSeconds * 1000)
+  }
+
   setAuthCookies(response: Response, accessToken: string, refreshToken: string) {
     const accessTtlSeconds = this.configService.get<number>('app.auth.accessTokenTtlSeconds') ?? 900
     const refreshTtlSeconds = this.configService.get<number>('app.auth.refreshTokenTtlSeconds') ?? 2592000

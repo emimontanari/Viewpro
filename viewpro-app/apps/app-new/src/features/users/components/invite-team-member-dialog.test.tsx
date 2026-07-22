@@ -68,7 +68,9 @@ describe('InviteTeamMemberDialog', () => {
   it('shows the generated manual invitation link', () => {
     renderDialog({ invitationUrl: 'http://localhost:3000/team-invitations/raw-token-1' });
 
-    expect(screen.getByText('Copiá este link manualmente:')).toBeInTheDocument();
+    expect(
+      screen.getByText('Link de la invitación (también enviado por email):')
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'http://localhost:3000/team-invitations/raw-token-1' })
     ).toHaveAttribute('href', 'http://localhost:3000/team-invitations/raw-token-1');

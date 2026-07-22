@@ -46,7 +46,7 @@ export function OwnerEngagementCard({
             </ul>
           ) : (
             <p className='mt-2 text-sm text-muted-foreground'>
-              La inmobiliaria todavía no informó agentes asignados.
+              La inmobiliaria todavía no informó vendedores asignados.
             </p>
           )}
         </div>

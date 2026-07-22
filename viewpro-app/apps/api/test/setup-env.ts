@@ -9,7 +9,10 @@ loadEnvFile(resolve(process.cwd(), ".env.test"));
 
 process.env.DATABASE_URL ??=
 	"postgresql://viewpro:viewpro@localhost:5432/viewpro_test?schema=public";
+// No separate pooler in dev/test — migrations use the same connection.
+process.env.DIRECT_URL ??= process.env.DATABASE_URL;
 process.env.ACCESS_TOKEN_SECRET ??= "test-access-token-secret";
+process.env.PLATFORM_CONTROL_SECRET ??= "test-platform-control-secret-min16";
 process.env.COOKIE_DOMAIN ??= "localhost";
 process.env.COOKIE_SECURE ??= "false";
 process.env.CORS_ORIGIN ??= "http://localhost:3000";

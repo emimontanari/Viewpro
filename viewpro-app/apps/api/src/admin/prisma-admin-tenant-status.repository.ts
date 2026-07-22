@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { AnalyticsActorType, AnalyticsEventName, type TenantStatus } from '@prisma/client'
+import { AnalyticsActorType, AnalyticsEventName, type Prisma, type TenantStatus } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
+import { PlatformOutboxWriter } from '../platform-data/platform-outbox-writer'
+import { toAuditActor } from './audit-actor'
 import type {
   AdminTenantStatusRepository,
   UpdateAdminTenantStatusInput,
@@ -11,16 +13,24 @@ type LockedTenantStatusRow = {
   id: string
   status: TenantStatus
   updatedAt: Date
+  name: string
+  slug: string
 }
 
 @Injectable()
 export class PrismaAdminTenantStatusRepository implements AdminTenantStatusRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    private readonly outboxWriter: PlatformOutboxWriter,
+  ) {}
 
-  async updateTenantStatus(input: UpdateAdminTenantStatusInput): Promise<UpdateAdminTenantStatusResult> {
-    return this.prisma.$transaction(async (tx) => {
-      const [tenant] = await tx.$queryRaw<LockedTenantStatusRow[]>`
-        SELECT "id", "status", "updatedAt"
+  async updateTenantStatus(
+    input: UpdateAdminTenantStatusInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<UpdateAdminTenantStatusResult> {
+    const run = async (client: Prisma.TransactionClient): Promise<UpdateAdminTenantStatusResult> => {
+      const [tenant] = await client.$queryRaw<LockedTenantStatusRow[]>`
+        SELECT "id", "status", "updatedAt", "name", "slug"
         FROM "tenants"
         WHERE "id" = ${input.tenantId}
         FOR UPDATE
@@ -28,6 +38,18 @@ export class PrismaAdminTenantStatusRepository implements AdminTenantStatusRepos
 
       if (!tenant) {
         return { status: 'notFound' }
+      }
+
+      // D1/D2: CANCELLED is terminal — reject ANY transition from a CANCELLED
+      // current status, BEFORE the `unchanged` check, so CANCELLED → CANCELLED
+      // is also terminal (never the `unchanged: true` success shape).
+      if (tenant.status === 'CANCELLED') {
+        return {
+          status: 'terminal',
+          tenantId: tenant.id,
+          currentStatus: tenant.status,
+          updatedAt: tenant.updatedAt,
+        }
       }
 
       if (tenant.status === input.targetStatus) {
@@ -40,16 +62,29 @@ export class PrismaAdminTenantStatusRepository implements AdminTenantStatusRepos
         }
       }
 
-      const updatedTenant = await tx.tenant.update({
+      const updatedTenant = await client.tenant.update({
         where: { id: tenant.id },
         data: { status: input.targetStatus },
       })
 
-      await tx.analyticsEvent.create({
+      // Stamp audit actor: operator or product user (discriminated union)
+      const actorData =
+        input.actor.type === 'operator'
+          ? {
+              actorType: AnalyticsActorType.PLATFORM_OPERATOR,
+              actorOperatorId: input.actor.operatorId,
+              actorUserId: null,
+            }
+          : {
+              actorType: AnalyticsActorType.INTERNAL_USER,
+              actorOperatorId: null,
+              actorUserId: input.actor.userId,
+            }
+
+      await client.analyticsEvent.create({
         data: {
           tenantId: tenant.id,
-          actorUserId: input.actorUserId,
-          actorType: AnalyticsActorType.INTERNAL_USER,
+          ...actorData,
           eventName: AnalyticsEventName.TENANT_STATUS_CHANGED,
           metadata: {
             previousStatus: tenant.status,
@@ -59,6 +94,35 @@ export class PrismaAdminTenantStatusRepository implements AdminTenantStatusRepos
         },
       })
 
+      // D3: emit outbox event inside the SAME transaction as the domain mutation.
+      // D4: only on the `updated` branch — no-op/unchanged transitions emit nothing.
+      // A3: name and slug are read from the same FOR UPDATE row (same tx, no extra query).
+      await this.outboxWriter.emit(client, {
+        eventType: 'TENANT_STATUS_CHANGED',
+        tenantId: tenant.id,
+        payload: {
+          previousStatus: tenant.status,
+          newStatus: input.targetStatus,
+          name: tenant.name,
+          slug: tenant.slug,
+        },
+        occurredAt: input.now,
+      })
+
+      // platform-audit-log (T-09): 2nd emit, same tx — generic audit trail
+      // alongside the existing tenant-registry TENANT_STATUS_CHANGED emit.
+      await this.outboxWriter.emit(client, {
+        eventType: 'AUDIT_LOGGED',
+        tenantId: tenant.id,
+        payload: {
+          action: 'TENANT_STATUS_CHANGED',
+          previousValue: { status: tenant.status },
+          newValue: { status: input.targetStatus },
+          actor: toAuditActor(input.actor),
+        },
+        occurredAt: input.now,
+      })
+
       return {
         status: 'updated',
         tenantId: updatedTenant.id,
@@ -66,6 +130,10 @@ export class PrismaAdminTenantStatusRepository implements AdminTenantStatusRepos
         currentStatus: updatedTenant.status,
         updatedAt: updatedTenant.updatedAt,
       }
-    })
+    }
+
+    // If an outer transaction is provided, run inside it (no nested $transaction).
+    // Otherwise start an own transaction — preserves the existing /admin behaviour.
+    return tx ? run(tx) : this.prisma.$transaction(run)
   }
 }

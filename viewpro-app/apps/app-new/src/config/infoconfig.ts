@@ -96,7 +96,7 @@ export const productInfoContent: InfobarContent = {
     {
       title: 'Edición',
       description:
-        'La edición y eliminación todavía no están soportadas por el backend. Por ahora el detalle de una propiedad existente es de solo lectura.',
+        'Podés editar los datos comerciales, el precio y las imágenes de una propiedad desde el menú de acciones o el botón "Editar propiedad", y archivarla como baja reversible. Los cambios se guardan en el backend de property engagements.',
       links: []
     },
     {

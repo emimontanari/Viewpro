@@ -44,7 +44,8 @@ const adminSession: Session = {
     firstName: 'Admin',
     lastName: 'ViewPro',
     status: 'ACTIVE',
-    globalRole: 'VIEWPRO_ADMIN'
+    globalRole: 'VIEWPRO_ADMIN',
+    emailVerifiedAt: null
   },
   memberships: []
 };

@@ -43,12 +43,16 @@ export const config = {
   ]
 };
 
-function isProtectedAppPath(pathname: string) {
+export function isProtectedAppPath(pathname: string) {
   return (
     pathname === '/dashboard' ||
     pathname.startsWith('/dashboard/') ||
     pathname === '/owner' ||
-    pathname.startsWith('/owner/')
+    pathname.startsWith('/owner/') ||
+    // T-21: /admin paths require authentication at the proxy layer (server-side protection).
+    // This is defense-in-depth; InmoView's own AdminGuard remains the authoritative gate.
+    pathname === '/admin' ||
+    pathname.startsWith('/admin/')
   );
 }
 

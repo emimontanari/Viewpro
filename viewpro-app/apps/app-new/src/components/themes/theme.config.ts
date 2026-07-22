@@ -2,9 +2,13 @@
  * Default theme that loads when no user preference is set
  * Change this value to set a different default theme
  */
-export const DEFAULT_THEME = 'vercel';
+export const DEFAULT_THEME = 'inmoview';
 
 export const THEMES = [
+  {
+    name: 'InmoView',
+    value: 'inmoview'
+  },
   {
     name: 'Claude',
     value: 'claude'

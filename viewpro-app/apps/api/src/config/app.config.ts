@@ -83,11 +83,19 @@ export const appConfig = registerAs('app', () => {
       accessTokenSecret: process.env.ACCESS_TOKEN_SECRET ?? 'change-me-in-real-env',
       accessTokenTtlSeconds: Number(process.env.ACCESS_TOKEN_TTL_SECONDS ?? 900),
       refreshTokenTtlSeconds: Number(process.env.REFRESH_TOKEN_TTL_SECONDS ?? 2592000),
+      resetTokenTtlSeconds: Number(process.env.RESET_TOKEN_TTL_SECONDS ?? 3600),
+      emailVerificationTokenTtlSeconds: Number(
+        process.env.EMAIL_VERIFICATION_TOKEN_TTL_SECONDS ?? 86400,
+      ),
     },
     authRateLimit: getAuthRateLimitConfig(),
     cookies: {
       domain: process.env.COOKIE_DOMAIN,
       secure: process.env.COOKIE_SECURE === 'true',
+    },
+    email: {
+      apiKey: process.env.RESEND_API_KEY,
+      fromAddress: process.env.EMAIL_FROM_ADDRESS ?? 'no-reply@inmoview.app',
     },
     sentry: getSentryConfig(nodeEnv),
   }

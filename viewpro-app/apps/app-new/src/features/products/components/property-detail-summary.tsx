@@ -119,7 +119,7 @@ export function PropertyDetailHeader({
             <p className='max-w-56 text-xs leading-5 text-muted-foreground'>
               {canRestore
                 ? 'Restaurá la propiedad para agregar actualizaciones.'
-                : 'La propiedad está archivada. Pedile a un manager que la restaure.'}
+                : 'La propiedad está archivada. Pedile a un encargado que la restaure.'}
             </p>
           </>
         ) : canAddMovement ? (

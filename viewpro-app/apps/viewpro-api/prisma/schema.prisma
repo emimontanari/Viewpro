@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Pooled connection (e.g. Neon PgBouncer) for the running app.
+  url       = env("DATABASE_URL")
+  // Direct connection for migrations/introspection, which cannot run over a
+  // pooler. Falls back to DATABASE_URL in dev/test/CI where no pooler exists.
+  directUrl = env("DIRECT_URL")
+}
+
+enum OperatorStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum PlatformOperatorRole {
+  OWNER
+  OPERATIONS
+  ANALYST
+}
+
+model Operator {
+  id           String               @id @default(uuid())
+  email        String               @unique
+  passwordHash String
+  status       OperatorStatus       @default(ACTIVE)
+  role         PlatformOperatorRole @default(ANALYST)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+}
+
+/// Mirror of InmoView platform outbox events — deduped by sourceEventId (D5, D8).
+model PlatformMirrorEvent {
+  id            String   @id @default(uuid())
+  sourceEventId String   @unique
+  eventType     String
+  tenantId      String
+  newStatus     String
+  occurredAt    DateTime
+  /// W1: BigInt matches the producer BIGSERIAL (platform_outbox_events.seqNo).
+  seqNo         BigInt
+  ingestedAt    DateTime @default(now())
+  payload       Json
+
+  @@index([tenantId, seqNo])
+  @@map("platform_mirror_events")
+}
+
+/// Single-row cursor tracking the last successfully ingested seqNo (D7).
+model PlatformIngestCursor {
+  id    Int    @id @default(1)
+  /// W1: BigInt matches the producer BIGSERIAL (platform_outbox_events.seqNo).
+  seqNo BigInt @default(0)
+
+  @@map("platform_ingest_cursor")
+}
+
+/// Operator-facing tenant registry projection (Phase 7 slice 2A).
+/// Upserted from the data-lane feed: TENANT_REGISTERED (full identity+limits)
+/// and TENANT_STATUS_CHANGED (latestStatus + name/slug when present, A8/A9).
+/// `latestStatus` is a plain String (mirrors platform_mirror_events.newStatus) —
+/// the contract union enforces valid values, avoiding an enum migration (A7).
+model PlatformTenant {
+  id                           String    @id
+  name                         String
+  slug                         String
+  latestStatus                 String
+  maxUsers                     Int?
+  maxActivePropertyEngagements Int?
+  maxDocumentsStorageMb        Int?
+  trialEndsAt                  DateTime?
+  /// platform-manual-plans (Slice 4, Part 2), design D4 — the ONLY
+  /// command-written column in this otherwise event-sourced projection.
+  /// Written by `PlatformTenantRepository.setPlan` (assign-plan endpoint)
+  /// and cleared by the drift-clear recompute in `applyLimitsChange` (D5).
+  /// `upsertFromRegistered`/`upsertFromStatusChange` never reference `plan`
+  /// — no clobber risk, same discipline as `trialEndsAt` present-only.
+  plan                         String?
+  updatedAt                    DateTime  @updatedAt
+
+  @@map("platform_tenants")
+}
+
+enum PlatformAuditSource {
+  INMOVIEW_OUTBOX
+  VIEWPRO_NATIVE
+}
+
+/// Append-only audit trail projection for AUDIT_LOGGED events (vision D3) AND
+/// ViewPro-native operator-management actions (A4, platform-operator-management).
+/// sourceEventId's own unique constraint is the SOLE dedup mechanism for
+/// InmoView-outbox events — AUDIT_LOGGED is never written to
+/// platform_mirror_events (A5/A6). Native rows never populate sourceEventId
+/// (Postgres unique indexes permit multiple NULLs, so native writes can never
+/// collide with — or accidentally dedupe against — outbox-sourced rows).
+model PlatformAuditLog {
+  id            String              @id @default(uuid())
+  sourceEventId String?             @unique
+  seqNo         BigInt?
+  action        String
+  tenantId      String?
+  actor         Json
+  target        Json?
+  previousValue Json?
+  newValue      Json?
+  occurredAt    DateTime
+  createdAt     DateTime            @default(now())
+  source        PlatformAuditSource @default(INMOVIEW_OUTBOX)
+
+  @@index([seqNo])
+  @@map("platform_audit_log")
+}

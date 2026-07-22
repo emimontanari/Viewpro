@@ -3,10 +3,12 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { CurrentUser } from "../../auth/types/current-user";
+import { EMAIL_SENDER, type EmailSender } from "../../email/email-sender.port";
 import { PERMISSIONS } from "../../permissions/permissions.constants";
 import type { TenantContext } from "../../tenant-context/tenant-context.types";
 import {
@@ -20,11 +22,15 @@ import {
 
 @Injectable()
 export class CreateOwnerInvitationLinkUseCase {
+  private readonly logger = new Logger(CreateOwnerInvitationLinkUseCase.name);
+
   constructor(
     @Inject(PROPERTY_ENGAGEMENTS_REPOSITORY)
     private readonly propertyEngagementsRepository: PropertyEngagementsRepository,
     @Inject(ConfigService)
     private readonly configService: ConfigService,
+    @Inject(EMAIL_SENDER)
+    private readonly emailSender: EmailSender,
   ) {}
 
   async execute(
@@ -71,6 +77,21 @@ export class CreateOwnerInvitationLinkUseCase {
     const invitationUrl = `${appPublicUrl}/owner-invitations/${encodeURIComponent(
       result.invitation.token,
     )}`;
+
+    // Best-effort: an email failure must never fail the invitation request.
+    try {
+      await this.emailSender.sendOwnerInvitation({
+        to: result.invitation.email,
+        invitationUrl,
+        expiresAt: result.invitation.expiresAt,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to send owner invitation email to ${result.invitation.email}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
 
     return mapOwnerInvitationLinkResponse({
       invitationId: result.invitation.id,

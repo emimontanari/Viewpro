@@ -54,7 +54,8 @@ const acceptedSession: Session = {
     firstName: 'Ana',
     lastName: 'García',
     status: 'ACTIVE',
-    globalRole: 'USER'
+    globalRole: 'USER',
+    emailVerifiedAt: null
   },
   memberships: []
 };

@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
+import { PlatformDataModule } from "../platform-data/platform-data.module";
 import { UsersModule } from "../users/users.module";
 import { ADMIN_READ_MODELS_REPOSITORY } from "./admin-read-models.repository";
 import { AdminReadModelsService } from "./admin-read-models.service";
@@ -14,7 +15,7 @@ import { PrismaAdminTenantLimitsRepository } from "./prisma-admin-tenant-limits.
 import { PrismaAdminTenantStatusRepository } from "./prisma-admin-tenant-status.repository";
 
 @Module({
-	imports: [AuthModule, UsersModule],
+	imports: [AuthModule, UsersModule, PlatformDataModule],
 	controllers: [AdminController],
 	providers: [
 		GlobalAdminGuard,
@@ -25,6 +26,18 @@ import { PrismaAdminTenantStatusRepository } from "./prisma-admin-tenant-status.
 			provide: ADMIN_READ_MODELS_REPOSITORY,
 			useClass: PrismaAdminReadModelsRepository,
 		},
+		{
+			provide: ADMIN_TENANT_STATUS_REPOSITORY,
+			useClass: PrismaAdminTenantStatusRepository,
+		},
+		{
+			provide: ADMIN_TENANT_LIMITS_REPOSITORY,
+			useClass: PrismaAdminTenantLimitsRepository,
+		},
+	],
+	exports: [
+		AdminTenantStatusService,
+		AdminTenantLimitsService,
 		{
 			provide: ADMIN_TENANT_STATUS_REPOSITORY,
 			useClass: PrismaAdminTenantStatusRepository,

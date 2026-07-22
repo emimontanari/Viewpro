@@ -66,6 +66,25 @@ describe('Status Change Requests (e2e)', () => {
     await app.close()
   })
 
+  // Notifications are best-effort, fire-and-forget side effects written AFTER the
+  // HTTP response returns (FR-30/S-12). Poll until they land instead of reading
+  // once, so slower CI runners don't race the async write.
+  type NotificationWhere = NonNullable<
+    Parameters<typeof prisma.notification.findMany>[0]
+  >['where']
+
+  async function waitForNotifications(where: NotificationWhere, minCount = 1) {
+    const deadlineMs = 5000
+    const intervalMs = 50
+    const start = Date.now()
+    let found = await prisma.notification.findMany({ where })
+    while (found.length < minCount && Date.now() - start < deadlineMs) {
+      await new Promise((resolve) => setTimeout(resolve, intervalMs))
+      found = await prisma.notification.findMany({ where })
+    }
+    return found
+  }
+
   // ─── S-1: Happy path create ───────────────────────────────────────────────────
 
   it('S-1: seller creates a request and managers are notified', async () => {
@@ -89,10 +108,8 @@ describe('Status Change Requests (e2e)', () => {
       propertyEngagementId: engagementId,
     })
 
-    // Notification should have been created for the manager
-    const notifications = await prisma.notification.findMany({
-      where: { recipientUserId: manager.userId },
-    })
+    // Notification should have been created for the manager (best-effort/async)
+    const notifications = await waitForNotifications({ recipientUserId: manager.userId })
     expect(notifications.length).toBeGreaterThanOrEqual(1)
     expect(notifications[0]?.type).toBe('STATUS_CHANGE_REQUESTED')
     expect(notifications[0]?.linkHref).toBe('/dashboard/status-change-requests')
@@ -143,9 +160,10 @@ describe('Status Change Requests (e2e)', () => {
       customOutcomeLabelId: null,
     })
 
-    // Seller notification
-    const sellerNotifications = await prisma.notification.findMany({
-      where: { recipientUserId: seller.userId, type: 'STATUS_CHANGE_APPROVED' },
+    // Seller notification (best-effort/async)
+    const sellerNotifications = await waitForNotifications({
+      recipientUserId: seller.userId,
+      type: 'STATUS_CHANGE_APPROVED',
     })
     expect(sellerNotifications).toHaveLength(1)
   })
@@ -188,9 +206,10 @@ describe('Status Change Requests (e2e)', () => {
     })
     expect(movements).toBe(0)
 
-    // Seller rejection notification
-    const notifications = await prisma.notification.findMany({
-      where: { recipientUserId: seller.userId, type: 'STATUS_CHANGE_REJECTED' },
+    // Seller rejection notification (best-effort/async)
+    const notifications = await waitForNotifications({
+      recipientUserId: seller.userId,
+      type: 'STATUS_CHANGE_REJECTED',
     })
     expect(notifications).toHaveLength(1)
     expect(notifications[0]?.body).toBe('Documentación incompleta')

@@ -8,8 +8,16 @@ import {
 	IsString,
 	Max,
 	Min,
+	MinLength,
 	validateSync,
 } from "class-validator";
+
+// Dev/test default so local runs and the suite work without extra setup.
+// Production must NEVER boot with this value — enforced by assertProductionSecurity.
+const ACCESS_TOKEN_SECRET_DEV_PLACEHOLDER = "change-me-in-real-env";
+
+// Minimum length required for the session-signing secret in production.
+const ACCESS_TOKEN_SECRET_MIN_LENGTH = 32;
 
 class EnvironmentVariables {
 	@IsIn(["development", "test", "production"])
@@ -63,6 +71,12 @@ class EnvironmentVariables {
 	@IsString()
 	DATABASE_URL?: string;
 
+	// Direct (non-pooled) connection for Prisma migrations/introspection. In prod
+	// this points at the Neon direct endpoint; dev/test/CI default it to DATABASE_URL.
+	@IsOptional()
+	@IsString()
+	DIRECT_URL?: string;
+
 	@IsOptional()
 	@IsIn(["fake", "local", "s3"])
 	DOCUMENT_STORAGE_DRIVER?: "fake" | "local" | "s3";
@@ -100,13 +114,18 @@ class EnvironmentVariables {
 	@Transform(({ value }) => value === true || value === "true")
 	DOCUMENT_STORAGE_S3_FORCE_PATH_STYLE = false;
 
+	// Signs user session tokens. A weak/known value lets anyone forge a token for
+	// any user of any tenant. Keeps a dev default, but assertProductionSecurity
+	// rejects the placeholder and anything under 32 chars when NODE_ENV=production.
 	@IsString()
-	ACCESS_TOKEN_SECRET = "change-me-in-real-env";
+	ACCESS_TOKEN_SECRET = ACCESS_TOKEN_SECRET_DEV_PLACEHOLDER;
 
 	@IsOptional()
 	@IsString()
 	COOKIE_DOMAIN?: string;
 
+	// Dev default false for http://localhost. assertProductionSecurity requires
+	// true in production so session cookies are never sent over plain HTTP.
 	@IsBoolean()
 	@Transform(({ value }) => value === true || value === "true")
 	COOKIE_SECURE = false;
@@ -121,6 +140,24 @@ class EnvironmentVariables {
 	@Type(() => Number)
 	REFRESH_TOKEN_TTL_SECONDS = 2592000;
 
+	@IsInt()
+	@Min(60)
+	@Type(() => Number)
+	RESET_TOKEN_TTL_SECONDS = 3600;
+
+	@IsInt()
+	@Min(60)
+	@Type(() => Number)
+	EMAIL_VERIFICATION_TOKEN_TTL_SECONDS = 86400;
+
+	@IsOptional()
+	@IsString()
+	RESEND_API_KEY?: string;
+
+	@IsOptional()
+	@IsString()
+	EMAIL_FROM_ADDRESS?: string;
+
 	@IsOptional()
 	@IsString()
 	SENTRY_DSN?: string;
@@ -134,6 +171,21 @@ class EnvironmentVariables {
 	@Max(1)
 	@Type(() => Number)
 	SENTRY_TRACES_SAMPLE_RATE = 0;
+
+	// Required — no default. Shared with viewpro-api; a weak/missing secret would
+	// let a forged service token drive tenant control commands. Fail fast at boot.
+	@IsString()
+	@MinLength(16)
+	PLATFORM_CONTROL_SECRET!: string;
+
+	// Optional — configurable batch size for GET /internal/platform/changes.
+	// Controller reads process.env.PLATFORM_DATA_BATCH_LIMIT directly at request
+	// time so test overrides take effect without restarting the app.
+	@IsOptional()
+	@IsInt()
+	@Min(1)
+	@Type(() => Number)
+	PLATFORM_DATA_BATCH_LIMIT = 100;
 }
 
 export function validateEnv(config: Record<string, unknown>) {
@@ -149,7 +201,45 @@ export function validateEnv(config: Record<string, unknown>) {
 		throw new Error(formatValidationErrors(errors));
 	}
 
+	assertProductionSecurity(validatedConfig);
+
 	return validatedConfig;
+}
+
+// Cross-field security guards that only apply in production. Per-field decorators
+// keep dev/test permissive; these fail the boot when a real deployment is
+// misconfigured, mirroring the fail-fast contract of PLATFORM_CONTROL_SECRET.
+function assertProductionSecurity(config: EnvironmentVariables) {
+	if (config.NODE_ENV !== "production") {
+		return;
+	}
+
+	const violations: string[] = [];
+
+	if (
+		config.ACCESS_TOKEN_SECRET === ACCESS_TOKEN_SECRET_DEV_PLACEHOLDER ||
+		config.ACCESS_TOKEN_SECRET.length < ACCESS_TOKEN_SECRET_MIN_LENGTH
+	) {
+		violations.push(
+			`ACCESS_TOKEN_SECRET: must be a strong secret of at least ${ACCESS_TOKEN_SECRET_MIN_LENGTH} characters in production (never the placeholder)`,
+		);
+	}
+
+	if (config.COOKIE_SECURE !== true) {
+		violations.push(
+			"COOKIE_SECURE: must be true in production so session cookies require HTTPS",
+		);
+	}
+
+	if (config.DOCUMENT_STORAGE_DRIVER !== "s3") {
+		violations.push(
+			"DOCUMENT_STORAGE_DRIVER: must be 's3' in production (local/fake storage is not allowed)",
+		);
+	}
+
+	if (violations.length > 0) {
+		throw new Error(violations.join("; "));
+	}
 }
 
 function formatValidationErrors(

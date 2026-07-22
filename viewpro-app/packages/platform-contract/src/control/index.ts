@@ -1,3 +1,3 @@
-export * from "./identity";
-export * from "./tenant-status";
-export * from "./tenant-limits";
+export * from "./identity.js";
+export * from "./tenant-status.js";
+export * from "./tenant-limits.js";

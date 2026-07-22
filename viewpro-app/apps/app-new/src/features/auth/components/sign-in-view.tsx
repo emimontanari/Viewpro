@@ -11,6 +11,7 @@ import { BRAND } from '@/lib/brand/brand';
 import { login, type Session } from '@/lib/session';
 import { getSelectedTenantId, setSelectedTenantId } from '@/lib/tenant-selection';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { InteractiveGridPattern } from './interactive-grid';
@@ -94,6 +95,14 @@ function SignInForm() {
                 onBlur: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.')
               }}
             />
+            <div className='text-right'>
+              <Link
+                href='/auth/forgot-password'
+                className='text-muted-foreground hover:text-primary text-sm underline underline-offset-4'
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
             <form.SubmitButton className='w-full'>Entrar</form.SubmitButton>
           </form.Form>
         </form.AppForm>
@@ -185,20 +194,23 @@ export default function SignInViewPage() {
       </Link>
       <div className='relative hidden h-full flex-col p-10 lg:flex dark:border-r'>
         <div className='absolute inset-0 bg-sidebar' />
-        <div className='text-sidebar-foreground relative z-20 flex items-center text-lg font-medium'>
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            viewBox='0 0 24 24'
-            fill='none'
-            stroke='currentColor'
-            strokeWidth='2'
-            strokeLinecap='round'
-            strokeLinejoin='round'
-            className='mr-2 h-6 w-6'
-          >
-            <path d='M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3' />
-          </svg>
-          {BRAND.auth.signInLabel}
+        <div className='relative z-20 flex items-center'>
+          <Image
+            src='/logo-theme-claro.png'
+            alt={BRAND.auth.signInLabel}
+            width={2048}
+            height={1365}
+            priority
+            className='h-auto w-48 dark:hidden'
+          />
+          <Image
+            src='/logo-inmoview-dark.png'
+            alt={BRAND.auth.signInLabel}
+            width={2048}
+            height={1365}
+            priority
+            className='hidden h-auto w-48 dark:block'
+          />
         </div>
         <InteractiveGridPattern
           className={cn(
@@ -206,14 +218,6 @@ export default function SignInViewPage() {
             'inset-x-0 inset-y-[0%] h-full skew-y-12'
           )}
         />
-        <div className='text-sidebar-foreground relative z-20 mt-auto'>
-          <blockquote className='space-y-2'>
-            <p className='text-lg'>
-              &ldquo;{BRAND.auth.testimonialQuote}&rdquo;
-            </p>
-            <footer className='text-sidebar-foreground/70 text-sm'>{BRAND.auth.testimonialAuthor}</footer>
-          </blockquote>
-        </div>
       </div>
       <div className='flex h-full items-center justify-center p-4 lg:p-8'>
         <div className='flex w-full max-w-xl flex-col items-center justify-center space-y-6'>

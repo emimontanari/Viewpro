@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { ThrottlerModule } from '@nestjs/throttler'
+import { ClsModule } from 'nestjs-cls'
 import { AdminModule } from './admin/admin.module'
+import { PlatformControlModule } from './platform-control/platform-control.module'
+import { PlatformDataModule } from './platform-data/platform-data.module'
 import { AnalyticsModule } from './analytics/analytics.module'
 import { AuthModule } from './auth/auth.module'
 import { ConfigModule } from './config/config.module'
@@ -27,6 +30,14 @@ import { UsersModule } from './users/users.module'
 @Module({
   imports: [
     ConfigModule,
+    // AsyncLocalStorage context per request — the propagation layer for the
+    // multi-tenant isolation backstop (Phase 1). Mounts a middleware that opens
+    // a CLS context for every request; guards/interceptors/handlers run inside
+    // it, so the tenant id set by TenantMembershipGuard is readable downstream.
+    ClsModule.forRoot({
+      global: true,
+      middleware: { mount: true },
+    }),
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => [
@@ -55,6 +66,8 @@ import { UsersModule } from './users/users.module'
     NotificationsModule,
     AnalyticsModule,
     AdminModule,
+    PlatformControlModule,
+    PlatformDataModule,
     HealthModule,
     ObservabilityModule,
   ],

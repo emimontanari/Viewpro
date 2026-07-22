@@ -7,6 +7,7 @@ export type AuthUser = {
   lastName?: string | null;
   status: string;
   globalRole: 'USER' | 'VIEWPRO_ADMIN';
+  emailVerifiedAt: string | null;
 };
 
 export const TENANT_PERMISSIONS = {
@@ -59,6 +60,33 @@ export function login(input: LoginInput) {
 export function registerTenant(input: RegisterTenantInput) {
   return apiRequest<Session>('/auth/register-tenant', {
     body: input,
+    method: 'POST'
+  });
+}
+
+export function requestPasswordReset(input: { email: string }) {
+  return apiRequest<{ ok: true }>('/auth/forgot-password', {
+    body: input,
+    method: 'POST'
+  });
+}
+
+export function resetPassword(input: { token: string; password: string }) {
+  return apiRequest<{ ok: true }>('/auth/reset-password', {
+    body: input,
+    method: 'POST'
+  });
+}
+
+export function verifyEmail(input: { token: string }) {
+  return apiRequest<{ ok: true }>('/auth/verify-email', {
+    body: input,
+    method: 'POST'
+  });
+}
+
+export function resendVerification() {
+  return apiRequest<{ ok: true }>('/auth/resend-verification', {
     method: 'POST'
   });
 }
