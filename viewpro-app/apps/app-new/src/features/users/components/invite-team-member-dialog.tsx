@@ -103,8 +103,8 @@ export function InviteTeamMemberDialog({
         <DialogHeader>
           <DialogTitle>Invitar miembro</DialogTitle>
           <DialogDescription>
-            Creá una invitación para sumar un encargado o vendedor al equipo. El email automático queda
-            para una próxima etapa, así que copiá el link y envialo manualmente.
+            Creá una invitación para sumar un encargado o vendedor al equipo. Le enviamos el link por
+            email automáticamente; también podés copiarlo abajo para compartirlo por otra vía.
           </DialogDescription>
         </DialogHeader>
 
@@ -152,7 +152,7 @@ export function InviteTeamMemberDialog({
 
           {invitationUrl ? (
             <div className='bg-muted/40 rounded-lg border border-dashed p-4 text-sm'>
-              <p className='font-medium'>Copiá este link manualmente:</p>
+              <p className='font-medium'>Link de la invitación (también enviado por email):</p>
               <a
                 href={invitationUrl}
                 className='text-primary mt-2 block break-all underline-offset-4 hover:underline'
