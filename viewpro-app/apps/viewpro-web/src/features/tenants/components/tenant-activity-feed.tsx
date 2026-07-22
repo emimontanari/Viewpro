@@ -2,10 +2,12 @@
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Icons } from '@/components/icons';
 import type { TenantActivityItem } from '@/features/tenants/api/types';
 import {
   activityDayKey,
+  buildTenantActivityDetail,
   categorizeActivityItem,
   describeTenantActivityItem,
   formatActivityDateSeparator,
@@ -89,6 +91,14 @@ function EventIcon({ category }: { category: ActivityCategory }) {
         </svg>
       );
   }
+}
+
+function ChevronIcon() {
+  return (
+    <svg {...SVG_PROPS} className={styles.rowChevron}>
+      <polyline points='6 9 12 15 18 9' />
+    </svg>
+  );
 }
 
 type FeedRow =
@@ -188,23 +198,44 @@ export function TenantActivityFeed({ items, hasMore, isLoadingMore, onLoadMore }
 
               const { item, category } = row;
               const { title, subtitle } = describeTenantActivityItem(item);
+              const detail = buildTenantActivityDetail(item);
 
               return (
                 <li
                   key={item.id}
                   data-testid={`tenant-activity-item-${item.id}`}
-                  className={styles.row}
+                  className={styles.rowItem}
                 >
-                  <span className={`${styles.iconCircle} ${EVENT_CIRCLE_CLASS[category]}`}>
-                    <EventIcon category={category} />
-                  </span>
-                  <div className={styles.rowContent}>
-                    <p className={styles.rowTitle}>{title}</p>
-                    <p className={styles.rowSubtitle}>{subtitle}</p>
-                  </div>
-                  <span className={styles.timestamp} title={formatActivityFullTimestamp(item.createdAt)}>
-                    {formatActivityTimestamp(item.createdAt)}
-                  </span>
+                  <Collapsible>
+                    <CollapsibleTrigger className={styles.rowTrigger}>
+                      <span className={`${styles.iconCircle} ${EVENT_CIRCLE_CLASS[category]}`}>
+                        <EventIcon category={category} />
+                      </span>
+                      <span className={styles.rowContent}>
+                        <span className={styles.rowTitle}>{title}</span>
+                        <span className={styles.rowSubtitle}>{subtitle}</span>
+                      </span>
+                      <span
+                        className={styles.timestamp}
+                        title={formatActivityFullTimestamp(item.createdAt)}
+                      >
+                        {formatActivityTimestamp(item.createdAt)}
+                      </span>
+                      <ChevronIcon />
+                    </CollapsibleTrigger>
+                    {detail.length > 0 && (
+                      <CollapsibleContent className={styles.rowDetail}>
+                        <dl className={styles.detailList}>
+                          {detail.map((field) => (
+                            <div key={field.label} className={styles.detailPair}>
+                              <dt className={styles.detailLabel}>{field.label}</dt>
+                              <dd className={styles.detailValue}>{field.value}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </CollapsibleContent>
+                    )}
+                  </Collapsible>
                 </li>
               );
             })}

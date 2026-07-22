@@ -239,3 +239,212 @@ export function formatActivityFullTimestamp(iso: string): string {
   }
   return ACTIVITY_FULL_TIMESTAMP_FORMATTER.format(date);
 }
+
+// ── Collapsible detail ──────────────────────────────────────────────────────
+// Rich per-item technical detail surfaced in each feed row's collapsible panel.
+// It is a monitoring surface, so the operator can drill into who/when (to the
+// second) plus the structured movement/document fields the wire already carries
+// but the compact row does not show. Every field is read defensively and empty
+// values are omitted, so a wire drift yields fewer rows rather than throwing.
+
+const PROPERTY_STATUS_LABELS: Record<string, string> = {
+  CAPTURE: 'En captación',
+  DOCUMENTATION_PENDING: 'Documentación pendiente',
+  PUBLICATION_PREPARATION: 'Preparando publicación',
+  ACTIVE_PUBLICATION: 'Publicación activa',
+  INQUIRIES_AND_VISITS: 'Consultas y visitas',
+  OFFER_NEGOTIATION: 'Negociación de oferta',
+  RESERVATION_STARTED: 'Reserva iniciada',
+  FINAL_DOCUMENTATION: 'Documentación final',
+  CLOSED: 'Cerrado',
+  CANCELLED: 'Cancelado'
+};
+
+const DOCUMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Pendiente',
+  SUBMITTED: 'Enviado',
+  APPROVED: 'Aprobado',
+  REJECTED: 'Rechazado',
+  CANCELLED: 'Cancelado'
+};
+
+const DOCUMENT_VERSION_STATUS_LABELS: Record<string, string> = {
+  PENDING_UPLOAD: 'Esperando archivo',
+  UPLOADED: 'Subido',
+  APPROVED: 'Aprobado',
+  REJECTED: 'Rechazado'
+};
+
+const INTEREST_LEVEL_LABELS: Record<string, string> = {
+  LOW: 'Bajo',
+  MEDIUM: 'Medio',
+  HIGH: 'Alto'
+};
+
+const MOVEMENT_SOURCE_LABELS: Record<string, string> = {
+  MANUAL: 'Manual',
+  SYSTEM: 'Sistema'
+};
+
+const OFFER_CURRENCY_FORMATTER = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'ARS',
+  maximumFractionDigits: 0
+});
+
+function labelFrom(map: Record<string, string>, raw: unknown): string | null {
+  return typeof raw === 'string' && raw.length > 0 ? (map[raw] ?? raw) : null;
+}
+
+function formatOfferAmount(cents: unknown): string | null {
+  return typeof cents === 'number' && Number.isFinite(cents)
+    ? OFFER_CURRENCY_FORMATTER.format(cents / 100)
+    : null;
+}
+
+// "Nombre (email)" — the full "who" for the detail panel; degrades to whichever
+// part is present, then to a neutral fallback.
+function readActorFull(actor: unknown, fallback: string): string {
+  if (actor && typeof actor === 'object') {
+    const { firstName, email } = actor as ActorSummary;
+    const name = typeof firstName === 'string' && firstName.trim().length > 0 ? firstName.trim() : null;
+    const mail = typeof email === 'string' && email.trim().length > 0 ? email.trim() : null;
+    if (name && mail) return `${name} (${mail})`;
+    if (name) return name;
+    if (mail) return mail;
+  }
+  return fallback;
+}
+
+export type TenantActivityDetailField = { label: string; value: string };
+
+function readPropertyDetail(item: TenantActivityItem): TenantActivityDetailField[] {
+  const property = item.property as
+    | { title?: unknown; addressLine?: unknown; city?: unknown; province?: unknown; agents?: unknown }
+    | undefined;
+  if (!property || typeof property !== 'object') {
+    return [];
+  }
+
+  const out: TenantActivityDetailField[] = [];
+  const title = readString(property.title, '');
+  if (title) {
+    out.push({ label: 'Propiedad', value: title });
+  }
+
+  const address = [property.addressLine, property.city, property.province]
+    .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+    .map((part) => part.trim())
+    .join(', ');
+  if (address) {
+    out.push({ label: 'Dirección', value: address });
+  }
+
+  const agents = Array.isArray(property.agents) ? property.agents : [];
+  const agentNames = agents.map((agent) => readActorName(agent, '')).filter((name) => name.length > 0);
+  if (agentNames.length > 0) {
+    out.push({
+      label: agentNames.length === 1 ? 'Vendedor' : 'Vendedores',
+      value: agentNames.join(', ')
+    });
+  }
+
+  return out;
+}
+
+/**
+ * Builds the ordered list of technical detail fields shown when a feed row is
+ * expanded. Discriminates on `kind` exactly like describeTenantActivityItem and
+ * never throws — absent fields are simply omitted.
+ */
+export function buildTenantActivityDetail(item: TenantActivityItem): TenantActivityDetailField[] {
+  const fields: TenantActivityDetailField[] = [];
+  const push = (label: string, value: string | null) => {
+    if (value && value.trim().length > 0) {
+      fields.push({ label, value });
+    }
+  };
+  const fullTimestamp = formatActivityFullTimestamp(item.createdAt);
+
+  switch (item.kind) {
+    case 'movement': {
+      push('Registrado por', readActorFull(item.createdBy, FALLBACK_ACTOR));
+      push('Fecha y hora', fullTimestamp);
+      push('Tipo', formatMovementType(readString(item.type, 'Movimiento')));
+      push('Observación', readString(item.observation, ''));
+      push('Próximo paso', readString(item.nextStep, ''));
+
+      const previousStatus = labelFrom(PROPERTY_STATUS_LABELS, item.previousStatus);
+      const newStatus = labelFrom(PROPERTY_STATUS_LABELS, item.newStatus);
+      if (previousStatus && newStatus) {
+        push('Cambio de estado', `${previousStatus} → ${newStatus}`);
+      } else if (newStatus) {
+        push('Estado', newStatus);
+      }
+
+      push('Nivel de interés', labelFrom(INTEREST_LEVEL_LABELS, item.interestLevel));
+      if (typeof item.interestCount === 'number' && item.interestCount > 0) {
+        push('Consultas', String(item.interestCount));
+      }
+      if (typeof item.visitCount === 'number' && item.visitCount > 0) {
+        push('Visitas', String(item.visitCount));
+      }
+      push('Oferta', formatOfferAmount(item.offerAmountCents));
+      push('Origen', labelFrom(MOVEMENT_SOURCE_LABELS, item.source));
+      fields.push(...readPropertyDetail(item));
+      break;
+    }
+    case 'membership': {
+      push('Usuario', readActorFull(item.subject, 'Usuario'));
+      if (item.actor) {
+        push('Realizado por', readActorFull(item.actor, FALLBACK_ACTOR));
+      }
+      push('Fecha y hora', fullTimestamp);
+      if (item.membershipEvent === 'ROLE_CHANGED') {
+        push('Cambio de rol', `${formatTenantRole(item.previousRole)} → ${formatTenantRole(item.newRole)}`);
+      }
+      break;
+    }
+    default: {
+      const documentRequest = item.documentRequest as
+        | { title?: unknown; description?: unknown; status?: unknown; currentVersion?: unknown }
+        | undefined;
+      push('Solicitado por', readActorFull(item.requestedBy, FALLBACK_ACTOR));
+      push('Fecha y hora', fullTimestamp);
+      push('Documento', readString(documentRequest?.title, ''));
+      push('Descripción', readString(documentRequest?.description, ''));
+      push('Estado', labelFrom(DOCUMENT_STATUS_LABELS, documentRequest?.status));
+
+      const currentVersion = documentRequest?.currentVersion as
+        | { originalFilename?: unknown; status?: unknown }
+        | undefined;
+      if (currentVersion && typeof currentVersion === 'object') {
+        const filename = readString(currentVersion.originalFilename, '');
+        const versionStatus = labelFrom(DOCUMENT_VERSION_STATUS_LABELS, currentVersion.status);
+        if (filename) {
+          push('Archivo', versionStatus ? `${filename} · ${versionStatus}` : filename);
+        }
+      } else {
+        push('Archivo', 'Sin archivo cargado');
+      }
+
+      const owner = item.owner as
+        | { ownerFirstName?: unknown; ownerLastName?: unknown; email?: unknown }
+        | undefined;
+      if (owner && typeof owner === 'object') {
+        const ownerName = [owner.ownerFirstName, owner.ownerLastName]
+          .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+          .map((part) => part.trim())
+          .join(' ');
+        const ownerEmail = readString(owner.email, '');
+        const ownerLabel = ownerName && ownerEmail ? `${ownerName} (${ownerEmail})` : ownerName || ownerEmail;
+        push('Propietario', ownerLabel);
+      }
+
+      fields.push(...readPropertyDetail(item));
+      break;
+    }
+  }
+
+  return fields;
+}

@@ -9,7 +9,7 @@
 
 import * as React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { TenantActivityItem } from '@/features/tenants/api/types';
@@ -197,5 +197,25 @@ describe('TenantActivityFeed — "Cargar más" composition (no fetch)', () => {
     renderFeed({ items: [] });
     expect(screen.getByTestId('tenant-activity-empty')).toBeTruthy();
     expect(screen.queryByTestId('tenant-activity-list')).toBeNull();
+  });
+});
+
+describe('TenantActivityFeed — expandable detail', () => {
+  it('reveals the technical detail (who/when) when a row is expanded', async () => {
+    const user = userEvent.setup();
+    renderFeed();
+
+    // Collapsed: the detail panel is not mounted.
+    expect(screen.queryByText('Realizado por')).toBeNull();
+
+    const item = screen.getByTestId('tenant-activity-item-user-1');
+    await user.click(within(item).getByRole('button'));
+
+    // Expanded: the panel surfaces the subject, actor and timestamp.
+    expect(await screen.findByText('Usuario')).toBeTruthy();
+    expect(screen.getByText('Ana')).toBeTruthy();
+    expect(screen.getByText('Realizado por')).toBeTruthy();
+    expect(screen.getByText('Ops')).toBeTruthy();
+    expect(screen.getByText('Fecha y hora')).toBeTruthy();
   });
 });
