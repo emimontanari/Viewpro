@@ -360,3 +360,30 @@
   color: var(--color-text-secondary);
   background: var(--color-surface);
 }
+
+/* ── Dark theme ────────────────────────────────────────────────────────────
+ * The base palette above is a fixed light design. In dark mode the page would
+ * otherwise render as a bright island inside the dark operator console, so the
+ * design tokens are re-bound to the app's semantic theme variables (next-themes
+ * toggles the `.dark` class on <html>). This keeps the detail view consistent
+ * with whatever theme + light/dark the operator has selected.
+ */
+:global(.dark) .header,
+:global(.dark) .page {
+  --color-bg: var(--background);
+  --color-surface: var(--card);
+  --color-border: var(--border);
+  --color-text-primary: var(--foreground);
+  --color-text-secondary: var(--muted-foreground);
+  --color-text-tertiary: var(--muted-foreground);
+  --color-accent: var(--primary);
+  --color-accent-soft: var(--accent);
+
+  /* Soft event backgrounds become subtle tints of their accent on dark. */
+  --event-user-bg: color-mix(in srgb, var(--event-user) 18%, transparent);
+  --event-deed-bg: color-mix(in srgb, var(--event-deed) 18%, transparent);
+  --event-update-bg: color-mix(in srgb, var(--event-update) 18%, transparent);
+  --event-inquiry-bg: color-mix(in srgb, var(--event-inquiry) 18%, transparent);
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
