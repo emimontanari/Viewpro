@@ -2,7 +2,8 @@
 
 > **Ledger vivo.** Se actualiza en `develop` en cada merge (no va por PR).
 > Fuente de verdad compartida para no perder contexto entre sesiones.
-> Última actualización: 2026-07-20 (Etapa 1: 6 work-units de código entregados — seguridad, CI,
+> Última actualización: 2026-07-22 (verificado E2E el flujo operador TRIAL→ACTIVE — completo; cap de
+> trial diferido, activación manual por ahora). Histórico: 2026-07-20 (Etapa 1: 6 work-units de código entregados — seguridad, CI,
 > /admin, deploy plataforma, observabilidad, directUrl, seed operador, readiness/health. **Parte de
 > código de Etapa 1 COMPLETA.** Restan solo tareas de infra/ops (necesitan credenciales/topología del
 > usuario): backups Neon + restore drill, aislar hosts/secrets demo vs prod + SPOF VPS. Y 3 switches
@@ -63,8 +64,8 @@ config, y encender el cobro (ya diseñado como planes manuales sin pasarela).
 |---|---|
 | ✅ | Recuperar contraseña — backend + frontend (flujo completo E2E) | #243 (`dd6781f`) backend · #244 (`df5f5df`) FE |
 | ✅ | Verificación de email — backend + frontend (soft, verify + banner de reenvío) | #245 (`0789f07`) backend · #246 (`3c09eea`) FE |
-| ⬜ | Definir **precios** por tier + documentar cobro out-of-band + flujo operador TRIAL→ACTIVE |
-| ⬜ | Enforcement de trial por cap + suspensión reversible por falta de pago |
+| 🟡 | Definir **precios** por tier + documentar cobro out-of-band. **Flujo operador TRIAL→ACTIVE: VERIFICADO E2E completo** (2026-07-22) — consola `viewpro-web /dashboard/tenants` lista+activa/suspende vía `PATCH /operators/tenants/:id/status` (control-lane idempotente). Falta solo el **precio** (decisión D2). |
+| 🟡 | Suspensión reversible: **✅ enforced** — `TenantMembershipGuard` corta 403 toda ruta tenant-scoped en SUSPENDED/CANCELLED. Enforcement de trial por **cap DIFERIDO** (decisión 2026-07-22): TRIAL nace ilimitado, control manual con Activar/Suspender; cap es 1 work-unit chico para cuando haya volumen (setear límites default en `prisma-auth-registration.repository.ts`). Reloj de trial es cosmético. |
 | 🟡 | Notificaciones por email a propietarios (documento pedido/aprobado/rechazado + cambio de estado) — best-effort | #256 (`8b42556`) — internas de equipo quedan in-app (follow-up) |
 | ✅ | Remediados TODOS los 6 high de producción (multer→2.2, js-yaml, effect, brace-expansion vía overrides + borrar `sort-by` muerto) + audit ahora es **gate bloqueante** (`--prod`) | #248 (`1402e4a`) — multer 2.1.1 NO estaba fixeado (necesitaba ≥2.2.0) |
 | ⬜ | Unificar la doble superficie admin (step-up canónico) |
