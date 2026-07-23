@@ -10,6 +10,16 @@ import { describe, expect, it, vi } from "vitest";
 import { GetPlatformTenantActivityUseCase } from "../get-platform-tenant-activity.use-case";
 
 /**
+ * operator-activity-media (Slice 1) — deterministic stand-in for the
+ * env-dependent `buildPropertyImageUrl` (design D2: URL building happens in
+ * the use case, not the pure mapper — mocked here so assertions don't
+ * depend on PROPERTY_IMAGES_* env vars).
+ */
+vi.mock("../../../property-engagements/property-images.storage", () => ({
+	buildPropertyImageUrl: (storageKey: string) => `https://cdn.test/${storageKey}`,
+}));
+
+/**
  * platform-tenant-tracking (PR1) — RED: GetPlatformTenantActivityUseCase
  *
  * Spec: platform-tenant-tracking — "InmoView internal tenant summary endpoint",
@@ -128,6 +138,7 @@ function makeRepositories(overrides?: {
 	movements?: Partial<{ items: unknown[]; total: number }>;
 	documents?: Partial<{ items: unknown[]; total: number }>;
 	memberships?: Partial<{ items: unknown[]; total: number }>;
+	images?: Map<string, unknown[]>;
 }) {
 	const movementsRepository = {
 		findManyByTenant: vi.fn().mockResolvedValue({
@@ -147,8 +158,16 @@ function makeRepositories(overrides?: {
 			total: overrides?.memberships?.total ?? 0,
 		}),
 	};
+	const propertyAssetImagesReadRepository = {
+		findManyByAssetIds: vi.fn().mockResolvedValue(overrides?.images ?? new Map()),
+	};
 
-	return { movementsRepository, documentsRepository, membershipActivityRepository };
+	return {
+		movementsRepository,
+		documentsRepository,
+		membershipActivityRepository,
+		propertyAssetImagesReadRepository,
+	};
 }
 
 function makeMovementAt(id: string, iso: string) {
@@ -215,17 +234,31 @@ function makePaginatingRepositories(
 			},
 		),
 	};
+	const propertyAssetImagesReadRepository = {
+		findManyByAssetIds: vi.fn().mockResolvedValue(new Map()),
+	};
 
-	return { movementsRepository, documentsRepository, membershipActivityRepository };
+	return {
+		movementsRepository,
+		documentsRepository,
+		membershipActivityRepository,
+		propertyAssetImagesReadRepository,
+	};
 }
 
 describe("GetPlatformTenantActivityUseCase", () => {
 	it("calls both repositories with canViewAll: true and the platform-internal sentinel userId (bypasses per-agent scoping)", async () => {
-		const { movementsRepository, documentsRepository, membershipActivityRepository } = makeRepositories();
+		const {
+			movementsRepository,
+			documentsRepository,
+			membershipActivityRepository,
+			propertyAssetImagesReadRepository,
+		} = makeRepositories();
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
 			membershipActivityRepository as never,
+			propertyAssetImagesReadRepository as never,
 		);
 
 		await useCase.execute({ tenantId: "tenant-1", offset: 0, limit: 20 });
@@ -255,11 +288,17 @@ describe("GetPlatformTenantActivityUseCase", () => {
 	});
 
 	it("fetches the [0, offset+limit) window from EACH stream (page 1, pageSize = offset+limit) so the merged slice is globally ordered", async () => {
-		const { movementsRepository, documentsRepository, membershipActivityRepository } = makeRepositories();
+		const {
+			movementsRepository,
+			documentsRepository,
+			membershipActivityRepository,
+			propertyAssetImagesReadRepository,
+		} = makeRepositories();
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
 			membershipActivityRepository as never,
+			propertyAssetImagesReadRepository as never,
 		);
 
 		await useCase.execute({ tenantId: "tenant-1", offset: 25, limit: 10 });
@@ -287,12 +326,18 @@ describe("GetPlatformTenantActivityUseCase", () => {
 			makeDocumentAt("d-2", "2026-05-02T10:00:00.000Z"),
 			makeDocumentAt("d-1", "2026-05-01T10:00:00.000Z"),
 		];
-		const { movementsRepository, documentsRepository, membershipActivityRepository } =
+		const {
+			movementsRepository,
+			documentsRepository,
+			membershipActivityRepository,
+			propertyAssetImagesReadRepository,
+		} =
 			makePaginatingRepositories(movements, documents);
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
 			membershipActivityRepository as never,
+			propertyAssetImagesReadRepository as never,
 		);
 
 		const result = await useCase.execute({
@@ -315,12 +360,18 @@ describe("GetPlatformTenantActivityUseCase", () => {
 			makeDocumentAt("d-12", "2026-05-01T12:00:00.000Z"),
 			makeDocumentAt("d-10", "2026-05-01T10:00:00.000Z"),
 		];
-		const { movementsRepository, documentsRepository, membershipActivityRepository } =
+		const {
+			movementsRepository,
+			documentsRepository,
+			membershipActivityRepository,
+			propertyAssetImagesReadRepository,
+		} =
 			makePaginatingRepositories(movements, documents);
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
 			membershipActivityRepository as never,
+			propertyAssetImagesReadRepository as never,
 		);
 
 		const result = await useCase.execute({
@@ -347,12 +398,18 @@ describe("GetPlatformTenantActivityUseCase", () => {
 			makeDocumentAt("d-12", "2026-05-01T12:00:00.000Z"),
 			makeDocumentAt("d-10", "2026-05-01T10:00:00.000Z"),
 		];
-		const { movementsRepository, documentsRepository, membershipActivityRepository } =
+		const {
+			movementsRepository,
+			documentsRepository,
+			membershipActivityRepository,
+			propertyAssetImagesReadRepository,
+		} =
 			makePaginatingRepositories(movements, documents);
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
 			membershipActivityRepository as never,
+			propertyAssetImagesReadRepository as never,
 		);
 
 		const page1 = await useCase.execute({
@@ -382,7 +439,12 @@ describe("GetPlatformTenantActivityUseCase", () => {
 	});
 
 	it("merges movements + document requests, mapped and sorted via compareActivityItems (newest first)", async () => {
-		const { movementsRepository, documentsRepository, membershipActivityRepository } = makeRepositories({
+		const {
+			movementsRepository,
+			documentsRepository,
+			membershipActivityRepository,
+			propertyAssetImagesReadRepository,
+		} = makeRepositories({
 			movements: { items: [activityMovement], total: 1 },
 			documents: { items: [activityDocumentRequest], total: 1 },
 		});
@@ -390,6 +452,7 @@ describe("GetPlatformTenantActivityUseCase", () => {
 			movementsRepository as never,
 			documentsRepository as never,
 			membershipActivityRepository as never,
+			propertyAssetImagesReadRepository as never,
 		);
 
 		const result = await useCase.execute({
@@ -416,11 +479,17 @@ describe("GetPlatformTenantActivityUseCase", () => {
 	});
 
 	it("defaults offset to 0 and limit to 20 when neither is provided", async () => {
-		const { movementsRepository, documentsRepository, membershipActivityRepository } = makeRepositories();
+		const {
+			movementsRepository,
+			documentsRepository,
+			membershipActivityRepository,
+			propertyAssetImagesReadRepository,
+		} = makeRepositories();
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
 			membershipActivityRepository as never,
+			propertyAssetImagesReadRepository as never,
 		);
 
 		await useCase.execute({ tenantId: "tenant-1" });
@@ -458,12 +527,18 @@ describe("GetPlatformTenantActivityUseCase", () => {
 
 	it("returns a correct PARTIAL last page (never wrong items) when offset < MAX_FETCH_WINDOW < offset+limit", async () => {
 		const { movements, documents } = buildWindowBoundaryStreams();
-		const { movementsRepository, documentsRepository, membershipActivityRepository } =
+		const {
+			movementsRepository,
+			documentsRepository,
+			membershipActivityRepository,
+			propertyAssetImagesReadRepository,
+		} =
 			makePaginatingRepositories(movements, documents);
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
 			membershipActivityRepository as never,
+			propertyAssetImagesReadRepository as never,
 		);
 
 		// window = 200; offset 190 + limit 20 straddles the fetched window.
@@ -486,12 +561,18 @@ describe("GetPlatformTenantActivityUseCase", () => {
 
 	it("returns an EMPTY page (never wrong items) when offset >= MAX_FETCH_WINDOW", async () => {
 		const { movements, documents } = buildWindowBoundaryStreams();
-		const { movementsRepository, documentsRepository, membershipActivityRepository } =
+		const {
+			movementsRepository,
+			documentsRepository,
+			membershipActivityRepository,
+			propertyAssetImagesReadRepository,
+		} =
 			makePaginatingRepositories(movements, documents);
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
 			membershipActivityRepository as never,
+			propertyAssetImagesReadRepository as never,
 		);
 
 		// offset 210 is beyond the fetched window (200) → honest empty page.
@@ -509,12 +590,18 @@ describe("GetPlatformTenantActivityUseCase", () => {
 
 	it("returns a correct full page when offset+limit <= MAX_FETCH_WINDOW", async () => {
 		const { movements, documents } = buildWindowBoundaryStreams();
-		const { movementsRepository, documentsRepository, membershipActivityRepository } =
+		const {
+			movementsRepository,
+			documentsRepository,
+			membershipActivityRepository,
+			propertyAssetImagesReadRepository,
+		} =
 			makePaginatingRepositories(movements, documents);
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
 			membershipActivityRepository as never,
+			propertyAssetImagesReadRepository as never,
 		);
 
 		const result = await useCase.execute({
@@ -537,12 +624,18 @@ describe("GetPlatformTenantActivityUseCase", () => {
 	 * unmodified.
 	 */
 	it("calls the membership activity repository with the same page/pageSize window as the other two streams", async () => {
-		const { movementsRepository, documentsRepository, membershipActivityRepository } =
+		const {
+			movementsRepository,
+			documentsRepository,
+			membershipActivityRepository,
+			propertyAssetImagesReadRepository,
+		} =
 			makeRepositories();
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
 			membershipActivityRepository as never,
+			propertyAssetImagesReadRepository as never,
 		);
 
 		await useCase.execute({ tenantId: "tenant-1", offset: 25, limit: 10 });
@@ -553,7 +646,12 @@ describe("GetPlatformTenantActivityUseCase", () => {
 	});
 
 	it("interleaves membership events newest-first WITH movements and document requests (not appended after)", async () => {
-		const { movementsRepository, documentsRepository, membershipActivityRepository } =
+		const {
+			movementsRepository,
+			documentsRepository,
+			membershipActivityRepository,
+			propertyAssetImagesReadRepository,
+		} =
 			makeRepositories({
 				movements: { items: [activityMovement], total: 1 }, // 2026-05-22
 				documents: { items: [activityDocumentRequest], total: 1 }, // 2026-05-23
@@ -566,6 +664,7 @@ describe("GetPlatformTenantActivityUseCase", () => {
 			movementsRepository as never,
 			documentsRepository as never,
 			membershipActivityRepository as never,
+			propertyAssetImagesReadRepository as never,
 		);
 
 		const result = await useCase.execute({
@@ -582,7 +681,12 @@ describe("GetPlatformTenantActivityUseCase", () => {
 	});
 
 	it("total equals the sum of movements + document requests + membership events", async () => {
-		const { movementsRepository, documentsRepository, membershipActivityRepository } =
+		const {
+			movementsRepository,
+			documentsRepository,
+			membershipActivityRepository,
+			propertyAssetImagesReadRepository,
+		} =
 			makeRepositories({
 				movements: { items: [activityMovement], total: 3 },
 				documents: { items: [activityDocumentRequest], total: 2 },
@@ -595,6 +699,7 @@ describe("GetPlatformTenantActivityUseCase", () => {
 			movementsRepository as never,
 			documentsRepository as never,
 			membershipActivityRepository as never,
+			propertyAssetImagesReadRepository as never,
 		);
 
 		const result = await useCase.execute({ tenantId: "tenant-1", offset: 0, limit: 20 });
@@ -613,12 +718,18 @@ describe("GetPlatformTenantActivityUseCase", () => {
 		const memberships = Array.from({ length: 80 }, (_, i) =>
 			makeMembershipAt(`mem-${i}`, new Date(base - (200 + i) * 60_000).toISOString()),
 		);
-		const { movementsRepository, documentsRepository, membershipActivityRepository } =
+		const {
+			movementsRepository,
+			documentsRepository,
+			membershipActivityRepository,
+			propertyAssetImagesReadRepository,
+		} =
 			makePaginatingRepositories(movements, documents, memberships);
 		const useCase = new GetPlatformTenantActivityUseCase(
 			movementsRepository as never,
 			documentsRepository as never,
 			membershipActivityRepository as never,
+			propertyAssetImagesReadRepository as never,
 		);
 
 		// True global order (newest-first): all 80 movements, then all 80
@@ -631,5 +742,126 @@ describe("GetPlatformTenantActivityUseCase", () => {
 		);
 		expect(result.items).toHaveLength(20);
 		expect(result.total).toBe(240);
+	});
+
+	/**
+	 * operator-activity-media (Slice 1) — RED: batched property-image
+	 * enrichment.
+	 *
+	 * Spec: activity-feed-property-images — "Property Images Exposed in Feed
+	 *   DTO", "Batched Image URL Resolution" (no N+1; zero-image property
+	 *   does not error or get omitted).
+	 * Design D2: one `findManyByAssetIds` call per page, keyed by the unique
+	 *   set of asset ids across movement + document-request streams, mapped
+	 *   into `PropertyImageDto[]` via `buildPropertyImageUrl` before being
+	 *   passed into the mappers.
+	 */
+	describe("property image batching", () => {
+		function makeImage(overrides: {
+			id: string;
+			isPrimary?: boolean;
+			originalFilename?: string;
+			storageKey?: string;
+		}) {
+			return {
+				id: overrides.id,
+				propertyAssetId: "asset-1",
+				storageKey: overrides.storageKey ?? `property-images/tenant-1/asset-1/${overrides.id}.jpg`,
+				originalFilename: overrides.originalFilename ?? "front.jpg",
+				isPrimary: overrides.isPrimary ?? false,
+				createdAt: new Date("2026-06-01T00:00:00.000Z"),
+			};
+		}
+
+		it("calls findManyByAssetIds ONCE with the unique asset ids across BOTH the movement and document-request streams", async () => {
+			const { movementsRepository, documentsRepository, membershipActivityRepository, propertyAssetImagesReadRepository } =
+				makeRepositories({
+					movements: { items: [activityMovement], total: 1 },
+					documents: { items: [activityDocumentRequest], total: 1 },
+				});
+			const useCase = new GetPlatformTenantActivityUseCase(
+				movementsRepository as never,
+				documentsRepository as never,
+				membershipActivityRepository as never,
+				propertyAssetImagesReadRepository as never,
+			);
+
+			await useCase.execute({ tenantId: "tenant-1", offset: 0, limit: 20 });
+
+			// Both fixtures share propertyAssetId "asset-1" — must be deduped, not
+			// called with duplicates or once per item (no N+1).
+			expect(propertyAssetImagesReadRepository.findManyByAssetIds).toHaveBeenCalledTimes(1);
+			expect(propertyAssetImagesReadRepository.findManyByAssetIds).toHaveBeenCalledWith(["asset-1"]);
+		});
+
+		it("populates property.images on the movement item with URLs built via buildPropertyImageUrl", async () => {
+			const image = makeImage({ id: "img-1", isPrimary: true, originalFilename: "front.jpg" });
+			const { movementsRepository, documentsRepository, membershipActivityRepository, propertyAssetImagesReadRepository } =
+				makeRepositories({
+					movements: { items: [activityMovement], total: 1 },
+					images: new Map([["asset-1", [image]]]),
+				});
+			const useCase = new GetPlatformTenantActivityUseCase(
+				movementsRepository as never,
+				documentsRepository as never,
+				membershipActivityRepository as never,
+				propertyAssetImagesReadRepository as never,
+			);
+
+			const result = await useCase.execute({ tenantId: "tenant-1", offset: 0, limit: 20 });
+
+			const movementItem = result.items.find((item) => item.kind === "movement") as {
+				property: { images: Array<{ id: string; url: string; isPrimary: boolean; originalFilename: string }> };
+			};
+			expect(movementItem.property.images).toEqual([
+				{
+					id: "img-1",
+					url: "https://cdn.test/property-images/tenant-1/asset-1/img-1.jpg",
+					isPrimary: true,
+					originalFilename: "front.jpg",
+				},
+			]);
+		});
+
+		it("does NOT error and returns property.images: [] for an item whose asset has zero images (item is NOT omitted)", async () => {
+			const { movementsRepository, documentsRepository, membershipActivityRepository, propertyAssetImagesReadRepository } =
+				makeRepositories({
+					movements: { items: [activityMovement], total: 1 },
+					images: new Map(), // no entry for "asset-1"
+				});
+			const useCase = new GetPlatformTenantActivityUseCase(
+				movementsRepository as never,
+				documentsRepository as never,
+				membershipActivityRepository as never,
+				propertyAssetImagesReadRepository as never,
+			);
+
+			const result = await useCase.execute({ tenantId: "tenant-1", offset: 0, limit: 20 });
+
+			expect(result.items).toHaveLength(1);
+			const movementItem = result.items[0] as { property: { images: unknown[] } };
+			expect(movementItem.property.images).toEqual([]);
+		});
+
+		it("storage-call count does NOT scale linearly with item count (one call for a full page of items)", async () => {
+			const base = Date.parse("2026-06-01T00:00:00.000Z");
+			const movements = Array.from({ length: 25 }, (_, i) =>
+				makeMovementAt(`m-${i}`, new Date(base + (25 - i) * 60_000).toISOString()),
+			);
+			const { movementsRepository, documentsRepository, membershipActivityRepository, propertyAssetImagesReadRepository } =
+				makePaginatingRepositories(movements, []);
+
+			const useCase = new GetPlatformTenantActivityUseCase(
+				movementsRepository as never,
+				documentsRepository as never,
+				membershipActivityRepository as never,
+				propertyAssetImagesReadRepository as never,
+			);
+
+			const result = await useCase.execute({ tenantId: "tenant-1", offset: 0, limit: 25 });
+
+			expect(result.items).toHaveLength(25);
+			expect(propertyAssetImagesReadRepository.findManyByAssetIds).toHaveBeenCalledTimes(1);
+		});
 	});
 });
