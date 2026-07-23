@@ -5,13 +5,11 @@ export const PLATFORM_PERMISSIONS = {
   TENANT_STATUS_WRITE: 'PLATFORM_TENANT_STATUS_WRITE',
   TENANT_LIMITS_WRITE: 'PLATFORM_TENANT_LIMITS_WRITE',
   OPERATORS_MANAGE: 'PLATFORM_OPERATORS_MANAGE',
-  // operator-activity-media (Slice 2a, D4): declared here so
-  // @RequirePlatformPermission(TENANT_DOCUMENTS_READ) can compile on the new
-  // document-read route. Declaration ONLY — intentionally NOT added to
-  // OPERATIONS_PERMISSIONS/ROLE_PERMISSIONS in this slice, so no role
-  // currently grants it (seeding + the OWNER-inherits/ANALYST-excluded
-  // enforcement spec ship in Slice 2b). The route (2a.12) mocks/overrides
-  // the permission guard until then.
+  // operator-activity-media: declared in Slice 2a so
+  // @RequirePlatformPermission(TENANT_DOCUMENTS_READ) could compile on the
+  // document-read route ahead of seeding. Slice 2b seeded it into
+  // OPERATIONS_PERMISSIONS (role-permissions.ts) — OWNER inherits, ANALYST is
+  // deliberately excluded (least privilege, locked by role-permissions.spec.ts).
   TENANT_DOCUMENTS_READ: 'PLATFORM_TENANT_DOCUMENTS_READ',
 } as const
 
