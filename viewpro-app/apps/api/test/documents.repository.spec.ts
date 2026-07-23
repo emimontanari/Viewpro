@@ -435,4 +435,79 @@ describe("Documents repository foundation", () => {
 		).rejects.toThrow("Tenant document storage limit exceeded");
 		expect(create).not.toHaveBeenCalled();
 	});
+
+	// 2a.1 — RED: findPlatformReadableVersion (operator-activity-media, D6).
+	// Mirrors findInternalReadableVersion's status filter but scopes strictly
+	// to `document.documentRequest.tenantId` — no viewer/canViewAll narrowing,
+	// since the platform lane has no per-agent visibility concept.
+	describe("findPlatformReadableVersion", () => {
+		it("hits when the version status is readable AND the document request belongs to the given tenant", async () => {
+			const version = {
+				id: "version-1",
+				storageKey: "documents/request-1/version-1.pdf",
+				status: DocumentVersionStatus.UPLOADED,
+			};
+			const findFirst = vi.fn().mockResolvedValue(version);
+			const repository = new PrismaDocumentsRepository({
+				documentVersion: { findFirst },
+			} as never);
+
+			await expect(
+				repository.findPlatformReadableVersion({
+					tenantId: "tenant-1",
+					versionId: "version-1",
+				}),
+			).resolves.toBe(version);
+
+			expect(findFirst).toHaveBeenCalledWith({
+				where: {
+					id: "version-1",
+					status: {
+						in: [
+							DocumentVersionStatus.UPLOADED,
+							DocumentVersionStatus.APPROVED,
+							DocumentVersionStatus.REJECTED,
+						],
+					},
+					document: { documentRequest: { tenantId: "tenant-1" } },
+				},
+			});
+		});
+
+		it("misses when the version belongs to a different tenant's document request", async () => {
+			const findFirst = vi.fn().mockResolvedValue(null);
+			const repository = new PrismaDocumentsRepository({
+				documentVersion: { findFirst },
+			} as never);
+
+			await expect(
+				repository.findPlatformReadableVersion({
+					tenantId: "tenant-1",
+					versionId: "version-owned-by-tenant-2",
+				}),
+			).resolves.toBeNull();
+
+			expect(findFirst).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: expect.objectContaining({
+						document: { documentRequest: { tenantId: "tenant-1" } },
+					}),
+				}),
+			);
+		});
+
+		it("misses when the version id does not exist or was deleted", async () => {
+			const findFirst = vi.fn().mockResolvedValue(null);
+			const repository = new PrismaDocumentsRepository({
+				documentVersion: { findFirst },
+			} as never);
+
+			await expect(
+				repository.findPlatformReadableVersion({
+					tenantId: "tenant-1",
+					versionId: "does-not-exist",
+				}),
+			).resolves.toBeNull();
+		});
+	});
 });

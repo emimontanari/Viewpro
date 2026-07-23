@@ -5,6 +5,12 @@ export const PLATFORM_PERMISSIONS = {
   TENANT_STATUS_WRITE: 'PLATFORM_TENANT_STATUS_WRITE',
   TENANT_LIMITS_WRITE: 'PLATFORM_TENANT_LIMITS_WRITE',
   OPERATORS_MANAGE: 'PLATFORM_OPERATORS_MANAGE',
+  // operator-activity-media: declared in Slice 2a so
+  // @RequirePlatformPermission(TENANT_DOCUMENTS_READ) could compile on the
+  // document-read route ahead of seeding. Slice 2b seeded it into
+  // OPERATIONS_PERMISSIONS (role-permissions.ts) — OWNER inherits, ANALYST is
+  // deliberately excluded (least privilege, locked by role-permissions.spec.ts).
+  TENANT_DOCUMENTS_READ: 'PLATFORM_TENANT_DOCUMENTS_READ',
 } as const
 
 export type PlatformPermission = (typeof PLATFORM_PERMISSIONS)[keyof typeof PLATFORM_PERMISSIONS]

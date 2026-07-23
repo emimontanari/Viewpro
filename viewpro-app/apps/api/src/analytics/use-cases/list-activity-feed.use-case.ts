@@ -98,8 +98,8 @@ export class ListActivityFeedUseCase {
       }),
     ])
 
-    const movementItems = movementFeed.items.map(mapActivityFeedMovement)
-    const documentItems = documentFeed.items.map(mapActivityFeedDocumentRequest)
+    const movementItems = movementFeed.items.map((movement) => mapActivityFeedMovement(movement))
+    const documentItems = documentFeed.items.map((document) => mapActivityFeedDocumentRequest(document))
     const total = movementFeed.total + documentFeed.total
     const items =
       queryKind === 'all' && !query.type

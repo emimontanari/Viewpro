@@ -437,4 +437,179 @@ describe('ChangeFeedClient', () => {
 
     await expect(client.fetchTenantSummary('tenant-1', 0, 20)).rejects.toThrow()
   })
+
+  // -------------------------------------------------------------------------
+  // operator-activity-media (Slice 2a) — RED: fetchDocumentReadUrl(tenantId, versionId)
+  //
+  // Spec: operator-document-read — Permission-Gated Signed Read URL.
+  // Design D5/D6: extends ChangeFeedClient (not a new client), 120s ingest
+  //   JWT via mintIngestToken (same claims as fetchChanges/fetchTenantSummary),
+  //   encodeURIComponent on both path segments (mirrors fetchTenantSummary:242).
+  // -------------------------------------------------------------------------
+  it('fetchDocumentReadUrl calls GET .../tenants/:tenantId/document-versions/:versionId/read-url', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          url: 'https://storage.example/read',
+          expiresInSeconds: 300,
+          originalFilename: 'deed.pdf',
+          mimeType: 'application/pdf',
+        }),
+        { status: 200 },
+      ),
+    )
+    vi.stubGlobal('fetch', mockFetch)
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await client.fetchDocumentReadUrl('tenant-1', 'version-1')
+
+    expect(mockFetch).toHaveBeenCalledOnce()
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe(
+      `${INMOVIEW_API_INTERNAL_URL}/api/internal/platform/tenants/tenant-1/document-versions/version-1/read-url`,
+    )
+  })
+
+  it('fetchDocumentReadUrl passes an AbortSignal so a hung InmoView bounds the hot-path hop', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          url: 'https://storage.example/read',
+          expiresInSeconds: 300,
+          originalFilename: 'deed.pdf',
+          mimeType: 'application/pdf',
+        }),
+        { status: 200 },
+      ),
+    )
+    vi.stubGlobal('fetch', mockFetch)
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await client.fetchDocumentReadUrl('tenant-1', 'version-1')
+
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(init.signal).toBeInstanceOf(AbortSignal)
+    expect(init.signal?.aborted).toBe(false)
+  })
+
+  it('fetchDocumentReadUrl encodeURIComponent-encodes both tenantId and versionId path segments', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ url: 'x', expiresInSeconds: 300, originalFilename: 'a.pdf', mimeType: 'application/pdf' }),
+        { status: 200 },
+      ),
+    )
+    vi.stubGlobal('fetch', mockFetch)
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await client.fetchDocumentReadUrl('tenant/../evil', 'version?x=1')
+
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe(
+      `${INMOVIEW_API_INTERNAL_URL}/api/internal/platform/tenants/${encodeURIComponent('tenant/../evil')}/document-versions/${encodeURIComponent('version?x=1')}/read-url`,
+    )
+  })
+
+  it('fetchDocumentReadUrl mints a service token with the same claims as fetchChanges (iss=viewpro-api, aud=inmoview-control, sub=system-ingest)', async () => {
+    const capturedHeaders: Record<string, string>[] = []
+    const mockFetch = vi.fn().mockImplementation((_url: string, init: RequestInit) => {
+      capturedHeaders.push(init.headers as Record<string, string>)
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({ url: 'x', expiresInSeconds: 300, originalFilename: 'a.pdf', mimeType: 'application/pdf' }),
+          { status: 200 },
+        ),
+      )
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await client.fetchDocumentReadUrl('tenant-1', 'version-1')
+
+    const authHeader = capturedHeaders[0]?.['Authorization'] ?? ''
+    const token = authHeader.replace('Bearer ', '')
+    const verifier = new JwtService({ secret: PLATFORM_CONTROL_SECRET })
+    const payload = await verifier.verifyAsync(token)
+
+    expect(payload.iss).toBe('viewpro-api')
+    expect(payload.aud).toBe('inmoview-control')
+    expect(payload.sub).toBe('system-ingest')
+    const nowSec = Math.floor(Date.now() / 1000)
+    expect(payload.exp).toBeGreaterThanOrEqual(nowSec + 100)
+    expect(payload.exp).toBeLessThanOrEqual(nowSec + 140)
+  })
+
+  it('fetchDocumentReadUrl returns the parsed {url, expiresInSeconds, originalFilename, mimeType} body', async () => {
+    const mockBody = {
+      url: 'https://storage.example/read/documents/req-1/version-1.pdf',
+      expiresInSeconds: 300,
+      originalFilename: 'deed.pdf',
+      mimeType: 'application/pdf',
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(mockBody), { status: 200 })))
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    const result = await client.fetchDocumentReadUrl('tenant-1', 'version-1')
+
+    expect(result).toEqual(mockBody)
+  })
+
+  it('fetchDocumentReadUrl throws a DocumentReadUrlFetchError with status=404 (cross-tenant/missing propagated to the caller)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 })))
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await expect(client.fetchDocumentReadUrl('tenant-1', 'does-not-exist')).rejects.toMatchObject({
+      name: 'DocumentReadUrlFetchError',
+      status: 404,
+    })
+  })
+
+  it('fetchDocumentReadUrl throws a DocumentReadUrlFetchError with status=undefined on network failure (distinct from a 404)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await expect(client.fetchDocumentReadUrl('tenant-1', 'version-1')).rejects.toMatchObject({
+      name: 'DocumentReadUrlFetchError',
+      status: undefined,
+    })
+  })
+
+  it('fetchDocumentReadUrl throws on network failure', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await expect(client.fetchDocumentReadUrl('tenant-1', 'version-1')).rejects.toThrow()
+  })
 })

@@ -26,7 +26,9 @@ import type { TenantActivityItem } from '../../api/types';
 import {
   buildTenantActivityDetail,
   describeTenantActivityItem,
-  formatActivityTimestamp
+  formatActivityTimestamp,
+  readDocumentCurrentVersionId,
+  readPropertyImages
 } from '../activity-feed-formatting';
 
 const MOVEMENT_ITEM: TenantActivityItem = {
@@ -411,5 +413,144 @@ describe('buildTenantActivityDetail', () => {
     );
 
     expect(detail['Fecha y hora']).toBe('—');
+  });
+});
+
+/**
+ * operator-activity-media (Slice 1) — RED: readPropertyImages
+ *
+ * Spec: activity-feed-property-images — "Property Images Exposed in Feed
+ *   DTO" consumed on the viewpro-web side.
+ * Design D8: loose-wire defensive reader, mirrors `readPropertyDetail` —
+ *   drift (missing/malformed `property.images`) degrades to `[]`, never
+ *   throws.
+ */
+describe('readPropertyImages()', () => {
+  it('returns the images array when property.images is present and well-formed', () => {
+    const item: TenantActivityItem = {
+      ...MOVEMENT_ITEM,
+      property: {
+        ...(MOVEMENT_ITEM.property as Record<string, unknown>),
+        images: [
+          { id: 'img-1', url: 'https://cdn.example.com/img-1.jpg', isPrimary: true, originalFilename: 'front.jpg' },
+          { id: 'img-2', url: 'https://cdn.example.com/img-2.jpg', isPrimary: false, originalFilename: 'back.jpg' }
+        ]
+      }
+    };
+
+    const result = readPropertyImages(item);
+
+    expect(result).toEqual([
+      { id: 'img-1', url: 'https://cdn.example.com/img-1.jpg', isPrimary: true, originalFilename: 'front.jpg' },
+      { id: 'img-2', url: 'https://cdn.example.com/img-2.jpg', isPrimary: false, originalFilename: 'back.jpg' }
+    ]);
+  });
+
+  it('returns [] when property.images is absent (no throw)', () => {
+    const result = readPropertyImages(MOVEMENT_ITEM);
+
+    expect(result).toEqual([]);
+  });
+
+  it('returns [] when property itself is absent (no throw)', () => {
+    const result = readPropertyImages({ kind: 'movement', id: 'x', createdAt: 'not-a-date' } as TenantActivityItem);
+
+    expect(result).toEqual([]);
+  });
+
+  it('returns [] when property.images is malformed (not an array — drift degrades, never throws)', () => {
+    const item: TenantActivityItem = {
+      ...MOVEMENT_ITEM,
+      property: { ...(MOVEMENT_ITEM.property as Record<string, unknown>), images: 'not-an-array' }
+    };
+
+    const result = readPropertyImages(item);
+
+    expect(result).toEqual([]);
+  });
+
+  it('filters out individual malformed entries within the array (missing id/url), keeps the well-formed ones', () => {
+    const item: TenantActivityItem = {
+      ...MOVEMENT_ITEM,
+      property: {
+        ...(MOVEMENT_ITEM.property as Record<string, unknown>),
+        images: [
+          { id: 'img-1', url: 'https://cdn.example.com/img-1.jpg', isPrimary: true, originalFilename: 'front.jpg' },
+          { isPrimary: false }, // missing id/url — malformed
+          null,
+          'not-an-object'
+        ]
+      }
+    };
+
+    const result = readPropertyImages(item);
+
+    expect(result).toEqual([
+      { id: 'img-1', url: 'https://cdn.example.com/img-1.jpg', isPrimary: true, originalFilename: 'front.jpg' }
+    ]);
+  });
+});
+
+/**
+ * operator-activity-media (Slice 2b, task 2b.5/2b.7) — RED:
+ * readDocumentCurrentVersionId
+ *
+ * Spec: operator-document-read — the "Ver documento" action is only
+ *   available for a document_request item that has an uploaded version.
+ * Design D6/D8: loose-wire defensive reader mirroring readPropertyImages —
+ *   a missing/malformed documentRequest.currentVersion.id degrades to null,
+ *   never throws.
+ */
+describe('readDocumentCurrentVersionId()', () => {
+  it('returns the version id when documentRequest.currentVersion.id is a non-empty string', () => {
+    const item: TenantActivityItem = {
+      ...DOCUMENT_REQUEST_ITEM,
+      documentRequest: {
+        title: 'Escritura',
+        description: null,
+        status: 'SUBMITTED',
+        currentVersion: { id: 'version-1', originalFilename: 'escritura.pdf', status: 'UPLOADED' }
+      }
+    };
+
+    expect(readDocumentCurrentVersionId(item)).toBe('version-1');
+  });
+
+  it('returns null when currentVersion is null (no file uploaded yet)', () => {
+    expect(readDocumentCurrentVersionId(DOCUMENT_REQUEST_ITEM)).toBeNull();
+  });
+
+  it('returns null when documentRequest itself is absent (no throw)', () => {
+    expect(
+      readDocumentCurrentVersionId({ kind: 'movement', id: 'x', createdAt: 'not-a-date' } as TenantActivityItem)
+    ).toBeNull();
+  });
+
+  it('returns null when currentVersion.id is missing/malformed (drift degrades, never throws)', () => {
+    const item: TenantActivityItem = {
+      ...DOCUMENT_REQUEST_ITEM,
+      documentRequest: {
+        title: 'Escritura',
+        description: null,
+        status: 'SUBMITTED',
+        currentVersion: { originalFilename: 'escritura.pdf', status: 'UPLOADED' }
+      }
+    };
+
+    expect(readDocumentCurrentVersionId(item)).toBeNull();
+  });
+
+  it('returns null when currentVersion is entirely malformed (not an object)', () => {
+    const item: TenantActivityItem = {
+      ...DOCUMENT_REQUEST_ITEM,
+      documentRequest: {
+        title: 'Escritura',
+        description: null,
+        status: 'SUBMITTED',
+        currentVersion: 'not-an-object'
+      }
+    };
+
+    expect(readDocumentCurrentVersionId(item)).toBeNull();
   });
 });

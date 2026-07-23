@@ -2,6 +2,21 @@ import type { ActivityDocumentRequestRecord } from "../../documents/documents.re
 import type { MembershipActivityRecord } from "../../memberships/membership-activity.repository";
 import type { ActivityMovementWithRelations } from "../../movements/movements.repository";
 
+/**
+ * PropertyImageDto — operator-activity-media (Slice 1) design D1/D2.
+ *
+ * `url` is pre-built (via `buildPropertyImageUrl`, an env-dependent
+ * concern) by the ONLY caller that populates the images map
+ * (`GetPlatformTenantActivityUseCase`) BEFORE it reaches these pure
+ * mappers — mappers never touch env/storage config.
+ */
+export type PropertyImageDto = {
+	id: string;
+	url: string;
+	isPrimary: boolean;
+	originalFilename: string;
+};
+
 export type ActivityMovementItemResponse = ReturnType<
 	typeof mapActivityFeedMovement
 >;
@@ -18,6 +33,7 @@ export type ActivityFeedItemResponse =
 
 export function mapActivityFeedMovement(
 	movement: ActivityMovementWithRelations,
+	imagesByAssetId?: ReadonlyMap<string, PropertyImageDto[]>,
 ) {
 	const engagement = movement.propertyEngagement;
 	const propertyAsset = engagement.propertyAsset;
@@ -59,12 +75,14 @@ export function mapActivityFeedMovement(
 				email: agent.agentUser.email,
 				firstName: agent.agentUser.firstName,
 			})),
+			images: imagesByAssetId?.get(engagement.propertyAssetId) ?? [],
 		},
 	};
 }
 
 export function mapActivityFeedDocumentRequest(
 	request: ActivityDocumentRequestRecord,
+	imagesByAssetId?: ReadonlyMap<string, PropertyImageDto[]>,
 ) {
 	const engagement = request.propertyEngagement;
 	const propertyAsset = engagement.propertyAsset;
@@ -94,6 +112,7 @@ export function mapActivityFeedDocumentRequest(
 				email: agent.agentUser.email,
 				firstName: agent.agentUser.firstName,
 			})),
+			images: imagesByAssetId?.get(engagement.propertyAssetId) ?? [],
 		},
 		owner: owner
 			? {

@@ -352,6 +352,70 @@ function readPropertyDetail(item: TenantActivityItem): TenantActivityDetailField
   return out;
 }
 
+export type PropertyImageSummary = {
+  id: string;
+  url: string;
+  isPrimary: boolean;
+  originalFilename: string;
+};
+
+/**
+ * readPropertyImages — operator-activity-media (Slice 1) design D8.
+ *
+ * Defensive loose-wire reader, mirrors `readPropertyDetail`: a missing
+ * `property`, a missing/malformed `property.images`, or individually
+ * malformed entries within the array all degrade to fewer/zero images —
+ * never a throw.
+ */
+export function readPropertyImages(item: TenantActivityItem): PropertyImageSummary[] {
+  const property = item.property as { images?: unknown } | undefined;
+  if (!property || typeof property !== 'object' || !Array.isArray(property.images)) {
+    return [];
+  }
+
+  const out: PropertyImageSummary[] = [];
+  for (const raw of property.images) {
+    if (!raw || typeof raw !== 'object') {
+      continue;
+    }
+    const { id, url, isPrimary, originalFilename } = raw as Record<string, unknown>;
+    if (typeof id === 'string' && typeof url === 'string') {
+      out.push({
+        id,
+        url,
+        isPrimary: typeof isPrimary === 'boolean' ? isPrimary : false,
+        originalFilename: typeof originalFilename === 'string' ? originalFilename : ''
+      });
+    }
+  }
+
+  return out;
+}
+
+/**
+ * readDocumentCurrentVersionId — operator-activity-media (Slice 2b) design
+ * D6/D8.
+ *
+ * Defensive loose-wire reader, mirrors `readPropertyImages`: a missing
+ * `documentRequest`, a null/absent `currentVersion` (no file uploaded yet),
+ * or a malformed `currentVersion.id` all degrade to `null` — never a throw.
+ * Used to gate the "Ver documento" action button (only shown when a version
+ * id is present).
+ */
+export function readDocumentCurrentVersionId(item: TenantActivityItem): string | null {
+  const documentRequest = item.documentRequest as { currentVersion?: unknown } | undefined;
+  if (!documentRequest || typeof documentRequest !== 'object') {
+    return null;
+  }
+
+  const currentVersion = documentRequest.currentVersion as { id?: unknown } | undefined;
+  if (!currentVersion || typeof currentVersion !== 'object') {
+    return null;
+  }
+
+  return typeof currentVersion.id === 'string' && currentVersion.id.length > 0 ? currentVersion.id : null;
+}
+
 /**
  * Builds the ordered list of technical detail fields shown when a feed row is
  * expanded. Discriminates on `kind` exactly like describeTenantActivityItem and

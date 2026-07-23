@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
+import type { ActivityDocumentRequestRecord } from "../../documents/documents.repository";
 import type { MembershipActivityRecord } from "../../memberships/membership-activity.repository";
-import { mapActivityFeedMembership } from "./activity-feed.response";
+import type { ActivityMovementWithRelations } from "../../movements/movements.repository";
+import {
+	mapActivityFeedDocumentRequest,
+	mapActivityFeedMembership,
+	mapActivityFeedMovement,
+	type PropertyImageDto,
+} from "./activity-feed.response";
 
 /**
  * platform-user-activity-capture — RED: mapActivityFeedMembership
@@ -16,6 +23,115 @@ import { mapActivityFeedMembership } from "./activity-feed.response";
 const inviter = { id: "inviter-1", email: "inviter@example.com", firstName: "Inviter" };
 const member = { id: "member-1", email: "member@example.com", firstName: "Member" };
 const deactivator = { id: "actor-1", email: "actor@example.com", firstName: "Actor" };
+
+/**
+ * operator-activity-media (Slice 1) — RED: mapActivityFeedMovement /
+ * mapActivityFeedDocumentRequest gain an optional `imagesByAssetId` 2nd
+ * param.
+ *
+ * Spec: activity-feed-property-images — "Property Images Exposed in Feed
+ *   DTO" (present -> populated `property.images`; absent/no-match -> `[]`,
+ *   never a throw or an omitted item).
+ * Design D1: mappers stay pure — the caller (only
+ *   `GetPlatformTenantActivityUseCase`) supplies the pre-built
+ *   `ReadonlyMap<string, PropertyImageDto[]>`; env-dependent URL building
+ *   happens OUTSIDE the mapper.
+ */
+const baseEngagement = {
+	id: "engagement-1",
+	tenantId: "tenant-1",
+	propertyAssetId: "asset-1",
+	operationType: "SALE",
+	status: "INQUIRIES_AND_VISITS",
+	propertyAsset: {
+		title: "Casa Palermo",
+		addressLine: "Uriarte 1234",
+		city: "Buenos Aires",
+		province: "CABA",
+	},
+	agents: [],
+} as unknown as ActivityMovementWithRelations["propertyEngagement"];
+
+function makeMovementFixture(): ActivityMovementWithRelations {
+	return {
+		id: "movement-1",
+		tenantId: "tenant-1",
+		propertyEngagementId: "engagement-1",
+		type: "INQUIRY",
+		observation: "obs",
+		nextStep: null,
+		previousStatus: null,
+		newStatus: null,
+		source: "MANUAL",
+		interestCount: null,
+		visitCount: null,
+		offerAmountCents: null,
+		interestLevel: null,
+		createdAt: new Date("2026-06-01T10:00:00.000Z"),
+		createdBy: { id: "seller-1", email: "seller@example.com", firstName: "Seller" },
+		propertyEngagement: baseEngagement,
+	} as unknown as ActivityMovementWithRelations;
+}
+
+function makeDocumentRequestFixture(): ActivityDocumentRequestRecord {
+	return {
+		id: "document-request-1",
+		tenantId: "tenant-1",
+		propertyEngagementId: "engagement-1",
+		title: "DNI del propietario",
+		description: "Frente y dorso.",
+		status: "PENDING",
+		createdAt: new Date("2026-06-02T10:00:00.000Z"),
+		document: null,
+		propertyAssetOwner: null,
+		propertyEngagement: baseEngagement,
+		requestedByUser: { id: "seller-1", email: "seller@example.com", firstName: "Seller" },
+	} as unknown as ActivityDocumentRequestRecord;
+}
+
+const asset1Images: PropertyImageDto[] = [
+	{ id: "img-1", url: "https://cdn.example.com/img-1.jpg", isPrimary: true, originalFilename: "front.jpg" },
+];
+
+describe("mapActivityFeedMovement() — property.images", () => {
+	it("populates property.images from the map when the engagement's asset id has an entry", () => {
+		const imagesByAssetId = new Map<string, PropertyImageDto[]>([["asset-1", asset1Images]]);
+
+		const result = mapActivityFeedMovement(makeMovementFixture(), imagesByAssetId);
+
+		expect(result.property.images).toEqual(asset1Images);
+	});
+
+	it("defaults to an empty array when no imagesByAssetId map is passed at all", () => {
+		const result = mapActivityFeedMovement(makeMovementFixture());
+
+		expect(result.property.images).toEqual([]);
+	});
+
+	it("defaults to an empty array when the map is passed but has no entry for this asset id", () => {
+		const imagesByAssetId = new Map<string, PropertyImageDto[]>([["some-other-asset", asset1Images]]);
+
+		const result = mapActivityFeedMovement(makeMovementFixture(), imagesByAssetId);
+
+		expect(result.property.images).toEqual([]);
+	});
+});
+
+describe("mapActivityFeedDocumentRequest() — property.images", () => {
+	it("populates property.images from the map when the engagement's asset id has an entry", () => {
+		const imagesByAssetId = new Map<string, PropertyImageDto[]>([["asset-1", asset1Images]]);
+
+		const result = mapActivityFeedDocumentRequest(makeDocumentRequestFixture(), imagesByAssetId);
+
+		expect(result.property.images).toEqual(asset1Images);
+	});
+
+	it("defaults to an empty array when no imagesByAssetId map is passed at all (does not throw)", () => {
+		const result = mapActivityFeedDocumentRequest(makeDocumentRequestFixture());
+
+		expect(result.property.images).toEqual([]);
+	});
+});
 
 describe("mapActivityFeedMembership()", () => {
 	it("maps an INVITED record with the invitee as subject and the inviter as actor", () => {

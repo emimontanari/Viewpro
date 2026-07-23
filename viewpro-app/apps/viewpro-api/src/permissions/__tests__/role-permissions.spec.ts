@@ -24,7 +24,10 @@ describe('ROLE_PERMISSIONS / getPermissionsForRole', () => {
     expect(permissions).not.toContain(PLATFORM_PERMISSIONS.OPERATORS_MANAGE)
   })
 
-  it('OPERATIONS holds the 3 READs + 2 WRITEs and does NOT include PLATFORM_OPERATORS_MANAGE', () => {
+  // operator-activity-media (Slice 2b, D4): OPERATIONS now also holds
+  // TENANT_DOCUMENTS_READ (seeded here) — updated from the pre-2b exact-list
+  // assertion (which only had 5 entries) now that seeding has landed.
+  it('OPERATIONS holds the 3 READs + 2 WRITEs + TENANT_DOCUMENTS_READ and does NOT include PLATFORM_OPERATORS_MANAGE', () => {
     const permissions = getPermissionsForRole('OPERATIONS')
 
     expect([...permissions].sort()).toEqual(
@@ -34,6 +37,7 @@ describe('ROLE_PERMISSIONS / getPermissionsForRole', () => {
         PLATFORM_PERMISSIONS.AUDIT_READ,
         PLATFORM_PERMISSIONS.TENANT_STATUS_WRITE,
         PLATFORM_PERMISSIONS.TENANT_LIMITS_WRITE,
+        PLATFORM_PERMISSIONS.TENANT_DOCUMENTS_READ,
       ].sort(),
     )
     expect(permissions).not.toContain(PLATFORM_PERMISSIONS.OPERATORS_MANAGE)
@@ -52,5 +56,22 @@ describe('ROLE_PERMISSIONS / getPermissionsForRole', () => {
 
   it('ROLE_PERMISSIONS.OWNER includes PLATFORM_OPERATORS_MANAGE even though no route requires it (AC5)', () => {
     expect(ROLE_PERMISSIONS.OWNER).toContain(PLATFORM_PERMISSIONS.OPERATORS_MANAGE)
+  })
+
+  it('TENANT_DOCUMENTS_READ is declared with the expected string value', () => {
+    expect(PLATFORM_PERMISSIONS.TENANT_DOCUMENTS_READ).toBe('PLATFORM_TENANT_DOCUMENTS_READ')
+  })
+
+  // 2b.1 — operator-activity-media (Slice 2b, D4): TENANT_DOCUMENTS_READ is
+  // now SEEDED into OPERATIONS_PERMISSIONS (role-permissions.ts:10) → OWNER
+  // inherits it transitively (OWNER_PERMISSIONS spreads OPERATIONS_PERMISSIONS).
+  // ANALYST is DELIBERATELY excluded — least-privilege boundary, locked here as
+  // a regression guard so a future role edit can't silently widen access.
+  // This inverts 2a.13's "not yet granted to any role" assertion now that
+  // seeding has landed.
+  it('TENANT_DOCUMENTS_READ is granted to OPERATIONS and OWNER (inherited), and NOT to ANALYST (Slice 2b: seeded)', () => {
+    expect(getPermissionsForRole('ANALYST')).not.toContain(PLATFORM_PERMISSIONS.TENANT_DOCUMENTS_READ)
+    expect(getPermissionsForRole('OPERATIONS')).toContain(PLATFORM_PERMISSIONS.TENANT_DOCUMENTS_READ)
+    expect(getPermissionsForRole('OWNER')).toContain(PLATFORM_PERMISSIONS.TENANT_DOCUMENTS_READ)
   })
 })

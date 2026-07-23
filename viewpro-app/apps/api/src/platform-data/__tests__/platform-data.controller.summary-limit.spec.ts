@@ -32,12 +32,14 @@ function makeController(overrides?: {
   const activityExecute =
     overrides?.activityExecute ?? vi.fn().mockResolvedValue({ total: 0, items: [] })
   const getPlatformTenantActivityUseCase = { execute: activityExecute } as never
+  const createPlatformDocumentReadUrlUseCase = { execute: vi.fn() } as never
 
   const controller = new PlatformDataController(
     outboxRepository,
     tenantsReadRepository,
     getPilotSummaryUseCase,
     getPlatformTenantActivityUseCase,
+    createPlatformDocumentReadUrlUseCase,
   )
 
   return { controller, activityExecute }

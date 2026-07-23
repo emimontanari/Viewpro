@@ -6,10 +6,16 @@ import {
 } from '../../memberships/membership-activity.repository'
 import { MOVEMENTS_REPOSITORY, type MovementsRepository } from '../../movements/movements.repository'
 import {
+  PROPERTY_ASSET_IMAGES_READ_REPOSITORY,
+  type PropertyAssetImagesReadRepository,
+} from '../../property-engagements/property-asset-images-read.repository'
+import { buildPropertyImageUrl } from '../../property-engagements/property-images.storage'
+import {
   mapActivityFeedDocumentRequest,
   mapActivityFeedMembership,
   mapActivityFeedMovement,
   type ActivityFeedItemResponse,
+  type PropertyImageDto,
 } from '../responses/activity-feed.response'
 import { compareActivityItems } from './list-activity-feed.use-case'
 
@@ -76,6 +82,8 @@ export class GetPlatformTenantActivityUseCase {
     private readonly documentsRepository: DocumentsRepository,
     @Inject(MEMBERSHIP_ACTIVITY_REPOSITORY)
     private readonly membershipActivityRepository: MembershipActivityRepository,
+    @Inject(PROPERTY_ASSET_IMAGES_READ_REPOSITORY)
+    private readonly propertyAssetImagesReadRepository: PropertyAssetImagesReadRepository,
   ) {}
 
   async execute(input: GetPlatformTenantActivityInput): Promise<GetPlatformTenantActivityResponse> {
@@ -126,9 +134,34 @@ export class GetPlatformTenantActivityUseCase {
       }),
     ])
 
+    // Batched, N+1-safe image enrichment (D2): gather the unique set of
+    // property asset ids referenced by EITHER stream and resolve their
+    // images with a single repository call, regardless of page size.
+    const assetIds = new Set<string>()
+    for (const movement of movementFeed.items) {
+      assetIds.add(movement.propertyEngagement.propertyAssetId)
+    }
+    for (const document of documentFeed.items) {
+      assetIds.add(document.propertyEngagement.propertyAssetId)
+    }
+
+    const imagesByAssetIdRaw = await this.propertyAssetImagesReadRepository.findManyByAssetIds([...assetIds])
+    const imagesByAssetId = new Map<string, PropertyImageDto[]>()
+    for (const [assetId, images] of imagesByAssetIdRaw) {
+      imagesByAssetId.set(
+        assetId,
+        images.map((image) => ({
+          id: image.id,
+          url: buildPropertyImageUrl(image.storageKey),
+          isPrimary: image.isPrimary,
+          originalFilename: image.originalFilename,
+        })),
+      )
+    }
+
     const items = [
-      ...movementFeed.items.map(mapActivityFeedMovement),
-      ...documentFeed.items.map(mapActivityFeedDocumentRequest),
+      ...movementFeed.items.map((movement) => mapActivityFeedMovement(movement, imagesByAssetId)),
+      ...documentFeed.items.map((document) => mapActivityFeedDocumentRequest(document, imagesByAssetId)),
       ...membershipFeed.items.map(mapActivityFeedMembership),
     ]
       .sort(compareActivityItems)

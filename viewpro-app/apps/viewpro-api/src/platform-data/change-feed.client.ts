@@ -38,6 +38,40 @@ export type PlatformActivityFeedItem = {
 }
 
 /**
+ * Response shape for GET .../document-versions/:versionId/read-url — mirrors
+ * apps/api's `PlatformDocumentReadUrlResponse` 1:1 (design D5/D6). Flat
+ * shape, distinct from the tenant-summary passthrough above.
+ */
+export type PlatformDocumentReadUrlResponse = {
+  url: string
+  expiresInSeconds: number
+  originalFilename: string
+  mimeType: string
+}
+
+// Request timeout for the operator document-read hop. Bounds a hung InmoView so
+// the operator request fails over to 502 (URL withheld) instead of hanging.
+const DOCUMENT_READ_URL_FETCH_TIMEOUT_MS = 10_000
+
+/**
+ * Typed error thrown by `fetchDocumentReadUrl`. Mirrors `TenantSummaryFetchError`
+ * (D8 pattern): carries the upstream HTTP status when available so the caller
+ * (the new document-read handler) can map InmoView's 404 (cross-tenant/missing
+ * version, D6) to a ViewPro 404 and everything else to a 502 — WITHOUT ever
+ * minting a URL or writing an audit row on the 404 path (spec: "Missing or
+ * deleted document version" → no audit entry).
+ */
+export class DocumentReadUrlFetchError extends Error {
+  readonly status?: number
+
+  constructor(message: string, status?: number) {
+    super(message)
+    this.name = 'DocumentReadUrlFetchError'
+    this.status = status
+  }
+}
+
+/**
  * Response shape for GET /internal/platform/tenants/:id/summary — mirrors
  * apps/api's `PlatformTenantSummaryResponse` 1:1 (design D6).
  */
@@ -265,6 +299,58 @@ export class ChangeFeedClient {
     }
 
     return response.json() as Promise<PlatformTenantSummaryResponse>
+  }
+
+  /**
+   * GET /api/internal/platform/tenants/:tenantId/document-versions/:versionId/read-url
+   *
+   * operator-activity-media (Slice 2a, D5/D6): mints a fresh signed read URL
+   * for a document version. Mints a service token with the SAME claims as
+   * `fetchChanges`/`fetchTenantSummary` (reuses `mintIngestToken`).
+   * `encodeURIComponent` on both path segments (mirrors `fetchTenantSummary`
+   * — hardens against a crafted id segment re-routing the signed internal
+   * call). Throws on any non-2xx (404 cross-tenant/missing propagates as-is
+   * to the caller, which maps it to a ViewPro 404 — no typed error class
+   * needed here since the only caller distinction is "ok or not").
+   */
+  async fetchDocumentReadUrl(tenantId: string, versionId: string): Promise<PlatformDocumentReadUrlResponse> {
+    const baseUrl = this.trimTrailingSlash(this.inmoviewApiInternalUrl)
+    const url = `${baseUrl}/api/internal/platform/tenants/${encodeURIComponent(tenantId)}/document-versions/${encodeURIComponent(versionId)}/read-url`
+    const token = this.mintIngestToken()
+
+    // Bound this hot-path hop: a hung InmoView must fail over to the caller's
+    // 502 path (URL withheld) rather than pin the operator's request and the
+    // worker indefinitely. On timeout the abort surfaces as a fetch rejection,
+    // caught below and mapped to DocumentReadUrlFetchError (no status → 502).
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), DOCUMENT_READ_URL_FETCH_TIMEOUT_MS)
+
+    let response: Response
+    try {
+      response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          // Token is NOT logged — only sent in the Authorization header
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal,
+      })
+    } catch (err) {
+      throw new DocumentReadUrlFetchError(
+        `Document-read-url request to InmoView failed: ${(err as Error).message}`,
+      )
+    } finally {
+      clearTimeout(timeout)
+    }
+
+    if (!response.ok) {
+      throw new DocumentReadUrlFetchError(
+        `Document-read-url endpoint returned non-2xx status: ${response.status}`,
+        response.status,
+      )
+    }
+
+    return response.json() as Promise<PlatformDocumentReadUrlResponse>
   }
 
   private trimTrailingSlash(url: string): string {

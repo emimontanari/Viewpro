@@ -11,8 +11,15 @@ import { MOVEMENTS_REPOSITORY } from '../movements/movements.repository.js'
 import { PrismaMovementsRepository } from '../movements/prisma-movements.repository.js'
 import { DOCUMENTS_REPOSITORY } from '../documents/documents.repository.js'
 import { PrismaDocumentsRepository } from '../documents/prisma-documents.repository.js'
+import { CreatePlatformDocumentReadUrlUseCase } from '../documents/use-cases/create-platform-document-read-url.use-case.js'
+import { DOCUMENT_STORAGE_PORT } from '../documents/storage/document-storage.port.js'
+import { FakeDocumentStorageAdapter } from '../documents/storage/fake-document-storage.adapter.js'
+import { LocalDocumentStorageAdapter } from '../documents/storage/local-document-storage.adapter.js'
+import { S3DocumentStorageAdapter } from '../documents/storage/s3-document-storage.adapter.js'
 import { MEMBERSHIP_ACTIVITY_REPOSITORY } from '../memberships/membership-activity.repository.js'
 import { PrismaMembershipActivityRepository } from '../memberships/prisma-membership-activity.repository.js'
+import { PROPERTY_ASSET_IMAGES_READ_REPOSITORY } from '../property-engagements/property-asset-images-read.repository.js'
+import { PrismaPropertyAssetImagesReadRepository } from '../property-engagements/prisma-property-asset-images-read.repository.js'
 
 /**
  * PlatformDataModule — data-lane publisher (read side + outbox writer).
@@ -55,6 +62,23 @@ import { PrismaMembershipActivityRepository } from '../memberships/prisma-member
  *    duplicates only one more stateless binding — the identical trade-off
  *    already accepted for the other two repositories.
  *
+ *  - operator-activity-media (Slice 1) D2: GetPlatformTenantActivityUseCase
+ *    ALSO now depends on PROPERTY_ASSET_IMAGES_READ_REPOSITORY (batched,
+ *    N+1-safe property-image lookup for the activity feed). Same direct-
+ *    binding pattern as the three repositories above — PrismaProperty
+ *    AssetImagesReadRepository is a plain `@Injectable()` Prisma-only class.
+ *
+ *  - operator-activity-media (Slice 2a) D5: new GET
+ *    tenants/:tenantId/document-versions/:versionId/read-url route +
+ *    CreatePlatformDocumentReadUrlUseCase, which needs DOCUMENT_STORAGE_PORT.
+ *    documents.module.ts's DOCUMENT_STORAGE_PORT factory is NOT imported —
+ *    that module ALSO imports AuthModule (same circular-ES-module-load
+ *    hazard as AnalyticsModule above). The three storage adapters
+ *    (Fake/Local/S3) are plain `@Injectable()` classes with zero
+ *    module-level AuthModule dependency, so the factory is duplicated
+ *    directly here — same accepted trade-off as the repository bindings
+ *    above (one more stateless binding, not a new module edge).
+ *
  * Design D2: PlatformDataModule is a SIBLING to PlatformControlModule.
  * It reuses PlatformControlGuard by providing it directly — no JwtModule import.
  * The guard reads PLATFORM_CONTROL_SECRET from process.env via verifyServiceToken.
@@ -70,8 +94,35 @@ import { PrismaMembershipActivityRepository } from '../memberships/prisma-member
     { provide: MOVEMENTS_REPOSITORY, useClass: PrismaMovementsRepository },
     { provide: DOCUMENTS_REPOSITORY, useClass: PrismaDocumentsRepository },
     { provide: MEMBERSHIP_ACTIVITY_REPOSITORY, useClass: PrismaMembershipActivityRepository },
+    { provide: PROPERTY_ASSET_IMAGES_READ_REPOSITORY, useClass: PrismaPropertyAssetImagesReadRepository },
+    FakeDocumentStorageAdapter,
+    LocalDocumentStorageAdapter,
+    S3DocumentStorageAdapter,
+    {
+      provide: DOCUMENT_STORAGE_PORT,
+      useFactory: (
+        fakeStorage: FakeDocumentStorageAdapter,
+        localStorage: LocalDocumentStorageAdapter,
+        s3Storage: S3DocumentStorageAdapter,
+      ) => {
+        const driver = process.env.DOCUMENT_STORAGE_DRIVER ?? 'fake'
+        if (process.env.NODE_ENV === 'production' && driver !== 's3') {
+          throw new Error('DOCUMENT_STORAGE_DRIVER=s3 is required in production')
+        }
+        if (driver === 'local') {
+          return localStorage
+        }
+        if (driver === 's3') {
+          s3Storage.assertConfigured()
+          return s3Storage
+        }
+        return fakeStorage
+      },
+      inject: [FakeDocumentStorageAdapter, LocalDocumentStorageAdapter, S3DocumentStorageAdapter],
+    },
     GetPilotSummaryUseCase,
     GetPlatformTenantActivityUseCase,
+    CreatePlatformDocumentReadUrlUseCase,
   ],
   exports: [PlatformOutboxWriter],
 })

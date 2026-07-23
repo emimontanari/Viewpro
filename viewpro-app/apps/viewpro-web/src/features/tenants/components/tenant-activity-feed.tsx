@@ -1,9 +1,11 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Icons } from '@/components/icons';
+import { fetchDocumentReadUrl } from '@/features/tenants/api/service';
 import type { TenantActivityItem } from '@/features/tenants/api/types';
 import {
   activityDayKey,
@@ -13,8 +15,11 @@ import {
   formatActivityDateSeparator,
   formatActivityFullTimestamp,
   formatActivityTimestamp,
+  readDocumentCurrentVersionId,
+  readPropertyImages,
   type ActivityCategory
 } from '@/features/tenants/lib/activity-feed-formatting';
+import { getApiErrorMessage, isApiError } from '@/lib/api-client';
 import styles from './tenant-detail.module.css';
 
 type Props = {
@@ -22,6 +27,7 @@ type Props = {
   hasMore: boolean;
   isLoadingMore: boolean;
   onLoadMore: () => void;
+  tenantId: string;
 };
 
 type FilterKey = 'all' | ActivityCategory;
@@ -93,6 +99,88 @@ function EventIcon({ category }: { category: ActivityCategory }) {
   }
 }
 
+/**
+ * PropertyImageStrip — operator-activity-media (Slice 1) design D8.
+ *
+ * Thumbnail strip rendered inside the collapsible detail panel. Sourced via
+ * the defensive `readPropertyImages` reader, so a missing/malformed
+ * `property.images` field on the wire simply renders nothing (never
+ * throws). `next/image` remote pattern for the images host is already
+ * whitelisted (next.config.ts:13-15).
+ */
+function PropertyImageStrip({ item }: { item: TenantActivityItem }) {
+  const images = readPropertyImages(item);
+
+  if (images.length === 0) {
+    return null;
+  }
+
+  return (
+    <div data-testid='tenant-activity-image-strip' className={styles.imageStrip}>
+      {images.map((image) => (
+        <Image
+          key={image.id}
+          src={image.url}
+          alt={image.originalFilename || 'Foto de la propiedad'}
+          width={64}
+          height={64}
+          className={styles.imageThumb}
+        />
+      ))}
+    </div>
+  );
+}
+
+const PERMISSION_DENIED_MESSAGE = 'Sin permiso para ver este documento.';
+
+/**
+ * DocumentViewButton — operator-activity-media (Slice 2b) design D3/D6.
+ *
+ * "Ver documento" action rendered inside the collapsible detail panel, ONLY
+ * for a `document_request` item that has an uploaded version (`currentVersion`
+ * present — read defensively via `readDocumentCurrentVersionId`, D8). On
+ * click, mints a fresh signed URL on demand (NEVER cached — a re-click always
+ * re-fetches, since URLs are short-lived) and opens it in a new tab. A 403
+ * (missing `TENANT_DOCUMENTS_READ`) surfaces a distinct inline message; any
+ * other failure (404/502/network) surfaces the generic API error message
+ * without breaking the rest of the panel.
+ */
+function DocumentViewButton({ tenantId, item }: { tenantId: string; item: TenantActivityItem }) {
+  const [error, setError] = React.useState<string | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const versionId = readDocumentCurrentVersionId(item);
+
+  if (!versionId) {
+    return null;
+  }
+
+  async function handleClick() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { url } = await fetchDocumentReadUrl(tenantId, versionId as string);
+      window.open(url, '_blank', 'noopener');
+    } catch (err) {
+      setError(isApiError(err) && err.status === 403 ? PERMISSION_DENIED_MESSAGE : getApiErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <div className={styles.documentActionRow}>
+      <Button type='button' variant='outline' size='sm' disabled={isLoading} onClick={handleClick}>
+        {isLoading ? 'Abriendo…' : 'Ver documento'}
+      </Button>
+      {error && (
+        <p role='alert' className={styles.documentActionError}>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ChevronIcon() {
   return (
     <svg {...SVG_PROPS} className={styles.rowChevron}>
@@ -137,7 +225,7 @@ function buildRows(items: TenantActivityItem[]): FeedRow[] {
  * fetch and composes with "Cargar más" (newly appended items are re-filtered
  * on the next render).
  */
-export function TenantActivityFeed({ items, hasMore, isLoadingMore, onLoadMore }: Props) {
+export function TenantActivityFeed({ items, hasMore, isLoadingMore, onLoadMore, tenantId }: Props) {
   const [activeFilter, setActiveFilter] = React.useState<FilterKey>('all');
 
   if (items.length === 0) {
@@ -199,6 +287,8 @@ export function TenantActivityFeed({ items, hasMore, isLoadingMore, onLoadMore }
               const { item, category } = row;
               const { title, subtitle } = describeTenantActivityItem(item);
               const detail = buildTenantActivityDetail(item);
+              const images = readPropertyImages(item);
+              const hasDocumentVersion = readDocumentCurrentVersionId(item) !== null;
 
               return (
                 <li
@@ -223,16 +313,20 @@ export function TenantActivityFeed({ items, hasMore, isLoadingMore, onLoadMore }
                       </span>
                       <ChevronIcon />
                     </CollapsibleTrigger>
-                    {detail.length > 0 && (
+                    {(detail.length > 0 || images.length > 0 || hasDocumentVersion) && (
                       <CollapsibleContent className={styles.rowDetail}>
-                        <dl className={styles.detailList}>
-                          {detail.map((field) => (
-                            <div key={field.label} className={styles.detailPair}>
-                              <dt className={styles.detailLabel}>{field.label}</dt>
-                              <dd className={styles.detailValue}>{field.value}</dd>
-                            </div>
-                          ))}
-                        </dl>
+                        {images.length > 0 && <PropertyImageStrip item={item} />}
+                        {detail.length > 0 && (
+                          <dl className={styles.detailList}>
+                            {detail.map((field) => (
+                              <div key={field.label} className={styles.detailPair}>
+                                <dt className={styles.detailLabel}>{field.label}</dt>
+                                <dd className={styles.detailValue}>{field.value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        )}
+                        {hasDocumentVersion && <DocumentViewButton tenantId={tenantId} item={item} />}
                       </CollapsibleContent>
                     )}
                   </Collapsible>
