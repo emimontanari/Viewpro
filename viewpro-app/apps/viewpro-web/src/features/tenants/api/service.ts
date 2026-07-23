@@ -4,6 +4,7 @@ import { parseLimitsResponse, parseStatusResponse } from './schemas';
 import type {
   AdminTenantLimitsUpdateResponse,
   AdminTenantStatusUpdateResponse,
+  DocumentReadUrlResponse,
   TenantDetailResponse,
   TenantListResponse,
   UpdateTenantLimitsPayload,
@@ -95,5 +96,26 @@ export async function getTenantDetail(
 ): Promise<TenantDetailResponse> {
   return apiRequest<TenantDetailResponse>(
     `/operators/tenants/${encodeURIComponent(tenantId)}/summary?offset=${offset}&limit=${limit}`
+  );
+}
+
+/**
+ * Mint a fresh signed read URL for a tenant's uploaded document version
+ * (operator-activity-media, Slice 2b, D3/D6).
+ *
+ * Endpoint: GET /operators/tenants/:tenantId/document-versions/:versionId/read-url
+ * Auth: viewpro_platform_access_token cookie; requires the operator-held
+ * TENANT_DOCUMENTS_READ permission (403 if absent) — enforced server-side.
+ * On-demand only: NEVER cached here — every call issues a fresh request, so a
+ * stale/expired URL (5-min TTL) is simply re-minted on the next click.
+ * Typed end-to-end (not zod-validated), mirrors the getTenantDetail GET
+ * precedent above.
+ */
+export async function fetchDocumentReadUrl(
+  tenantId: string,
+  versionId: string
+): Promise<DocumentReadUrlResponse> {
+  return apiRequest<DocumentReadUrlResponse>(
+    `/operators/tenants/${encodeURIComponent(tenantId)}/document-versions/${encodeURIComponent(versionId)}/read-url`
   );
 }

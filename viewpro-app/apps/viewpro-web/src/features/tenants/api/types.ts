@@ -126,3 +126,18 @@ export type TenantDetailResponse = {
   ownerViewedPropertyCount: number;
   activity: TenantDetailActivity;
 };
+
+/**
+ * operator-activity-media (Slice 2b, D4/D6): response shape for
+ * GET /operators/tenants/:tenantId/document-versions/:versionId/read-url —
+ * mirrors apps/viewpro-api's `PlatformDocumentReadUrlResponse` 1:1 (Design B
+ * isolation — no shared package type). On-demand mint, 5-minute TTL; never
+ * cached client-side (a re-click always re-fetches, per spec's "Expired URL
+ * re-fetch" scenario).
+ */
+export type DocumentReadUrlResponse = {
+  url: string;
+  expiresInSeconds: number;
+  originalFilename: string;
+  mimeType: string;
+};

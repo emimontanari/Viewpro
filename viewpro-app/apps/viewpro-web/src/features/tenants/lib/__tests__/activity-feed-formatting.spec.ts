@@ -27,6 +27,7 @@ import {
   buildTenantActivityDetail,
   describeTenantActivityItem,
   formatActivityTimestamp,
+  readDocumentCurrentVersionId,
   readPropertyImages
 } from '../activity-feed-formatting';
 
@@ -487,5 +488,69 @@ describe('readPropertyImages()', () => {
     expect(result).toEqual([
       { id: 'img-1', url: 'https://cdn.example.com/img-1.jpg', isPrimary: true, originalFilename: 'front.jpg' }
     ]);
+  });
+});
+
+/**
+ * operator-activity-media (Slice 2b, task 2b.5/2b.7) — RED:
+ * readDocumentCurrentVersionId
+ *
+ * Spec: operator-document-read — the "Ver documento" action is only
+ *   available for a document_request item that has an uploaded version.
+ * Design D6/D8: loose-wire defensive reader mirroring readPropertyImages —
+ *   a missing/malformed documentRequest.currentVersion.id degrades to null,
+ *   never throws.
+ */
+describe('readDocumentCurrentVersionId()', () => {
+  it('returns the version id when documentRequest.currentVersion.id is a non-empty string', () => {
+    const item: TenantActivityItem = {
+      ...DOCUMENT_REQUEST_ITEM,
+      documentRequest: {
+        title: 'Escritura',
+        description: null,
+        status: 'SUBMITTED',
+        currentVersion: { id: 'version-1', originalFilename: 'escritura.pdf', status: 'UPLOADED' }
+      }
+    };
+
+    expect(readDocumentCurrentVersionId(item)).toBe('version-1');
+  });
+
+  it('returns null when currentVersion is null (no file uploaded yet)', () => {
+    expect(readDocumentCurrentVersionId(DOCUMENT_REQUEST_ITEM)).toBeNull();
+  });
+
+  it('returns null when documentRequest itself is absent (no throw)', () => {
+    expect(
+      readDocumentCurrentVersionId({ kind: 'movement', id: 'x', createdAt: 'not-a-date' } as TenantActivityItem)
+    ).toBeNull();
+  });
+
+  it('returns null when currentVersion.id is missing/malformed (drift degrades, never throws)', () => {
+    const item: TenantActivityItem = {
+      ...DOCUMENT_REQUEST_ITEM,
+      documentRequest: {
+        title: 'Escritura',
+        description: null,
+        status: 'SUBMITTED',
+        currentVersion: { originalFilename: 'escritura.pdf', status: 'UPLOADED' }
+      }
+    };
+
+    expect(readDocumentCurrentVersionId(item)).toBeNull();
+  });
+
+  it('returns null when currentVersion is entirely malformed (not an object)', () => {
+    const item: TenantActivityItem = {
+      ...DOCUMENT_REQUEST_ITEM,
+      documentRequest: {
+        title: 'Escritura',
+        description: null,
+        status: 'SUBMITTED',
+        currentVersion: 'not-an-object'
+      }
+    };
+
+    expect(readDocumentCurrentVersionId(item)).toBeNull();
   });
 });

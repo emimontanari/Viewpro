@@ -8,12 +8,21 @@
  */
 
 import * as React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { TenantActivityItem } from '@/features/tenants/api/types';
+
+// Mock fetchDocumentReadUrl before importing the component (Slice 2b, 2b.7).
+vi.mock('@/features/tenants/api/service', () => ({
+  fetchDocumentReadUrl: vi.fn()
+}));
+
+import { fetchDocumentReadUrl } from '@/features/tenants/api/service';
 import { TenantActivityFeed } from '../tenant-activity-feed';
+
+const mockFetchDocumentReadUrl = vi.mocked(fetchDocumentReadUrl);
 
 // Two calendar days, one item of each category:
 //  - membership (user)      2026-07-15
@@ -54,6 +63,7 @@ function renderFeed(overrides: Partial<React.ComponentProps<typeof TenantActivit
     hasMore: false,
     isLoadingMore: false,
     onLoadMore: vi.fn(),
+    tenantId: 'tenant-1',
     ...overrides
   };
   render(<TenantActivityFeed {...props} />);
@@ -295,5 +305,150 @@ describe('TenantActivityFeed — property image thumbnail strip', () => {
 
     expect(await screen.findByText('Propiedad')).toBeTruthy();
     expect(screen.queryByTestId('tenant-activity-image-strip')).toBeNull();
+  });
+});
+
+/**
+ * operator-activity-media (Slice 2b, task 2b.7) — RED: "Ver documento" action
+ * button in the collapsible detail panel.
+ *
+ * Spec: operator-document-read — on-demand signed URL mint, permission-gated,
+ *   never embedded in the feed payload; each click re-mints (no caching).
+ * Design: visible only for a `document_request` item with a `currentVersion`
+ *   present; click -> fetchDocumentReadUrl(tenantId, versionId) ->
+ *   window.open(url, '_blank', 'noopener') on success; inline "Sin permiso"
+ *   message on 403; other errors surface a generic inline message without
+ *   breaking the rest of the panel.
+ */
+describe('TenantActivityFeed — "Ver documento" action button', () => {
+  const DOCUMENT_ITEM_WITH_VERSION: TenantActivityItem = {
+    kind: 'document_request',
+    id: 'deed-with-version',
+    createdAt: '2026-07-16T10:00:00.000Z',
+    documentRequest: {
+      title: 'Escritura',
+      description: null,
+      status: 'SUBMITTED',
+      currentVersion: { id: 'version-1', originalFilename: 'escritura.pdf', status: 'UPLOADED' }
+    }
+  };
+
+  const DOCUMENT_ITEM_WITHOUT_VERSION: TenantActivityItem = {
+    kind: 'document_request',
+    id: 'deed-without-version',
+    createdAt: '2026-07-16T09:00:00.000Z',
+    documentRequest: {
+      title: 'Escritura',
+      description: null,
+      status: 'PENDING',
+      currentVersion: null
+    }
+  };
+
+  let openSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    mockFetchDocumentReadUrl.mockReset();
+    // window persists across tests within this file (jsdom is created once per
+    // test file), so vi.spyOn reuses the SAME underlying mock on repeat calls
+    // and does NOT clear its prior call history — mockRestore() first ensures
+    // every test gets a truly fresh spy with an empty call log.
+    if (openSpy) {
+      openSpy.mockRestore();
+    }
+    openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+  });
+
+  async function expandItem(testId: string) {
+    const user = userEvent.setup();
+    const item = screen.getByTestId(testId);
+    await user.click(within(item).getByRole('button'));
+    return user;
+  }
+
+  it('shows the "Ver documento" button when the item has an uploaded currentVersion', async () => {
+    renderFeed({ items: [DOCUMENT_ITEM_WITH_VERSION] });
+
+    await expandItem('tenant-activity-item-deed-with-version');
+
+    expect(await screen.findByRole('button', { name: 'Ver documento' })).toBeTruthy();
+  });
+
+  it('omits the button when the item has no currentVersion (nothing uploaded yet)', async () => {
+    renderFeed({ items: [DOCUMENT_ITEM_WITHOUT_VERSION] });
+
+    await expandItem('tenant-activity-item-deed-without-version');
+
+    expect(await screen.findByText('Escritura')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Ver documento' })).toBeNull();
+  });
+
+  it('on click, fetches the read URL and opens it in a new tab', async () => {
+    mockFetchDocumentReadUrl.mockResolvedValueOnce({
+      url: 'https://storage.example/read/escritura.pdf',
+      expiresInSeconds: 300,
+      originalFilename: 'escritura.pdf',
+      mimeType: 'application/pdf'
+    });
+    renderFeed({ items: [DOCUMENT_ITEM_WITH_VERSION] });
+    const user = await expandItem('tenant-activity-item-deed-with-version');
+
+    const button = await screen.findByRole('button', { name: 'Ver documento' });
+    await user.click(button);
+
+    expect(mockFetchDocumentReadUrl).toHaveBeenCalledWith('tenant-1', 'version-1');
+    expect(openSpy).toHaveBeenCalledWith('https://storage.example/read/escritura.pdf', '_blank', 'noopener');
+  });
+
+  it('shows an inline "Sin permiso" message on 403 and does not open a tab', async () => {
+    renderFeed({ items: [DOCUMENT_ITEM_WITH_VERSION] });
+    const user = await expandItem('tenant-activity-item-deed-with-version');
+    mockFetchDocumentReadUrl.mockRejectedValueOnce({ status: 403, message: 'Insufficient permissions' });
+
+    const button = await screen.findByRole('button', { name: 'Ver documento' });
+    await user.click(button);
+
+    expect(await screen.findByText('Sin permiso para ver este documento.')).toBeTruthy();
+    expect(openSpy).not.toHaveBeenCalled();
+  });
+
+  it('shows a generic inline error message on a non-403 failure without breaking the rest of the panel', async () => {
+    renderFeed({ items: [DOCUMENT_ITEM_WITH_VERSION] });
+    const user = await expandItem('tenant-activity-item-deed-with-version');
+    mockFetchDocumentReadUrl.mockRejectedValueOnce({ status: 502, message: 'Failed to reach InmoView' });
+
+    const button = await screen.findByRole('button', { name: 'Ver documento' });
+    await user.click(button);
+
+    expect(await screen.findByText('Failed to reach InmoView')).toBeTruthy();
+    expect(openSpy).not.toHaveBeenCalled();
+    // The rest of the panel is untouched.
+    expect(screen.getByText('Escritura')).toBeTruthy();
+  });
+
+  it('re-fetches on every click — never caches the previously minted URL', async () => {
+    mockFetchDocumentReadUrl
+      .mockResolvedValueOnce({
+        url: 'https://storage.example/read/escritura-1.pdf',
+        expiresInSeconds: 300,
+        originalFilename: 'escritura.pdf',
+        mimeType: 'application/pdf'
+      })
+      .mockResolvedValueOnce({
+        url: 'https://storage.example/read/escritura-2.pdf',
+        expiresInSeconds: 300,
+        originalFilename: 'escritura.pdf',
+        mimeType: 'application/pdf'
+      });
+    renderFeed({ items: [DOCUMENT_ITEM_WITH_VERSION] });
+    const user = await expandItem('tenant-activity-item-deed-with-version');
+
+    const button = await screen.findByRole('button', { name: 'Ver documento' });
+    await user.click(button);
+    await user.click(button);
+
+    expect(mockFetchDocumentReadUrl).toHaveBeenCalledTimes(2);
+    expect(openSpy).toHaveBeenNthCalledWith(1, 'https://storage.example/read/escritura-1.pdf', '_blank', 'noopener');
+    expect(openSpy).toHaveBeenNthCalledWith(2, 'https://storage.example/read/escritura-2.pdf', '_blank', 'noopener');
   });
 });
