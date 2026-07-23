@@ -1,13 +1,13 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common'
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
-import { AuthGuard } from '../auth/guards/auth.guard'
+import { AuthGuard, type AuthenticatedRequest } from '../auth/guards/auth.guard'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { PlatformPermissionGuard } from '../permissions/platform-permission.guard'
 import { PLATFORM_PERMISSIONS } from '../permissions/platform-permissions.constants'
 import { RequirePlatformPermission } from '../permissions/require-platform-permission.decorator'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { TenantDetailService } from './tenant-detail.service'
-import type { PlatformTenantSummaryResponse } from './change-feed.client'
+import type { PlatformDocumentReadUrlResponse, PlatformTenantSummaryResponse } from './change-feed.client'
 
 const DEFAULT_OFFSET = 0
 const DEFAULT_LIMIT = 20
@@ -67,5 +67,25 @@ export class TenantDetailController {
     @Query('limit') limit?: string,
   ): Promise<PlatformTenantSummaryResponse> {
     return this.tenantDetailService.getTenantSummary(id, sanitizeOffset(offset), sanitizeLimit(limit))
+  }
+
+  /**
+   * GET /operators/tenants/:tenantId/document-versions/:versionId/read-url
+   *
+   * operator-activity-media (Slice 2a, D4/D5/D6/D7). Gated by a DISTINCT
+   * permission (`TENANT_DOCUMENTS_READ`, not `TENANTS_READ`) — declared in
+   * `platform-permissions.constants.ts` but NOT YET seeded into any role
+   * (Slice 2b seeds it: OWNER inherits, ANALYST excluded). Until then this
+   * route is unreachable by any real operator role; 2a's tests mock/override
+   * `PlatformPermissionGuard` to exercise the handler logic in isolation.
+   */
+  @Get(':tenantId/document-versions/:versionId/read-url')
+  @RequirePlatformPermission(PLATFORM_PERMISSIONS.TENANT_DOCUMENTS_READ)
+  async documentReadUrl(
+    @Param('tenantId') tenantId: string,
+    @Param('versionId') versionId: string,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<PlatformDocumentReadUrlResponse> {
+    return this.tenantDetailService.getDocumentReadUrl(tenantId, versionId, request.user!)
   }
 }

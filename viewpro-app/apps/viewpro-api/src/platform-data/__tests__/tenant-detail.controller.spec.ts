@@ -13,7 +13,9 @@ import { PrismaService } from '../../database/prisma.service'
 import { PermissionsModule } from '../../permissions/permissions.module'
 import { TenantDetailController } from '../tenant-detail.controller'
 import { TenantDetailService } from '../tenant-detail.service'
-import { ChangeFeedClient, TenantSummaryFetchError } from '../change-feed.client'
+import { ChangeFeedClient, DocumentReadUrlFetchError, TenantSummaryFetchError } from '../change-feed.client'
+import { AuditLogRepository } from '../audit-log.repository'
+import { PlatformPermissionGuard } from '../../permissions/platform-permission.guard'
 
 /**
  * platform-tenant-tracking (PR1) — RED: `TenantDetailController`/
@@ -59,21 +61,23 @@ function extractPlatformCookie(headers: Record<string, unknown>): string {
   return (found.split(';')[0] ?? '').trim()
 }
 
+// Module-scope (not describe-local) so the Slice 2a documentReadUrl describe
+// block below can reuse it without duplicating the seed-shell-out logic.
+function seedOperator(email: string, password: string): void {
+  execSync('pnpm db:seed', {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      SEED_OPERATOR_EMAIL: email,
+      SEED_OPERATOR_PASSWORD: password,
+    },
+  })
+}
+
 describe('TenantDetailController (integration — test DB, mocked InmoView client)', () => {
   let app: INestApplication
   let prisma: PrismaService
   let mockFetchTenantSummary: ReturnType<typeof vi.fn<ChangeFeedClient['fetchTenantSummary']>>
-
-  function seedOperator(email: string, password: string): void {
-    execSync('pnpm db:seed', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        SEED_OPERATOR_EMAIL: email,
-        SEED_OPERATOR_PASSWORD: password,
-      },
-    })
-  }
 
   beforeAll(async () => {
     seedOperator(TEST_EMAIL, TEST_PASSWORD)
@@ -95,6 +99,7 @@ describe('TenantDetailController (integration — test DB, mocked InmoView clien
       controllers: [TenantDetailController],
       providers: [
         TenantDetailService,
+        AuditLogRepository,
         { provide: ChangeFeedClient, useValue: mockChangeFeedClient },
       ],
     }).compile()
@@ -249,5 +254,144 @@ describe('TenantDetailController (integration — test DB, mocked InmoView clien
     const source = readFileSync(join(__dirname, '..', 'tenant-detail.service.ts'), 'utf8')
 
     expect(source).not.toMatch(/prisma\.\w+\.(create|update|upsert|delete)/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// operator-activity-media (Slice 2a) — RED: GET
+// /operators/tenants/:tenantId/document-versions/:versionId/read-url
+//
+// Spec: operator-document-read — Permission-Gated Signed Read URL, Audit
+//   Entry on Every Successful Mint, Audit write fails.
+// Design D4/D7: TENANT_DOCUMENTS_READ is declared but NOT yet seeded to any
+//   role — PlatformPermissionGuard is overridden to always allow here so the
+//   handler logic (mint -> audit -> return, fail-closed) can be exercised.
+//   True role-based enforcement (guard NOT overridden) ships in Slice 2b.
+// ChangeFeedClient is mocked (no live InmoView call); AuditLogRepository is
+//   the REAL class against the test DB, so audit rows are asserted directly.
+// ---------------------------------------------------------------------------
+
+describe('TenantDetailController.documentReadUrl (integration — test DB, mocked InmoView client, permission guard overridden — Slice 2a)', () => {
+  let app: INestApplication
+  let prisma: PrismaService
+  let mockFetchDocumentReadUrl: ReturnType<typeof vi.fn<ChangeFeedClient['fetchDocumentReadUrl']>>
+
+  const DOC_TEST_EMAIL = 'document-read-url-test@viewpro.app'
+  const DOC_TEST_PASSWORD = 'document-read-url-test-password'
+
+  beforeAll(async () => {
+    seedOperator(DOC_TEST_EMAIL, DOC_TEST_PASSWORD)
+
+    mockFetchDocumentReadUrl = vi.fn()
+    const mockChangeFeedClient: Pick<ChangeFeedClient, 'fetchDocumentReadUrl'> = {
+      fetchDocumentReadUrl: mockFetchDocumentReadUrl,
+    }
+
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [
+        ConfigModule,
+        ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+        DatabaseModule,
+        AuthModule,
+        PermissionsModule,
+      ],
+      controllers: [TenantDetailController],
+      providers: [
+        TenantDetailService,
+        AuditLogRepository,
+        { provide: ChangeFeedClient, useValue: mockChangeFeedClient },
+      ],
+    })
+      .overrideGuard(PlatformPermissionGuard)
+      .useValue({ canActivate: () => true })
+      .compile()
+
+    app = moduleFixture.createNestApplication()
+    app.use(cookieParser())
+    app.setGlobalPrefix('api')
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
+    await app.init()
+
+    prisma = moduleFixture.get(PrismaService)
+  })
+
+  afterAll(async () => {
+    await app?.close()
+  })
+
+  beforeEach(async () => {
+    mockFetchDocumentReadUrl.mockClear()
+    await prisma.platformAuditLog.deleteMany()
+  })
+
+  async function getDocCookie(): Promise<string> {
+    const res = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: DOC_TEST_EMAIL, password: DOC_TEST_PASSWORD })
+    if (res.status !== 200) {
+      throw new Error(`Login failed: ${res.status} ${JSON.stringify(res.body)}`)
+    }
+    return extractPlatformCookie(res.headers as Record<string, unknown>)
+  }
+
+  const mintedResult = {
+    url: 'https://storage.example/read/documents/req-1/version-1.pdf',
+    expiresInSeconds: 300,
+    originalFilename: 'deed.pdf',
+    mimeType: 'application/pdf',
+  }
+
+  it('successful mint → 200 with the minted URL, AND exactly one TENANT_DOCUMENT_VIEWED audit row is persisted', async () => {
+    mockFetchDocumentReadUrl.mockResolvedValueOnce(mintedResult)
+    const cookie = await getDocCookie()
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/tenants/tenant-1/document-versions/version-1/read-url')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual(mintedResult)
+
+    const rows = await prisma.platformAuditLog.findMany({ where: { action: 'TENANT_DOCUMENT_VIEWED' } })
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.tenantId).toBe('tenant-1')
+    expect(rows[0]?.target).toEqual({ documentVersionId: 'version-1', filename: 'deed.pdf' })
+  })
+
+  it('unauthenticated request → 401, no mint attempted, no audit row', async () => {
+    const res = await request(app.getHttpServer()).get(
+      '/api/operators/tenants/tenant-1/document-versions/version-1/read-url',
+    )
+
+    expect(res.status).toBe(401)
+    expect(mockFetchDocumentReadUrl).not.toHaveBeenCalled()
+    const rows = await prisma.platformAuditLog.findMany({ where: { action: 'TENANT_DOCUMENT_VIEWED' } })
+    expect(rows).toHaveLength(0)
+  })
+
+  it('cross-tenant/missing version (InmoView 404) → ViewPro 404, no audit row', async () => {
+    mockFetchDocumentReadUrl.mockRejectedValueOnce(new DocumentReadUrlFetchError('not found', 404))
+    const cookie = await getDocCookie()
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/tenants/tenant-1/document-versions/does-not-exist/read-url')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(404)
+    const rows = await prisma.platformAuditLog.findMany({ where: { action: 'TENANT_DOCUMENT_VIEWED' } })
+    expect(rows).toHaveLength(0)
+  })
+
+  it('InmoView unreachable → ViewPro 502, no audit row', async () => {
+    mockFetchDocumentReadUrl.mockRejectedValueOnce(new DocumentReadUrlFetchError('network down'))
+    const cookie = await getDocCookie()
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/tenants/tenant-1/document-versions/version-1/read-url')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(502)
+    const rows = await prisma.platformAuditLog.findMany({ where: { action: 'TENANT_DOCUMENT_VIEWED' } })
+    expect(rows).toHaveLength(0)
   })
 })

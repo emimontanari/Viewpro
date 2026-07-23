@@ -12,6 +12,9 @@ import type { PilotSummaryResponse } from '../analytics/use-cases/get-pilot-summ
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { GetPlatformTenantActivityUseCase } from '../analytics/use-cases/get-platform-tenant-activity.use-case'
 import type { GetPlatformTenantActivityResponse } from '../analytics/use-cases/get-platform-tenant-activity.use-case'
+// biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
+import { CreatePlatformDocumentReadUrlUseCase } from '../documents/use-cases/create-platform-document-read-url.use-case'
+import type { PlatformDocumentReadUrlResponse } from '../documents/use-cases/create-platform-document-read-url.use-case'
 
 const DEFAULT_SUMMARY_ACTIVITY_OFFSET = 0
 const DEFAULT_SUMMARY_ACTIVITY_LIMIT = 20
@@ -78,6 +81,7 @@ export class PlatformDataController {
     private readonly tenantsReadRepository: PlatformTenantsReadRepository,
     private readonly getPilotSummaryUseCase: GetPilotSummaryUseCase,
     private readonly getPlatformTenantActivityUseCase: GetPlatformTenantActivityUseCase,
+    private readonly createPlatformDocumentReadUrlUseCase: CreatePlatformDocumentReadUrlUseCase,
   ) {}
 
   /**
@@ -159,5 +163,27 @@ export class PlatformDataController {
     ])
 
     return { ...summary, activity }
+  }
+
+  /**
+   * GET /internal/platform/tenants/:tenantId/document-versions/:versionId/read-url
+   *
+   * operator-activity-media (Slice 2a, D5/D6): mints a fresh 5-minute signed
+   * read URL for a document version, after validating it belongs to
+   * `:tenantId`. NOT reused from CreateInternalDocumentReadUrlUseCase — that
+   * use case is TENANT-staff scoped via TenantContext, which the platform
+   * lane never has. Cross-tenant/missing versions resolve to 404 (thrown by
+   * the use case) rather than 403, avoiding a cross-tenant existence oracle.
+   *
+   * Protected by PlatformControlGuard (class-level, unchanged) — this route
+   * adds NO new guard wiring. Trust isolation: request.user is NEVER set on
+   * this path.
+   */
+  @Get('tenants/:tenantId/document-versions/:versionId/read-url')
+  async getDocumentReadUrl(
+    @Param('tenantId') tenantId: string,
+    @Param('versionId') versionId: string,
+  ): Promise<PlatformDocumentReadUrlResponse> {
+    return this.createPlatformDocumentReadUrlUseCase.execute(tenantId, versionId)
   }
 }

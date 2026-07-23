@@ -169,6 +169,15 @@ export type FindInternalDocumentVersionInput = {
 	canViewAll: boolean;
 };
 
+/**
+ * operator-activity-media (Slice 2a, D6): no viewerUserId/canViewAll — the
+ * platform lane has no per-agent visibility concept, only tenant isolation.
+ */
+export type FindPlatformDocumentVersionInput = {
+	tenantId: string;
+	versionId: string;
+};
+
 export type DocumentsRepository = {
 	findTenantEngagementForDocumentRequest(input: {
 		tenantId: string;
@@ -234,5 +243,8 @@ export type DocumentsRepository = {
 	): Promise<DocumentVersionRecord | null>;
 	findInternalReadableVersion(
 		input: FindInternalDocumentVersionInput,
+	): Promise<DocumentVersionRecord | null>;
+	findPlatformReadableVersion(
+		input: FindPlatformDocumentVersionInput,
 	): Promise<DocumentVersionRecord | null>;
 };
