@@ -27,7 +27,8 @@ import {
   updateTenantStatus,
   updateTenantLimits,
   assignTenantPlan,
-  getTenantDetail
+  getTenantDetail,
+  fetchDocumentReadUrl
 } from '../service';
 import { parseStatusResponse, parseLimitsResponse } from '../schemas';
 import { tenantsKeys, tenantsListOptions, tenantDetailOptions } from '../queries';
@@ -299,6 +300,92 @@ describe('getTenantDetail()', () => {
     mockApiRequest.mockRejectedValueOnce(apiError);
 
     await expect(getTenantDetail('missing-tenant', 0, 20)).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+// ─── fetchDocumentReadUrl() (operator-activity-media, Slice 2b, 2b.5) ────────
+//
+// GET /operators/tenants/:tenantId/document-versions/:versionId/read-url —
+// on-demand, short-lived signed URL mint. No caching at this layer (spec:
+// "Expired URL re-fetch" — every click re-fetches). Typed end-to-end (not
+// zod-validated), matching the getTenantDetail GET precedent above.
+
+const MOCK_READ_URL_RESPONSE = {
+  url: 'https://storage.example/read/documents/req-1/version-1.pdf',
+  expiresInSeconds: 300,
+  originalFilename: 'deed.pdf',
+  mimeType: 'application/pdf'
+};
+
+describe('fetchDocumentReadUrl()', () => {
+  it('calls GET /operators/tenants/:tenantId/document-versions/:versionId/read-url', async () => {
+    mockApiRequest.mockResolvedValueOnce(MOCK_READ_URL_RESPONSE);
+
+    await fetchDocumentReadUrl('tenant-1', 'version-1');
+
+    expect(mockApiRequest).toHaveBeenCalledOnce();
+    const [path] = mockApiRequest.mock.calls[0];
+    expect(path).toBe('/operators/tenants/tenant-1/document-versions/version-1/read-url');
+  });
+
+  it('returns { url, expiresInSeconds, originalFilename, mimeType } on success', async () => {
+    mockApiRequest.mockResolvedValueOnce(MOCK_READ_URL_RESPONSE);
+
+    const result = await fetchDocumentReadUrl('tenant-1', 'version-1');
+
+    expect(result).toEqual(MOCK_READ_URL_RESPONSE);
+  });
+
+  it('encodes the tenant id and version id in the path', async () => {
+    mockApiRequest.mockResolvedValueOnce(MOCK_READ_URL_RESPONSE);
+
+    await fetchDocumentReadUrl('tenant with spaces', 'version with spaces');
+
+    const [path] = mockApiRequest.mock.calls[0];
+    expect(path).toBe(
+      '/operators/tenants/tenant%20with%20spaces/document-versions/version%20with%20spaces/read-url'
+    );
+  });
+
+  it('surfaces a 403 (missing permission) distinctly from other errors', async () => {
+    const apiError = { status: 403, message: 'Insufficient permissions', code: 'PERMISSION_DENIED' };
+    mockApiRequest.mockRejectedValueOnce(apiError);
+
+    await expect(fetchDocumentReadUrl('tenant-1', 'version-1')).rejects.toMatchObject({
+      status: 403,
+      code: 'PERMISSION_DENIED'
+    });
+  });
+
+  it('forwards a 404 (missing/cross-tenant version) without swallowing it', async () => {
+    const apiError = { status: 404, message: 'Document version not found' };
+    mockApiRequest.mockRejectedValueOnce(apiError);
+
+    await expect(fetchDocumentReadUrl('tenant-1', 'missing-version')).rejects.toMatchObject({
+      status: 404
+    });
+  });
+
+  it('forwards a 502 (upstream failure) without swallowing it', async () => {
+    const apiError = { status: 502, message: 'Failed to reach InmoView document-read-url endpoint' };
+    mockApiRequest.mockRejectedValueOnce(apiError);
+
+    await expect(fetchDocumentReadUrl('tenant-1', 'version-1')).rejects.toMatchObject({
+      status: 502
+    });
+  });
+
+  it('never caches the URL — a second call issues a second request', async () => {
+    mockApiRequest.mockResolvedValueOnce(MOCK_READ_URL_RESPONSE).mockResolvedValueOnce({
+      ...MOCK_READ_URL_RESPONSE,
+      url: 'https://storage.example/read/documents/req-1/version-1-refetched.pdf'
+    });
+
+    const first = await fetchDocumentReadUrl('tenant-1', 'version-1');
+    const second = await fetchDocumentReadUrl('tenant-1', 'version-1');
+
+    expect(mockApiRequest).toHaveBeenCalledTimes(2);
+    expect(first.url).not.toBe(second.url);
   });
 });
 

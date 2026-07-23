@@ -393,6 +393,30 @@ export function readPropertyImages(item: TenantActivityItem): PropertyImageSumma
 }
 
 /**
+ * readDocumentCurrentVersionId — operator-activity-media (Slice 2b) design
+ * D6/D8.
+ *
+ * Defensive loose-wire reader, mirrors `readPropertyImages`: a missing
+ * `documentRequest`, a null/absent `currentVersion` (no file uploaded yet),
+ * or a malformed `currentVersion.id` all degrade to `null` — never a throw.
+ * Used to gate the "Ver documento" action button (only shown when a version
+ * id is present).
+ */
+export function readDocumentCurrentVersionId(item: TenantActivityItem): string | null {
+  const documentRequest = item.documentRequest as { currentVersion?: unknown } | undefined;
+  if (!documentRequest || typeof documentRequest !== 'object') {
+    return null;
+  }
+
+  const currentVersion = documentRequest.currentVersion as { id?: unknown } | undefined;
+  if (!currentVersion || typeof currentVersion !== 'object') {
+    return null;
+  }
+
+  return typeof currentVersion.id === 'string' && currentVersion.id.length > 0 ? currentVersion.id : null;
+}
+
+/**
  * Builds the ordered list of technical detail fields shown when a feed row is
  * expanded. Discriminates on `kind` exactly like describeTenantActivityItem and
  * never throws — absent fields are simply omitted.

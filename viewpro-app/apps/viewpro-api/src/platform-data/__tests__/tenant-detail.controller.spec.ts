@@ -15,7 +15,6 @@ import { TenantDetailController } from '../tenant-detail.controller'
 import { TenantDetailService } from '../tenant-detail.service'
 import { ChangeFeedClient, DocumentReadUrlFetchError, TenantSummaryFetchError } from '../change-feed.client'
 import { AuditLogRepository } from '../audit-log.repository'
-import { PlatformPermissionGuard } from '../../permissions/platform-permission.guard'
 
 /**
  * platform-tenant-tracking (PR1) — RED: `TenantDetailController`/
@@ -258,29 +257,43 @@ describe('TenantDetailController (integration — test DB, mocked InmoView clien
 })
 
 // ---------------------------------------------------------------------------
-// operator-activity-media (Slice 2a) — RED: GET
-// /operators/tenants/:tenantId/document-versions/:versionId/read-url
+// operator-activity-media (Slice 2b, D4) — RED→GREEN: GET
+// /operators/tenants/:tenantId/document-versions/:versionId/read-url with
+// REAL permission enforcement (no guard override).
 //
 // Spec: operator-document-read — Permission-Gated Signed Read URL, Audit
 //   Entry on Every Successful Mint, Audit write fails.
-// Design D4/D7: TENANT_DOCUMENTS_READ is declared but NOT yet seeded to any
-//   role — PlatformPermissionGuard is overridden to always allow here so the
-//   handler logic (mint -> audit -> return, fail-closed) can be exercised.
-//   True role-based enforcement (guard NOT overridden) ships in Slice 2b.
+// Design D4/D7: TENANT_DOCUMENTS_READ is now seeded (role-permissions.ts) —
+//   OWNER inherits it, ANALYST is excluded. This block SUPERSEDES Slice 2a's
+//   `.overrideGuard(PlatformPermissionGuard)` version: the real
+//   PlatformPermissionGuard now runs, so both the "holds the permission"
+//   success path AND the "lacks the permission" 403 path are exercised
+//   end-to-end against the real guard + role lookup (mirrors the existing
+//   TENANTS_READ SUSPENDED-operator 403 pattern above — role resolution is a
+//   fresh per-request DB lookup, D1, so downgrading a role AFTER login still
+//   takes effect on the next request).
 // ChangeFeedClient is mocked (no live InmoView call); AuditLogRepository is
 //   the REAL class against the test DB, so audit rows are asserted directly.
 // ---------------------------------------------------------------------------
 
-describe('TenantDetailController.documentReadUrl (integration — test DB, mocked InmoView client, permission guard overridden — Slice 2a)', () => {
+describe('TenantDetailController.documentReadUrl (integration — test DB, mocked InmoView client, real permission guard — Slice 2b)', () => {
   let app: INestApplication
   let prisma: PrismaService
   let mockFetchDocumentReadUrl: ReturnType<typeof vi.fn<ChangeFeedClient['fetchDocumentReadUrl']>>
 
+  // Default seeded operator role is OWNER (prisma/seed.ts) — inherits
+  // TENANT_DOCUMENTS_READ via OPERATIONS_PERMISSIONS, so this operator can
+  // exercise every success path below.
   const DOC_TEST_EMAIL = 'document-read-url-test@viewpro.app'
   const DOC_TEST_PASSWORD = 'document-read-url-test-password'
+  // Seeded as OWNER, then downgraded to ANALYST — the one role that does NOT
+  // hold TENANT_DOCUMENTS_READ (least-privilege exclusion, D4).
+  const DOC_DENIED_EMAIL = 'document-read-url-denied@viewpro.app'
+  const DOC_DENIED_PASSWORD = 'document-read-url-denied-password'
 
   beforeAll(async () => {
     seedOperator(DOC_TEST_EMAIL, DOC_TEST_PASSWORD)
+    seedOperator(DOC_DENIED_EMAIL, DOC_DENIED_PASSWORD)
 
     mockFetchDocumentReadUrl = vi.fn()
     const mockChangeFeedClient: Pick<ChangeFeedClient, 'fetchDocumentReadUrl'> = {
@@ -301,10 +314,9 @@ describe('TenantDetailController.documentReadUrl (integration — test DB, mocke
         AuditLogRepository,
         { provide: ChangeFeedClient, useValue: mockChangeFeedClient },
       ],
-    })
-      .overrideGuard(PlatformPermissionGuard)
-      .useValue({ canActivate: () => true })
-      .compile()
+      // NO overrideGuard here (Slice 2b): the real PlatformPermissionGuard
+      // + real role-permission seeding are exercised end-to-end.
+    }).compile()
 
     app = moduleFixture.createNestApplication()
     app.use(cookieParser())
@@ -341,7 +353,7 @@ describe('TenantDetailController.documentReadUrl (integration — test DB, mocke
     mimeType: 'application/pdf',
   }
 
-  it('successful mint → 200 with the minted URL, AND exactly one TENANT_DOCUMENT_VIEWED audit row is persisted', async () => {
+  it('operator holding TENANT_DOCUMENTS_READ (OWNER) → 200 with the minted URL, AND exactly one TENANT_DOCUMENT_VIEWED audit row is persisted', async () => {
     mockFetchDocumentReadUrl.mockResolvedValueOnce(mintedResult)
     const cookie = await getDocCookie()
 
@@ -356,6 +368,32 @@ describe('TenantDetailController.documentReadUrl (integration — test DB, mocke
     expect(rows).toHaveLength(1)
     expect(rows[0]?.tenantId).toBe('tenant-1')
     expect(rows[0]?.target).toEqual({ documentVersionId: 'version-1', filename: 'deed.pdf' })
+  })
+
+  // Scenario: operator lacking TENANT_DOCUMENTS_READ (ANALYST, downgraded
+  // AFTER login — the guard's fresh per-request lookup denies the very next
+  // request, same pattern as the TENANTS_READ SUSPENDED-operator test above).
+  it('operator lacking TENANT_DOCUMENTS_READ (ANALYST) → 403 PERMISSION_DENIED, no mint, no audit row', async () => {
+    const loginRes = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: DOC_DENIED_EMAIL, password: DOC_DENIED_PASSWORD })
+    expect(loginRes.status).toBe(200)
+    const cookie = extractPlatformCookie(loginRes.headers as Record<string, unknown>)
+
+    await prisma.operator.update({
+      where: { email: DOC_DENIED_EMAIL },
+      data: { role: 'ANALYST' },
+    })
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/tenants/tenant-1/document-versions/version-1/read-url')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(403)
+    expect(res.body.code).toBe('PERMISSION_DENIED')
+    expect(mockFetchDocumentReadUrl).not.toHaveBeenCalled()
+    const rows = await prisma.platformAuditLog.findMany({ where: { action: 'TENANT_DOCUMENT_VIEWED' } })
+    expect(rows).toHaveLength(0)
   })
 
   it('unauthenticated request → 401, no mint attempted, no audit row', async () => {

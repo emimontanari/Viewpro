@@ -85,6 +85,7 @@ export function TenantDetailViewPage({ tenantId }: Props) {
         hasMore={items.length < total && !reachedEnd}
         isLoadingMore={isLoadingMore}
         onLoadMore={handleLoadMore}
+        tenantId={tenantId}
       />
     </div>
   );
