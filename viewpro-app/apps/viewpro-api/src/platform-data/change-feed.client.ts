@@ -49,6 +49,10 @@ export type PlatformDocumentReadUrlResponse = {
   mimeType: string
 }
 
+// Request timeout for the operator document-read hop. Bounds a hung InmoView so
+// the operator request fails over to 502 (URL withheld) instead of hanging.
+const DOCUMENT_READ_URL_FETCH_TIMEOUT_MS = 10_000
+
 /**
  * Typed error thrown by `fetchDocumentReadUrl`. Mirrors `TenantSummaryFetchError`
  * (D8 pattern): carries the upstream HTTP status when available so the caller
@@ -314,6 +318,13 @@ export class ChangeFeedClient {
     const url = `${baseUrl}/api/internal/platform/tenants/${encodeURIComponent(tenantId)}/document-versions/${encodeURIComponent(versionId)}/read-url`
     const token = this.mintIngestToken()
 
+    // Bound this hot-path hop: a hung InmoView must fail over to the caller's
+    // 502 path (URL withheld) rather than pin the operator's request and the
+    // worker indefinitely. On timeout the abort surfaces as a fetch rejection,
+    // caught below and mapped to DocumentReadUrlFetchError (no status → 502).
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), DOCUMENT_READ_URL_FETCH_TIMEOUT_MS)
+
     let response: Response
     try {
       response = await fetch(url, {
@@ -322,11 +333,14 @@ export class ChangeFeedClient {
           // Token is NOT logged — only sent in the Authorization header
           Authorization: `Bearer ${token}`,
         },
+        signal: controller.signal,
       })
     } catch (err) {
       throw new DocumentReadUrlFetchError(
         `Document-read-url request to InmoView failed: ${(err as Error).message}`,
       )
+    } finally {
+      clearTimeout(timeout)
     }
 
     if (!response.ok) {

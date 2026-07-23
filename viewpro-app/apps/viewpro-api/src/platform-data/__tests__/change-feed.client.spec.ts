@@ -474,6 +474,32 @@ describe('ChangeFeedClient', () => {
     )
   })
 
+  it('fetchDocumentReadUrl passes an AbortSignal so a hung InmoView bounds the hot-path hop', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          url: 'https://storage.example/read',
+          expiresInSeconds: 300,
+          originalFilename: 'deed.pdf',
+          mimeType: 'application/pdf',
+        }),
+        { status: 200 },
+      ),
+    )
+    vi.stubGlobal('fetch', mockFetch)
+
+    const client = new ChangeFeedClient({
+      inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+      platformControlSecret: PLATFORM_CONTROL_SECRET,
+    })
+
+    await client.fetchDocumentReadUrl('tenant-1', 'version-1')
+
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(init.signal).toBeInstanceOf(AbortSignal)
+    expect(init.signal?.aborted).toBe(false)
+  })
+
   it('fetchDocumentReadUrl encodeURIComponent-encodes both tenantId and versionId path segments', async () => {
     const mockFetch = vi.fn().mockResolvedValue(
       new Response(
