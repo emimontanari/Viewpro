@@ -53,4 +53,18 @@ describe('ROLE_PERMISSIONS / getPermissionsForRole', () => {
   it('ROLE_PERMISSIONS.OWNER includes PLATFORM_OPERATORS_MANAGE even though no route requires it (AC5)', () => {
     expect(ROLE_PERMISSIONS.OWNER).toContain(PLATFORM_PERMISSIONS.OPERATORS_MANAGE)
   })
+
+  // 2a.13 — operator-activity-media (Slice 2a, D4): TENANT_DOCUMENTS_READ is
+  // DECLARED (so @RequirePlatformPermission(...) compiles on the new route)
+  // but intentionally NOT yet seeded into any role — seeding + the
+  // OWNER-inherits/ANALYST-excluded enforcement spec is Slice 2b's job.
+  it('TENANT_DOCUMENTS_READ is declared with the expected string value', () => {
+    expect(PLATFORM_PERMISSIONS.TENANT_DOCUMENTS_READ).toBe('PLATFORM_TENANT_DOCUMENTS_READ')
+  })
+
+  it('TENANT_DOCUMENTS_READ is NOT yet granted to any role (Slice 2a: declared, not seeded)', () => {
+    expect(getPermissionsForRole('ANALYST')).not.toContain(PLATFORM_PERMISSIONS.TENANT_DOCUMENTS_READ)
+    expect(getPermissionsForRole('OPERATIONS')).not.toContain(PLATFORM_PERMISSIONS.TENANT_DOCUMENTS_READ)
+    expect(getPermissionsForRole('OWNER')).not.toContain(PLATFORM_PERMISSIONS.TENANT_DOCUMENTS_READ)
+  })
 })

@@ -20,6 +20,7 @@ import type {
   DocumentVersionRecord,
   FindInternalDocumentRequestDetailInput,
   FindInternalDocumentVersionInput,
+  FindPlatformDocumentVersionInput,
   ListActivityDocumentRequestsInput,
   ListInternalDocumentRequestsInput,
   ListOwnerDocumentRequestsInput,
@@ -464,6 +465,23 @@ export class PrismaDocumentsRepository implements DocumentsRepository {
         id: input.versionId,
         status: { in: [DocumentVersionStatus.UPLOADED, DocumentVersionStatus.APPROVED, DocumentVersionStatus.REJECTED] },
         document: { documentRequest: this.buildInternalVersionRequestWhere(input) },
+      },
+    })
+  }
+
+  /**
+   * operator-activity-media (Slice 2a, D6): platform-lane variant — strict
+   * tenant isolation only, no per-agent viewer scoping (the platform lane has
+   * no PropertyAgent concept). Mirrors findInternalReadableVersion's status
+   * filter; a wrong-tenant or missing/deleted version both resolve to null so
+   * the caller can return a uniform 404 (no cross-tenant existence oracle).
+   */
+  findPlatformReadableVersion(input: FindPlatformDocumentVersionInput): Promise<DocumentVersionRecord | null> {
+    return this.prisma.documentVersion.findFirst({
+      where: {
+        id: input.versionId,
+        status: { in: [DocumentVersionStatus.UPLOADED, DocumentVersionStatus.APPROVED, DocumentVersionStatus.REJECTED] },
+        document: { documentRequest: { tenantId: input.tenantId } },
       },
     })
   }

@@ -349,3 +349,83 @@ describe('AuditLogRepository.appendNative (T1.1.3)', () => {
     expect(allRowsAfterReplay).toHaveLength(2)
   })
 })
+
+/**
+ * 2a.9/2a.10 — RED: `AuditLogRepository.appendNative` extended signature
+ * (operator-activity-media, Slice 2a). Accepts an optional `tenantId` (column
+ * already nullable, D1) and the new `TENANT_DOCUMENT_VIEWED` action, persisting
+ * `actor{id,email}`, `target{documentVersionId, filename}`, `tenantId`, and a
+ * timestamp — one audit entry per successful mint (spec: operator-document-read
+ * — "Audit Entry on Every Successful Mint").
+ */
+describe('AuditLogRepository.appendNative — TENANT_DOCUMENT_VIEWED (Slice 2a)', () => {
+  let moduleRef: TestingModule
+  let repo: AuditLogRepository
+  let prisma: PrismaService
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [AuditLogRepository],
+    }).compile()
+
+    repo = moduleRef.get(AuditLogRepository)
+    prisma = moduleRef.get(PrismaService)
+  })
+
+  afterAll(async () => {
+    await moduleRef.close()
+  })
+
+  beforeEach(async () => {
+    await prisma.platformAuditLog.deleteMany()
+  })
+
+  it('writes a VIEWPRO_NATIVE TENANT_DOCUMENT_VIEWED row with actor, {documentVersionId, filename} target, and tenantId', async () => {
+    await repo.appendNative({
+      action: 'TENANT_DOCUMENT_VIEWED',
+      actor: { id: 'operator-1', email: 'operator@viewpro.app' },
+      target: { documentVersionId: 'version-1', filename: 'deed.pdf' },
+      tenantId: 'tenant-1',
+    })
+
+    const rows = await prisma.platformAuditLog.findMany({ where: { action: 'TENANT_DOCUMENT_VIEWED' } })
+    expect(rows).toHaveLength(1)
+    const row = rows.at(0)
+    expect(row?.source).toBe('VIEWPRO_NATIVE')
+    expect(row?.sourceEventId).toBeNull()
+    expect(row?.tenantId).toBe('tenant-1')
+    expect(row?.actor).toEqual({ id: 'operator-1', email: 'operator@viewpro.app' })
+    expect(row?.target).toEqual({ documentVersionId: 'version-1', filename: 'deed.pdf' })
+    expect(row?.occurredAt).toBeInstanceOf(Date)
+  })
+
+  it('a second mint of the SAME version produces a SECOND independent audit row (no dedup — every successful mint is audited)', async () => {
+    await repo.appendNative({
+      action: 'TENANT_DOCUMENT_VIEWED',
+      actor: { id: 'operator-1', email: 'operator@viewpro.app' },
+      target: { documentVersionId: 'version-1', filename: 'deed.pdf' },
+      tenantId: 'tenant-1',
+    })
+    await repo.appendNative({
+      action: 'TENANT_DOCUMENT_VIEWED',
+      actor: { id: 'operator-1', email: 'operator@viewpro.app' },
+      target: { documentVersionId: 'version-1', filename: 'deed.pdf' },
+      tenantId: 'tenant-1',
+    })
+
+    const rows = await prisma.platformAuditLog.findMany({ where: { action: 'TENANT_DOCUMENT_VIEWED' } })
+    expect(rows).toHaveLength(2)
+  })
+
+  it('appendNative without tenantId (existing OPERATOR_* callers) still stores tenantId as null (no regression)', async () => {
+    await repo.appendNative({
+      action: 'OPERATOR_CREATED',
+      actor: { id: 'op-owner-1', email: 'owner@viewpro.app' },
+      target: { id: 'op-new-1', email: 'new@viewpro.app' },
+    })
+
+    const row = await prisma.platformAuditLog.findFirst({ where: { action: 'OPERATOR_CREATED' } })
+    expect(row?.tenantId).toBeNull()
+  })
+})

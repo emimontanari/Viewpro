@@ -16,6 +16,7 @@ import { GetDocumentRequestUseCase } from "../src/documents/use-cases/get-docume
 import { ListDocumentRequestsUseCase } from "../src/documents/use-cases/list-document-requests.use-case";
 import { ApproveDocumentRequestUseCase } from "../src/documents/use-cases/approve-document-request.use-case";
 import { CreateInternalDocumentReadUrlUseCase } from "../src/documents/use-cases/create-internal-document-read-url.use-case";
+import { CreatePlatformDocumentReadUrlUseCase } from "../src/documents/use-cases/create-platform-document-read-url.use-case";
 import { RejectDocumentRequestUseCase } from "../src/documents/use-cases/reject-document-request.use-case";
 
 const managerTenant: TenantContext = {
@@ -794,6 +795,85 @@ describe("Document internal use cases", () => {
 					{ id: "seller-2", email: "seller2@example.com" },
 					"version-1",
 				),
+			).rejects.toThrow(new NotFoundException("Document version not found"));
+			expect(storage.createReadUrl).not.toHaveBeenCalled();
+		});
+	});
+
+	// 2a.3 — RED: CreatePlatformDocumentReadUrlUseCase (operator-activity-media,
+	// D5/D6). Platform-lane variant: tenant isolation only, no viewer/canViewAll
+	// (findPlatformReadableVersion never receives them), cross-tenant/missing
+	// resolves to a uniform NotFoundException (404) with NO mint attempted.
+	describe("CreatePlatformDocumentReadUrlUseCase", () => {
+		it("authorized + found: mints a read URL with the 5-minute TTL", async () => {
+			const repository = {
+				findPlatformReadableVersion: vi.fn().mockResolvedValue(currentVersion),
+			};
+			const storage = {
+				createReadUrl: vi.fn().mockResolvedValue({
+					url: "https://storage.example/read/documents/request-1/version-1.pdf",
+					storageKey: currentVersion.storageKey,
+					expiresInSeconds: 300,
+				}),
+			};
+			const useCase = new CreatePlatformDocumentReadUrlUseCase(
+				repository as never,
+				storage as never,
+			);
+
+			const result = await useCase.execute("tenant-1", "version-1");
+
+			expect(result).toEqual({
+				url: "https://storage.example/read/documents/request-1/version-1.pdf",
+				expiresInSeconds: 300,
+				originalFilename: currentVersion.originalFilename,
+				mimeType: currentVersion.mimeType,
+			});
+			expect(repository.findPlatformReadableVersion).toHaveBeenCalledWith({
+				tenantId: "tenant-1",
+				versionId: "version-1",
+			});
+			expect(storage.createReadUrl).toHaveBeenCalledWith({
+				storageKey: currentVersion.storageKey,
+				expiresInSeconds: 300,
+			});
+		});
+
+		it("mints identically for a non-image (PDF) MIME type — rendering is a client concern", async () => {
+			const pdfVersion = { ...currentVersion, mimeType: "application/pdf" };
+			const repository = {
+				findPlatformReadableVersion: vi.fn().mockResolvedValue(pdfVersion),
+			};
+			const storage = {
+				createReadUrl: vi.fn().mockResolvedValue({
+					url: "https://storage.example/read",
+					storageKey: pdfVersion.storageKey,
+					expiresInSeconds: 300,
+				}),
+			};
+			const useCase = new CreatePlatformDocumentReadUrlUseCase(
+				repository as never,
+				storage as never,
+			);
+
+			await expect(
+				useCase.execute("tenant-1", "version-1"),
+			).resolves.toMatchObject({ mimeType: "application/pdf" });
+			expect(storage.createReadUrl).toHaveBeenCalledOnce();
+		});
+
+		it("cross-tenant/missing version: 404, no mint attempted", async () => {
+			const repository = {
+				findPlatformReadableVersion: vi.fn().mockResolvedValue(null),
+			};
+			const storage = { createReadUrl: vi.fn() };
+			const useCase = new CreatePlatformDocumentReadUrlUseCase(
+				repository as never,
+				storage as never,
+			);
+
+			await expect(
+				useCase.execute("tenant-1", "version-owned-by-tenant-2"),
 			).rejects.toThrow(new NotFoundException("Document version not found"));
 			expect(storage.createReadUrl).not.toHaveBeenCalled();
 		});

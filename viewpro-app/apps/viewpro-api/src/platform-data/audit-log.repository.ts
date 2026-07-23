@@ -78,11 +78,28 @@ export class AuditLogRepository {
    */
   async appendNative(
     entry: {
-      action: 'OPERATOR_CREATED' | 'OPERATOR_ROLE_CHANGED' | 'OPERATOR_SUSPENDED' | 'OPERATOR_REACTIVATED'
+      action:
+        | 'OPERATOR_CREATED'
+        | 'OPERATOR_ROLE_CHANGED'
+        | 'OPERATOR_SUSPENDED'
+        | 'OPERATOR_REACTIVATED'
+        // operator-activity-media (Slice 2a, D7): every successful
+        // platform-lane document read-URL mint writes one of these — no
+        // dedup (unlike appendFromEvent's sourceEventId upsert): each mint
+        // is a distinct access event and gets its own row.
+        | 'TENANT_DOCUMENT_VIEWED'
       actor: { id: string; email: string }
-      target: { id: string; email: string }
+      // operator-activity-media (Slice 2a, D7): TENANT_DOCUMENT_VIEWED's
+      // target is `{documentVersionId, filename}`, distinct from the
+      // OPERATOR_* actions' `{id, email}` — both are stored as-is in the
+      // free-form Json `target` column.
+      target: { id: string; email: string } | { documentVersionId: string; filename: string }
       previousValue?: unknown
       newValue?: unknown
+      // operator-activity-media (Slice 2a, D7): optional — the operator-
+      // management actions above have no tenant context; TENANT_DOCUMENT_VIEWED
+      // always supplies it. Column is already nullable (Decision 1).
+      tenantId?: string
     },
     tx: Prisma.TransactionClient | PrismaService = this.prisma,
   ): Promise<void> {
@@ -91,6 +108,7 @@ export class AuditLogRepository {
         sourceEventId: null,
         source: 'VIEWPRO_NATIVE',
         action: entry.action,
+        tenantId: entry.tenantId ?? null,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         actor: entry.actor as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
