@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Icons } from '@/components/icons';
@@ -13,6 +14,7 @@ import {
   formatActivityDateSeparator,
   formatActivityFullTimestamp,
   formatActivityTimestamp,
+  readPropertyImages,
   type ActivityCategory
 } from '@/features/tenants/lib/activity-feed-formatting';
 import styles from './tenant-detail.module.css';
@@ -91,6 +93,38 @@ function EventIcon({ category }: { category: ActivityCategory }) {
         </svg>
       );
   }
+}
+
+/**
+ * PropertyImageStrip — operator-activity-media (Slice 1) design D8.
+ *
+ * Thumbnail strip rendered inside the collapsible detail panel. Sourced via
+ * the defensive `readPropertyImages` reader, so a missing/malformed
+ * `property.images` field on the wire simply renders nothing (never
+ * throws). `next/image` remote pattern for the images host is already
+ * whitelisted (next.config.ts:13-15).
+ */
+function PropertyImageStrip({ item }: { item: TenantActivityItem }) {
+  const images = readPropertyImages(item);
+
+  if (images.length === 0) {
+    return null;
+  }
+
+  return (
+    <div data-testid='tenant-activity-image-strip' className={styles.imageStrip}>
+      {images.map((image) => (
+        <Image
+          key={image.id}
+          src={image.url}
+          alt={image.originalFilename || 'Foto de la propiedad'}
+          width={64}
+          height={64}
+          className={styles.imageThumb}
+        />
+      ))}
+    </div>
+  );
 }
 
 function ChevronIcon() {
@@ -199,6 +233,7 @@ export function TenantActivityFeed({ items, hasMore, isLoadingMore, onLoadMore }
               const { item, category } = row;
               const { title, subtitle } = describeTenantActivityItem(item);
               const detail = buildTenantActivityDetail(item);
+              const images = readPropertyImages(item);
 
               return (
                 <li
@@ -223,16 +258,19 @@ export function TenantActivityFeed({ items, hasMore, isLoadingMore, onLoadMore }
                       </span>
                       <ChevronIcon />
                     </CollapsibleTrigger>
-                    {detail.length > 0 && (
+                    {(detail.length > 0 || images.length > 0) && (
                       <CollapsibleContent className={styles.rowDetail}>
-                        <dl className={styles.detailList}>
-                          {detail.map((field) => (
-                            <div key={field.label} className={styles.detailPair}>
-                              <dt className={styles.detailLabel}>{field.label}</dt>
-                              <dd className={styles.detailValue}>{field.value}</dd>
-                            </div>
-                          ))}
-                        </dl>
+                        {images.length > 0 && <PropertyImageStrip item={item} />}
+                        {detail.length > 0 && (
+                          <dl className={styles.detailList}>
+                            {detail.map((field) => (
+                              <div key={field.label} className={styles.detailPair}>
+                                <dt className={styles.detailLabel}>{field.label}</dt>
+                                <dd className={styles.detailValue}>{field.value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        )}
                       </CollapsibleContent>
                     )}
                   </Collapsible>

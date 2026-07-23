@@ -26,7 +26,8 @@ import type { TenantActivityItem } from '../../api/types';
 import {
   buildTenantActivityDetail,
   describeTenantActivityItem,
-  formatActivityTimestamp
+  formatActivityTimestamp,
+  readPropertyImages
 } from '../activity-feed-formatting';
 
 const MOVEMENT_ITEM: TenantActivityItem = {
@@ -411,5 +412,80 @@ describe('buildTenantActivityDetail', () => {
     );
 
     expect(detail['Fecha y hora']).toBe('—');
+  });
+});
+
+/**
+ * operator-activity-media (Slice 1) — RED: readPropertyImages
+ *
+ * Spec: activity-feed-property-images — "Property Images Exposed in Feed
+ *   DTO" consumed on the viewpro-web side.
+ * Design D8: loose-wire defensive reader, mirrors `readPropertyDetail` —
+ *   drift (missing/malformed `property.images`) degrades to `[]`, never
+ *   throws.
+ */
+describe('readPropertyImages()', () => {
+  it('returns the images array when property.images is present and well-formed', () => {
+    const item: TenantActivityItem = {
+      ...MOVEMENT_ITEM,
+      property: {
+        ...(MOVEMENT_ITEM.property as Record<string, unknown>),
+        images: [
+          { id: 'img-1', url: 'https://cdn.example.com/img-1.jpg', isPrimary: true, originalFilename: 'front.jpg' },
+          { id: 'img-2', url: 'https://cdn.example.com/img-2.jpg', isPrimary: false, originalFilename: 'back.jpg' }
+        ]
+      }
+    };
+
+    const result = readPropertyImages(item);
+
+    expect(result).toEqual([
+      { id: 'img-1', url: 'https://cdn.example.com/img-1.jpg', isPrimary: true, originalFilename: 'front.jpg' },
+      { id: 'img-2', url: 'https://cdn.example.com/img-2.jpg', isPrimary: false, originalFilename: 'back.jpg' }
+    ]);
+  });
+
+  it('returns [] when property.images is absent (no throw)', () => {
+    const result = readPropertyImages(MOVEMENT_ITEM);
+
+    expect(result).toEqual([]);
+  });
+
+  it('returns [] when property itself is absent (no throw)', () => {
+    const result = readPropertyImages({ kind: 'movement', id: 'x', createdAt: 'not-a-date' } as TenantActivityItem);
+
+    expect(result).toEqual([]);
+  });
+
+  it('returns [] when property.images is malformed (not an array — drift degrades, never throws)', () => {
+    const item: TenantActivityItem = {
+      ...MOVEMENT_ITEM,
+      property: { ...(MOVEMENT_ITEM.property as Record<string, unknown>), images: 'not-an-array' }
+    };
+
+    const result = readPropertyImages(item);
+
+    expect(result).toEqual([]);
+  });
+
+  it('filters out individual malformed entries within the array (missing id/url), keeps the well-formed ones', () => {
+    const item: TenantActivityItem = {
+      ...MOVEMENT_ITEM,
+      property: {
+        ...(MOVEMENT_ITEM.property as Record<string, unknown>),
+        images: [
+          { id: 'img-1', url: 'https://cdn.example.com/img-1.jpg', isPrimary: true, originalFilename: 'front.jpg' },
+          { isPrimary: false }, // missing id/url — malformed
+          null,
+          'not-an-object'
+        ]
+      }
+    };
+
+    const result = readPropertyImages(item);
+
+    expect(result).toEqual([
+      { id: 'img-1', url: 'https://cdn.example.com/img-1.jpg', isPrimary: true, originalFilename: 'front.jpg' }
+    ]);
   });
 });
