@@ -111,7 +111,10 @@ export class GetDashboardSummaryUseCase {
         staleProperties,
         attentionNeeded,
       },
-      recentActivity: [...movementActivity.items.map(mapActivityFeedMovement), ...documentActivity.items.map(mapActivityFeedDocumentRequest)]
+      recentActivity: [
+        ...movementActivity.items.map((movement) => mapActivityFeedMovement(movement)),
+        ...documentActivity.items.map((document) => mapActivityFeedDocumentRequest(document)),
+      ]
         .sort(compareActivityItems)
         .slice(0, RECENT_ACTIVITY_LIMIT),
       topProperties: topProperties.map((property) => ({

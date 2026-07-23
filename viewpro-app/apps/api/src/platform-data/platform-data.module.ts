@@ -13,6 +13,8 @@ import { DOCUMENTS_REPOSITORY } from '../documents/documents.repository.js'
 import { PrismaDocumentsRepository } from '../documents/prisma-documents.repository.js'
 import { MEMBERSHIP_ACTIVITY_REPOSITORY } from '../memberships/membership-activity.repository.js'
 import { PrismaMembershipActivityRepository } from '../memberships/prisma-membership-activity.repository.js'
+import { PROPERTY_ASSET_IMAGES_READ_REPOSITORY } from '../property-engagements/property-asset-images-read.repository.js'
+import { PrismaPropertyAssetImagesReadRepository } from '../property-engagements/prisma-property-asset-images-read.repository.js'
 
 /**
  * PlatformDataModule — data-lane publisher (read side + outbox writer).
@@ -55,6 +57,12 @@ import { PrismaMembershipActivityRepository } from '../memberships/prisma-member
  *    duplicates only one more stateless binding — the identical trade-off
  *    already accepted for the other two repositories.
  *
+ *  - operator-activity-media (Slice 1) D2: GetPlatformTenantActivityUseCase
+ *    ALSO now depends on PROPERTY_ASSET_IMAGES_READ_REPOSITORY (batched,
+ *    N+1-safe property-image lookup for the activity feed). Same direct-
+ *    binding pattern as the three repositories above — PrismaProperty
+ *    AssetImagesReadRepository is a plain `@Injectable()` Prisma-only class.
+ *
  * Design D2: PlatformDataModule is a SIBLING to PlatformControlModule.
  * It reuses PlatformControlGuard by providing it directly — no JwtModule import.
  * The guard reads PLATFORM_CONTROL_SECRET from process.env via verifyServiceToken.
@@ -70,6 +78,7 @@ import { PrismaMembershipActivityRepository } from '../memberships/prisma-member
     { provide: MOVEMENTS_REPOSITORY, useClass: PrismaMovementsRepository },
     { provide: DOCUMENTS_REPOSITORY, useClass: PrismaDocumentsRepository },
     { provide: MEMBERSHIP_ACTIVITY_REPOSITORY, useClass: PrismaMembershipActivityRepository },
+    { provide: PROPERTY_ASSET_IMAGES_READ_REPOSITORY, useClass: PrismaPropertyAssetImagesReadRepository },
     GetPilotSummaryUseCase,
     GetPlatformTenantActivityUseCase,
   ],

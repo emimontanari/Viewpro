@@ -352,6 +352,46 @@ function readPropertyDetail(item: TenantActivityItem): TenantActivityDetailField
   return out;
 }
 
+export type PropertyImageSummary = {
+  id: string;
+  url: string;
+  isPrimary: boolean;
+  originalFilename: string;
+};
+
+/**
+ * readPropertyImages — operator-activity-media (Slice 1) design D8.
+ *
+ * Defensive loose-wire reader, mirrors `readPropertyDetail`: a missing
+ * `property`, a missing/malformed `property.images`, or individually
+ * malformed entries within the array all degrade to fewer/zero images —
+ * never a throw.
+ */
+export function readPropertyImages(item: TenantActivityItem): PropertyImageSummary[] {
+  const property = item.property as { images?: unknown } | undefined;
+  if (!property || typeof property !== 'object' || !Array.isArray(property.images)) {
+    return [];
+  }
+
+  const out: PropertyImageSummary[] = [];
+  for (const raw of property.images) {
+    if (!raw || typeof raw !== 'object') {
+      continue;
+    }
+    const { id, url, isPrimary, originalFilename } = raw as Record<string, unknown>;
+    if (typeof id === 'string' && typeof url === 'string') {
+      out.push({
+        id,
+        url,
+        isPrimary: typeof isPrimary === 'boolean' ? isPrimary : false,
+        originalFilename: typeof originalFilename === 'string' ? originalFilename : ''
+      });
+    }
+  }
+
+  return out;
+}
+
 /**
  * Builds the ordered list of technical detail fields shown when a feed row is
  * expanded. Discriminates on `kind` exactly like describeTenantActivityItem and

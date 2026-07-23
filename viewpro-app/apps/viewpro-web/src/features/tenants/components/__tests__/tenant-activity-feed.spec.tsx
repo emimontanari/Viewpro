@@ -219,3 +219,81 @@ describe('TenantActivityFeed — expandable detail', () => {
     expect(screen.getByText('Fecha y hora')).toBeTruthy();
   });
 });
+
+/**
+ * operator-activity-media (Slice 1) — RED: property-image thumbnail strip in
+ * the collapsible detail panel.
+ *
+ * Spec: activity-feed-property-images — images shown inline in the detail
+ *   panel; Design D8: rendered via next/image (remote pattern already
+ *   whitelisted, next.config.ts:13-15), sourced defensively via
+ *   readPropertyImages — a missing/empty `images` field never crashes and
+ *   simply omits the strip.
+ */
+describe('TenantActivityFeed — property image thumbnail strip', () => {
+  const ITEM_WITH_IMAGES: TenantActivityItem = {
+    kind: 'movement',
+    id: 'movement-with-images',
+    type: 'STATUS_CHANGE',
+    createdAt: '2026-07-16T10:00:00.000Z',
+    property: {
+      title: 'Depto en Palermo',
+      images: [
+        { id: 'img-1', url: 'https://cdn.example.com/img-1.jpg', isPrimary: true, originalFilename: 'front.jpg' },
+        { id: 'img-2', url: 'https://cdn.example.com/img-2.jpg', isPrimary: false, originalFilename: 'back.jpg' }
+      ]
+    }
+  };
+
+  const ITEM_WITHOUT_IMAGES: TenantActivityItem = {
+    kind: 'movement',
+    id: 'movement-without-images',
+    type: 'STATUS_CHANGE',
+    createdAt: '2026-07-16T09:00:00.000Z',
+    property: { title: 'Casa en Nordelta', images: [] }
+  };
+
+  const ITEM_WITH_MISSING_IMAGES_FIELD: TenantActivityItem = {
+    kind: 'movement',
+    id: 'movement-missing-images-field',
+    type: 'STATUS_CHANGE',
+    createdAt: '2026-07-16T08:00:00.000Z',
+    property: { title: 'Casa sin campo images' }
+  };
+
+  it('renders a thumbnail per image when the expanded item has property.images', async () => {
+    const user = userEvent.setup();
+    renderFeed({ items: [ITEM_WITH_IMAGES] });
+
+    const item = screen.getByTestId('tenant-activity-item-movement-with-images');
+    await user.click(within(item).getByRole('button'));
+
+    const strip = await screen.findByTestId('tenant-activity-image-strip');
+    expect(within(strip).getAllByRole('img')).toHaveLength(2);
+    expect(within(strip).getByAltText('front.jpg')).toBeTruthy();
+    expect(within(strip).getByAltText('back.jpg')).toBeTruthy();
+  });
+
+  it('omits the thumbnail strip when the expanded item has an empty property.images array', async () => {
+    const user = userEvent.setup();
+    renderFeed({ items: [ITEM_WITHOUT_IMAGES] });
+
+    const item = screen.getByTestId('tenant-activity-item-movement-without-images');
+    await user.click(within(item).getByRole('button'));
+
+    // Panel still expands (other detail fields render) but no image strip.
+    expect(await screen.findByText('Propiedad')).toBeTruthy();
+    expect(screen.queryByTestId('tenant-activity-image-strip')).toBeNull();
+  });
+
+  it('does not crash and omits the strip when property.images is entirely absent from the wire', async () => {
+    const user = userEvent.setup();
+    renderFeed({ items: [ITEM_WITH_MISSING_IMAGES_FIELD] });
+
+    const item = screen.getByTestId('tenant-activity-item-movement-missing-images-field');
+    await user.click(within(item).getByRole('button'));
+
+    expect(await screen.findByText('Propiedad')).toBeTruthy();
+    expect(screen.queryByTestId('tenant-activity-image-strip')).toBeNull();
+  });
+});
