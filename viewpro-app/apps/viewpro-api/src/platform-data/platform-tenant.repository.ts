@@ -195,6 +195,26 @@ export class PlatformTenantRepository {
    * the ONLY write path for `plan`, called by the assign-plan endpoint AFTER
    * the limits control-lane push succeeds (design D7 ordering).
    */
+  /**
+   * audit-view (Slice 1, Phase 1) — D2: batch tenant name resolution for the
+   * operator audit feed. One `findMany({where:{id:{in}}})` regardless of the
+   * number of distinct tenant ids referenced by a page (no per-row query).
+   * Unknown ids are simply absent from the returned Map — callers degrade
+   * gracefully (raw id shown, never a throw).
+   */
+  async findByIds(ids: string[]): Promise<Map<string, string>> {
+    if (ids.length === 0) {
+      return new Map()
+    }
+
+    const rows = await this.prisma.platformTenant.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true },
+    })
+
+    return new Map(rows.map((row) => [row.id, row.name]))
+  }
+
   async setPlan(tenantId: string, plan: PlanCode): Promise<void> {
     // Non-throwing on a missing row (mirrors applyLimitsChange's zero-match
     // posture): the assign-plan flow pushes the tier's limits to InmoView

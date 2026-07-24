@@ -28,7 +28,12 @@ const itemSchema = z.object({
   id: z.string(),
   action: z.string(),
   tenantId: z.string().nullable(),
+  // audit-view (Slice 1, Phase 1), design D4 — additive, resolved alongside
+  // the raw tenantId/actor above; optional to tolerate a response predating
+  // this slice (mirrors the existing `source` optional convention).
+  tenantName: z.string().nullable().optional(),
   actor: actorSchema,
+  actorEmail: z.string().nullable().optional(),
   target: targetSchema.nullable().optional(),
   previousValue: z.unknown(),
   newValue: z.unknown(),
