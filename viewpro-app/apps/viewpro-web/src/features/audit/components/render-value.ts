@@ -51,6 +51,17 @@ export function actionLabel(action: string): string {
   return ACTION_LABELS[action] ?? action;
 }
 
+/**
+ * audit-view (Slice 4, Phase 4) — the known action catalog for
+ * AuditFilterBar's action <Select> (spec: "action (select over the known
+ * action catalog + 'all')"). Derived from ACTION_LABELS rather than
+ * duplicated, so a future new action added there automatically appears as a
+ * filter option too.
+ */
+export const AUDIT_ACTION_OPTIONS: { value: string; label: string }[] = Object.entries(
+  ACTION_LABELS
+).map(([value, label]) => ({ value, label }));
+
 const FULL_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat('es-AR', {
   dateStyle: 'full',
   timeStyle: 'medium'
