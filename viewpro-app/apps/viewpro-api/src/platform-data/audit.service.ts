@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
+import type { Prisma } from '@prisma-platform/client'
 import { PrismaService } from '../database/prisma.service'
 import { OPERATOR_REPOSITORY, type IOperatorRepository } from '../auth/repositories/operator.repository'
 import { PlatformTenantRepository } from './platform-tenant.repository'
@@ -31,6 +32,21 @@ export type AuditLogItem = {
 export type AuditFeedList = {
   total: number
   items: AuditLogItem[]
+}
+
+/**
+ * audit-view (Slice 2, Phase 2), design D5 — server-side audit filters.
+ * All fields optional and AND-combined when present. Sanitized by
+ * `AuditController` (design D6) before reaching here — this type accepts
+ * only already-validated values (no raw strings requiring parsing).
+ */
+export type AuditFilters = {
+  action?: string
+  source?: 'INMOVIEW_OUTBOX' | 'VIEWPRO_NATIVE'
+  tenantId?: string
+  actorId?: string
+  dateFrom?: Date
+  dateTo?: Date
 }
 
 const DEFAULT_LIMIT = 50
@@ -82,13 +98,24 @@ export class AuditService {
    * `Promise.all(IOperatorRepository.findById)` — bounded by MAX_LIMIT (200
    * deduped single-row lookups worst case), not a true N+1 over an unbounded
    * set.
+   *
+   * audit-view (Slice 2, Phase 2), design D5/D7: `filters` builds an
+   * AND-combined Prisma `where` clause applied to BOTH the `count` and the
+   * `findMany` — `total` reflects the FILTERED count, not the global table
+   * count (Scenario: filtered count vs unfiltered count).
    */
-  async listAudit(offset = 0, limit: number = DEFAULT_LIMIT): Promise<AuditFeedList> {
+  async listAudit(
+    offset = 0,
+    limit: number = DEFAULT_LIMIT,
+    filters: AuditFilters = {},
+  ): Promise<AuditFeedList> {
     const cappedLimit = Math.min(limit, MAX_LIMIT)
+    const where = this.buildWhere(filters)
 
     const [total, rows] = await Promise.all([
-      this.prisma.platformAuditLog.count(),
+      this.prisma.platformAuditLog.count({ where }),
       this.prisma.platformAuditLog.findMany({
+        where,
         skip: offset,
         take: cappedLimit,
         orderBy: { occurredAt: 'desc' },
@@ -136,6 +163,46 @@ export class AuditService {
         source: row.source,
       })),
     }
+  }
+
+  /**
+   * audit-view (Slice 2, Phase 2), design D5 — builds the AND-combined
+   * Prisma `where` clause from sanitized filters:
+   *  - `action`/`source`/`tenantId`: exact match
+   *  - `actorId`: JSON-path filter on the `actor` column (`path: ['id']`) —
+   *    unindexed scan, accepted per design D5's no-migration constraint
+   *  - `dateFrom`/`dateTo`: `occurredAt` range, exclusive end (`gte`/`lt`),
+   *    mirroring `list-activity-feed.use-case.ts`'s exclusive-end convention
+   * Every field is optional; an empty `filters` object produces `{}`
+   * (unfiltered), preserving Slice 1 behavior exactly.
+   */
+  private buildWhere(filters: AuditFilters): Prisma.PlatformAuditLogWhereInput {
+    const where: Prisma.PlatformAuditLogWhereInput = {}
+
+    if (filters.action !== undefined) {
+      where.action = filters.action
+    }
+
+    if (filters.source !== undefined) {
+      where.source = filters.source
+    }
+
+    if (filters.tenantId !== undefined) {
+      where.tenantId = filters.tenantId
+    }
+
+    if (filters.actorId !== undefined) {
+      where.actor = { path: ['id'], equals: filters.actorId }
+    }
+
+    if (filters.dateFrom !== undefined || filters.dateTo !== undefined) {
+      where.occurredAt = {
+        ...(filters.dateFrom !== undefined ? { gte: filters.dateFrom } : {}),
+        ...(filters.dateTo !== undefined ? { lt: filters.dateTo } : {}),
+      }
+    }
+
+    return where
   }
 
   /**
