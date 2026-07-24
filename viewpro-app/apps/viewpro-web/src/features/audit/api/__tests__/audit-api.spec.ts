@@ -25,7 +25,7 @@ import { apiRequest } from '@/lib/api-client';
 import { getAuditFeed } from '../service';
 import { parseAuditFeedResponse } from '../schemas';
 import { auditKeys, auditFeedOptions } from '../queries';
-import type { AuditFeedResponse, AuditLogItem } from '../types';
+import type { AuditFeedResponse, AuditFilters, AuditLogItem } from '../types';
 
 const mockApiRequest = vi.mocked(apiRequest);
 
@@ -103,6 +103,48 @@ describe('getAuditFeed()', () => {
     mockApiRequest.mockRejectedValueOnce(apiError);
 
     await expect(getAuditFeed(0, 50)).rejects.toMatchObject({ status: 500 });
+  });
+});
+
+// ─── getAuditFeed() — server-side filters (Slice 3, Phase 3, design D5/D6 mirror) ──
+
+describe('getAuditFeed() — filter query params', () => {
+  it('omits all filter params when filters is empty/omitted (backward-compatible)', async () => {
+    mockApiRequest.mockResolvedValueOnce(MOCK_FEED_RESPONSE);
+
+    await getAuditFeed(0, 50, {});
+
+    const [path] = mockApiRequest.mock.calls[0];
+    expect(path).toBe('/operators/audit?offset=0&limit=50');
+  });
+
+  it('appends only the supplied filters', async () => {
+    mockApiRequest.mockResolvedValueOnce(MOCK_FEED_RESPONSE);
+    const filters: AuditFilters = { action: 'OPERATOR_SUSPENDED', source: 'VIEWPRO_NATIVE' };
+
+    await getAuditFeed(0, 50, filters);
+
+    const [path] = mockApiRequest.mock.calls[0];
+    expect(path).toBe(
+      '/operators/audit?offset=0&limit=50&action=OPERATOR_SUSPENDED&source=VIEWPRO_NATIVE'
+    );
+  });
+
+  it('appends the full filter combo (tenantId, actorId, dateFrom, dateTo)', async () => {
+    mockApiRequest.mockResolvedValueOnce(MOCK_FEED_RESPONSE);
+    const filters: AuditFilters = {
+      tenantId: 'tenant-1',
+      actorId: 'op-1',
+      dateFrom: '2026-01-01',
+      dateTo: '2026-06-30'
+    };
+
+    await getAuditFeed(0, 50, filters);
+
+    const [path] = mockApiRequest.mock.calls[0];
+    expect(path).toBe(
+      '/operators/audit?offset=0&limit=50&tenantId=tenant-1&actorId=op-1&dateFrom=2026-01-01&dateTo=2026-06-30'
+    );
   });
 });
 
@@ -199,18 +241,23 @@ describe('auditKeys', () => {
     expect(auditKeys.all).toEqual(['audit']);
   });
 
-  it('list(offset,limit) is ["audit","list",offset,limit]', () => {
-    expect(auditKeys.list(0, 50)).toEqual(['audit', 'list', 0, 50]);
-    expect(auditKeys.list(50, 50)).toEqual(['audit', 'list', 50, 50]);
+  it('list(offset,limit) defaults filters to {} — ["audit","list",offset,limit,{}]', () => {
+    expect(auditKeys.list(0, 50)).toEqual(['audit', 'list', 0, 50, {}]);
+    expect(auditKeys.list(50, 50)).toEqual(['audit', 'list', 50, 50, {}]);
+  });
+
+  it('list(offset,limit,filters) includes the filters object (Slice 4 cache-busting)', () => {
+    const filters: AuditFilters = { action: 'OPERATOR_SUSPENDED' };
+    expect(auditKeys.list(0, 50, filters)).toEqual(['audit', 'list', 0, 50, filters]);
   });
 });
 
 // ─── auditFeedOptions ───────────────────────────────────────────────────────
 
 describe('auditFeedOptions', () => {
-  it('has queryKey matching auditKeys.list(offset,limit)', () => {
+  it('has queryKey matching auditKeys.list(offset,limit) with an empty-filters default', () => {
     const options = auditFeedOptions(0, 50);
-    expect(options.queryKey).toEqual(['audit', 'list', 0, 50]);
+    expect(options.queryKey).toEqual(['audit', 'list', 0, 50, {}]);
   });
 
   it('has queryFn that delegates to getAuditFeed', async () => {

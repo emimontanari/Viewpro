@@ -135,7 +135,7 @@ describe('AuditFeedPage — success with total>0', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(mockGetAuditFeed).toHaveBeenCalledWith(0, 50);
+      expect(mockGetAuditFeed).toHaveBeenCalledWith(0, 50, {});
     });
   });
 });
@@ -190,7 +190,7 @@ describe('AuditFeedPage — pager', () => {
     fireEvent.click(screen.getByRole('button', { name: 'next' }));
 
     await waitFor(() => {
-      expect(mockGetAuditFeed).toHaveBeenCalledWith(50, 50);
+      expect(mockGetAuditFeed).toHaveBeenCalledWith(50, 50, {});
     });
 
     await waitFor(() => {
