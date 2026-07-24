@@ -2,9 +2,15 @@
  * FE-owned types for the operator global audit feed.
  *
  * Source: GET /operators/audit → apps/viewpro-api/src/platform-data/audit.service.ts
- * Global feed only — no per-tenant filter (Q3, locked). `previousValue`/
- * `newValue` are loose JSON (display-only trail) — kept as `unknown` here,
- * never narrowed to a typed shape (see api/schemas.ts).
+ * `previousValue`/`newValue` are loose JSON (display-only trail) — kept as
+ * `unknown` here, never narrowed to a typed shape (see api/schemas.ts).
+ *
+ * audit-view (Slice 1, Phase 1): backend now ALWAYS resolves `tenantName`/
+ * `actorEmail` additively alongside the raw `tenantId`/`actor` (design D4).
+ * Typed optional here (not required) to match the existing `source?: string`
+ * convention in this file and stay backward-compatible with call sites/tests
+ * that predate this slice — consumption (table/drill-down rendering) is
+ * Slice 3/4 scope, not this slice.
  */
 
 // A4 — heterogeneous feed. Outbox entries carry {id,type,label}; VIEWPRO_NATIVE
@@ -27,7 +33,9 @@ export type AuditLogItem = {
   id: string;
   action: string;
   tenantId: string | null; // null for native operator actions (no tenant)
+  tenantName?: string | null; // resolved tenant name (D4) — additive, raw tenantId untouched
   actor: AuditActor;
+  actorEmail?: string | null; // resolved actor display email (D4/D8) — additive, raw actor untouched
   target?: AuditTarget | null;
   previousValue: unknown;
   newValue: unknown;

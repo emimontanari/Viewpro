@@ -15,6 +15,7 @@ import { PrismaService } from '../../database/prisma.service'
 import { PermissionsModule } from '../../permissions/permissions.module'
 import { AuditController } from '../audit.controller'
 import { AuditService } from '../audit.service'
+import { PlatformTenantRepository } from '../platform-tenant.repository'
 
 /**
  * T-18 — RED: `AuditController`/`AuditService` tests — pagination, auth,
@@ -66,7 +67,12 @@ describe('AuditController (integration — test DB)', () => {
         PermissionsModule,
       ],
       controllers: [AuditController],
-      providers: [AuditService],
+      // audit-view (Slice 1, Phase 1): AuditService now also depends on
+      // PlatformTenantRepository (batch tenant name resolution, D1/D2) —
+      // OPERATOR_REPOSITORY is already exported by PermissionsModule above,
+      // but PlatformTenantRepository has no module import path here and must
+      // be provided directly (same DI-wiring lesson as audit.service.spec.ts).
+      providers: [AuditService, PlatformTenantRepository],
     }).compile()
 
     app = moduleFixture.createNestApplication()
