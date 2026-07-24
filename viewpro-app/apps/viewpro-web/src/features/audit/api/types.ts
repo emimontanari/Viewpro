@@ -23,9 +23,18 @@ export type AuditActor = {
 };
 
 // Present only on VIEWPRO_NATIVE operator actions (null/absent for outbox).
+//
+// audit-view (Slice 3, Phase 3) — widened to a loose union: operator-
+// management actions carry {id,email} (an affected operator), while
+// TENANT_DOCUMENT_VIEWED carries {documentVersionId,filename} instead
+// (apps/viewpro-api/src/platform-data/audit-log.repository.ts
+// appendNative()'s `target` param — both shapes are stored as-is in the
+// same free-form Json column). All fields optional so either shape parses.
 export type AuditTarget = {
-  id: string;
+  id?: string;
   email?: string;
+  documentVersionId?: string;
+  filename?: string;
 };
 
 // GET /operators/audit?offset&limit → AuditFeedResponse
@@ -47,4 +56,20 @@ export type AuditLogItem = {
 export type AuditFeedResponse = {
   total: number;
   items: AuditLogItem[];
+};
+
+/**
+ * audit-view (Slice 3, Phase 3), design D5/D6/D9/D10 mirror — server-side
+ * filters accepted by GET /operators/audit. All fields optional and
+ * AND-combined server-side (viewpro-api). This slice only threads them
+ * through the FE query layer (api/service.ts, api/queries.ts); the filter
+ * bar UI that populates these values is Slice 4 scope.
+ */
+export type AuditFilters = {
+  action?: string;
+  source?: 'INMOVIEW_OUTBOX' | 'VIEWPRO_NATIVE';
+  tenantId?: string;
+  actorId?: string;
+  dateFrom?: string; // ISO date string
+  dateTo?: string; // ISO date string
 };
