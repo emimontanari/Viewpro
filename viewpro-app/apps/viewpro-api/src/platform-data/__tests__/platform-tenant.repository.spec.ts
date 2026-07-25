@@ -140,6 +140,63 @@ describe('PlatformTenantRepository — trialEndsAt (integration — test DB)', (
 })
 
 /**
+ * audit-view (Slice 1, Phase 1) — RED: `findByIds` batch tenant name
+ * resolution for the operator audit feed (design D2).
+ *
+ * Spec: Batch tenant name resolution — exactly one batch lookup per page,
+ *   unknown ids simply absent from the returned Map (no throw).
+ */
+describe('PlatformTenantRepository — findByIds (integration — test DB)', () => {
+  let moduleRef: TestingModule
+  let repo: PlatformTenantRepository
+  let prisma: PrismaService
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      imports: [ConfigModule, DatabaseModule],
+      providers: [PlatformTenantRepository],
+    }).compile()
+
+    repo = moduleRef.get(PlatformTenantRepository)
+    prisma = moduleRef.get(PrismaService)
+  })
+
+  afterAll(async () => {
+    await moduleRef.close()
+  })
+
+  beforeEach(async () => {
+    await prisma.platformTenant.deleteMany()
+  })
+
+  it('returns a Map<id,name> for known ids, unknown id simply absent', async () => {
+    await repo.upsertFromRegistered(makeRegisteredPayload({ id: 't-findbyids-a', name: 'Tenant A' }))
+    await repo.upsertFromRegistered(makeRegisteredPayload({ id: 't-findbyids-b', name: 'Tenant B' }))
+
+    const result = await repo.findByIds(['t-findbyids-a', 't-findbyids-b', 't-findbyids-unknown'])
+
+    expect(result).toEqual(
+      new Map([
+        ['t-findbyids-a', 'Tenant A'],
+        ['t-findbyids-b', 'Tenant B'],
+      ]),
+    )
+    expect(result.has('t-findbyids-unknown')).toBe(false)
+  })
+
+  it('empty ids array → empty Map, no query issued', async () => {
+    const findManySpy = vi.spyOn(prisma.platformTenant, 'findMany')
+
+    const result = await repo.findByIds([])
+
+    expect(result.size).toBe(0)
+    expect(findManySpy).not.toHaveBeenCalled()
+
+    findManySpy.mockRestore()
+  })
+})
+
+/**
  * platform-manual-plans (Slice 4, Part 1) — RED: `applyLimitsChange` full
  * overwrite of the 3 limit columns (update-if-exists only, no create).
  *

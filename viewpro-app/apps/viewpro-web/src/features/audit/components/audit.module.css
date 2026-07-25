@@ -1,0 +1,84 @@
+/*
+ * audit-view (Slice 3, Phase 3), design D13 — drill-down row styles for the
+ * global audit feed <table>. Same class NAMES as
+ * features/tenants/components/tenant-detail.module.css's collapsible-row
+ * section (rowChevron/rowDetail/detailList/detailPair/detailLabel/
+ * detailValue), redefined here for a <table>/<tr>/<td> row context instead
+ * of that file's <li> context — NOT imported from there (D13: cross-feature
+ * CSS module imports are not an existing pattern in this codebase).
+ *
+ * Unlike tenant-detail.module.css, this module does not hardcode a fixed
+ * light palette that then needs a separate `:global(.dark)` override block
+ * — every color below references the app's global shadcn/Tailwind theme
+ * custom properties (--foreground, --muted-foreground, --primary), which
+ * next-themes already re-binds at the document root when `.dark` is
+ * toggled. Referencing them directly keeps this module theme-aware with the
+ * same technique (CSS custom properties) without duplicating a light/dark
+ * switch block that would be redundant here.
+ */
+
+.clickableRow {
+  cursor: pointer;
+}
+
+.clickableRow:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.rowChevron {
+  color: var(--muted-foreground);
+  transition: transform 160ms ease;
+  text-align: right;
+}
+
+.rowChevron[data-state='open'] {
+  transform: rotate(180deg);
+}
+
+.rowDetail {
+  padding: 0;
+}
+
+.rowDetailInner {
+  animation: auditDetailReveal 160ms ease;
+}
+
+@keyframes auditDetailReveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.detailList {
+  display: grid;
+  grid-template-columns: minmax(140px, max-content) 1fr;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 14px 20px;
+}
+
+.detailPair {
+  display: contents;
+}
+
+.detailLabel {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted-foreground);
+}
+
+.detailValue {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--foreground);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}

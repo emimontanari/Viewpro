@@ -13,8 +13,9 @@ import { DatabaseModule } from '../../database/database.module'
 import { AuthModule } from '../../auth/auth.module'
 import { PrismaService } from '../../database/prisma.service'
 import { PermissionsModule } from '../../permissions/permissions.module'
-import { AuditController } from '../audit.controller'
+import { AuditController, sanitizeDate, sanitizeSource, sanitizeTrimmedFilter } from '../audit.controller'
 import { AuditService } from '../audit.service'
+import { PlatformTenantRepository } from '../platform-tenant.repository'
 
 /**
  * T-18 — RED: `AuditController`/`AuditService` tests — pagination, auth,
@@ -22,6 +23,87 @@ import { AuditService } from '../audit.service'
  *
  * Spec: platform-audit-log — Operator Audit Feed Endpoint (all 5 scenarios)
  */
+
+/**
+ * audit-view (Slice 2, Phase 2) — RED: plain unit tests for the controller's
+ * filter-param sanitizers (design D6, testing strategy: "Plain unit test on
+ * exported functions"). Deliberately a SIBLING top-level `describe` (no
+ * `beforeAll`/DB dependency) so these run and pass without Postgres, unlike
+ * the integration suite below.
+ *
+ * Spec: Server-side audit filters — Scenario: Malformed filter value
+ * degrades, not errors.
+ */
+describe('audit.controller sanitizers (plain unit tests, no DB)', () => {
+  describe('sanitizeTrimmedFilter (action/tenantId/actorId, design D6)', () => {
+    it('undefined → undefined', () => {
+      expect(sanitizeTrimmedFilter(undefined)).toBeUndefined()
+    })
+
+    it('empty string → undefined', () => {
+      expect(sanitizeTrimmedFilter('')).toBeUndefined()
+    })
+
+    it('whitespace-only → undefined', () => {
+      expect(sanitizeTrimmedFilter('   ')).toBeUndefined()
+    })
+
+    it('trims surrounding whitespace and passes the value through', () => {
+      expect(sanitizeTrimmedFilter('  OPERATOR_ROLE_CHANGED  ')).toBe('OPERATOR_ROLE_CHANGED')
+    })
+
+    it('a syntactically valid but non-catalog value is NOT rejected (no allowlist, design D6) — passes through as a literal filter value', () => {
+      expect(sanitizeTrimmedFilter('NOT_A_REAL_ACTION')).toBe('NOT_A_REAL_ACTION')
+    })
+  })
+
+  describe('sanitizeSource (allowlisted, design D6)', () => {
+    it('undefined → undefined', () => {
+      expect(sanitizeSource(undefined)).toBeUndefined()
+    })
+
+    it('INMOVIEW_OUTBOX → passthrough', () => {
+      expect(sanitizeSource('INMOVIEW_OUTBOX')).toBe('INMOVIEW_OUTBOX')
+    })
+
+    it('VIEWPRO_NATIVE → passthrough', () => {
+      expect(sanitizeSource('VIEWPRO_NATIVE')).toBe('VIEWPRO_NATIVE')
+    })
+
+    it('unrecognized value → undefined (never 400)', () => {
+      expect(sanitizeSource('NOT_A_REAL_SOURCE')).toBeUndefined()
+    })
+
+    it('empty string → undefined', () => {
+      expect(sanitizeSource('')).toBeUndefined()
+    })
+  })
+
+  describe('sanitizeDate (design D6)', () => {
+    it('undefined → undefined', () => {
+      expect(sanitizeDate(undefined)).toBeUndefined()
+    })
+
+    it('valid ISO date string → parsed Date', () => {
+      const result = sanitizeDate('2026-01-01')
+      expect(result).toBeInstanceOf(Date)
+      expect(result?.toISOString()).toBe('2026-01-01T00:00:00.000Z')
+    })
+
+    it('valid full ISO datetime string → parsed Date', () => {
+      const result = sanitizeDate('2026-06-30T23:59:59.999Z')
+      expect(result?.toISOString()).toBe('2026-06-30T23:59:59.999Z')
+    })
+
+    it('non-ISO / unparseable string → undefined, never throws (Scenario: malformed filter degrades)', () => {
+      expect(sanitizeDate('not-a-date')).toBeUndefined()
+    })
+
+    it('empty string → undefined', () => {
+      expect(sanitizeDate('')).toBeUndefined()
+    })
+  })
+})
 
 const TEST_EMAIL = 'audit-ctrl-test@viewpro.app'
 const TEST_PASSWORD = 'audit-ctrl-test-password'
@@ -66,7 +148,12 @@ describe('AuditController (integration — test DB)', () => {
         PermissionsModule,
       ],
       controllers: [AuditController],
-      providers: [AuditService],
+      // audit-view (Slice 1, Phase 1): AuditService now also depends on
+      // PlatformTenantRepository (batch tenant name resolution, D1/D2) —
+      // OPERATOR_REPOSITORY is already exported by PermissionsModule above,
+      // but PlatformTenantRepository has no module import path here and must
+      // be provided directly (same DI-wiring lesson as audit.service.spec.ts).
+      providers: [AuditService, PlatformTenantRepository],
     }).compile()
 
     app = moduleFixture.createNestApplication()
@@ -221,6 +308,18 @@ describe('AuditController (integration — test DB)', () => {
     expect(res.status).toBe(401)
   })
 
+  // audit-view (Slice 2, Phase 2), task 2.8 — regression guard: adding
+  // filter query params must NOT bypass AUDIT_READ gating. A request without
+  // a valid session is denied exactly as before this change, under any
+  // filter combination (Scenario: Missing permission).
+  it('GET /api/operators/audit without token → 401 even with a full filter combo applied (Scenario: missing permission)', async () => {
+    const res = await request(app.getHttpServer()).get(
+      '/api/operators/audit?action=OPERATOR_SUSPENDED&source=INMOVIEW_OUTBOX&tenantId=t-1&actorId=op-1&dateFrom=2026-01-01&dateTo=2026-06-30',
+    )
+
+    expect(res.status).toBe(401)
+  })
+
   // Empty platform_audit_log → 200 + { total: 0, items: [] }
   it('GET /api/operators/audit with empty platform_audit_log → 200 + total 0, items []', async () => {
     const cookie = await getSessionCookie()
@@ -234,13 +333,46 @@ describe('AuditController (integration — test DB)', () => {
     expect(res.body.items).toEqual([])
   })
 
-  // Endpoint accepts NO tenantId query param — passing one has no filtering effect (Q3, global-only)
-  it('?tenantId=<x> has no filtering effect — endpoint stays global-only (Q3)', async () => {
+  // audit-view (Slice 2, Phase 2), design D14: supersedes the Q3 "global-only"
+  // restriction — `?tenantId=<x>` now filters end-to-end, HTTP → controller
+  // sanitizer → AuditService where-clause.
+  it('?tenantId=<x> filters end-to-end — only that tenant\'s rows are returned (design D14 supersedes former Q3)', async () => {
     await seedThreeAuditRows()
     const cookie = await getSessionCookie()
 
     const res = await request(app.getHttpServer())
       .get('/api/operators/audit?tenantId=t-1')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(200)
+    expect(res.body.total).toBe(1)
+    expect(res.body.items).toHaveLength(1)
+    expect(res.body.items[0].tenantId).toBe('t-1')
+  })
+
+  // End-to-end action filter through the real HTTP layer (task 2.2/2.7 wiring proof).
+  it('?action=<x> filters end-to-end via HTTP', async () => {
+    await seedThreeAuditRows()
+    const cookie = await getSessionCookie()
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/audit?action=TENANT_LIMITS_UPDATED')
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(200)
+    expect(res.body.total).toBe(1)
+    expect(res.body.items).toHaveLength(1)
+    expect(res.body.items[0].action).toBe('TENANT_LIMITS_UPDATED')
+  })
+
+  // Malformed filter values degrade silently — no 400, matches Slice 1's
+  // established param-sanitizing convention (design D6).
+  it('malformed filter query params degrade instead of erroring — 200, unfiltered result (Scenario: malformed filter degrades)', async () => {
+    await seedThreeAuditRows()
+    const cookie = await getSessionCookie()
+
+    const res = await request(app.getHttpServer())
+      .get('/api/operators/audit?source=NOT_A_REAL_SOURCE&dateFrom=not-a-date')
       .set('Cookie', cookie)
 
     expect(res.status).toBe(200)

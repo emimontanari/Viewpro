@@ -40,9 +40,44 @@ const ACTION_LABELS: Record<string, string> = {
   OPERATOR_CREATED: 'Operador creado',
   OPERATOR_ROLE_CHANGED: 'Rol de operador cambiado',
   OPERATOR_SUSPENDED: 'Operador suspendido',
-  OPERATOR_REACTIVATED: 'Operador reactivado'
+  OPERATOR_REACTIVATED: 'Operador reactivado',
+  // audit-view (Slice 3, Phase 3) — was missing from the catalog (design
+  // "Open Questions"); operator-activity-media's read-URL mint writes this
+  // action (tenant-detail.service.ts getDocumentReadUrl).
+  TENANT_DOCUMENT_VIEWED: 'Documento visto'
 };
 
 export function actionLabel(action: string): string {
   return ACTION_LABELS[action] ?? action;
+}
+
+/**
+ * audit-view (Slice 4, Phase 4) — the known action catalog for
+ * AuditFilterBar's action <Select> (spec: "action (select over the known
+ * action catalog + 'all')"). Derived from ACTION_LABELS rather than
+ * duplicated, so a future new action added there automatically appears as a
+ * filter option too.
+ */
+export const AUDIT_ACTION_OPTIONS: { value: string; label: string }[] = Object.entries(
+  ACTION_LABELS
+).map(([value, label]) => ({ value, label }));
+
+const FULL_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat('es-AR', {
+  dateStyle: 'full',
+  timeStyle: 'medium'
+});
+
+/**
+ * Fuller date/time string for the drill-down detail panel (spec: "full
+ * timestamp"); fails safe to '—'. Mirrors
+ * features/tenants/lib/activity-feed-formatting.ts's
+ * formatActivityFullTimestamp — deliberately NOT imported from there (D12:
+ * this feature must not depend on tenant-specific formatters).
+ */
+export function formatFullTimestamp(occurredAt: string): string {
+  const date = new Date(occurredAt);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+  return FULL_TIMESTAMP_FORMATTER.format(date);
 }

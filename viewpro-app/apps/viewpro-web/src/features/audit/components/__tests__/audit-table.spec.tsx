@@ -1,19 +1,27 @@
 /**
- * T-24 — RED: AuditTable component tests
- * Spec: platform-audit-log — viewpro-web Global Audit Feed (feed-renders scenario)
+ * T-24 / audit-view (Slice 3, Phase 3) — AuditTable component tests
+ * Spec: platform-audit-feed — viewpro-web Global Audit Feed + "Resolved
+ *   identity as primary display" (design D11)
  *
  * Tests cover:
  *   - Renders one row per item
- *   - Actor label, action label (Q4 map), target tenant, timestamp, and
- *     old→new (via renderValue) are all shown per row
+ *   - Resolved actor identity as PRIMARY display (D11): actorEmail, then
+ *     native actor.email, then the type:'user' generic label
+ *     (verify-slice1 D11 gap fix — NEVER a raw UUID), then outbox operator
+ *     label/id as a last resort
+ *   - Resolved tenant name as primary display, raw tenantId fallback
+ *   - A source badge distinguishes INMOVIEW_OUTBOX vs VIEWPRO_NATIVE
+ *   - Action label (Q4 map), old→new (via renderValue), timestamp
  *   - Rows render in the order received (no client re-sort)
  *   - An unmapped action renders raw (never throws)
  *   - Malformed/absent previousValue/newValue degrade to '—' (never throws)
+ *   - Row click expands/collapses the AuditRowDetail drill-down (D12)
  */
 
 import * as React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import type { AuditLogItem } from '@/features/audit/api/types';
 import { AuditTable } from '../audit-table';
@@ -33,7 +41,11 @@ const ITEMS: AuditLogItem[] = [
     id: 'audit-2',
     action: 'TENANT_LIMITS_UPDATED',
     tenantId: 'tenant-2',
-    actor: { id: 'usr-1', type: 'user', label: 'usr-1' },
+    actor: {
+      id: 'a1b2c3d4-5678-90ab-cdef-1234567890ab',
+      type: 'user',
+      label: 'a1b2c3d4-5678-90ab-cdef-1234567890ab'
+    },
     previousValue: { maxUsers: 10 },
     newValue: { maxUsers: 25 },
     occurredAt: '2026-07-15T09:00:00.000Z',
@@ -49,11 +61,10 @@ describe('AuditTable — renders fetched rows', () => {
     expect(screen.getByTestId('audit-row-audit-2')).toBeTruthy();
   });
 
-  it('renders the actor label per row', () => {
+  it('falls back to actor.label when no actorEmail is resolved (outbox operator)', () => {
     render(<AuditTable items={ITEMS} />);
 
     expect(screen.getByTestId('audit-actor-audit-1').textContent).toContain('op-1');
-    expect(screen.getByTestId('audit-actor-audit-2').textContent).toContain('usr-1');
   });
 
   it('renders the action label per row (Q4 map)', () => {
@@ -63,7 +74,7 @@ describe('AuditTable — renders fetched rows', () => {
     expect(screen.getByTestId('audit-action-audit-2').textContent).toBe('Límites');
   });
 
-  it('renders the target tenant per row', () => {
+  it('falls back to the raw tenantId when no tenantName is resolved', () => {
     render(<AuditTable items={ITEMS} />);
 
     expect(screen.getByTestId('audit-tenant-audit-1').textContent).toContain('tenant-1');
@@ -84,10 +95,10 @@ describe('AuditTable — renders fetched rows', () => {
     expect(change).toContain('ACTIVE');
   });
 
-  it('renders rows in the order received (server already sorts seqNo DESC)', () => {
+  it('renders rows in the order received (server already sorts occurredAt DESC)', () => {
     render(<AuditTable items={ITEMS} />);
 
-    const rows = screen.getAllByTestId(/audit-row-/);
+    const rows = screen.getAllByTestId(/^audit-row-audit-/);
     expect(rows[0].getAttribute('data-testid')).toBe('audit-row-audit-1');
     expect(rows[1].getAttribute('data-testid')).toBe('audit-row-audit-2');
   });
@@ -109,6 +120,80 @@ describe('AuditTable — renders fetched rows', () => {
 
     expect(() => render(<AuditTable items={items} />)).not.toThrow();
     expect(screen.getByTestId('audit-change-audit-4').textContent).toContain('—');
+  });
+});
+
+// D11 — resolved identity is the PRIMARY display; a raw UUID must never
+// appear as primary content (spec: "Resolved identity as primary display").
+describe('AuditTable — resolved identity as primary display (D11)', () => {
+  it('shows the resolved actorEmail (not the raw id) for an outbox operator row, with a source badge (Scenario: outbox operator row)', () => {
+    const item: AuditLogItem = {
+      ...ITEMS[0],
+      id: 'audit-resolved-1',
+      actorEmail: 'operador@viewpro.test',
+      source: 'INMOVIEW_OUTBOX'
+    };
+
+    render(<AuditTable items={[item]} />);
+
+    const actorCell = screen.getByTestId('audit-actor-audit-resolved-1').textContent ?? '';
+    expect(actorCell).toContain('operador@viewpro.test');
+    expect(actorCell).not.toContain('op-1');
+    expect(screen.getByTestId('audit-source-audit-resolved-1').textContent).toBe('InmoView');
+  });
+
+  it('shows the resolved tenant name (not the raw id) for a native document-view row, with a distinct native badge (Scenario: native document-view row)', () => {
+    const item: AuditLogItem = {
+      id: 'audit-native-doc-1',
+      action: 'TENANT_DOCUMENT_VIEWED',
+      tenantId: 'tenant-9',
+      tenantName: 'Inmobiliaria Sur',
+      actor: { id: 'op-9', email: 'admin@viewpro.local' },
+      target: { documentVersionId: 'ver-1', filename: 'escritura.pdf' },
+      previousValue: null,
+      newValue: null,
+      occurredAt: '2026-07-15T11:00:00.000Z',
+      seqNo: null,
+      source: 'VIEWPRO_NATIVE'
+    };
+
+    render(<AuditTable items={[item]} />);
+
+    const tenantCell = screen.getByTestId('audit-tenant-audit-native-doc-1').textContent ?? '';
+    expect(tenantCell).toBe('Inmobiliaria Sur');
+    expect(tenantCell).not.toContain('tenant-9');
+    expect(screen.getByTestId('audit-source-audit-native-doc-1').textContent).toBe('ViewPro');
+
+    // A document-view carries no old→new delta (both null): the "Cambio" cell
+    // must show the document filename, never a meaningless "— → —" placeholder.
+    const changeCell = screen.getByTestId('audit-change-audit-native-doc-1').textContent ?? '';
+    expect(changeCell).toContain('escritura.pdf');
+    expect(changeCell).not.toContain('→');
+  });
+
+  // verify-slice1's D11 conformance finding: a type:'user' outbox actor's
+  // label/id are BOTH the raw UUID — must show the generic label instead.
+  it('shows the generic "Usuario de la inmobiliaria" label for a type:user actor — NEVER the raw UUID', () => {
+    render(<AuditTable items={[ITEMS[1]]} />);
+
+    const actorCell = screen.getByTestId('audit-actor-audit-2').textContent ?? '';
+    expect(actorCell).toContain('Usuario de la inmobiliaria');
+    expect(actorCell).not.toContain('a1b2c3d4-5678-90ab-cdef-1234567890ab');
+  });
+});
+
+describe('AuditTable — drill-down expand/collapse (design D12)', () => {
+  it('expands a forensic detail panel on row click, and collapses it on a second click', async () => {
+    const user = userEvent.setup();
+    render(<AuditTable items={[ITEMS[0]]} />);
+
+    expect(screen.queryByTestId('audit-detail-audit-1')).toBeNull();
+
+    await user.click(screen.getByTestId('audit-row-audit-1'));
+    expect(screen.getByTestId('audit-detail-audit-1')).toBeTruthy();
+
+    await user.click(screen.getByTestId('audit-row-audit-1'));
+    expect(screen.queryByTestId('audit-detail-audit-1')).toBeNull();
   });
 });
 
@@ -146,7 +231,7 @@ describe('AuditTable — heterogeneous feed (native + outbox)', () => {
     );
   });
 
-  it('renders "—" for a native entry with a null tenantId', () => {
+  it('renders "—" for a native entry with a null tenantId and no tenantName', () => {
     render(<AuditTable items={[NATIVE_ITEM]} />);
 
     expect(screen.getByTestId('audit-tenant-audit-native-1').textContent).toBe('—');

@@ -19,16 +19,28 @@ const actorSchema = z.object({
 });
 
 // Present only on VIEWPRO_NATIVE operator actions (null for outbox entries).
+//
+// audit-view (Slice 3, Phase 3) — widened: TENANT_DOCUMENT_VIEWED's target is
+// {documentVersionId,filename}, distinct from the other native actions'
+// {id,email} (mirrors AuditTarget in ./types.ts). All fields optional so
+// either shape parses without throwing.
 const targetSchema = z.object({
-  id: z.string(),
-  email: z.string().optional()
+  id: z.string().optional(),
+  email: z.string().optional(),
+  documentVersionId: z.string().optional(),
+  filename: z.string().optional()
 });
 
 const itemSchema = z.object({
   id: z.string(),
   action: z.string(),
   tenantId: z.string().nullable(),
+  // audit-view (Slice 1, Phase 1), design D4 — additive, resolved alongside
+  // the raw tenantId/actor above; optional to tolerate a response predating
+  // this slice (mirrors the existing `source` optional convention).
+  tenantName: z.string().nullable().optional(),
   actor: actorSchema,
+  actorEmail: z.string().nullable().optional(),
   target: targetSchema.nullable().optional(),
   previousValue: z.unknown(),
   newValue: z.unknown(),

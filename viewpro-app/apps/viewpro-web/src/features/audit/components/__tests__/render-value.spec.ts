@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { renderValue, actionLabel } from '../render-value';
+import { renderValue, actionLabel, formatFullTimestamp } from '../render-value';
 
 describe('renderValue()', () => {
   it('renders null as em-dash', () => {
@@ -78,5 +78,25 @@ describe('actionLabel()', () => {
 
   it('renders an unmapped action raw (no throw)', () => {
     expect(actionLabel('SOME_FUTURE_ACTION')).toBe('SOME_FUTURE_ACTION');
+  });
+
+  // audit-view (Slice 3, Phase 3) — TENANT_DOCUMENT_VIEWED was missing from
+  // the 7-action catalog (design "Open Questions").
+  it('maps TENANT_DOCUMENT_VIEWED to "Documento visto"', () => {
+    expect(actionLabel('TENANT_DOCUMENT_VIEWED')).toBe('Documento visto');
+  });
+});
+
+describe('formatFullTimestamp()', () => {
+  it('renders a full es-AR date/time string for a valid ISO timestamp', () => {
+    const result = formatFullTimestamp('2026-07-15T10:00:00.000Z');
+
+    expect(result).toContain('2026');
+    expect(result).not.toBe('—');
+  });
+
+  it('degrades a malformed timestamp to "—" without throwing', () => {
+    expect(() => formatFullTimestamp('not-a-date')).not.toThrow();
+    expect(formatFullTimestamp('not-a-date')).toBe('—');
   });
 });
