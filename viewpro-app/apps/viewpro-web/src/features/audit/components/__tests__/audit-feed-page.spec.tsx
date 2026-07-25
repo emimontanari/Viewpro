@@ -15,6 +15,7 @@ import * as React from 'react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 
 import type { AuditFeedResponse, AuditLogItem } from '@/features/audit/api/types';
 
@@ -64,7 +65,36 @@ vi.mock('../audit-pager', () => ({
 }));
 
 vi.mock('../audit-empty-state', () => ({
-  AuditEmptyState: () => <div data-testid='audit-empty-state'>vacío</div>
+  AuditEmptyState: ({ filtered }: { filtered?: boolean }) => (
+    <div data-testid='audit-empty-state' data-filtered={String(Boolean(filtered))}>
+      vacío
+    </div>
+  )
+}));
+
+// Mock the filter bar to isolate container wiring (offset reset, filters →
+// query key, hasActiveFilters) from the filter bar's own control rendering
+// (already covered by audit-filter-bar.spec.tsx, task 4.1).
+vi.mock('../audit-filter-bar', () => ({
+  AuditFilterBar: ({
+    onChange,
+    onClear,
+    hasActiveFilters
+  }: {
+    onChange: (patch: Record<string, string>) => void;
+    onClear: () => void;
+    hasActiveFilters: boolean;
+  }) => (
+    <div data-testid='audit-filter-bar'>
+      <span data-testid='has-active-filters'>{String(hasActiveFilters)}</span>
+      <button type='button' onClick={() => onChange({ action: 'OPERATOR_SUSPENDED' })}>
+        set-action
+      </button>
+      <button type='button' onClick={onClear}>
+        clear
+      </button>
+    </div>
+  )
 }));
 
 import { getAuditFeed } from '@/features/audit/api/service';
@@ -89,9 +119,11 @@ const EMPTY_RESPONSE: AuditFeedResponse = { total: 0, items: [] };
 function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <QueryClientProvider client={qc}>
-      <AuditFeedPage />
-    </QueryClientProvider>
+    <NuqsTestingAdapter hasMemory>
+      <QueryClientProvider client={qc}>
+        <AuditFeedPage />
+      </QueryClientProvider>
+    </NuqsTestingAdapter>
   );
 }
 
@@ -197,5 +229,105 @@ describe('AuditFeedPage — pager', () => {
       expect(screen.getByTestId('mock-item-audit-2')).toBeTruthy();
     });
     expect(screen.queryByTestId('mock-item-audit-1')).toBeNull();
+  });
+});
+
+// ─── Filter bar wiring (Slice 4, Phase 4, task 4.3) ───────────────────────────
+// Spec: "Server-driven filter bar" — changing a filter refetches with the
+// filter applied. AuditFilterBar itself is mocked above; these tests only
+// verify the container's plumbing (offset reset + filters → query key +
+// hasActiveFilters).
+
+describe('AuditFeedPage — filter bar wiring', () => {
+  it('reports hasActiveFilters=false initially and requests with no filters', async () => {
+    mockGetAuditFeed.mockResolvedValueOnce(NON_EMPTY_RESPONSE);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('has-active-filters').textContent).toBe('false');
+    });
+    expect(mockGetAuditFeed).toHaveBeenCalledWith(0, 50, {});
+  });
+
+  it('changing a filter refetches with the filter applied AND resets the offset back to page 1 (Scenario: changing the action filter)', async () => {
+    const SECOND_ITEM: AuditLogItem = { ...ITEM, id: 'audit-2' };
+    mockGetAuditFeed.mockResolvedValueOnce(NON_EMPTY_RESPONSE); // initial (offset 0)
+    mockGetAuditFeed.mockResolvedValueOnce({ total: 60, items: [SECOND_ITEM] }); // page 2 (offset 50)
+    mockGetAuditFeed.mockResolvedValueOnce({ total: 1, items: [ITEM] }); // filtered
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('audit-pager')).toBeTruthy());
+
+    // Move to page 2 first so we can prove the filter change resets it.
+    fireEvent.click(screen.getByRole('button', { name: 'next' }));
+    await waitFor(() => {
+      expect(mockGetAuditFeed).toHaveBeenCalledWith(50, 50, {});
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'set-action' }));
+
+    await waitFor(() => {
+      expect(mockGetAuditFeed).toHaveBeenCalledWith(0, 50, { action: 'OPERATOR_SUSPENDED' });
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('has-active-filters').textContent).toBe('true');
+    });
+  });
+
+  it('the clear affordance resets filters back to an empty request', async () => {
+    mockGetAuditFeed.mockResolvedValueOnce(NON_EMPTY_RESPONSE); // initial
+    mockGetAuditFeed.mockResolvedValueOnce({ total: 1, items: [ITEM] }); // filtered
+    mockGetAuditFeed.mockResolvedValueOnce(NON_EMPTY_RESPONSE); // cleared
+
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId('audit-pager')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'set-action' }));
+    await waitFor(() => {
+      expect(mockGetAuditFeed).toHaveBeenCalledWith(0, 50, { action: 'OPERATOR_SUSPENDED' });
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'clear' }));
+
+    await waitFor(() => {
+      const calls = mockGetAuditFeed.mock.calls;
+      expect(calls[calls.length - 1]).toEqual([0, 50, {}]);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('has-active-filters').textContent).toBe('false');
+    });
+  });
+});
+
+// ─── Distinct empty states (Slice 4, Phase 4, task 4.4) ───────────────────────
+// Spec Scenario: "No rows match filters" — an explicit "no matching events"
+// empty state, distinct from the empty state shown when the feed has zero
+// events overall.
+
+describe('AuditFeedPage — distinct empty states', () => {
+  it('renders the UNFILTERED empty state when total===0 and no filters are active', async () => {
+    mockGetAuditFeed.mockResolvedValueOnce(EMPTY_RESPONSE);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('audit-empty-state').dataset.filtered).toBe('false');
+    });
+  });
+
+  it('renders the FILTERED empty state when total===0 AFTER a filter is applied, distinct from the unfiltered one', async () => {
+    mockGetAuditFeed.mockResolvedValueOnce(NON_EMPTY_RESPONSE); // initial, unfiltered has rows
+    mockGetAuditFeed.mockResolvedValueOnce(EMPTY_RESPONSE); // filtered → zero matches
+
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId('audit-table')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'set-action' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('audit-empty-state').dataset.filtered).toBe('true');
+    });
   });
 });
