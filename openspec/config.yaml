@@ -16,10 +16,14 @@ preferences:
   review_budget_changed_lines: 400
 
 source_of_truth:
-  current_handoff: docs/plans/CURRENT_MVP_EXECUTION.md
+  current_handoff: docs/plans/2026-07-20-recta-final-execution.md
+  capability_specs: openspec/specs
+  production_topology: docs/plans/2026-07-21-production-go-live-runbook.md
   canonical_order: docs/plans/2026-06-04-final-mvp-execution-plan.md
-  evidence_overlay: docs/plans/2026-06-08-stage-26-0-mvp-evidence-audit.md
-  historical_rule: Older dated docs are context only unless promoted by the handoff, index, or accepted OpenSpec change.
+  historical_rule: >
+    Consolidated capability specs under openspec/specs are the contract.
+    openspec/changes/archive holds completed changes as historical evidence only.
+    Docs under docs/plans other than the current handoff are context, not directives.
   skill_registry: .atl/skill-registry.md
 
 sdd:
