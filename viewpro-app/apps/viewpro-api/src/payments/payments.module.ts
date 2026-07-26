@@ -3,9 +3,11 @@ import { AuthModule } from '../auth/auth.module'
 import { PermissionsModule } from '../permissions/permissions.module'
 import { AuditLogRepository } from '../platform-data/audit-log.repository'
 import { PlatformTenantRepository } from '../platform-data/platform-tenant.repository'
+import { CLOCK, systemClock } from './clock'
 import { PaymentsController } from './payments.controller'
 import { PaymentsService } from './payments.service'
 import { PrismaPaymentRepository } from './prisma-payment.repository'
+import { TenantBillingStatusService } from './tenant-billing-status.service'
 
 /**
  * PaymentsModule (viewpro-api) — the manual-billing money ledger.
@@ -26,7 +28,14 @@ import { PrismaPaymentRepository } from './prisma-payment.repository'
 @Module({
   imports: [AuthModule, PermissionsModule],
   controllers: [PaymentsController],
-  providers: [PaymentsService, PrismaPaymentRepository, AuditLogRepository, PlatformTenantRepository],
-  exports: [PaymentsService, PrismaPaymentRepository],
+  providers: [
+    PaymentsService,
+    PrismaPaymentRepository,
+    TenantBillingStatusService,
+    AuditLogRepository,
+    PlatformTenantRepository,
+    { provide: CLOCK, useValue: systemClock },
+  ],
+  exports: [PaymentsService, PrismaPaymentRepository, TenantBillingStatusService],
 })
 export class PaymentsModule {}

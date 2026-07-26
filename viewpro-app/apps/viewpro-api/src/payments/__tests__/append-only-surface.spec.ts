@@ -27,8 +27,19 @@ describe('payment ledger append-only surface', () => {
   })
 
   it('exposes exactly the ledger operations the port declares', () => {
+    // Kept as an exact list rather than a "contains" check: the point is that
+    // adding an operation to the ledger has to be a deliberate edit here, seen
+    // by whoever reviews it. PR 3 added paidThroughByTenants (batched read) —
+    // the list grows only alongside a reviewed change.
     expect(methodNames.sort()).toEqual(
-      ['listByTenant', 'paidThroughByTenant', 'record', 'revenueByMonth', 'reverse'].sort(),
+      [
+        'listByTenant',
+        'paidThroughByTenant',
+        'paidThroughByTenants',
+        'record',
+        'revenueByMonth',
+        'reverse',
+      ].sort(),
     )
   })
 

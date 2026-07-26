@@ -93,6 +93,16 @@ export interface PaymentRepositoryPort {
    */
   paidThroughByTenant(tenantId: string): Promise<CalendarDate | null>
 
+  /**
+   * Furthest `periodEnd` per tenant, for many tenants at once. Tenants with no
+   * non-reversed payment are simply absent from the map.
+   *
+   * Batched on purpose: the console's tenant list renders up to 200 rows, and
+   * calling the single-tenant version per row would turn one page render into
+   * 200 round trips.
+   */
+  paidThroughByTenants(tenantIds: readonly string[]): Promise<Map<string, CalendarDate>>
+
   /** Collected totals per month, plan and currency. Reversed payments excluded. */
   revenueByMonth(): Promise<RevenueByMonthRow[]>
 }

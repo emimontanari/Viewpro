@@ -28,6 +28,8 @@ import { createBillingPeriod } from './billing-period'
 import { parseMinorUnits } from './money'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
 import { PaymentsService } from './payments.service'
+// biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
+import { TenantBillingStatusService } from './tenant-billing-status.service'
 import type { RecordedPayment } from './payment-repository.port'
 
 /**
@@ -51,6 +53,7 @@ export class PaymentsController {
   constructor(
     private readonly payments: PaymentsService,
     private readonly tenants: PlatformTenantRepository,
+    private readonly billing: TenantBillingStatusService,
   ) {}
 
   @Post('tenants/:tenantId/payments')
@@ -115,13 +118,34 @@ export class PaymentsController {
     return toResponse(reversal)
   }
 
+  /**
+   * History and billing state in one response.
+   *
+   * They travel together because the console always needs both, and splitting
+   * them into two requests would let the page render a paid-through date from
+   * one moment beside a payment list from another.
+   */
   @Get('tenants/:tenantId/payments')
   @RequirePlatformPermission(PLATFORM_PERMISSIONS.PAYMENTS_READ)
-  async listByTenant(@Param('tenantId') tenantId: string): Promise<PaymentResponse[]> {
-    const payments = await this.payments.listByTenant(tenantId)
+  async listByTenant(@Param('tenantId') tenantId: string): Promise<TenantPaymentsResponse> {
+    const [payments, billing] = await Promise.all([
+      this.payments.listByTenant(tenantId),
+      this.billing.forTenant(tenantId),
+    ])
 
-    return payments.map(toResponse)
+    return {
+      paidThroughAt: billing.paidThroughAt,
+      overdueDays: billing.overdueDays,
+      payments: payments.map(toResponse),
+    }
   }
+}
+
+export interface TenantPaymentsResponse {
+  paidThroughAt: string | null
+  /** Days since paid-through, or null when the tenant is not overdue. */
+  overdueDays: number | null
+  payments: PaymentResponse[]
 }
 
 export interface PaymentResponse {

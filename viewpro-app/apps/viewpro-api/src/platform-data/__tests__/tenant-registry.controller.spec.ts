@@ -16,6 +16,9 @@ import { PrismaService } from '../../database/prisma.service'
 import { PermissionsModule } from '../../permissions/permissions.module'
 import { TenantRegistryController } from '../tenant-registry.controller'
 import { TenantRegistryService } from '../tenant-registry.service'
+import { TenantBillingStatusService } from '../../payments/tenant-billing-status.service'
+import { PrismaPaymentRepository } from '../../payments/prisma-payment.repository'
+import { CLOCK, systemClock } from '../../payments/clock'
 
 const PLATFORM_CONTROL_SECRET = process.env.PLATFORM_CONTROL_SECRET ?? 'test-platform-control-secret-min16'
 const serviceSigner = new JwtService({ secret: PLATFORM_CONTROL_SECRET })
@@ -77,7 +80,7 @@ describe('TenantRegistryController (integration — test DB)', () => {
         PermissionsModule,
       ],
       controllers: [TenantRegistryController],
-      providers: [TenantRegistryService],
+      providers: [TenantRegistryService, TenantBillingStatusService, PrismaPaymentRepository, { provide: CLOCK, useValue: systemClock }, TenantBillingStatusService, PrismaPaymentRepository, { provide: CLOCK, useValue: systemClock }],
     }).compile()
 
     app = moduleFixture.createNestApplication()

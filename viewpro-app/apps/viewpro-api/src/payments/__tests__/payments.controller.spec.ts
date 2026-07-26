@@ -270,7 +270,10 @@ describe('PaymentsController (integration — test DB)', () => {
         .set('Cookie', analystAccess)
 
       expect(res.status).toBe(200)
-      expect(res.body).toHaveLength(1)
+      expect(res.body.payments).toHaveLength(1)
+      // History and billing state arrive together, so the page cannot render a
+      // paid-through date from one moment beside a list from another.
+      expect(res.body.paidThroughAt).toBe('2026-08-31')
     })
 
     it('lets OPERATIONS record but refuses OPERATIONS reversing', async () => {

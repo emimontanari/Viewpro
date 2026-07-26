@@ -107,6 +107,60 @@ loosened to "contains" checks.
   `PAYMENT_RECORDED` / `PAYMENT_REVERSED`; its existing tx-threading is reused
   unchanged.
 
-## PR 3 — Console surfaces — not started
+## PR 3 — Console surfaces — **partial** (backend + components done, page wiring pending)
+
+### RED/GREEN evidence
+
+| Task | RED | GREEN |
+|---|---|---|
+| `TenantBillingStatusService` (derived paid-through/overdue) | `Cannot find module '../tenant-billing-status.service'` | 7/7 passing |
+| Tenant list billing enrichment | 3 failing — `billing` absent from rows | 3/3 passing |
+| Money formatting (console) | `Failed to resolve import '../money-format'` | 10/10 passing |
+| `toMinorUnits` conversion | 4 failing — function absent | 10/10 passing |
+| `PaymentHistory` component | import failure | 9/9 passing |
+| `RecordPaymentDialog` component | import failure | 8/8 passing |
+
+Backend: **59 files, 548 tests passing**, typecheck clean.
+Console: **37 tests passing** in `features/payments`.
+
+### An ambiguity the tests forced into the open
+
+`toMinorUnits` first treated any 3-digit group after a separator as thousands,
+which made `45.000` (forty-five thousand) and `45000.567` (three decimals)
+indistinguishable — the latter would have become **45000567**, a hundred times
+the intended amount. Fixed by only accepting thousands notation when the whole
+string matches `^\d{1,3}([.,]\d{3})+$`; anything else treats the last separator
+as decimal and rejects more than two decimal places rather than truncating.
+Truncating would book a different amount than the operator entered.
+
+The conversion is string-based throughout. `Math.round(parseFloat(x) * 100)` —
+the obvious implementation — is wrong for values like `45000.70`
+(`parseFloat('45000.70') * 100 === 4500069.999999999`), and wrong in a way that
+reaches production as an occasional one-cent discrepancy nobody can reproduce.
+
+### Still pending in PR 3
+
+The components exist and are tested in isolation, but they are **not yet mounted
+in the console pages**:
+
+- `RecordPaymentDialog` and `PaymentHistory` are not rendered from
+  `features/tenants/components/tenant-detail-view-page.tsx`.
+- The overdue badge is not shown in the tenant list table.
+- The `useStepUpGate` wiring (retry after re-auth) is designed for but not yet
+  connected, because it belongs to the page that owns the mutation.
+
+The backend is complete: the tenant list already carries `billing` on every row
+and `GET /operators/tenants/:id/payments` returns history plus billing state.
+
+### Pre-existing failure, not caused here
+
+`viewpro-web`'s full suite has one failing test —
+`audit-feed-page.spec.tsx > the clear affordance resets filters back to an empty request`.
+Verified as pre-existing by stashing all changes and re-running: it fails on the
+clean baseline too (553 passed / 1 failed). It passes when run in isolation, so
+it is a cross-test isolation problem in that spec, unrelated to payments.
+
+`pnpm --filter viewpro-web lint:strict` also fails on the baseline with **9
+warnings**, none in `features/payments` — the same 9 before and after this work.
 
 ## PR 4 — Revenue visibility — not started

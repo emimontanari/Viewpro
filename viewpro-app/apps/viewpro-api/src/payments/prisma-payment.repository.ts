@@ -128,6 +128,28 @@ export class PrismaPaymentRepository implements PaymentRepositoryPort {
     return furthest === null ? null : toCalendarDate(furthest)
   }
 
+  async paidThroughByTenants(tenantIds: readonly string[]): Promise<Map<string, CalendarDate>> {
+    const paidThrough = new Map<string, CalendarDate>()
+
+    if (tenantIds.length === 0) {
+      return paidThrough
+    }
+
+    const grouped = await this.prisma.tenantPayment.groupBy({
+      by: ['tenantId'],
+      where: { tenantId: { in: [...tenantIds] }, ...NOT_REVERSED },
+      _max: { periodEnd: true },
+    })
+
+    for (const row of grouped) {
+      if (row._max.periodEnd !== null) {
+        paidThrough.set(row.tenantId, toCalendarDate(row._max.periodEnd))
+      }
+    }
+
+    return paidThrough
+  }
+
   async revenueByMonth(): Promise<RevenueByMonthRow[]> {
     const rows = await this.prisma.tenantPayment.findMany({
       where: NOT_REVERSED,
