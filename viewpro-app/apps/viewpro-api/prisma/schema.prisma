@@ -114,3 +114,57 @@ model PlatformAuditLog {
   @@index([seqNo])
   @@map("platform_audit_log")
 }
+
+/// platform-payment-ledger — how an agency paid for a plan.
+///
+/// Append-only: nothing updates or deletes a recorded payment's monetary
+/// fields. A mistaken entry is corrected by recording a REVERSAL row that
+/// points at the original through reversalOfPaymentId; both rows survive.
+/// A ledger whose rows can be edited in silence proves nothing when
+/// reconciling against a bank statement, which is the whole point of this
+/// table.
+///
+/// Amounts are integer minor units (bigint), never floats. Periods are
+/// calendar dates (@db.Date), interpreted in America/Argentina/Buenos_Aires,
+/// so no timezone conversion can shift a period boundary by a day.
+///
+/// A tenant's paid-through date is DERIVED from these rows (max periodEnd
+/// among non-reversed payments) — deliberately not a column on
+/// PlatformTenant, which is an event-sourced projection where a second
+/// command-written column tracking another table would be free to drift.
+enum PaymentMethod {
+  BANK_TRANSFER
+  CASH
+  MERCADOPAGO_LINK
+  OTHER
+}
+
+model TenantPayment {
+  id               String        @id @default(uuid())
+  tenantId         String
+  amountMinorUnits BigInt
+  currency         String        @default("ARS")
+  method           PaymentMethod
+  plan             String
+  periodStart      DateTime      @db.Date
+  periodEnd        DateTime      @db.Date
+  receiptReference String?
+  note             String?
+
+  recordedByOperatorId String
+  recordedAt           DateTime @default(now())
+
+  /// Set only on reversal rows. The @unique constraint is what makes double
+  /// reversal impossible in the database — a service-layer check alone loses
+  /// to two concurrent requests, and the ledger stops balancing. The 409 the
+  /// API returns is the friendly surface over this constraint, not a
+  /// replacement for it.
+  reversalOfPaymentId String?        @unique
+  reversalOfPayment   TenantPayment? @relation("PaymentReversal", fields: [reversalOfPaymentId], references: [id])
+  reversedBy          TenantPayment? @relation("PaymentReversal")
+  reversalReason      String?
+
+  @@index([tenantId, periodEnd])
+  @@index([recordedAt])
+  @@map("tenant_payments")
+}
