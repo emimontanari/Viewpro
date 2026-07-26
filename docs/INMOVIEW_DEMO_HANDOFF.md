@@ -1,10 +1,35 @@
-# InmoView — Handoff del demo (pilot)
+# InmoView — Handoff del demo (pilot) — ⛔ DEPRECADO
+
+> ## ⛔ NO USAR — el entorno de demo está muerto
+>
+> **Deprecado el 2026-07-26.** El demo fue abandonado: `api-demo.inmoview.app` devuelve **502**.
+> `demo.inmoview.app` todavía sirve la pantalla de login, así que quien abra ese link ve un
+> formulario que no autentica. **No repartas ninguna URL ni credencial de este documento.**
+>
+> **Usá producción para todo**, incluidas las demos a clientes:
+>
+> | Qué | URL |
+> | --- | --- |
+> | App (usuarios reales) | https://app.inmoview.app |
+> | API producto | https://api.inmoview.app |
+> | Consola de operador | https://console.inmoview.app |
+> | API plataforma | https://api-console.inmoview.app |
+>
+> Producción quedó viva el 2026-07-22 y verificada E2E — ver
+> `docs/plans/2026-07-21-production-go-live-runbook.md`. Para mostrar el producto, registrá
+> una inmobiliaria real en `app.inmoview.app` (self-service) en lugar de usar cuentas seed.
+>
+> Sigue vigente una regla del demo: **nunca** setees `INMOVIEW_DEMO_*` ni `VIEWPRO_DEMO_PASSWORD`
+> en producción, y nunca corras `pnpm demo:seed` contra la DB de prod (el guard
+> `seed-demo-safety.mjs` hace substring-match sobre el `DATABASE_URL`).
+>
+> Lo que sigue se conserva solo como registro histórico del pilot.
 
 **Slice:** 26.5a — InmoView domain, branding, and demo handoff.
 **Objetivo:** que se pueda abrir el demo desplegado, iniciar sesión con las cuentas de prueba y mostrar el pilot de forma segura.
-**Última verificación live:** smoke test OK sobre `api-demo.inmoview.app` y `demo.inmoview.app` (health 200, sign-in 200, login 201 en las 6 cuentas).
+**Última verificación live:** smoke test OK sobre `api-demo.inmoview.app` y `demo.inmoview.app` (health 200, sign-in 200, login 201 en las 6 cuentas) — **verificación de 2026-07-11, ya no válida**.
 
-> Este documento describe un entorno **de demostración** con datos sembrados (seed). Las credenciales de abajo son solo para el pilot; no son datos reales ni de producción real.
+> Este documento describía un entorno **de demostración** con datos sembrados (seed). Las credenciales de abajo eran solo para el pilot; no son datos reales ni de producción real.
 
 ---
 
