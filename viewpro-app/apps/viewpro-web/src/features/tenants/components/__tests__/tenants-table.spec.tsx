@@ -106,6 +106,10 @@ function noopAssignPlan() {
   // used as a default no-op handler where the test does not assert calls
 }
 
+function noopOpenPayments() {
+  // platform-payment-ledger — required prop; asserted in its own spec
+}
+
 function renderTable(props?: Partial<React.ComponentProps<typeof TenantsTable>>) {
   return render(
     <TenantsTable
@@ -114,6 +118,7 @@ function renderTable(props?: Partial<React.ComponentProps<typeof TenantsTable>>)
       onEditLimits={noop}
       onStatusAction={noop}
       onAssignPlan={noopAssignPlan}
+      onOpenPayments={noopOpenPayments}
       {...props}
     />
   );

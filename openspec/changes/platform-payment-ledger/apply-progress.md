@@ -107,7 +107,7 @@ loosened to "contains" checks.
   `PAYMENT_RECORDED` / `PAYMENT_REVERSED`; its existing tx-threading is reused
   unchanged.
 
-## PR 3 — Console surfaces — **partial** (backend + components done, page wiring pending)
+## PR 3 — Console surfaces — **complete**
 
 ### RED/GREEN evidence
 
@@ -138,19 +138,41 @@ the obvious implementation — is wrong for values like `45000.70`
 (`parseFloat('45000.70') * 100 === 4500069.999999999`), and wrong in a way that
 reaches production as an occasional one-cent discrepancy nobody can reproduce.
 
-### Still pending in PR 3
+### Wiring — and why it landed on the list, not the detail page
 
-The components exist and are tested in isolation, but they are **not yet mounted
-in the console pages**:
+The ledger is reached from the tenant ROW ("Pagos" in the actions menu), not
+from the tenant detail page. That was forced by a finding: `TenantDetailResponse`
+carries **no human-readable tenant name** — its header renders a 5-character
+code, and its own comment says a name "would be shown if one ever becomes
+available". The record dialog names the agency being charged as its guard
+against booking a payment against the wrong one, so mounting it where no name
+exists would have silently removed that guard. The row has the name.
 
-- `RecordPaymentDialog` and `PaymentHistory` are not rendered from
-  `features/tenants/components/tenant-detail-view-page.tsx`.
-- The overdue badge is not shown in the tenant list table.
-- The `useStepUpGate` wiring (retry after re-auth) is designed for but not yet
-  connected, because it belongs to the page that owns the mutation.
+Delivered: `BillingCell` as a "Pago hasta" column in the tenant list,
+`TenantPaymentsDialog` opened from the row menu, and `TenantPaymentsPanel`
+owning both mutations with `useStepUpGate` retry wiring.
 
-The backend is complete: the tenant list already carries `billing` on every row
-and `GET /operators/tenants/:id/payments` returns history plus billing state.
+Console: **43 tests** in `features/payments`; full `viewpro-web` suite
+**597 passing**; `tsc --noEmit` clean.
+
+### Two real defects the typechecker caught during wiring
+
+1. **`BigInt` literals do not compile in `viewpro-web`.** Its tsconfig targets
+   **ES2017**, where `0n` is a syntax error, even though the `bigint` type and
+   constructor are available under `lib: esnext`. Rewritten to `BigInt(0)` /
+   `BigInt(10)`; the arithmetic is identical and the precision guarantee holds.
+   Worth knowing before any other feature moves money through this app.
+2. `useSession()` returns `{ session, isLoading, signOut }`, so the operator
+   role is `session.session?.operator.role` — the first guess (`session.operator`)
+   typechecked as an error rather than silently rendering `canReverse === false`
+   and quietly hiding the reversal action from OWNER.
+
+### On the pre-existing audit failure
+
+After this wiring the full `viewpro-web` suite passes **597/597**, including
+`audit-feed-page.spec.tsx > the clear affordance resets filters`, which failed
+before. It was **not fixed** — it is order-dependent, and adding files changed
+the execution order. It remains fragile and unrelated to payments.
 
 ### Pre-existing failure, not caused here
 

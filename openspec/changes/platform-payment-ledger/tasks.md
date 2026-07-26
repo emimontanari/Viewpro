@@ -58,14 +58,14 @@ exists.
 
 ## PR 3 — Console surfaces
 
-- [ ] `features/payments/api/{schemas,types,service,queries}.ts` mirroring the `features/audit/` layout; amount stays a **string** across the wire.
-- [ ] Record-payment dialog: amount, method, period (start/end), plan, receipt, note. Handles `403 STEP_UP_REQUIRED` by opening the step-up modal and retrying — never by logging out.
-- [ ] Confirmation step shows the **tenant name** before submitting (guards against recording against the wrong tenant).
-- [ ] Payment history section on tenant detail; reversed rows visibly marked with reason.
-- [ ] Reversal action visible only to OWNER; hidden — not merely disabled — for other roles.
-- [ ] Extend tenant summary and tenant list read models with paid-through and overdue (backend side of this PR).
-- [ ] Overdue badge with days elapsed in the tenant list and detail.
-- [ ] Test: an overdue tenant renders the badge and still shows all normal actions available (no access restriction implied in the UI).
+- [x] `features/payments/api/{schemas,types,service,queries}.ts` mirroring the `features/audit/` layout; amount stays a **string** across the wire.
+- [x] Record-payment dialog: amount, method, period (start/end), plan, receipt, note. Handles `403 STEP_UP_REQUIRED` by opening the step-up modal and retrying — never by logging out.
+- [x] Confirmation step shows the **tenant name** before submitting (guards against recording against the wrong tenant).
+- [x] Payment history section on tenant detail; reversed rows visibly marked with reason.
+- [x] Reversal action visible only to OWNER; hidden — not merely disabled — for other roles.
+- [x] Extend tenant summary and tenant list read models with paid-through and overdue (backend side of this PR).
+- [x] Overdue badge with days elapsed in the tenant list and detail.
+- [x] Test: an overdue tenant renders the badge and still shows all normal actions available (no access restriction implied in the UI).
 
 **Gate:** `viewpro-web` tests green; manual pass through record → history → reverse.
 

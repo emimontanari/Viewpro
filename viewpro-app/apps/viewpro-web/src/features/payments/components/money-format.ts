@@ -8,6 +8,10 @@
 
 const MINOR_UNIT_SCALE = 2;
 
+// tsconfig targets ES2017, where BigInt *literals* (0n) are a syntax error even
+// though the bigint type and constructor are available under lib:esnext. Hence
+// BigInt(0) rather than 0n throughout this file — the arithmetic is identical.
+
 /**
  * Format minor units for display, e.g. "4500000" → "$ 45.000,00".
  *
@@ -17,9 +21,10 @@ const MINOR_UNIT_SCALE = 2;
  */
 export function formatAmount(amountMinorUnits: string, currency: string): string {
   const value = BigInt(amountMinorUnits);
-  const divisor = 10n ** BigInt(MINOR_UNIT_SCALE);
+  const divisor = BigInt(10) ** BigInt(MINOR_UNIT_SCALE);
   const whole = value / divisor;
-  const fraction = (value < 0n ? -value : value) % divisor;
+  const zero = BigInt(0);
+  const fraction = (value < zero ? -value : value) % divisor;
 
   const grouped = groupThousands(whole.toString());
   const decimals = fraction.toString().padStart(MINOR_UNIT_SCALE, '0');
@@ -118,7 +123,7 @@ export function toMinorUnits(input: string): string {
 
   const minorUnits = `${whole}${decimals.padEnd(2, '0')}`.replace(/^0+(?=\d)/, '');
 
-  if (BigInt(minorUnits) <= 0n) {
+  if (BigInt(minorUnits) <= BigInt(0)) {
     throw new Error('El monto debe ser mayor a cero');
   }
 

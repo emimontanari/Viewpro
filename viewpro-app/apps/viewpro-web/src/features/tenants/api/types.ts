@@ -27,6 +27,8 @@ export type TenantLimits = {
 // InmoView never sees it, only the resolved limit numbers.
 export type TenantPlan = 'BASICO' | 'PROFESIONAL' | 'EMPRESA';
 
+import type { TenantBilling } from '@/features/payments/api/types';
+
 // GET /operators/tenants?offset&limit → TenantRegistryList
 export type TenantListItem = {
   id: string;
@@ -36,6 +38,10 @@ export type TenantListItem = {
   limits: TenantLimits;
   trialEndsAt: string | null; // ISO string, or null when absent (informational only)
   plan: TenantPlan | null; // = platform_tenants.plan (server types it `string | null`; FE narrows)
+  // platform-payment-ledger — derived from the money ledger on every read.
+  // Optional so the console does not crash against an API deployed before
+  // this slice; BillingCell renders the "sin pagos" state when absent.
+  billing?: TenantBilling;
 };
 
 export type TenantListResponse = {
