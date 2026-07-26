@@ -50,3 +50,30 @@ export interface TenantBilling {
   paidThroughAt: string | null;
   overdueDays: number | null;
 }
+
+// GET /operators/revenue/summary
+export interface RevenueRow {
+  plan: string;
+  currency: string;
+  /** Integer minor units as a string. Never parse with Number(). */
+  collectedMinorUnits: string;
+}
+
+export interface RevenueMonth {
+  /** `YYYY-MM`. */
+  month: string;
+  currency: string;
+  totalMinorUnits: string;
+  rows: RevenueRow[];
+}
+
+export interface RevenueSummary {
+  /**
+   * How a payment is attributed to a month. `RECORDED_AT` means the month the
+   * payment was entered, not the month its period covers — the two differ
+   * routinely under manual billing.
+   */
+  attribution: 'RECORDED_AT';
+  months: RevenueMonth[];
+  overdueTenants: number;
+}

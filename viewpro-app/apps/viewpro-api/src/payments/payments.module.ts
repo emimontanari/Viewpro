@@ -5,6 +5,7 @@ import { AuditLogRepository } from '../platform-data/audit-log.repository'
 import { PlatformTenantRepository } from '../platform-data/platform-tenant.repository'
 import { CLOCK, systemClock } from './clock'
 import { PaymentsController } from './payments.controller'
+import { RevenueController } from './revenue.controller'
 import { PaymentsService } from './payments.service'
 import { PrismaPaymentRepository } from './prisma-payment.repository'
 import { TenantBillingStatusService } from './tenant-billing-status.service'
@@ -27,7 +28,7 @@ import { TenantBillingStatusService } from './tenant-billing-status.service'
  */
 @Module({
   imports: [AuthModule, PermissionsModule],
-  controllers: [PaymentsController],
+  controllers: [PaymentsController, RevenueController],
   providers: [
     PaymentsService,
     PrismaPaymentRepository,

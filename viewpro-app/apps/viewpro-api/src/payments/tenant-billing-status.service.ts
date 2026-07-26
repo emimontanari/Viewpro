@@ -1,4 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
+// biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
+import { PrismaService } from '../database/prisma.service'
 import { ARGENTINA_TIME_ZONE, overdueDaysElapsed, todayIn, type CalendarDate } from './billing-period'
 import { CLOCK, type Clock } from './clock'
 // biome-ignore lint/style/useImportType: Nest DI needs runtime metadata.
@@ -29,6 +31,7 @@ export interface TenantBillingStatus {
 export class TenantBillingStatusService {
   constructor(
     private readonly payments: PrismaPaymentRepository,
+    private readonly prisma: PrismaService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
@@ -58,6 +61,27 @@ export class TenantBillingStatusService {
     }
 
     return status
+  }
+
+  /**
+   * How many of these tenants have a lapsed paid period.
+   *
+   * Tenants that were never paid for are deliberately NOT counted: they were
+   * never due. Including them would put every trial signup into the alert, and
+   * a counter that is permanently red is one nobody reads — which would leave
+   * the "warn, don't cut" decision with no working safety net.
+   */
+  async countOverdue(tenantIds: readonly string[]): Promise<number> {
+    const status = await this.forTenants(tenantIds)
+
+    return [...status.values()].filter((entry) => entry.overdueDays !== null).length
+  }
+
+  /** Overdue count across every tenant in the registry — the dashboard tile. */
+  async countAllOverdue(): Promise<number> {
+    const tenants = await this.prisma.platformTenant.findMany({ select: { id: true } })
+
+    return this.countOverdue(tenants.map((tenant) => tenant.id))
   }
 
   async forTenant(tenantId: string): Promise<TenantBillingStatus> {

@@ -185,4 +185,44 @@ it is a cross-test isolation problem in that spec, unrelated to payments.
 `pnpm --filter viewpro-web lint:strict` also fails on the baseline with **9
 warnings**, none in `features/payments` — the same 9 before and after this work.
 
-## PR 4 — Revenue visibility — not started
+## PR 4 — Revenue visibility — **complete**
+
+### RED/GREEN evidence
+
+| Task | RED | GREEN |
+|---|---|---|
+| Revenue summary endpoint | 5 failing — route 404 | 6/6 passing |
+| Overdue count | 4 failing — `countOverdue` absent | 5/5 passing |
+| `RevenuePanel` | import failure | 8/8 passing |
+
+Backend: **61 files, 559 tests**. Console: **605 tests**, tsc clean, no new lint
+warnings (the same 9 pre-existing ones).
+
+### The attribution rule is in the response, not just the docs
+
+`GET /operators/revenue/summary` returns `attribution: 'RECORDED_AT'`, and the
+panel renders that basis in words. Under manual billing an annual prepayment, or
+August's transfer entered on September 2nd, makes "collected in August" and
+"revenue for August" different numbers. A figure whose basis is unstated
+eventually becomes a business decision made on the wrong reading, so the API
+states which one it is rather than leaving it to whoever opens the page.
+
+Totals never sum across currencies — each currency keeps its own month total,
+because adding pesos to dollars produces a number that means nothing.
+
+### The overdue count renders at zero
+
+`Sin inmobiliarias vencidas` is shown rather than hiding the row. Hiding it
+would make "nobody is overdue" and "the panel failed to load" look identical —
+and since nothing suspends a lapsed tenant automatically, this count is the
+only signal anyone stopped paying. A silent safety net is not a safety net.
+
+Tenants that were never paid for are deliberately excluded from the count: they
+were never due. Including them would put every trial signup into the alert, and
+a counter that is permanently red is one nobody reads.
+
+### Revenue is additive to the dashboard
+
+The overview passes `revenue` as an optional prop and the page does not block on
+it. If the revenue query fails the dashboard still renders its existing panels —
+money should not be able to break the operator's overview.

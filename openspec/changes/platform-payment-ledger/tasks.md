@@ -73,11 +73,11 @@ exists.
 
 ## PR 4 — Revenue visibility
 
-- [ ] `GET /operators/revenue/summary` — `PAYMENTS_READ`; collected minor units per calendar month, grouped by plan **and by currency**; reversed payments excluded.
-- [ ] Response states the attribution rule explicitly (payments attributed to the month they were **recorded**, not the month they cover) so the figure is not misread as accrual accounting.
-- [ ] Test: reversed payments excluded; per-plan totals sum to the month total.
-- [ ] Dashboard revenue panel.
-- [ ] **Overdue count tile on the dashboard landing** — this is the compensating control for the "warn, don't cut" decision. Without it, a lapse is only visible to someone who opens the right tenant.
+- [x] `GET /operators/revenue/summary` — `PAYMENTS_READ`; collected minor units per calendar month, grouped by plan **and by currency**; reversed payments excluded.
+- [x] Response states the attribution rule explicitly (payments attributed to the month they were **recorded**, not the month they cover) so the figure is not misread as accrual accounting.
+- [x] Test: reversed payments excluded; per-plan totals sum to the month total.
+- [x] Dashboard revenue panel.
+- [x] **Overdue count tile on the dashboard landing** — this is the compensating control for the "warn, don't cut" decision. Without it, a lapse is only visible to someone who opens the right tenant.
 
 **Gate:** summary figures reconcile against the ledger by hand for one seeded month.
 

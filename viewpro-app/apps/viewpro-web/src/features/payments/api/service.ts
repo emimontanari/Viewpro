@@ -1,7 +1,7 @@
 // Design B (D2): direct apiRequest to viewpro-api — no Next.js BFF route.
 import { apiRequest } from '@/lib/api-client';
 import { parsePayment, parseTenantPayments } from './schemas';
-import type { Payment, RecordPaymentInput, TenantPayments } from './types';
+import type { Payment, RecordPaymentInput, RevenueSummary, TenantPayments } from './types';
 
 /**
  * Payment history plus billing state for one tenant.
@@ -41,4 +41,14 @@ export async function reversePayment(paymentId: string, reason: string): Promise
   });
 
   return parsePayment(raw);
+}
+
+/**
+ * Collected revenue by month plus the overdue tenant count.
+ *
+ * Readable by every operator role including ANALYST — the people who cannot
+ * write money are the ones who reconcile it.
+ */
+export async function getRevenueSummary(): Promise<RevenueSummary> {
+  return apiRequest<RevenueSummary>('/operators/revenue/summary');
 }
