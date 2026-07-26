@@ -3,6 +3,7 @@ import type { Prisma, TenantPayment } from '@prisma-platform/client'
 import { PrismaService } from '../database/prisma.service'
 import type { CalendarDate } from './billing-period'
 import type {
+  LedgerTransaction,
   PaymentMethodCode,
   PaymentRepositoryPort,
   RecordPaymentInput,
@@ -29,8 +30,8 @@ import type {
 export class PrismaPaymentRepository implements PaymentRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
-  async record(input: RecordPaymentInput): Promise<RecordedPayment> {
-    const row = await this.prisma.tenantPayment.create({
+  async record(input: RecordPaymentInput, tx: LedgerTransaction = this.prisma): Promise<RecordedPayment> {
+    const row = await tx.tenantPayment.create({
       data: {
         tenantId: input.tenantId,
         amountMinorUnits: input.amountMinorUnits,
@@ -58,8 +59,8 @@ export class PrismaPaymentRepository implements PaymentRepositoryPort {
    * balance, so the constraint is the guard and P2002 is translated here into
    * the 409 the spec requires.
    */
-  async reverse(input: ReversePaymentInput): Promise<RecordedPayment> {
-    const original = await this.prisma.tenantPayment.findUnique({
+  async reverse(input: ReversePaymentInput, tx: LedgerTransaction = this.prisma): Promise<RecordedPayment> {
+    const original = await tx.tenantPayment.findUnique({
       where: { id: input.paymentId },
     })
 
@@ -72,7 +73,7 @@ export class PrismaPaymentRepository implements PaymentRepositoryPort {
     }
 
     try {
-      const row = await this.prisma.tenantPayment.create({
+      const row = await tx.tenantPayment.create({
         data: {
           tenantId: original.tenantId,
           amountMinorUnits: original.amountMinorUnits,

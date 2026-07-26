@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma-platform/client'
 import type { CalendarDate } from './billing-period'
 
 /**
@@ -65,16 +66,23 @@ export interface RevenueByMonthRow {
   readonly collectedMinorUnits: bigint
 }
 
+/**
+ * Prisma transaction client, accepted by the write operations so a money
+ * write and the audit row that attributes it commit or roll back together.
+ * Mirrors the tx-threading `AuditLogRepository.appendNative` already uses.
+ */
+export type LedgerTransaction = Prisma.TransactionClient
+
 export interface PaymentRepositoryPort {
   /** Append a payment. Never overwrites an existing row. */
-  record(input: RecordPaymentInput): Promise<RecordedPayment>
+  record(input: RecordPaymentInput, tx?: LedgerTransaction): Promise<RecordedPayment>
 
   /**
    * Append a reversal for `paymentId`. The original row is left byte-identical.
    * Rejects when the payment is already reversed — the database's unique
    * constraint is the real guard; this only surfaces it as a friendly error.
    */
-  reverse(input: ReversePaymentInput): Promise<RecordedPayment>
+  reverse(input: ReversePaymentInput, tx?: LedgerTransaction): Promise<RecordedPayment>
 
   /** A tenant's payments, newest first, reversed rows marked rather than hidden. */
   listByTenant(tenantId: string): Promise<RecordedPayment[]>

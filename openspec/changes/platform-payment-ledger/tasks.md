@@ -36,21 +36,21 @@ exists.
 
 ## PR 2 — Endpoints, permissions, step-up, audit
 
-- [ ] Add `PAYMENTS_READ`, `PAYMENTS_WRITE`, `PAYMENTS_REVERSE` to `platform-permissions.constants.ts`.
-- [ ] Seed them per role in `role-permissions.ts`: READ → OWNER/OPERATIONS/ANALYST, WRITE → OWNER/OPERATIONS, REVERSE → OWNER only.
-- [ ] Extend `role-permissions.spec.ts` to lock the full matrix, including ANALYST's exclusion from write and OPERATIONS' exclusion from reverse.
-- [ ] `dto/record-payment.dto.ts`: amount **as string** → `BigInt`; currency; method; period dates; plan; optional receipt and note. Validation rejects fractional, zero, and negative amounts with 400.
-- [ ] `dto/reverse-payment.dto.ts`: mandatory non-empty reason.
-- [ ] `POST /operators/tenants/:tenantId/payments` — `AuthGuard` + `StepUpGuard` + `@RequirePlatformPermission(PAYMENTS_WRITE)`; 404 on unknown tenant; 400 on inverted period; 201 on success.
-- [ ] `POST /operators/payments/:paymentId/reversal` — `AuthGuard` + `StepUpGuard` + `@RequirePlatformPermission(PAYMENTS_REVERSE)`; 409 on double reversal (surfacing the unique constraint, not replacing it).
-- [ ] `GET /operators/tenants/:tenantId/payments` — `PAYMENTS_READ`; newest-first; reversed rows visibly marked with their reason, never hidden.
-- [ ] Wrap record and reverse in a single `$transaction` that also appends the `PlatformAuditLog` row with `source = VIEWPRO_NATIVE`, actions `PAYMENT_RECORDED` / `PAYMENT_REVERSED`.
-- [ ] Test: rolled-back transaction leaves **neither** the payment row **nor** the audit row.
-- [ ] Test: ANALYST gets 403 `PERMISSION_DENIED` on record and succeeds on list.
-- [ ] Test: OPERATIONS records successfully and gets 403 on reversal.
-- [ ] Test: missing step-up gets 403 `STEP_UP_REQUIRED` on both mutations, writing nothing.
-- [ ] Test: recording issues **no** control-lane call and modifies no tenant limits.
-- [ ] Register `PaymentsModule` in `app.module.ts`.
+- [x] Add `PAYMENTS_READ`, `PAYMENTS_WRITE`, `PAYMENTS_REVERSE` to `platform-permissions.constants.ts`.
+- [x] Seed them per role in `role-permissions.ts`: READ → OWNER/OPERATIONS/ANALYST, WRITE → OWNER/OPERATIONS, REVERSE → OWNER only.
+- [x] Extend `role-permissions.spec.ts` to lock the full matrix, including ANALYST's exclusion from write and OPERATIONS' exclusion from reverse.
+- [x] `dto/record-payment.dto.ts`: amount **as string** → `BigInt`; currency; method; period dates; plan; optional receipt and note. Validation rejects fractional, zero, and negative amounts with 400.
+- [x] `dto/reverse-payment.dto.ts`: mandatory non-empty reason.
+- [x] `POST /operators/tenants/:tenantId/payments` — `AuthGuard` + `StepUpGuard` + `@RequirePlatformPermission(PAYMENTS_WRITE)`; 404 on unknown tenant; 400 on inverted period; 201 on success.
+- [x] `POST /operators/payments/:paymentId/reversal` — `AuthGuard` + `StepUpGuard` + `@RequirePlatformPermission(PAYMENTS_REVERSE)`; 409 on double reversal (surfacing the unique constraint, not replacing it).
+- [x] `GET /operators/tenants/:tenantId/payments` — `PAYMENTS_READ`; newest-first; reversed rows visibly marked with their reason, never hidden.
+- [x] Wrap record and reverse in a single `$transaction` that also appends the `PlatformAuditLog` row with `source = VIEWPRO_NATIVE`, actions `PAYMENT_RECORDED` / `PAYMENT_REVERSED`.
+- [x] Test: rolled-back transaction leaves **neither** the payment row **nor** the audit row.
+- [x] Test: ANALYST gets 403 `PERMISSION_DENIED` on record and succeeds on list.
+- [x] Test: OPERATIONS records successfully and gets 403 on reversal.
+- [x] Test: missing step-up gets 403 `STEP_UP_REQUIRED` on both mutations, writing nothing.
+- [x] Test: recording issues **no** control-lane call and modifies no tenant limits.
+- [x] Register `PaymentsModule` in `app.module.ts`.
 
 **Gate:** full API suite green; permission and step-up matrices locked by test.
 

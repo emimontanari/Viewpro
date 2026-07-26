@@ -83,7 +83,7 @@ describe('PrismaPaymentRepository (integration — test DB)', () => {
     const [readBack] = await repository.listByTenant(TENANT)
 
     expect(recorded.amountMinorUnits).toBe(huge)
-    expect(readBack.amountMinorUnits).toBe(huge)
+    expect(readBack?.amountMinorUnits).toBe(huge)
   })
 
   it('derives paid-through as the furthest period end', async () => {

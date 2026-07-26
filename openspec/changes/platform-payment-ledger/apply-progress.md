@@ -65,7 +65,47 @@ reach them.
 
 ---
 
-## PR 2 — Endpoints, permissions, step-up, audit — not started
+## PR 2 — Endpoints, permissions, step-up, audit — **complete**
+
+### RED/GREEN evidence
+
+| Task | RED | GREEN |
+|---|---|---|
+| Payment permissions matrix | 4 failing — `to include undefined` (constants absent) | 6/6 passing |
+| Transactional audit (`payments.service`) | `Cannot find module '../payments.service'` | 5/5 passing |
+| Controller guards + validation | 1 failing — inverted period returned **500**, not 400 | 14/14 passing |
+
+Suite after PR 2: **57 files, 538 tests passing**; typecheck clean.
+
+### A real bug the tests caught
+
+The controller spec failed on `rejects an inverted period with 400`: the domain
+threw `RangeError`, Nest had no mapping for it, and the API answered **500**.
+That blames the server for a client mistake and hides the reason from whoever is
+filling the form. Fixed by translating domain errors at the HTTP boundary
+(`asBadRequest`), leaving the domain free of transport concerns. Had the test
+only asserted "does not write a row", the wrong status code would have shipped.
+
+### Existing matrix locks were updated, not bypassed
+
+Adding the three permissions broke three assertions in `role-permissions.spec.ts`
+that pin each role's exact permission list. Those failures were correct — the
+matrix genuinely changed — so the locks were updated to the new expected lists
+and extended with explicit `not.toContain` assertions for the new boundaries
+(ANALYST has no write, OPERATIONS has no reversal). The locks were never
+loosened to "contains" checks.
+
+### Notes
+
+- `StepUpGuard` is applied **without** `@StepUpStatusTargets`, so it always
+  demands a fresh step-up. Verified in the guard source: the early-return only
+  fires when status targets are present.
+- Every rejection test asserts a row count of zero as well as the status code.
+  A 403 that still writes is worse than no guard, because the ledger would then
+  hold entries nobody was authorised to make.
+- `AuditLogRepository.appendNative`'s action and target unions were widened for
+  `PAYMENT_RECORDED` / `PAYMENT_REVERSED`; its existing tx-threading is reused
+  unchanged.
 
 ## PR 3 — Console surfaces — not started
 
