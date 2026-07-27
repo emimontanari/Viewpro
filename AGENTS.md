@@ -1,8 +1,10 @@
 # Code Review Rules
 
-## MVP execution source of truth
+## Execution source of truth
 
-Before choosing or implementing MVP work, read `docs/plans/CURRENT_MVP_EXECUTION.md` first. Follow its source-precedence rules, use SDD/OpenSpec for product/source changes, and treat historical planning docs as context/evidence only unless the current handoff or an accepted OpenSpec change promotes them.
+Before choosing or implementing work, read `docs/plans/2026-07-20-recta-final-execution.md` — the live execution ledger. Production has been live since 2026-07-22 (`app.inmoview.app`); see `docs/plans/2026-07-21-production-go-live-runbook.md` for the deployed topology.
+
+For what the system is contractually required to do, read `openspec/specs/<capability>/spec.md` — the consolidated capability specs. Product and source changes go through SDD/OpenSpec (`openspec/changes/`) before code. Completed changes live in `openspec/changes/archive/` and are historical evidence only.
 
 ## General
 - Keep changes small and focused.

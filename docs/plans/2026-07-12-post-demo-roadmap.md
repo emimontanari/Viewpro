@@ -1,8 +1,10 @@
 # ViewPro / InmoView — Post-Demo Development Roadmap
 
 _Dated 2026-07-12. Synthesized after the public demo went live in production
-(2026-07-11). Supersedes the deploy-phase focus of
-`CURRENT_MVP_EXECUTION.md` for forward planning._
+(2026-07-11). **Historical** — superseded for forward planning by
+`2026-07-20-recta-final-execution.md` (the live ledger). The demo environment
+described below was abandoned on 2026-07-26; production runs on
+`app.inmoview.app`._
 
 ## Where we are
 
