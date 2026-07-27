@@ -16,11 +16,12 @@ function hasValueDelta(item: AuditLogItem): boolean {
 
 /**
  * audit-view (Slice 3, Phase 3) — type-specific target fields (spec:
- * "Drill-down forensic detail"). TENANT_DOCUMENT_VIEWED's target carries
- * {documentVersionId, filename} (tenant-detail.service.ts getDocumentReadUrl
- * → auditLogRepository.appendNative); every other action's target carries
- * {id, email} for the affected operator. Absent/malformed target degrades to
- * an empty field list rather than throwing.
+ * "Drill-down forensic detail"). Three shapes share the free-form `target`
+ * column: TENANT_DOCUMENT_VIEWED carries {documentVersionId, filename}
+ * (tenant-detail.service.ts getDocumentReadUrl → auditLogRepository.appendNative);
+ * PAYMENT_RECORDED/PAYMENT_REVERSED carry {paymentId, reversalId?}
+ * (payments.service.ts); the operator-management actions carry {id, email}.
+ * Absent/malformed target degrades to an empty field list rather than throwing.
  */
 function targetFields(item: AuditLogItem): DetailField[] {
   if (!item.target) {
@@ -34,6 +35,23 @@ function targetFields(item: AuditLogItem): DetailField[] {
     }
     if (item.target.filename) {
       fields.push({ label: 'Archivo', value: item.target.filename });
+    }
+    return fields;
+  }
+
+  // platform-payment-ledger: money actions name the payment row. A reversal
+  // also names the row it created, so the pair can be read as "this cancelled
+  // that" — the chain an auditor follows when checking whether an activation
+  // was backed by money that actually arrived.
+  if (item.target.paymentId) {
+    const fields: DetailField[] = [
+      {
+        label: item.target.reversalId ? 'Pago revertido' : 'Pago',
+        value: item.target.paymentId
+      }
+    ];
+    if (item.target.reversalId) {
+      fields.push({ label: 'Asiento de reversa', value: item.target.reversalId });
     }
     return fields;
   }
