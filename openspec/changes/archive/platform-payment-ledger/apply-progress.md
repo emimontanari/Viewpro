@@ -226,3 +226,38 @@ a counter that is permanently red is one nobody reads.
 The overview passes `revenue` as an optional prop and the page does not block on
 it. If the revenue query fails the dashboard still renders its existing panels —
 money should not be able to break the operator's overview.
+
+---
+
+## Judgment Day — blind dual review
+
+**Target:** `69bc53b..be2a972` (immutable) · **Mode:** judgment_day · **Rounds:** 1 of 2 permitted
+
+### Round 1 — confirmed by both judges, corrected in `fca1a0c`
+
+| Sev | Location | Defect |
+|---|---|---|
+| CRITICAL | `prisma-payment.repository.ts:170` | Revenue bucketed by month in **UTC**, not Argentina time. `toCalendarDate` is `toISOString()` and is only valid for `@db.Date` columns; `recordedAt` is a `TIMESTAMP(3)`. A payment recorded 21:00–23:59 ART on a month's last day counted in the **next** month. The comment three lines above asserted the opposite of the code — both written by me. |
+| WARNING | `dto/record-payment.dto.ts:30` | `currency: ""` passed validation (`@IsOptional` skips only null/undefined; `??` is nullish-only) and keyed its own revenue bucket that never joined the ARS total. |
+| WARNING | `prisma-payment.repository.ts:67` | Reversing an unknown payment returned 409 — the status reserved for the genuine already-reversed conflict. |
+| WARNING | `tenant-payments-panel.tsx:52` | Only the per-tenant key was invalidated, leaving the overdue badge and revenue stale. |
+
+Why the existing tests missed the critical one: they use the real clock and never land in the 21:00–23:59 window on a month boundary. `revenue-timezone.spec.ts` sets `recordedAt` explicitly to sit exactly there and fails against the old code.
+
+### Scoped re-judgment — **zero severe findings**
+
+Both judges independently verified each fix eliminates its defect rather than its symptom, and introduces nothing new. Both confirmed no remaining money path buckets by a UTC-derived date, and that every surviving `toCalendarDate` call targets a `@db.Date` column.
+
+### Recorded as INFO — not corrected (protocol keeps non-severe as info)
+
+Confirmed by both re-judges:
+- `revenue-timezone.spec.ts` filters by `plan` but not `tenantId` over a global aggregate — false-failure risk in CI if another suite leaves rows behind.
+- `invalidation.spec.ts` asserts source text rather than query-client behavior; a valid RED for this delta, but it does not lock the behavior going forward.
+- `todayIn` allocates a fresh `Intl.DateTimeFormat` per row inside the unbounded revenue loop — cost, not correctness.
+- The currency allow-list is forward-only; no backfill exists for already-stored values (moot while production has no table).
+
+Single judge only, recorded as suspect and untouched: non-transactional read pair in the history endpoint; no upper bound on amount (int8 overflow surfaces as 500); revenue full-table scan; audit drill-down cannot show which payment a reversal cancelled (`targetSchema` strips `paymentId`); `PAYMENT_*` missing from the audit action catalog; migration FK uses `ON DELETE SET NULL`, so deleting an original would turn its reversal into a countable payment.
+
+One judge also caught a factual error in my own justification comment: it blames the global 60s `staleTime`, but `tenantsListOptions` overrides with `refetchInterval: 5000`, so the real staleness window was ≤5s. The fix stands; the stated rationale was overstated.
+
+**JUDGMENT: APPROVED ✅**
