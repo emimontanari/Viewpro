@@ -25,4 +25,4 @@ CREATE INDEX "tenant_payments_tenantId_periodEnd_idx" ON "tenant_payments"("tena
 -- CreateIndex
 CREATE INDEX "tenant_payments_recordedAt_idx" ON "tenant_payments"("recordedAt");
 -- AddForeignKey
-ALTER TABLE "tenant_payments" ADD CONSTRAINT "tenant_payments_reversalOfPaymentId_fkey" FOREIGN KEY ("reversalOfPaymentId") REFERENCES "tenant_payments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "tenant_payments" ADD CONSTRAINT "tenant_payments_reversalOfPaymentId_fkey" FOREIGN KEY ("reversalOfPaymentId") REFERENCES "tenant_payments"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

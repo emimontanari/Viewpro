@@ -261,3 +261,28 @@ Single judge only, recorded as suspect and untouched: non-transactional read pai
 One judge also caught a factual error in my own justification comment: it blames the global 60s `staleTime`, but `tenantsListOptions` overrides with `refetchInterval: 5000`, so the real staleness window was ≤5s. The fix stands; the stated rationale was overstated.
 
 **JUDGMENT: APPROVED ✅**
+
+### Post-verdict hardening — the reversal foreign key
+
+One judge (single, so untouched during the bounded rounds) reported that the
+migration emitted Prisma's default `ON DELETE SET NULL` for the optional
+self-relation. Verified by test: deleting a reversed payment **was** permitted,
+which nulled the reversal's `reversalOfPaymentId` — and a reversal row with a
+null link satisfies BOTH halves of `NOT_REVERSED`, so the cancelled amount
+silently re-entered paid-through and revenue while the ledger still looked
+intact. Exactly the tamper the append-only design exists to prevent, and the
+column's own docstring claimed the constraint prevented it.
+
+Fixed to `onDelete: Restrict` in both `schema.prisma` and the migration.
+
+Timing was the reason to do it now rather than defer it with the other
+single-judge findings: the table does not yet exist in production, so this was
+an edit to a migration that had never run. Once real payments are stored it
+becomes a migration over live data, with downtime and a rollback plan.
+
+`reversal-fk-restrict.spec.ts` proves the database refuses the delete, that the
+reversal stays linked so the money stays cancelled, and that an unreversed
+payment can still be deleted (fixtures depend on it). The migration was edited
+in place rather than followed by a corrective one, since it had never left the
+test database; the test DB's constraint and Prisma checksum were resynced and
+`migrate status` reports no drift.

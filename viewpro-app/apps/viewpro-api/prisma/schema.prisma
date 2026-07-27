@@ -160,7 +160,13 @@ model TenantPayment {
   /// API returns is the friendly surface over this constraint, not a
   /// replacement for it.
   reversalOfPaymentId String?        @unique
-  reversalOfPayment   TenantPayment? @relation("PaymentReversal", fields: [reversalOfPaymentId], references: [id])
+  /// onDelete: Restrict is load-bearing, not a default. Prisma emits SET NULL
+  /// for an optional self-relation, which would null this link when the
+  /// original is deleted — and a reversal row with a null link satisfies BOTH
+  /// halves of NOT_REVERSED, so the cancelled money would silently re-enter
+  /// paid-through and revenue while the ledger still looked intact. Restrict
+  /// makes the database refuse the delete instead.
+  reversalOfPayment   TenantPayment? @relation("PaymentReversal", fields: [reversalOfPaymentId], references: [id], onDelete: Restrict)
   reversedBy          TenantPayment? @relation("PaymentReversal")
   reversalReason      String?
 
