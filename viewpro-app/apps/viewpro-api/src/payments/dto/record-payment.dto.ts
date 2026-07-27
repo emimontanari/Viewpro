@@ -5,6 +5,19 @@ const PAYMENT_METHODS = ['BANK_TRANSFER', 'CASH', 'MERCADOPAGO_LINK', 'OTHER'] a
 const PLAN_CODES = ['BASICO', 'PROFESIONAL', 'EMPRESA'] as const
 
 /**
+ * JUDGMENT DAY FIX: currency used to be `@IsOptional() @IsString() @MaxLength(3)`,
+ * which accepts `""` — `@IsOptional` only skips null/undefined — and the
+ * controller's `?? 'ARS'` is nullish-only, so the empty string was stored
+ * verbatim. That row then keyed its own revenue bucket that never joined the
+ * ARS total and rendered with a blank currency prefix. Same for 'ars' vs 'ARS'.
+ *
+ * An allow-list, not a shape check: adding a second currency must be a
+ * deliberate edit here, seen by whoever reviews it, because every total in the
+ * product is per-currency and nothing sums across them.
+ */
+export const SUPPORTED_CURRENCIES = ['ARS'] as const
+
+/**
  * DTO for POST /operators/tenants/:tenantId/payments
  *
  * `amountMinorUnits` is a STRING, and that is not an oversight. A JSON number
@@ -28,9 +41,8 @@ export class RecordPaymentDto {
   amountMinorUnits!: string
 
   @IsOptional()
-  @IsString()
-  @MaxLength(3)
-  currency?: string
+  @IsIn(SUPPORTED_CURRENCIES)
+  currency?: (typeof SUPPORTED_CURRENCIES)[number]
 
   @IsIn(PAYMENT_METHODS)
   method!: (typeof PAYMENT_METHODS)[number]

@@ -1,7 +1,7 @@
-import { ConflictException, Injectable } from '@nestjs/common'
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common'
 import type { Prisma, TenantPayment } from '@prisma-platform/client'
 import { PrismaService } from '../database/prisma.service'
-import type { CalendarDate } from './billing-period'
+import { ARGENTINA_TIME_ZONE, todayIn, type CalendarDate } from './billing-period'
 import type {
   LedgerTransaction,
   PaymentMethodCode,
@@ -65,7 +65,11 @@ export class PrismaPaymentRepository implements PaymentRepositoryPort {
     })
 
     if (original === null) {
-      throw new ConflictException(`Payment ${input.paymentId} does not exist`)
+      // JUDGMENT DAY FIX: this was a 409, the same status the already-reversed
+      // conflict uses, so a caller could not tell a bad id from a real state
+      // conflict on an existing row. 404 = no such payment; 409 = it exists and
+      // is already reversed.
+      throw new NotFoundException(`Payment ${input.paymentId} does not exist`)
     }
 
     if (original.reversalOfPaymentId !== null) {
@@ -164,10 +168,17 @@ export class PrismaPaymentRepository implements PaymentRepositoryPort {
     // Grouped in application code rather than SQL: the month key must be
     // derived in the ledger's fixed timezone, and pushing that into the query
     // would make the figure depend on the database session's timezone.
+    //
+    // JUDGMENT DAY FIX: this used to call toCalendarDate(recordedAt), which is
+    // toISOString() — UTC. A payment recorded at 22:00 ART on the last day of a
+    // month landed in the NEXT month's total, so one month under-reported and
+    // the next over-reported. toCalendarDate is only correct for @db.Date
+    // columns (which come back as midnight UTC); recordedAt is a timestamp and
+    // needs a real timezone conversion.
     const totals = new Map<string, RevenueByMonthRow>()
 
     for (const row of rows) {
-      const month = toCalendarDate(row.recordedAt).slice(0, 7)
+      const month = todayIn(ARGENTINA_TIME_ZONE, row.recordedAt).slice(0, 7)
       const key = `${month}|${row.plan}|${row.currency}`
       const existing = totals.get(key)
 
@@ -216,7 +227,14 @@ function toRecordedPayment(row: TenantPaymentRow): RecordedPayment {
   }
 }
 
-/** `@db.Date` columns come back as midnight UTC; take the date part verbatim. */
+/**
+ * `@db.Date` columns come back as midnight UTC, so the date part is already
+ * correct and needs no conversion.
+ *
+ * Do NOT use this on a timestamp column — `recordedAt` is a TIMESTAMP(3), and
+ * reading it this way silently reports Argentine evening activity as the next
+ * UTC day. Use `todayIn(ARGENTINA_TIME_ZONE, value)` for timestamps.
+ */
 function toCalendarDate(value: Date): CalendarDate {
   return value.toISOString().slice(0, 10)
 }

@@ -9,6 +9,7 @@ import { useStepUpGate } from '@/features/auth/hooks/use-step-up-gate';
 import { paymentKeys, tenantPaymentsOptions } from '@/features/payments/api/queries';
 import { recordPayment, reversePayment } from '@/features/payments/api/service';
 import type { Payment, RecordPaymentInput } from '@/features/payments/api/types';
+import { tenantsKeys } from '@/features/tenants/api/queries';
 import { useSession } from '@/lib/session-context';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { PaymentHistory } from './payment-history';
@@ -49,8 +50,24 @@ export function TenantPaymentsPanel({ tenantId, tenantName, tenantPlan }: Props)
     retry: false
   });
 
+  /**
+   * Every view that derives money state has to be invalidated, not just the
+   * history this dialog shows.
+   *
+   * JUDGMENT DAY FIX: only the per-tenant key was invalidated. The tenant list
+   * behind this dialog renders the paid-through / overdue BillingCell from the
+   * tenants query, and the dashboard renders revenue from a third key — with
+   * the app's global staleTime of 60s, the overdue badge kept claiming a tenant
+   * was late for up to a minute after the payment that cleared it. That badge
+   * is the ONLY signal a tenant stopped paying, so it going stale defeats the
+   * whole "warn, don't cut" design.
+   */
   const invalidate = React.useCallback(() => {
-    return queryClient.invalidateQueries({ queryKey: paymentKeys.byTenant(tenantId) });
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: paymentKeys.byTenant(tenantId) }),
+      queryClient.invalidateQueries({ queryKey: paymentKeys.revenue() }),
+      queryClient.invalidateQueries({ queryKey: tenantsKeys.all })
+    ]);
   }, [queryClient, tenantId]);
 
   const recordMutation = useMutation({
