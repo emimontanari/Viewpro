@@ -193,6 +193,37 @@ describe('PaymentsController (integration — test DB)', () => {
       expect(await paymentCount()).toBe(0)
     })
 
+    // The amount used to pass every validator and only fail inside Postgres,
+    // where BIGINT overflows — a 500 that blames the server for a client
+    // typing too many zeros, and gives whoever filled the form nothing to act
+    // on. Asserting the STATUS, not just "nothing was written": a test that
+    // only counted rows would have stayed green through the whole defect.
+    it('rejects an amount larger than the ledger column with 400, not 500', async () => {
+      const access = await sessionCookie(OWNER_EMAIL, OWNER_PASSWORD)
+      const stepUp = await stepUpCookie(access, OWNER_PASSWORD)
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/operators/tenants/${TENANT}/payments`)
+        .set('Cookie', `${access}; ${stepUp}`)
+        .send(validBody({ amountMinorUnits: '9223372036854775808' }))
+
+      expect(res.status).toBe(400)
+      expect(await paymentCount()).toBe(0)
+    })
+
+    it('accepts the largest amount the ledger column can hold', async () => {
+      const access = await sessionCookie(OWNER_EMAIL, OWNER_PASSWORD)
+      const stepUp = await stepUpCookie(access, OWNER_PASSWORD)
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/operators/tenants/${TENANT}/payments`)
+        .set('Cookie', `${access}; ${stepUp}`)
+        .send(validBody({ amountMinorUnits: '9223372036854775807' }))
+
+      expect(res.status).toBe(201)
+      expect(res.body.amountMinorUnits).toBe('9223372036854775807')
+    })
+
     it('rejects an inverted period with 400 and writes nothing', async () => {
       const access = await sessionCookie(OWNER_EMAIL, OWNER_PASSWORD)
       const stepUp = await stepUpCookie(access, OWNER_PASSWORD)

@@ -38,6 +38,23 @@ describe('parseMinorUnits', () => {
     expect(() => parseMinorUnits('cuatro mil')).toThrow(/integer/i)
   })
 
+  // The ledger column is BIGINT (int8). Without an upper bound the value
+  // survives every validator, reaches Postgres, and blows up there — which
+  // surfaces as a 500, blaming the server for what is a client typing too many
+  // zeros. The bound belongs here, next to the lower one, so both ends of the
+  // representable range are stated in the same place.
+  it('accepts the largest amount the ledger column can hold', () => {
+    expect(parseMinorUnits('9223372036854775807')).toBe(9223372036854775807n)
+  })
+
+  it('rejects an amount one minor unit beyond what the column can hold', () => {
+    expect(() => parseMinorUnits('9223372036854775808')).toThrow(RangeError)
+  })
+
+  it('rejects an absurdly long digit string without hanging', () => {
+    expect(() => parseMinorUnits('9'.repeat(400))).toThrow(RangeError)
+  })
+
   it('rejects an empty string', () => {
     expect(() => parseMinorUnits('')).toThrow(/integer/i)
   })

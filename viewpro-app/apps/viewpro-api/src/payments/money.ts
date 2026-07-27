@@ -21,6 +21,21 @@ const MINOR_UNIT_SCALE = 2
 const INTEGER_PATTERN = /^-?\d+$/
 
 /**
+ * Largest amount the ledger can store: `TenantPayment.amountMinorUnits` is
+ * Prisma `BigInt` → Postgres `BIGINT` (int8).
+ *
+ * This bound is a STORAGE limit, not a business one. It exists so an amount
+ * the database cannot hold is refused here, as a client error, instead of
+ * travelling all the way down and exploding inside Postgres — which surfaced
+ * as a 500 and told whoever was filling the form nothing at all.
+ *
+ * It is deliberately NOT a sane-payment ceiling. A plausible maximum monthly
+ * fee is a product decision, and inventing one here would silently reject
+ * amounts nobody agreed to reject.
+ */
+export const MAX_MINOR_UNITS = 9223372036854775807n
+
+/**
  * Parse an amount in minor units from its string representation.
  *
  * Rejects anything that is not a plain integer string, and any amount that is
@@ -41,6 +56,12 @@ export function parseMinorUnits(raw: string): bigint {
 
   if (value <= 0n) {
     throw new RangeError(`Amount must be positive, received "${raw}"`)
+  }
+
+  if (value > MAX_MINOR_UNITS) {
+    throw new RangeError(
+      `Amount exceeds the largest value the ledger can store (${MAX_MINOR_UNITS}), received "${raw}"`,
+    )
   }
 
   return value
