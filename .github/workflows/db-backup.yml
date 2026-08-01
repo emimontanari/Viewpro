@@ -12,6 +12,18 @@ name: DB Backup (prod → R2)
 #   R2_S3_ENDPOINT            - https://<account>.r2.cloudflarestorage.com
 #   R2_ACCESS_KEY_ID          - R2 S3 access key
 #   R2_SECRET_ACCESS_KEY      - R2 S3 secret key
+#   BACKUP_HEARTBEAT_URL      - ping URL of an external dead-man's switch
+#                               (healthchecks.io or equivalent), no trailing slash
+#
+# Why the heartbeat lives outside this repo: a run that is never started -
+# because Actions minutes ran out, because the schedule silently stopped
+# firing, or because the workflow was removed - executes zero steps and
+# allocates no runner. Nothing inside this file can report that, not even a
+# separate job with `if: failure()`, since that job would need a runner too.
+# On 2026-07-27..31 exactly this happened and five nightly backups were lost
+# without a single alert. The external monitor therefore alerts on the ABSENCE
+# of the ping below, which is the only signal that survives the workflow not
+# running at all. Configure its period at 24h with a grace window of ~2h.
 
 on:
   schedule:
@@ -76,3 +88,20 @@ jobs:
                   fi
                 done
           done
+
+      # Both heartbeat steps are continue-on-error: a monitoring ping must never
+      # turn a good backup into a failed run. A ping that fails to leave the
+      # runner degrades into silence, which the monitor reads as absence and
+      # alerts on anyway - the safe direction to fail in.
+      - name: Report success to dead-man's switch
+        if: success()
+        continue-on-error: true
+        run: curl -fsS -m 10 --retry 3 "${{ secrets.BACKUP_HEARTBEAT_URL }}"
+
+      # Covers the other half: the run DID start but a dump or upload broke.
+      # Absence detection would eventually catch it, but only after the grace
+      # window; this reports it immediately.
+      - name: Report failure to dead-man's switch
+        if: failure()
+        continue-on-error: true
+        run: curl -fsS -m 10 --retry 3 "${{ secrets.BACKUP_HEARTBEAT_URL }}/fail"
