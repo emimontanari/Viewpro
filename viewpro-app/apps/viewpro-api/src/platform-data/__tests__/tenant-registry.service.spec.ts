@@ -4,6 +4,9 @@ import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
 import { PrismaService } from '../../database/prisma.service'
 import { TenantRegistryService } from '../tenant-registry.service'
+import { TenantBillingStatusService } from '../../payments/tenant-billing-status.service'
+import { PrismaPaymentRepository } from '../../payments/prisma-payment.repository'
+import { CLOCK, systemClock } from '../../payments/clock'
 
 /**
  * platform-self-service-onboarding — RED: `TenantRegistryService.listTenants`
@@ -20,7 +23,7 @@ describe('TenantRegistryService — trialEndsAt mapping (integration — test DB
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
       imports: [ConfigModule, DatabaseModule],
-      providers: [TenantRegistryService],
+      providers: [TenantRegistryService, TenantBillingStatusService, PrismaPaymentRepository, { provide: CLOCK, useValue: systemClock }, TenantBillingStatusService, PrismaPaymentRepository, { provide: CLOCK, useValue: systemClock }],
     }).compile()
 
     service = moduleRef.get(TenantRegistryService)
@@ -85,7 +88,7 @@ describe('TenantRegistryService — plan mapping (integration — test DB)', () 
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
       imports: [ConfigModule, DatabaseModule],
-      providers: [TenantRegistryService],
+      providers: [TenantRegistryService, TenantBillingStatusService, PrismaPaymentRepository, { provide: CLOCK, useValue: systemClock }, TenantBillingStatusService, PrismaPaymentRepository, { provide: CLOCK, useValue: systemClock }],
     }).compile()
 
     service = moduleRef.get(TenantRegistryService)

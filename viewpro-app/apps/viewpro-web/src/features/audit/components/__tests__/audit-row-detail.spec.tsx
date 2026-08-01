@@ -158,3 +158,52 @@ describe('AuditRowDetail — type-specific target fields', () => {
     expect(screen.getByTestId('audit-detail-audit-no-target-1')).toBeTruthy();
   });
 });
+
+// platform-payment-ledger — the ledger exists so an activation can be traced
+// back to money that actually arrived. A reversal that cannot name the payment
+// it cancelled breaks that chain exactly where fraud would hide: the operator
+// who records a payment and then quietly reverses it.
+describe('AuditRowDetail — money actions name the payment', () => {
+  it('shows the reversed payment and the reversal row for PAYMENT_REVERSED', () => {
+    const item: AuditLogItem = {
+      id: 'audit-pay-rev-1',
+      action: 'PAYMENT_REVERSED',
+      tenantId: 'tenant-5',
+      tenantName: 'Inmobiliaria Sur',
+      actor: { id: 'op-2', email: 'admin@viewpro.local' },
+      target: { paymentId: 'pay-original', reversalId: 'pay-reversal' },
+      previousValue: null,
+      newValue: null,
+      occurredAt: '2026-07-15T12:00:00.000Z',
+      seqNo: null,
+      source: 'VIEWPRO_NATIVE'
+    };
+
+    render(<AuditRowDetail item={item} />);
+
+    const detail = screen.getByTestId('audit-detail-audit-pay-rev-1').textContent ?? '';
+    expect(detail).toContain('pay-original');
+    expect(detail).toContain('pay-reversal');
+  });
+
+  it('shows the recorded payment for PAYMENT_RECORDED (no reversal row to name)', () => {
+    const item: AuditLogItem = {
+      id: 'audit-pay-rec-1',
+      action: 'PAYMENT_RECORDED',
+      tenantId: 'tenant-5',
+      tenantName: 'Inmobiliaria Sur',
+      actor: { id: 'op-2', email: 'admin@viewpro.local' },
+      target: { paymentId: 'pay-original' },
+      previousValue: null,
+      newValue: null,
+      occurredAt: '2026-07-15T12:00:00.000Z',
+      seqNo: null,
+      source: 'VIEWPRO_NATIVE'
+    };
+
+    render(<AuditRowDetail item={item} />);
+
+    const detail = screen.getByTestId('audit-detail-audit-pay-rec-1').textContent ?? '';
+    expect(detail).toContain('pay-original');
+  });
+});

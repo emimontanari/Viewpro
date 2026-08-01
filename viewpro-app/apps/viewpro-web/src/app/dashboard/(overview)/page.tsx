@@ -9,6 +9,7 @@ import PageContainer from '@/components/layout/page-container';
 import { Skeleton } from '@/components/ui/skeleton';
 import { metricsSummaryOptions } from '@/features/metrics/api/queries';
 import { tenantsListOptions } from '@/features/tenants/api/queries';
+import { revenueSummaryOptions } from '@/features/payments/api/queries';
 import { OverviewDashboard } from '@/features/overview/components/overview-dashboard';
 import { getApiErrorMessage } from '@/lib/api-client';
 
@@ -38,6 +39,9 @@ export default function DashboardPage() {
     ...tenantsListOptions(0, TENANT_AGGREGATION_LIMIT),
     retry: false
   });
+  // Money is additive to the overview: if this query fails the dashboard still
+  // renders, it just shows no revenue panel.
+  const revenueQuery = useQuery({ ...revenueSummaryOptions, retry: false });
 
   const isLoading = metricsQuery.isLoading || tenantsQuery.isLoading;
   const isError = metricsQuery.isError || tenantsQuery.isError;
@@ -62,7 +66,10 @@ export default function DashboardPage() {
       )}
 
       {ready && (
-        <OverviewDashboard metrics={metricsQuery.data} tenants={tenantsQuery.data.items} />
+        <OverviewDashboard
+          metrics={metricsQuery.data}
+          tenants={tenantsQuery.data.items}
+          revenue={revenueQuery.data} />
       )}
     </PageContainer>
   );

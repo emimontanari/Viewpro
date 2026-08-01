@@ -9,7 +9,11 @@ import { ROLE_PERMISSIONS, getPermissionsForRole } from '../role-permissions'
  *   PLATFORM_OPERATORS_MANAGE (D3)
  */
 describe('ROLE_PERMISSIONS / getPermissionsForRole', () => {
-  it('ANALYST holds exactly the 3 READ permissions and no WRITE/MANAGE permission', () => {
+  // platform-payment-ledger: ANALYST gained PAYMENTS_READ. The role's shape is
+  // unchanged — read everything, write nothing — and the money ledger is the
+  // one place where that read access is the point: an auditor who cannot see
+  // payments cannot reconcile an activation against a bank statement.
+  it('ANALYST holds exactly the READ permissions and no WRITE/MANAGE permission', () => {
     const permissions = getPermissionsForRole('ANALYST')
 
     expect([...permissions].sort()).toEqual(
@@ -17,8 +21,11 @@ describe('ROLE_PERMISSIONS / getPermissionsForRole', () => {
         PLATFORM_PERMISSIONS.METRICS_READ,
         PLATFORM_PERMISSIONS.TENANTS_READ,
         PLATFORM_PERMISSIONS.AUDIT_READ,
+        PLATFORM_PERMISSIONS.PAYMENTS_READ,
       ].sort(),
     )
+    expect(permissions).not.toContain(PLATFORM_PERMISSIONS.PAYMENTS_WRITE)
+    expect(permissions).not.toContain(PLATFORM_PERMISSIONS.PAYMENTS_REVERSE)
     expect(permissions).not.toContain(PLATFORM_PERMISSIONS.TENANT_STATUS_WRITE)
     expect(permissions).not.toContain(PLATFORM_PERMISSIONS.TENANT_LIMITS_WRITE)
     expect(permissions).not.toContain(PLATFORM_PERMISSIONS.OPERATORS_MANAGE)
@@ -27,7 +34,7 @@ describe('ROLE_PERMISSIONS / getPermissionsForRole', () => {
   // operator-activity-media (Slice 2b, D4): OPERATIONS now also holds
   // TENANT_DOCUMENTS_READ (seeded here) — updated from the pre-2b exact-list
   // assertion (which only had 5 entries) now that seeding has landed.
-  it('OPERATIONS holds the 3 READs + 2 WRITEs + TENANT_DOCUMENTS_READ and does NOT include PLATFORM_OPERATORS_MANAGE', () => {
+  it('OPERATIONS holds the READs + tenant WRITEs + TENANT_DOCUMENTS_READ + PAYMENTS_WRITE, and NOT OPERATORS_MANAGE or PAYMENTS_REVERSE', () => {
     const permissions = getPermissionsForRole('OPERATIONS')
 
     expect([...permissions].sort()).toEqual(
@@ -38,9 +45,12 @@ describe('ROLE_PERMISSIONS / getPermissionsForRole', () => {
         PLATFORM_PERMISSIONS.TENANT_STATUS_WRITE,
         PLATFORM_PERMISSIONS.TENANT_LIMITS_WRITE,
         PLATFORM_PERMISSIONS.TENANT_DOCUMENTS_READ,
+        PLATFORM_PERMISSIONS.PAYMENTS_READ,
+        PLATFORM_PERMISSIONS.PAYMENTS_WRITE,
       ].sort(),
     )
     expect(permissions).not.toContain(PLATFORM_PERMISSIONS.OPERATORS_MANAGE)
+    expect(permissions).not.toContain(PLATFORM_PERMISSIONS.PAYMENTS_REVERSE)
   })
 
   it('OWNER is a strict superset of OPERATIONS, additionally holding PLATFORM_OPERATORS_MANAGE', () => {
@@ -51,7 +61,10 @@ describe('ROLE_PERMISSIONS / getPermissionsForRole', () => {
       expect(ownerPermissions).toContain(permission)
     }
     expect(ownerPermissions).toContain(PLATFORM_PERMISSIONS.OPERATORS_MANAGE)
-    expect(ownerPermissions.length).toBe(operationsPermissions.length + 1)
+    // platform-payment-ledger: OWNER now adds two beyond OPERATIONS —
+    // OPERATORS_MANAGE and PAYMENTS_REVERSE.
+    expect(ownerPermissions).toContain(PLATFORM_PERMISSIONS.PAYMENTS_REVERSE)
+    expect(ownerPermissions.length).toBe(operationsPermissions.length + 2)
   })
 
   it('ROLE_PERMISSIONS.OWNER includes PLATFORM_OPERATORS_MANAGE even though no route requires it (AC5)', () => {

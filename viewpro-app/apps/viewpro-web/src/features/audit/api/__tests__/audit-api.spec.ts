@@ -223,6 +223,39 @@ describe('parseAuditFeedResponse()', () => {
     expect(() => parseAuditFeedResponse(raw)).not.toThrow();
   });
 
+  // platform-payment-ledger — the money actions' target names the payment row
+  // (and, for a reversal, the row it created). zod strips undeclared keys
+  // silently, so a target field missing from the schema does not fail loudly:
+  // it just never reaches the UI. That is how a PAYMENT_REVERSED entry ends up
+  // unable to say WHICH payment it cancelled — the one question the ledger
+  // exists to answer.
+  it('preserves paymentId and reversalId on a PAYMENT_REVERSED target', () => {
+    const raw = {
+      total: 1,
+      items: [
+        {
+          id: 'audit-pay-1',
+          action: 'PAYMENT_REVERSED',
+          tenantId: 'tenant-1',
+          actor: { id: 'op-9', email: 'admin@viewpro.local' },
+          target: { paymentId: 'pay-original', reversalId: 'pay-reversal' },
+          previousValue: null,
+          newValue: null,
+          occurredAt: '2026-07-15T11:00:00.000Z',
+          seqNo: null,
+          source: 'VIEWPRO_NATIVE'
+        }
+      ]
+    };
+
+    const parsed = parseAuditFeedResponse(raw);
+
+    expect(parsed.items[0].target).toEqual({
+      paymentId: 'pay-original',
+      reversalId: 'pay-reversal'
+    });
+  });
+
   it('rejects null', () => {
     expect(() => parseAuditFeedResponse(null)).toThrow();
     try {

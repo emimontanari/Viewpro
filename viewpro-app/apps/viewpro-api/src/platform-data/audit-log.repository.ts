@@ -88,12 +88,22 @@ export class AuditLogRepository {
         // dedup (unlike appendFromEvent's sourceEventId upsert): each mint
         // is a distinct access event and gets its own row.
         | 'TENANT_DOCUMENT_VIEWED'
+        // platform-payment-ledger: money mutations audit through this same
+        // native path, sharing the caller's transaction so a payment can
+        // never exist without the row that attributes it.
+        | 'PAYMENT_RECORDED'
+        | 'PAYMENT_REVERSED'
       actor: { id: string; email: string }
       // operator-activity-media (Slice 2a, D7): TENANT_DOCUMENT_VIEWED's
       // target is `{documentVersionId, filename}`, distinct from the
       // OPERATOR_* actions' `{id, email}` — both are stored as-is in the
       // free-form Json `target` column.
-      target: { id: string; email: string } | { documentVersionId: string; filename: string }
+      target:
+        | { id: string; email: string }
+        | { documentVersionId: string; filename: string }
+        // platform-payment-ledger: the target of a money action is the payment
+        // row itself; a reversal additionally names the row it created.
+        | { paymentId: string; reversalId?: string }
       previousValue?: unknown
       newValue?: unknown
       // operator-activity-media (Slice 2a, D7): optional — the operator-
