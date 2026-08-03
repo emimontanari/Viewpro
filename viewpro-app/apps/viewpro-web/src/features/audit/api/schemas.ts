@@ -24,11 +24,18 @@ const actorSchema = z.object({
 // {documentVersionId,filename}, distinct from the other native actions'
 // {id,email} (mirrors AuditTarget in ./types.ts). All fields optional so
 // either shape parses without throwing.
+// platform-payment-ledger — paymentId/reversalId join the union. They are
+// declared here for a reason worth remembering: zod strips undeclared keys
+// WITHOUT erroring, so a target field the backend sends and this schema omits
+// does not fail loudly — it vanishes. Any new native action's target shape has
+// to be added here or its forensic detail silently never reaches the UI.
 const targetSchema = z.object({
   id: z.string().optional(),
   email: z.string().optional(),
   documentVersionId: z.string().optional(),
-  filename: z.string().optional()
+  filename: z.string().optional(),
+  paymentId: z.string().optional(),
+  reversalId: z.string().optional()
 });
 
 const itemSchema = z.object({

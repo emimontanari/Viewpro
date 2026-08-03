@@ -35,6 +35,11 @@ export type AuditTarget = {
   email?: string;
   documentVersionId?: string;
   filename?: string;
+  // platform-payment-ledger: PAYMENT_RECORDED names the payment row;
+  // PAYMENT_REVERSED additionally names the reversal it created
+  // (apps/viewpro-api/src/payments/payments.service.ts).
+  paymentId?: string;
+  reversalId?: string;
 };
 
 // GET /operators/audit?offset&limit → AuditFeedResponse

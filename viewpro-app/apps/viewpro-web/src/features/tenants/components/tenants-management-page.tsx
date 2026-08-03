@@ -24,6 +24,7 @@ import { TenantPlanDialog } from './tenant-plan-dialog';
 import { TenantStatusConfirmDialog } from './tenant-status-confirm-dialog';
 import { TenantsEmptyState } from './tenants-empty-state';
 import { TenantsTable, type TenantAction } from './tenants-table';
+import { TenantPaymentsDialog } from '@/features/payments/components/tenant-payments-dialog';
 
 // The list is fetched in one page and paginated client-side by the DataTable's
 // own footer (single, starter-style paginator — the old server-offset pager was
@@ -62,6 +63,8 @@ export function TenantsManagementPage() {
   } | null>(null);
   const [limitsTenant, setLimitsTenant] = React.useState<TenantListItem | null>(null);
   const [planTenant, setPlanTenant] = React.useState<TenantListItem | null>(null);
+  // platform-payment-ledger — the tenant whose money ledger is open.
+  const [paymentsTenant, setPaymentsTenant] = React.useState<TenantListItem | null>(null);
 
   const queryClient = useQueryClient();
   const stepUpGate = useStepUpGate();
@@ -241,6 +244,7 @@ export function TenantsManagementPage() {
         onEditLimits={setLimitsTenant}
         onStatusAction={handleStatusAction}
         onAssignPlan={setPlanTenant}
+        onOpenPayments={setPaymentsTenant}
       />
       <TenantStatusConfirmDialog
         tenant={pendingStatusAction?.tenant ?? null}
@@ -260,6 +264,10 @@ export function TenantsManagementPage() {
         isSaving={planMutation.isPending}
         onClose={() => setPlanTenant(null)}
         onAssign={handleAssignPlan}
+      />
+      <TenantPaymentsDialog
+        tenant={paymentsTenant}
+        onClose={() => setPaymentsTenant(null)}
       />
       <StepUpDialog {...stepUpGate.dialogProps} />
     </div>

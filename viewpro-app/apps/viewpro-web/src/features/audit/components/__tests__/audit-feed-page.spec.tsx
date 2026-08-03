@@ -116,15 +116,31 @@ const ITEM: AuditLogItem = {
 const NON_EMPTY_RESPONSE: AuditFeedResponse = { total: 60, items: [ITEM] };
 const EMPTY_RESPONSE: AuditFeedResponse = { total: 0, items: [] };
 
+/**
+ * `urlUpdates` is not decoration: nuqs flushes URL writes through a queue that
+ * is shared module-wide and drained on a timer, so a filter change made in one
+ * test can still be in flight when the next one mounts — and then lands on the
+ * new adapter, silently reinstating a filter nobody clicked. Awaiting the flush
+ * after each interaction both drains that queue and asserts what design D9
+ * actually promises: that filter state reaches the URL, shareable.
+ */
 function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <NuqsTestingAdapter hasMemory>
+  const urlUpdates: string[] = [];
+  const utils = render(
+    <NuqsTestingAdapter hasMemory onUrlUpdate={(event) => urlUpdates.push(event.queryString)}>
       <QueryClientProvider client={qc}>
         <AuditFeedPage />
       </QueryClientProvider>
     </NuqsTestingAdapter>
   );
+
+  return { ...utils, urlUpdates };
+}
+
+/** The `action` param carried by the nth URL flush, or null when absent. */
+function actionParamAt(urlUpdates: string[], index: number): string | null {
+  return new URLSearchParams(urlUpdates[index] ?? '').get('action');
 }
 
 beforeEach(() => {
@@ -256,7 +272,7 @@ describe('AuditFeedPage — filter bar wiring', () => {
     mockGetAuditFeed.mockResolvedValueOnce({ total: 60, items: [SECOND_ITEM] }); // page 2 (offset 50)
     mockGetAuditFeed.mockResolvedValueOnce({ total: 1, items: [ITEM] }); // filtered
 
-    renderPage();
+    const { urlUpdates } = renderPage();
 
     await waitFor(() => expect(screen.getByTestId('audit-pager')).toBeTruthy());
 
@@ -274,6 +290,9 @@ describe('AuditFeedPage — filter bar wiring', () => {
     await waitFor(() => {
       expect(screen.getByTestId('has-active-filters').textContent).toBe('true');
     });
+    await waitFor(() => {
+      expect(actionParamAt(urlUpdates, 0)).toBe('OPERATOR_SUSPENDED');
+    });
   });
 
   it('the clear affordance resets filters back to an empty request', async () => {
@@ -281,19 +300,27 @@ describe('AuditFeedPage — filter bar wiring', () => {
     mockGetAuditFeed.mockResolvedValueOnce({ total: 1, items: [ITEM] }); // filtered
     mockGetAuditFeed.mockResolvedValueOnce(NON_EMPTY_RESPONSE); // cleared
 
-    renderPage();
+    const { urlUpdates } = renderPage();
     await waitFor(() => expect(screen.getByTestId('audit-pager')).toBeTruthy());
 
     fireEvent.click(screen.getByRole('button', { name: 'set-action' }));
     await waitFor(() => {
       expect(mockGetAuditFeed).toHaveBeenCalledWith(0, 50, { action: 'OPERATOR_SUSPENDED' });
     });
+    // Let the filter reach the URL before clearing it. Without this the clear
+    // races the flush it is supposed to undo.
+    await waitFor(() => {
+      expect(actionParamAt(urlUpdates, 0)).toBe('OPERATOR_SUSPENDED');
+    });
 
     fireEvent.click(screen.getByRole('button', { name: 'clear' }));
 
     await waitFor(() => {
-      const calls = mockGetAuditFeed.mock.calls;
-      expect(calls[calls.length - 1]).toEqual([0, 50, {}]);
+      expect(urlUpdates).toHaveLength(2);
+    });
+    expect(actionParamAt(urlUpdates, 1)).toBeNull();
+    await waitFor(() => {
+      expect(mockGetAuditFeed).toHaveBeenLastCalledWith(0, 50, {});
     });
     await waitFor(() => {
       expect(screen.getByTestId('has-active-filters').textContent).toBe('false');
@@ -321,13 +348,16 @@ describe('AuditFeedPage — distinct empty states', () => {
     mockGetAuditFeed.mockResolvedValueOnce(NON_EMPTY_RESPONSE); // initial, unfiltered has rows
     mockGetAuditFeed.mockResolvedValueOnce(EMPTY_RESPONSE); // filtered → zero matches
 
-    renderPage();
+    const { urlUpdates } = renderPage();
     await waitFor(() => expect(screen.getByTestId('audit-table')).toBeTruthy());
 
     fireEvent.click(screen.getByRole('button', { name: 'set-action' }));
 
     await waitFor(() => {
       expect(screen.getByTestId('audit-empty-state').dataset.filtered).toBe('true');
+    });
+    await waitFor(() => {
+      expect(actionParamAt(urlUpdates, 0)).toBe('OPERATOR_SUSPENDED');
     });
   });
 });

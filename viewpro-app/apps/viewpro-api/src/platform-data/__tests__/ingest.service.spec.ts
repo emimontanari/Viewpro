@@ -10,6 +10,9 @@ import { PlatformTenantRepository } from '../platform-tenant.repository'
 import { AuditLogRepository } from '../audit-log.repository'
 import { TenantRegistryService } from '../tenant-registry.service'
 import type { PlatformOutboxEvent } from '@viewpro/platform-contract' with { 'resolution-mode': 'require' }
+import { TenantBillingStatusService } from '../../payments/tenant-billing-status.service'
+import { PrismaPaymentRepository } from '../../payments/prisma-payment.repository'
+import { CLOCK, systemClock } from '../../payments/clock'
 
 /**
  * T-18 — RED: IngestService idempotent mirror + cursor tests.
@@ -1214,7 +1217,7 @@ describe('IngestService — TENANT_LIMITS_CHANGED routing (platform-manual-plans
   it('E2E: TENANT_LIMITS_CHANGED ingest → TenantRegistryService.listTenants reflects fresh limits (no staleness)', async () => {
     const registryModule = await Test.createTestingModule({
       imports: [ConfigModule, DatabaseModule],
-      providers: [TenantRegistryService],
+      providers: [TenantRegistryService, TenantBillingStatusService, PrismaPaymentRepository, { provide: CLOCK, useValue: systemClock }, TenantBillingStatusService, PrismaPaymentRepository, { provide: CLOCK, useValue: systemClock }],
     }).compile()
     const registryService = registryModule.get(TenantRegistryService)
 

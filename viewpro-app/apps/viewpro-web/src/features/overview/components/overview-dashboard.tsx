@@ -6,10 +6,15 @@ import type { TenantListItem } from '@/features/tenants/api/types';
 import { OverviewStatCards } from './overview-stat-cards';
 import { StatusPieChart } from './status-pie-chart';
 import { PlanBarChart } from './plan-bar-chart';
+import type { RevenueSummary } from '@/features/payments/api/types';
+import { RevenuePanel } from '@/features/payments/components/revenue-panel';
 
 type Props = {
   metrics: MetricsSummary;
   tenants: TenantListItem[];
+  // platform-payment-ledger — optional so the dashboard still renders if the
+  // revenue query fails; money should not be able to break the overview.
+  revenue?: RevenueSummary;
 };
 
 /**
@@ -20,7 +25,7 @@ type Props = {
  * plan bar chart. Zero tenants renders a graceful empty state (an expected
  * steady state, not an error) rather than empty charts.
  */
-export function OverviewDashboard({ metrics, tenants }: Props) {
+export function OverviewDashboard({ metrics, tenants, revenue }: Props) {
   if (metrics.tenants === 0) {
     return (
       <Card className='border-dashed'>
@@ -40,6 +45,8 @@ export function OverviewDashboard({ metrics, tenants }: Props) {
   return (
     <div className='flex flex-col gap-4'>
       <OverviewStatCards metrics={metrics} tenants={tenants} />
+
+      {revenue ? <RevenuePanel summary={revenue} /> : null}
 
       <div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
         <StatusPieChart byStatus={metrics.byStatus} />

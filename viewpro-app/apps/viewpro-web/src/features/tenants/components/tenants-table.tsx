@@ -27,6 +27,7 @@ import type {
   TenantStatusAction
 } from '@/features/tenants/api/types';
 import { TenantCellAction } from './tenant-cell-action';
+import { BillingCell } from '@/features/payments/components/billing-cell';
 
 type Props = {
   items: TenantListItem[];
@@ -34,6 +35,7 @@ type Props = {
   onEditLimits: (item: TenantListItem) => void;
   onStatusAction: (item: TenantListItem, action: TenantAction) => void;
   onAssignPlan: (item: TenantListItem) => void;
+  onOpenPayments: (item: TenantListItem) => void;
 };
 
 // Callbacks + guard threaded to each cell via the table instance's `meta`
@@ -44,6 +46,7 @@ export type TenantsTableMeta = {
   onEditLimits: (item: TenantListItem) => void;
   onStatusAction: (item: TenantListItem, action: TenantAction) => void;
   onAssignPlan: (item: TenantListItem) => void;
+  onOpenPayments: (item: TenantListItem) => void;
 };
 
 // Sentinel used as the faceted-filter value for a null (unassigned) plan — the
@@ -120,6 +123,20 @@ export const columns: ColumnDef<TenantListItem>[] = [
     }
   },
   {
+    id: 'billing',
+    // platform-payment-ledger: the only surface that reveals a lapsed tenant,
+    // since nothing suspends one automatically ("warn, don't cut").
+    accessorFn: (item) => item.billing?.paidThroughAt ?? '',
+    header: ({ column }) => <DataTableColumnHeader column={column} title='Pago hasta' />,
+    cell: ({ row }) => (
+      <BillingCell billing={row.original.billing} testId={`tenant-billing-${row.original.id}`} />
+    ),
+    size: 170,
+    meta: {
+      label: 'Pago hasta'
+    }
+  },
+  {
     id: 'plan',
     // Map null → NO_PLAN so the "Sin plan" facet (and sorting) has a value to
     // match; the cell renders from row.original.plan (not this accessor).
@@ -164,6 +181,7 @@ export const columns: ColumnDef<TenantListItem>[] = [
           onEditLimits={meta.onEditLimits}
           onStatusAction={meta.onStatusAction}
           onAssignPlan={meta.onAssignPlan}
+          onOpenPayments={meta.onOpenPayments}
         />
       );
     },
@@ -194,7 +212,8 @@ export function TenantsTable({
   isMutating,
   onEditLimits,
   onStatusAction,
-  onAssignPlan
+  onAssignPlan,
+  onOpenPayments
 }: Props) {
   const table = useReactTable({
     data: items,
@@ -206,7 +225,13 @@ export function TenantsTable({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     initialState: { pagination: { pageSize: 10 } },
-    meta: { isMutating, onEditLimits, onStatusAction, onAssignPlan } satisfies TenantsTableMeta
+    meta: {
+      isMutating,
+      onEditLimits,
+      onStatusAction,
+      onAssignPlan,
+      onOpenPayments
+    } satisfies TenantsTableMeta
   });
 
   return (

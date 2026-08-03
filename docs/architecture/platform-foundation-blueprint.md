@@ -1,6 +1,6 @@
 # Platform Foundation Blueprint — ViewPro (platform) / InmoView (product)
 
-North-star architecture for splitting one app into a product (InmoView) and a platform (ViewPro) that can govern N products and aggregate their data. This is the "roots" document for Phases 2–6. Phase 1 (brand extraction) is detailed separately in `openspec/changes/platform-foundation/design.md`. Discipline throughout: **design the seams so adding a product or role is cheap — do NOT build federation for products that don't exist.**
+North-star architecture for splitting one app into a product (InmoView) and a platform (ViewPro) that can govern N products and aggregate their data. This is the "roots" document for Phases 2–6. Phase 1 (brand extraction) is detailed separately in `openspec/changes/archive/platform-foundation/design.md`. Discipline throughout: **design the seams so adding a product or role is cheap — do NOT build federation for products that don't exist.**
 
 ## Mental model (locked)
 
@@ -135,4 +135,4 @@ The four guardrails (proposal §Guardrails) map to the phases where each first m
 
 ## Next step
 
-Confirm the operator-auth recommendation (§3) before Phase 4. Continue Phase 1 via `sdd-tasks` using `openspec/changes/platform-foundation/design.md`.
+Confirm the operator-auth recommendation (§3) before Phase 4. Continue Phase 1 via `sdd-tasks` using `openspec/changes/archive/platform-foundation/design.md`.

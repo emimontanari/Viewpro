@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { PaymentsModule } from '../payments/payments.module'
 import { AuthModule } from '../auth/auth.module'
 import { PermissionsModule } from '../permissions/permissions.module'
 import { ChangeFeedClient } from './change-feed.client'
@@ -44,7 +45,7 @@ import { TenantDetailController } from './tenant-detail.controller'
  * DatabaseModule is @Global() so PrismaService is available without explicit import.
  */
 @Module({
-  imports: [AuthModule, PermissionsModule],
+  imports: [PaymentsModule, AuthModule, PermissionsModule],
   controllers: [MetricsController, TenantRegistryController, AuditController, TenantDetailController],
   providers: [
     // ChangeFeedClient's constructor is typed (ConfigService | Options) for a

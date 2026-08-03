@@ -6,6 +6,7 @@ import { ConfigModule } from './config/config.module'
 import { DatabaseModule } from './database/database.module'
 import { HealthModule } from './health/health.module'
 import { ObservabilityModule } from './observability/observability.module'
+import { PaymentsModule } from './payments/payments.module'
 import { OperatorsModule } from './operators/operators.module'
 import { PlatformControlModule } from './platform-control/platform-control.module'
 import { PlatformDataModule } from './platform-data/platform-data.module'
@@ -29,6 +30,7 @@ import { PlatformDataModule } from './platform-data/platform-data.module'
     PlatformControlModule,
     PlatformDataModule,
     OperatorsModule,
+    PaymentsModule,
   ],
 })
 export class AppModule {}

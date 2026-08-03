@@ -19,6 +19,11 @@ type Props = {
   onEditLimits: (item: TenantListItem) => void;
   onStatusAction: (item: TenantListItem, action: TenantAction) => void;
   onAssignPlan: (item: TenantListItem) => void;
+  // platform-payment-ledger: opens the money ledger for this tenant. Lives on
+  // the row because this is where the tenant's NAME exists — the detail page
+  // only knows a short code, and the record dialog names the agency being
+  // charged as its guard against recording against the wrong one.
+  onOpenPayments: (item: TenantListItem) => void;
 };
 
 /**
@@ -34,7 +39,8 @@ export function TenantCellAction({
   isMutating,
   onEditLimits,
   onStatusAction,
-  onAssignPlan
+  onAssignPlan,
+  onOpenPayments
 }: Props) {
   const router = useRouter();
   const actions = getTenantActions(item);
@@ -57,6 +63,9 @@ export function TenantCellAction({
         </DropdownMenuItem>
         <DropdownMenuItem disabled={isMutating} onClick={() => onAssignPlan(item)}>
           Asignar plan
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={isMutating} onClick={() => onOpenPayments(item)}>
+          Pagos
         </DropdownMenuItem>
         {actions.map((action) => (
           <DropdownMenuItem
