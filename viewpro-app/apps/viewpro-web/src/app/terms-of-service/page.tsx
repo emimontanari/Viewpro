@@ -2,7 +2,7 @@ import { BRAND } from '@/lib/brand/brand';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service',
+  title: 'Términos del servicio',
   robots: {
     index: false
   }
@@ -14,77 +14,67 @@ export default function TermsOfServicePage() {
       <div className='mx-auto max-w-3xl space-y-8'>
         {/* Main Heading */}
         <div className='text-center'>
-          <h1 className='text-foreground text-3xl font-bold'>Terms of Service</h1>
-          <p className='text-muted-foreground mt-2 text-sm'>Last updated: February 2026</p>
+          <h1 className='text-foreground text-3xl font-bold'>Términos del servicio</h1>
+          <p className='text-muted-foreground mt-2 text-sm'>
+            Última actualización: agosto de 2026
+          </p>
         </div>
 
         {/* Introduction */}
         <section>
-          <h2 className='text-foreground mb-3 text-xl font-semibold'>Introduction</h2>
+          <h2 className='text-foreground mb-3 text-xl font-semibold'>Introducción</h2>
           <p className='text-muted-foreground text-base leading-relaxed'>
-            Welcome to {BRAND.identity.productName}. These Terms of Service govern your access to and use of the
-            application. By accessing or using {BRAND.identity.productName}, you agree to be bound by these terms. Please
-            read them carefully before proceeding.
-          </p>
-        </section>
-
-        {/* Preview Purpose */}
-        <section>
-          <h2 className='text-foreground mb-3 text-xl font-semibold'>Preview Purpose</h2>
-          <p className='text-muted-foreground text-base leading-relaxed'>
-            This baseline version is provided for product evaluation while {BRAND.identity.productName}-specific access
-            and account flows are connected. It is not intended to replace a final production legal
-            agreement.
+            Estos Términos del servicio regulan el acceso y el uso de {BRAND.identity.productName}.
+            Al acceder o usar la aplicación, aceptás quedar sujeto a estos términos. Te pedimos que
+            los leas con atención antes de continuar.
           </p>
         </section>
 
         {/* Service Use */}
         <section>
-          <h2 className='text-foreground mb-3 text-xl font-semibold'>Service Use</h2>
+          <h2 className='text-foreground mb-3 text-xl font-semibold'>Uso del servicio</h2>
           <p className='text-muted-foreground text-base leading-relaxed'>
-            Use {BRAND.identity.productName} only for authorized business activity. Do not attempt to access accounts,
-            properties, or information that you are not permitted to manage.
-          </p>
-        </section>
-
-        {/* No Warranty */}
-        <section>
-          <h2 className='text-foreground mb-3 text-xl font-semibold'>No Warranty</h2>
-          <p className='text-muted-foreground text-base leading-relaxed'>
-            This application is provided &ldquo;as is&rdquo; without any warranties of any kind,
-            either express or implied. We expressly disclaim all warranties, including but not
-            limited to implied warranties of merchantability, fitness for a particular purpose, and
-            non-infringement. We do not warrant that the application will be uninterrupted, timely,
-            secure, or error-free.
+            Usá {BRAND.identity.productName} únicamente para la actividad comercial autorizada. No
+            intentes acceder a cuentas, propiedades o información que no tengas permitido gestionar.
           </p>
         </section>
 
         {/* Data Usage */}
         <section>
-          <h2 className='text-foreground mb-3 text-xl font-semibold'>Data Usage</h2>
+          <h2 className='text-foreground mb-3 text-xl font-semibold'>Uso de los datos</h2>
           <p className='text-muted-foreground text-base leading-relaxed'>
-            Any information you provide while using this baseline version may be temporary while the
-            product is being configured. Do not enter sensitive or confidential information unless
-            your {BRAND.identity.productName} contact has confirmed that the environment is ready for it.
+            La información que cargás se almacena para prestarte el servicio y se trata según
+            nuestra política de privacidad. Cada inmobiliaria accede solamente a sus propios datos.
+          </p>
+        </section>
+
+        {/* No Warranty */}
+        <section>
+          <h2 className='text-foreground mb-3 text-xl font-semibold'>Sin garantías</h2>
+          <p className='text-muted-foreground text-base leading-relaxed'>
+            La aplicación se provee &ldquo;tal cual&rdquo;, sin garantías de ningún tipo, expresas o
+            implícitas. Renunciamos expresamente a toda garantía, incluidas las garantías implícitas
+            de comerciabilidad, aptitud para un fin determinado y no infracción. No garantizamos que
+            la aplicación funcione de forma ininterrumpida, puntual, segura o libre de errores.
           </p>
         </section>
 
         {/* Changes */}
         <section>
-          <h2 className='text-foreground mb-3 text-xl font-semibold'>Changes to These Terms</h2>
+          <h2 className='text-foreground mb-3 text-xl font-semibold'>Cambios en estos términos</h2>
           <p className='text-muted-foreground text-base leading-relaxed'>
-            We reserve the right to modify or replace these Terms of Service at any time at our sole
-            discretion. It is your responsibility to review these terms periodically for changes.
-            Your continued use of the application following the posting of any changes constitutes
-            acceptance of those changes.
+            Nos reservamos el derecho de modificar o reemplazar estos Términos del servicio en
+            cualquier momento y a nuestro criterio. Es tu responsabilidad revisarlos periódicamente.
+            El uso continuado de la aplicación después de publicarse un cambio implica la aceptación
+            de ese cambio.
           </p>
         </section>
 
         {/* Contact */}
         <section className='border-border border-t pt-4'>
           <p className='text-muted-foreground text-center text-sm'>
-            If you have any questions about these Terms of Service, contact the {BRAND.identity.teamPhraseEn} through
-            the support channel configured for your deployment.
+            Si tenés dudas sobre estos Términos del servicio, escribile al{' '}
+            {BRAND.identity.teamPhraseEs} por el canal de soporte de tu cuenta.
           </p>
         </section>
       </div>

@@ -1,6 +1,16 @@
 'use client';
 
 import * as React from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import type { Payment, TenantPayments } from '@/features/payments/api/types';
 import { formatAmount, overdueLabel, paidThroughLabel } from './money-format';
 
@@ -34,37 +44,45 @@ export function PaymentHistory({ data, canReverse, onReverse }: PaymentHistoryPr
   const overdue = overdueLabel(data.overdueDays);
 
   return (
-    <section aria-label='Historial de pagos'>
-      <header>
-        <p>{paidThroughLabel(data.paidThroughAt)}</p>
-        {overdue !== null ? <p role='status'>{overdue}</p> : null}
+    <section aria-label='Historial de pagos' className='space-y-3'>
+      <header className='flex flex-wrap items-center gap-2'>
+        <p className='text-muted-foreground text-sm'>{paidThroughLabel(data.paidThroughAt)}</p>
+        {overdue !== null ? (
+          <Badge role='status' variant='destructive' className='rounded-full'>
+            {overdue}
+          </Badge>
+        ) : null}
       </header>
 
       {data.payments.length === 0 ? null : (
-        <table>
-          <thead>
-            <tr>
-              <th scope='col'>Monto</th>
-              <th scope='col'>Método</th>
-              <th scope='col'>Período</th>
-              <th scope='col'>Comprobante</th>
-              <th scope='col'>Estado</th>
-              <th scope='col'>
-                <span className='sr-only'>Acciones</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.payments.map((payment) => (
-              <PaymentRow
-                key={payment.id}
-                payment={payment}
-                canReverse={canReverse}
-                onReverse={onReverse}
-              />
-            ))}
-          </tbody>
-        </table>
+        // The ledger can outgrow the dialog on both axes; scrolling the table
+        // keeps the dialog from stretching the viewport.
+        <div className='max-h-80 overflow-auto rounded-md border'>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Monto</TableHead>
+                <TableHead>Método</TableHead>
+                <TableHead>Período</TableHead>
+                <TableHead>Comprobante</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>
+                  <span className='sr-only'>Acciones</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.payments.map((payment) => (
+                <PaymentRow
+                  key={payment.id}
+                  payment={payment}
+                  canReverse={canReverse}
+                  onReverse={onReverse}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </section>
   );
@@ -85,32 +103,42 @@ function PaymentRow({
   const offersReversal = canReverse && !payment.isReversed && !isReversalRow;
 
   return (
-    <tr>
-      <td>
-        <span style={payment.isReversed ? { textDecoration: 'line-through' } : undefined}>
+    <TableRow>
+      <TableCell className='font-medium tabular-nums'>
+        <span className={payment.isReversed ? 'line-through' : undefined}>
           {formatAmount(payment.amountMinorUnits, payment.currency)}
         </span>
-      </td>
-      <td>{METHOD_LABELS[payment.method] ?? payment.method}</td>
-      <td>
+      </TableCell>
+      <TableCell>{METHOD_LABELS[payment.method] ?? payment.method}</TableCell>
+      <TableCell className='whitespace-nowrap'>
         {formatPeriod(payment.periodStart)} — {formatPeriod(payment.periodEnd)}
-      </td>
-      <td>{payment.receiptReference ?? '—'}</td>
-      <td>
-        {payment.isReversed ? <span>Anulado</span> : null}
+      </TableCell>
+      <TableCell className='text-muted-foreground'>{payment.receiptReference ?? '—'}</TableCell>
+      <TableCell>
+        {payment.isReversed ? (
+          <Badge variant='destructive' className='rounded-full'>
+            Anulado
+          </Badge>
+        ) : null}
         {isReversalRow ? (
-          <span>Anulación: {payment.reversalReason ?? 'sin motivo registrado'}</span>
+          <span className='text-muted-foreground text-xs'>
+            Anulación: {payment.reversalReason ?? 'sin motivo registrado'}
+          </span>
         ) : null}
-        {!payment.isReversed && !isReversalRow ? <span>Registrado</span> : null}
-      </td>
-      <td>
+        {!payment.isReversed && !isReversalRow ? (
+          <Badge variant='outline' className='rounded-full'>
+            Registrado
+          </Badge>
+        ) : null}
+      </TableCell>
+      <TableCell className='text-right'>
         {offersReversal ? (
-          <button type='button' onClick={() => onReverse(payment)}>
+          <Button type='button' variant='outline' size='sm' onClick={() => onReverse(payment)}>
             Anular
-          </button>
+          </Button>
         ) : null}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 

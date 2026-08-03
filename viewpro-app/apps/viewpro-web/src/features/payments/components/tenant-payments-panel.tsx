@@ -105,16 +105,20 @@ export function TenantPaymentsPanel({ tenantId, tenantName, tenantPlan }: Props)
   });
 
   return (
-    <section>
-      <header>
-        <h2>Pagos</h2>
-        <Button type='button' onClick={() => setIsRecording(true)}>
+    <section className='space-y-4'>
+      <header className='flex items-center justify-between gap-4'>
+        <h2 className='text-base font-semibold'>Pagos</h2>
+        <Button type='button' size='sm' onClick={() => setIsRecording(true)}>
           Registrar pago
         </Button>
       </header>
 
-      {isLoading ? <p>Cargando pagos…</p> : null}
-      {isError ? <p role='alert'>{getApiErrorMessage(error)}</p> : null}
+      {isLoading ? <p className='text-muted-foreground text-sm'>Cargando pagos…</p> : null}
+      {isError ? (
+        <p role='alert' className='text-destructive text-sm'>
+          {getApiErrorMessage(error)}
+        </p>
+      ) : null}
 
       {data ? (
         <PaymentHistory data={data} canReverse={canReverse} onReverse={setReversing} />
