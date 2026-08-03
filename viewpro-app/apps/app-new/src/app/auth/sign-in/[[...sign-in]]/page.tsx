@@ -3,8 +3,8 @@ import { Suspense } from 'react';
 import SignInViewPage from '@/features/auth/components/sign-in-view';
 
 export const metadata: Metadata = {
-  title: 'Authentication | Sign In',
-  description: 'Sign In page for authentication.'
+  title: 'Iniciar sesión',
+  description: 'Ingresá a tu cuenta.'
 };
 
 export default async function Page() {
