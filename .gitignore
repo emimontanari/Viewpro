@@ -18,12 +18,12 @@ viewpro-app/apps/api/.document-storage-seeded/
 .pi-subagents/
 .codegraph/
 .playwright-mcp/
+.wrangler/
 diagnostics/
 viewpro-app/diagnostics/
 recovery/
 judgment-*.md
 repo-health-verification.md
-false
 
 *.tsbuildinfo
 .env
