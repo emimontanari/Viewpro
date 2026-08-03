@@ -33,6 +33,11 @@ const METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
 
 const PLAN_OPTIONS: PlanCode[] = ['BASICO', 'PROFESIONAL', 'EMPRESA'];
 
+// Matches the native <select> styling used by OperatorCreateDialog. The console
+// styles the native element rather than reaching for a custom listbox, so the
+// two dialogs stay visually identical.
+const SELECT_CLASS = 'border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm';
+
 /**
  * RecordPaymentDialog — registers a payment against one tenant.
  *
@@ -121,8 +126,8 @@ export function RecordPaymentDialog({ tenant, isSaving, onClose, onRecord }: Pro
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <div>
+        <form className='space-y-4' onSubmit={handleSubmit}>
+          <div className='space-y-2'>
             <Label htmlFor='payment-amount'>Monto</Label>
             <Input
               id='payment-amount'
@@ -131,81 +136,100 @@ export function RecordPaymentDialog({ tenant, isSaving, onClose, onRecord }: Pro
               placeholder='45000,00'
               inputMode='decimal'
               required
+              disabled={isSaving}
             />
           </div>
 
-          <div>
-            <Label htmlFor='payment-method'>Método</Label>
-            <select
-              id='payment-method'
-              value={method}
-              onChange={(event) => setMethod(event.target.value as PaymentMethod)}
-            >
-              {METHOD_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+          <div className='grid gap-4 sm:grid-cols-2'>
+            <div className='space-y-2'>
+              <Label htmlFor='payment-method'>Método</Label>
+              <select
+                id='payment-method'
+                className={SELECT_CLASS}
+                value={method}
+                onChange={(event) => setMethod(event.target.value as PaymentMethod)}
+                disabled={isSaving}
+              >
+                {METHOD_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='payment-plan'>Plan</Label>
+              <select
+                id='payment-plan'
+                className={SELECT_CLASS}
+                value={plan}
+                onChange={(event) => setPlan(event.target.value as PlanCode)}
+                disabled={isSaving}
+              >
+                {PLAN_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div>
-            <Label htmlFor='payment-plan'>Plan</Label>
-            <select
-              id='payment-plan'
-              value={plan}
-              onChange={(event) => setPlan(event.target.value as PlanCode)}
-            >
-              {PLAN_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+          {/* The period is one decision, so both ends sit on a single row. */}
+          <div className='grid gap-4 sm:grid-cols-2'>
+            <div className='space-y-2'>
+              <Label htmlFor='payment-period-start'>Período desde</Label>
+              <Input
+                id='payment-period-start'
+                type='date'
+                value={periodStart}
+                onChange={(event) => setPeriodStart(event.target.value)}
+                required
+                disabled={isSaving}
+              />
+            </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='payment-period-end'>Período hasta</Label>
+              <Input
+                id='payment-period-end'
+                type='date'
+                value={periodEnd}
+                onChange={(event) => setPeriodEnd(event.target.value)}
+                required
+                disabled={isSaving}
+              />
+            </div>
           </div>
 
-          <div>
-            <Label htmlFor='payment-period-start'>Período desde</Label>
-            <Input
-              id='payment-period-start'
-              type='date'
-              value={periodStart}
-              onChange={(event) => setPeriodStart(event.target.value)}
-              required
-            />
-          </div>
-
-          <div>
-            <Label htmlFor='payment-period-end'>Período hasta</Label>
-            <Input
-              id='payment-period-end'
-              type='date'
-              value={periodEnd}
-              onChange={(event) => setPeriodEnd(event.target.value)}
-              required
-            />
-          </div>
-
-          <div>
+          <div className='space-y-2'>
             <Label htmlFor='payment-receipt'>Comprobante</Label>
             <Input
               id='payment-receipt'
               value={receiptReference}
               onChange={(event) => setReceiptReference(event.target.value)}
               placeholder='Nº de transferencia'
+              disabled={isSaving}
             />
           </div>
 
-          <div>
+          <div className='space-y-2'>
             <Label htmlFor='payment-note'>Nota</Label>
             <Input
               id='payment-note'
               value={note}
               onChange={(event) => setNote(event.target.value)}
+              placeholder='Opcional'
+              disabled={isSaving}
             />
           </div>
 
-          {error !== null ? <p role='alert'>{error}</p> : null}
+          {error !== null ? (
+            <p role='alert' className='text-destructive text-sm'>
+              {error}
+            </p>
+          ) : null}
 
           <DialogFooter>
             <Button type='button' variant='outline' onClick={onClose} disabled={isSaving}>

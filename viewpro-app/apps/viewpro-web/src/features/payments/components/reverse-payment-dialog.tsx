@@ -82,8 +82,8 @@ export function ReversePaymentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <div>
+        <form className='space-y-4' onSubmit={handleSubmit}>
+          <div className='space-y-2'>
             <Label htmlFor='reversal-reason'>Motivo</Label>
             <Input
               id='reversal-reason'
@@ -91,10 +91,15 @@ export function ReversePaymentDialog({
               onChange={(event) => setReason(event.target.value)}
               placeholder='Transferencia no recibida'
               required
+              disabled={isSaving}
             />
           </div>
 
-          {error !== null ? <p role='alert'>{error}</p> : null}
+          {error !== null ? (
+            <p role='alert' className='text-destructive text-sm'>
+              {error}
+            </p>
+          ) : null}
 
           <DialogFooter>
             <Button type='button' variant='outline' onClick={onClose} disabled={isSaving}>
