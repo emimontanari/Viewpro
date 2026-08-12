@@ -9,9 +9,16 @@ Normal platform-api integration specs MUST NOT invoke `pnpm db:seed`, the produc
 #### Scenario: Boundary and consumer inventory are clean
 
 - GIVEN the platform-api test sources and the explicit production-contract allow-list
-- WHEN the PR2 source-boundary regression runs
+- WHEN the PR3 source-boundary regression runs
 - THEN it rejects every normal consumer still containing a forbidden seed path and accepts CLI use only in `seed.spec.ts`
 - AND partial migration is a failure
+
+#### Scenario: PR3 RED exercises incomplete analyzer behavior
+
+- GIVEN PR2's migrated 14-consumer inventory as the GREEN baseline input
+- WHEN PR3 adds boundary regressions before completing the analyzer
+- THEN `Deno.Command` new expressions, `ImportEquals`, unresolved or escaping local edges, wrong-context/before-init/after-request calls, alias/type-only/unused/shadowed/wrapper-only bindings, and colocated specs produce failures
+- AND the RED phase does not claim that the already-migrated consumers are missing
 
 ### Requirement: A shared fixture uses active Nest-owned dependencies
 
@@ -48,22 +55,26 @@ The existing safe `_test` database guard MUST remain mandatory; the fixture MUST
 
 ### Requirement: Production and execution contracts remain unchanged
 
-The production `prisma/seed.ts`, schemas, APIs, runtime behavior, timeout values, and Turbo global concurrency MUST remain unchanged. PR2 MAY add only command-scoped zero-retry control to platform-api `vitest.config.ts` for acceptance evidence. The existing production seed contract MUST continue to cover its CLI behavior.
+The production `prisma/seed.ts`, schemas, APIs, runtime behavior, timeout values, and Turbo global concurrency MUST remain unchanged. PR2 MAY add only command-scoped retry control to platform-api `vitest.config.ts`. The existing production seed contract MUST continue to cover its CLI behavior.
 
 #### Scenario: Named verification proves bounded behavior
 
 - GIVEN the #311 implementation and its focused regression tests
-- WHEN verification runs PR1 fixture behavior/idempotence, PR2 source-boundary regression, unchanged seed contract, platform-control, platform-api, and one first uncached zero-retry root run
+- WHEN PR2 verification runs focused/package/serial consumer evidence and PR3 verification runs the source-boundary regression, unchanged seed contract, platform-control, platform-api, and one first corrected-byte uncached zero-retry root run
 - THEN all named evidence passes at recorded baseline-plus-`Δnew` totals, with setup below 20 seconds and no timeout increase
 - AND no acceptance criterion is satisfied merely by rerunning a flaky suite until green
 
 ### Requirement: Delivery order and rollback are explicit
 
-#311 delivery MUST be PR0 docs → refreshed `develop` → PR1 fixture/foundation → refreshed `develop` → PR2 consumers/ratchet/retry, with every PR below 400 changed lines, no tracker, and no size exception. Retain PR0 planning history; a failed implementation reverts PR2 first, then PR1 if needed, without schema/data migration.
+#311 delivery MUST be PR0→PR1→PR2→PR3. PR0 #313 and PR1 #314 are merged. PR2 #315 owns exactly the 14 consumer migrations/15 app-context calls, eight helper/seven direct-site removals, and command-scoped retry control; it MUST NOT add or activate `operator-fixture-boundary.spec.ts`, claim final uncached acceptance, or reconcile #311. PR3 `test/platform-api-seed-boundary` MUST start from refreshed `develop` after PR2 merges and own the complete readable Node16 AST dependency/ownership ratchet, fail-closed regressions, and first corrected-byte uncached zero-retry acceptance with setup below 20 seconds. Every slice MUST remain below 400 changed lines without a size exception. Rollback MUST be PR3→PR2→PR1 while retaining PR0.
 
 #### Scenario: Delivery remains sequenced and reconciled
 
-- GIVEN PR0 is unmerged, PR1 is incomplete, or PR2 verification evidence is insufficient
+- GIVEN PR2 has not merged, PR3 is incomplete, or PR3 final verification evidence is insufficient
 - WHEN delivery is reviewed
 - THEN later implementation slices do not advance early and #311 remains open
-- AND after accepted PR2 merge, #311 is explicitly reconciled because `develop` is not the default branch, then PR #309/#308 refreshes before #284 continues
+- AND only after PR3 final acceptance and merge is #311 explicitly reconciled
+
+### Requirement: Review cost and acceptance receipts remain bounded
+
+PR0 is 352 measured lines, PR1 is 192 measured lines, PR2 is 279 refined lines, and PR3 is forecast at 160–230 lines. Implementation review cost is 631–701 lines and total review cost including PR0 is 983–1,053 lines. Historical failed, contaminated, pre-correction, or invalid PR2 receipts MUST be retained only as non-acceptance evidence.

@@ -2,7 +2,7 @@
 
 ## Technical Approach
 
-Replace 15 production-seed sites in 14 specs with one fail-closed, Nest-owned fixture. Preserve real Argon2, Prisma lifecycle, production `prisma/seed.ts`/CLI contract, 30-second timeout, global Turbo topology, and sequential PR0 → PR1 → PR2 rollback.
+Replace 15 production-seed sites in 14 specs with one fail-closed, Nest-owned fixture. Preserve real Argon2, Prisma lifecycle, production `prisma/seed.ts`/CLI contract, 30-second timeout, global Turbo topology, and the approved PR0→PR1→PR2→PR3 rollback sequence.
 
 ## Architecture Decisions
 
@@ -27,7 +27,7 @@ Lifecycle: setup-env guard → compile (`PrismaService` guard) → create/config
 
 ## Dependency-Closure Ratchet
 
-PR2 creates source-only `src/test-support/__tests__/operator-fixture-boundary.spec.ts`; it never imports the fixture, so initial RED reports all consumers rather than failing module load. PR1 exclusively owns behavioral coverage in `src/test-support/__tests__/operator.fixture.spec.ts`.
+PR3 creates source-only `src/test-support/__tests__/operator-fixture-boundary.spec.ts`; it never imports the fixture. PR2's migrated 14-consumer inventory is PR3's GREEN baseline input, not a missing-consumer RED. PR1 exclusively owns behavioral coverage in `src/test-support/__tests__/operator.fixture.spec.ts`; PR2 must not add or activate the boundary spec.
 
 1. Read `tsconfig.json` with TypeScript APIs and build one cached graph. Discover every `.spec.ts` recursively under configured Vitest roots `src/` and `test/`; sole process-rule exemption is normalized `src/database/__tests__/seed.spec.ts`.
 2. For each file, collect `import`, `export ... from`, literal `import()`, and literal `require()` edges. Resolve with `ts.resolveModuleName` using parsed Node16 options and package root: `.js`→`.ts`, aliases, barrels, and index files therefore follow compiler behavior. Traverse **every** resolved local file regardless of path/name; cache cycles. A nonliteral, local-looking unresolved, or escaping edge fails closed; external packages terminate traversal.
@@ -39,7 +39,7 @@ Inventory remains auth controller, auth-me, idle-timeout, isolation, step-up; op
 
 ## Strict TDD and Verification
 
-PR1 RED behavioral spec observes absent fixture behavior, then GREEN proves guard ordering, defaults/overrides, canonical identity, idempotent password/role/status reset, login validity, and failure atomicity. PR2 RED boundary reports 14 missing import/call violations; it greens only after complete migration.
+PR1 RED behavioral spec observes absent fixture behavior, then GREEN proves guard ordering, defaults/overrides, canonical identity, idempotent password/role/status reset, login validity, and failure atomicity. PR3 RED first adds regressions that the incomplete analyzer cannot satisfy: `Deno.Command` new expressions, `ImportEquals`, unresolved or escaping local edges, wrong-context/before-init/after-request calls, alias/type-only/unused/shadowed/wrapper-only bindings, and colocated-spec exclusion. PR3 GREEN completes the readable analyzer and locks the migrated consumer inventory.
 
 Platform-control records setup-only time from first `beforeAll` statement through final fixture call as `PLATFORM_CONTROL_SETUP_MS=<integer>`. First uncached root acceptance requires `<20,000ms` (≥10,000ms/33% hook headroom). Make retry disabling mechanical by changing only platform-api `vitest.config.ts` to `retry: process.env.VIEWPRO_PLATFORM_TEST_RETRY === '0' ? 0 : 2`; normal runs retain `2`. Turbo loose mode passes this command-scoped variable, and forced execution avoids cache:
 
@@ -48,17 +48,19 @@ Platform-control records setup-only time from first `beforeAll` statement throug
   VIEWPRO_PLATFORM_TEST_RETRY=0 pnpm test
 ```
 
-This first run must pass structurally and behaviorally; identical reruns cannot supply acceptance. Also run focused boundary/behavior, unchanged seed contract, platform-control, validation/typecheck, and full platform-api. Report each total as its recorded baseline plus `Δnew` from output.
+PR2 receives focused/package/serial verification only and does not claim this acceptance. PR3 runs this first corrected-byte uncached command; it must pass structurally and behaviorally, and identical reruns cannot supply acceptance. Also run focused boundary, unchanged seed contract, platform-control, validation/typecheck, and full platform-api. Report each total as its recorded baseline plus `Δnew` from output. Historical failed, contaminated, pre-correction, or invalid PR2 receipts are non-acceptance evidence and cannot be reused.
 
 ## Forecast, Delivery, Rollback
 
 | Boundary | Lines |
 |---|---:|
-| Fixture / behavior / ratchet | 60–70 / 95–115 / 120–145 |
-| Fourteen consumers + targeted Vitest config | 155–190 |
-| **Total: 3 new, 15 modified** | **430–520** |
+| PR0 planning baseline | **352 measured** |
+| PR1 fixture/foundation | **192 measured** |
+| PR2 consumers/retry | **279 refined** |
+| PR3 readable AST ratchet/regressions/final acceptance | **160–230 forecast** |
+| **Implementation total / including PR0** | **631–701 / 983–1,053** |
 
-400-line risk: **High** for the 430–520 implementation total, resolved by sequential PR0 docs → refreshed `develop` → PR1 fixture/foundation → refreshed `develop` → PR2 consumers/ratchet/retry. Every PR stays below 400; no tracker or size exception. Retain PR0 planning history; roll back PR2 then PR1, restore helpers, and preserve schema/API/runtime, 30-second timeout, global Turbo, and production seed. #310 merged/closed historically; after #311 reconciliation refresh PR #309/#308 and continue #284.
+400-line cumulative risk is **High**, resolved by the approved stacked-to-main PR0→PR1→PR2→PR3 delivery. PR0 #313 and PR1 #314 are merged. PR2 `fix/platform-api-test-consumers` owns only consumers/retry, with no boundary, final acceptance, or #311 reconciliation responsibility. PR3 starts from refreshed `develop` after PR2, owns the complete readable AST/fail-closed/zero-retry contracts, and its final acceptance and merge trigger explicit #311 reconciliation. Every slice stays below 400 without a size exception. Roll back PR3→PR2→PR1 and retain PR0; preserve schema/API/runtime, timeout, global Turbo, and production seed.
 
 ## Open Questions
 
