@@ -28,7 +28,7 @@ Apply gate: PR0 only; stop at independent docs review/merge. Do not mark PR0 del
 
 ## Phase 1
 
-- [x] 1.1 (#6829) Worktree `/Users/emimontanari/Work/Apps/Viewpro-worktrees/platform-api-in-process-test-seeding` is `docs/platform-api-in-process-test-seeding-plan`; exactly five PR0 files are staged, and PR0 is not committed, pushed, opened, or merged. #310 merged via PR #312 and closed; its retained worktree is untouched.
+- [x] 1.1 (#6829) PR0 was committed, pushed, and opened as PR #313 from `docs/platform-api-in-process-test-seeding-plan`; green checks are complete and final review/merge is pending. #310 merged via PR #312 and closed; its retained worktree is untouched.
 - [ ] 1.2 Inventory 14 specs/15 sites and eight helpers/seven direct sites; retain `prisma/seed.ts` and `src/database/__tests__/seed.spec.ts` unchanged.
 - [ ] 1.3 Review and merge PR0’s five-file planning baseline independently before PR1; PR0 remains undelivered until that review/merge completes.
 
