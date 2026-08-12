@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { execSync } from 'node:child_process'
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { ValidationPipe } from '@nestjs/common'
@@ -8,6 +7,7 @@ import cookieParser from 'cookie-parser'
 import request from 'supertest'
 import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
+import { seedOperatorFixture } from '../../test-support/operator.fixture'
 import { AuthModule } from '../auth.module'
 
 // Operator seeded by this test suite
@@ -18,16 +18,6 @@ describe('AuthController (integration)', () => {
   let app: INestApplication
 
   beforeAll(async () => {
-    // Seed a known operator for this test suite
-    execSync('pnpm db:seed', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        SEED_OPERATOR_EMAIL: SEEDED_EMAIL,
-        SEED_OPERATOR_PASSWORD: SEEDED_PASSWORD,
-      },
-    })
-
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule,
@@ -42,6 +32,7 @@ describe('AuthController (integration)', () => {
     app.setGlobalPrefix('api')
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
     await app.init()
+    await seedOperatorFixture(app, { email: SEEDED_EMAIL, password: SEEDED_PASSWORD })
   })
 
   afterAll(async () => {

@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { execSync } from 'node:child_process'
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { ValidationPipe } from '@nestjs/common'
@@ -8,6 +7,7 @@ import cookieParser from 'cookie-parser'
 import request from 'supertest'
 import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
+import { seedOperatorFixture } from '../../test-support/operator.fixture'
 import { AuthModule } from '../auth.module'
 
 /**
@@ -59,16 +59,8 @@ describe('POST /api/auth/step-up (integration)', () => {
   let app: INestApplication
 
   beforeAll(async () => {
-    execSync('pnpm db:seed', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        SEED_OPERATOR_EMAIL: SEEDED_EMAIL,
-        SEED_OPERATOR_PASSWORD: SEEDED_PASSWORD,
-      },
-    })
-
     app = await buildApp(100)
+    await seedOperatorFixture(app, { email: SEEDED_EMAIL, password: SEEDED_PASSWORD })
   })
 
   afterAll(async () => {
@@ -128,16 +120,8 @@ describe('POST /api/auth/step-up — throttled (D8, AuthThrottlerGuard reused)',
   let app: INestApplication
 
   beforeAll(async () => {
-    execSync('pnpm db:seed', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        SEED_OPERATOR_EMAIL: SEEDED_EMAIL,
-        SEED_OPERATOR_PASSWORD: SEEDED_PASSWORD,
-      },
-    })
-
     app = await buildApp(5)
+    await seedOperatorFixture(app, { email: SEEDED_EMAIL, password: SEEDED_PASSWORD })
   })
 
   afterAll(async () => {

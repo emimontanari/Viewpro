@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { execSync } from 'node:child_process'
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { ValidationPipe } from '@nestjs/common'
@@ -8,6 +7,7 @@ import { JwtService } from '@nestjs/jwt'
 import request from 'supertest'
 import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
+import { seedOperatorFixture } from '../../test-support/operator.fixture'
 import { AuthModule } from '../auth.module'
 
 const ISOLATION_EMAIL = 'isolation-test@viewpro.app'
@@ -23,16 +23,6 @@ describe('Isolation regression — InmoView DB unset, own JWT secret', () => {
     // Ensure no InmoView DB env vars are set (belt-and-suspenders over setup-env.ts)
     delete process.env.INMV_DATABASE_URL
 
-    // Seed an operator while platform DATABASE_URL is set
-    execSync('pnpm db:seed', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        SEED_OPERATOR_EMAIL: ISOLATION_EMAIL,
-        SEED_OPERATOR_PASSWORD: ISOLATION_PASSWORD,
-      },
-    })
-
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule,
@@ -46,6 +36,7 @@ describe('Isolation regression — InmoView DB unset, own JWT secret', () => {
     app.setGlobalPrefix('api')
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
     await app.init()
+    await seedOperatorFixture(app, { email: ISOLATION_EMAIL, password: ISOLATION_PASSWORD })
   })
 
   afterAll(async () => {

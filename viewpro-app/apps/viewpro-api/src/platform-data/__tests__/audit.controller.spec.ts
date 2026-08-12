@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
-import { execSync } from 'node:child_process'
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { ValidationPipe } from '@nestjs/common'
@@ -16,6 +15,7 @@ import { PermissionsModule } from '../../permissions/permissions.module'
 import { AuditController, sanitizeDate, sanitizeSource, sanitizeTrimmedFilter } from '../audit.controller'
 import { AuditService } from '../audit.service'
 import { PlatformTenantRepository } from '../platform-tenant.repository'
+import { seedOperatorFixture } from '../../test-support/operator.fixture'
 
 /**
  * T-18 — RED: `AuditController`/`AuditService` tests — pagination, auth,
@@ -125,20 +125,7 @@ describe('AuditController (integration — test DB)', () => {
   let app: INestApplication
   let prisma: PrismaService
 
-  function seedOperator(email: string, password: string): void {
-    execSync('pnpm db:seed', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        SEED_OPERATOR_EMAIL: email,
-        SEED_OPERATOR_PASSWORD: password,
-      },
-    })
-  }
-
   beforeAll(async () => {
-    seedOperator(TEST_EMAIL, TEST_PASSWORD)
-
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule,
@@ -164,12 +151,9 @@ describe('AuditController (integration — test DB)', () => {
 
     prisma = moduleFixture.get(PrismaService)
 
-    // T-09 — role fixtures seeded directly via Prisma (no real signup exists).
-    seedOperator(TEST_EMAIL_ANALYST, TEST_PASSWORD_ANALYST)
-    await prisma.operator.update({ where: { email: TEST_EMAIL_ANALYST }, data: { role: 'ANALYST' } })
-
-    seedOperator(TEST_EMAIL_OPERATIONS, TEST_PASSWORD_OPERATIONS)
-    await prisma.operator.update({ where: { email: TEST_EMAIL_OPERATIONS }, data: { role: 'OPERATIONS' } })
+    await seedOperatorFixture(app, { email: TEST_EMAIL, password: TEST_PASSWORD })
+    await seedOperatorFixture(app, { email: TEST_EMAIL_ANALYST, password: TEST_PASSWORD_ANALYST, role: 'ANALYST' })
+    await seedOperatorFixture(app, { email: TEST_EMAIL_OPERATIONS, password: TEST_PASSWORD_OPERATIONS, role: 'OPERATIONS' })
   })
 
   afterAll(async () => {
