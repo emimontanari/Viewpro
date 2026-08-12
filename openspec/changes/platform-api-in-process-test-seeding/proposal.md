@@ -2,7 +2,7 @@
 
 ## Intent
 
-Remove production-seed subprocess reuse from 14 normal platform-api integration specs: 15 source call sites cause 34 launches of pnpm, ts-node, Prisma, and Argon2. This is the root load-dependent timeout class, not a single slow hook. Issue #311 is approved; no product decisions remain.
+Remove production-seed subprocess reuse from 14 normal platform-api integration specs: 15 historical subprocess source sites caused 34 launches of pnpm, ts-node, Prisma, and Argon2. The migration replaces them with 34 direct fixture invocations in the consumer specs. This is the root load-dependent timeout class, not a single slow hook. Issue #311 is approved; no product decisions remain.
 
 ## Scope
 
@@ -26,7 +26,7 @@ None — production requirements remain unchanged.
 
 ## Approach
 
-Resolve `PrismaService` and `PASSWORD_HASHER` from each Nest test application and pass them to one test-only fixture. PR1 owns the merged fixture and behavioral `operator.fixture.spec.ts`. PR2 `fix/platform-api-test-consumers` owns only the 14 consumer migrations/15 app-context calls, helper/direct-site removal, and command-scoped retry control. PR3 `test/platform-api-seed-boundary`, from refreshed `develop` after PR2 merges, owns the separate readable Node16 `operator-fixture-boundary.spec.ts` ratchet/regressions and final acceptance. CLI remains only in `seed.spec.ts`; preserve `prisma/seed.ts` unchanged.
+Resolve `PrismaService` and `PASSWORD_HASHER` from each Nest test application and pass them to one test-only fixture. PR1 owns the merged fixture and behavioral `operator.fixture.spec.ts`. PR2 `fix/platform-api-test-consumers` owns 14 consumer specs, removal of 15 historical production-seed subprocess source sites, 34 direct fixture invocations in their app-owning setup contexts, helper/direct-site removal, and command-scoped retry control. PR3 `test/platform-api-seed-boundary`, from refreshed `develop` after PR2 merges, owns the separate readable Node16 `operator-fixture-boundary.spec.ts` ratchet/regressions and final acceptance. CLI remains only in `seed.spec.ts`; preserve `prisma/seed.ts` unchanged.
 
 ## Affected Areas
 

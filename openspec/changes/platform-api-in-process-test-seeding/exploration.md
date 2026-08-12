@@ -5,7 +5,7 @@ Issue #311 is approved P0 reliability work. PR0 planning (#313) and PR1 fixture/
 
 `beforeAll` → local `seedOperator`/direct `execSync` → `pnpm db:seed` → `ts-node prisma/seed.ts` → new `PrismaClient` → `argon2.hash` → `operator.upsert` → `$disconnect`.
 
-The root checkout currently contains 15 direct `execSync('pnpm db:seed')` sites across 14 normal integration spec files, producing 34 seed-process launches in one complete platform-api run. The production contract spec adds two intentional launches. In the current `platform-control.controller.spec.ts`, six operators are launched sequentially, not seven as stated in issue #311 and Engram #6789; this inventory discrepancy does not change the root cause because the hook still repeats pnpm, ts-node, Prisma startup, Argon2 work, and client teardown under Turbo contention.
+The pre-migration baseline contained 15 production-seed subprocess source sites across 14 normal integration specs, producing 34 seed-process launches in one complete platform-api run. The production contract spec adds two intentional launches. In the baseline `platform-control.controller.spec.ts`, six operators are launched sequentially, not seven as stated in issue #311 and Engram #6789; this inventory discrepancy does not change the root cause because the hook still repeats pnpm, ts-node, Prisma startup, Argon2 work, and client teardown under Turbo contention.
 
 Production `prisma/seed.ts` is intentionally an executable script, not an importable fixture API. It validates two environment variables, computes a default Argon2 hash, and idempotently upserts by email with `update: {}` and an explicit `ACTIVE`/`OWNER` create payload. Existing operators are therefore not reset on rerun. Its module-owned Prisma client disconnects in `finally`. `src/database/__tests__/seed.spec.ts` is the named subprocess contract test for create, explicit OWNER, idempotence, and InmoView DB isolation; it should remain the only integration consumer of the real CLI seed.
 
@@ -37,8 +37,8 @@ Vitest sets `fileParallelism: false`, `hookTimeout: 30000`, `testTimeout: 30000`
 - `viewpro-app/apps/viewpro-api/test/setup-env.ts`, `vitest.config.ts`, `package.json`, and root `turbo.json` — retain test DB safety, 30-second timeout, and global Turbo concurrency; PR2 alone may add command-scoped retry control to Vitest.
 
 ### Call Paths and Blast Radius
-- Current normal path: integration `beforeAll` → 15 source-level CLI call sites → 34 runtime process launches → package `db:seed` script → production `prisma/seed.ts` → Argon2 → no-op-on-existing upsert → per-process disconnect.
-- Recommended normal path: app/module bootstrap → resolve `PrismaService` and `PASSWORD_HASHER` from Nest DI → shared `seedOperatorFixture` → in-process Argon2 hash → explicit operator upsert create/update → `app.close()` → one Prisma lifecycle disconnect.
+- Historical normal path: integration `beforeAll` → 15 production-seed subprocess source sites → 34 runtime process launches → package `db:seed` script → production `prisma/seed.ts` → Argon2 → no-op-on-existing upsert → per-process disconnect.
+- Migrated normal path: app/module bootstrap → resolve `PrismaService` and `PASSWORD_HASHER` from Nest DI → 34 direct `seedOperatorFixture` invocations across 14 consumer specs → in-process Argon2 hash → explicit operator upsert create/update → `app.close()` → one Prisma lifecycle disconnect.
 - Retained production path: `seed.spec.ts` → two CLI launches → production seed script. This preserves executable packaging, environment validation, explicit OWNER creation, no-duplicate behavior, and database isolation evidence.
 - Direct consumers are test-only. No controller, use case, repository, schema, migration, platform contract, production seed, global Turbo setting, or timeout changes; PR2 changes only command-scoped retry control.
 
@@ -67,15 +67,15 @@ High confidence: repeated synchronous seed subprocess startup is unnecessary int
    - Effort: Low. Explicitly rejected.
 
 ### Recommendation
-Use Approach 1 through the approved sequential slices. PR2 `fix/platform-api-test-consumers` owns exactly the 14 consumer migrations/15 app-context calls, removal of eight helpers/seven direct sites, and command-scoped retry control. PR3 `test/platform-api-seed-boundary`, from refreshed `develop` after PR2 merges, owns the complete readable Node16 AST dependency/ownership ratchet, fail-closed regressions, and the first corrected-byte uncached zero-retry acceptance with setup below 20 seconds. The fixture accepts explicit `email`, `password`, `role` (default OWNER), and `status` (default ACTIVE); hashes through app-provided `PASSWORD_HASHER`; resets create/update state; owns no client; and never bypasses `assertSafeTestDatabaseUrl()`.
+Use Approach 1 through the approved sequential slices. PR2 `fix/platform-api-test-consumers` owns 14 consumer specs, removal of 15 historical production-seed subprocess source sites, and 34 direct `seedOperatorFixture` invocations placed in their app-owning setup contexts, plus command-scoped retry control. It also removes eight helpers/seven direct sites. PR3 `test/platform-api-seed-boundary`, from refreshed `develop` after PR2 merges, owns the complete readable Node16 AST dependency/ownership ratchet, fail-closed regressions, and the first corrected-byte uncached zero-retry acceptance with setup below 20 seconds. The fixture accepts explicit `email`, `password`, `role` (default OWNER), and `status` (default ACTIVE); hashes through app-provided `PASSWORD_HASHER`; resets create/update state; owns no client; and never bypasses `assertSafeTestDatabaseUrl()`.
 
 Keep `prisma/seed.ts` and `seed.spec.ts` unchanged. Add a regression assertion that all normal platform-api integration specs are free of `node:child_process`/`pnpm db:seed`, with an explicit allow-list for `src/database/__tests__/seed.spec.ts`. Do not add a seed mode, timeout increase, global Turbo serialization, or parallel representation of production seed behavior.
 
 ### Objective RED/GREEN Evidence
 - PR1 RED/GREEN behavioral fixture coverage is merged.
 - PR2 has focused/package/serial evidence for consumers and retry control only; it does not activate the boundary, claim final uncached acceptance, or reconcile #311.
-- PR3 RED starts from the migrated consumer inventory as GREEN baseline input. It adds failing analyzer regressions for `Deno.Command` new expressions, `ImportEquals`, unresolved or escaping local edges, wrong-context/before-init/after-request calls, alias/type-only/unused/shadowed/wrapper-only bindings, and colocated-spec exclusion.
-- PR3 GREEN completes the readable Node16 closure/ownership ratchet so those regressions fail closed while preserving the already-migrated 14-consumer inventory.
+- PR3 RED starts from the migrated 14-spec/34-direct-invocation inventory as GREEN baseline input. It adds failing analyzer regressions for `Deno.Command` new expressions, `ImportEquals`, unresolved or escaping local edges, wrong-context/before-init/after-request calls, alias/type-only/unused/shadowed/wrapper-only bindings, and colocated-spec exclusion.
+- PR3 GREEN completes the readable Node16 closure/ownership ratchet so those regressions fail closed while preserving the already-migrated inventory and its per-app/context placement.
 - PR3 runs unchanged `src/database/__tests__/seed.spec.ts`, platform-control (37), platform-api baseline-plus-`Δnew`, and the first corrected-byte uncached zero-retry root acceptance. It records target-file setup below 20 seconds and does not rerun until green.
 
 ### Scope Estimate and Review Forecast

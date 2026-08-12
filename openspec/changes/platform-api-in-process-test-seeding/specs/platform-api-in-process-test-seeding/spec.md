@@ -4,7 +4,7 @@
 
 ### Requirement: Normal integration tests use no production seed subprocess
 
-Normal platform-api integration specs MUST NOT invoke `pnpm db:seed`, the production seed CLI, `execSync`, or any process-per-operator equivalent. Only `src/database/__tests__/seed.spec.ts`, the dedicated production seed contract test, MAY invoke CLI seeding. Migration is complete only when all 15 confirmed call sites across these 14 consumers are removed: auth controller, auth-me, auth idle-timeout, isolation, step-up controller, operators controller, payments controller, revenue controller, judgment-fixes, platform-control controller, audit controller, metrics controller, tenant-registry controller, and tenant-detail specs.
+Normal platform-api integration specs MUST NOT invoke `pnpm db:seed`, the production seed CLI, `execSync`, or any process-per-operator equivalent. Only `src/database/__tests__/seed.spec.ts`, the dedicated production seed contract test, MAY invoke CLI seeding. Migration is complete only when all 15 historical production-seed subprocess source sites are removed from these 14 consumer specs: auth controller, auth-me, auth idle-timeout, isolation, step-up controller, operators controller, payments controller, revenue controller, judgment-fixes, platform-control controller, audit controller, metrics controller, tenant-registry controller, and tenant-detail.
 
 #### Scenario: Boundary and consumer inventory are clean
 
@@ -15,7 +15,7 @@ Normal platform-api integration specs MUST NOT invoke `pnpm db:seed`, the produc
 
 #### Scenario: PR3 RED exercises incomplete analyzer behavior
 
-- GIVEN PR2's migrated 14-consumer inventory as the GREEN baseline input
+- GIVEN PR2's migrated inventory of 14 consumer specs and 34 direct fixture invocations as the GREEN baseline input
 - WHEN PR3 adds boundary regressions before completing the analyzer
 - THEN `Deno.Command` new expressions, `ImportEquals`, unresolved or escaping local edges, wrong-context/before-init/after-request calls, alias/type-only/unused/shadowed/wrapper-only bindings, and colocated specs produce failures
 - AND the RED phase does not claim that the already-migrated consumers are missing
@@ -66,7 +66,7 @@ The production `prisma/seed.ts`, schemas, APIs, runtime behavior, timeout values
 
 ### Requirement: Delivery order and rollback are explicit
 
-#311 delivery MUST be PR0→PR1→PR2→PR3. PR0 #313 and PR1 #314 are merged. PR2 #315 owns exactly the 14 consumer migrations/15 app-context calls, eight helper/seven direct-site removals, and command-scoped retry control; it MUST NOT add or activate `operator-fixture-boundary.spec.ts`, claim final uncached acceptance, or reconcile #311. PR3 `test/platform-api-seed-boundary` MUST start from refreshed `develop` after PR2 merges and own the complete readable Node16 AST dependency/ownership ratchet, fail-closed regressions, and first corrected-byte uncached zero-retry acceptance with setup below 20 seconds. Every slice MUST remain below 400 changed lines without a size exception. Rollback MUST be PR3→PR2→PR1 while retaining PR0.
+#311 delivery MUST be PR0→PR1→PR2→PR3. PR0 #313 and PR1 #314 are merged. PR2 #315 owns 14 consumer specs, removal of 15 historical production-seed subprocess source sites, 34 direct fixture invocations in their required app-owning contexts, eight helper/seven direct-site removals, and command-scoped retry control; it MUST NOT add or activate `operator-fixture-boundary.spec.ts`, claim final uncached acceptance, or reconcile #311. PR3 `test/platform-api-seed-boundary` MUST start from refreshed `develop` after PR2 merges and own the complete readable Node16 AST dependency/ownership ratchet, fail-closed regressions, and first corrected-byte uncached zero-retry acceptance with setup below 20 seconds. Every slice MUST remain below 400 changed lines without a size exception. Rollback MUST be PR3→PR2→PR1 while retaining PR0.
 
 #### Scenario: Delivery remains sequenced and reconciled
 
