@@ -2,55 +2,52 @@
 
 ## Review Workload Forecast
 
-| Plan | Lines / files | Risk | Delivery |
-|---|---:|---|---|
-| PR0 | 352 / 5 OpenSpec files | Low | Planning baseline/docs |
-| PR1 | 150–185 / fixture + `operator.fixture.spec.ts` | Low | Fixture/foundation |
-| PR2 | 280–335 / `operator-fixture-boundary.spec.ts`, 15 modified | Low | Migration/ratchet |
-| Implementation total | 430–520; each PR <400 | High cumulative | PR0 → PR1 → PR2 |
+| Slice | Lines | State / scope |
+|---|---:|---|
+| PR0 | 352 measured | Merged planning baseline; retain history |
+| PR1 | 192 measured | Merged fixture/foundation |
+| PR2 | 279 refined | Consumers + retry only |
+| PR3 | 160–230 forecast | Readable AST ratchet, regressions, final acceptance |
+| Implementation total | **631–701** | PR1+PR2+PR3; each PR <400 |
+| Including PR0 | **983–1,053** | Honest total review cost |
 
-delivery_strategy: auto-chain (sequential user-approved slices)
+delivery_strategy: auto-chain (user-approved sequential slices)
 chain_strategy: stacked-to-main (integration branch: develop)
 Decision needed before apply: No
 Chained PRs recommended: Yes
 Chain strategy: stacked-to-main
 400-line budget risk: High
+size:exception: not approved or required
 
 ### Delivery Topology
 
-- **PR0:** `docs/platform-api-in-process-test-seeding-plan` → refreshed `develop`; five files (`exploration.md`, `proposal.md`, `specs/.../spec.md`, `design.md`, `tasks.md`), 352 additions, `Refs #311`; docs review/merge first.
-- **PR1:** `fix/platform-api-test-fixture` → refreshed `develop` after PR0; 150–185 lines, fixture plus `operator.fixture.spec.ts` behavioral coverage, `Refs #311`.
-- **PR2:** `fix/platform-api-test-consumers` → refreshed `develop` after PR1; 280–335 lines, `operator-fixture-boundary.spec.ts` source/Node16 ratchet, migration/retry acceptance, and #311 reconciliation.
-- No tracker/exception; refresh `origin/develop` each time. GitHub defaults `main`: explicitly reconcile #311 after PR2 acceptance/merge. Retain PR0 history; roll back PR2→PR1; then refresh PR #309/#308 and continue #284.
+- **PR0:** #313 merged planning baseline; retain history.
+- **PR1:** #314 merged fixture/foundation.
+- **PR2:** `fix/platform-api-test-consumers` owns 14 consumer specs, removal of 15 historical production-seed subprocess source sites, 34 direct fixture invocations in their app-owning setup contexts, eight helper/seven direct-site removals, and command-scoped retry control. It excludes `operator-fixture-boundary.spec.ts`, final uncached acceptance, and #311 reconciliation.
+- **PR3:** `test/platform-api-seed-boundary` starts from refreshed `develop` only after PR2 merges. It owns the complete readable Node16 AST dependency/ownership ratchet, fail-closed regressions, and first corrected-byte uncached zero-retry acceptance with `PLATFORM_CONTROL_SETUP_MS <20,000`. Its final acceptance and merge trigger explicit #311 reconciliation.
+- No tracker or exception. Rollback is PR3→PR2→PR1; retain PR0. Historical failed, contaminated, pre-correction, or invalid PR2 receipts are non-acceptance evidence.
 
-Branch graph: refreshed `origin/develop` → PR0 → `develop` → PR1 → refreshed `develop` → PR2 → #311 reconciliation.
-Apply gate: PR0 only; stop at independent docs review/merge. Do not mark PR0 delivered here.
+Branch graph: merged PR0 → merged PR1 → PR2 → refreshed `develop` → PR3 → explicit #311 reconciliation.
 
-## Phase 1
+## Completed Baseline
 
-- [x] 1.1 (#6829) PR0 was committed, pushed, and opened as PR #313 from `docs/platform-api-in-process-test-seeding-plan`; task 1.3 remains incomplete until PR0 merges. Live check and review state is tracked in GitHub, not versioned here. #310 merged via PR #312 and closed; its retained worktree is untouched.
-- [ ] 1.2 Inventory 14 specs/15 sites and eight helpers/seven direct sites; retain `prisma/seed.ts` and `src/database/__tests__/seed.spec.ts` unchanged.
-- [ ] 1.3 Review and merge PR0’s five-file planning baseline independently before PR1; PR0 remains undelivered until that review/merge completes.
+- [x] 1.1 PR0 merged as #313 into `develop`.
+- [x] 1.2 PR1 fixture/foundation merged as #314 into `develop` with behavioral fixture coverage.
+- [x] 1.3 Inventory fixed at 14 consumer specs, 15 historical production-seed subprocess source sites, 34 direct fixture invocations, and eight helpers/seven direct sites; production seed contract retained.
 
-## Phase 2: RED contracts (strict TDD)
+## PR2: Consumers and Retry
 
-- [ ] 2.1 Add PR1 `src/test-support/__tests__/operator.fixture.spec.ts` RED behavioral fixture coverage.
-- [ ] 2.2 RED fixture tests: runtime/DB zero DI/hash/write, defaults/overrides, canonical identity, one row/email, reset, hash/write atomicity, Argon2/login validity, Nest lifecycle.
+- [x] 2.1 Migrate all 14 consumer specs: remove 15 historical production-seed subprocess source sites and place 34 direct fixture invocations post-init and pre-login, including both step-up contexts and both tenant-detail contexts.
+- [x] 2.2 Remove production-seed subprocess helpers/direct sites while preserving roles/statuses/passwords and named assertions.
+- [x] 2.3 Add only command-scoped retry control; default remains 2 and timeout/Turbo/schema/API/runtime/seed remain unchanged.
+- [x] 2.4 Prepare and approve the PR3 split contract without changing implementation source, test, or acceptance-task completion.
+- [ ] 2.5 Deliver and merge the PR2 consumers/retry slice; #311 remains open.
 
-## Phase 3: GREEN fixture
+## PR3: Boundary and Final Acceptance
 
-- [ ] 3.1 Create `src/test-support/operator.fixture.ts`: guard first; resolve active `PrismaService`/strict `AuthModule` `PASSWORD_HASHER`; hash and upsert state; never create/disconnect Prisma or retry/fallback.
-- [ ] 3.2 Fixture tests pass on `viewpro_platform_test`; failure preserves state and unsafe setup resolves nothing.
-
-## Phase 4: GREEN migration and ratchets
-
-- [ ] 4.1 Migrate 14 specs at `viewpro-app/apps/viewpro-api/src/{auth,operators,payments,platform-control,platform-data}/**/*.spec.ts`: auth {controller,me,idle,isolation,step-up}, operators, payments {controller,revenue,judgment}, platform-control, data {audit,metrics,registry,detail}; remove 8 helpers/7 sites; seed post-init pre-login.
-- [ ] 4.2 In step-up’s two app contexts reseed canonical email; in tenant-detail’s two contexts seed context-owned emails; preserve every named assertion.
-- [ ] 4.3 Add PR2 source-only `src/test-support/__tests__/operator-fixture-boundary.spec.ts` (no fixture import): Node16 import/export/literal dynamic import/require closure; fail closed unresolved/nonliteral/escaping; forbid runners/Bun.spawn/Deno.Command/prisma/seed.ts/production→test-support; require 14 post-init consumers.
-- [ ] 4.4 Only `vitest.config.ts`: mechanical `VIEWPRO_PLATFORM_TEST_RETRY=0`, default retry 2; preserve timeouts/Turbo/schema/API/runtime/seed; note packaging warning pre-existing/non-goal.
-
-## Phase 5: Evidence and delivery
-
-- [ ] 5.1 Run boundary/fixture, seed-contract, platform-control (`baseline + Δnew`; `PLATFORM_CONTROL_SETUP_MS <20,000`), validation/typecheck, full platform-api; report baseline + `Δnew`.
-- [ ] 5.2 FIRST uncached: `/usr/bin/time -p env TURBO_FORCE=true TURBO_ENV_MODE=loose VIEWPRO_PLATFORM_TEST_RETRY=0 pnpm exec turbo test --force --env-mode=loose`; zero retries, report recorded root baseline + `Δnew`, no rerun-until-green.
-- [ ] 5.3 Keep tests with behavior; record PR boundaries, clean diff, rollback, explicit #311 reconciliation, then PR #309/#308 refresh before #284.
+- [ ] 3.1 Refresh `develop` after PR2 merge and create `test/platform-api-seed-boundary`.
+- [ ] 3.2 RED: with the migrated 14-spec/34-direct-invocation inventory as GREEN baseline input, add source-only regressions for `Deno.Command` new expressions, `ImportEquals`, unresolved/escaping local edges, wrong-context/before-init/after-request calls, alias/type-only/unused/shadowed/wrapper-only bindings, and colocated-spec exclusion.
+- [ ] 3.3 GREEN: implement the complete readable `operator-fixture-boundary.spec.ts` to lock the migrated inventory and its per-app/context ownership, and fail closed for every PR3 RED regression; no opaque compression and no weakened AST contract.
+- [ ] 3.4 Run focused boundary, unchanged seed contract, platform-control 37, validation/typecheck, and full platform-api serially; report baseline plus `Δnew`.
+- [ ] 3.5 Run the first corrected-byte uncached zero-retry root acceptance once; require baseline plus `Δnew`, zero retries, and setup <20 seconds. Rerun-until-green is forbidden.
+- [ ] 3.6 Fresh review, merge, then explicitly reconcile #311. Only afterward advance dependent delivery.
