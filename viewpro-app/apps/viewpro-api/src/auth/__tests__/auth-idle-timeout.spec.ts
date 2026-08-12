@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { execSync } from 'node:child_process'
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { ValidationPipe } from '@nestjs/common'
@@ -9,6 +8,7 @@ import cookieParser from 'cookie-parser'
 import request from 'supertest'
 import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
+import { seedOperatorFixture } from '../../test-support/operator.fixture'
 import { AuthModule } from '../auth.module'
 import { OPERATOR_REPOSITORY, type IOperatorRepository } from '../repositories/operator.repository'
 
@@ -99,15 +99,6 @@ describe('GET /api/auth/me — idle-timeout re-issue, sessionExp carry-forward, 
   let operatorId: string
 
   beforeAll(async () => {
-    execSync('pnpm db:seed', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        SEED_OPERATOR_EMAIL: SEEDED_EMAIL,
-        SEED_OPERATOR_PASSWORD: SEEDED_PASSWORD,
-      },
-    })
-
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule,
@@ -122,6 +113,7 @@ describe('GET /api/auth/me — idle-timeout re-issue, sessionExp carry-forward, 
     app.setGlobalPrefix('api')
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
     await app.init()
+    await seedOperatorFixture(app, { email: SEEDED_EMAIL, password: SEEDED_PASSWORD })
 
     const operatorRepository = app.get<IOperatorRepository>(OPERATOR_REPOSITORY)
     const operator = await operatorRepository.findByEmail(SEEDED_EMAIL)

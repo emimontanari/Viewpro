@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
-import { execSync } from 'node:child_process'
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { ValidationPipe } from '@nestjs/common'
@@ -12,6 +11,7 @@ import { AuthModule } from '../../auth/auth.module'
 import { PermissionsModule } from '../../permissions/permissions.module'
 import { PrismaService } from '../../database/prisma.service'
 import { PaymentsModule } from '../payments.module'
+import { seedOperatorFixture } from '../../test-support/operator.fixture'
 
 /**
  * platform-payment-ledger — RED: defects confirmed by both Judgment Day judges.
@@ -91,11 +91,7 @@ describe('Judgment Day confirmed fixes (integration — test DB)', () => {
 
     prisma = moduleFixture.get(PrismaService)
 
-    execSync('pnpm db:seed', {
-      cwd: process.cwd(),
-      env: { ...process.env, SEED_OPERATOR_EMAIL: OWNER_EMAIL, SEED_OPERATOR_PASSWORD: OWNER_PASSWORD },
-    })
-    await prisma.operator.update({ where: { email: OWNER_EMAIL }, data: { role: 'OWNER' } })
+    await seedOperatorFixture(app, { email: OWNER_EMAIL, password: OWNER_PASSWORD })
 
     await prisma.platformTenant.upsert({
       where: { id: TENANT },

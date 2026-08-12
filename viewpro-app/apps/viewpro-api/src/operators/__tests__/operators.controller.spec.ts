@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
-import { execSync } from 'node:child_process'
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { ValidationPipe } from '@nestjs/common'
@@ -12,6 +11,7 @@ import { AuthModule } from '../../auth/auth.module'
 import { PrismaService } from '../../database/prisma.service'
 import { PermissionsModule } from '../../permissions/permissions.module'
 import { OperatorsModule } from '../operators.module'
+import { seedOperatorFixture } from '../../test-support/operator.fixture'
 
 /**
  * T1.3.11 — RED: `OperatorsController` at `operators/manage` — mirrors
@@ -43,13 +43,6 @@ describe('OperatorsController (viewpro-api) — operators/manage (T1.3.11)', () 
   let app: INestApplication
   let prisma: PrismaService
 
-  function seedOperator(email: string, password: string): void {
-    execSync('pnpm db:seed', {
-      cwd: process.cwd(),
-      env: { ...process.env, SEED_OPERATOR_EMAIL: email, SEED_OPERATOR_PASSWORD: password },
-    })
-  }
-
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -70,17 +63,9 @@ describe('OperatorsController (viewpro-api) — operators/manage (T1.3.11)', () 
 
     prisma = moduleFixture.get(PrismaService)
 
-    // OWNER by default (seed script sets role: OWNER).
-    seedOperator(TEST_EMAIL, TEST_PASSWORD)
-
-    seedOperator(TEST_EMAIL_ANALYST, TEST_PASSWORD_ANALYST)
-    await prisma.operator.update({ where: { email: TEST_EMAIL_ANALYST }, data: { role: 'ANALYST' } })
-
-    seedOperator(TEST_EMAIL_OPERATIONS, TEST_PASSWORD_OPERATIONS)
-    await prisma.operator.update({ where: { email: TEST_EMAIL_OPERATIONS }, data: { role: 'OPERATIONS' } })
-
-    // Ensure TEST_EMAIL stays ACTIVE OWNER across runs (upsert's update:{} never resets it).
-    await prisma.operator.update({ where: { email: TEST_EMAIL }, data: { status: 'ACTIVE', role: 'OWNER' } })
+    await seedOperatorFixture(app, { email: TEST_EMAIL, password: TEST_PASSWORD })
+    await seedOperatorFixture(app, { email: TEST_EMAIL_ANALYST, password: TEST_PASSWORD_ANALYST, role: 'ANALYST' })
+    await seedOperatorFixture(app, { email: TEST_EMAIL_OPERATIONS, password: TEST_PASSWORD_OPERATIONS, role: 'OPERATIONS' })
   })
 
   afterAll(async () => {
