@@ -4,7 +4,7 @@
 
 ### Requirement: Safe Drill Preconditions
 
-The drill MUST use two distinct temporary Neon projects, one per lane. Sources MUST be read-only. It MUST abort before restore on ambiguous, unallowlisted, non-distinct, or production targets.
+The drill MUST use two distinct temporary Neon projects, one per lane, with read-only sources. It MUST abort before restore on ambiguous, unallowlisted, non-distinct, or production targets.
 
 #### Scenario: Isolated preflight passes
 
@@ -20,7 +20,7 @@ The drill MUST use two distinct temporary Neon projects, one per lane. Sources M
 
 ### Requirement: Recovery Input and RPO
 
-For each lane, the drill MUST select the latest successful dump no more than 24 hours old. Before restore it MUST prove checksum, compression, and PostgreSQL readability without rows. At final lane validation, achieved RPO MUST be computed from validation completion to the dump timestamp; if it exceeds 24 hours, that lane MUST fail truthfully.
+Each lane MUST select its latest successful dump no more than 24 hours old and prove checksum, compression, and PostgreSQL readability without rows before restore. At final validation, it MUST compute RPO from completion to dump timestamp; >24h MUST truthfully fail that lane.
 
 #### Scenario: Qualifying dumps pass
 
@@ -36,7 +36,7 @@ For each lane, the drill MUST select the latest successful dump no more than 24 
 
 ### Requirement: Restore and RTO
 
-Each lane MUST restore into its project and measure RTO from restore start to validated usability. It MUST pass at 60 minutes or less; other durations are separate.
+Each lane MUST restore into its project and measure RTO from restore start to validated usability. RTO MUST be 60 minutes or less; other durations are separate.
 
 #### Scenario: Restore meets objective
 
@@ -52,13 +52,13 @@ Each lane MUST restore into its project and measure RTO from restore start to va
 
 ### Requirement: Independent Restored-State Validation
 
-Each restored database MUST match repository migrations/schema contracts. Validation MUST prove aggregate counts, relational and tenant isolation, and invariants without raw values.
+Each restored database MUST match repository migration/schema contracts; validation MUST prove aggregate counts, relational/tenant isolation, and invariants without raw values.
 
 #### Scenario: Structural and invariant checks pass
 
 - GIVEN both databases restore
 - WHEN migration, schema, aggregate, relational, and isolation checks run
-- THEN all named checks pass with aggregate evidence only
+- THEN all checks pass with aggregate evidence only
 
 #### Scenario: Invariant mismatch blocks success
 
@@ -74,7 +74,7 @@ The drill MUST compare product/platform change-feed, mirror, and operator projec
 
 - GIVEN both lanes pass independent validation
 - WHEN cross-lane aggregate checks run
-- THEN all required comparisons pass
+- THEN required comparisons pass
 
 #### Scenario: Projections disagree
 
@@ -84,7 +84,7 @@ The drill MUST compare product/platform change-feed, mirror, and operator projec
 
 ### Requirement: Redacted Evidence
 
-Evidence MUST include lane, dump age, checksums, versions, safe destinations, UTC timestamps, durations, outcomes, mismatch counts, cleanup receipts. It MUST NOT contain credentials, URLs, raw SQL, sensitive dump names, rows, customer identifiers, emails, storage keys, actor payloads, receipts, or money.
+Evidence MUST include lane, dump age, checksums, versions, safe destinations, UTC timestamps, durations, outcomes, mismatch counts, and cleanup receipts. It MUST NOT contain credentials, URLs, raw SQL, sensitive dump names, rows, customer IDs, emails, storage keys, payloads, receipts, or money.
 
 #### Scenario: Evidence is safe and reviewable
 
@@ -94,16 +94,16 @@ Evidence MUST include lane, dump age, checksums, versions, safe destinations, UT
 
 ### Requirement: Cleanup and Quarterly Reconciliation
 
-After every outcome, the drill MUST prove deletion of projects and revocation of Neon/R2 credentials, retaining redacted evidence. A drill MUST recur quarterly, with runbook and ledger reconciled.
+After outcomes, the drill MUST prove project deletion and Neon/R2 credential revocation, retain redacted evidence, recur quarterly, and reconcile the runbook/ledger.
 
 #### Scenario: Successful teardown reconciles records
 
 - GIVEN both lanes complete validation
 - WHEN teardown and reconciliation complete
-- THEN both destinations are absent, credentials revoked, and records show the verified result
+- THEN both destinations are absent, credentials revoked, and records show verified result
 
 #### Scenario: Failed drill still cleans up
 
 - GIVEN any preflight, input, restore, RTO, or invariant failure
 - WHEN the drill exits
-- THEN cleanup and revocation are proven, failure remains truthful, and the next quarterly drill is scheduled
+- THEN cleanup and revocation are proven, failure remains truthful, and next quarterly drill is scheduled
