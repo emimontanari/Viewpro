@@ -6,13 +6,12 @@ Navigation filtering in app-new is a UX convenience. It is not an authorization 
 
 The active tenant membership comes from `SessionProvider` in `src/lib/session-context.tsx`.
 
-`src/hooks/use-nav.ts` builds an access context from that membership:
+`src/hooks/use-nav.ts` builds a `src/lib/navigation-access.ts` context from that membership:
 
 ```ts
 {
-  hasOrg: Boolean(activeMembership),
-  permissions: activeMembership?.permissions ?? [],
-  role: activeMembership?.role
+  resolved: !isTenantLoading,
+  membership: activeMembership
 }
 ```
 
@@ -20,11 +19,10 @@ Then it filters `src/config/nav-config.ts` items.
 
 ## Supported nav access flags
 
-| Flag         | Meaning                                                           |
-| ------------ | ----------------------------------------------------------------- |
-| `requireOrg` | Requires an active tenant membership.                             |
-| `permission` | Requires the active membership to include that permission string. |
-| `role`       | Requires the active membership role to match exactly.             |
+| Flag | Meaning |
+| --- | --- |
+| `permissions` | Requires every named active-membership permission. |
+| `roles` | Requires an exact active-membership role allowlist match. |
 
 Example:
 
@@ -33,9 +31,13 @@ Example:
   title: 'Equipo',
   url: '/dashboard/users',
   icon: 'teams',
-  access: { requireOrg: true }
+  access: { roles: ['MANAGER', 'PRINCIPAL_MANAGER'], permissions: ['team.view'] }
 }
 ```
+
+All declared access flags are conjunctive. Any protected policy requires resolved context
+and membership; an empty `roles` allowlist explicitly denies access. This prevents retained
+memberships from exposing protected links while tenant context is loading.
 
 ## Security rule
 
