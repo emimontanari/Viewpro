@@ -5,7 +5,7 @@ verdict: pass_with_warnings
 blockers: 0
 critical_findings: 0
 requirements: 3/3
-scenarios: 9/9
+scenarios: 8/8
 test_command: pnpm --filter next-shadcn-dashboard-starter test
 test_exit_code: 0
 test_output_hash: sha256:84ac66a4e7b2091588f30473626af53b01d0818f1414fcb2a85c6df5d5b25948
