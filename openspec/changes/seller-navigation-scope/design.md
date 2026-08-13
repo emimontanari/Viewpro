@@ -26,7 +26,8 @@ This model keeps protected navigation fail-closed during loading, including when
 | `viewpro-app/apps/app-new/src/types/index.ts` | Add policy role-allowlist typing. |
 | `viewpro-app/apps/app-new/src/config/nav-config.ts` | Attach navigation policies to existing entries. |
 | `viewpro-app/apps/app-new/src/hooks/use-nav.ts` | Build and consume the shared context. |
-| `viewpro-app/apps/app-new/src/components/layout/app-sidebar.test.tsx` | Verify rendered Sidebar and KBar parity for MANAGER, PRINCIPAL_MANAGER, AGENT, and loading. |
+| `viewpro-app/apps/app-new/src/components/layout/app-sidebar.test.tsx` | Create this new test file to verify rendered Sidebar parity for MANAGER, PRINCIPAL_MANAGER, AGENT, and loading. |
+| `viewpro-app/apps/app-new/src/components/kbar/palette.test.ts` | Update the existing KBar test for parity with the rendered Sidebar cases. |
 | `viewpro-app/apps/app-new/AGENTS.md` | Document the navigation-policy boundary. |
 | `viewpro-app/apps/app-new/docs/nav-rbac.md` | Document policy semantics and backend authority. |
 

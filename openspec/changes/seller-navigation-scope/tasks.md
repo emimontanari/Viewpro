@@ -40,7 +40,8 @@ Run application commands from `viewpro-app`. Run PR0 Git evidence commands from 
 
 - [ ] Add `viewpro-app/apps/app-new/src/lib/navigation-access.ts` and `navigation-access.test.ts` with separate resolved context and membership semantics; require `requireOrg`, role, and permission conjunctively; deny empty role allowlists and matching-role/missing-permission access.
 - [ ] Update `viewpro-app/apps/app-new/src/types/index.ts`, `config/nav-config.ts`, and `hooks/use-nav.ts` to use the central policy.
-- [ ] Update `viewpro-app/apps/app-new/src/components/layout/app-sidebar.test.tsx` to verify rendered Sidebar and KBar parity for complete realistic MANAGER, PRINCIPAL_MANAGER, AGENT, and loading sets.
+- [ ] Create `viewpro-app/apps/app-new/src/components/layout/app-sidebar.test.tsx` because it does not exist yet; verify rendered Sidebar behavior for complete realistic MANAGER, PRINCIPAL_MANAGER, AGENT, and loading sets.
+- [ ] Update the existing `viewpro-app/apps/app-new/src/components/kbar/palette.test.ts` for KBar parity with the rendered Sidebar cases.
 - [ ] Update `viewpro-app/apps/app-new/AGENTS.md` and `docs/nav-rbac.md` with the policy and backend-authorization boundary.
 - [ ] Run the PR1 focused tests, app test suite, strict lint, typecheck, and clean-diff command.
 
