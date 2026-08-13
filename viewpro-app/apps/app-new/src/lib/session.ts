@@ -128,17 +128,11 @@ export function getUserDisplayName(user: AuthUser | null | undefined) {
 }
 
 export function getMembershipRoleLabel(role: string | null | undefined) {
-  const normalizedRole = role?.toLowerCase();
-
-  if (normalizedRole?.includes('admin') || normalizedRole?.includes('owner')) {
-    return 'Administración';
-  }
-
-  if (normalizedRole?.includes('manager')) {
-    return 'Gestión';
-  }
-
-  return 'Equipo';
+  return ({
+    AGENT: 'Vendedor',
+    MANAGER: 'Encargado',
+    PRINCIPAL_MANAGER: 'Encargado principal'
+  } as Record<string, string>)[role ?? ''] ?? 'Equipo';
 }
 
 export function getUserStatusLabel(status: string | null | undefined) {

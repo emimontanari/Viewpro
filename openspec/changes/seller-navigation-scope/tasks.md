@@ -3,21 +3,21 @@
 ## Current chain marker
 
 ```text
-develop → 📍 PR0 docs/seller-navigation-scope-plan → develop
+develop → ✅ PR0 docs/seller-navigation-scope-plan → develop
                                                     → PR1 fix/seller-navigation-pr1 → updated develop
-                                                                                         → PR2 fix/seller-org-switcher-access → develop
+                                                                                         → PR2 fix/seller-navigation-org-switcher → develop
 ```
 
-PR0 is planning only. PR2 is blocked until PR1 merges.
+PR0 is complete: PR #309 merged exactly these four planning artifacts as `2e0bd2a`; the prior PR #308 is closed. PR1 and PR2 implementation items remain independently tracked below.
 
 ## PR0: planning baseline
 
-Start from clean `develop`. Prepare the four planning artifacts. Keep every PR0 delivery checkbox unchecked until the intended files have been staged and reviewed, committed, approved in a PR, and merged to `develop`. Value: establish the review contract. Verification: Markdown structure review, staged clean-diff checks, and no application-file changes. Rollback: revert the docs-only merge.
+Started from clean `develop`. PR #309 staged, reviewed, approved, and merged these four planning artifacts to `develop` as `2e0bd2a`; PR #308 is closed. Value: establish the review contract. Verification: Markdown structure review, staged clean-diff checks, and no application-file changes. Rollback: revert the docs-only merge.
 
-- [ ] After staged review, commit, PR approval, and merge, the proposal is versioned in `develop` and defines the sequential chain, boundaries, forecasts, and non-goals.
-- [ ] After staged review, commit, PR approval, and merge, the specification is versioned in `develop` and defines #284 semantics, #307/#291 boundaries, and acceptance scenarios.
-- [ ] After staged review, commit, PR approval, and merge, the design is versioned in `develop` and lists exact planned files, independent verification, rollback, forecasts, and clean-diff rules.
-- [ ] After staged review, commit, PR approval, and merge, the tasks are versioned in `develop` and leave every PR1/PR2 implementation item unchecked.
+- [x] PR #309 versioned the proposal in `develop` as part of `2e0bd2a`, defining the sequential chain, boundaries, forecasts, and non-goals.
+- [x] PR #309 versioned the specification in `develop` as part of `2e0bd2a`, defining #284 semantics, #307/#291 boundaries, and acceptance scenarios.
+- [x] PR #309 versioned the design in `develop` as part of `2e0bd2a`, listing exact planned files, independent verification, rollback, forecasts, and clean-diff rules.
+- [x] PR #309 versioned the tasks in `develop` as part of `2e0bd2a`, leaving every PR1/PR2 implementation item unchecked at the planning baseline.
 
 ## Commands
 
@@ -50,13 +50,13 @@ Run application commands from `viewpro-app`. Run PR0 Git evidence commands from 
 
 ## PR2: OrgSwitcher administration access
 
-**Branch/base:** `fix/seller-org-switcher-access` from `develop` after PR1 merges. **Forecast:** honest target ≤180 changed lines; return blocked if that cannot be met. **Rollback:** revert PR2 only.
+**Branch/base:** `fix/seller-navigation-org-switcher` from `develop` at `b22adfde20d705d015cba269177fb912df548c8a` after PR1 merges. **Forecast:** hard stop ≤400 total public changed lines. **Delivery:** `auto-chain`, `stacked-to-main`, sequential `develop`. **Rollback:** revert PR2 only.
 
-- [ ] Update `viewpro-app/apps/app-new/src/components/org-switcher.tsx` to consume PR1 policy and hide only the administration action for AGENT.
-- [ ] Update `viewpro-app/apps/app-new/src/components/org-switcher.test.tsx` for AGENT absence, MANAGER/PRINCIPAL_MANAGER presence, loading fail-closed behavior, and existing agency switching, accessibility, and persistence.
-- [ ] Run the PR2 focused test, app test suite, strict lint, typecheck, and clean-diff command.
+- [x] Add `org-switcher.test.tsx` first and prove AGENT/loading denial, shared-policy manager/principal access, session-only options, exact labels, radio semantics/indicator, keyboard selection, and real persistence-before-refresh.
+- [x] Update `org-switcher.tsx` with the smallest policy/radio implementation; update canonical labels and ItemIndicator surface only if required by the rendered contract.
+- [x] Reconcile the four active OpenSpec files, then run the PR2 focused test, app test suite, strict lint, app/root typechecks, production build, and untracked-aware clean-diff command.
 
-**Clean diff:** only the two named OrgSwitcher files. Do not convert to Radix radios, add role labels, change dropdown primitives, or introduce another user-visible redesign.
+**Clean diff:** these four OpenSpec contract files plus `org-switcher.tsx`, `org-switcher.test.tsx`, and only the minimal `session.ts`/`dropdown-menu.tsx` surfaces required by the contract. No SessionProvider/tenant-selection, backend/routes, #307, #291, CI, commits, pushes, or PR operations.
 
 ## Non-goals
 

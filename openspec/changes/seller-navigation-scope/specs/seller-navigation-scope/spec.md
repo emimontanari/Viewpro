@@ -48,9 +48,9 @@ PR1 MUST apply the same filtered navigation policy to Sidebar and KBar. Tests MU
 - THEN each test case exposes exactly its title/routes: AGENT or any loading role: `Inicio` (`/dashboard`), `Propiedades` (`/dashboard/product`), `Seguimiento` (`/dashboard/seguimiento`), `Perfil` (`/dashboard/profile`); MANAGER: those plus `Solicitudes de estado` (`/dashboard/status-change-requests`), `Inmobiliarias` (`/dashboard/workspaces`), `Equipo` (`/dashboard/users`); PRINCIPAL_MANAGER: MANAGER's set plus `Contacto WhatsApp` (`/dashboard/settings/tenant-contact`)
 - AND the AGENT and loading cases expose no protected destination; MANAGER exposes no `Contacto WhatsApp`
 
-### Requirement: OrgSwitcher consumes PR1 policy without redesign
+### Requirement: OrgSwitcher consumes PR1 policy with accessible membership switching
 
-PR2 MUST start only after PR1 merges and MUST consume the merged policy for the workspace-administration action. It MUST preserve existing agency switching, manager/principal action availability, loading fail-closed behavior, accessibility, and persistence.
+PR2 MUST start only after PR1 merges and MUST consume `workspaceAdministrationAccess` through the shared evaluator for the workspace-administration action. It MUST render only session memberships as one Radix radio group, with exact accessible names `<agency>, Vendedor|Encargado|Encargado principal`, exactly one active `menuitemradio`, and a visible ItemIndicator. Selection MUST support Arrow navigation with Enter or Space and persist the selected session tenant to local storage and cookie before refresh. Backend authorization remains authoritative.
 
 #### Scenario: AGENT administration action is hidden
 
@@ -58,21 +58,29 @@ PR2 MUST start only after PR1 merges and MUST consume the merged policy for the 
 - WHEN OrgSwitcher renders
 - THEN the administration action is absent
 
+#### Scenario: Privileged access and loading are evaluated through the shared policy
+
+- GIVEN a MANAGER or PRINCIPAL_MANAGER membership with `team.view`
+- WHEN OrgSwitcher renders
+- THEN the administration action is present
+- AND GIVEN context is loading with a retained privileged membership
+- THEN the control is disabled and the administration action is absent
+
 #### Scenario: Existing switching behavior is preserved
 
-- GIVEN existing memberships and a resolved MANAGER or PRINCIPAL_MANAGER membership
-- WHEN OrgSwitcher renders and switches agency
-- THEN the administration action remains available
-- AND the existing accessibility and persistence behavior is preserved
+- GIVEN two session memberships and one active membership
+- WHEN Arrow navigation followed by Enter or Space selects the other membership
+- THEN only that session membership can be selected
+- AND local storage and the selected-tenant cookie equal its ID before router refresh
 
 ## Non-goals
 
 - #307 route/session hardening.
 - #291 seeded CI.
-- New roles, role labels, permissions, backend behavior, dropdown primitives, or other user-visible OrgSwitcher redesign.
+- New roles, permissions, backend behavior, SessionProvider or tenant-selection redesign, routes, #307, or #291 work.
 
 ## Delivery boundaries
 
 - PR0: planning artifacts only; rollback is a docs-only revert.
 - PR1: context, policy, types, navigation configuration, `useNav`, Sidebar/KBar parity, and navigation documentation; no OrgSwitcher, session, or dropdown work.
-- PR2: only the AGENT administration-action boundary using PR1 policy; blocked until PR1 merges.
+- PR2: OrgSwitcher policy consumption, accessible radio switching, canonical labels if required, and test coverage; blocked until PR1 merges.

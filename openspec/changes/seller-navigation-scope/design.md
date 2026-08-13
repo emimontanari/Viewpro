@@ -4,7 +4,7 @@
 ```text
 develop → 📍 PR0 docs/seller-navigation-scope-plan → develop
                                                     → PR1 fix/seller-navigation-pr1 → updated develop
-                                                                                         → PR2 fix/seller-org-switcher-access → develop
+                                                                                          → PR2 fix/seller-navigation-org-switcher → develop
 ```
 
 PR0 ends with planning artifacts only. PR1 and PR2 are sequential `develop` PRs; PR2 is blocked until PR1 is merged.
@@ -36,18 +36,21 @@ This model keeps protected navigation fail-closed during loading, including when
 
 ## PR2: OrgSwitcher administration boundary
 
-**Start:** updated `develop` after PR1. **End:** consume PR1 policy so AGENT cannot see the administration action while MANAGER and PRINCIPAL_MANAGER retain it. Existing agency switching, loading fail-closed behavior, accessibility, and persistence remain intact.
+**Start:** branch `fix/seller-navigation-org-switcher` from updated `develop` base `b22adfde20d705d015cba269177fb912df548c8a` after PR1. **End:** consume `workspaceAdministrationAccess` through `canAccessNavigation`, so AGENT and loading states cannot see administration while MANAGER and PRINCIPAL_MANAGER with `team.view` retain it. Existing agency switching becomes one `DropdownMenuRadioGroup` of session memberships with canonical role labels, `DropdownMenuRadioItem`/ItemIndicator state, and the existing persistence-before-refresh function.
+**Exact nine-path candidate:** `openspec/changes/seller-navigation-scope/{design.md,proposal.md,specs/seller-navigation-scope/spec.md,tasks.md,verify-report.md}`; `viewpro-app/apps/app-new/src/{components/org-switcher.tsx,components/org-switcher.test.tsx,components/ui/dropdown-menu.tsx,lib/session.ts}`; 329 additions + 65 deletions = **394/400 changed lines**.
 
 | Exact file | Intended change |
 |---|---|
-| `viewpro-app/apps/app-new/src/components/org-switcher.tsx` | Consume the PR1 policy for the existing administration action. |
-| `viewpro-app/apps/app-new/src/components/org-switcher.test.tsx` | Verify AGENT, MANAGER, PRINCIPAL_MANAGER, loading, and preserved switching behavior. |
+| `viewpro-app/apps/app-new/src/components/org-switcher.tsx` | Consume the policy and render session membership radio switching. |
+| `viewpro-app/apps/app-new/src/components/org-switcher.test.tsx` | Verify access, loading, labels, radio semantics, keyboard input, and real persistence ordering. |
+| `viewpro-app/apps/app-new/src/lib/session.ts` | Provide exact canonical membership role labels. |
+| `viewpro-app/apps/app-new/src/components/ui/dropdown-menu.tsx` | Expose the existing radio ItemIndicator to visible-state coverage. |
 
-No radio conversion, role-label change, dropdown primitive change, or other user-visible OrgSwitcher redesign is approved. **Forecast:** honest target ≤180 changed lines; if that cannot be met, stop and return blocked. **Verification:** focused test, app test suite, strict lint, typecheck, and clean diff. **Rollback:** revert PR2 only; PR1 remains valid.
+No SessionProvider/tenant-selection redesign, backend/routes, #307, or #291 work is approved. **Forecast:** hard stop ≤400 total public changed lines. **Verification:** focused test, app test suite, strict lint, app/root typecheck, production build, and clean diff. **Rollback:** revert PR2 only; PR1 remains valid.
 
 ## Clean-diff rules
 
 - PR0 changes only `openspec/changes/seller-navigation-scope/` planning artifacts.
-- PR1 excludes OrgSwitcher, session, and dropdown files; PR2 excludes policy, navigation, and documentation rewrites except consuming the merged PR1 policy.
+- PR1 excludes OrgSwitcher, session, and dropdown files; PR2 excludes policy/navigation rewrites but includes the four reconciled OpenSpec contract files and only the minimal OrgSwitcher/session/dropdown surfaces named above.
 - Each PR starts from its declared `develop` revision and contains no #307 route/session hardening or #291 seeded-CI work.
 - Re-scope a PR1 diff that exceeds 400 total public changed lines or contains another work unit before review.
