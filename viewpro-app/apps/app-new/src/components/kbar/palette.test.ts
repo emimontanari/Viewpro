@@ -1,38 +1,46 @@
-import { describe, expect, it, vi } from 'vitest';
-import { navGroups, ownerNavGroups } from '@/config/nav-config';
-import { buildNavigationActions } from './palette';
+import { createElement, type ReactNode } from 'react';
+import { render } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useActiveTenant } from '@/lib/session-context';
+import { navigationAccessScenarios, type membership } from '@/test/navigation-access-fixtures';
+import { KBarPalette } from './palette';
 
-function collectNavigationActions(groups: typeof navGroups) {
-  const navigateTo = vi.fn();
-  const actions = buildNavigationActions(groups, navigateTo);
+const registeredActions: { name: string; perform?: () => void }[] = [];
+const push = vi.fn();
 
-  for (const action of actions) {
-    action.perform?.();
-  }
+vi.mock('@/lib/session-context', () => ({ useActiveTenant: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+vi.mock('./render-result', () => ({ default: () => null }));
+vi.mock('./use-theme-switching', () => ({ default: () => undefined }));
+vi.mock('kbar', () => ({
+  KBarProvider: ({ actions, children }: { actions: { name: string; perform?: () => void }[]; children: ReactNode }) => {
+    registeredActions.splice(0, registeredActions.length, ...actions);
+    return children;
+  },
+  KBarPortal: ({ children }: { children: ReactNode }) => children,
+  KBarPositioner: ({ children }: { children: ReactNode }) => children,
+  KBarAnimator: ({ children }: { children: ReactNode }) => children,
+  KBarSearch: () => null,
+  VisualState: { hidden: 'hidden', animatingOut: 'animatingOut', animatingIn: 'animatingIn' },
+  useKBar: () => ({ query: { setVisualState: vi.fn() } })
+}));
 
-  return {
-    actionNames: actions.map((action) => action.name),
-    navigationUrls: navigateTo.mock.calls.map(([url]) => url)
-  };
+function renderPalette(activeMembership: ReturnType<typeof membership>, isTenantLoading = false) {
+  vi.mocked(useActiveTenant).mockReturnValue({ activeMembership, activeTenantId: activeMembership.tenant.id, hasMemberships: true, isTenantLoading, memberships: [activeMembership], needsTenantSelection: false, selectedTenantId: activeMembership.tenant.id });
+  render(createElement(KBarPalette));
+  return registeredActions;
 }
 
-function collectNavigationUrls(groups: typeof navGroups) {
-  return collectNavigationActions(groups).navigationUrls;
-}
-
-describe('KBar navigation actions', () => {
-  it('uses owner routes only when the owner nav config is supplied', () => {
-    expect(collectNavigationUrls(ownerNavGroups)).toEqual(['/owner']);
+describe('KBarPalette navigation access', () => {
+  beforeEach(() => {
+    registeredActions.splice(0, registeredActions.length);
+    push.mockReset();
   });
 
-  it('keeps dashboard routes in the default dashboard nav config', () => {
-    expect(collectNavigationUrls(navGroups)).toEqual(expect.arrayContaining(['/dashboard']));
-  });
+  it.each(navigationAccessScenarios)('registers the exact permitted production actions for $state', ({ activeMembership, destinations, isTenantLoading }) => {
+    const actions = renderPalette(activeMembership, isTenantLoading);
 
-  it('does not expose billing actions from the default dashboard nav config', () => {
-    const { actionNames, navigationUrls } = collectNavigationActions(navGroups);
-
-    expect(actionNames).not.toContain('Facturación');
-    expect(navigationUrls).not.toContain('/dashboard/billing');
+    actions.forEach((action) => action.perform?.());
+    expect(actions.map(({ name }, index) => ({ title: name, href: push.mock.calls[index]?.[0] }))).toEqual(destinations);
   });
 });

@@ -4,7 +4,7 @@
 
 ```text
 develop → 📍 PR0 docs/seller-navigation-scope-plan → develop
-                                                    → PR1 fix/seller-navigation-policy → updated develop
+                                                    → PR1 fix/seller-navigation-pr1 → updated develop
                                                                                          → PR2 fix/seller-org-switcher-access → develop
 ```
 
@@ -25,27 +25,28 @@ Run application commands from `viewpro-app`. Run PR0 Git evidence commands from 
 
 | Purpose | Command |
 |---|---|
-| PR1 focused tests | `pnpm --filter next-shadcn-dashboard-starter test src/lib/navigation-access.test.ts src/components/layout/app-sidebar.test.tsx` |
+| PR1 focused tests | `pnpm --filter next-shadcn-dashboard-starter test src/lib/navigation-access.test.ts src/components/layout/app-sidebar.test.tsx src/components/kbar/palette.test.ts` |
 | PR2 focused tests | `pnpm --filter next-shadcn-dashboard-starter test src/components/org-switcher.test.tsx` |
 | App test suite | `pnpm --filter next-shadcn-dashboard-starter test` |
 | Strict lint | `pnpm --filter next-shadcn-dashboard-starter lint:strict` |
-| Typecheck | `pnpm typecheck` |
+| App typecheck | `pnpm --filter next-shadcn-dashboard-starter exec tsc --noEmit` |
+| Root typecheck | `pnpm typecheck` |
+| Production build | `pnpm --filter next-shadcn-dashboard-starter build` |
 | Stage intended PR0 artifacts | `git add openspec/changes/seller-navigation-scope` |
-| Staged whitespace check | `git diff --cached --check` |
-| Staged path/stat evidence | `git diff --cached --name-status && git diff --cached --stat && test -z "$(git diff --cached --name-only -- . ':(exclude)openspec/changes/seller-navigation-scope/**')"` |
+| PR1 public diff count (worktree root) | `{ git diff --numstat origin/develop; git ls-files --others --exclude-standard -z \| xargs -0 -r -n1 sh -c 'git diff --no-index --numstat /dev/null "$0" \|\| true'; } \| awk '{a+=$1; d+=$2} END {print "additions=" a ", deletions=" d ", total=" a+d}'` |
 
 ## PR1: navigation policy and Sidebar/KBar parity
 
-**Branch/base:** `fix/seller-navigation-policy` from `develop` after PR0. **Forecast:** target ≤260 changed lines. **Rollback:** revert PR1 only.
+**Branch/base:** `fix/seller-navigation-pr1` from `develop` after PR0. **Forecast:** hard stop ≤400 total public changed lines. **Rollback:** revert PR1 only.
 
-- [ ] Add `viewpro-app/apps/app-new/src/lib/navigation-access.ts` and `navigation-access.test.ts` with separate resolved context and membership semantics; require `requireOrg`, role, and permission conjunctively; deny empty role allowlists and matching-role/missing-permission access.
-- [ ] Update `viewpro-app/apps/app-new/src/types/index.ts`, `config/nav-config.ts`, and `hooks/use-nav.ts` to use the central policy.
-- [ ] Create `viewpro-app/apps/app-new/src/components/layout/app-sidebar.test.tsx` because it does not exist yet; verify rendered Sidebar behavior for complete realistic MANAGER, PRINCIPAL_MANAGER, AGENT, and loading sets.
-- [ ] Update the existing `viewpro-app/apps/app-new/src/components/kbar/palette.test.ts` for KBar parity with the rendered Sidebar cases.
-- [ ] Update `viewpro-app/apps/app-new/AGENTS.md` and `docs/nav-rbac.md` with the policy and backend-authorization boundary.
-- [ ] Run the PR1 focused tests, app test suite, strict lint, typecheck, and clean-diff command.
+- [x] Add `viewpro-app/apps/app-new/src/lib/navigation-access.ts` and `navigation-access.test.ts` with separate resolved context and membership semantics; require role and permission conjunctively; deny empty role allowlists and matching-role/missing-permission access.
+- [x] Update `viewpro-app/apps/app-new/src/types/index.ts`, `config/nav-config.ts`, and `hooks/use-nav.ts` to use the central policy; export immutable `workspaceAdministrationAccess` for PR2 and reuse it for `Inmobiliarias` and `Equipo`.
+- [x] Create `viewpro-app/apps/app-new/src/components/layout/app-sidebar.test.tsx`; verify realistic MANAGER, PRINCIPAL_MANAGER, AGENT, and loading sets. (Post-hoc causal reconstruction; user-approved exception; not historical RED.)
+- [x] Update `viewpro-app/apps/app-new/src/components/kbar/palette.test.ts` for parity. (Post-hoc causal reconstruction; user-approved exception; not historical RED.)
+- [x] Update `viewpro-app/apps/app-new/AGENTS.md` and `docs/nav-rbac.md` with the policy and backend-authorization boundary.
+- [x] Run the PR1 focused tests, app test suite, strict lint, app/root typecheck, production build, and clean-diff command.
 
-**Clean diff:** only the files named above. No OrgSwitcher, session, dropdown, #307 route/session hardening, or #291 seeded-CI work.
+**Clean diff:** these four OpenSpec contract files plus only the app files named above, including `src/test/navigation-access-fixtures.ts`. No OrgSwitcher, session, dropdown, #307 route/session hardening, or #291 seeded-CI work. Re-scope before review if the total public diff exceeds 400 changed lines.
 
 ## PR2: OrgSwitcher administration access
 

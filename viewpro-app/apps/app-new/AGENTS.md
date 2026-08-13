@@ -45,13 +45,14 @@ Session data contains:
 
 ## Navigation and permissions
 
-`src/hooks/use-nav.ts` filters navigation by the active ViewPro tenant membership:
+`src/lib/navigation-access.ts` is the centralized fail-closed navigation policy used by
+`src/hooks/use-nav.ts`, Sidebar, and KBar. Context loading and membership are separate:
 
-- `access.requireOrg` means an active tenant membership is required.
-- `access.permission` checks `activeMembership.permissions`.
-- `access.role` checks `activeMembership.role`.
+- protected policies require a resolved active membership;
+- `access.permissions` requires every listed active-membership permission;
+- `access.roles` is an exact allowlist; `[]` denies access.
 
-This is UX only. Never treat hidden navigation as security.
+This is UX only. Never treat hidden navigation as security; API and BFF authorization remains authoritative.
 
 ## API/BFF pattern
 

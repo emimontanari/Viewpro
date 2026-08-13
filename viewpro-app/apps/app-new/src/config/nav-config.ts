@@ -1,4 +1,6 @@
-import type { NavGroup } from '@/types';
+import type { NavigationAccessPolicy, NavGroup } from '@/types';
+
+export const workspaceAdministrationAccess: Readonly<NavigationAccessPolicy> = Object.freeze({ roles: Object.freeze(['MANAGER', 'PRINCIPAL_MANAGER']), permissions: Object.freeze(['team.view']) });
 
 /**
  * Customer-facing navigation for the inmobiliaria workspace.
@@ -53,14 +55,16 @@ export const navGroups: NavGroup[] = [
         url: '/dashboard/status-change-requests',
         icon: 'trendingUp',
         isActive: false,
-        items: []
+        items: [],
+        access: { permissions: ['engagements.view_all'] }
       },
       {
         title: 'Inmobiliarias',
         url: '/dashboard/workspaces',
         icon: 'workspace',
         isActive: false,
-        items: []
+        items: [],
+        access: workspaceAdministrationAccess
       },
       {
         title: 'Equipo',
@@ -68,7 +72,7 @@ export const navGroups: NavGroup[] = [
         icon: 'teams',
         isActive: false,
         items: [],
-        access: { requireOrg: true }
+        access: workspaceAdministrationAccess
       }
     ]
   },
@@ -81,7 +85,7 @@ export const navGroups: NavGroup[] = [
         icon: 'profile',
         isActive: false,
         items: [],
-        access: { permission: 'tenant.manage_settings' }
+        access: { roles: ['PRINCIPAL_MANAGER'], permissions: ['tenant.manage_settings'] }
       }
     ]
   },

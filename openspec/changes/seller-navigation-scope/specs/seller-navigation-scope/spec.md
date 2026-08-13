@@ -19,7 +19,7 @@ PR1 MUST provide one navigation access context and policy consumed by Sidebar an
 
 #### Scenario: Protected access is conjunctive and fail-closed
 
-- GIVEN a policy declares `requireOrg`, a role allowlist, or a permission
+- GIVEN a policy declares a role allowlist or a permission
 - WHEN access is evaluated
 - THEN membership is required
 - AND every declared requirement must match
@@ -41,25 +41,12 @@ PR1 MUST provide one navigation access context and policy consumed by Sidebar an
 
 PR1 MUST apply the same filtered navigation policy to Sidebar and KBar. Tests MUST exercise rendered consumer behavior for realistic resolved MANAGER, PRINCIPAL_MANAGER, and AGENT states plus loading.
 
-#### Scenario: AGENT has only permitted destinations
+#### Scenario: Parameterized exact rendered destinations
 
-- GIVEN a resolved AGENT membership
+- GIVEN one test case from this matrix: resolved AGENT; resolved MANAGER with `engagements.view_all` and `team.view`; resolved PRINCIPAL_MANAGER with `engagements.view_all`, `team.view`, and `tenant.manage_settings`; or retained MANAGER, PRINCIPAL_MANAGER, or AGENT membership while context is loading
 - WHEN Sidebar and KBar render
-- THEN both expose the same permitted destinations
-- AND neither exposes restricted destinations
-
-#### Scenario: Manager and principal destinations remain distinct
-
-- GIVEN resolved MANAGER and PRINCIPAL_MANAGER memberships with their existing permissions
-- WHEN Sidebar and KBar render
-- THEN each sees its permitted destinations
-- AND principal-only destinations remain absent for MANAGER
-
-#### Scenario: Loading retains only unrestricted destinations
-
-- GIVEN a retained MANAGER, PRINCIPAL_MANAGER, or AGENT membership while context is loading
-- WHEN Sidebar and KBar render
-- THEN protected destinations are absent
+- THEN each test case exposes exactly its title/routes: AGENT or any loading role: `Inicio` (`/dashboard`), `Propiedades` (`/dashboard/product`), `Seguimiento` (`/dashboard/seguimiento`), `Perfil` (`/dashboard/profile`); MANAGER: those plus `Solicitudes de estado` (`/dashboard/status-change-requests`), `Inmobiliarias` (`/dashboard/workspaces`), `Equipo` (`/dashboard/users`); PRINCIPAL_MANAGER: MANAGER's set plus `Contacto WhatsApp` (`/dashboard/settings/tenant-contact`)
+- AND the AGENT and loading cases expose no protected destination; MANAGER exposes no `Contacto WhatsApp`
 
 ### Requirement: OrgSwitcher consumes PR1 policy without redesign
 
