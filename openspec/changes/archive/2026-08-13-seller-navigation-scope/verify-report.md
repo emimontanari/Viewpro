@@ -1,3 +1,35 @@
+```yaml
+schema: gentle-ai.verify-result/v1
+evidence_revision: sha256:b6c216ca3ee59bc90d44408e18c959e4ac38d2eb663d6d9cfcf123d7b1f0309a
+verdict: pass_with_warnings
+blockers: 0
+critical_findings: 0
+requirements: 3/3
+scenarios: 8/8
+test_command: pnpm --filter next-shadcn-dashboard-starter test
+test_exit_code: 0
+test_output_hash: sha256:84ac66a4e7b2091588f30473626af53b01d0818f1414fcb2a85c6df5d5b25948
+build_command: pnpm --filter next-shadcn-dashboard-starter build
+build_exit_code: 0
+build_output_hash: sha256:a059ef8b79cefb0803b4a8a1428b7046c2166ba79584dc069954d0d714d0b3e2
+```
+
+## Native merged-candidate receipt
+
+| Binding | Value |
+|---|---|
+| Merged HEAD | `b469c8f7a85e46d0804e10dc40372038d7053f8a` |
+| Candidate tree | `5eb02c34feb2206b5400c20d0dff5135c29bcd31` |
+| Target identity | `sha256:9a25f4cfa2b351ece207635a3e3401da62de0d38044cd0b6480429c9544c7131` |
+| Review lineage | `review-9a25f4cfa2b351ec` |
+| Review authority revision | `sha256:ef2199f3e79410a0a644191c9b16ea1b7033ba34564683cc1d0e7061555d3100` |
+| Review receipt identity | `sha256:a580cba67fbb2bbc85eb8b9f44b5b4c664064302d27ae7da418c9bc40333dca1` |
+| Verification evidence record | `sha256:b6c216ca3ee59bc90d44408e18c959e4ac38d2eb663d6d9cfcf123d7b1f0309a` |
+| Tasks | 13/13 complete |
+| Native gate | `post-apply`: allow |
+
+The native review approved the exact merged candidate with no CRITICAL findings. Existing canonical runtime evidence and PR #318 green CI are authoritative; no broad suite was rerun locally. Non-blocking warnings remain: PR1 Sidebar/KBar tests were an approved post-hoc TDD chronology exception; browser persistence remains subject to pre-existing session-hardening follow-up #307; and the historical report below retains pre-merge branch wording while the envelope and native receipt above bind the merged candidate.
+
 ## Verification Report
 
 **Change:** `seller-navigation-scope` (#284)
