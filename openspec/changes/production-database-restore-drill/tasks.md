@@ -20,8 +20,8 @@ The hard session maximum is 400 changed lines; at 390, stop and re-slice, accept
 - [ ] PLAN.1 Preserve PR1 #320/PR2a #321 as immutable history; current authority is spec/design/tasks, not combined-RED notes.
 
 ## Phase 2: PR2b1 — Pure Migration Contract
-- [ ] B1.1 Create/narrow fold/path tests and fixtures, then execute/record focused failing RED for missing, non-directory, traversal, wrong-root, symlink, metacharacter input, physical names, comments/strings, and dynamic SQL.
-- [ ] B1.2 Minimal GREEN: create `migration-contract.mjs` with `validateMigrationDirectory`/`foldMigrations`; no subprocess, CLI, package, cloud, runtime, or credential code.
+- [x] B1.1 Create/narrow fold/path tests and fixtures, then execute/record focused failing RED for missing, non-directory, traversal, wrong-root, symlink, metacharacter input, physical names, comments/strings, and dynamic SQL.
+- [x] B1.2 Minimal GREEN: create `migration-contract.mjs` with `validateMigrationDirectory`/`foldMigrations`; no subprocess, CLI, package, cloud, runtime, or credential code.
 - [ ] B1.3 Verify owned files, secret/diff checks, ≤389 lines, and the current-slice `📍` PR-body diagram; review/merge to `develop` before PR2b2.
 
 ## Phase 3: PR2b2 — Parity and Canonical CLI
