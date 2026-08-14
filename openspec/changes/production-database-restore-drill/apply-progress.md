@@ -118,3 +118,33 @@ Future reconciliation may append current task status and cleanup fields only. It
 ## PR2b Task-Count Scope Correction — 2026-08-14
 
 - The 11 current tasks comprise `PLAN.1` plus ten delivery tasks across PR2b1, PR2b2, and PR2c; this corrects the scope wording above without changing the authoritative total.
+
+## PR2b1 Migration Contract Apply — 2026-08-14
+
+- **Branch/base:** `feat/restore-migration-contract` at `ba49d96a59a2037ac17bc58fd5e03b51bdc1b7d5`.
+- **Scope:** Pure, dependency-free migration-directory validation and DDL folding only. No subprocess, CLI, package, environment, network, cloud, database, or credential code was added.
+- **RED:** `pnpm --filter @viewpro/api test test/restore-schema-parity.spec.ts` failed before GREEN with `Cannot find module '../../../scripts/restore-drill/migration-contract.mjs'`; 0 tests executed because the test module could not import.
+- **GREEN:** The same command passed: 1 file, 4 tests, 0 failures. It covers deterministic lexical folding; create/drop/rename/schema move; quoted names; line/block comments and non-procedural dollar strings; procedural dynamic rejection; expected-table mismatch; and missing/non-directory/traversal/wrong-root/root+nested symlink/metacharacter rejection.
+- **Broader check:** `pnpm --filter @viewpro/api typecheck` remains blocked by pre-existing generated Prisma client omissions across unrelated API code after dependency hydration; no related source was changed.
+- **Current status:** `B1.1` and `B1.2` are complete. `B1.3` remains pending independent review/merge to `develop`; PR2b2 remains blocked until that merge.
+
+### TDD Cycle Evidence
+
+| Task | Test File | Layer | Safety Net | RED | GREEN | TRIANGULATE | REFACTOR |
+|------|-----------|-------|------------|-----|-------|-------------|----------|
+| B1.1 | `apps/api/test/restore-schema-parity.spec.ts` | Unit | N/A — new RED scaffold | ✅ Import failure executed | ✅ 4/4 passed | ✅ fold, parser guards, and path rejection scenarios | ✅ parser error handling retained GREEN |
+| B1.2 | `apps/api/test/restore-schema-parity.spec.ts` | Unit | N/A — new module | ✅ Import failure executed | ✅ 4/4 passed | ✅ distinct fold and rejection paths | ✅ focused rerun passed |
+
+- **Static review checks:** Node syntax, tracked/untracked whitespace checks, and manifest/lockfile no-diff checks passed. Gitleaks scanned the changed helper, test, and change artifacts with no leaks. Current worktree diff is 294 added-or-deleted lines, below the 389-line work-unit limit.
+
+- **Triangulation continuation:** The focused command passed again with 5/5 tests after adding exact repository folding assertions for all 23 product tables and 6 platform tables. The final line count is recalculated during final review.
+
+- **Final review count:** 313 additions plus deletions; still below the 389-line PR2b1 limit.
+
+## PR2b1 Remediation — 2026-08-14
+
+- **RED:** The focused suite failed 4/8 exactly for function-body `EXECUTE`, escape-string DDL, locale-dependent directory ordering, and a real newline-containing migration path.
+- **GREEN:** The same command passed 8/8 after body-aware procedural rejection, PostgreSQL `E'...'` backslash handling, control-character rejection, and explicit code-unit lexical ordering.
+- **Scope:** No PR2b2 behavior or external/process/database access was added; B1.3 remains unchecked pending review/merge.
+- **Final-current correction:** Focused PR2b1 suite passes 10/10; final accepted diff is 375 additions plus deletions.
+- **Final routine correction:** 10/10 pass; functions/procedures fail closed; final diff 373.
