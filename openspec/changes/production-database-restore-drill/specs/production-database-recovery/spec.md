@@ -3,18 +3,18 @@
 ## Requirements
 
 ### Requirement: Safe Drill Preconditions
-PR2c MUST use distinct targets and read-only sources. Before ANY operation, one gate MUST hold conjunctively: PR2b merged; new authorization recorded; exhausted reset approved/completed; fresh credentials/targets provisioned/validated. Targets MUST be allowlisted, empty, and production-denylisted.
+Before ANY operation, PR2c MUST prove both slices merged; new authorization recorded; exhausted-attempt reset approved and completed; fresh credentials plus fresh targets provisioned and validated; read-only sources; and targets distinct, allowlisted, empty, compatible, and production-denylisted.
 #### Scenario: Isolated
 - GIVEN complete gate; WHEN targets pass; THEN authorize PR2c, not production.
 #### Scenario: Unsafe
 - GIVEN false term/check; WHEN action requested; THEN block before cloud/runtime access.
 
 ### Requirement: Persistent Schema Parity Gate
-PR2b MUST provide strict RED-GREEN evidence. Its dependency-free helper MUST lexically fold migrations into physical tables, supporting mapped, ignored, implicit-join, custom-schema, qualified quoted/case names, create/drop, rename, and schema move. It MUST ignore DDL in comments/strings and reject procedural/dynamic DDL. Migration paths MUST realpath beneath repository root; missing, non-directory, traversal, wrong-root, and symlink inputs MUST fail. Schemas MUST match an exact allowlist. CLI/user input MUST NOT enter SQL.
+Both slices MUST provide RED-GREEN evidence: PR2b1 realpath-confines paths and rejects missing/non-directory/traversal/wrong-root/symlink/metacharacter input; PR2b2 adds subprocess/parity/CLI. Helper MUST support mapped/ignored/implicit-join/custom-schema/quoted-case tables, create/drop, rename, and schema move; ignore comments/strings; reject procedural/dynamic DDL; allowlist schemas; and keep user input out of SQL.
 
-Discovery MUST use `psql -X`, minimal environment, `ON_ERROR_STOP`, and database read-only mode. Execute one constant `pg_catalog` query plus one separately-bounded ledger query, then exact-filter in JS. Include relkind `r`/`p`; exclude others. Separate `_prisma_migrations`; classify applied, rolled-back, and incomplete rows.
+PR2b2 MUST use `psql -X`, minimal env, `ON_ERROR_STOP`, and read-only mode. It MUST execute constant catalog and `LIMIT 1000` ledger queries and filter. 23/6 sets derive from migrations; saturation fails closed. Keep `r`/`p` and classify `_prisma_migrations` as applied, rolled-back, or incomplete.
 
-Output MUST return deterministic `pass:false`/exit 1 for mismatch and sanitized exit 2 for invalid/error. Tests MUST prove DDL fails and startup files cannot execute/output. PR2a records this contract only; PR2b proves helper behavior; PR2c owns gates/acceptance.
+Output MUST emit canonical `pass:true`/exit 0; deterministic `pass:false`/exit 1 mismatch; sanitized exit 2 invalid/process error. Focused RED executes/records before GREEN. PR2b2 MUST prove schema injection, malformed output, constant SQL across valid schemas, startup/DDL isolation, redaction, exits 0/1/2, and exit 2 on spawn failure, signal termination, or deterministic hung-`psql` timeout with forced cleanup.
 #### Scenario: Migration fold
 - GIVEN folds, comments/strings, and dynamic DDL; WHEN tested; THEN fold or exit 2 exactly.
 #### Scenario: Catalog and ledger
@@ -27,21 +27,21 @@ Output MUST return deterministic `pass:false`/exit 1 for mismatch and sanitized 
 - GIVEN sensitive fixtures; WHEN repeated; THEN bytes match with only counts/status and sorted PostgreSQL-quoted qualified repository names.
 
 ### Requirement: Recovery Input and RPO
-Each lane MUST select its latest successful dump ≤24h, prove checksum/compression/PostgreSQL readability without rows, and compute RPO; >24h MUST fail.
+Each lane MUST select its latest successful dump ≤24h, prove checksum/compression/PostgreSQL readability without rows, and compute RPO; older input fails.
 #### Scenario: Qualifying
 - GIVEN qualifying dumps; WHEN integrity passes; THEN accept, recording RPO.
 #### Scenario: Stale/corrupt
 - GIVEN invalid input; WHEN validated; THEN fail lane.
 
 ### Requirement: Restore and RTO
-Each lane MUST restore and measure RTO from restore start to validated usability. RTO MUST be ≤60m; other durations remain separate.
+Each lane MUST measure RTO from restore start to validated usability; RTO MUST be ≤60m.
 #### Scenario: RTO pass
 - GIVEN authorized restore; WHEN usable within 60m; THEN pass, recording RTO.
 #### Scenario: RTO fail
 - GIVEN RTO >60m or unusable state; WHEN validated; THEN fail lane.
 
 ### Requirement: Independent Restored-State Validation
-Each database MUST match repository contracts and prove aggregate counts, relational/tenant isolation, and invariants without raw values.
+Each database MUST match repository contracts and prove aggregate counts, relational/tenant isolation, and invariants without raw values. PR2c acceptance requires helper exit 0 and receipt `pass:true`.
 #### Scenario: Structural
 - GIVEN restored databases; WHEN contracts/helper pass; THEN aggregates pass.
 #### Scenario: Invariant
@@ -55,12 +55,12 @@ The drill MUST compare product/platform change-feed, mirror, and operator projec
 - GIVEN disagreement; WHEN compared; THEN fail with counts, never raw IDs.
 
 ### Requirement: Redacted Evidence
-Evidence MUST include lane, dump age/checksums, versions, safe destinations, UTC durations, outcomes, mismatch counts, and cleanup receipts. It MAY include sorted PostgreSQL-quoted schema-qualified repository object names. It MUST exclude customer/runtime identifiers, values, rows, emails, URLs/hosts/IPs, credentials, exact dump keys, money, payloads, and raw SQL.
+Evidence MUST include lane, dump age/checksums, versions, safe destinations, UTC durations, outcomes, mismatch counts, and cleanup receipts. It MAY include sorted PostgreSQL-quoted repository object names. It MUST exclude customer/runtime identifiers, values, rows, emails, URLs/hosts/IPs, credentials, dump keys, money, payloads, and raw SQL.
 #### Scenario: Evidence
 - GIVEN completed drill; WHEN reviewed; THEN outcomes auditable, prohibited fields absent.
 
 ### Requirement: Cleanup and Quarterly Reconciliation
-PR2c MUST prove project deletion and Neon/R2 revocation, retain history/cleanup receipts immutably, recur quarterly, and reconcile runbook/ledger. Apply progress MAY append current status only.
+PR2c MUST prove deletion/revocation, retain immutable receipts, recur quarterly, and reconcile runbook/ledger. Apply-progress MAY append sanitized local TDD evidence separately from immutable operational evidence, never rewriting history or reinterpreting the contract.
 #### Scenario: Teardown
 - GIVEN validation; WHEN teardown finishes; THEN targets absent, credentials revoked.
 #### Scenario: Cleanup

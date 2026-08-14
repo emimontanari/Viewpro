@@ -2,56 +2,45 @@
 
 ## Intent
 
-Prove product/platform recoverability quarterly at RPO ≤24 hours and RTO ≤60 minutes without production writes, while replacing transient parity diagnosis with reviewable, fail-closed evidence.
+Prove quarterly product/platform recovery at RPO ≤24 hours and RTO ≤60 minutes without production writes, using reviewable, fail-closed evidence.
 
 ## Scope
 
 ### In Scope
-- PR2a corrects only these five planning/evidence artifacts, including append-only progress reconciliation; no code, cloud, or runtime action.
-- PR2b adds the dependency-free parity helper with all strict RED-GREEN tests/fixtures and package entry; no cloud or runtime action.
-- PR2c performs the two-lane restore only after PR2b merges and the complete fresh-cycle gate passes, preserving denylisting, integrity, RPO/RTO, invariants, cross-lane checks, evidence, teardown, and records.
+- PR1 #320/PR2a #321 establish history; PR2b1 delivers fold/path RED-GREEN; PR2b2 delivers `psql` parity/CLI/fake/package; PR2c follows both merges and its gate.
 
 ### Out of Scope
-- PR2a/PR2b cloud/runtime actions; PR2c production remediation, failover, PITR, traffic cutover, or raw-data inspection.
-- Backup scheduler redesign unless recovery objectives fail.
+- PR2b1/PR2b2 cloud, runtime, credential, production, or PR2b1 CLI/package actions; PR2c remediation, failover, PITR, cutover, raw-data inspection, or scheduler redesign unless objectives fail.
 
 ## Capabilities
 
 ### New Capabilities
-- `production-database-recovery`: Two-lane objectives, parity gates, evidence, teardown, and cadence.
+- `production-database-recovery`: Recovery objectives, parity, evidence, teardown, and cadence.
 
 ### Modified Capabilities
 None.
 
 ## Approach
 
-Use stacked-to-main/develop slices: PR2a corrects planning; PR2b proves helper behavior; PR2c owns operational gates/actions and may close #290. Catalog access uses `psql -X`, minimal environment, `ON_ERROR_STOP`, database-enforced read-only mode, one constant catalog query, and a bounded ledger query. Schema input is allowlisted and never interpolated into SQL.
+`stacked-to-develop` means each slice starts from refreshed merged `develop`, targets `develop`, and merges before the next starts; no child targets an unmerged branch. The hard session maximum is 400; stop and re-slice at 390, accepting only ≤389 without exception.
 
-## Affected Areas
+Current diagram: `develop (merged #321) → 📍 PR2a2 split-plan amendment → develop → PR2b1 → develop → PR2b2 → develop → PR2c → develop`. Future PR bodies MUST copy it and move the single `📍` to their own slice; no placeholders.
 
-| Area | Impact |
-|---|---|
-| `viewpro-app/scripts/restore-drill/` | PR2b helper/fixtures |
-| `viewpro-app/apps/api/test/restore-schema-parity.spec.ts` | PR2b offline tests |
-| `openspec/changes/production-database-restore-drill/` | PR2a planning; PR2c receipt |
-| Runbook/ledger | PR2c reconciliation |
+| Slice | Start / dependency | Finish and verification | Revert boundary / budget |
+|---|---|---|---|
+| PR2b1 | merged #321 / `develop` → `develop` | Focused failing RED recorded before minimal GREEN for fold/path guards; no CLI/package entry | Revert its code/tests/fixtures; ≤389 |
+| PR2b2 | refreshed `develop` after PR2b1 / `develop` → `develop` | Process/parity/CLI exact-byte contracts and script; focused RED before GREEN | Revert its process/parity/CLI/tests/script; ≤389 |
+| PR2c | refreshed `develop` after both slices / `develop` → `develop` | Only after new authorization recorded; exhausted-attempt reset approved and completed; fresh credentials plus fresh targets provisioned and validated; read-only source and safe targets | Revert current records; retain history/cleanup receipts; ≤389 |
 
 ## Risks
 
-| Risk | Mitigation |
-|---|---|
-| SQL/startup-file execution | Constant SQL, `-X`, read-only DB mode, hostile tests |
-| Unsafe paths/schema input | Realpath repository boundary, exact allowlist, symlink/metacharacter rejection |
-| Sensitive output | Permit only quoted qualified object names and aggregate status fields |
-| Premature retry | Conjunctive PR2c gate; no partial satisfaction |
-| Evidence loss | Historical attempt bytes immutable; append current status only |
+SQL/input abuse, leakage, premature retry, and overload are controlled by constant SQL/realpath, redaction/immutable history, the PR2c conjunction, and the 390/≤389 rule.
 
 ## Rollback Plan
 
-Revert PR2a planning or PR2b helper/tests independently. PR2c may revert runbook, ledger, and current receipt changes, but MUST retain immutable historical evidence and cleanup receipts. Production remains untouched.
+Remove or retarget dependents, then revert only the current slice. PR2c MUST retain immutable history and cleanup receipts. PR2b1/PR2b2 never touch production.
 
 ## Success Criteria
 
-- [ ] PR2a remains five planning/evidence paths and ≤400 lines; PR2b proves deterministic `pass:false`, exit 1 mismatch, and exit 2 sanitized errors.
-- [ ] PR2c starts no operation until PR2b merges and its complete gate passes.
-- [ ] Both lanes meet recovery contracts or record truthful failure, then prove cleanup.
+- [ ] PR2b1/PR2b2 merge to `develop` in order, stay ≤389 lines, and pass focused contracts.
+- [ ] PR2b2 proves canonical `pass:true`/exit 0, deterministic `pass:false`/exit 1, sanitized exit 2, and exact bytes; PR2c accepts only exit 0 plus `pass:true`.
