@@ -2,63 +2,56 @@
 
 ## Technical Approach
 
-Add a quarterly recovery procedure for the nightly plain-SQL dumps from `.github/workflows/db-backup.yml`. Product (`inmoview-prod/`) and platform (`viewpro-platform-prod/`) run independently into dedicated temporary Neon projects. Production is only an R2-origin backup source; restore and validation receive destination credentials only.
+PR2a changes only the five planning/evidence artifacts. PR2b adds the dependency-free Node ESM helper, all offline Vitest security/behavior tests, fixtures, and package entry. PR2c retains guarded two-lane restore execution and cannot begin until its conjunctive gate is complete.
 
 ## Architecture Decisions
 
 | Option | Tradeoff | Decision and rationale |
 |---|---|---|
-| Manual runbook with checked commands | Less repeatable, but keeps deletion and sensitive inputs under explicit review | Use first; no destructive script before one evidenced drill. |
-| Two temporary Neon projects | Costs quota but gives control-plane isolation and unambiguous deletion | Required: one project per lane, never branches in production projects. |
-| Sanitized committed receipt | Durable and reviewable, but metadata must be minimized | Generate a non-committed working receipt, review/redact it, then commit only the approved sanitized Markdown summary. Never commit downloaded dumps or transient JSON. |
+| Migration DDL lexer/folder | More code than regex | Choose: migrations encode physical names. Lexically sort directories; tokenize comments, strings, quoted/qualified identifiers; fold `CREATE/DROP TABLE`, rename, and schema move; fail closed on procedural/dynamic table shaping. |
+| Constant catalog SQL + JS filter | Returns bounded metadata before filtering | Choose: eliminates schema interpolation. Validate schemas against an exact allowlist, query constant metadata once, then exact-filter in JS. Query `_prisma_migrations` separately with a constant bounded statement. |
+| `psql` subprocess | Requires installed client | Choose: no dependency change and fake executable gives a complete offline seam. Use `-X`, `ON_ERROR_STOP`, minimal inherited environment, and database-enforced read-only mode. |
+| Append-only history | Current-state correction is less compact | Choose: attempt diagnosis and cleanup receipts are audit evidence, not mutable task state. |
 
-## Data Flow and Safety Gates
+## Data Flow and Boundaries
 
 ```text
-R2 list/head -> newest qualifying object per exact prefix -> checksum/gzip/header checks
-   -> guarded destination-only psql restore -> schema/invariants -> sanitized receipt
-   -> delete projects/files -> verify absence -> revoke credentials
+realpath(repo/migrations) -> ordered DDL fold -> expected tables
+allowlisted schemas -> constant pg_catalog SQL -> exact JS filter -> actual tables
+constant bounded ledger SQL -------------------------------> ledger state
+expected + actual + ledger -> canonical receipt + exit 0/1/2
 ```
 
-Preflight resolves target identity through Neon metadata and requires explicit allowlisted temporary project IDs **and** names containing the generated drill marker, distinct lane project/database IDs, source/target inequality, and temporary environment labels. A production project ID/name/host denylist is mandatory. Missing or conflicting metadata aborts. Restore subprocess environments contain `TARGET_DATABASE_URL` only; `NEON_PROD_DIRECT_URL`, `NEON_PLATFORM_DIRECT_URL`, and other source DB variables must be absent. R2 credentials are list/get-only; Neon credentials are temporary, target-scoped, and revoked on every exit.
+The CLI accepts only a migration directory resolving beneath the discovered repository root and repeatable schemas from a fixed allowlist. Reject missing/non-directory, traversal, wrong-root, symlink, metacharacter, and injection-shaped input before spawning. Never place user input in SQL.
 
-For each prefix, list successful objects and select the latest key matching its timestamp format and completed before drill start. Record hashed key, object timestamp, age, non-zero size, provider ETag/checksum metadata, and compressed SHA-256. Require age <=24h, `gzip -t`, and a decompressed first-line/header classification as PostgreSQL plain SQL without printing content. `psql -v ON_ERROR_STOP=1` provides final SQL readability proof.
+Spawn `psql` with explicit argv including `-X`; pipe exactly one static catalog query to stdin under `ON_ERROR_STOP` and `default_transaction_read_only=on` (or an explicit read-only transaction), then run one separately bounded constant ledger query. Pass only required executable/libpq/locale variables; do not spread `process.env`. Capture output, discard hostile stderr from public results, and return sanitized exit 2 on failure. Catalog rows include namespace/name/relkind only; JS accepts allowed schemas and relkind `r`/`p`, excludes views, sequences, other relkinds, and separates `_prisma_migrations`.
 
-## Validation Contract
+Canonical output has fixed key order and sorted PostgreSQL-quoted qualified names. Exit 0 requires `pass:true`; exit 1 always includes deterministic `pass:false` for parity/ledger mismatch; exit 2 covers invalid input, unsupported SQL, or subprocess error. Permitted names are repository schema objects—not customer/runtime identifiers. Prohibited output includes values, rows, emails, URLs/hosts/IPs, credentials, exact dump keys, money, payloads, raw SQL, environment, and child stderr.
 
-Against target direct URLs, `prisma migrate status` must report repository parity for both `viewpro-app/apps/api/prisma/migrations/` and `viewpro-app/apps/viewpro-api/prisma/migrations/`; do not repair with `migrate deploy`. Compare expected tables, enums, indexes, foreign keys, and `_prisma_migrations` names/counts with the two `schema.prisma` roots.
+## File Changes and Review Forecast
 
-Evidence queries return counts, mismatch counts, salted set hashes, or booleans only:
+| File | Action | Estimate |
+|---|---|---:|
+| Current five OpenSpec paths | PR2a planning correction | 388 actual |
+| `viewpro-app/scripts/restore-drill/schema-parity.mjs` | PR2b helper/CLI | 155–175 |
+| `viewpro-app/apps/api/test/restore-schema-parity.spec.ts` | PR2b tests | 145–165 |
+| `viewpro-app/scripts/restore-drill/fixtures/*` | PR2b fixtures/fake `psql` | 35–45 |
+| `viewpro-app/package.json` | PR2b command | 2–4 |
 
-- **Product:** counts for tenants, users/memberships, assets/engagements/agents, movements, document requests/documents/versions, notifications, analytics, command log, and outbox; zero FK orphans; membership and engagement-child tenant agreement; unique command idempotency keys and outbox `seqNo` with monotonic min/max/count checks.
-- **Platform:** counts for operators by role/status, tenants, mirror, cursor, audit by source, and payment/reversal classes; active OWNER exists; unique mirror/audit source events; one cursor row; reversal links reference originals uniquely, never reversals; payment periods are ordered. No monetary totals are emitted.
-- **Cross-lane:** salted tenant-set hashes and mismatch count; status/limit projection mismatch counts; cursor <= product outbox maximum; mirror/audit source-event uniqueness; audit-only events excluded from mirror; status mirror values non-empty.
+PR2a is exactly these five paths at 388 changed lines: hard stop ≤400. PR2b forecasts 337–389. At 390, stop and reduce duplicated fixture/helper code; if still projected over 400, replan a stacked non-security fixture/package slice. Helper and every security test remain together; none may be dropped. No size exception.
 
-## Timing and Evidence
-
-Record UTC timestamps plus monotonic durations: dump timestamp; drill/preflight start; restore start; schema-ready; invariant-validation complete; teardown start/complete. At final lane validation, `RPO = validation_complete - dump_timestamp`; if it exceeds 24h, the lane fails. `RTO = validation_complete - restore_start`; teardown and total drill durations are separate. Each lane must meet RPO <=24h and RTO <=60m.
-
-The receipt records lane, dump fingerprint/bytes, tool/server major versions, hashed target identity, timings, aggregate vectors, named invariant outcomes, mismatch counts, cleanup absence, and revocation outcome. It excludes URLs, secrets, raw SQL/rows, customer identifiers, emails, storage keys, JSON payloads, receipts, money, and unapproved object names.
-
-## File Changes During Apply
-
-| File | Action | Description |
-|---|---|---|
-| `docs/plans/2026-07-21-production-go-live-runbook.md` | Modify | Add guarded two-lane procedure, receipt template, quarterly cadence, abort/cleanup checklist. |
-| `docs/plans/2026-07-20-recta-final-execution.md` | Modify | Reconcile backup automation separately from drill completion. |
-
-Keep this documentation-only work unit <=400 changed lines. The first operational receipt is a later, separately reviewed work unit.
+PR2c file budget: receipt 80–100; runbook 50–65; ledger 20–30; append-only status 15–20; operational evidence 135–175: **300–390**. At 390, stop; before 400, split runbook/ledger/current-record reconciliation into a later stacked-to-main slice. Keep operational acceptance with cleanup evidence; delay #290 closure until reconciliation lands.
 
 ## Testing Strategy
 
-| Layer | Approach |
-|---|---|
-| Static safety | Review commands for fail-closed allowlists, destination-only environment, `ON_ERROR_STOP`, redaction, and idempotent cleanup; no script is added now. |
-| Dry run | Exercise preflight with synthetic metadata; prove production-like, equal, unknown, or unallowlisted targets abort before download/restore. |
-| Acceptance | Perform both isolated restores, validations, timing, teardown, absence checks, and revocation; production remains read-only. |
+PR2b RED cases cover lexical order; create/drop; rename; schema move; quoted qualified/case names; comments/string literals; dynamic/procedural rejection; repository boundary/symlinks; and deterministic exits. Fake-`psql` tests inspect stdin, argv, and environment; provide multiple schemas, every relevant relkind, separate ledger applied/rolled-back/incomplete rows, attempted DDL, startup-file output, nonzero status, and hostile stderr. They prove `-X`, read-only DB enforcement, constant query count, exact JS filtering, no interpolation, no leakage, and current 23/6-table expectations.
 
-Abort on any ambiguity, stale/corrupt input, restore error, invariant failure, or RTO breach. Cleanup is retry-safe: absent projects/files and already-revoked credentials count as success after provider verification; recovery success remains false if validation failed.
+## PR2c Gate, Rollout, and Rollback
 
-## Migration / Rollout
+No PR2c action occurs until all are true: PR2b merged; new explicit authorization recorded; exhausted runtime reset approved+completed; fresh credentials/targets provisioned+validated. PR2c alone owns restore acceptance, RPO/RTO, invariants, cross-lane checks, evidence, teardown, and retry decisions.
 
-No application or database migration. Publish the runbook first; execute only after prerequisites are approved.
+Rollback may revert PR2a planning, PR2b code, or PR2c runbook/ledger/current receipt changes. Immutable attempt history and cleanup receipts MUST remain. No database migration is required.
+
+## Open Questions
+
+None.
