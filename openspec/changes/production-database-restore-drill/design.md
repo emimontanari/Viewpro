@@ -2,56 +2,68 @@
 
 ## Technical Approach
 
-PR2a changes only the five planning/evidence artifacts. PR2b adds the dependency-free Node ESM helper, all offline Vitest security/behavior tests, fixtures, and package entry. PR2c retains guarded two-lane restore execution and cannot begin until its conjunctive gate is complete.
+Deliver the offline parity gate as two dependency-free Node ESM work units. `stacked-to-develop` means PR2b1 starts from merged `develop` and targets `develop`; after merge, PR2b2 starts from refreshed `develop` and targets `develop`; PR2c follows both the same way. No child targets an unmerged branch.
 
 ## Architecture Decisions
 
 | Option | Tradeoff | Decision and rationale |
 |---|---|---|
-| Migration DDL lexer/folder | More code than regex | Choose: migrations encode physical names. Lexically sort directories; tokenize comments, strings, quoted/qualified identifiers; fold `CREATE/DROP TABLE`, rename, and schema move; fail closed on procedural/dynamic table shaping. |
-| Constant catalog SQL + JS filter | Returns bounded metadata before filtering | Choose: eliminates schema interpolation. Validate schemas against an exact allowlist, query constant metadata once, then exact-filter in JS. Query `_prisma_migrations` separately with a constant bounded statement. |
-| `psql` subprocess | Requires installed client | Choose: no dependency change and fake executable gives a complete offline seam. Use `-X`, `ON_ERROR_STOP`, minimal inherited environment, and database-enforced read-only mode. |
-| Append-only history | Current-state correction is less compact | Choose: attempt diagnosis and cleanup receipts are audit evidence, not mutable task state. |
+| Pure migration module | Adds one internal module boundary | PR2b1 owns `migration-contract.mjs`; PR2b2 imports it without modification. This makes folding/path security independently reviewable, testable, and revertible. |
+| DDL token fold | More code than regex | Lexically order migration directories; tokenize comments, strings, dollar quotes, and quoted/qualified identifiers; fold `CREATE/DROP TABLE`, rename, and schema move; fail closed on procedural/dynamic table shaping. |
+| Two constant `psql` calls | Two processes rather than one | PR2b2 sends one exact catalog statement and one separately bounded ledger statement. No CLI value enters SQL; JS performs exact schema/relkind filtering. |
+| Subprocess seam | Requires installed `psql` operationally | Use `psql -X -v ON_ERROR_STOP=1`, database-enforced read-only execution, and a minimal environment. The exact-byte fake proves argv, stdin, environment, startup isolation, and DDL rejection offline. |
+| Canonical aggregate receipt | Omits unexpected object names | Fixed key order, sorted permitted repository names, counts/status only, and sanitized errors prevent runtime or credential leakage. |
 
-## Data Flow and Boundaries
+## Slice Boundaries and Data Flow
 
 ```text
-realpath(repo/migrations) -> ordered DDL fold -> expected tables
-allowlisted schemas -> constant pg_catalog SQL -> exact JS filter -> actual tables
-constant bounded ledger SQL -------------------------------> ledger state
-expected + actual + ledger -> canonical receipt + exit 0/1/2
+PR2b1: candidate path -> repository realpath confinement -> ordered DDL fold -> expected tables
+                                                                    |
+PR2b2: allowlisted schemas -> constant catalog SQL -> exact filter --+-> parity + ledger -> canonical CLI
+                           -> bounded ledger SQL ---------------------+
+PR2c:  authorization gate -> two-lane restore/validate/evidence/cleanup (unchanged)
 ```
 
-The CLI accepts only a migration directory resolving beneath the discovered repository root and repeatable schemas from a fixed allowlist. Reject missing/non-directory, traversal, wrong-root, symlink, metacharacter, and injection-shaped input before spawning. Never place user input in SQL.
+PR2b1 has no subprocess import, database connection, public CLI, package script, cloud call, or production operation. It realpath-confines paths, rejecting missing/non-directory/traversal/wrong-root/symlink/metacharacter input, and folds physical tables. Focused RED executes and is recorded before minimal GREEN.
 
-Spawn `psql` with explicit argv including `-X`; pipe exactly one static catalog query to stdin under `ON_ERROR_STOP` and `default_transaction_read_only=on` (or an explicit read-only transaction), then run one separately bounded constant ledger query. Pass only required executable/libpq/locale variables; do not spread `process.env`. Capture output, discard hostile stderr from public results, and return sanitized exit 2 on failure. Catalog rows include namespace/name/relkind only; JS accepts allowed schemas and relkind `r`/`p`, excludes views, sequences, other relkinds, and separates `_prisma_migrations`.
+PR2b2 validates schemas, imports PR2b1, then runs RED before GREEN. It owns injection, malformed/nonzero output, exact catalog/ledger SQL across valid schemas, startup/DDL isolation, redaction, exits 0/1/2, and 23/6 physical sets. It passes explicit argv and only required executable/libpq/locale variables; child stderr, raw SQL, environment, hosts, credentials, and runtime identifiers never reach public output. `LIMIT 1000` is a bounded ceiling above current migration counts; saturation fails closed.
 
-Canonical output has fixed key order and sorted PostgreSQL-quoted qualified names. Exit 0 requires `pass:true`; exit 1 always includes deterministic `pass:false` for parity/ledger mismatch; exit 2 covers invalid input, unsupported SQL, or subprocess error. Permitted names are repository schema objects—not customer/runtime identifiers. Prohibited output includes values, rows, emails, URLs/hosts/IPs, credentials, exact dump keys, money, payloads, raw SQL, environment, and child stderr.
+PR2b2 bounds each `psql` child with one deterministic timeout, force-cleans a hung child, and maps spawn failure, signal termination, or timeout to sanitized exit 2. Current diagram: `develop (merged #321) → 📍 PR2a2 split-plan amendment → develop → PR2b1 → develop → PR2b2 → develop → PR2c → develop`. Future PR bodies copy it and move the single `📍` to their own slice; no placeholders.
 
-## File Changes and Review Forecast
+## Interfaces / Contracts
 
-| File | Action | Estimate |
+```js
+// PR2b1: scripts/restore-drill/migration-contract.mjs
+validateMigrationDirectory(candidate, { repositoryRoot }) -> canonicalDirectory
+foldMigrations(candidate, { repositoryRoot }) -> { tables: readonly string[] }
+
+// PR2b2: scripts/restore-drill/schema-parity.mjs
+runParity({ migrationDir, repositoryRoot, schemas, psqlPath })
+  -> { exitCode: 0 | 1 | 2, output: CanonicalReceipt }
+```
+
+PR2b1 errors use stable internal codes: `migration_path_invalid`, `expected_tables_invalid`, or `migration_sql_unsupported`. PR2b2 maps invalid schema/process/output failures to sanitized exit 2; parity or ledger mismatch yields deterministic exit 1; pass yields exit 0. JSON is newline-terminated with fixed key order and sorted PostgreSQL-quoted repository names. Apply-progress may append sanitized local TDD evidence separately from immutable operational evidence, never rewriting history or reinterpreting this contract.
+
+## File Changes and Review Budget
+
+| Slice | Files | Target |
 |---|---|---:|
-| Current five OpenSpec paths | PR2a planning correction | 388 actual |
-| `viewpro-app/scripts/restore-drill/schema-parity.mjs` | PR2b helper/CLI | 155–175 |
-| `viewpro-app/apps/api/test/restore-schema-parity.spec.ts` | PR2b tests | 145–165 |
-| `viewpro-app/scripts/restore-drill/fixtures/*` | PR2b fixtures/fake `psql` | 35–45 |
-| `viewpro-app/package.json` | PR2b command | 2–4 |
+| PR2b1 | Migration contract and focused fold/path tests/fixtures | ≤389 |
+| PR2b2 | Parity CLI, remaining tests/fake, package script | ≤389 |
+| PR2c | Existing receipt/runbook/ledger/status/evidence paths only | ≤389 |
 
-PR2a is exactly these five paths at 388 changed lines: hard stop ≤400. PR2b forecasts 337–389. At 390, stop and reduce duplicated fixture/helper code; if still projected over 400, replan a stacked non-security fixture/package slice. Helper and every security test remain together; none may be dropped. No size exception.
+The prior combined RED notes are non-authoritative planning input. Apply follows the current spec/design/tasks. The hard session maximum is 400; stop and re-slice at 390, accepting only ≤389 without exception.
 
-PR2c file budget: receipt 80–100; runbook 50–65; ledger 20–30; append-only status 15–20; operational evidence 135–175: **300–390**. At 390, stop; before 400, split runbook/ledger/current-record reconciliation into a later stacked-to-main slice. Keep operational acceptance with cleanup evidence; delay #290 closure until reconciliation lands.
+## Verification and Rollback
 
-## Testing Strategy
+| Slice | Verification | Rollback boundary |
+|---|---|---|
+| PR2b1 | Create/narrow tests, execute/record focused failing RED, then minimal GREEN and diff/secret checks | Revert only migration module and focused tests/fixtures. |
+| PR2b2 | Create/narrow tests, execute/record focused failing RED, then minimal GREEN; prove exact SQL/query count, lifecycle exit 2, process safety, outputs, and 23/6 sets | Revert process/parity/CLI tests/fake/script; PR2b1 remains valid. |
+| PR2c | Existing authorization, integrity, RPO/RTO, invariants, cross-lane evidence, teardown, and reconciliation checks | Revert current records only; retain immutable history and cleanup receipts. |
 
-PR2b RED cases cover lexical order; create/drop; rename; schema move; quoted qualified/case names; comments/string literals; dynamic/procedural rejection; repository boundary/symlinks; and deterministic exits. Fake-`psql` tests inspect stdin, argv, and environment; provide multiple schemas, every relevant relkind, separate ledger applied/rolled-back/incomplete rows, attempted DDL, startup-file output, nonzero status, and hostile stderr. They prove `-X`, read-only DB enforcement, constant query count, exact JS filtering, no interpolation, no leakage, and current 23/6-table expectations.
+## PR2c Gate, Rollout, and Open Questions
 
-## PR2c Gate, Rollout, and Rollback
+No PR2c action occurs until all are true: PR2b1/PR2b2 merged; new authorization recorded; exhausted-attempt reset approved and completed; fresh credentials plus fresh targets provisioned and validated; read-only sources; and targets distinct, allowlisted, empty, compatible, and production-denylisted. PR2c owns restore acceptance, retry decisions, evidence, and cleanup. No database migration is required.
 
-No PR2c action occurs until all are true: PR2b merged; new explicit authorization recorded; exhausted runtime reset approved+completed; fresh credentials/targets provisioned+validated. PR2c alone owns restore acceptance, RPO/RTO, invariants, cross-lane checks, evidence, teardown, and retry decisions.
-
-Rollback may revert PR2a planning, PR2b code, or PR2c runbook/ledger/current receipt changes. Immutable attempt history and cleanup receipts MUST remain. No database migration is required.
-
-## Open Questions
-
-None.
+Open questions: None.
