@@ -2,65 +2,56 @@
 
 ## Intent
 
-Prove recoverability—not merely backup execution—for both production databases: product and platform. Establish quarterly drills with RPO ≤24 hours and RTO ≤60 minutes per lane while production remains read-only.
+Prove product/platform recoverability quarterly at RPO ≤24 hours and RTO ≤60 minutes without production writes, while replacing transient parity diagnosis with reviewable, fail-closed evidence.
 
 ## Scope
 
 ### In Scope
-- Select each lane's latest verified dump and prove metadata, checksum, gzip, and restore integrity.
-- Restore into two temporary Neon projects with preflight target guards.
-- Validate migrations, schema, aggregate counts, lane invariants, and cross-lane consistency.
-- Record RPO/RTO timings and aggregate/redacted evidence; prove target cleanup and credential revocation.
-- Establish quarterly drills; reconcile the stale ledger and runbook.
+- PR2a corrects only these five planning/evidence artifacts, including append-only progress reconciliation; no code, cloud, or runtime action.
+- PR2b adds the dependency-free parity helper with all strict RED-GREEN tests/fixtures and package entry; no cloud or runtime action.
+- PR2c performs the two-lane restore only after PR2b merges and the complete fresh-cycle gate passes, preserving denylisting, integrity, RPO/RTO, invariants, cross-lane checks, evidence, teardown, and records.
 
 ### Out of Scope
-- Production writes, failover, PITR validation, or application traffic cutover.
-- Raw-data inspection/export or permanent environments.
-- Backup scheduler redesign unless drill evidence shows it fails recovery objectives.
+- PR2a/PR2b cloud/runtime actions; PR2c production remediation, failover, PITR, traffic cutover, or raw-data inspection.
+- Backup scheduler redesign unless recovery objectives fail.
 
 ## Capabilities
 
 ### New Capabilities
-- `production-database-recovery`: Two-lane drills, recovery objectives, redacted evidence, teardown, and cadence.
+- `production-database-recovery`: Two-lane objectives, parity gates, evidence, teardown, and cadence.
 
 ### Modified Capabilities
 None.
 
 ## Approach
 
-Run product and platform restore lanes against separately allowlisted temporary Neon projects. Preflight requires generated target markers and production denylisting. Each lane verifies its dump, restores with fail-fast PostgreSQL tooling, validates migrations/schema/counts/invariants, and records RPO/RTO. Cross-lane checks use only digests and mismatch counts. Teardown confirms target absence and Neon/R2 credential revocation.
+Use stacked-to-main/develop slices: PR2a corrects planning; PR2b proves helper behavior; PR2c owns operational gates/actions and may close #290. Catalog access uses `psql -X`, minimal environment, `ON_ERROR_STOP`, database-enforced read-only mode, one constant catalog query, and a bounded ledger query. Schema input is allowlisted and never interpolated into SQL.
 
 ## Affected Areas
 
-| Area | Impact | Description |
-|------|--------|-------------|
-| `openspec/specs/production-database-recovery/spec.md` | New | Recovery drill contract |
-| `docs/plans/2026-07-21-production-go-live-runbook.md` | Modified | Procedure, evidence, cadence |
-| `docs/plans/2026-07-20-recta-final-execution.md` | Modified | Reconciled status |
+| Area | Impact |
+|---|---|
+| `viewpro-app/scripts/restore-drill/` | PR2b helper/fixtures |
+| `viewpro-app/apps/api/test/restore-schema-parity.spec.ts` | PR2b offline tests |
+| `openspec/changes/production-database-restore-drill/` | PR2a planning; PR2c receipt |
+| Runbook/ledger | PR2c reconciliation |
 
 ## Risks
 
-| Risk | Likelihood | Mitigation |
-|------|------------|------------|
-| Wrong destination | Low | Allowlist temporary IDs; deny production; abort on ambiguity |
-| Sensitive evidence | Med | Prohibit secrets, rows, customer identifiers, and sensitive object metadata |
-| Corrupt dump or role/grant gaps | Med | Integrity checks; fail-fast restore; document logical-dump limits |
-| Cross-lane mismatch | Med | Independent restores plus digest/mismatch checks |
-| Cost/quota limits | Med | Confirm capacity before provisioning; destroy targets promptly |
-| Incomplete cleanup | Low | Cleanup on every exit; verify deletion and credential revocation |
+| Risk | Mitigation |
+|---|---|
+| SQL/startup-file execution | Constant SQL, `-X`, read-only DB mode, hostile tests |
+| Unsafe paths/schema input | Realpath repository boundary, exact allowlist, symlink/metacharacter rejection |
+| Sensitive output | Permit only quoted qualified object names and aggregate status fields |
+| Premature retry | Conjunctive PR2c gate; no partial satisfaction |
+| Evidence loss | Historical attempt bytes immutable; append current status only |
 
 ## Rollback Plan
 
-Abort before restore on target ambiguity. On failure, destroy isolated targets, remove transient artifacts, revoke credentials, and retain only redacted evidence. Production remains untouched.
-
-## Dependencies
-
-- Least-privilege Neon and R2 access; current successful dumps.
-- PostgreSQL client ≥ server; Neon capacity/quota; operator availability.
+Revert PR2a planning or PR2b helper/tests independently. PR2c may revert runbook, ledger, and current receipt changes, but MUST retain immutable historical evidence and cleanup receipts. Production remains untouched.
 
 ## Success Criteria
 
-- [ ] Both lanes restore and pass migration, schema, count, invariant, and cross-lane validation.
-- [ ] RPO ≤24 hours and RTO ≤60 minutes are met or accurately recorded as failures.
-- [ ] Redacted evidence is retained; targets are absent and credentials revoked.
-- [ ] Quarterly cadence, runbook, and ledger reflect verified reality.
+- [ ] PR2a remains five planning/evidence paths and ≤400 lines; PR2b proves deterministic `pass:false`, exit 1 mismatch, and exit 2 sanitized errors.
+- [ ] PR2c starts no operation until PR2b merges and its complete gate passes.
+- [ ] Both lanes meet recovery contracts or record truthful failure, then prove cleanup.

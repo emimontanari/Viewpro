@@ -2,52 +2,40 @@
 
 ## Review Workload Forecast
 
-| Field | Value |
-|-------|-------|
-| Estimated changed lines | 430–650 public lines; raw logs out of Git |
-| 400-line budget risk | High |
-| Chained PRs recommended | Yes |
-| Suggested split | PR1 planning → PR2 execution/docs/receipt |
-| Delivery strategy | ask-on-risk, resolved by maintainer |
-| Chain strategy | stacked-to-main |
+| Slice | File-level estimate | Boundary |
+|---|---:|---|
+| PR2a five current artifact paths | 388 actual | Planning/evidence only; hard stop ≤400 |
+| PR2b helper / tests / fixtures / package | 155–175 / 145–165 / 35–45 / 2–4 = 337–389 | No cloud/runtime; helper+security tests together |
+| PR2c receipt / runbook / ledger / status / operations | 80–100 / 50–65 / 20–30 / 15–20 / 135–175 = 300–390 | Authorized restore/evidence/docs/cleanup |
 
 Decision needed before apply: No
 Chained PRs recommended: Yes
 Chain strategy: stacked-to-main
 400-line budget risk: High
 
-### Suggested Work Units
+No size exception. At 390, stop. PR2b reduces duplication or replans only non-security fixture/package work; helper and security tests remain together. PR2c splits runbook/ledger/current-record reconciliation before 400 and delays closure; acceptance stays with cleanup evidence.
 
-| Unit | Goal | Likely PR | Notes |
-|------|------|-----------|-------|
-| 1 | Publish planning-only OpenSpec artifacts | PR1 | `develop`; #290 reference; no access/closure |
-| 2 | Execute lanes and publish evidence | PR2 | After PR1 and access/quota; fresh `develop`; raw logs out |
+```text
+PR1 planning (merged 2e493cb) -> PR2a planning correction -> PR2b helper/tests -> PR2c authorized operation/closure
+```
+## Phase 1: PR2a Planning Correction
+- [ ] 1.1 Correct only the five authorized OpenSpec paths; preserve the 2,900-byte `apply-progress.md` prefix, record the four-PR chain, run budget/secret/diff checks, and keep total ≤400.
 
-**Resolved chain:** Sequential PRs target `develop`; no feature tracker/size exception.
-**Hard gate:** PR2 does not exist/start until PR1 merges, least-privilege Neon/R2 access and two-project quota are approved, and evidence/target checks pass.
-**Issue closure:** PR1 MUST NOT close #290. PR2 may close it only after both lanes, sanitized evidence, cleanup, revocation, runbook/ledger reconciliation, and next-drill scheduling pass.
-**Dependency:** PR1 (`develop`) 📍 → PR2 (`develop`, fresh base after merge).
+## Phase 2: PR2b RED — Helper Contract
+- [ ] 2.1 Add fake-`psql` RED tests in `viewpro-app/apps/api/test/restore-schema-parity.spec.ts` for schemas/relkinds/ledger, `-X`, minimal environment, `ON_ERROR_STOP`, DB read-only/DDL failure, startup silence, constant stdin, nonzero status, and hostile stderr.
+- [ ] 2.2 Add RED tests for lexical create/drop/rename/schema-move/quoted-case folds, comments/strings, procedural/dynamic rejection, and repository realpath traversal/wrong-root/symlink/metacharacter/schema injection failures.
+- [ ] 2.3 Add fixtures under `viewpro-app/scripts/restore-drill/fixtures/`; prove current 23/6 expectations, deterministic output, and exit 1/2 behavior without PostgreSQL/cloud.
 
-## Phase 1: Provisioning, Safety, and Evidence Gates
+## Phase 3: PR2b GREEN and Verification
+- [ ] 3.1 Create `viewpro-app/scripts/restore-drill/schema-parity.mjs`: resolve repository-bound paths/schema allowlist; fold supported DDL and reject unsupported shaping.
+- [ ] 3.2 Spawn `psql` with sanitized argv/environment/read-only mode; execute one constant catalog query plus one bounded ledger query; exact-filter in JS without interpolation.
+- [ ] 3.3 Emit fixed-order JSON with separated table/ledger parity, permitted sorted PostgreSQL-quoted qualified names, deterministic `pass:false`/exit 1, and sanitized exit 2.
+- [ ] 3.4 Add `restore:parity` to `viewpro-app/package.json`; make every offline RED case GREEN with helper/security tests together.
+- [ ] 3.5 Verify stdin/options/environment, DDL/startup defenses, byte determinism, secret scans, `git diff --check`, and ≤400; merge PR2b after review/CI, with no cloud/runtime action.
 
-- [ ] 1.1 In PR1, finalize gate: require Neon quota, least-privilege Neon/R2 access, revocation owner/deadline, no secret values; do not connect.
-- [ ] 1.2 In PR2, add fail-closed preflight for `.github/workflows/db-backup.yml`: metadata, age/checksum/gzip/SQL checks, read-only source, allowlisted targets, production denylist, inequality, PostgreSQL compatibility, aborts.
-- [ ] 1.3 In PR2, add the redacted receipt template and UTC/monotonic dump age/RPO, RTO, validation, teardown, total definitions; prohibit URLs, secrets, rows, identifiers, payloads, money, raw SQL.
-
-## Phase 2: Independent Restore and Validation
-
-- [ ] 2.1 In PR2, restore `inmoview-prod/` into a temporary Neon project with destination-only credentials; prove `apps/api/prisma/{schema.prisma,migrations/}` parity, aggregates, tenant/relational invariants, outbox/command checks.
-- [ ] 2.2 In PR2, restore `viewpro-platform-prod/` into a distinct temporary Neon project; prove `apps/viewpro-api/prisma/{schema.prisma,migrations/}` parity, operator/aggregate/payment invariants, mirror/change-feed uniqueness, and cursor checks.
-- [ ] 2.3 In PR2, compare lanes only with salted IDs/hashes, mismatch counts, booleans, status/limits, cursor bounds, event uniqueness, and audit-only exclusion; record no raw identifiers.
-
-## Phase 3: Cleanup, Evidence, and Reconciliation
-
-- [ ] 3.1 In PR2, run finally-style cleanup: remove targets/files, verify absence, revoke Neon/R2 credentials, verify revocation, and retry idempotently.
-- [ ] 3.2 In PR2, after redaction review, create `openspec/changes/production-database-restore-drill/evidence/restore-drill-receipt.md`; keep raw logs/dumps outside Git.
-- [ ] 3.3 In PR2, update `docs/plans/2026-07-20-recta-final-execution.md` and runbook from stale language to backup mechanism, result, quarterly cadence, RPO/RTO, escalation, and next date.
-
-## Phase 4: Verification and Closure
-
-- [ ] 4.1 In PR2, verify all 13 scenarios: isolated/unsafe preflight; qualifying/stale-corrupt inputs; RTO pass/fail; structural/invariant pass/fail; projection agree/disagree; safe evidence; successful/failed teardown.
-- [ ] 4.2 In each PR, review its diff; in PR2 verify redaction, isolation, and Git history contain no credentials, dumps, or prohibited output.
-- [ ] 4.3 PR1 may merge while referencing #290 but MUST NOT close it; PR2 may close #290 only after both lanes, sanitized evidence, cleanup, revocation, runbook/ledger reconciliation, and next-drill scheduling pass; otherwise retain truthful failure.
+## Phase 4: PR2c Fresh Authorized Cycle
+- [ ] 4.1 Before ANY operation, prove one conjunctive gate: PR2b merged; new authorization recorded; exhausted runtime reset approved+completed; fresh credentials/targets provisioned+validated.
+- [ ] 4.2 Run guarded two-lane integrity/restore/helper/RPO/RTO/structural/invariant checks; require exit 0 plus `pass:true`; retain sanitized aggregate/object-name evidence.
+- [ ] 4.3 Run digest-only cross-lane checks and all 18 scenarios; prohibit customer/runtime identifiers, values, rows, emails, URLs/hosts/IPs, credentials, exact dump keys, money, and payloads.
+- [ ] 4.4 Prove target deletion and Neon/R2 revocation on every exit; remove Keychain/transient files/dumps; retain immutable cleanup receipts.
+- [ ] 4.5 Within budget, reconcile runbook/ledger/current receipt and APPEND status only; never rewrite history. Roll back current records only. Close #290 after full acceptance/reconciliation.
