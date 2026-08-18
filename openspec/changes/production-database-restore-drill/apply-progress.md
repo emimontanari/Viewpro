@@ -148,3 +148,36 @@ Future reconciliation may append current task status and cleanup fields only. It
 - **Scope:** No PR2b2 behavior or external/process/database access was added; B1.3 remains unchecked pending review/merge.
 - **Final-current correction:** Focused PR2b1 suite passes 10/10; final accepted diff is 375 additions plus deletions.
 - **Final routine correction:** 10/10 pass; functions/procedures fail closed; final diff 373.
+
+## PR2b2 Schema Parity Apply — 2026-08-17
+
+- **RED:** Focused import failed for missing `schema-parity.mjs` before GREEN.
+- **Harness audit:** The 16/18 lifecycle failures were fake-process timing defects; targeted resistance now uses deterministic fake timers, with real fake integration retained for PID reaping.
+- **GREEN:** `pnpm --filter @viewpro/api test test/restore-schema-parity.spec.ts` passed 20/20 using only the synthetic fake executable.
+- **Scope/status:** #323 merged; B1.3 and B2.1–B2.3 are complete. B2.4 remains pending review/merge.
+
+| Task | RED | GREEN |
+|------|-----|-------|
+| B2.1–B2.3 | ✅ Missing-module import | ✅ 20/20 focused tests |
+
+- **Lifecycle remediation:** Deterministic fake-timer children now prove unsettled SIGTERM then grace-period SIGKILL; real fake integration proves PID reaping. Focused GREEN remains 20/20.
+
+## PR2b2 Fixture Cleanup Correction — 2026-08-17
+
+- The runtime settlement text `No  fixtures remain` was caused by shell backtick substitution and was insufficient evidence. Literal cleanup removed the verified synthetic fixture directory; no `.parity-*` paths remain under `viewpro-app/scripts/restore-drill/fixtures`.
+
+## PR2b2 Strict TDD Evidence — 2026-08-17
+
+| Task | Test File | Layer | RED | GREEN | Safety Net | TRIANGULATE | REFACTOR |
+|------|-----------|-------|-----|-------|------------|-------------|----------|
+| B2.4 lifecycle correction | `apps/api/test/restore-schema-parity.spec.ts` | Unit/process seam | ✅ Cooperative child first failed with an unexpected `SIGKILL` | ✅ 20/20 focused tests passed | ✅ 20/20 focused baseline passed | ✅ Resistant children receive `SIGTERM`, `SIGKILL`; cooperative child receives only `SIGTERM` | ➖ None needed |
+
+## PR2b2 JD2 Remediation — 2026-08-18
+- **Safety/RED/GREEN:** Focused baseline 26/26; RED 7 failed/19 passed; GREEN 26/26 via `pnpm --filter @viewpro/api test test/restore-schema-parity.spec.ts`.
+- **Contract:** Empty source now fails `migration_path_invalid`; public Prisma metadata is excluded; ledger uses `started_at, migration_name` chronology with exact returned-order parity and existing status/saturation checks.
+- **Lifecycle:** Fake timers prove exact cleanup; only PID reaping retains a generous 3× default-time bound.
+- **Scope:** Attempt 17 passed; runtime revision `sha256:1db9eff8688b68f1bdee10f7f29f69853340869c95cc391a2a4df127a6ff8663`, evidence `sha256:f86882c27fa23a9191848ba729be95928426719721aac7b8c21fd7b504e4fc6b`, candidate 386/389 (report excluded). Repository-local synthetic fixtures only; no external resource touched. B2.4 remains pending review/merge.
+## PR2b2 JD3 Remediation — 2026-08-18
+- **Attempt/token:** Local synthetic `pr2b2-jd3-tls-path-remediation`, `sha256:9ec5d6c011c037022f37fb3e8761fbe1faa0c095e4325579d18373dd26458655`; no external resource was touched.
+- **Safety/RED/GREEN/evidence:** Baseline 26/26; RED 3 failed/23 passed; GREEN 26/26 via `env -i HOME="$HOME" PATH="$PATH" CI=1 pnpm --filter @viewpro/api test test/restore-schema-parity.spec.ts`; candidate 389/389 (verify report excluded); B2.4 remains pending review/merge.
+- **Contract:** Synthetic child receipts forward only present `PGSSLROOTCERT`/`PGCHANNELBINDING` with the explicit allowlist and exclude arbitrary/`PGPASSWORD`; an escaped local CLI path emits canonical `arguments_invalid` exit 2.

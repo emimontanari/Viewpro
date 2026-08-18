@@ -28,7 +28,7 @@ PR2b1 has no subprocess import, database connection, public CLI, package script,
 
 PR2b2 validates schemas, imports PR2b1, then runs RED before GREEN. It owns injection, malformed/nonzero output, exact catalog/ledger SQL across valid schemas, startup/DDL isolation, redaction, exits 0/1/2, and 23/6 physical sets. It passes explicit argv and only required executable/libpq/locale variables; child stderr, raw SQL, environment, hosts, credentials, and runtime identifiers never reach public output. `LIMIT 1000` is a bounded ceiling above current migration counts; saturation fails closed.
 
-PR2b2 bounds each `psql` child with one deterministic timeout, force-cleans a hung child, and maps spawn failure, signal termination, or timeout to sanitized exit 2. Current diagram: `develop (merged #321) → 📍 PR2a2 split-plan amendment → develop → PR2b1 → develop → PR2b2 → develop → PR2c → develop`. Future PR bodies copy it and move the single `📍` to their own slice; no placeholders.
+PR2b2 bounds each child: timeout sends SIGTERM, then SIGKILL after 250ms grace; spawn/signal/timeout return sanitized exit 2. Current diagram: `develop (merged #321) → PR2a2 split-plan amendment → develop → PR2b1 → develop → 📍 PR2b2 → develop → PR2c → develop`. Future PR bodies copy it and move the single `📍` to their own slice; no placeholders.
 
 ## Interfaces / Contracts
 
@@ -42,6 +42,8 @@ runParity({ migrationDir, repositoryRoot, schemas, psqlPath })
   -> { exitCode: 0 | 1 | 2, output: CanonicalReceipt }
 ```
 
+Production uses four options; tests alone call async `runParity(options, { spawnProcess, timeoutMs })` with Node `spawn` compatibility; CLI accepts neither.
+
 PR2b1 errors use stable internal codes: `migration_path_invalid`, `expected_tables_invalid`, or `migration_sql_unsupported`. PR2b2 maps invalid schema/process/output failures to sanitized exit 2; parity or ledger mismatch yields deterministic exit 1; pass yields exit 0. JSON is newline-terminated with fixed key order and sorted PostgreSQL-quoted repository names. Apply-progress may append sanitized local TDD evidence separately from immutable operational evidence, never rewriting history or reinterpreting this contract.
 
 ## File Changes and Review Budget
@@ -52,7 +54,7 @@ PR2b1 errors use stable internal codes: `migration_path_invalid`, `expected_tabl
 | PR2b2 | Parity CLI, remaining tests/fake, package script | ≤389 |
 | PR2c | Existing receipt/runbook/ledger/status/evidence paths only | ≤389 |
 
-The prior combined RED notes are non-authoritative planning input. Apply follows the current spec/design/tasks. The hard session maximum is 400; stop and re-slice at 390, accepting only ≤389 without exception.
+The prior combined RED notes are non-authoritative planning input. Apply follows the current spec/design/tasks. Hard maximum 400; re-slice at 390; accept ≤389.
 
 ## Verification and Rollback
 
