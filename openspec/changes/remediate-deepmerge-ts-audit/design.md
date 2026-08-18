@@ -18,9 +18,9 @@ Both production paths resolve `@prisma/config@6.19.2 -> deepmerge-ts@7.1.5`; rep
 
 `PR #328 planning authority@P` → `PR B from fresh origin/develop@D` → `green B merged to develop@D'` → `#328 refreshed, reviewed, and checked at final head/base` → `#328 merged to develop`.
 
-Before apply, publicly record maintainer approval on issue #325 and #328. Keep #328 open to `develop` as the independently reviewed planning authority; its audit failure is baseline evidence. Record final planning SHA `P`; B cites `P` and reads those artifacts before implementation.
+Before apply, publicly record maintainer approval on issue #325 and #328: `https://github.com/emimontanari/Viewpro/issues/325#issuecomment-5331737441` and `https://github.com/emimontanari/Viewpro/pull/328#issuecomment-5331737710`. Keep #328 open to `develop` as the independently reviewed planning authority; its audit failure is baseline evidence. Record final planning SHA `P`; B cites `P` and reads those artifacts before implementation.
 
-Create PR B from fresh `origin/develop@D`, target `develop`, and contain only one focused implementation/evidence work unit. Its changed-line count is at most 400 additions plus deletions; it uses `Refs #325` and never closes #325. At B's exact final head SHA after its last commit, retain an all-workspace focused-test source scan with no `.only` matches, both direct commands below, and passing native CI; CI alone is insufficient. Any new commit invalidates all results; any scan/direct/native failure blocks B. This approved equivalent guard changes no Vitest config.
+Create PR B from fresh `origin/develop@D`, target `develop`, and contain exactly `viewpro-app/package.json`, `viewpro-app/pnpm-lock.yaml`, and `openspec/changes/remediate-deepmerge-ts-audit/apply-progress.md`. Its changed-line count is at most 400 additions plus deletions; it uses `Refs #325` and never closes #325. At B's exact final head SHA after its last commit, retain an all-workspace focused-test source scan over `viewpro-app/apps` and `viewpro-app/packages` with no `.only` matches, both direct commands below, and passing native CI; CI alone is insufficient. Any new commit invalidates all results; any scan/direct/native failure blocks B. This approved equivalent guard changes no Vitest config.
 
 After green B merges, update/retest #328 against fixed `develop`. Confirm it remains planning-only and at most 400 lines; require fresh review/checks for its final head/base—changed candidates reuse neither. Merge only then; authorize and manually close #325 only after both merge green. Then update/rerun #324 from fixed `develop` without this remediation. Never force-push, bypass CI, suppress audit, or combine units.
 
@@ -30,7 +30,7 @@ After green B merges, update/retest #328 against fixed `develop`. Confirm it rem
 |---|---|
 | `viewpro-app/package.json` | Add the sole override. |
 | `viewpro-app/pnpm-lock.yaml` | Apply only the resolution/edge delta. |
-| `openspec/changes/remediate-deepmerge-ts-audit/*` | #328 records planning; B records apply/verify evidence. |
+| `openspec/changes/remediate-deepmerge-ts-audit/apply-progress.md` | B carries repository-traceable source-run evidence; final verify report and native CI remain post-publication. |
 
 Hash/status dependency files. Run `pnpm install --lockfile-only --ignore-scripts` once; reject other diffs. Confirm pnpm `10.13.1`, snapshot/archive/hash ignored generated outputs, remove workspace `node_modules`, then run one frozen install (never `--ignore-scripts`).
 
