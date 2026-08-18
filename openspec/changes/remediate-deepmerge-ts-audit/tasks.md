@@ -25,14 +25,14 @@ Chain strategy: not applicable
 
 - [x] 1.1 Publicly record the maintainer-approved implementation-first order on #325 and #328 before apply; retain #328's audit failure as baseline evidence. Approval: `https://github.com/emimontanari/Viewpro/issues/325#issuecomment-5331737441`; `https://github.com/emimontanari/Viewpro/pull/328#issuecomment-5331737710`.
 - [x] 1.2 Record the published/reviewed pre-apply planning authority `P=2ce6a6923ad4860177dfeab2fee545068d944283`; later local amendments are not published authority and must precede PR B publication.
-- [ ] 1.3 Read the planning artifacts at `P`, then create B from fresh `origin/develop@D`; B must cite `P`, target `develop`, and use `Refs #325` without a closing keyword.
+- [x] 1.3 Read the planning artifacts at `P`, then create B from fresh `origin/develop@D`; B must cite `P`, target `develop`, and use `Refs #325` without a closing keyword.
 
 ## Phase 2: Validate the Delivery Work Unit
 
-- [ ] 2.1 Reproduce baseline `pnpm audit --prod --audit-level high` failure without mutation; set B's ≤400 budget and reject global/Prisma overrides, manual lock edits, vulnerable ancestry, or unrelated lock churn.
-- [ ] 2.2 Add only `@prisma/config@6.19.2>deepmerge-ts` to `viewpro-app/package.json`; run one lockfile-only install, snapshot/archive/hash generated state before deletion, then frozen-install with pnpm 10.13.1.
-- [ ] 2.3 Use the specified localhost-only Docker lifecycle; run both Prisma validate/generate, typecheck/lint/build, ancestry, exact audit, clean-output/diff/secret checks, and rollback proof.
-- [ ] 2.4 Record commands/results, residuals, rollback evidence, D, exact boundary/count, predecessor delivery facts, and source/runtime digests in `apply-progress.md`; bind final head/tree/diff externally. Final verify/native CI are post-publication; any later commit invalidates evidence.
+- [x] 2.1 Reproduce baseline `pnpm audit --prod --audit-level high` failure without mutation; set B's ≤400 budget and reject global/Prisma overrides, manual lock edits, vulnerable ancestry, or unrelated lock churn.
+- [x] 2.2 Add only `@prisma/config@6.19.2>deepmerge-ts` to `viewpro-app/package.json`; run one lockfile-only install, snapshot/archive/hash generated state before deletion, then frozen-install with pnpm 10.13.1.
+- [x] 2.3 Use the specified localhost-only Docker lifecycle; run both Prisma validate/generate, typecheck/lint/build, ancestry, exact audit, clean-output/diff/secret checks, and rollback proof.
+- [x] 2.4 Record commands/results, residuals, rollback evidence, D, exact boundary/count, predecessor delivery facts, and source/runtime digests in `apply-progress.md`; bind final head/tree/diff externally. Final verify/native CI are post-publication; any later commit invalidates evidence.
 
 ## Phase 3: Native CI and Implementation Merge
 
