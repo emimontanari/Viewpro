@@ -83,7 +83,7 @@ The override must be treated as temporary debt. Track upstream #30052/#30054 and
 5. `pnpm --filter @viewpro/api typecheck`, `lint`, `build`, `test` and the same four commands for `@viewpro/platform-api`, using only sanctioned test databases where tests require them. No production/cloud/database access belongs in this change.
 6. Final `git diff --check`, boundary review, and confirmation that PR #324 remains untouched.
 
-**Budget forecast:** a compact artifact set (this exploration plus concise proposal/design/tasks and later verification) plus the two dependency files should remain approximately 220-320 changed lines. The implementation sub-boundary should be roughly 10-30 changed lines. Budget risk is Low; one independent PR/work unit is appropriate, chained PRs are not recommended, and the 400-line budget should not be exceeded. A full product delta spec is unnecessary because no product capability or schema behavior changes; OpenSpec planning and verification are still mandatory before/after the dependency edit.
+**Superseded forecast (historical):** The original 220-320-line, one-PR Low-risk recommendation is superseded by the measured >400 forecast and maintainer-approved implementation-first two-PR delivery. Keep the root-cause evidence above; #328 planning and PR B are independently ≤400. OpenSpec planning and verification remain mandatory.
 
 ### Risks
 - DeepmergeTS 8 is a real major release; audit green alone does not prove Prisma config compatibility.

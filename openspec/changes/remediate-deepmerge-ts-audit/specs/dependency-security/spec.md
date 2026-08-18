@@ -46,6 +46,14 @@ Product/platform APIs MUST pass Prisma validate/generate on `6.19.2`, checks, an
 - WHEN evidence is reviewed
 - THEN the gate fails and rollback is required
 
+### Requirement: Bind PR B verification to its final candidate
+Native CI is necessary but insufficient. After PR B's last commit, its exact final head SHA MUST retain an all-workspace focused-test source scan with no `describe.only`, `it.only`, or `test.only`; `pnpm --filter @viewpro/api exec vitest run --allowOnly=false --retry=0`; `pnpm --filter @viewpro/platform-api exec vitest run --allowOnly=false --retry=0`; and passing native CI.
+Any new commit invalidates all candidate results; any scan, direct, or native failure MUST block merge. This approved equivalent candidate-bound guard changes no Vitest configuration.
+#### Scenario: Changed candidate
+- GIVEN a new PR B commit after candidate verification
+- WHEN merge readiness is evaluated
+- THEN all candidate results are invalid and the required scan, direct checks, and native CI rerun on the new final head
+
 ### Requirement: Use a safe localhost-only destructive lifecycle
 Destructive checks MUST use a reviewed `POSTGRES_16_ALPINE_IMAGE` matching `postgres:16-alpine@sha256:<64-hex>`, generate per-run credentials, use `env -i` rather than `.env`, fail closed on occupied ports/names or probe/tool/daemon/permission errors, bound readiness, create/protect a unique procedure-owned parent directory, reserve unique nonexistent `--cidfile` paths without creating files, register an exit/signal trap before startup, let Docker create the files and reject existing ones, then tolerate absence/partial starts/interrupts while reading exact IDs only from files there, removing only those files/IDs, and removing the owned directory on every exit.
 #### Scenario: Compliant
@@ -80,12 +88,12 @@ Any selector/install/compatibility/output/audit/API failure MUST restore prior m
 - THEN acceptance fails and merges remain blocked
 
 ### Requirement: Keep PR #324 isolated
-This MUST remain an independent issue #325 fix. PR #324 MUST remain unchanged and rerun or rebased only after this fix merges.
+This MUST remain an independent issue #325 fix. PR #324 MUST remain unchanged and may update, rerun, or rebase only after PR B and #328 both merge green and #325 closure is authorized.
 #### Scenario: Sequence
-- GIVEN all remediation gates pass
-- WHEN the fix merges
+- GIVEN PR B and #328 both merge green and #325 closure is authorized
+- WHEN PR #324 updates from the fixed base
 - THEN PR #324 may update from the fixed base and rerun CI without this fix in its diff
 #### Scenario: Early
-- GIVEN this remediation has not merged
+- GIVEN either PR has not merged green or #325 closure is not authorized
 - WHEN PR #324 changes or reruns for this fix
 - THEN the workflow MUST reject that action and preserve isolation

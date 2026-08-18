@@ -12,42 +12,27 @@ Fix only issue #325 / `GHSA-ggr8-5vv4-36mx`: retain Prisma `6.19.2`, product beh
 | Reject global override, Prisma upgrade, manual lock edit | Broader risk or no resolver truth. |
 | No config fixture | No `prisma.config.*`; do not add support. |
 
-Both production paths end at `@prisma/config@6.19.2 -> deepmerge-ts@7.1.5`. Replace only that node; the lockfile removes `7.1.5` with no other change.
+Both production paths resolve `@prisma/config@6.19.2 -> deepmerge-ts@7.1.5`; replace only that node and remove `7.1.5` from the lockfile. `@prisma/config` passes `deepmerge` to c12; v8 retains it and needs Node `>=16`. Validate/generate do not prove config-object/Map merging; roll back, never widen.
 
-```yaml
-overrides:
-  '@prisma/config@6.19.2>deepmerge-ts': 8.0.1
-packages:
-  deepmerge-ts@8.0.1:
-    resolution: {integrity: sha512-szCXE7YLCvLKR9bFPJcvsezOShdalctSvrgN/LM/QGUEPZQajwjmsMObZ6/DuANT5lxzM/wtO8Feubwdkz8myA==}
-    engines: {node: '>=16.0.0'}
-snapshots:
-  '@prisma/config@6.19.2':
-    dependencies: {deepmerge-ts: 8.0.1}
-  deepmerge-ts@8.0.1: {}
-```
+## Delivery Topology and Gates
 
-`@prisma/config` passes `deepmerge` to c12; v8 retains it and Node `>=16`. Validate/generate do not prove config-object/Map merging; roll back, never widen.
+`PR #328 planning authority@P` → `PR B from fresh origin/develop@D` → `green B merged to develop@D'` → `#328 refreshed, reviewed, and checked at final head/base` → `#328 merged to develop`.
+
+Before apply, publicly record maintainer approval on issue #325 and #328. Keep #328 open to `develop` as the independently reviewed planning authority; its audit failure is baseline evidence. Record final planning SHA `P`; B cites `P` and reads those artifacts before implementation.
+
+Create PR B from fresh `origin/develop@D`, target `develop`, and contain only one focused implementation/evidence work unit. Its changed-line count is at most 400 additions plus deletions; it uses `Refs #325` and never closes #325. At B's exact final head SHA after its last commit, retain an all-workspace focused-test source scan with no `.only` matches, both direct commands below, and passing native CI; CI alone is insufficient. Any new commit invalidates all results; any scan/direct/native failure blocks B. This approved equivalent guard changes no Vitest config.
+
+After green B merges, update/retest #328 against fixed `develop`. Confirm it remains planning-only and at most 400 lines; require fresh review/checks for its final head/base—changed candidates reuse neither. Merge only then; authorize and manually close #325 only after both merge green. Then update/rerun #324 from fixed `develop` without this remediation. Never force-push, bypass CI, suppress audit, or combine units.
 
 ## Files, Install, and Budget
 
 | File | Action |
 |---|---|
 | `viewpro-app/package.json` | Add the sole override. |
-| `viewpro-app/pnpm-lock.yaml` | Apply only the resolution/edge delta above. |
-| `openspec/changes/remediate-deepmerge-ts-audit/*` | PR A records planning; PR B records apply/verify evidence. |
+| `viewpro-app/pnpm-lock.yaml` | Apply only the resolution/edge delta. |
+| `openspec/changes/remediate-deepmerge-ts-audit/*` | #328 records planning; B records apply/verify evidence. |
 
-Hash/status both dependency files. Run `pnpm install --lockfile-only --ignore-scripts` once; reject other diffs. Confirm pnpm `10.13.1`, snapshot/archive/hash ignored generated outputs, remove workspace `node_modules`, then run one full `pnpm install --frozen-lockfile` (never `--ignore-scripts`).
-
-| Budget item | Lines | Basis |
-|---|---:|---|
-| Current PR A | 375 additions + 0 deletions | Exact five-file diff after final corrections. |
-| PR A limit | 400 | Planning-only; never exceed. |
-| Complete forecast | 450–491 planning estimate | Two sequential PRs; not current diff authority. |
-| PR B | ≤149 forecast | Recount independently; total ≤400 |
-| Strategy | — | Both PRs target `develop`; no tracker |
-
-The 25-line headroom is a hard ceiling. If unsafe, report blocked; never hide an overage.
+Hash/status dependency files. Run `pnpm install --lockfile-only --ignore-scripts` once; reject other diffs. Confirm pnpm `10.13.1`, snapshot/archive/hash ignored generated outputs, remove workspace `node_modules`, then run one frozen install (never `--ignore-scripts`).
 
 ## Verification and Safe Local Database
 
@@ -55,19 +40,19 @@ The 25-line headroom is a hard ceiling. If unsafe, report blocked; never hide an
 |---|---|
 | Resolution | `pnpm why --recursive --prod deepmerge-ts` and `pnpm list --recursive --prod --depth Infinity deepmerge-ts` show only `8.0.1`. |
 | Security | `pnpm audit --prod --audit-level high` exits 0; record 2 low/3 moderate findings. |
-| APIs | Both Prisma validate/generate, `typecheck`, stub `lint`, `build`, and `test` pass. |
+| APIs | Both Prisma validate/generate, `typecheck`, stub `lint`, `build`, and direct Vitest pass: `pnpm --filter @viewpro/api exec vitest run --allowOnly=false --retry=0`; `pnpm --filter @viewpro/platform-api exec vitest run --allowOnly=false --retry=0`. |
 | Boundary | Diff check/stat/status and `gitleaks detect --no-git --source openspec/changes/remediate-deepmerge-ts-audit --no-banner` exit 0. |
 
-From `viewpro-app`, use CI PostgreSQL 16, not `docker-compose.yml`. Require a reviewed immutable image input; fail closed on occupied or probe/tool/daemon/permission errors. Generate credentials per run, use `env -i` rather than `.env`, and remove only exact CID-file IDs even if stopping fails. Readiness is ten five-second retries.
+Every security, install, ancestry, Prisma, API/platform, rollback, boundary, and CI gate is mandatory. A rationale may document an omission but cannot authorize B to merge; only explicitly non-mandatory informational checks may be skipped.
 
-1. Require `POSTGRES_16_ALPINE_IMAGE` to match `postgres:16-alpine@sha256:<64 hex>`; record the reviewed digest as evidence. Do not accept a tag or invent a digest.
+`viewpro-app` uses CI PostgreSQL 16, not `docker-compose.yml`, with a reviewed immutable image. Fail closed on occupied or probe/tool/daemon/permission errors; generate per-run credentials, use `env -i` not `.env`, remove only exact CID-file IDs even if stopping fails, and use ten five-second readiness retries.
+
+1. Require `POSTGRES_16_ALPINE_IMAGE` to match `postgres:16-alpine@sha256:<64 hex>`; record the reviewed digest. Do not accept a tag or invent a digest.
 2. Run `docker info`. A port probe treats `lsof` exit 0 as occupied, clean exit 1 as free, and stderr/other exit as unavailable; an exact-name `docker container ls -aq` query treats nonzero as unavailable. Any failure stops before provisioning.
 3. Generate users/passwords with `openssl rand`; build localhost URLs in memory and use `env -i PATH="$PATH" HOME="$HOME" DATABASE_URL=... DIRECT_URL=...` for migrations and every API command. Never source `.env` or log values.
-4. Before startup, create/protect a unique procedure-owned parent directory, reserve unique nonexistent `--cidfile` paths without creating files, and register an exit/signal trap. Let each `docker run --cidfile "$path"` create its file (Docker rejects an existing file); cleanup tolerates absence/partial starts/interrupts, reads exact IDs only from files there, runs `docker rm -f` only for them, removes only those files, preserves cleanup failure, then removes the owned directory.
+4. Before startup, create/protect a unique procedure-owned parent directory, reserve unique nonexistent `--cidfile` paths without creating files, and register an exit/signal trap. Let each `docker run --cidfile "$path"` create its file; cleanup reads exact IDs only there, runs `docker rm -f` only for them, removes only those files, preserves cleanup failure, then removes the owned directory.
 5. Before any `node_modules` or generated-state deletion, resolve the product client output path, then tar/hash it and `apps/viewpro-api/src/generated/prisma`; archive absence too. On rollback, remove each target, extract its preserved archive (or reassert absence), recompute its hash, then frozen-install/regenerate and rerun both API checks.
 
-## Rollback and Integration
+## Rollback
 
-On selector, install, compatibility, output, audit, or API failure, atomically restore dependency files; restore both archived pre-run outputs and require their saved hashes to match. Then frozen-install/regenerate the reverted graph, verify `7.1.5` ancestry, and retain the merge block/audit gate.
-
-PR A is planning-only and reversible. After it merges, branch PR B from updated `develop`; roll back B as above. Close #325 only when B merges green; then update/rerun #324 without copying this fix.
+On selector/install/compatibility/output/audit/API/delivery/diff failure, atomically restore dependency files and both archived pre-run outputs; saved hashes must match. Frozen-install/regenerate the reverted graph, verify `7.1.5` ancestry, and retain the merge block/audit gate.

@@ -18,15 +18,11 @@ Remove `GHSA-ggr8-5vv4-36mx` while preserving product behavior and Prisma 6.19.2
 
 ## Capabilities
 
-### New Capabilities
-None.
-
-### Modified Capabilities
-None; this is dependency remediation with no product requirement change.
+No product requirement changes; this is dependency remediation only.
 
 ## Approach
 
-Constrain the override to the vulnerable parent-child relationship. A lock refresh cannot escape the exact pin, broad overrides expand risk, and available Prisma upgrades remain vulnerable. Design must prove the supported pnpm selector and lockfile result rather than assume unverified syntax.
+Constrain the override to the vulnerable parent-child relationship. A lock refresh cannot escape the exact pin, broad overrides expand risk, and available Prisma upgrades remain vulnerable. Prove the supported pnpm selector and lockfile result rather than assume syntax.
 
 ## Affected Areas
 
@@ -36,21 +32,23 @@ Constrain the override to the vulnerable parent-child relationship. A lock refre
 | `viewpro-app/pnpm-lock.yaml` | Modified | Minimal deterministic resolution |
 | Both Prisma API workspaces | Verified | Validate, generate, and regression evidence only |
 
-## Risks
+## Risks and Rollback
 
-| Risk | Likelihood | Mitigation |
-|---|---|---|
-| Transitive major-version incompatibility | Medium | Require Prisma validate/generate and both API suites; audit-green is insufficient |
-| Unrelated lockfile churn | Medium | Review ancestry and exact lock delta after frozen installation |
-| Temporary override debt | High | Remove after an adopted Prisma release carries the fix and repeats verification |
+| Risk | Mitigation |
+|---|---|
+| Transitive major-version incompatibility | Require Prisma validate/generate and both API suites; audit-green is insufficient. |
+| Unrelated lockfile churn | Review ancestry and exact lock delta after frozen installation. |
+| Temporary override debt | Remove only after an adopted Prisma release carries the fix and repeats verification. |
 
-## Rollback Plan
+The planning artifacts and implementation work unit are independently reversible. On an implementation failure, atomically revert `package.json` and `pnpm-lock.yaml`; because that restores the high advisory, keep dependent merges paused and never weaken the audit gate.
 
-PR A is planning-only and can be reverted independently. In PR B, revert `package.json` and `pnpm-lock.yaml` atomically. Because that rollback restores the high advisory, keep dependent merges paused; never weaken the audit gate.
+## Delivery Order and Issue Relationship
 
-## Issue and PR Relationship
-
-Use two sequential PRs to `develop`, never a feature-branch tracker. PR A contains only exploration, proposal, spec, design, and tasks; its current exact five-file diff is 375 additions + 0 deletions, leaving 25 changed-line headroom under 400. After PR A merges, branch PR B from updated `develop`; it contains implementation plus apply/verify evidence and must independently remain at or below 400. The 450–491 two-PR figure is a historical planning estimate, not current diff authority. Issue #325 closes only when PR B merges green; only then update and rerun PR #324, without copying this fix into its diff.
+- Before apply, record the maintainer-approved implementation-first order publicly on issue #325 and PR #328. Keep #328 open against `develop` as the exact, independently reviewed planning authority; its current audit failure is expected baseline evidence.
+- Record #328's published final planning head SHA before apply. PR B must cite that SHA and read those exact planning artifacts before implementation begins.
+- Create PR B from fresh `origin/develop`; target `develop` and limit it to the focused implementation/evidence work unit at no more than 400 additions plus deletions. It receives native GitHub CI and uses `Refs #325`, never a closing keyword.
+- Merge PR B only after its native checks are green. Then update and retest #328 against the fixed `develop`; require fresh review and fresh checks for #328's exact final head and base before merging its planning-only diff.
+- Manually close #325 only after PR B and #328 have both merged green. Only afterward update and rerun #324 against fixed `develop`, without copying this remediation into #324's feature diff.
 
 ## Success Criteria
 
@@ -58,4 +56,4 @@ Use two sequential PRs to `develop`, never a feature-branch tracker. PR A contai
 - [ ] Both Prisma schemas validate and generate without tracked generated-client changes.
 - [ ] Relevant typecheck, lint, build, and tests pass for product and platform APIs.
 - [ ] `pnpm audit --prod --audit-level high` exits 0; the 2 low and 3 moderate findings remain documented and out of scope.
-- [ ] The diff contains only this OpenSpec change plus the intended manifest/lock remediation, and PR #324 remains unchanged.
+- [ ] The delivered implementation diff contains only the intended manifest/lock remediation and evidence; PR #324 remains unchanged.
