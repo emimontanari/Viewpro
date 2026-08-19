@@ -11,9 +11,9 @@ Planning PR0: finalized 269 lines, hard cap 400. Delivery PR0→A→B→C→D; e
 Aliases: `API=viewpro-app/apps/viewpro-api/src/platform-data`; `WEB=viewpro-app/apps/viewpro-web/src`; `CFG=viewpro-app/apps/viewpro-api/src/config`; `RUNBOOK=docs/plans/2026-07-21-production-go-live-runbook.md`.
 
 ## Slice A: Coordinator and timeout (220–340; max 340)
-- [ ] A.1 **RED:** Focused `API/__tests__` coverage for one batch, shared-promise/no queue, 2s feed timeout, typed projection/cursor-advance outcomes, swallowed-error rejection, non-empty success metadata with durable target projection/cursor while remaining `updating`, later empty-batch confirmation (`current`, count 0, cursor unchanged/no advance, failure zero, success time), and `finally` release. **AC3–AC7, AC9**
-- [ ] A.2 **GREEN:** Create `API/platform-sync-coordinator.ts`; make `IngestService.ingestBatch` return a discriminated stage outcome (or propagate typed failures); modify client/job/module. Timer delegates; projection/cursor failure cannot report success. Keep #329 payload/DB cancellation excluded.
-- [ ] A.3 **REFACTOR:** Prove timer/coordinator compatibility and no #329 DB cancellation, payload, or multi-replica scope.
+- [x] A.1 **RED:** Focused `API/__tests__` coverage for one batch, shared-promise/no queue, 2s feed timeout, typed projection/cursor-advance outcomes, swallowed-error rejection, non-empty success metadata with durable target projection/cursor while remaining `updating`, later empty-batch confirmation (`current`, count 0, cursor unchanged/no advance, failure zero, success time), and `finally` release. **AC3–AC7, AC9**
+- [x] A.2 **GREEN:** Create `API/platform-sync-coordinator.ts`; make `IngestService.ingestBatch` return a discriminated stage outcome (or propagate typed failures); modify client/job/module. Timer delegates; projection/cursor failure cannot report success. Keep #329 payload/DB cancellation excluded.
+- [x] A.3 **REFACTOR:** Prove timer/coordinator compatibility and no #329 DB cancellation, payload, or multi-replica scope.
 
 ## Slice B: Authenticated demand/status API (160–250; max 250)
 - [ ] B.1 **RED:** Controller/coordinator tests for 401/403, joined demand/no queue, backend return by 4s, restart `stale` with null observations, demand→`updating`, successful non-empty `updating` response metadata, failure mapping, and snapshot access without synchronization DB reads. **AC2–AC7, AC9**

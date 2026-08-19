@@ -1,7 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
-import { ChangeFeedClient } from './change-feed.client'
-import { IngestService } from './ingest.service'
-import { CursorRepository } from './cursor.repository'
+import { PlatformSyncCoordinator } from './platform-sync-coordinator'
 
 /**
  * PlatformDataPollJob — interval-based poll job for the data lane.
@@ -19,15 +17,9 @@ import { CursorRepository } from './cursor.repository'
 @Injectable()
 export class PlatformDataPollJob implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PlatformDataPollJob.name)
-  private isPolling = false
   private intervalHandle: ReturnType<typeof setInterval> | null = null
 
-  constructor(
-    private readonly feedClient: ChangeFeedClient,
-    private readonly ingestService: IngestService,
-    private readonly cursorRepo: CursorRepository,
-    private readonly pollIntervalMs: number = 5000,
-  ) {}
+  constructor(private readonly coordinator: PlatformSyncCoordinator, private readonly pollIntervalMs: number = 5000) {}
 
   onModuleInit(): void {
     this.intervalHandle = setInterval(() => {
@@ -54,20 +46,10 @@ export class PlatformDataPollJob implements OnModuleInit, OnModuleDestroy {
    * entirely — no concurrent polls, no pile-up.
    */
   private async tick(): Promise<void> {
-    if (this.isPolling) {
-      this.logger.debug('Poll tick skipped — previous poll still in flight')
-      return
-    }
-
-    this.isPolling = true
     try {
-      const cursor = await this.cursorRepo.getCursor()
-      const response = await this.feedClient.fetchChanges(cursor)
-      await this.ingestService.ingestBatch(response.events)
+      await this.coordinator.runOneBatch()
     } catch (err) {
       this.logger.error('Poll tick error — will retry next interval', err)
-    } finally {
-      this.isPolling = false
     }
   }
 }

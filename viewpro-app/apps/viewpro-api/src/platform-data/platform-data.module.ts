@@ -10,6 +10,7 @@ import { CursorRepository } from './cursor.repository'
 import { PlatformTenantRepository } from './platform-tenant.repository'
 import { AuditLogRepository } from './audit-log.repository'
 import { PlatformDataPollJob } from './platform-data-poll-job'
+import { PlatformSyncCoordinator } from './platform-sync-coordinator'
 import { MetricsService } from './metrics.service'
 import { MetricsController } from './metrics.controller'
 import { TenantRegistryService } from './tenant-registry.service'
@@ -61,17 +62,13 @@ import { TenantDetailController } from './tenant-detail.controller'
     PlatformTenantRepository,
     AuditLogRepository,
     IngestService,
+    PlatformSyncCoordinator,
     {
       provide: PlatformDataPollJob,
-      inject: [ChangeFeedClient, IngestService, CursorRepository, ConfigService],
-      useFactory: (
-        feedClient: ChangeFeedClient,
-        ingestService: IngestService,
-        cursorRepo: CursorRepository,
-        configService: ConfigService,
-      ) => {
+      inject: [PlatformSyncCoordinator, ConfigService],
+      useFactory: (coordinator: PlatformSyncCoordinator, configService: ConfigService) => {
         const pollIntervalMs = configService.get<number>('app.platformData.pollIntervalMs', 5000)
-        return new PlatformDataPollJob(feedClient, ingestService, cursorRepo, pollIntervalMs)
+        return new PlatformDataPollJob(coordinator, pollIntervalMs)
       },
     },
     MetricsService,
