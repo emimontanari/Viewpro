@@ -16,23 +16,23 @@ Both production paths resolve `@prisma/config@6.19.2 -> deepmerge-ts@7.1.5`; rep
 
 ## Delivery Topology and Gates
 
-`PR #328 planning authority@P` → `PR B from fresh origin/develop@D` → `green B merged to develop@D'` → `#328 refreshed, reviewed, and checked at final head/base` → `#328 merged to develop`.
+Historical pre-apply authority `P` on PR #328 → PR #330 from fresh `origin/develop@D` → PR #330 merged green to `develop@d3afbec53b5bed51abaa2453ca09262eed9a29cc` → PR #328 refreshed, reviewed, and checked at final head/base → pending PR #328 merge.
 
-Published pre-apply authority is `P=2ce6a6923ad4860177dfeab2fee545068d944283` on reviewed PR #328. The maintainer approval is recorded on issue #325 and #328: `https://github.com/emimontanari/Viewpro/issues/325#issuecomment-5331737441` and `https://github.com/emimontanari/Viewpro/pull/328#issuecomment-5331737710`. Local `87ec37f6bebe83eccc7ebc6bb33be2ff59f1961d` and this clarification are review-driven post-apply evidence-boundary amendments; they are not published authority and must be pushed before PR B publication.
+Historical pre-apply authority is `P=2ce6a6923ad4860177dfeab2fee545068d944283` on reviewed PR #328. The maintainer approval is recorded on issue #325 and #328: `https://github.com/emimontanari/Viewpro/issues/325#issuecomment-5331737441` and `https://github.com/emimontanari/Viewpro/pull/328#issuecomment-5331737710`. The review-driven post-apply evidence-boundary amendments, including `87ec37f6bebe83eccc7ebc6bb33be2ff59f1961d`, were published before PR #330; PR #330 is now merged and PR #328 is refreshed at `8ba7031024c60580ef6e00811f2362ec6ddc838a` against that merge.
 
-Create PR B from fresh `origin/develop@D`, target `develop`, and contain exactly `viewpro-app/package.json`, `viewpro-app/pnpm-lock.yaml`, and `openspec/changes/remediate-deepmerge-ts-audit/apply-progress.md`. Its changed-line count is at most 400 additions plus deletions; it uses `Refs #325` and never closes #325. `apply-progress.md` records D, the exact boundary, predecessor implementation facts, and source/runtime digests; the final head/tree/diff and test results are bound externally by immutable runtime/PR/CI evidence, never self-referentially in that commit. At B's exact final head SHA after its last commit, retain an all-workspace focused-test source scan over `viewpro-app/apps` and `viewpro-app/packages` with no `.only` matches, both direct commands below, and passing native CI; CI alone is insufficient. Any new commit invalidates all results; any scan/direct/native failure blocks B. This approved equivalent guard changes no Vitest config.
+PR #330 was created from fresh `origin/develop@D`, targeted `develop`, and contained exactly `viewpro-app/package.json`, `viewpro-app/pnpm-lock.yaml`, and `openspec/changes/remediate-deepmerge-ts-audit/apply-progress.md`. Its changed-line count stayed within 400, used `Refs #325`, and did not close #325. `apply-progress.md` records D, the exact boundary, predecessor implementation facts, and source/runtime digests; the final head/tree/diff and test results are bound externally by immutable runtime/PR/CI evidence, never self-referentially in that commit. At PR #330's final candidate, the all-workspace focused-test source scan over `viewpro-app/apps` and `viewpro-app/packages` found no `.only` matches, both direct commands below passed, and native CI passed; CI alone is insufficient. Any new commit invalidates these results; any scan/direct/native failure blocks delivery. This approved equivalent guard changed no Vitest config. [Issue #332](https://github.com/emimontanari/Viewpro/issues/332) tracks systemic `.only` hardening separately and is nonblocking for #325 because this candidate used the final-head scan and direct `--allowOnly=false --retry=0` runs.
 
-After green B merges, update/retest #328 against fixed `develop`. Confirm it remains planning-only and at most 400 lines; require fresh review/checks for its final head/base—changed candidates reuse neither. Merge only then; authorize and manually close #325 only after both merge green. Then update/rerun #324 from fixed `develop` without this remediation. Never force-push, bypass CI, suppress audit, or combine units.
+PR #330 merged green as `d3afbec53b5bed51abaa2453ca09262eed9a29cc`. PR #328 was refreshed and retested against fixed `develop` at final head `8ba7031024c60580ef6e00811f2362ec6ddc838a`; it remains planning-only, five files, and 358 changed lines, with fresh native CI, Vercel, and CodeRabbit checks green. Pending: merge #328, then authorize and manually close #325; only afterward update/rerun #324 from fixed `develop` without this remediation. Never force-push, bypass CI, suppress audit, or combine units.
 
 ## Files, Install, and Budget
 
 | File | Action |
 |---|---|
-| `viewpro-app/package.json` | Add the sole override. |
-| `viewpro-app/pnpm-lock.yaml` | Apply only the resolution/edge delta. |
-| `openspec/changes/remediate-deepmerge-ts-audit/apply-progress.md` | B carries repository-traceable source-run evidence; final verify report and native CI remain post-publication. |
+| `viewpro-app/package.json` | PR #330 added the sole override. |
+| `viewpro-app/pnpm-lock.yaml` | PR #330 applied only the resolution/edge delta. |
+| `openspec/changes/remediate-deepmerge-ts-audit/apply-progress.md` | PR #330 carries repository-traceable source-run evidence; final verify and native CI passed after publication. |
 
-Hash/status dependency files. Run `pnpm install --lockfile-only --ignore-scripts` once; reject other diffs. Confirm pnpm `10.13.1`, snapshot/archive/hash ignored generated outputs, remove workspace `node_modules`, then run one frozen install (never `--ignore-scripts`).
+Execution hashed/statused dependency files, ran `pnpm install --lockfile-only --ignore-scripts` once, rejected other diffs, confirmed pnpm `10.13.1`, snapshot/archived/hashed ignored generated outputs, removed workspace `node_modules`, then ran one frozen install (never `--ignore-scripts`).
 
 ## Verification and Safe Local Database
 
@@ -45,13 +45,7 @@ Hash/status dependency files. Run `pnpm install --lockfile-only --ignore-scripts
 
 Every security, install, ancestry, Prisma, API/platform, rollback, boundary, and CI gate is mandatory. A rationale may document an omission but cannot authorize B to merge; only explicitly non-mandatory informational checks may be skipped.
 
-`viewpro-app` uses CI PostgreSQL 16, not `docker-compose.yml`, with a reviewed immutable image. Fail closed on occupied or probe/tool/daemon/permission errors; generate per-run credentials, use `env -i` not `.env`, remove only exact CID-file IDs even if stopping fails, and use ten five-second readiness retries.
-
-1. Require `POSTGRES_16_ALPINE_IMAGE` to match `postgres:16-alpine@sha256:<64 hex>`; record the reviewed digest. Do not accept a tag or invent a digest.
-2. Run `docker info`. A port probe treats `lsof` exit 0 as occupied, clean exit 1 as free, and stderr/other exit as unavailable; an exact-name `docker container ls -aq` query treats nonzero as unavailable. Any failure stops before provisioning.
-3. Generate users/passwords with `openssl rand`; build localhost URLs in memory and use `env -i PATH="$PATH" HOME="$HOME" DATABASE_URL=... DIRECT_URL=...` for migrations and every API command. Never source `.env` or log values.
-4. Before startup, create/protect a unique procedure-owned parent directory, reserve unique nonexistent `--cidfile` paths without creating files, and register an exit/signal trap. Let each `docker run --cidfile "$path"` create its file; cleanup reads exact IDs only there, runs `docker rm -f` only for them, removes only those files, preserves cleanup failure, then removes the owned directory.
-5. Before any `node_modules` or generated-state deletion, resolve the product client output path, then tar/hash it and `apps/viewpro-api/src/generated/prisma`; archive absence too. On rollback, remove each target, extract its preserved archive (or reassert absence), recompute its hash, then frozen-install/regenerate and rerun both API checks.
+PR #330 used CI PostgreSQL 16, not `docker-compose.yml`, with a reviewed immutable image. It failed closed on occupied or probe/tool/daemon/permission errors; used per-run credentials with `env -i` and never sourced `.env` or logged values; and cleaned only procedure-owned CID-file containers and data. Before deleting generated state, it archived/hashed output; rollback restored it, frozen-installed, regenerated, and reran both API checks.
 
 ## Rollback
 

@@ -36,11 +36,11 @@ Chain strategy: not applicable
 
 ## Phase 3: Native CI and Implementation Merge
 
-- [ ] 3.1 On B's exact final head SHA after its last commit, retain all-workspace no-`.only` source scan, `pnpm --filter @viewpro/api exec vitest run --allowOnly=false --retry=0`, `pnpm --filter @viewpro/platform-api exec vitest run --allowOnly=false --retry=0`, and passing native CI; CI is necessary but insufficient. New commits invalidate results; scan/direct/native failure blocks B. No Vitest configs change; record head/base, CI URLs/results, diff count. Do not force-push or bypass audit/CI; keep B separate from planning.
-- [ ] 3.2 Merge B only after its native CI is green for that exact head/base.
+- [x] 3.1 PR #330 final-candidate evidence retained the all-workspace no-`.only` scan, both direct `vitest run --allowOnly=false --retry=0` commands, and green native CI; no Vitest config changed.
+- [x] 3.2 PR #330 merged green to `develop` as `d3afbec53b5bed51abaa2453ca09262eed9a29cc` after its final CI passed.
 
 ## Phase 4: Refresh Planning, Close, and Unblock
 
-- [ ] 4.1 After B merges, update and retest #328 against fixed `develop`; record #328's exact final head/base, planning-only diff, and ≤400 count.
+- [x] 4.1 #328 was refreshed/retested against `develop@d3afbec53b5bed51abaa2453ca09262eed9a29cc` at `8ba7031024c60580ef6e00811f2362ec6ddc838a`: five planning files, 358 changed lines, and green final CI run `32175909038`.
 - [ ] 4.2 Require fresh review and fresh checks for #328's exact final head/base; do not reuse approval or checks from a changed candidate. Merge #328 only when green.
 - [ ] 4.3 Authorize and manually close #325 only after B and #328 are both merged green. Only afterward update/rerun #324 against fixed `develop`, keeping this remediation out of #324's feature diff.

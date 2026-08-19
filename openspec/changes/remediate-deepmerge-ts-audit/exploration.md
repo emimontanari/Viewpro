@@ -1,7 +1,7 @@
 ## Exploration: Remediate DeepmergeTS production-audit failure
 
-### Current State
-Fresh `origin/develop` was fetched into `/Users/emimontanari/Work/Apps/Viewpro-worktrees/deepmerge-ts-audit` on branch `fix/deepmerge-ts-audit`. Both the branch and `origin/develop` point to `8f1b393297c68b86a6d56c7e71d932e753350017`.
+### Historical Current State (superseded)
+**Historical source state (superseded):** Fresh `origin/develop` was fetched into `/Users/emimontanari/Work/Apps/Viewpro-worktrees/deepmerge-ts-audit` on branch `fix/deepmerge-ts-audit`. Both the branch and `origin/develop` pointed to `8f1b393297c68b86a6d56c7e71d932e753350017`.
 
 From `viewpro-app/`, the exact CI command reproduced the failure without changing tracked files:
 
@@ -69,7 +69,7 @@ Issue #310 and merged PR #312 established the convention: isolate dependency rem
    - Advisory removal: broad override yes if 8.x resolves; ignore no; current Prisma upgrade no.
    - Effort: Low to High, not recommended
 
-### Recommendation
+### Historical One-PR Recommendation (superseded)
 Use a compact security-maintenance OpenSpec change and, only after issue approval and accepted planning artifacts, apply one parent-and-version-scoped override from `@prisma/config@6.19.2` to `deepmerge-ts@8.0.1`. Keep both Prisma CLI/client pairs at 6.19.2. This is the smallest valid immediate path, matches the compatibility analysis and test evidence in upstream PR #30054, and avoids conflating the remediation with a Prisma 7 migration or PR #324.
 
 The override must be treated as temporary debt. Track upstream #30052/#30054 and remove it only when an adopted Prisma release declares a patched deepmerge dependency and the same verification remains green.
