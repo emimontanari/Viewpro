@@ -7,7 +7,9 @@ import { AuditLogRepository } from '../audit-log.repository'
 import { AuditController } from '../audit.controller'
 import { AuditService } from '../audit.service'
 import { ChangeFeedClient } from '../change-feed.client'
+import { MetricsController } from '../metrics.controller'
 import { PlatformDataModule } from '../platform-data.module'
+import { PlatformSyncController } from '../platform-sync.controller'
 import { PlatformTenantRepository } from '../platform-tenant.repository'
 import { TenantDetailController } from '../tenant-detail.controller'
 import { TenantDetailService } from '../tenant-detail.service'
@@ -45,5 +47,17 @@ describe('PlatformDataModule (viewpro-api) — DI graph resolves (no live DB req
     expect(moduleRef.get(AuditController)).toBeInstanceOf(AuditController)
     expect(moduleRef.get(AuditService)).toBeInstanceOf(AuditService)
     expect(moduleRef.get(PlatformTenantRepository)).toBeInstanceOf(PlatformTenantRepository)
+  })
+
+  // B.3 — old-web/new-API compatibility (#327, Slice B): the additive demand
+  // route must resolve alongside the pre-existing GET metrics route so old
+  // web (unaware of it) keeps working unchanged once this module deploys.
+  it('adds PlatformSyncController alongside the pre-existing MetricsController without displacing it', async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [ConfigModule, ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]), DatabaseModule, PlatformDataModule],
+    }).compile()
+
+    expect(moduleRef.get(MetricsController)).toBeInstanceOf(MetricsController)
+    expect(moduleRef.get(PlatformSyncController)).toBeInstanceOf(PlatformSyncController)
   })
 })

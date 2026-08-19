@@ -23,6 +23,15 @@ export class PlatformSyncCoordinator {
 
   constructor(private readonly feed: ChangeFeedClient, private readonly ingest: IngestService, private readonly cursor: CursorRepository) {}
 
+  /**
+   * Synchronous status snapshot. Reads only the in-memory field — no cursor,
+   * feed, or ingest call — so authenticated demand can be answered even when
+   * a race falls back to it without cancelling admitted work.
+   */
+  getStatus(): PlatformSyncStatus {
+    return this.status
+  }
+
   runOneBatch(): Promise<PlatformSyncStatus> {
     if (this.inFlight) return this.inFlight
     this.status = { ...this.status, state: 'updating', inFlight: true, attemptCount: this.status.attemptCount + 1, lastAttemptAt: new Date().toISOString(), failureCode: null }

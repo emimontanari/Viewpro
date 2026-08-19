@@ -11,6 +11,7 @@ import { PlatformTenantRepository } from './platform-tenant.repository'
 import { AuditLogRepository } from './audit-log.repository'
 import { PlatformDataPollJob } from './platform-data-poll-job'
 import { PlatformSyncCoordinator } from './platform-sync-coordinator'
+import { PlatformSyncController } from './platform-sync.controller'
 import { MetricsService } from './metrics.service'
 import { MetricsController } from './metrics.controller'
 import { TenantRegistryService } from './tenant-registry.service'
@@ -35,6 +36,9 @@ import { TenantDetailController } from './tenant-detail.controller'
  *  - PlatformTenantRepository: platform_tenants CRUD (A7/A8/A9)
  *  - AuditLogRepository: platform_audit_log append-only CRUD (A8)
  *  - PlatformDataPollJob: setInterval-based poll loop with overlap guard (D9)
+ *  - PlatformSyncController: POST /operators/platform-sync/demand — authenticated
+ *    demand joins the shared PlatformSyncCoordinator promise and races it
+ *    (Slice B, issue #327); timer above keeps delegating to the same coordinator
  *  - MetricsService: latest-event-wins aggregate from mirror (D6)
  *  - MetricsController: GET /operators/metrics/summary (Phase 4 AuthGuard)
  *  - TenantRegistryService / TenantRegistryController: GET /operators/tenants (A10/A11)
@@ -47,7 +51,7 @@ import { TenantDetailController } from './tenant-detail.controller'
  */
 @Module({
   imports: [PaymentsModule, AuthModule, PermissionsModule],
-  controllers: [MetricsController, TenantRegistryController, AuditController, TenantDetailController],
+  controllers: [MetricsController, TenantRegistryController, AuditController, TenantDetailController, PlatformSyncController],
   providers: [
     // ChangeFeedClient's constructor is typed (ConfigService | Options) for a
     // dual DI/unit-test construction mode. A union param emits `Object` under
