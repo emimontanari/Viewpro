@@ -54,4 +54,14 @@ describe('PlatformSyncCoordinator', () => {
     expect(recovered).toMatchObject({ state: 'current', lastBatchCount: 0, lastObservedCursor: 5, consecutiveFailureCount: 0 })
     expect(recovered.lastSuccessAt).toEqual(expect.any(String)); expect(cursor.advanceCursor).not.toHaveBeenCalled()
   })
+  it('snapshot starts stale with null observations, touches no dependency, and tracks an in-progress run without a new read', async () => {
+    let release!: (value: { events: never[] }) => void
+    const first = new Promise<{ events: never[] }>((resolve) => { release = resolve })
+    const { coordinator, cursor, feed } = makeRealCoordinator(); feed.fetchChanges.mockImplementationOnce(() => first)
+    expect(coordinator.getStatus()).toMatchObject({ state: 'stale', inFlight: false, lastAttemptAt: null, lastObservedCursor: null, failureCode: null })
+    expect(cursor.getCursor).not.toHaveBeenCalled(); expect(feed.fetchChanges).not.toHaveBeenCalled()
+    const running = coordinator.runOneBatch(); await Promise.resolve()
+    expect(coordinator.getStatus()).toMatchObject({ state: 'updating', inFlight: true }); expect(feed.fetchChanges).toHaveBeenCalledOnce()
+    release({ events: [] }); await running
+  })
 })

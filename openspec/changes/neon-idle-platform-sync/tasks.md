@@ -16,9 +16,9 @@ Aliases: `API=viewpro-app/apps/viewpro-api/src/platform-data`; `WEB=viewpro-app/
 - [x] A.3 **REFACTOR:** Prove timer/coordinator compatibility and no #329 DB cancellation, payload, or multi-replica scope.
 
 ## Slice B: Authenticated demand/status API (160–250; max 250)
-- [ ] B.1 **RED:** Controller/coordinator tests for 401/403, joined demand/no queue, backend return by 4s, restart `stale` with null observations, demand→`updating`, successful non-empty `updating` response metadata, failure mapping, and snapshot access without synchronization DB reads. **AC2–AC7, AC9**
-- [ ] B.2 **GREEN:** Add controller; wire guards/permission and sanitized status with `consecutiveFailureCount` increment/reset; keep timer.
-- [ ] B.3 **REFACTOR:** Prove old-web/new-API compatibility and later-demand retry; durable evidence remains #329.
+- [x] B.1 **RED:** Controller/coordinator tests for 401/403, joined demand/no queue, backend return by 4s, restart `stale` with null observations, demand→`updating`, successful non-empty `updating` response metadata, failure mapping, and snapshot access without synchronization DB reads. **AC2–AC7, AC9**
+- [x] B.2 **GREEN:** Add controller; wire guards/permission and sanitized status with `consecutiveFailureCount` increment/reset; keep timer.
+- [x] B.3 **REFACTOR:** Prove old-web/new-API compatibility and later-demand retry; durable evidence remains #329.
 
 ## Slice C: Compatible web demand and degraded UX (240–350; max 350)
 - [ ] C.1 **RED:** Fake-clock tests for mount/focus/refresh, visible 4s cadence, hidden stop, invalidation, and 404 fallback; at normal maxima assert target projection visibility and durable cursor (demand +4s, backend +4s while possibly `updating`, client +1s = 9s ≤10s), not `current`; assert unfinished target work is excluded and updating/stale/failed renders by demand +5s. **AC2, AC4, AC6, AC9**
