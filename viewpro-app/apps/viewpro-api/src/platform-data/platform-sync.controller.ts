@@ -36,7 +36,8 @@ export function raceDemand(
 /**
  * PlatformSyncController — authenticated demand endpoint (Slice B, #327).
  * Starts/joins the shared coordinator promise and races it; 401/403 start
- * no demand. Timer (PlatformDataPollJob) is retained and unaffected.
+ * no demand. Since Slice D (#327) retired the unconditional poll job, this
+ * is the sole entry point that starts synchronization work — idle is quiet.
  */
 @Controller('operators/platform-sync')
 @UseGuards(AuthGuard, PlatformPermissionGuard)

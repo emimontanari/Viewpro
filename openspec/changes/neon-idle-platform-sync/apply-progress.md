@@ -67,3 +67,25 @@
 - Full suite: 621/621 passed across 56 files (baseline 612/53 + 9 new tests + 3 new files) — no regression.
 ## Candidate Evidence
 - Changed lines: 317 (`git diff --numstat` against `d70b905`, source + `tasks.md`; `apply-progress.md` excluded per Slice A/B convention).
+
+# Apply Progress: Slice D (D.1–D.3) — complete
+## Scope
+- `slice-d-retire-timer` (D.1–D.3); D.4/D.5 explicitly out (deploy-time/≥24h evidence). Worktree: `neon-idle-platform-sync-d`, base `origin/develop@e2d4c27` (A/B/C already merged).
+## D.1 — evidence (recorded, not re-gathered; supplied by orchestrator)
+Read-only Dokploy observation 2026-08-19T19:33:27Z, app `viewpro-platform-api` (`Lsl92KkwFQ4zjleYllaPY`), swarm `viewpro-platform-api-375xud`, project `inmoview-prod`/`production`: desired=1, healthy running=1 (`13f36b253a2d`, `Up 2 weeks (healthy)`), digest `sha256:93accbb...68a8b2f`, domain `api-console.inmoview.app`. Singleton gate PASSES. Operational fact: app auto-deploys from `main` (`autoDeploy: true`), not `develop` — Slices A–C merged to `develop` are not yet live.
+## TDD Cycle Evidence
+| Task | Safety net | RED | GREEN | REFACTOR |
+|---|---|---|---|---|
+| D.2 | 599/67 (API), 621/56 (web) passed | N/A — approval-style gate over already-correct Slice A–C behavior (no new production code) | `platform-sync-compatibility.spec.ts`: 2/2 passed pre-deletion, rewritten post-D.3 against `coordinator.runOneBatch()` directly (still 2/2) | Trimmed doc comments to fit budget |
+| D.3 | same | `env.schema.spec.ts` "no longer defines PLATFORM_POLL_INTERVAL_MS": 5000 received vs undefined expected — failed; `platform-data.module.spec.ts` "provides no interval poll job": true vs false — failed | Deleted `platform-data-poll-job.ts`+spec; removed provider/import from `platform-data.module.ts`; removed `PLATFORM_POLL_INTERVAL_MS` from `env.schema.ts`/`app.config.ts`/`.env.example`; both new tests pass | Stale doc comments in `platform-data.module.ts`/`platform-sync.controller.ts` corrected |
+## Work Unit Evidence
+| Focused | `pnpm --filter @viewpro/platform-api test <path>` (no `--`): `platform-sync-compatibility.spec.ts` 2/2, `platform-data.module.spec.ts` 3/3, `env.schema.spec.ts` 23/23 — all passed. |
+| Runtime | Real: `platform-data.module.spec.ts` compiles the actual `PlatformDataModule` DI graph (no live DB, per its own doc comment) and resolves `PlatformSyncCoordinator`; reflection over real `@Module` metadata proves no poll-job provider remains. |
+| Rollback | Revert only: deleted `platform-data-poll-job.ts`+spec, `platform-data.module.ts`, `platform-sync.controller.ts` comment, `CFG/{app.config.ts,env.schema.ts,__tests__/env.schema.spec.ts}`, `.env.example`, `RUNBOOK` line 205, new `platform-sync-compatibility.spec.ts`. No Slice A/B/C file's behavior changed. |
+## Verification
+- GREEN: `pnpm --filter @viewpro/platform-api typecheck` (`tsc --noEmit`, no errors) and `git diff --check` (exit 0) passed.
+- Full suite: platform-api 598/598 across 67 files (baseline 599/67 − 5 deleted poll-job tests + 1 module + 1 env.schema + 2 compatibility = 598, matches exactly). viewpro-web 621/621 across 56 files — unaffected (Slice D touches no web file).
+- Idle-quiet proof: `rg "setInterval|OnModuleInit" apps/viewpro-api/src/platform-data` (excluding `__tests__`) returns only a doc comment — no lifecycle hook or interval remains; `PlatformSyncCoordinator.runOneBatch()` is reachable only from `PlatformSyncController.demand()`.
+- Scope: D.4 (merge/deploy gate) and D.5 (≥24h CU-hour evidence) untouched — both explicitly deferred to deploy time / post-deploy observation window.
+## Candidate Evidence
+- Changed lines: 291 (source + `tasks.md`, `git diff --numstat e2d4c27`) + 22 (this file's own diff) = 313 total, within the 220–340 budget (hard max 340).

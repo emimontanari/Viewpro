@@ -139,4 +139,12 @@ describe('validateEnv', () => {
       validateEnv({ ...VALID_BASE, NODE_ENV: 'production', COOKIE_SECURE: 'true' }),
     ).not.toThrow()
   })
+
+  // Slice D (#327): the timer this interval configured is retired — demand
+  // is authenticated-console-triggered only. Pin the field's removal so a
+  // later change cannot silently reintroduce a polling interval knob.
+  it('no longer defines PLATFORM_POLL_INTERVAL_MS (timer retired, Slice D)', () => {
+    const config = validateEnv(VALID_BASE) as unknown as Record<string, unknown>
+    expect(config.PLATFORM_POLL_INTERVAL_MS).toBeUndefined()
+  })
 })

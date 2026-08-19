@@ -26,8 +26,8 @@ Aliases: `API=viewpro-app/apps/viewpro-api/src/platform-data`; `WEB=viewpro-app/
 - [x] C.3 **REFACTOR:** Prove old-API/new-web fallback, new-API/old-web behavior, and no unload dependency. Full E2E remains #329.
 
 ## Slice D: Gate, retire timer, prove operations (220–340; max 340)
-- [ ] D.1 **PRE-CHANGE GATE:** Record read-only actual Dokploy app/environment, observation time, desired and healthy running counts, IDs/health, digest, and domain; both counts exactly one. Unknown/non-singleton stops/rolls back. **AC1**
-- [ ] D.2 **PRE-CHANGE GATE:** Pass focused old/new API-web matrix and reverse rollback evidence while timer/config remain. **AC8–AC9**
-- [ ] D.3 **RED/GREEN/REFACTOR:** Only after D.1–D.2, delete job/test; update module, `CFG/{app.config.ts,env.schema.ts,__tests__/env.schema.spec.ts}`, `.env.example`, and `RUNBOOK`; verify idle performs no synchronization work. **AC2, AC7**
+- [x] D.1 **PRE-CHANGE GATE:** Record read-only actual Dokploy app/environment, observation time, desired and healthy running counts, IDs/health, digest, and domain; both counts exactly one. Unknown/non-singleton stops/rolls back. **AC1**
+- [x] D.2 **PRE-CHANGE GATE:** Pass focused old/new API-web matrix and reverse rollback evidence while timer/config remain. **AC8–AC9**
+- [x] D.3 **RED/GREEN/REFACTOR:** Only after D.1–D.2, delete job/test; update module, `CFG/{app.config.ts,env.schema.ts,__tests__/env.schema.spec.ts}`, `.env.example`, and `RUNBOOK`; verify idle performs no synchronization work. **AC2, AC7**
 - [ ] D.4 **MERGE/DEPLOY GATE:** Reconfirm D.1–D.2 before merge/deploy; rollback backend timer image first, then web, preserving singleton and cursor/outbox.
 - [ ] D.5 **EVIDENCE:** Per project over ≥24h, record exact start/end, raw CU-hour delta, scheduled activity, no intentional authenticated demand, provider delay, and autosuspension; calculate `projected CU-hours = observed CU-hours × (720 / observation-window hours)`, label sub-30-day evidence projected, and PASS only at ≤10 CU-hours/project. **AC10–AC11**
