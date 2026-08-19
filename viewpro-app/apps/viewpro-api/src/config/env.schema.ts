@@ -90,12 +90,10 @@ class EnvironmentVariables {
   @Type(() => Number)
   AUTH_RATE_LIMIT_LOGIN_TTL_SECONDS = 60
 
-  // Optional — poll interval for the platform data-lane ingest job (ms). Default 5000.
-  @IsOptional()
-  @IsInt()
-  @Min(100)
-  @Type(() => Number)
-  PLATFORM_POLL_INTERVAL_MS = 5000
+  // Slice D (#327): PLATFORM_POLL_INTERVAL_MS removed — the unconditional
+  // poll job it configured is retired. Synchronization now runs only on
+  // authenticated console demand (POST /operators/platform-sync/demand);
+  // idle performs no feed/cursor/projection work at all.
 
   @IsOptional()
   @IsString()

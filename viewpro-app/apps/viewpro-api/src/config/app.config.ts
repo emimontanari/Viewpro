@@ -66,11 +66,10 @@ export const appConfig = registerAs('app', () => {
       secret: platformControlSecret,
       inmoviewApiInternalUrl,
     },
-    platformData: {
-      pollIntervalMs: Number(process.env.PLATFORM_POLL_INTERVAL_MS ?? 5000),
-      // S2: batchLimit removed — batch size is producer-controlled (apps/api endpoint).
-      // The consumer-side batchLimit was dead config that misled operators.
-    },
+    // Slice D (#327): `platformData.pollIntervalMs` retired along with the
+    // unconditional poll job — demand is authenticated-console-triggered
+    // only, so there is no consumer-side interval to configure (batchLimit
+    // was already removed in S2; batch size is producer-controlled).
     sentry: {
       dsn: process.env.SENTRY_DSN,
       environment: process.env.SENTRY_ENVIRONMENT,
