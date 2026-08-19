@@ -19,6 +19,7 @@ describe('ChangeFeedClient', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.useRealTimers()
   })
 
   it('fetchChanges calls GET INMOVIEW_API_INTERNAL_URL/api/internal/platform/changes?since=<cursor>', async () => {
@@ -213,6 +214,21 @@ describe('ChangeFeedClient', () => {
     })
 
     await expect(client.fetchChanges(0)).rejects.toThrow()
+  })
+
+  it('fetchChanges aborts stalled body parsing after two seconds', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => Promise.resolve({
+      ok: true,
+      json: () => new Promise((_, reject) => init.signal?.addEventListener('abort', () => reject(new Error('aborted')))),
+    } as Response)))
+    const client = new ChangeFeedClient({ inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL, platformControlSecret: PLATFORM_CONTROL_SECRET })
+    const request = client.fetchChanges(0)
+
+    await Promise.resolve()
+    const assertion = expect(request).rejects.toMatchObject({ name: 'ChangeFeedTimeoutError' })
+    await vi.advanceTimersByTimeAsync(2000)
+    await assertion
   })
 
   // -------------------------------------------------------------------------

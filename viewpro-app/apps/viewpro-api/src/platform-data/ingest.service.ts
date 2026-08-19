@@ -5,6 +5,10 @@ import { CursorRepository } from './cursor.repository'
 import { PlatformTenantRepository } from './platform-tenant.repository'
 import { AuditLogRepository } from './audit-log.repository'
 
+export type IngestBatchOutcome =
+  | { kind: 'succeeded'; advancedCursor: number | null }
+  | { kind: 'failed'; stage: 'projection' | 'cursor-advance' }
+
 /**
  * IngestService — processes a batch of outbox events from the change-feed.
  *
@@ -60,9 +64,9 @@ export class IngestService {
    * - Advances the cursor to the max seqNo in the batch ONLY after all upserts commit.
    * - On any error: logs and skips — the cursor is NOT advanced.
    */
-  async ingestBatch(events: PlatformOutboxEvent[]): Promise<void> {
+  async ingestBatch(events: PlatformOutboxEvent[]): Promise<IngestBatchOutcome> {
     if (events.length === 0) {
-      return
+      return { kind: 'succeeded', advancedCursor: null }
     }
 
     try {
@@ -92,7 +96,7 @@ export class IngestService {
       // D7: cursor must NOT advance if mirror write failed.
       // Log-and-skip: retry next tick.
       this.logger.error('Failed to ingest batch — cursor not advanced; will retry next tick', err)
-      return
+      return { kind: 'failed', stage: 'projection' }
     }
 
     // D7: advance cursor only after all upserts have committed.
@@ -103,7 +107,9 @@ export class IngestService {
       // Cursor advance failure is also logged; the events are already in the mirror
       // so dedup ensures they won't be duplicated on the next re-poll.
       this.logger.error('Failed to advance cursor after successful ingest', err)
+      return { kind: 'failed', stage: 'cursor-advance' }
     }
+    return { kind: 'succeeded', advancedCursor: maxSeqNo }
   }
 
   /**
