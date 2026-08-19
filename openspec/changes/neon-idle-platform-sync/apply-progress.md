@@ -48,3 +48,22 @@
 - Candidate diff SHA-256: `f6d84071f0cb8d43f34eb704fe39acde285f48ad3dc13d3c81b06fa362630878`.
 - Canonical payload (UTF-8, exact shown bytes plus one LF): `{"attempt":1,"attemptToken":"sha256:2a2e8d4332c39777bd847d78d179d60fd04f894ae3bc21a81439278b2064a452","base":"02b8977","candidateDiff":"sha256:f6d84071f0cb8d43f34eb704fe39acde285f48ad3dc13d3c81b06fa362630878","red":"getStatus-missing:2 failed;controller-module-not-found:suite failed to load","green":"controller+coordinator+module+poll-job:20;full-suite:599;typecheck;diff-check","changedLines":217}`.
 - Evidence SHA-256: `6d01a091f3fa9961c3fcf856ed33676c54e589854b8873ab095ad5ab9384e93f`.
+
+# Apply Progress: Slice C — complete (attempt 1)
+## Scope
+- `slice-c-web-demand-ux` (C.1–C.3); `viewpro-web` only, consumes Slice A/B API as-is; no D/timer-retirement/#329/E2E scope.
+## TDD Cycle Evidence
+| Task | Safety net | RED | GREEN | REFACTOR |
+|---|---|---|---|---|
+| C.1 | 612/53 files passed (baseline) | 4 new spec files failed: `Cannot find module` for service/hook/badge | service+hook+badge created; focused run 9/9 passed | comments/JSX trimmed to fit the line budget |
+| C.2 | same | Prior RED preserved | `features/platform-sync/{api,components}` created; `app/dashboard/layout.tsx` wraps children in `PlatformSyncProvider` | provider kept as pure composition (no own test — covered structurally by hook+badge) |
+| C.3 | same | Prior RED preserved | full suite 621/56 files passed (no regression proves new-API/old-web); 404-fallback test proves old-API/new-web | grepped source: no `unload`/`beforeunload`/`pagehide` listener |
+## Work Unit Evidence
+| Focused | `pnpm vitest run src/features/platform-sync`: 9/9 passed (service 2, badge 4, hook 3). |
+| Runtime | N/A: browser-only hook against a mocked `apiRequest`; real HTTP integration already proven by Slice B's controller test. |
+| Rollback | Revert only `src/features/platform-sync/**` and the 2-line `app/dashboard/layout.tsx` wrap; no Slice A/B file touched. |
+## Verification
+- GREEN: `pnpm --filter viewpro-web typecheck` (`tsc --noEmit`, no errors) and `git diff --check` (exit 0) passed.
+- Full suite: 621/621 passed across 56 files (baseline 612/53 + 9 new tests + 3 new files) — no regression.
+## Candidate Evidence
+- Changed lines: 317 (`git diff --numstat` against `d70b905`, source + `tasks.md`; `apply-progress.md` excluded per Slice A/B convention).

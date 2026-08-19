@@ -4,6 +4,7 @@ import Header from '@/components/layout/header';
 import { InfoSidebar } from '@/components/layout/info-sidebar';
 import { InfobarProvider } from '@/components/ui/infobar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { PlatformSyncProvider } from '@/features/platform-sync/components/platform-sync-provider';
 import { BRAND } from '@/lib/brand/brand';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
@@ -28,7 +29,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <SidebarInset>
           <Header />
           <InfobarProvider defaultOpen={false}>
-            {children}
+            <PlatformSyncProvider>{children}</PlatformSyncProvider>
             <InfoSidebar side='right' />
           </InfobarProvider>
         </SidebarInset>

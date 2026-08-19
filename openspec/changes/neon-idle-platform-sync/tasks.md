@@ -21,9 +21,9 @@ Aliases: `API=viewpro-app/apps/viewpro-api/src/platform-data`; `WEB=viewpro-app/
 - [x] B.3 **REFACTOR:** Prove old-web/new-API compatibility and later-demand retry; durable evidence remains #329.
 
 ## Slice C: Compatible web demand and degraded UX (240–350; max 350)
-- [ ] C.1 **RED:** Fake-clock tests for mount/focus/refresh, visible 4s cadence, hidden stop, invalidation, and 404 fallback; at normal maxima assert target projection visibility and durable cursor (demand +4s, backend +4s while possibly `updating`, client +1s = 9s ≤10s), not `current`; assert unfinished target work is excluded and updating/stale/failed renders by demand +5s. **AC2, AC4, AC6, AC9**
-- [ ] C.2 **GREEN:** Create `WEB/features/platform-sync/{api,components}` and tests; modify dashboard layout. Browser calls only `viewpro-api`; preserve projection zero states.
-- [ ] C.3 **REFACTOR:** Prove old-API/new-web fallback, new-API/old-web behavior, and no unload dependency. Full E2E remains #329.
+- [x] C.1 **RED:** Fake-clock tests for mount/focus/refresh, visible 4s cadence, hidden stop, invalidation, and 404 fallback; at normal maxima assert target projection visibility and durable cursor (demand +4s, backend +4s while possibly `updating`, client +1s = 9s ≤10s), not `current`; assert unfinished target work is excluded and updating/stale/failed renders by demand +5s. **AC2, AC4, AC6, AC9**
+- [x] C.2 **GREEN:** Create `WEB/features/platform-sync/{api,components}` and tests; modify dashboard layout. Browser calls only `viewpro-api`; preserve projection zero states.
+- [x] C.3 **REFACTOR:** Prove old-API/new-web fallback, new-API/old-web behavior, and no unload dependency. Full E2E remains #329.
 
 ## Slice D: Gate, retire timer, prove operations (220–340; max 340)
 - [ ] D.1 **PRE-CHANGE GATE:** Record read-only actual Dokploy app/environment, observation time, desired and healthy running counts, IDs/health, digest, and domain; both counts exactly one. Unknown/non-singleton stops/rolls back. **AC1**
