@@ -24,7 +24,7 @@ Chain strategy: not applicable
 ## Phase 1: Establish Planning Authority
 
 - [x] 1.1 Publicly record the maintainer-approved implementation-first order on #325 and #328 before apply; retain #328's audit failure as baseline evidence. Approval: `https://github.com/emimontanari/Viewpro/issues/325#issuecomment-5331737441`; `https://github.com/emimontanari/Viewpro/pull/328#issuecomment-5331737710`.
-- [x] 1.2 Record the published/reviewed pre-apply planning authority `P=2ce6a6923ad4860177dfeab2fee545068d944283`; later local amendments are not published authority and must precede PR B publication.
+- [x] 1.2 Record the published/reviewed pre-apply planning authority `P=2ce6a6923ad4860177dfeab2fee545068d944283`; later published amendments are post-apply evidence, not retroactive pre-apply authority.
 - [x] 1.3 Read the planning artifacts at `P`, then create B from fresh `origin/develop@D`; B must cite `P`, target `develop`, and use `Refs #325` without a closing keyword.
 
 ## Phase 2: Validate the Delivery Work Unit
@@ -41,6 +41,6 @@ Chain strategy: not applicable
 
 ## Phase 4: Refresh Planning, Close, and Unblock
 
-- [x] 4.1 #328 was refreshed/retested against `develop@d3afbec53b5bed51abaa2453ca09262eed9a29cc` at `8ba7031024c60580ef6e00811f2362ec6ddc838a`: five planning files, 358 changed lines, and green final CI run `32175909038`.
+- [x] 4.1 #328 was refreshed/retested against `develop@d3afbec53b5bed51abaa2453ca09262eed9a29cc`; its self-referential final head, five-file count, and fresh checks are bound externally in the current PR body/CI and invalidated by any new commit.
 - [ ] 4.2 Require fresh review and fresh checks for #328's exact final head/base; do not reuse approval or checks from a changed candidate. Merge #328 only when green.
 - [ ] 4.3 Authorize and manually close #325 only after B and #328 are both merged green. Only afterward update/rerun #324 against fixed `develop`, keeping this remediation out of #324's feature diff.
