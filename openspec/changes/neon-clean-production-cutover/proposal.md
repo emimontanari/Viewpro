@@ -20,7 +20,7 @@ Govern production-generation cutover without redefining authoritative #327.
 None.
 
 ## Approach
-`stacked-to-main`: force-chained WU PRs sequential-to-`develop`: fresh `origin/develop`, review/CI, merge, fetch/overlap audit. No WU reaches `main`; planning grants no runtime/provider/apply authority.
+`sequential-to-develop`: each WU starts from live `origin/develop`, then review/CI/merge to `develop`, followed by fetch/overlap audit. No WU targets production `main`; planning grants no runtime/provider/apply authority.
 
 Prefix: `main@868dc70` + #331/#333/#334/#335/#336. WU2 closes reviewed `remediation-manifest.v1.json` with WU1/WU2 identities/receipts; only gates WU3-WU7 implementation/compatibility. WU3 commits tooling+versioned schema/template, never a populated instance. WU3-WU7 emit reviewed develop-merge identity/receipt.
 
