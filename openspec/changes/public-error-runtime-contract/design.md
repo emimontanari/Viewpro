@@ -29,7 +29,7 @@ After a contract change, root watch rebuilds the dependency and restarts affecte
 | Commit state | N/A — no commit-state automation exists. |
 | Push state | N/A — no push automation exists. |
 | PR commands | N/A — no PR automation exists. |
-| Docker/CLI smoke process integration — API one-shot | Applicable — override only invocation command, assert exact entrypoint/CMD, and reject spawn/import/assert/nonzero/signal/timeout; timeout kills/reaps. |
+| Docker/CLI smoke process integration — API one-shot | Applicable — override only invocation command, assert exact entrypoint/CMD, and reject spawn/import/assert/nonzero/signal/timeout. `exit` proves termination, `close` also proves stdio closure; exit-only failure tears down parent stdio/unrefs, and neither event is `termination_unconfirmed` without a reap/orphan claim. |
 | Docker/CLI smoke process integration — App New standalone | Applicable — separate loopback ports; reject readiness/premature-exit/status/body/timeout/graceful-teardown/escalation failures and await/reap. Marker RED tests also cover Node, absent env, Edge no-import, `EADDRINUSE`, and exact response. |
 
 ## Units, Evidence, and Rollback

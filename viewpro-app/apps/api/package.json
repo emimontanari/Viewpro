@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "runtime:smoke": "cd ../.. && test -x node_modules/.bin/turbo && node_modules/.bin/turbo run build --filter=@viewpro/api && docker build --tag viewpro-api-runtime-contract-smoke --file apps/api/Dockerfile . && VIEWPRO_RUNTIME_SMOKE_IMAGE=viewpro-api-runtime-contract-smoke node apps/api/dist/runtime-contract-smoke.js",
     "demo:seed": "node scripts/seed-demo.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

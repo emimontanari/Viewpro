@@ -8,7 +8,7 @@ Chained PRs recommended: Yes
 Decision needed before apply: No — resolved as stacked-to-develop
 Chain strategy: stacked-to-develop.
 Delivery strategy: chained PRs; no size exception.
-Apply boundary: Unit 1 only next run.
+Apply boundary: Units 1–2 complete; Unit 3 next eligible; Unit 4 pending.
 
 Order: PR1/U1 (base `develop`) → PR2/U2 + PR3/U3 (base `develop`; parallel, disjoint) → PR4/U4 (base `develop`; after 2+3); all merge `develop`.
 
@@ -27,9 +27,9 @@ Order: PR1/U1 (base `develop`) → PR2/U2 + PR3/U3 (base `develop`; parallel, di
 
 ## Unit 2: API Image Seam (PR 2)
 
-- [ ] 2.1 **RED:** Create `viewpro-app/apps/api/src/runtime-contract-smoke.spec.ts`; run `pnpm --filter @viewpro/api exec vitest run src/runtime-contract-smoke.spec.ts`; assert static-import/one-shot/image failures.
-- [ ] 2.2 **GREEN:** Modify only `viewpro-app/apps/api/package.json` (`scripts.runtime:smoke`) and `Dockerfile`; create `src/runtime-contract-smoke.ts`. Build root-context; inspect `Config.Entrypoint`/`Config.Cmd`; run `docker run --rm <image> node dist/runtime-contract-smoke.js`; require 0, no Nest/listener/HTTP/DB activity.
-- [ ] 2.3 **REFACTOR:** Prove spawn/import/assertion/nonzero/signal/timeout failures, kill/reap, and command-only startup; keep tests/script in PR 2.
+- [x] 2.1 **RED:** Create `viewpro-app/apps/api/src/runtime-contract-smoke.spec.ts`; run `pnpm --filter @viewpro/api exec vitest run src/runtime-contract-smoke.spec.ts`; assert static-import/one-shot/image failures.
+- [x] 2.2 **GREEN:** Modify only `viewpro-app/apps/api/package.json` (`scripts.runtime:smoke`) and `Dockerfile`; create `src/runtime-contract-smoke.ts`. Build root-context; inspect `Config.Entrypoint`/`Config.Cmd`; run `docker run --rm <image> node dist/runtime-contract-smoke.js`; require 0, no Nest/listener/HTTP/DB activity.
+- [x] 2.3 **REOPENED — exit-only stdio correction:** RED proved ordered parent-stdio teardown for exit without close; `exit` termination, `close` stdio closure, bounded neither-event failure without reap/orphan claim, and tokenized Docker cleanup passed. Keep tests/script in PR 2.
 
 ## Unit 3: App New Node Marker / Image (PR 3)
 

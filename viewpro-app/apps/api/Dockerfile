@@ -19,9 +19,9 @@ FROM base AS builder
 # and `apps/api/Dockerfile` as the Dockerfile path.
 COPY . .
 
-RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @viewpro/api db:generate
-RUN pnpm --filter @viewpro/api build
+RUN pnpm install --frozen-lockfile \
+  && test -x node_modules/.bin/turbo \
+  && node_modules/.bin/turbo run build --filter=@viewpro/api
 
 FROM base AS runner
 
