@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.13.1",
   "scripts": {
     "restore:parity": "node scripts/restore-drill/schema-parity.mjs",
-    "dev": "turbo dev --filter=@viewpro/api --filter=next-shadcn-dashboard-starter",
+    "dev": "turbo watch dev --filter=@viewpro/api --filter=next-shadcn-dashboard-starter",
     "dev:app-new": "turbo dev --filter=@viewpro/api --filter=next-shadcn-dashboard-starter",
     "dev:api": "pnpm --filter @viewpro/api start:dev",
     "dev:platform": "turbo dev --filter=@viewpro/platform-api --filter=viewpro-web",

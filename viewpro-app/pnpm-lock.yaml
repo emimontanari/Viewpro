@@ -57,6 +57,9 @@ importers:
       '@sentry/node':
         specifier: ^10.53.1
         version: 10.53.1
+      '@viewpro/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@viewpro/platform-contract':
         specifier: workspace:*
         version: link:../../packages/platform-contract
@@ -238,6 +241,9 @@ importers:
       '@tanstack/react-table':
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@viewpro/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -753,6 +759,9 @@ importers:
       typescript:
         specifier: 6.0.3
         version: 6.0.3
+      vitest:
+        specifier: 4.1.6
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@25.7.0)(jsdom@29.1.1(@noble/hashes@1.8.0))(vite@8.0.12(@types/node@25.7.0)(jiti@2.7.0)(terser@5.47.1)(yaml@2.9.0))
 
   packages/platform-contract:
     devDependencies:

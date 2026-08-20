@@ -29,6 +29,7 @@
     "@nestjs/throttler": "6.5.0",
     "@prisma/client": "6.19.2",
     "@sentry/node": "^10.53.1",
+    "@viewpro/contracts": "workspace:*",
     "@viewpro/platform-contract": "workspace:*",
     "argon2": "0.44.0",
     "class-transformer": "0.5.1",
