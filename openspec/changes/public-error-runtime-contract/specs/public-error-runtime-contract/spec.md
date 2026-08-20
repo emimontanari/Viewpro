@@ -41,7 +41,7 @@ Both Docker builders MUST be dependency-aware from `viewpro-app`, install frozen
 #### Scenario: API one-shot is contained
 - **GIVEN** the overridden API command
 - **WHEN** it imports/asserts the compiled static-import seam
-- **THEN** it exits `0` without Nest, listener, HTTP, or database activity; spawn, import, assertion, nonzero exit, signal, or timeout fails verification, and timeout kills/reaps the child.
+- **THEN** it exits `0` without Nest, listener, HTTP, or database activity; spawn, import, assertion, nonzero exit, signal, or timeout fails verification. `exit` proves direct-child termination, `close` additionally proves stdio closure; exit-only failure tears down parent stdio and unrefs the child, while neither event reports `runtime_smoke_termination_unconfirmed` without a reap/orphan claim.
 
 #### Scenario: App New marker is Node-only, opt-in, and exact
 - **GIVEN** `src/instrumentation.ts` statically imports `@viewpro/contracts`

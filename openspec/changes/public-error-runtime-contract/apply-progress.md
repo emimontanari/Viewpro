@@ -3,7 +3,7 @@
 ## Scope
 
 - Change: `public-error-runtime-contract`
-- Delivery: PR1 / Unit 1 only, chained PRs with stacked-to-develop semantics.
+- Delivery: chained PRs with stacked-to-develop semantics.
 - Remediation incident preserved: `unit-1-turbo-graph-remediation` repaired the confirmed generic Turbo dependency and strict-environment watch evidence defects. Its earlier single settlement request was blocked as `invalid_continuation`; no retry was made.
 - Final remediation settlement: **complete** — token `sha256:85088994c917861c97077af39efa1fe9793fd3d12c8364f0aeff88ea535aaecc`, request `settle-public-error-runtime-contract-unit1-remediation-20260820-audit-7f3c91b2`, evidence revision `sha256:d01f4214702c88192cf99a885ed1320ff5cbd31d6c91a14ffffc66963677c1ad`.
 - Review: clean dual Judgment Day approval recorded for the final Unit 1 remediation evidence.
@@ -51,4 +51,18 @@
 
 - Source/test/config/lockfile changed lines: **118 / 400** (OpenSpec bookkeeping excluded; 75 tracked additions/deletions plus 43 lines in the new runtime test).
 - Rollback boundary: revert the eight Unit 1 source/test/config/lockfile paths and only the two consumer contract importer links plus the contracts Vitest importer entry; remove the Unit 1 test. No Unit 2–4 path was changed.
-- Remaining: Units 2–4 remain unchecked and untouched. Unit 1 is complete and independently reviewable; no commit was created.
+- Current boundary: Units 1–2 complete; Unit 3 independently eligible; Unit 4 pending. Units 3–4 are untouched.
+
+## Unit 2 — ordinal 5 exit-only correction
+
+- Ordinal 4 passed with `settle-public-error-runtime-contract-unit2-bounded-reap-20260820-1`, token `sha256:d1df362b994c5857bad75e05f94ce8fee31c7bff170df03f5230410d75b49e1f`, and evidence `sha256:6abf3def1cdea72e21be1d0ad2d79086f3e3f0b44dbc7c93b8fe9fbf53f82655`; it is predecessor evidence only and does not prove this future source.
+- 2.3 was reopened. RED: focused Vitest failed 4/13 for missing exit-only stdout/stderr destruction and persistent late-error guarding.
+- GREEN: exit-only timed-out/nonzero/signaled failures and natural-success final-evidence expiry now settle, clear timers/remove terminal listeners, retain the runner error guard, destroy stdout then stderr, and unref. Neither event reports `runtime_smoke_termination_unconfirmed` without a reap/orphan claim; complete close success preserves streams/output.
+- Focused Vitest passed 13/13; coverage includes cooperative timeout, SIGKILL exit-only, natural exit-only deadline, neither-event, unowned late error settle-once, complete success, ordered teardown, and tokenized Docker cleanup.
+
+| Task | Test File | Layer | Safety Net | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2.3 | `apps/api/src/runtime-contract-smoke.spec.ts` | Unit/process | prior 13/13 | 4/13 failed before source change | 13/13 passed | six exit/close paths | no behavior change |
+
+- `pnpm install --frozen-lockfile`, API typecheck, forced Turbo API build (4/4), real `runtime:smoke`, and `git diff --check` passed. Image `sha256:3228c1bf1b063a292d6538b413867aee7db83e3445e278f7644e3db6582d51f6` and all matching labeled containers were removed.
+- Final exact numstat: implementation **331 / 400** (target ≤351); complete PR **361 / 400**. Settlement complete exactly once: `settle-public-error-runtime-contract-unit2-exit-stdio-20260820-1`, token `sha256:a2cb626e2ef6567385b6e5e3d73cd3c57c20739f6f96650d3ba6e0de5c61fb47`.
