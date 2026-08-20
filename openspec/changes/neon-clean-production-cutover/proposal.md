@@ -6,13 +6,14 @@ Govern production-generation cutover while #327 remains authoritative, without r
 ## Scope
 ### In Scope
 - Abandon PostgreSQL rows; bootstrap allowlisted migrations/seeds and one authorized operator.
-- Prove isolation, backup lineage, receipts, and retention.
-- Run backend-first blue/green cutover, invalidate sessions, and bound rollback.
-- Gate a 24-hour internal pilot, then one month of Free evidence.
+- Prove isolation, backup lineage, receipts, retention.
+- Run backend-first blue/green cutover, invalidate sessions, bound rollback.
+- Gate 24-hour internal pilot, then one month Free evidence.
 
 ### Out of Scope
-- Row restore or deletion of retained Neon, backup/R2, Sentry, or Resend data.
-- Changes to #327 contracts; #290/#329, `develop`, public launch, paid plans/upgrades, or destructive cleanup.
+- Row restoration or retained Neon/backup/R2/Sentry/Resend deletion.
+- Changes to #327 contracts; #290/#329, public launch, paid plans/upgrades, or destructive cleanup.
+- Unrelated `develop` commits in the reconstructed runtime candidate; `develop` remains every reviewed WU's required integration branch.
 
 ## Capabilities
 ### New Capabilities
@@ -22,9 +23,11 @@ Govern production-generation cutover while #327 remains authoritative, without r
 None.
 
 ## Approach
-The sole `production-cutover-lineage` specification is the final planning authority. Feature Branch Chain is selected. This planning set grants no runtime, provider, or apply authority.
+Ledger guard `stacked-to-main` mandates force-chained WU PRs sequential-to-`develop`: each starts from current `origin/develop`, passes individual review/CI, merges to `develop`; fetch/overlap audit precedes next. No incremental WU reaches production `main`. `production-cutover-lineage` remains sole planning authority and grants no runtime, provider, or apply authority.
 
-`neon-idle-platform-sync` (#327) remains active and authoritative throughout cutover. Cutover uses exact-version dependency receipts and MUST NOT duplicate or weaken it. Fresh current-organization projects require policy, slots, and independent quota. Release only the exact approved #327 candidate after its D.4/pre-production traffic gate. Cut product backend, platform backend, then frontends; rotate access/step-up secrets.
+The final runtime candidate deterministically reconstructs `main@868dc70` + #331/#333–#336 + the closed reviewed remediation manifest; unrelated `develop` commits remain excluded.
+
+`neon-idle-platform-sync` (#327) remains active/authoritative; exact-version receipts MUST preserve it. Fresh organization projects require policy, slots, independent quota. Release the approved #327 candidate only after D.4/pre-production traffic gate. Cut product backend, platform backend, then frontends; rotate access/step-up secrets.
 
 ## Affected Areas
 | Area | Impact | Description |
@@ -40,17 +43,17 @@ The sole `production-cutover-lineage` specification is the final planning author
 | Policy/quota failure | High | Stop before provisioning |
 
 ## Rollback Plan
-Before the first business write, restore the old generation. Afterward, URL rollback needs reconciliation/export authority; otherwise roll forward. Never delete retained resources.
+Before first business write, restore the old generation. Afterward, URL rollback requires reconciliation/export authority; otherwise roll forward. Never delete retained resources.
 
 ## Dependencies
-- #327 final verify/spec synchronization/archive are NOT prerequisites for cutover spec/design/isolated apply because D.5 is post-deployment.
-- Before ANY fresh-generation traffic, the exact immutable #327 candidate MUST pass retained pre-production behavior proofs, runtime visible-freshness and idle-quiet evidence, sanitized failure alert/remediation gates, D.1–D.2 reconfirmation, and D.4 merge/deploy/rollback receipts. Failure blocks traffic.
-- After cutover, #327 D.5 MUST run at least 24 hours on both fresh production projects; only then may #327 final verify/sync/archive occur.
-- Cutover final verification/archive follows #327 archive and additionally requires its own one-month Free evidence and retention/non-deletion gates.
+- Cutover spec/design/isolated apply precede #327 final verify/spec sync/archive because D.5 is post-deployment.
+- Fresh traffic requires immutable #327 candidate proofs for retained pre-production behavior, visible-freshness/idle-quiet, sanitized failure alert/remediation, D.1–D.2, and D.4 merge/deploy/rollback; failure blocks.
+- #327 D.5 MUST run ≥24 hours on both fresh projects before final verify/sync/archive.
+- Cutover final verify/archive follows #327 archive plus one-month Free and retention/non-deletion gates.
 
 ## Success Criteria
-- [ ] Exact-version receipts prove the approved #327 candidate passed every traffic gate.
-- [ ] Sole `production-cutover-lineage` spec coherently governs cutover.
+- [ ] Exact-version receipts prove approved #327 candidate passed all traffic gates.
+- [ ] Sole `production-cutover-lineage` spec governs cutover.
 - [ ] D.5 completes on both projects before #327 final verify/archive.
 - [ ] Internal pilot remains gated; no public launch occurs.
 - [ ] One-month evidence informs the commercial decision; retained resources remain undeleted.
