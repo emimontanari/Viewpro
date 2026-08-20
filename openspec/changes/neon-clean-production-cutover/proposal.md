@@ -22,14 +22,14 @@ Govern production-generation cutover while #327 remains authoritative, without r
 None.
 
 ## Approach
-Current specs are invalid. Immediate regeneration removes stale lane/console files and retains only `production-cutover-lineage`; this proposal grants no design/apply authority.
+The sole `production-cutover-lineage` specification is the final planning authority. Feature Branch Chain is selected. This planning set grants no runtime, provider, or apply authority.
 
 `neon-idle-platform-sync` (#327) remains active and authoritative throughout cutover. Cutover uses exact-version dependency receipts and MUST NOT duplicate or weaken it. Fresh current-organization projects require policy, slots, and independent quota. Release only the exact approved #327 candidate after its D.4/pre-production traffic gate. Cut product backend, platform backend, then frontends; rotate access/step-up secrets.
 
 ## Affected Areas
 | Area | Impact | Description |
 |---|---|---|
-| Cutover specs | Regenerated | Remove stale deltas; retain capability |
+| Cutover specs | New capability | `production-cutover-lineage` governs cutover |
 | #327 | Dependency | Exact-version receipts; unchanged authority |
 
 ## Risks
@@ -50,7 +50,7 @@ Before the first business write, restore the old generation. Afterward, URL roll
 
 ## Success Criteria
 - [ ] Exact-version receipts prove the approved #327 candidate passed every traffic gate.
-- [ ] Regeneration removes stale lane/console files and retains only `production-cutover-lineage`.
+- [ ] Sole `production-cutover-lineage` spec coherently governs cutover.
 - [ ] D.5 completes on both projects before #327 final verify/archive.
 - [ ] Internal pilot remains gated; no public launch occurs.
 - [ ] One-month evidence informs the commercial decision; retained resources remain undeleted.

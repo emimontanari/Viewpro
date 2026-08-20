@@ -56,7 +56,7 @@ Issue routing remains separated: this change owns clean provisioning, no-restore
 Transfer and restore are rejected for the stated goal. Transfer retains project identity, credentials, URLs, and data while moving usage/billing. Restore deliberately reintroduces abandoned rows and invokes #290 PR2c controls; neither produces a clean no-restore baseline.
 
 ### Recommendation
-Use Approach A, conditional on written/live-console confirmation that the current organization can hold four projects during the one-month rollback window and that each fresh project receives an independent 100 CU-hour allowance. Use Approach B only if A is impossible and Neon explicitly confirms the new organization/account arrangement is policy-compliant. Approach C may be an optional rehearsal but cannot replace production evidence. Reject D because it conflicts with the clean baseline and preserves the current ambiguity.
+Use Approach 1, conditional on written/live-console confirmation that the current organization can hold four projects during the one-month window and that each fresh project receives an independent 100-CU-hour allowance. Use Approach 2 only if Approach 1 is impossible and Neon explicitly confirms the new organization/account arrangement is policy-compliant. Approach 3 may be an optional rehearsal but cannot replace production evidence. Reject Approach 4 because it conflicts with the clean baseline and preserves the current ambiguity.
 
 The safe sequence is backend-first and generation-aware:
 
@@ -88,4 +88,4 @@ The review forecast is High for the overall delivery and exceeds the 400-line bu
 - The optional `security-review` skill is unavailable in the confirmed registry/filesystem. This exploration therefore applied repository/runbook-based security analysis directly; the missing optional skill is a non-blocking tooling fallback, not a phase or security-gate waiver.
 
 ### Ready for Proposal
-Yes, conditionally. The proposal may formalize Approach A with Approach B as a provider-approved fallback, but it must encode hard stop gates for provider slots/policy, deployment-trigger control, target roles/grants, #327 proof and alert remediation, redacted secret-version receipts, first fresh backup, and the pre-write/post-write rollback boundary. It must keep #290 paused and must not authorize provisioning, cutover, or any external mutation.
+Yes, conditionally. The proposal may formalize Approach 1 with Approach 2 as a provider-approved fallback, but it must encode hard stop gates for provider slots/policy, deployment-trigger control, target roles/grants, #327 proof and alert remediation, redacted secret-version receipts, first fresh backup, and the pre-write/post-write rollback boundary. It must keep #290 paused and must not authorize provisioning, cutover, or any external mutation.

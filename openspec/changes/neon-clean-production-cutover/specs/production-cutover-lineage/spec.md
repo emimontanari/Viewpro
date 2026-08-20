@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Govern cutover without redefining active #327 authority.
+Govern cutover without redefining #327.
 
 ## Requirements
 
 ### Requirement: Clean Bootstrap Allowlist
 
-The new generation MUST contain allowlisted state only. Product MUST have migration ledger/schema only and zero users/tokens/tenants/memberships/business/document/notification/outbox/command/payment rows, with no demo seed. Platform MUST have migration ledger/schema, cursor `0`, exactly one authorized operator, zero mirror/registry/audit/business rows, and valid empty metrics. No old row MAY be imported or restored. Provisioning MUST wait for receipts proving current-organization slots, independent Free allowance, and provider policy; paid plans and unapproved organizations are prohibited.
+New generation MUST contain only allowlisted state. Product: migration ledger/schema only; no users/tokens/tenants/memberships/business/document/notification/outbox/command/payment rows or demo seed. Platform: ledger/schema, cursor `0`, one authorized operator, no mirror/registry/audit/business rows, and valid empty metrics. No old row MAY be imported/restored. Provisioning MUST await receipts for current-organization slots, independent Free allowance, and provider policy; paid plans/unapproved organizations are prohibited.
 
 #### Scenario: Bootstrap passes
 - GIVEN fresh product and platform projects
@@ -22,7 +22,7 @@ The new generation MUST contain allowlisted state only. Product MUST have migrat
 
 ### Requirement: Role and Lane Isolation
 
-Each product/platform lane MUST use privileged direct migration/bootstrap, least-privilege pooled runtime, and read-only direct backup identities. Production and demo endpoints MUST differ. Any provider-default-owner exception MUST be documented, approved, and time-bounded.
+Each lane MUST use privileged direct migration/bootstrap, least-privilege pooled runtime, read-only direct backup identities. Production/demo endpoints MUST differ. Any default-owner exception MUST be documented, approved, time-bounded.
 
 #### Scenario: Lane manifest
 - GIVEN a receipt lists roles, targets, grants, and any owner exception
@@ -31,7 +31,7 @@ Each product/platform lane MUST use privileged direct migration/bootstrap, least
 
 ### Requirement: Generation Identity and Pre-Traffic Authority
 
-A redacted receipt MUST bind image, pooled/direct endpoints, backup lineage, secret versions/fingerprints, deployment, rollback target, and exact active #327 candidate. Fresh traffic MUST wait for #327 pre-production proof/alert receipts, D.1-D.2 reconfirmation, D.4 receipts, readiness, singleton, and a non-timer-bearing, non-stale image. Non-atomic secret/deployment changes MUST fail closed.
+A redacted receipt MUST bind image, endpoints, backup lineage, secret fingerprints, deployment, rollback target, exact active #327 candidate. Fresh traffic MUST await #327 pre-production proof/alerts, D.1-D.2 reconfirmation, D.4, readiness, singleton, non-timer/non-stale image. Non-atomic changes MUST fail closed.
 
 #### Scenario: Candidate gate failure
 - GIVEN any binding, proof, alert, readiness, singleton, or image check fails
@@ -40,7 +40,7 @@ A redacted receipt MUST bind image, pooled/direct endpoints, backup lineage, sec
 
 ### Requirement: Ordered Cutover and Session Invalidation
 
-Cutover MUST readiness-gate product backend, then platform backend, then frontends; it MUST reject cross-generation writes. It MUST invalidate product access JWTs/cookies, platform access JWTs/step-up tokens, and DB-backed refresh/reset/verification tokens abandoned with their rows. `PLATFORM_CONTROL_SECRET` MUST stay unchanged unless separately authorized.
+Cutover MUST readiness-gate product then platform backends, then frontends, rejecting cross-generation writes. It MUST invalidate product JWTs/cookies, platform JWTs/step-up tokens, and abandoned DB-backed refresh/reset/verification tokens. `PLATFORM_CONTROL_SECRET` MUST stay unchanged unless separately authorized.
 
 #### Scenario: Promotion and invalidation
 - GIVEN each predecessor is ready and old artifacts exist
@@ -49,7 +49,7 @@ Cutover MUST readiness-gate product backend, then platform backend, then fronten
 
 ### Requirement: Rollback and Retention Boundary
 
-Before the first business write, paired old image and URLs MAY return. Afterward, URL rollback MUST be forbidden without reconciliation/export authority; roll-forward is default. Old Neon projects and old-generation backups MUST remain at least one month. R2 business objects, Sentry, and Resend MUST neither be deleted nor receive a new retention policy from this change.
+Before first business write, paired old image and URLs MAY return. Later URL rollback MUST be forbidden without reconciliation/export authority; roll-forward is default. Old Neon projects/backups MUST remain one month. R2 business objects, Sentry, and Resend MUST NOT be deleted or receive a new retention policy.
 
 #### Scenario: Boundary protection
 - GIVEN a business write occurred or retention is active
@@ -58,16 +58,19 @@ Before the first business write, paired old image and URLs MAY return. Afterward
 
 ### Requirement: Backup Lineage and Evidence Gates
 
-The new generation MUST have generation-specific backup lineage, one successful backup and heartbeat before maintenance ends; pruning MUST NOT remove old-generation rollback artifacts during the month. The 24-hour internal pilot MUST reference a passing #327 D.5 receipt without redefining D.5 and MUST NOT authorize public launch. One-month evidence MUST record per-project raw CU, autosuspension, scheduled activity, demand history, and generation identity; it only informs a separate commercial decision and authorizes no paid plan, public launch, deletion, or broader release.
+New generation MUST have generation-specific backup lineage plus successful backup/heartbeat before maintenance ends; pruning MUST NOT remove old-generation rollback artifacts during the month. The 24-hour internal pilot MUST reference a passing #327 D.5 receipt without redefining D.5 and MUST NOT authorize public launch. One-month evidence MUST record per-project raw CU, autosuspension, scheduled activity, demand history, and generation identity; it only informs the commercial decision and authorizes no paid plan, public launch, deletion, or broader release.
 
 #### Scenario: Evidence incomplete
-- GIVEN backup, heartbeat, retention, D.5, or month evidence is absent
-- WHEN progression is requested
-- THEN maintenance, pilot, and broader authority stay blocked
+- GIVEN a requested progression lacks its corresponding receipt
+- WHEN the receipt gate is evaluated
+- THEN a missing fresh-lane backup or heartbeat MUST block maintenance completion and write resumption
+- AND a missing #327 D.5 receipt MUST block the internal pilot and #327 verify/archive
+- AND missing one-month or retention evidence MUST block the commercial decision and cutover verify/archive
+- AND a missing later receipt MUST NOT retroactively block an earlier progression whose receipt gate was already satisfied
 
 ### Requirement: Lifecycle Order
 
-#327 MUST remain active through cutover; D.5 MUST occur after deployment; #327 verify/archive MUST follow D.5; cutover verify/archive MUST follow #327 plus month and retention gates.
+#327 MUST remain active through cutover; D.5 follows deployment; #327 verify/archive follows D.5; cutover verify/archive follows #327 plus month and retention gates.
 
 #### Scenario: Receipt order
 - GIVEN a predecessor receipt is missing
