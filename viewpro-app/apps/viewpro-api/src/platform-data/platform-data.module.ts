@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config'
 import { PaymentsModule } from '../payments/payments.module'
 import { AuthModule } from '../auth/auth.module'
 import { PermissionsModule } from '../permissions/permissions.module'
+import { ObservabilityModule } from '../observability/observability.module'
 import { ChangeFeedClient } from './change-feed.client'
 import { IngestService } from './ingest.service'
 import { MirrorRepository } from './mirror.repository'
@@ -50,7 +51,7 @@ import { TenantDetailController } from './tenant-detail.controller'
  * DatabaseModule is @Global() so PrismaService is available without explicit import.
  */
 @Module({
-  imports: [PaymentsModule, AuthModule, PermissionsModule],
+  imports: [PaymentsModule, AuthModule, PermissionsModule, ObservabilityModule],
   controllers: [MetricsController, TenantRegistryController, AuditController, TenantDetailController, PlatformSyncController],
   providers: [
     // ChangeFeedClient's constructor is typed (ConfigService | Options) for a

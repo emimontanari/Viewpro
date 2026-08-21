@@ -2,17 +2,13 @@ import { Inject, Injectable, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import * as Sentry from '@sentry/node'
 
-export type SafeErrorContext = {
-  requestId?: string
-  path: string
+export type SanitizedSentryException = {
+  type: 'HttpException' | 'UnhandledException' | 'PlatformSyncFailure'
   statusCode: number
-  environment: string
+  failureCode?: 'CURSOR_READ_FAILED' | 'FEED_TIMEOUT' | 'FEED_FAILED' | 'PROJECTION_FAILED' | 'CURSOR_ADVANCE_FAILED'
 }
 
-export type SanitizedSentryException = {
-  type: 'HttpException' | 'UnhandledException'
-  statusCode: number
-}
+export type SentryCapture = Pick<SentryService, 'captureException'>
 
 type SentryClient = {
   init: typeof Sentry.init
@@ -20,6 +16,7 @@ type SentryClient = {
 }
 
 export const SENTRY_CLIENT = Symbol('SENTRY_CLIENT')
+export const SENTRY_CAPTURE = Symbol('SENTRY_CAPTURE')
 
 @Injectable()
 export class SentryService implements OnModuleInit {
@@ -42,30 +39,18 @@ export class SentryService implements OnModuleInit {
       return
     }
 
-    this.sentryClient.init({
-      dsn,
-      environment: this.getEnvironment(),
-      tracesSampleRate: this.configService.get<number>('app.sentry.tracesSampleRate') ?? 0,
-      sendDefaultPii: false,
-    })
-    this.enabled = true
+    try {
+      this.sentryClient.init({ dsn, environment: this.getEnvironment(), tracesSampleRate: this.configService.get<number>('app.sentry.tracesSampleRate') ?? 0, sendDefaultPii: false })
+      this.enabled = true
+    } catch {}
   }
 
-  captureException(error: SanitizedSentryException, context: SafeErrorContext) {
+  captureException(error: SanitizedSentryException) {
     if (!this.enabled) {
       return
     }
 
-    this.sentryClient.captureException(error, {
-      tags: {
-        environment: context.environment,
-        statusCode: String(context.statusCode),
-      },
-      extra: {
-        requestId: context.requestId,
-        path: context.path,
-      },
-    })
+    try { this.sentryClient.captureException(error, { tags: { environment: this.getEnvironment(), statusCode: String(error.statusCode), exceptionType: error.type, ...(error.failureCode ? { failureCode: error.failureCode } : {}) } }) } catch {}
   }
 
   isEnabled() {

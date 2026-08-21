@@ -12,7 +12,7 @@ import { PermissionsModule } from '../../permissions/permissions.module'
 import { PlatformSyncController, raceDemand, DEMAND_RACE_TIMEOUT_MS } from '../platform-sync.controller'
 import { PlatformSyncCoordinator } from '../platform-sync-coordinator'
 import type { PlatformSyncStatus } from '../platform-sync-coordinator'
-import { seedOperatorFixture } from '../../test-support/operator.fixture'
+import { seedPlatformSyncOperatorFixture } from './platform-sync.fixture'
 
 // B.1/B.3 — PlatformSyncController demand endpoint and raceDemand helper.
 // Spec: platform-data-lane-ingest-metrics — Bounded Feed and Truthful
@@ -73,8 +73,8 @@ describe('PlatformSyncController (integration — test DB)', () => {
     app.use(cookieParser()); app.setGlobalPrefix('api'); app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
     await app.init()
     prisma = moduleFixture.get(PrismaService)
-    await seedOperatorFixture(app, { email: TEST_EMAIL, password: TEST_PASSWORD })
-    await seedOperatorFixture(app, { email: DENIED_EMAIL, password: DENIED_PASSWORD })
+    await seedPlatformSyncOperatorFixture(app, { email: TEST_EMAIL, password: TEST_PASSWORD })
+    await seedPlatformSyncOperatorFixture(app, { email: DENIED_EMAIL, password: DENIED_PASSWORD })
   })
 
   afterAll(async () => { await app?.close() })

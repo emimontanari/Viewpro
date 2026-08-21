@@ -3,6 +3,7 @@ import { ThrottlerModule } from '@nestjs/throttler'
 import { describe, expect, it } from 'vitest'
 import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
+import { SENTRY_CAPTURE, SentryService } from '../../observability/sentry.service'
 import { AuditLogRepository } from '../audit-log.repository'
 import { AuditController } from '../audit.controller'
 import { AuditService } from '../audit.service'
@@ -48,6 +49,7 @@ describe('PlatformDataModule (viewpro-api) — DI graph resolves (no live DB req
     expect(moduleRef.get(AuditController)).toBeInstanceOf(AuditController)
     expect(moduleRef.get(AuditService)).toBeInstanceOf(AuditService)
     expect(moduleRef.get(PlatformTenantRepository)).toBeInstanceOf(PlatformTenantRepository)
+    expect(moduleRef.get(SENTRY_CAPTURE)).toBeInstanceOf(SentryService)
   })
 
   // B.3 — old-web/new-API compatibility (#327, Slice B): the additive demand

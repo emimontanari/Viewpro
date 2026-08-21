@@ -3,18 +3,27 @@
 ## Cumulative Status
 
 - Completed: 1/15 tasks
-- Current work unit: 1.1 / WU1
-- Delivery: sequential-to-develop; WU1 is committed for review and targets `develop`, never `main` or a parent branch. WU2 may bind only its final reviewed `develop` merge identity.
+- Current work unit: 1.2 / WU2 closure
+- Delivery: sequential-to-develop; #347 is the reviewed WU2 implementation delivery, but WU2 remains open. After its squash merge, a separate closure PR from new `develop` binds #347's actual merge SHA; WU1 remains `faf870ab0a29e6a271b7391776fc2f9cf25c12ac`.
 
 ## Completed Task
 
 - [x] 1.1 **WU1:** RED→GREEN platform-sync/tenant/platform-data specs; visible-render/zero-I/O-idle/receipt.
+
+## Verified WU2 Implementation (Not Complete)
+
+- #347 implementation/TDD/native evidence is verified; `remediation-manifest.v1.json` correctly remains `candidate-awaits-review` with a null WU2 merge.
+- WU2 completes only when the separate post-#347 closure PR binds the actual develop merge SHA, updates reviewed status, and merges with review/green CI. WU3 remains blocked until then.
 
 ## Implementation
 
 - `usePlatformSyncDemand` now gates initial, focus, and interval demand on `document.visibilityState === 'visible'`.
 - A hidden dashboard performs no synchronization request until a visible focus or cadence event occurs.
 - `PlatformSyncProvider` retains its child content while truthfully rendering a degraded synchronization announcement.
+- `SentryService` emits only classified tags (`environment`, `statusCode`, `exceptionType`, optional internal `failureCode`), contains client failures, and sends no request IDs or URL paths.
+- `PlatformSyncCoordinator` emits a generic `PlatformSyncFailure` receipt for each mapped failure, contains telemetry failures, and never serializes dependency errors.
+- Platform-sync integration tests own `platform-sync.fixture.ts` instead of importing the #334 shared operator fixture.
+- `remediation-manifest.v1.json` binds WU1's reviewed merge and records WU2 as review-bound; it gates only WU3–WU7 implementation/compatibility and explicitly denies operational authority.
 
 ## TDD Cycle Evidence
 
@@ -22,6 +31,7 @@
 |---|---|---|---|---|---|---|---|
 | 1.1 | `apps/viewpro-web/src/features/platform-sync/components/__tests__/use-platform-sync-demand.spec.ts` | Web integration | 3/3 passed | Hidden mount expected zero demand and failed: actual calls `1` | 4/4 passed after visible-only gate | 5/5 passed: hidden focus stays idle, visible cadence resumes once | None needed; extracted `demandIfVisible` keeps each entry point consistent |
 | 1.1 | `apps/viewpro-web/src/features/platform-sync/components/__tests__/platform-sync-provider.spec.tsx` | Web component | N/A (new file) | Covered by the task RED cycle above | 2/2 passed | Degraded and first-response states both preserve visible child content | None needed |
+| 1.2 | `apps/viewpro-api/src/{common/filters,observability,platform-data}/__tests__/*` | Unit + platform integration | 12/12 passed after local `prisma generate` repaired the missing generated client | Original 5 assertions failed before implementation; correction evidence: DI 3/3, fixture 2/3, and Sentry containment 4 failures | 30/30 passed after runtime token wiring, credential-free fixture setup, and contained telemetry client failures | All five failure codes; 499/500/unhandled filter paths; capture/init failures preserve coordinator/filter control flow | Direct unit constructors pass explicit `undefined`; Nest remains fail-closed on a missing runtime token |
 
 ## Verification
 
@@ -31,11 +41,25 @@
 - `pnpm --filter @viewpro/platform-api test src/platform-data/__tests__/platform-sync-coordinator.spec.ts` — 6/6 passed after local `prisma generate`; initial snapshot still performs zero dependency I/O before demand.
 - `pnpm --filter viewpro-web typecheck` — passed.
 - Targeted `oxlint --deny-warnings` for changed platform-sync files — passed. Full `lint:strict` remains blocked by seven unrelated warnings already present under `tenants`, `overview`, `lib`, and `proxy` paths.
+- `pnpm --filter @viewpro/platform-api test src/platform-data/__tests__/platform-sync-coordinator.spec.ts src/test-support/__tests__/operator.fixture.spec.ts` — safety net: initial harness load failed because `@prisma-platform/client` was not generated; after local `pnpm --filter @viewpro/platform-api db:generate`, 12/12 passed.
+- `pnpm --filter @viewpro/platform-api test src/observability/__tests__/sentry.service.spec.ts src/observability/__tests__/remediation-manifest.spec.ts src/platform-data/__tests__/platform-sync-coordinator.spec.ts src/platform-data/__tests__/platform-sync.controller.spec.ts src/platform-data/__tests__/platform-sync.fixture.spec.ts` — RED: 5 initial failures plus 2 fixture-boundary failures; GREEN/refactor: 21/21 passed.
+- `pnpm --filter @viewpro/platform-api typecheck` — passed.
+- Targeted `pnpm exec oxlint --deny-warnings …` — unavailable: this frozen workspace has no `oxlint` executable.
+- Refresh correction: stashed tracked and untracked WU2 files, rebased `faf870…` to `origin/develop@392bcb…`, restored the stash, proved the preserved candidate diff unchanged before correction, then dropped only the temporary WU2 stash. No conflict or unexpected file appeared.
+- `pnpm --filter @viewpro/platform-api test src/platform-data/__tests__/platform-data.module.spec.ts` — correction RED: 3/3 failed because Nest could not resolve `PlatformSyncCoordinator` constructor index 3; correction GREEN: 3/3 passed with the exported `SENTRY_CAPTURE` token/provider.
+- `pnpm --filter @viewpro/platform-api test src/platform-data/__tests__/platform-sync.fixture.spec.ts` — correction RED: 2/3 failed when no `DATABASE_URL` was supplied; correction GREEN: 3/3 passed after blank credentials are rejected before the DB guard.
+- Sentry correction RED: 4 failures (`init`, `capture`, coordinator, filter delegation); GREEN: 15/15 passed. Final focused suite including global filter, all five coordinator classifications, module, fixture, and manifest: 30/30 passed; typecheck/diff-check passed; `oxlint` unavailable.
 
 ## Remediation Receipt Boundary
 
-This artifact is the local WU1 implementation receipt only. It grants no provider, traffic, deployment, or candidate authority. WU2 alone may bind the reviewed WU1 identity and evidence to `remediation-manifest.v1.json`; no manifest instance, provider action, or external evidence was created here.
+`viewpro-app/scripts/production-cutover/remediation-manifest.v1.json` is a repository-local WU1/WU2 remediation receipt. It binds WU1 only to reviewed `develop` merge `faf870ab0a29e6a271b7391776fc2f9cf25c12ac`; WU2 correctly remains `candidate-awaits-review` with a null reviewed merge until the post-#347 closure PR binds its actual SHA. It gates only WU3–WU7 implementation/compatibility, denies provider mutation/D.4/candidate promotion/traffic/production receipts, and creates no provider, traffic, deployment, candidate, release manifest, or external evidence.
+
+## Native Settlement Status
+
+- Maintainer-authorized rebaseline attempt 4 completed at native revision `sha256:a4df1fe07c4eb182f40e19bca5de424f8a9dbac91daaed1401c28c8a6858f824` with evidence `sha256:fd82d03e536b5e2fd78c49b381b199eb10daf5da740150d315c819cf7b5e505d`.
+- Attempt 3 remains immutable: its 537 counted lines comprise 400 base-only lines from mandatory #344 refresh plus 137 tracked WU2 lines. Complete WU2 is 329 lines; no size exception applies.
 
 ## Remaining Work
 
-- [ ] 1.2 WU2 and all later implementation/lifecycle tasks remain unchecked.
+- [ ] 1.2 WU2 closure PR: after #347 squash-merges, bind its actual develop SHA and reviewed status, then merge the closure PR.
+- [ ] 2.1 WU3 remains blocked until the WU2 closure PR is reviewed/CI-green/merged; all later tasks remain unchecked.
