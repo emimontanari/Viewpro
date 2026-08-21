@@ -1,7 +1,7 @@
 'use client';
 
-// Demand-triggered platform sync (Slice C, #327): demands on mount, focus,
-// and a 4s visible cadence; hidden makes no demand, no unload listener. A
+// Demand-triggered platform sync (Slice C, #327): demands only while visible
+// on mount, focus, and a 4s cadence; hidden makes no demand, no unload listener. A
 // durable batch invalidates metrics/tenants even while `updating` (never
 // requires `current`); an unfinished snapshot is excluded. A 404 disables
 // further demand — legacy 5s polling stays the fallback refresh path.
@@ -51,11 +51,15 @@ export function usePlatformSyncDemand() {
   }, [queryClient]);
 
   React.useEffect(() => {
-    void demand();
-    const onFocus = () => void demand();
+    const demandIfVisible = () => {
+      if (document.visibilityState === 'visible') void demand();
+    };
+
+    demandIfVisible();
+    const onFocus = demandIfVisible;
     window.addEventListener('focus', onFocus);
     const interval = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void demand();
+      demandIfVisible();
     }, VISIBLE_CADENCE_MS);
 
     return () => {
