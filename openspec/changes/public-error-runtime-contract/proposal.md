@@ -11,7 +11,7 @@
 - Root-only development through exactly `turbo watch dev --filter=@viewpro/api --filter=next-shadcn-dashboard-starter`. Both consumer `dev` tasks depend on `^build`, are persistent, uncached, and interruptible; the contracts build is non-persistent. Native Turbo is the sole coordinator.
 - Clean-artifact, `require`, dynamic-`import`, API static-import/one-shot, and App New instrumentation/standalone-server proofs.
 - Dependency-aware Docker builds. API smoke overrides only the invoked container command and preserves the production image command `node dist/main.js` and its existing ENTRYPOINT.
-- A blocking manual, authenticated Vercel release gate. The operator attaches deployment-specific evidence; the reviewer records pass or fail. No Vercel schema, capture, comparator, hashing, alias, or release automation is created or owned here.
+- A blocking manual, authenticated Vercel release gate. Exactly root-local `viewpro-app/apps/app-new/vercel.json` is versioned solely for its `buildCommand`, which invokes the filtered Turbo graph; the operator attaches deployment-specific evidence and the reviewer records pass or fail. No Vercel evidence schema, capture, comparator, hashing, alias, or release automation is created or owned here.
 - Active documentation for root commands and the manual gate.
 
 ### Out of Scope

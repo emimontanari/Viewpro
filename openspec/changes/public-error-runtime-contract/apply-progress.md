@@ -7,7 +7,7 @@
 - Remediation incident preserved: `unit-1-turbo-graph-remediation` repaired the confirmed generic Turbo dependency and strict-environment watch evidence defects. Its earlier single settlement request was blocked as `invalid_continuation`; no retry was made.
 - Final remediation settlement: **complete** — token `sha256:85088994c917861c97077af39efa1fe9793fd3d12c8364f0aeff88ea535aaecc`, request `settle-public-error-runtime-contract-unit1-remediation-20260820-audit-7f3c91b2`, evidence revision `sha256:d01f4214702c88192cf99a885ed1320ff5cbd31d6c91a14ffffc66963677c1ad`.
 - Review: clean dual Judgment Day approval recorded for the final Unit 1 remediation evidence.
-- Commit status: no commit created.
+- Commit status: Units 1–2 and the main Unit 3 implementation commit exist; the current Vercel remediation is not yet committed.
 
 ## Completed Tasks
 
@@ -51,7 +51,7 @@
 
 - Source/test/config/lockfile changed lines: **118 / 400** (OpenSpec bookkeeping excluded; 75 tracked additions/deletions plus 43 lines in the new runtime test).
 - Rollback boundary: revert the eight Unit 1 source/test/config/lockfile paths and only the two consumer contract importer links plus the contracts Vitest importer entry; remove the Unit 1 test. No Unit 2–4 path was changed.
-- Current boundary: Units 1–2 complete; Unit 3 independently eligible; Unit 4 pending. Units 3–4 are untouched.
+- Current boundary: Units 1–3 are complete; Unit 4 remains untouched/pending.
 
 ## Unit 2 — ordinal 5 exit-only correction
 
@@ -68,7 +68,6 @@
 - Final exact numstat: implementation **331 / 400** (target ≤351); complete PR **361 / 400**. Settlement complete exactly once: `settle-public-error-runtime-contract-unit2-exit-stdio-20260820-1`, token `sha256:a2cb626e2ef6567385b6e5e3d73cd3c57c20739f6f96650d3ba6e0de5c61fb47`.
 
 ## Unit 3 — App New Node Marker / Image
-
 - Bounded attempt acquired: `acquire-public-error-runtime-contract-unit3-app-20260820-a1`, state `proceed`, token `sha256:bf18d0060cbab973bd3b1a72d941e1723e55b4432aa8a65f1204b4e4699d1572`.
 - Settlement: **complete** — `settle-public-error-runtime-contract-unit3-app-20260820-a1`, outcome `passed`, sealed evidence revision `sha256:6dd6aaf94c33927cecbce8db3c724b9f6c912d942a501991d593685224bf0d01`.
 - Corrective attempt acquired: `acquire-public-error-runtime-contract-unit3-remediation-20260820-c1`, state `proceed`, token `sha256:afd908b1e50154e74e8f45f9edf76483cbb6c587c4202ff56cf8f898760ac292`.
@@ -83,19 +82,16 @@
 | 3.3 | both focused suites | Standalone integration | ✅ 10/10 focused tests | RED cases above | Exact-token Docker smoke passed. | Build scans found no `not-generated-yet` or `@viewpro/contracts` bytes in `.next/server/{edge,middleware}`. | Real cleanup reports 0 labeled containers/images and no standalone server process. |
 
 ### Unit 3 Commands and Results
-
 - Corrective RED/GREEN: instrumentation RED 1/5 → GREEN 5/5; harness RED import failure → GREEN 5/5; combined focused Vitest is **10/10**.
 - `lint:strict`, App New typecheck, contracts build, and `BUILD_STANDALONE=true NEXT_PUBLIC_SENTRY_DISABLED=true` App New production build passed.
 - Exact-token standalone smoke passed; it required `/auth/sign-in` itself to return 200, read the byte-exact loopback marker, and reaped its server. Labeled containers/images and matching standalone server processes returned **0** afterward.
 
 ### Unit 3 Review and Rollback
-
-- Final exact full branch diff: **369 additions + 17 deletions = 386 / 400 changed lines** including untracked files; OpenSpec evidence is included.
-- Implementation paths: `viewpro-app/apps/app-new/{Dockerfile,next.config.ts,package.json,src/instrumentation.ts,src/instrumentation-node.ts,src/instrumentation.spec.ts,scripts/runtime-contract-image-smoke.{mjs,spec.mjs}}` plus this correction evidence and the design ownership path list.
-- Rollback boundary: revert only Unit 3 App New paths and its three task checkboxes; Units 1–2 evidence is preserved and Unit 4 remains untouched.
+- Final exact full branch diff: **376 additions + 24 deletions = 400 / 400 changed lines** including untracked files; OpenSpec evidence is included.
+- Implementation paths: `viewpro-app/apps/app-new/{Dockerfile,next.config.ts,package.json,vercel.json,src/instrumentation.ts,src/instrumentation-node.ts,src/instrumentation.spec.ts,scripts/runtime-contract-image-smoke.{mjs,spec.mjs}}` plus this correction evidence and the design ownership path list.
+- Rollback boundary: revert only Unit 3 App New paths, including `vercel.json`, and its three task checkboxes; Units 1–2 evidence is preserved and Unit 4 remains untouched.
 
 ### Final Unit 3 evidence correction
-
 - Attempt `acquire-public-error-runtime-contract-unit3-evidence-remediation-20260820-e1` settled passed as `settle-public-error-runtime-contract-unit3-evidence-remediation-20260820-e1`; token `sha256:4fd155ddde2b05f6d05d2e077b2e9942fdb1fa51dcecb0f24b78345b3257a582`, evidence `sha256:e86e77219c5e5f135ab3385f4c2d424bba6f41f51b848990daaa492e920f61d9`.
 - RED is the prior independent FAIL: the Node-helper import contract, direct-200 readiness acceptance, and premature-exit request observation were incomplete or false.
-- GREEN: the contract wording is exact; focused App New Vitest is 10/10 with direct-200/manual-redirect and injected premature-exit request assertions; typecheck, strict lint, production build, and Edge/Middleware scan pass.
+- GREEN: the contract wording is exact; focused App New Vitest is 10/10 with direct-200/manual-redirect and injected premature-exit request assertions; typecheck, strict lint, production build, and Edge/Middleware scan pass. Repo-owned `apps/app-new/vercel.json` runs `cd ../.. && pnpm exec turbo run build --filter=next-shadcn-dashboard-starter` so `@viewpro/contracts#build` precedes App New; no preview result is claimed, and real `inmoview-app` and `inmoview-demo` previews remain pending until push.
