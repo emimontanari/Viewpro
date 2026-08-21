@@ -18,7 +18,7 @@ Two-stage manifests: WU2 closes WU1/WU2 reviewed remediation identities/receipts
 
 ### P1 — #327
 - [x] 1.1 **WU1 (320–350):** RED→GREEN platform-sync/tenant/platform-data specs; visible-render/zero-I/O-idle/receipt.
-- [ ] 1.2 **WU2 (300–340):** `sentry.service`; platform-sync/sentry specs; replace #334 fixture, sanitize telemetry, close WU1/WU2 remediation manifest.
+- [x] 1.2 **WU2 (300–340):** `sentry.service`; platform-sync/sentry specs; replace #334 fixture, sanitize telemetry, close WU1/WU2 remediation manifest.
 
 ### P2 — Candidate
 - [ ] 2.1 **WU3 (330–350):** package/lock/config/CI, candidate/remediation/release-manifest tooling, versioned schema/template+specs; RED-CUT-01–04. Tooling/schema/template only; never instance. Pin tools/IDs, detached base, exact-tree CI/audit; changed/missing identity stops.

@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { ChangeFeedClient, ChangeFeedTimeoutError } from './change-feed.client'
 import { CursorRepository } from './cursor.repository'
 import { IngestService } from './ingest.service'
+import { SENTRY_CAPTURE, type SentryCapture } from '../observability/sentry.service'
 
 export type PlatformSyncStatus = {
   state: 'current' | 'updating' | 'stale' | 'failed'
@@ -21,7 +22,12 @@ export class PlatformSyncCoordinator {
   private inFlight: Promise<PlatformSyncStatus> | null = null
   private status: PlatformSyncStatus = { state: 'stale', inFlight: false, attemptCount: 0, consecutiveFailureCount: 0, lastAttemptAt: null, lastSuccessAt: null, lastFailureAt: null, lastObservedCursor: null, lastBatchCount: null, failureCode: null }
 
-  constructor(private readonly feed: ChangeFeedClient, private readonly ingest: IngestService, private readonly cursor: CursorRepository) {}
+  constructor(
+    private readonly feed: ChangeFeedClient,
+    private readonly ingest: IngestService,
+    private readonly cursor: CursorRepository,
+    @Inject(SENTRY_CAPTURE) private readonly sentryService: SentryCapture | undefined,
+  ) {}
 
   /**
    * Synchronous status snapshot. Reads only the in-memory field — no cursor,
@@ -56,6 +62,7 @@ export class PlatformSyncCoordinator {
   }
 
   private fail(failureCode: NonNullable<PlatformSyncStatus['failureCode']>): void {
+    try { this.sentryService?.captureException({ type: 'PlatformSyncFailure', statusCode: 500, failureCode }) } catch {}
     this.status = { ...this.status, state: 'failed', consecutiveFailureCount: this.status.consecutiveFailureCount + 1, lastFailureAt: new Date().toISOString(), failureCode }
   }
 }

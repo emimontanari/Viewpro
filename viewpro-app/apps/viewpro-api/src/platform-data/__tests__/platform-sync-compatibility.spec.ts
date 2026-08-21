@@ -26,7 +26,7 @@ function makeInfra(events: unknown[] = [event]) {
 describe('Slice D.2 pre-change gate — old/new API-web compatibility and reverse rollback', () => {
   it('an external caller invoking runOneBatch directly drives a full batch with no demand call (rollback-to-timer-only)', async () => {
     const { cursor, feed, ingest } = makeInfra()
-    const coordinator = new PlatformSyncCoordinator(feed as never, ingest, cursor as never)
+    const coordinator = new PlatformSyncCoordinator(feed as never, ingest, cursor as never, undefined)
     await coordinator.runOneBatch() // never touches PlatformSyncController
     expect(feed.fetchChanges).toHaveBeenCalledWith(5)
     expect(cursor.advanceCursor).toHaveBeenCalledWith(6)
@@ -35,7 +35,7 @@ describe('Slice D.2 pre-change gate — old/new API-web compatibility and revers
 
   it('demand and a rolled-back timer-only caller share one coordinator, so an already-advanced batch is never re-processed', async () => {
     const { cursor, feed, ingest } = makeInfra()
-    const coordinator = new PlatformSyncCoordinator(feed as never, ingest, cursor as never)
+    const coordinator = new PlatformSyncCoordinator(feed as never, ingest, cursor as never, undefined)
     await raceDemand(coordinator.runOneBatch(), () => coordinator.getStatus(), 4000)
     expect(cursor.advanceCursor).toHaveBeenCalledTimes(1)
     feed.fetchChanges.mockResolvedValueOnce({ events: [] })

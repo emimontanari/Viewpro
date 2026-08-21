@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common'
 import * as Sentry from '@sentry/node'
-import { SENTRY_CLIENT, SentryService } from './sentry.service'
+import { SENTRY_CAPTURE, SENTRY_CLIENT, SentryService } from './sentry.service'
 
 @Module({
   providers: [
@@ -9,7 +9,8 @@ import { SENTRY_CLIENT, SentryService } from './sentry.service'
       useValue: Sentry,
     },
     SentryService,
+    { provide: SENTRY_CAPTURE, useExisting: SentryService },
   ],
-  exports: [SentryService],
+  exports: [SentryService, SENTRY_CAPTURE],
 })
 export class ObservabilityModule {}

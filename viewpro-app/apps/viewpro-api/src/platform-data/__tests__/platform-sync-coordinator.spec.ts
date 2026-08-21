@@ -10,7 +10,7 @@ function makeRealCoordinator(events = [event]) {
   const projection: unknown[] = []
   const ingest = new IngestService({ upsertEvent: vi.fn((value: unknown) => projection.push(value)) } as never, cursor as never, { upsertFromStatusChange: vi.fn() } as never, {} as never)
   const feed = { fetchChanges: vi.fn().mockResolvedValue({ events }) }
-  return { coordinator: new PlatformSyncCoordinator(feed as never, ingest, cursor as never), cursor, feed, projection, durableCursor: () => durableCursor }
+  return { coordinator: new PlatformSyncCoordinator(feed as never, ingest, cursor as never, undefined), cursor, feed, projection, durableCursor: () => durableCursor }
 }
 describe('PlatformSyncCoordinator', () => {
   it('joins an active batch without queueing and releases it for the next batch', async () => {
@@ -39,13 +39,33 @@ describe('PlatformSyncCoordinator', () => {
   })
   it('maps cursor, feed, and typed ingest failures and releases after each failure', async () => {
     const cursor = { getCursor: vi.fn().mockRejectedValueOnce(new Error()).mockResolvedValue(5), advanceCursor: vi.fn() }; const feed = { fetchChanges: vi.fn().mockRejectedValueOnce(new ChangeFeedTimeoutError()).mockRejectedValueOnce(new Error()).mockResolvedValue({ events: [event] }) }
-    const ingest = { ingestBatch: vi.fn().mockResolvedValueOnce({ kind: 'failed', stage: 'projection' }).mockResolvedValueOnce({ kind: 'failed', stage: 'cursor-advance' }) }; const coordinator = new PlatformSyncCoordinator(feed as never, ingest as never, cursor as never)
+    const ingest = { ingestBatch: vi.fn().mockResolvedValueOnce({ kind: 'failed', stage: 'projection' }).mockResolvedValueOnce({ kind: 'failed', stage: 'cursor-advance' }) }; const sentry = { captureException: vi.fn() }; const coordinator = new PlatformSyncCoordinator(feed as never, ingest as never, cursor as never, sentry as never)
     await expect(coordinator.runOneBatch()).resolves.toMatchObject({ failureCode: 'CURSOR_READ_FAILED', inFlight: false })
     await expect(coordinator.runOneBatch()).resolves.toMatchObject({ failureCode: 'FEED_TIMEOUT', lastObservedCursor: 5 })
     await expect(coordinator.runOneBatch()).resolves.toMatchObject({ failureCode: 'FEED_FAILED' })
     await expect(coordinator.runOneBatch()).resolves.toMatchObject({ failureCode: 'PROJECTION_FAILED', lastObservedCursor: 5 })
     await expect(coordinator.runOneBatch()).resolves.toMatchObject({ failureCode: 'CURSOR_ADVANCE_FAILED', lastObservedCursor: 5 })
     expect(feed.fetchChanges).toHaveBeenCalledTimes(4)
+    expect(sentry.captureException.mock.calls).toEqual([
+      [{ type: 'PlatformSyncFailure', statusCode: 500, failureCode: 'CURSOR_READ_FAILED' }],
+      [{ type: 'PlatformSyncFailure', statusCode: 500, failureCode: 'FEED_TIMEOUT' }],
+      [{ type: 'PlatformSyncFailure', statusCode: 500, failureCode: 'FEED_FAILED' }],
+      [{ type: 'PlatformSyncFailure', statusCode: 500, failureCode: 'PROJECTION_FAILED' }],
+      [{ type: 'PlatformSyncFailure', statusCode: 500, failureCode: 'CURSOR_ADVANCE_FAILED' }],
+    ])
+  })
+  it('emits only a classified platform-sync failure when a dependency fails', async () => {
+    const sentry = { captureException: vi.fn(() => { throw new Error('telemetry failure') }) }
+    const coordinator = new PlatformSyncCoordinator(
+      { fetchChanges: vi.fn() } as never,
+      { ingestBatch: vi.fn() } as never,
+      { getCursor: vi.fn().mockRejectedValue(new Error('sensitive dependency failure')) } as never,
+      sentry as never,
+    )
+
+    await expect(coordinator.runOneBatch()).resolves.toMatchObject({ state: 'failed', failureCode: 'CURSOR_READ_FAILED' })
+
+    expect(sentry.captureException).toHaveBeenCalledWith({ type: 'PlatformSyncFailure', statusCode: 500, failureCode: 'CURSOR_READ_FAILED' })
   })
   it('confirms an empty batch after failure without advancing its durable cursor', async () => {
     const { coordinator, cursor, feed } = makeRealCoordinator([])
