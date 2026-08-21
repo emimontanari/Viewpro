@@ -2,60 +2,36 @@
 
 ## Approach and Decisions
 
-Write-freeze activation. Fail closed; #327 authoritative.
+Write-freeze activation; fail closed; #327 remains authoritative.
 
 | Decision | Choice and rationale |
 |---|---|
-| Candidate | Delivery: `develop@3212c438f0ef5be886b090478acfba3a38d64102`; reconstruction: `main@868dc70` + #331/#333/#334/#335/#336 + reviewed WU1/WU2 runtime patches + approved WU3–WU7 patches. WU2 runtime patch: `d53a57c04f34efd20fc825aff5c03115c9c6c99f`; `3212c43…` is closure metadata only. Exclude #338/#341/#344/#351 patches; retain `develop` history. Reject hidden AND optional dependencies and #314. WU3: tooling/schema/template only; WU3–WU7 emit merge receipts. Post-WU7 assembly computes tree/runtime/image digests. External private closure+reproduction precede single-use promotion; evidence/instances never alter tree. Pin IDs/base/order; exact-tree CI/audit. |
-| Delivery | `sequential-to-develop`: live `origin/develop` → review/CI → merge → remove/fetch/audit; never `main`. Pre-work audit live `develop`, branches, worktrees, paths; overlap/new commit ⇒ refresh AND re-plan. Clean WU3 ignores dirty-root/stale-worktree contamination. Lock owns only `viewpro-app` root-importer (`.`) changes from explicit `package.json` tooling pins/scripts; preserve deepmerge; reject other/external importers, `autoInstallPeers`, unrelated resolutions. AJV iff schema execution requires it. Extend—not replace/weaken/reorder—#351 CI. WU7 `app-new`/session conflicts. |
-| Gates | WU2 closure is satisfied. WU3 stays unchecked until the identity-correction PR merges; predecessor gates remain. Promotion/provider provisioning/activation/D.4/production receipts/traffic require verified external closure+reproduction and single-use authorization. Read-only qualification permits no mutation. |
-| Rollback | Roll forward. Paired old image+URLs are pre-write eligible only after independently observed old-generation readiness `200`; old `503` proves neither candidate nor rollback. Post-write URL reversal requires reconciliation/export authority. |
-| Lifecycle | Keep #327 active; run D.5 ≥24h post-deployment before its verify/archive. Cutover verify/archive follows #327 archive and one-month evidence/retention. Retain old Neon/backups ≥one month and exclude them from pruning. R2, Sentry, Resend remain untouched. |
+| Candidate | Reconstruct `main@868dc70a025d208fd4d1f7ece52640cc92187e1e` + #331/#333/#334/#335/#336 + WU1 `faf870ab0a29e6a271b7391776fc2f9cf25c12ac` + WU2 `d53a57c04f34efd20fc825aff5c03115c9c6c99f` + later reviewed WU3a/WU3b/WU4–WU7 merges. Exclude #338/#341/#344/#351 and #314; reject hidden/optional dependencies. `3212c438f0ef5be886b090478acfba3a38d64102` is closure metadata only. Bind exact order, detached identity, final tree, and runtime/image digests; evidence never alters the tree. |
+| Delivery | `sequential-to-develop` is the sole operational strategy: each slice starts from then-live `origin/develop`, targets `develop`, and the next starts only after review, green CI, merge, fetch, and overlap audit. The compatibility label is non-operational and never targets `main` or a parent branch. WU3b follows merged WU3a. Target/stop 350; native max 390 is never permission to cross 350; no exception or strategy mixing. |
+| Authority | Neither slice creates a populated final manifest, assembles/promotes a real candidate, mutates/provisions a provider, runs D.4, deploys/routes traffic, creates production receipts, or exposes secrets. Read-only local validation grants no operational authority. |
+| Rollback | Each PR is independently revertible. Old paired image/URLs remain pre-write eligible only after independent `200`; old `503` proves nothing. Post-write reversal needs reconciliation/export authority. Retain old Neon/backups ≥one month; never delete R2/Sentry/Resend. |
 
-Separate receipts gate CI/audit, bootstrap/readiness, old observation, activation. Timer-bearing/stale images get no routes.
+## WU3 Correction and Ownership
 
-## Role and Receipt Contracts
+Native attempt 5 is terminal failed with evidence `sha256:e448a25dcbcaf1db88f994d05ef987bfecef4d044319320babe6ec61542496a2`; no reset/acquire/settle occurs in this planning PR. Split approval is complete via the maintainer interactive decision and Engram #8114; native reset remains phase-scoped. After this planning merge, WU3a starts in a fresh worktree from then-live `origin/develop` with explicit maintainer-authorized reset+acquire, then settles only after strict TDD, fresh 3-lens review, and final evidence. WU3b gets its own clean reset/acquire after WU3a merges and follows the same settlement gate.
 
-Fresh lanes: PUBLIC DB no `CONNECT/TEMPORARY/CREATE`, schema no `CREATE`; roles get `CONNECT`. `<migrator>` owns objects with schema `USAGE/CREATE`, conditional DB `CREATE/TEMP`/future defaults, never superuser/role/database/replication. `<runtime>` has schema `USAGE`, table DML, sequence use, no ownership/membership/DDL/database `CREATE/TEMP`; `<backup>` reads schema/table/sequence. RED-CUT-09: DB+/DB−, SCHEMA+/SCHEMA−, OWNER−, MEMBER−, TABLE+/TABLE−, SEQUENCE+/SEQUENCE−, RUNTIME-DDL−, BACKUP-DML−. Exceptions need approved expiry receipts.
-
-Each lane emits RFC-8785 JCS JSON. Public v1 binds versions/aliases/base/patches/tree/path-image-digests/deployment/secrets/backup-heartbeat/evidence-state-timestamps. Private off-Git receipts/final manifest hold raw refs/hosts/IDs; correlate with named key-version `HMAC-SHA256`, never plain hash. Immutable manifest digest+private receipt identity is authoritative; public opaque aliases are non-authoritative/pinned. Retargeted/unresolved/digest-mismatched/direct-private-mismatched aliases fail closed; direct manifest identity wins. Candidate Git holds only tooling/schema/template; redacted digest/alias may be issue/PR/provider evidence, never Git. Full-tree/candidate and runtime-image receipts remain distinct external evidence.
-
-## Non-Atomic Activation
-
-1. Freeze writes/automation. 2. Provision/bootstrap roles/DBs. 3. Stage image/receipts. 4. Stage inactive URLs. 5. Rotate access/step-up; keep `PLATFORM_CONTROL_SECRET`. 6. Activate product after digest/readiness `200`/empty allowlist. 7. Activate platform after digest/readiness/singleton/cursor `0`/one operator. 8. Deploy frontends/fresh login. 9. Bind backups/heartbeats. 10. Checkpoint/resume. Retain freeze/isolation; roll forward; only qualified old pair permits pre-write compensation.
-
-Backend tests reject old product cookies/JWTs/refresh, platform JWTs/step-up, and abandoned DB-backed reset/verification tokens. Frontend fresh-login/session proof never substitutes for backend rejection.
-
-## Named Threat/RED Contracts
-
-| ID | Target | Failure oracle |
+| Slice | Autonomous boundary and files | Forecast / acceptance / rollback |
 |---|---|---|
-| RED-CUT-01 | `candidate.mjs` | moved/stale ref or unauthorized patch rejected |
-| RED-CUT-02 | `candidate.mjs` | reject `git -C`, relative/absolute escape, shell/path/argument injection |
-| RED-CUT-03 | `candidate.mjs` | reject symlink and executable-looking Markdown/MDX, `README.sh`, `requirements.txt`, `CMakeLists.txt` |
-| RED-CUT-04 | `candidate.mjs` | nonzero/timeout fails; TERM→KILL, drain, no child |
-| RED-CUT-05 | `receipt.mjs` | secret/raw identifier redacted |
-| RED-CUT-06 | `checkpoint.mjs` | partial provider state fails closed |
-| RED-CUT-07 | `receipt.mjs` | wrong generation/digest/state rejected |
-| RED-CUT-08 | `backup-lineage.mjs` | prefix collision or retained-lineage prune rejected |
-| RED-CUT-09 | `roles.mjs` | catalog detects any excess privilege/ownership/membership |
-| RED-CUT-10 | `bootstrap.mjs` | any non-allowlisted row rejected |
-| RED-CUT-11 | `checkpoint.mjs` | non-`200` or wrong baseline rejected |
-| RED-CUT-12 | `checkpoint.mjs` | post-write URL reversal refused |
-| RED-CUT-13 | `viewpro-app/apps/{api,viewpro-api}/test/production-cutover-session.spec.ts` | every old session/token rejected |
+| WU3a | Own/rewrite `candidate.mjs` and baseline `candidate.spec.mjs`; reconcile/salvage only justified root `package.json`, root-importer lock entries, and additive `.github/workflows/ci.yml`. Own canonical repository/resolved Git authority, scrubbed env, detached identity/final-tree binding, porcelain-v2 `-z` cleanliness, and bounded TERM→KILL→confirmed-close/drain. Controlled temporary real-Git repositories/processes; no network/provider. | ~344; stop at 350. Strict RED→GREEN proves RED-CUT-01/02/04, real clean/dirty/detached repositories, substitution denial, timeout cleanup, frozen-lock install, and additive CI. Revert only these files. |
+| WU3b | Narrowly extends WU3a exports in `candidate.mjs` for NUL tree parsing, path classification, and closed remediation/release-manifest validation, with matching `candidate.spec.mjs` additions; exclusively creates `release-manifest.v1.schema.json` and intentionally unpopulated `release-manifest.v1.template.json`. It may not alter WU3a process/repository authority. | ~182; stop at 350. Strict RED→GREEN proves versioned populated-release schema, tracked-manifest exact closure, template non-population, malformed NUL records/path disguises, hidden/optional dependencies, #314, excluded-patch classification, and RED-CUT-03. Revert only this extension/schema/template. |
 
-Tooling performs no commit/index, push/refspec, or PR commands.
+Current failed-diff disposition: WU3a may rewrite the two candidate files and selectively salvage package/lock/CI after live-base reconciliation. Schema/template are deferred to WU3b. No root/worktree destructive cleanup.
 
-## Work Units
+## Preserved Contracts
 
-| WU | Files; tests; rollback | Estimate |
-|---|---|---|
-| 1 | `viewpro-app/apps/viewpro-api/src/platform-data/**`, `viewpro-app/apps/viewpro-web/src/features/{platform-sync,tenants}/**`: fixture/freshness/render/idle proofs; reviewed remediation SHA(s). Revert. | 350 |
-| 2 | `viewpro-app/apps/viewpro-api/src/observability/**`, fixture specs, `viewpro-app/scripts/production-cutover/remediation-manifest.v1.json`: sanitized telemetry/alert/remediation; implementation `d53a57c…`, closure receipt/gate `3212c43…`; complete. Revert. | 340 |
-| 3 | Candidate/manifest tooling, schema/template/specs, package/lock/config/CI: RED-CUT-01..04; extend #351; never instance. Revert. 327–362; at/near 350 stop for reforecast+reviewer-burden approval; hard stop 390; no exception. | 327–362 |
-| 4 | `viewpro-app/scripts/production-cutover/{receipt,checkpoint}.mjs` plus specs; `docs/evidence/production-cutover/receipt.schema.json`: RED-CUT-05..07, reproducibility/JCS. Revert tooling. | 350 |
-| 5 | `viewpro-app/scripts/production-cutover/{bootstrap,roles}.mjs` plus specs: RED-CUT-09..11, grants, allowlists. Keep lanes isolated. | 350 |
-| 6 | `viewpro-app/scripts/production-cutover/backup-lineage.mjs` plus specs; `.github/workflows/db-backup.yml`: RED-CUT-08, lane backup/pruning receipts. Revert workflow. | 340 |
-| 7 | Runbook, session tests, evidence templates: RED-CUT-12..13/checkpoints; emit reviewed develop-merge identity/receipt. Post-WU7 provisional assembly, external closure, and independent reproduction follow. Revert; retain freeze. | 350 |
+Fresh lanes retain least privilege: migrator owns schema objects without superuser/role/database/replication authority; runtime has schema usage, table DML, and sequence use without ownership, membership, DDL, or database create; backup is read-only. Exceptions require expiry receipts. Lanes emit RFC-8785/JCS JSON; public versions/aliases/patches/digests and private HMAC-correlated raw receipts remain distinct, with immutable private manifest identity authoritative and aliases pinned/non-authoritative.
 
-Forecast>400; `sequential-to-develop`/auto-chain; global WU target ≤350, hard stop 390, no size exception/strategy mixing or provisioning authority.
+Activation remains freeze → bootstrap → stage images/receipts/inactive URLs → rotate access while retaining `PLATFORM_CONTROL_SECRET` → product backend → platform backend → frontends/fresh login → backups/heartbeats → checkpoint/resume. Old paired `200` is the only pre-write rollback qualification; backend rejection of old sessions/tokens remains mandatory. RED-CUT-05–13, provider/D.4/traffic gates, and retention/deletion boundaries are unchanged.
+
+## Threat and RED Matrix
+
+Documentation-like paths reject executable/disguised Markdown/MDX, `README.sh`, `requirements.txt`, and `CMakeLists.txt` (RED-CUT-03). Repository selection requires the canonical absolute repository and authorized resolved Git; deny `-C`, relative/alternate roots, and executable injection (RED-CUT-02). Commit state requires detached expected commits and explicit porcelain-v2 NUL-clean worktree/index; staged, unstaged, untracked, wrong HEAD/tree fail (RED-CUT-01). Process nonzero/signal/timeout/spawn/close-drain failure rejects with TERM→grace→KILL (RED-CUT-04). Push/PR commands are N/A.
+
+## Existing Contracts and Downstream
+
+Lane grants, RFC-8785/JCS receipts, HMAC-SHA256 private correlation, alias/direct-identity precedence, backend-first activation, session/token invalidation, and RED-CUT-05–13 remain unchanged. WU1 evidence remains complete in `platform-data/**` and `platform-sync/tenants/**`; WU2 remains complete in `observability/**`, fixture specs, and `remediation-manifest.v1.json`. WU4–WU7 retain scopes and 330–350/320–350/300–340/330–350 forecasts, but WU4 depends on reviewed-merged WU3b; conservative total becomes 2,391–2,641. After WU7 only, an external checkpoint may assemble a disposable read-only provisional candidate, create the populated private manifest off-Git, independently reproduce identities/digests, then require separate single-use authorization before promotion/provider/D.4/receipts. No proposal/spec amendment: splitting delivery and strengthening implementation evidence do not change capability semantics, authority, scenarios, or lifecycle order.

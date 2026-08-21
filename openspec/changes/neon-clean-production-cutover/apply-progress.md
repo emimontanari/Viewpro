@@ -2,9 +2,9 @@
 
 ## Cumulative Status
 
-- Completed: 2/15 tasks
-- Current work unit: WU2 closure is satisfied; WU3 remains unchecked and becomes eligible only after the identity-correction PR merges.
-- Delivery: sequential-to-develop on live `develop@3212c438f0ef5be886b090478acfba3a38d64102`; #347 WU2 implementation `d53a57c04f34efd20fc825aff5c03115c9c6c99f` is bound; WU1 remains `faf870ab0a29e6a271b7391776fc2f9cf25c12ac`.
+- Completed: 2/16 tasks
+- Current work unit: WU2 closure is satisfied; WU3a and WU3b remain unchecked and pending the approved sequential split.
+- Delivery: `sequential-to-develop`; planning base is `800d1a3`. WU3a resolves then-live `origin/develop` when its fresh worktree is created. #347 WU2 implementation `d53a57c04f34efd20fc825aff5c03115c9c6c99f` is bound; WU1 remains `faf870ab0a29e6a271b7391776fc2f9cf25c12ac`. `3212c43…` remains WU2 closure metadata only, never a runtime patch or base.
 
 ## Completed Tasks
 
@@ -16,11 +16,12 @@
 - #347 implementation/TDD/native evidence remains verified; `remediation-manifest.v1.json` records WU2 as `reviewed-develop-merged` with `d53a57c04f34efd20fc825aff5c03115c9c6c99f` and the stable apply-progress receipt.
 - WU2 is complete and its closure gate is satisfied.
 
-## WU3 Identity and Reforecast Decision
+## WU3 Failure, Review Blockers, and Approved Split
 
-- Production reconstruction remains `main@868dc70` + #331/#333/#334/#335/#336 + reviewed WU1/WU2 runtime patches + future approved WU3–WU7 patches. #338/#341/#344/#351 are excluded candidate patch identities while remaining normal `develop` prerequisites/history. WU2 closure `3212c43…` is receipt/gate metadata, not an automatic runtime patch. Candidate tooling rejects hidden AND optional dependencies and #314.
-- WU3 is expected at 327–362 authored lines under the global ≤350 target: at/near 350 it must stop for reforecast and reviewer-burden approval before continuing; hard stop 390, no size exception. It extends—not replaces, weakens, or reorders—the current #351 CI release gate.
-- Before work, audit live `develop`, branches, worktrees, and paths; any overlap/new commit requires refresh AND re-plan. A clean WU3 worktree ignores dirty-root/stale-worktree contamination and owns only root-importer (`.`) entries required by explicit `package.json` tooling pins/scripts. Preserve merged deepmerge; reject other/external importers, `autoInstallPeers` changes, or unrelated resolutions. Add AJV only if schema execution proves necessary.
+- Production reconstruction remains `main@868dc70` + #331/#333/#334/#335/#336 + reviewed WU1/WU2 runtime patches + later reviewed WU3a/WU3b/WU4–WU7 patches. #338/#341/#344/#351 and #314 remain excluded candidate identities while normal `develop` history is retained. WU2 closure `3212c43…` is receipt/gate metadata, not an automatic runtime patch. Candidate tooling rejects hidden and optional dependencies.
+- Failed WU3 native attempt 5 is terminal failed with evidence `sha256:e448a25dcbcaf1db88f994d05ef987bfecef4d044319320babe6ec61542496a2`. Review blockers were canonical repository/resolved Git authority, controlled real-Git/process evidence, detached/final-tree binding, explicit porcelain-v2 `-z` cleanliness, bounded TERM→KILL cleanup, and closed NUL/tree/path/dependency validation; the projected correction exceeded the 350-line review stop.
+- Approved split: unchecked WU3a owns `candidate.mjs`, baseline spec, justified root package/lock entries, and additive CI with ~344-line target/stop 350 and native max 390; unchecked WU3b follows WU3a review/green CI/merge and owns the closed remediation/release schema/template/NUL tree/path/dependency/#314/excluded-patch classification with ~182-line target/stop 350 and native max 390. Both are autonomous PRs to `develop`; WU4 waits for WU3b.
+- Before either slice, audit live `develop`, branches, worktrees, and paths; overlap/new commit requires refresh AND re-plan. WU3a uses a clean worktree, ignores dirty-root/stale-worktree contamination, and owns only root-importer (`.`) entries required by explicit `package.json` tooling pins/scripts. Preserve merged deepmerge; reject other/external importers, `autoInstallPeers` changes, and unrelated resolutions. Add AJV only if schema execution proves necessary.
 
 ## Implementation
 
@@ -63,11 +64,17 @@
 
 `viewpro-app/scripts/production-cutover/remediation-manifest.v1.json` is a repository-local WU1/WU2 remediation receipt. It binds WU1 to reviewed `develop` merge `faf870ab0a29e6a271b7391776fc2f9cf25c12ac` and WU2 to #347 reviewed `develop` merge `d53a57c04f34efd20fc825aff5c03115c9c6c99f`, each with the stable apply-progress receipt. It gates only WU3–WU7 implementation/compatibility, denies provider mutation/D.4/candidate promotion/traffic/production receipts, and creates no provider, traffic, deployment, candidate, release manifest, or external evidence.
 
-## Native Settlement Status
+## Native Attempt Status
 
-- Maintainer-authorized rebaseline attempt 4 completed at native revision `sha256:a4df1fe07c4eb182f40e19bca5de424f8a9dbac91daaed1401c28c8a6858f824` with evidence `sha256:fd82d03e536b5e2fd78c49b381b199eb10daf5da740150d315c819cf7b5e505d`.
-- Attempt 3 remains immutable: its 537 counted lines comprise 400 base-only lines from mandatory #344 refresh plus 137 tracked WU2 lines. Complete WU2 is 329 lines; no size exception applies.
+- Attempt 5 remains terminal failed at evidence `sha256:e448a25dcbcaf1db88f994d05ef987bfecef4d044319320babe6ec61542496a2`; WU3a and WU3b are not settled, passed, or complete.
+- No native reset, acquire, or settle occurs in this planning PR. After merge, WU3a requires a fresh worktree, then-live `origin/develop`, and explicit maintainer-authorized reset+acquire; settlement requires strict TDD, fresh 3-lens review, and final evidence. WU3b requires its own clean reset+acquire after WU3a merges.
 
 ## Remaining Work
 
-- [ ] 2.1 WU3 becomes eligible only after the identity-correction PR merges; all later tasks remain unchecked.
+- [ ] 2.1a WU3a remains pending; after planning merge, use a fresh then-live `origin/develop` worktree and explicit maintainer-authorized reset+acquire, then strict-TDD/3-lens review and final evidence before settlement.
+- [ ] 2.1b WU3b remains pending until WU3a review, green CI, merge, fetch, and overlap audit; then use its own clean reset+acquire and separate strict-TDD/3-lens settlement gate.
+- [ ] 2.2 WU4 remains blocked until reviewed-merged WU3b.
+
+## Next Action
+
+Submit this planning-only PR for review. The split decision is complete via the maintainer interactive decision and Engram #8114; native reset approval remains separate and phase-scoped. No provider, application, source, test, package, lock, CI, or production mutation is authorized here.
