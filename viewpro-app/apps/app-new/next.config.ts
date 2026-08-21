@@ -21,7 +21,7 @@ const baseConfig: NextConfig = {
   images: {
     remotePatterns: remoteImagePatterns
   },
-  transpilePackages: ['geist'],
+  transpilePackages: ['geist', '@viewpro/contracts'],
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production'
   }

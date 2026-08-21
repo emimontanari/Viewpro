@@ -39,6 +39,11 @@ function getSentryOptions() {
 }
 
 export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.VIEWPRO_RUNTIME_MARKER_PORT) {
+    const { startRuntimeContractMarker } = await import('./instrumentation-node');
+    await startRuntimeContractMarker(process.env.VIEWPRO_RUNTIME_MARKER_PORT);
+  }
+
   if (!isSentryEnabled()) {
     return;
   }

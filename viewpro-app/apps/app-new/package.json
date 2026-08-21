@@ -10,6 +10,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "runtime:smoke": "node scripts/runtime-contract-image-smoke.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:seeded": "playwright test --config playwright.seeded.config.ts",

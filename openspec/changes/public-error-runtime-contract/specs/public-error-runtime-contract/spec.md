@@ -44,9 +44,9 @@ Both Docker builders MUST be dependency-aware from `viewpro-app`, install frozen
 - **THEN** it exits `0` without Nest, listener, HTTP, or database activity; spawn, import, assertion, nonzero exit, signal, or timeout fails verification. `exit` proves direct-child termination, `close` additionally proves stdio closure; exit-only failure tears down parent stdio and unrefs the child, while neither event reports `runtime_smoke_termination_unconfirmed` without a reap/orphan claim.
 
 #### Scenario: App New marker is Node-only, opt-in, and exact
-- **GIVEN** `src/instrumentation.ts` statically imports `@viewpro/contracts`
+- **GIVEN** `src/instrumentation-node.ts` statically imports `@viewpro/contracts`
 - **WHEN** `NEXT_RUNTIME=nodejs` and `VIEWPRO_RUNTIME_MARKER_PORT` is present
-- **THEN** instrumentation dynamically imports `instrumentation-node.ts` independently of the Sentry early return; that helper alone imports `node:http`, validates the port, awaits bind, rejects bind errors, then unrefs a successful `127.0.0.1` listener. It exposes only `GET /runtime-contract` and returns exactly status `200`, `text/plain`, and bytes `viewpro-contract-runtime:not-generated-yet\n`.
+- **THEN** Edge-safe `instrumentation.ts` dynamically imports that Node-only helper independently of the Sentry early return; the helper alone imports `node:http`, validates the port, awaits bind, rejects bind errors, then unrefs a successful `127.0.0.1` listener. It exposes only `GET /runtime-contract` and returns exactly status `200`, `text/plain`, and bytes `viewpro-contract-runtime:not-generated-yet\n`.
 - **AND GIVEN** the marker variable is absent
 - **THEN** no marker listener exists.
 - **AND GIVEN** `NEXT_RUNTIME` is not `nodejs`

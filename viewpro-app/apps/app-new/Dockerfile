@@ -42,7 +42,7 @@ RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 
 COPY --from=dependencies /app ./
 
-WORKDIR /app/apps/app-new
+WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -51,7 +51,7 @@ ENV BUILD_STANDALONE=true
 ARG NEXT_PUBLIC_SENTRY_DISABLED=true
 ENV NEXT_PUBLIC_SENTRY_DISABLED=${NEXT_PUBLIC_SENTRY_DISABLED}
 
-RUN pnpm build
+RUN test -x /app/node_modules/.bin/turbo && pnpm --filter @viewpro/contracts build && pnpm --filter next-shadcn-dashboard-starter build
 
 # ============================================
 # Stage 3: Production runner
@@ -67,14 +67,11 @@ ENV HOSTNAME="0.0.0.0"
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Copy public assets
-COPY --from=builder --chown=node:node /app/apps/app-new/public ./public
-
-# Create .next dir with correct permissions for prerender cache
-RUN mkdir .next && chown node:node .next
+COPY --from=builder --chown=node:node /app/apps/app-new/public ./apps/app-new/public
 
 # Copy standalone output and static files
 COPY --from=builder --chown=node:node /app/apps/app-new/.next/standalone ./
-COPY --from=builder --chown=node:node /app/apps/app-new/.next/static ./.next/static
+COPY --from=builder --chown=node:node /app/apps/app-new/.next/static ./apps/app-new/.next/static
 
 USER node
 
@@ -84,4 +81,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "require('http').get('http://127.0.0.1:3000/',r=>process.exit(r.statusCode<400?0:1)).on('error',()=>process.exit(1))"
 
-CMD ["node", "server.js"]
+CMD ["node", "apps/app-new/server.js"]

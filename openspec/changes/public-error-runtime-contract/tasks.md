@@ -8,7 +8,7 @@ Chained PRs recommended: Yes
 Decision needed before apply: No — resolved as stacked-to-develop
 Chain strategy: stacked-to-develop.
 Delivery strategy: chained PRs; no size exception.
-Apply boundary: Units 1–2 complete; Unit 3 next eligible; Unit 4 pending.
+Apply boundary: Units 1–3 complete; Unit 4 pending.
 
 Order: PR1/U1 (base `develop`) → PR2/U2 + PR3/U3 (base `develop`; parallel, disjoint) → PR4/U4 (base `develop`; after 2+3); all merge `develop`.
 
@@ -33,9 +33,9 @@ Order: PR1/U1 (base `develop`) → PR2/U2 + PR3/U3 (base `develop`; parallel, di
 
 ## Unit 3: App New Node Marker / Image (PR 3)
 
-- [ ] 3.1 **RED:** Create `viewpro-app/apps/app-new/src/instrumentation.spec.ts`; run `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/instrumentation.spec.ts` for Node, absent env, Edge no-import, `EADDRINUSE`, and exact-response failures.
-- [ ] 3.2 **GREEN:** Modify Unit 3 paths in `design.md`; create `instrumentation-node.ts` and `scripts/runtime-contract-image-smoke.mjs`. Prove Node-only import independent of Sentry; helper owns `node:http`, awaited bind/unref, exact marker, `transpilePackages`, separate ports/readiness/teardown.
-- [ ] 3.3 **REFACTOR:** Run `pnpm --filter next-shadcn-dashboard-starter runtime:smoke`; require `/auth/sign-in` 200, byte-exact private marker, graceful/escalated teardown, and awaited/reaped child.
+- [x] 3.1 **RED:** Create `viewpro-app/apps/app-new/src/instrumentation.spec.ts`; run `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/instrumentation.spec.ts` for Node, absent env, Edge no-import, `EADDRINUSE`, and exact-response failures.
+- [x] 3.2 **GREEN:** Modify Unit 3 paths in `design.md`; create `instrumentation-node.ts` and `scripts/runtime-contract-image-smoke.mjs`. Prove Node-only import independent of Sentry; helper owns `node:http`, awaited bind/unref, exact marker, `transpilePackages`, separate ports/readiness/teardown.
+- [x] 3.3 **REFACTOR:** Run `pnpm --filter next-shadcn-dashboard-starter runtime:smoke`; require `/auth/sign-in` 200, byte-exact private marker, graceful/escalated teardown, and awaited/reaped child.
 
 ## Unit 4: CI / Docs / Manual Gate (PR 4; after Units 2/3)
 
