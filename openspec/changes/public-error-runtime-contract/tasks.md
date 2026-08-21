@@ -39,6 +39,6 @@ Order: PR1/U1 (base `develop`) → PR2/U2 + PR3/U3 (base `develop`; parallel, di
 
 ## Unit 4: CI / Docs / Manual Gate (PR 4; after Units 2/3)
 
-- [ ] 4.1 **RED:** From `viewpro-app`, run `pnpm install --frozen-lockfile`, `pnpm build`, `pnpm typecheck`, and `pnpm exec turbo run test --concurrency=1`; record CI/root-guidance/manual-gate gaps.
-- [ ] 4.2 **GREEN:** Modify `.github/workflows/ci.yml` and `viewpro-app/README.md`; create `docs/release/manual-vercel-runtime-contract-gate.md` with sequential commands, deployment ID/full SHA/production/READY/settings/HTTPS URL/smoke, reviewer result, and external evidence.
-- [ ] 4.3 **REFACTOR:** Document rollback: record external immutable `RESTORE_SHA`, run current Unit 3/2 smokes first, restore 4→1, assert checkout/deployed SHA, use only checks available at that SHA, and add no comparator/capture/hash/Vercel automation.
+- [x] 4.1 **RED:** From `viewpro-app`, run `pnpm install --frozen-lockfile`, `pnpm build`, `pnpm typecheck`, and `pnpm exec turbo run test --concurrency=1`; record CI/root-guidance/manual-gate gaps.
+- [ ] 4.2 **GREEN:** Deliver and review the production-aware `viewpro-app/apps/app-new/vercel.json.ignoreCommand`, then retry production only from the new reviewed/merged SHA after both App New projects pass the manual gate.
+- [x] 4.3 **REFACTOR:** Document rollback: record external immutable `RESTORE_SHA`, run current Unit 3/2 smokes first, restore 4→1, assert checkout/deployed SHA, use only checks available at that SHA, and add no comparator/capture/hash/Vercel automation.

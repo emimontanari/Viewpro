@@ -64,12 +64,17 @@ Both Docker builders MUST be dependency-aware from `viewpro-app`, install frozen
 
 ### Requirement: Manual authenticated Vercel blocking gate
 
-Exactly `viewpro-app/apps/app-new/vercel.json` MAY be versioned and MUST set `buildCommand` to `cd ../.. && pnpm exec turbo run build --filter=next-shadcn-dashboard-starter`, so Turbo builds `@viewpro/contracts` before App New; both App New preview projects MUST receive that ordering from the repository-owned config independently of dashboard settings. No Vercel evidence schema, capture, comparator, hashing, alias, or automated Vercel/release tooling is part of this capability. Before rollout, the maintainer or release operator MUST attach authenticated evidence to the release record (not the repository) for the exact deployment ID, full reviewed SHA, production target, READY state, current documented `viewpro-app` root/build settings, deployment-specific HTTPS URL, and a successful request smoke. A reviewer MUST record pass or fail. Missing, stale, mismatched, or drifted evidence blocks rollout. Future automation is out of scope and requires a separate operations child.
+Exactly `viewpro-app/apps/app-new/vercel.json` MAY be versioned and MUST set `buildCommand` to `cd ../.. && pnpm exec turbo run build --filter=next-shadcn-dashboard-starter`, so Turbo builds `@viewpro/contracts` before App New; both App New preview projects MUST receive that ordering from the repository-owned config independently of dashboard settings. It MUST also define exactly one `ignoreCommand` that exits `1` when `VERCEL_ENV=production`, forcing Vercel to continue an explicit production build, and otherwise delegates to `npx turbo-ignore` for preview skip behavior. A repository CI command MUST parse that JSON and prove both branches with a local safe `npx` double; no network-dependent `turbo-ignore` invocation is permitted in CI. Root-local config overrides ignored-build dashboard settings, which MUST NOT be changed. No Vercel evidence schema, capture, comparator, hashing, alias, or automated Vercel/release tooling is part of this capability. Before rollout, the maintainer or release operator MUST attach authenticated evidence to the release record (not the repository) for the exact deployment ID, full reviewed SHA, production target, READY state, current documented `viewpro-app` root/build settings, deployment-specific HTTPS URL, and a successful request smoke. A reviewer MUST record pass or fail. Missing, stale, mismatched, or drifted evidence blocks rollout. Future automation is out of scope and requires a separate operations child.
 
 #### Scenario: Manual evidence blocks drift
 - **GIVEN** a pending rollout
 - **WHEN** the reviewer cannot reconcile every required field to the reviewed deployment and current settings
 - **THEN** the reviewer records fail and rollout is blocked; only a matching authenticated evidence set and successful HTTPS request smoke permits pass.
+
+#### Scenario: Production promotions bypass preview ignore
+- **GIVEN** Vercel evaluates the root-local configuration for `VERCEL_ENV=production`
+- **WHEN** it runs `ignoreCommand`
+- **THEN** the command exits `1` without invoking `turbo-ignore`, so Vercel continues the build; a preview delegates to `npx turbo-ignore` and retains its exit status.
 
 ### Requirement: Behavior-neutral rollback
 

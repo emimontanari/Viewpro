@@ -21,7 +21,7 @@ defaults:
 
 jobs:
   quality:
-    name: Typecheck · Lint · Build
+    name: Build · Typecheck · Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,8 +38,52 @@ jobs:
           cache: pnpm
           cache-dependency-path: viewpro-app/pnpm-lock.yaml
 
+      - name: Validate Vercel ignored-build policy
+        run: |
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+          const { spawnSync } = require('node:child_process');
+          const { existsSync, mkdtempSync, rmSync, writeFileSync } = require('node:fs');
+          const { tmpdir } = require('node:os');
+          const { join } = require('node:path');
+
+          const config = require('./apps/app-new/vercel.json');
+          const command = config.ignoreCommand;
+          assert.equal(typeof command, 'string', 'vercel.json must define ignoreCommand');
+          assert.match(command, /VERCEL_ENV/);
+          assert.match(command, /production/);
+          assert.match(command, /exit 1/);
+          assert.match(command, /npx turbo-ignore/);
+
+          const directory = mkdtempSync(join(tmpdir(), 'vercel-ignore-'));
+          const probe = join(directory, 'turbo-ignore-called');
+          const fakeNpx = join(directory, 'npx');
+          writeFileSync(
+            fakeNpx,
+            '#!/bin/sh\n[ "$1" = turbo-ignore ] || exit 64\n: > "$VERCEL_IGNORE_PROBE"\nexit 73\n',
+            { mode: 0o755 }
+          );
+
+          try {
+            const environment = { ...process.env, PATH: `${directory}:${process.env.PATH}`, VERCEL_IGNORE_PROBE: probe };
+            const production = spawnSync('/bin/sh', ['-c', command], { env: { ...environment, VERCEL_ENV: 'production' } });
+            assert.equal(production.status, 1, 'production must continue the build');
+            assert.equal(existsSync(probe), false, 'production must not invoke turbo-ignore');
+
+            const preview = spawnSync('/bin/sh', ['-c', command], { env: { ...environment, VERCEL_ENV: 'preview' } });
+            assert.equal(preview.status, 73, 'preview must preserve turbo-ignore exit status');
+            assert.equal(existsSync(probe), true, 'preview must delegate to turbo-ignore');
+            console.log('Vercel ignored-build policy validated');
+          } finally {
+            rmSync(directory, { recursive: true, force: true });
+          }
+          NODE
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
 
       - name: Typecheck
         run: pnpm typecheck
@@ -47,11 +91,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Build
-        run: pnpm build
-
   test:
     name: Test
+    needs: quality
     runs-on: ubuntu-latest
 
     services:

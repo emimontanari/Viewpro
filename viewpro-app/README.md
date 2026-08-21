@@ -30,6 +30,28 @@ pnpm db:generate
 pnpm db:down
 ```
 
+## Runtime contract verification and release gate
+
+Run these commands from `viewpro-app/` in this order before reviewing the
+runtime-contract release. They use the root Turbo graph; do not replace them
+with per-app development servers or custom supervisors.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build
+pnpm typecheck
+pnpm exec turbo run test --concurrency=1
+```
+
+`pnpm dev` is the only supported development command for the API and App New
+runtime contract. It expands to `turbo watch dev --filter=@viewpro/api --filter=next-shadcn-dashboard-starter`; keep it foreground and stop it with its terminal. Do not run it for CI or release verification.
+
+Before rollout, a maintainer and reviewer must complete the authenticated,
+read-only Vercel gate for both App New projects. The gate records deployment
+identity and a request smoke outside Git, blocks a missing or mismatched result,
+and never changes Vercel settings or deploys. See
+[`../docs/release/manual-vercel-runtime-contract-gate.md`](../docs/release/manual-vercel-runtime-contract-gate.md).
+
 ## Base de datos local
 
 ```bash
