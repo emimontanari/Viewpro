@@ -124,3 +124,21 @@
 - Versioned prerequisite remediation generation 15 passed: `settle-public-error-runtime-contract-unit4-versioned-ignore-command-20260821-b1`, token `sha256:c63dc032a2577406787ec5da06da085395970cb26d118b971878449a6f6c0c12`, evidence `sha256:637162c125e99d9dfe8bd273aafe757ef5f18a3de01b5deefb3521a5646bc36e`; it remediated `sha256:5778bbd94541a441f5c66ff7baf4e8a61d526d875562f774a5c022cefe6b5718` without a production retry.
 - Generation 16 passed for work unit `unit-4-prerequisite-review-remediation`, token `sha256:614e7cc77744494f4c08999c0a120e26eddee292c645fdb930ebb8a9b2667fd5`, evidence `sha256:19c0387526a04f584f7a5e03de0bd1bebe986c8de3e2c23ead9f0954dc32ae7b`; it corrected CI preview exit preservation and Unit 4 task/rollback-owner evidence without production mutation.
 | 4.3 | N/A (documentation) | Documentation/manual operation | N/A (new rollback section) | N/A — documentation-only requirement; no fake executable RED was created. | Documentation structure validation confirmed external `RESTORE_SHA`, Unit 3/2 diagnostic smokes, reverse 4 → 1 restoration, revision assertions, SHA-available checks, and the no-automation rule. | N/A — reverse dependency order is a single prescribed path. | No behavior change; only concise rollback guidance. |
+
+### Unit 4 merged-SHA production retry — passed
+
+- Timestamp: `2026-08-21T14:24:36Z`; bounded attempt `acquire-public-error-runtime-contract-unit4-merged-sha-production-20260821-v1` proceeded with token `sha256:575c03e07d69f5f89a5d5c3d75bb062be26569e03c54550668d471a5424be4d8`.
+- Immutable source: reviewed merged SHA `85b347137420e064cd2479430a6fb846d57a30f2`; promoted only its inspected READY preview candidates: App `dpl_3TjXTNwf1vko7o52pxNJ9Qzfhm5z`, then Demo `dpl_AEn98WL4QPhn6g4Fe39YQ3L6MfXH` after the App hard pass.
+- New App production `dpl_CVyMdwn4eWJfFFgYtNYDQ5PARoeR` and new Demo production `dpl_GTxe1AJJvuzLYcnJsTgaPnn3QMAu` are each `production`/`READY`, with READY builds, Next.js/Node 24.x, root-local filtered-Turbo `buildCommand`, and the merged production-aware `ignoreCommand`.
+- Alias evidence: App `app.inmoview.app` and `inmoview-app.vercel.app` map to `dpl_CVyMdwn4eWJfFFgYtNYDQ5PARoeR`; Demo `demo.inmoview.app` and `inmoview-demo.vercel.app` map to `dpl_GTxe1AJJvuzLYcnJsTgaPnn3QMAu`.
+- HTTPS evidence (each `GET /privacy-policy`, 15-second bound): all four production domains returned `200`. Final deployment lists show no active BUILDING operation for either promoted deployment.
+- Rollback remained unused: RESTORE_SHA `868dc70a025d208fd4d1f7ece52640cc92187e1e`; App restore `dpl_6X8hPf6ue6tati8s86evqYNsSRXb`; Demo restore `dpl_8o3FMdFzShMirgdpy5FovCRoyNd3`.
+- Task 4.2 is complete; cumulative state is **12/12**. No dashboard/settings/environment/manual-alias, Git/GitHub, issue, #285, or #327 mutation occurred.
+
+### Final verification evidence remediation
+
+- The operator release record is [issue comment 5371954370](https://github.com/emimontanari/Viewpro/issues/346#issuecomment-5371954370), exact body digest `sha256:c957e5bfa145bcb31dab9f0ea7ff1aa94220b317c61354fdea1f3fdab5f87a0e`.
+- The separate reviewer receipt is [issue comment 5372420013](https://github.com/emimontanari/Viewpro/issues/346#issuecomment-5372420013), exact body digest `sha256:862b9edd135916c1088c7fc89bcdda1a524a0484a5345b81a8e859c8016b6628`; maintainer `emimontanari` recorded PASS at `2026-08-21T16:13:46Z` after fresh-context read-only reconciliation.
+- Fresh bounded `GET /privacy-policy` smokes all returned `200`: App custom `2026-08-21T16:12:47.625419Z`–`16:12:49.660091Z`, App Vercel `16:12:49.660181Z`–`16:12:50.146491Z`, Demo custom `16:12:50.146561Z`–`16:12:51.240155Z`, and Demo Vercel `16:12:51.240217Z`–`16:12:51.687726Z`.
+- The prior failed verification digest `sha256:94e6179fba511509dce804df36c6424cea54bed24a66a39a6d9ee016176b188a` is preserved. Its overclaim of exercised runtime scenarios and missing separate reviewer receipt are remediated by this corrected evidence record.
+- Rollback is conditional and was not triggered. Immutable restore identities remain READY: `RESTORE_SHA=868dc70a025d208fd4d1f7ece52640cc92187e1e`, App `dpl_6X8hPf6ue6tati8s86evqYNsSRXb`, Demo `dpl_8o3FMdFzShMirgdpy5FovCRoyNd3`. No rollback was executed or required.
