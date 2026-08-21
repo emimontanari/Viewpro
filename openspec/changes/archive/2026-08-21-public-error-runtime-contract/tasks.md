@@ -8,7 +8,7 @@ Chained PRs recommended: Yes
 Decision needed before apply: No — resolved as stacked-to-develop
 Chain strategy: stacked-to-develop.
 Delivery strategy: chained PRs; no size exception.
-Apply boundary: Units 1–3 complete; Unit 4 pending.
+Apply boundary: Units 1–4 complete; final verification passed.
 
 Order: PR1/U1 (base `develop`) → PR2/U2 + PR3/U3 (base `develop`; parallel, disjoint) → PR4/U4 (base `develop`; after 2+3); all merge `develop`.
 
@@ -40,5 +40,5 @@ Order: PR1/U1 (base `develop`) → PR2/U2 + PR3/U3 (base `develop`; parallel, di
 ## Unit 4: CI / Docs / Manual Gate (PR 4; after Units 2/3)
 
 - [x] 4.1 **RED:** From `viewpro-app`, run `pnpm install --frozen-lockfile`, `pnpm build`, `pnpm typecheck`, and `pnpm exec turbo run test --concurrency=1`; record CI/root-guidance/manual-gate gaps.
-- [ ] 4.2 **GREEN:** Deliver and review the production-aware `viewpro-app/apps/app-new/vercel.json.ignoreCommand`, then retry production only from the new reviewed/merged SHA after both App New projects pass the manual gate.
+- [x] 4.2 **GREEN:** Deliver and review the production-aware `viewpro-app/apps/app-new/vercel.json.ignoreCommand`, then retry production only from the new reviewed/merged SHA after both App New projects pass the manual gate.
 - [x] 4.3 **REFACTOR:** Document rollback: record external immutable `RESTORE_SHA`, run current Unit 3/2 smokes first, restore 4→1, assert checkout/deployed SHA, use only checks available at that SHA, and add no comparator/capture/hash/Vercel automation.
