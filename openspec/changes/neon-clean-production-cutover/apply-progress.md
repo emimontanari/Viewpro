@@ -2,14 +2,18 @@
 
 ## Cumulative Status
 
-- Completed: 2/15 tasks
-- Current work unit: 1.2 / WU2
-- Delivery: sequential-to-develop; refreshed WU2 base/head is `origin/develop@392bcb0901b7eb5bd9ff1a2908fa3cbdd5913b02`, never `main` or a parent branch. WU1's final reviewed `develop` merge remains `faf870ab0a29e6a271b7391776fc2f9cf25c12ac`; WU2 is an uncommitted review candidate and has no self-issued merge identity.
+- Completed: 1/15 tasks
+- Current work unit: 1.2 / WU2 closure
+- Delivery: sequential-to-develop; #347 is the reviewed WU2 implementation delivery, but WU2 remains open. After its squash merge, a separate closure PR from new `develop` binds #347's actual merge SHA; WU1 remains `faf870ab0a29e6a271b7391776fc2f9cf25c12ac`.
 
 ## Completed Task
 
 - [x] 1.1 **WU1:** RED→GREEN platform-sync/tenant/platform-data specs; visible-render/zero-I/O-idle/receipt.
-- [x] 1.2 **WU2:** sanitized Sentry telemetry, classified platform-sync failures, independent platform-sync fixture, and WU1/WU2 remediation boundary manifest.
+
+## Verified WU2 Implementation (Not Complete)
+
+- #347 implementation/TDD/native evidence is verified; `remediation-manifest.v1.json` correctly remains `candidate-awaits-review` with a null WU2 merge.
+- WU2 completes only when the separate post-#347 closure PR binds the actual develop merge SHA, updates reviewed status, and merges with review/green CI. WU3 remains blocked until then.
 
 ## Implementation
 
@@ -48,7 +52,7 @@
 
 ## Remediation Receipt Boundary
 
-`viewpro-app/scripts/production-cutover/remediation-manifest.v1.json` is a repository-local WU1/WU2 remediation receipt. It binds WU1 only to reviewed `develop` merge `faf870ab0a29e6a271b7391776fc2f9cf25c12ac`; WU2 remains `candidate-awaits-review` with a null reviewed merge. It gates only WU3–WU7 implementation/compatibility, denies provider mutation/D.4/candidate promotion/traffic/production receipts, and creates no provider, traffic, deployment, candidate, release manifest, or external evidence.
+`viewpro-app/scripts/production-cutover/remediation-manifest.v1.json` is a repository-local WU1/WU2 remediation receipt. It binds WU1 only to reviewed `develop` merge `faf870ab0a29e6a271b7391776fc2f9cf25c12ac`; WU2 correctly remains `candidate-awaits-review` with a null reviewed merge until the post-#347 closure PR binds its actual SHA. It gates only WU3–WU7 implementation/compatibility, denies provider mutation/D.4/candidate promotion/traffic/production receipts, and creates no provider, traffic, deployment, candidate, release manifest, or external evidence.
 
 ## Native Settlement Status
 
@@ -57,4 +61,5 @@
 
 ## Remaining Work
 
-- [ ] 2.1 WU3 and all later implementation/lifecycle tasks remain unchecked.
+- [ ] 1.2 WU2 closure PR: after #347 squash-merges, bind its actual develop SHA and reviewed status, then merge the closure PR.
+- [ ] 2.1 WU3 remains blocked until the WU2 closure PR is reviewed/CI-green/merged; all later tasks remain unchecked.
