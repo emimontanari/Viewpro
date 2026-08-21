@@ -2,18 +2,19 @@
 
 ## Cumulative Status
 
-- Completed: 1/15 tasks
-- Current work unit: 1.2 / WU2 closure
-- Delivery: sequential-to-develop; #347 is the reviewed WU2 implementation delivery, but WU2 remains open. After its squash merge, a separate closure PR from new `develop` binds #347's actual merge SHA; WU1 remains `faf870ab0a29e6a271b7391776fc2f9cf25c12ac`.
+- Completed: 2/15 tasks
+- Current work unit: 1.2 / WU2 identity closure complete; WU3 is next and pending its closure-PR review/CI/merge gate.
+- Delivery: sequential-to-develop; #347 reviewed WU2 develop merge `d53a57c04f34efd20fc825aff5c03115c9c6c99f` is bound; WU1 remains `faf870ab0a29e6a271b7391776fc2f9cf25c12ac`.
 
-## Completed Task
+## Completed Tasks
 
 - [x] 1.1 **WU1:** RED→GREEN platform-sync/tenant/platform-data specs; visible-render/zero-I/O-idle/receipt.
+- [x] 1.2 **WU2:** #347 merge `d53a57c04f34efd20fc825aff5c03115c9c6c99f` bound as reviewed-develop-merged; exact repository remediation receipt closed.
 
-## Verified WU2 Implementation (Not Complete)
+## Completed WU2 Identity Closure
 
-- #347 implementation/TDD/native evidence is verified; `remediation-manifest.v1.json` correctly remains `candidate-awaits-review` with a null WU2 merge.
-- WU2 completes only when the separate post-#347 closure PR binds the actual develop merge SHA, updates reviewed status, and merges with review/green CI. WU3 remains blocked until then.
+- #347 implementation/TDD/native evidence remains verified; `remediation-manifest.v1.json` records WU2 as `reviewed-develop-merged` with `d53a57c04f34efd20fc825aff5c03115c9c6c99f` and the stable apply-progress receipt.
+- WU2 is complete. WU3 remains blocked pending this closure PR's review/green CI/merge.
 
 ## Implementation
 
@@ -23,7 +24,7 @@
 - `SentryService` emits only classified tags (`environment`, `statusCode`, `exceptionType`, optional internal `failureCode`), contains client failures, and sends no request IDs or URL paths.
 - `PlatformSyncCoordinator` emits a generic `PlatformSyncFailure` receipt for each mapped failure, contains telemetry failures, and never serializes dependency errors.
 - Platform-sync integration tests own `platform-sync.fixture.ts` instead of importing the #334 shared operator fixture.
-- `remediation-manifest.v1.json` binds WU1's reviewed merge and records WU2 as review-bound; it gates only WU3–WU7 implementation/compatibility and explicitly denies operational authority.
+- `remediation-manifest.v1.json` binds WU1 and WU2 reviewed merges; it gates only WU3–WU7 implementation/compatibility and explicitly denies operational authority.
 
 ## TDD Cycle Evidence
 
@@ -32,6 +33,7 @@
 | 1.1 | `apps/viewpro-web/src/features/platform-sync/components/__tests__/use-platform-sync-demand.spec.ts` | Web integration | 3/3 passed | Hidden mount expected zero demand and failed: actual calls `1` | 4/4 passed after visible-only gate | 5/5 passed: hidden focus stays idle, visible cadence resumes once | None needed; extracted `demandIfVisible` keeps each entry point consistent |
 | 1.1 | `apps/viewpro-web/src/features/platform-sync/components/__tests__/platform-sync-provider.spec.tsx` | Web component | N/A (new file) | Covered by the task RED cycle above | 2/2 passed | Degraded and first-response states both preserve visible child content | None needed |
 | 1.2 | `apps/viewpro-api/src/{common/filters,observability,platform-data}/__tests__/*` | Unit + platform integration | 12/12 passed after local `prisma generate` repaired the missing generated client | Original 5 assertions failed before implementation; correction evidence: DI 3/3, fixture 2/3, and Sentry containment 4 failures | 30/30 passed after runtime token wiring, credential-free fixture setup, and contained telemetry client failures | All five failure codes; 499/500/unhandled filter paths; capture/init failures preserve coordinator/filter control flow | Direct unit constructors pass explicit `undefined`; Nest remains fail-closed on a missing runtime token |
+| 1.2 | `apps/viewpro-api/src/observability/__tests__/remediation-manifest.spec.ts` | Unit contract | 1/1 passed | Exact reviewed WU2 receipt expectation failed against candidate/null manifest | 1/1 passed after only the WU2 receipt was closed | Skipped: one exact structural receipt output | None needed; exact-object assertion proves candidateBranch/reviewBoundary absence |
 
 ## Verification
 
@@ -49,10 +51,11 @@
 - `pnpm --filter @viewpro/platform-api test src/platform-data/__tests__/platform-data.module.spec.ts` — correction RED: 3/3 failed because Nest could not resolve `PlatformSyncCoordinator` constructor index 3; correction GREEN: 3/3 passed with the exported `SENTRY_CAPTURE` token/provider.
 - `pnpm --filter @viewpro/platform-api test src/platform-data/__tests__/platform-sync.fixture.spec.ts` — correction RED: 2/3 failed when no `DATABASE_URL` was supplied; correction GREEN: 3/3 passed after blank credentials are rejected before the DB guard.
 - Sentry correction RED: 4 failures (`init`, `capture`, coordinator, filter delegation); GREEN: 15/15 passed. Final focused suite including global filter, all five coordinator classifications, module, fixture, and manifest: 30/30 passed; typecheck/diff-check passed; `oxlint` unavailable.
+- `pnpm --filter @viewpro/platform-api test src/observability/__tests__/remediation-manifest.spec.ts` — closure safety net 1/1 passed; RED 1/1 failed against `candidate-awaits-review`/null merge with candidateBranch/reviewBoundary; GREEN 1/1 passed after the exact #347 reviewed-develop receipt.
 
 ## Remediation Receipt Boundary
 
-`viewpro-app/scripts/production-cutover/remediation-manifest.v1.json` is a repository-local WU1/WU2 remediation receipt. It binds WU1 only to reviewed `develop` merge `faf870ab0a29e6a271b7391776fc2f9cf25c12ac`; WU2 correctly remains `candidate-awaits-review` with a null reviewed merge until the post-#347 closure PR binds its actual SHA. It gates only WU3–WU7 implementation/compatibility, denies provider mutation/D.4/candidate promotion/traffic/production receipts, and creates no provider, traffic, deployment, candidate, release manifest, or external evidence.
+`viewpro-app/scripts/production-cutover/remediation-manifest.v1.json` is a repository-local WU1/WU2 remediation receipt. It binds WU1 to reviewed `develop` merge `faf870ab0a29e6a271b7391776fc2f9cf25c12ac` and WU2 to #347 reviewed `develop` merge `d53a57c04f34efd20fc825aff5c03115c9c6c99f`, each with the stable apply-progress receipt. It gates only WU3–WU7 implementation/compatibility, denies provider mutation/D.4/candidate promotion/traffic/production receipts, and creates no provider, traffic, deployment, candidate, release manifest, or external evidence.
 
 ## Native Settlement Status
 
@@ -61,5 +64,4 @@
 
 ## Remaining Work
 
-- [ ] 1.2 WU2 closure PR: after #347 squash-merges, bind its actual develop SHA and reviewed status, then merge the closure PR.
-- [ ] 2.1 WU3 remains blocked until the WU2 closure PR is reviewed/CI-green/merged; all later tasks remain unchecked.
+- [ ] 2.1 WU3 remains blocked until this WU2 closure PR is reviewed/CI-green/merged; all later tasks remain unchecked.

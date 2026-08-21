@@ -7,18 +7,18 @@ Forecast: 2,230–2,430; `sequential-to-develop`/auto-chain; WU target ≤350; h
 Decision needed before apply: No
 Chained PRs recommended: Yes
 Chain strategy: stacked-to-main
-Protocol compatibility only: this token's project execution alias and authority is `sequential-to-develop`; every WU MUST target `develop`, NEVER production `main` or a stacked parent branch.
+Protocol compatibility only: this token's project execution alias and authority is `sequential-to-develop`; every WU MUST target `develop`, NEVER production `main` or a chained parent branch.
 400-line budget risk: High
 
-`sequential-to-develop`: each WU from live `origin/develop` worktree/branch → autonomous WU → review+green CI → `develop` merge → remove/fetch/audit; never `main`/stacked parent; no size-exception/mixing. Prefix: `main@868dc70` + #331/#333/#334/#335/#336.
+`sequential-to-develop`: each WU from live `origin/develop` worktree/branch → autonomous WU → review+green CI → `develop` merge → remove/fetch/audit; never `main`/chained parent; no size-exception/mixing. Prefix: `main@868dc70` + #331/#333/#334/#335/#336.
 
 Concurrency: every WU inspects `develop`/branch/worktree/planned-path overlap; overlap/new commit requires refresh/re-plan. WU3 package/lock, WU7 `app-new`/session likely conflict.
 
-Two-stage manifests: #347 is WU2 implementation/null merge. Post-squash minimal closure PR from new `develop` binds actual SHA, marks WU2 complete; review/CI-green/merge gates WU2/WU3, then WU3-WU7 implementation/compatibility. WU3 commits tooling/schema/template only; WU3-WU7 emit reviewed merge receipts. Post-WU7 merge, read-only tooling assembles candidate from prefix+WU1-WU7 patches in disposable worktree; deterministic tree/runtime/image digests. Checkpoint 5.2 creates/closes populated `release-manifest.v1.json` outside candidate Git/private evidence and independently reassembles identities/verifies digests. External closure/reproduction+single-use authorization permit promotion; unrelated `develop`/public evidence/instance cannot alter bound tree.
+Two-stage manifests: #347 WU2 reviewed-develop merge `d53a57c04f34efd20fc825aff5c03115c9c6c99f` is bound and WU2 is complete; WU3 remains blocked pending closure PR review/CI/merge. WU3 commits tooling/schema/template only; WU3-WU7 emit reviewed merge receipts. Post-WU7 merge, read-only tooling assembles candidate from prefix+WU1-WU7 patches in disposable worktree; deterministic tree/runtime/image digests. Checkpoint 5.2 creates/closes populated `release-manifest.v1.json` outside candidate Git/private evidence and independently reassembles identities/verifies digests. External closure/reproduction+single-use authorization permit promotion; unrelated `develop`/public evidence/instance cannot alter bound tree.
 
 ### P1 — #327
 - [x] 1.1 **WU1 (320–350):** RED→GREEN platform-sync/tenant/platform-data specs; visible-render/zero-I/O-idle/receipt.
-- [ ] 1.2 **WU2 (300–340):** #347 implementation verified; post-merge closure PR binds its actual develop SHA, updates reviewed status, and closes the manifest.
+- [x] 1.2 **WU2 (300–340):** #347 merge `d53a57c04f34efd20fc825aff5c03115c9c6c99f` is bound as reviewed-develop-merged; manifest closed.
 
 ### P2 — Candidate
 - [ ] 2.1 **WU3 (330–350, blocked pending WU2 closure PR):** package/lock/config/CI, candidate/remediation/release-manifest tooling, versioned schema/template+specs; RED-CUT-01–04. Tooling/schema/template only, never instance. Pin tools/IDs, detached base, exact-tree CI/audit; changed/missing identity stops.
