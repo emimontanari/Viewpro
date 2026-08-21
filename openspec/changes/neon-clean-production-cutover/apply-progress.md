@@ -3,8 +3,8 @@
 ## Cumulative Status
 
 - Completed: 2/15 tasks
-- Current work unit: 1.2 / WU2 identity closure complete; WU3 is next and pending its closure-PR review/CI/merge gate.
-- Delivery: sequential-to-develop; #347 reviewed WU2 develop merge `d53a57c04f34efd20fc825aff5c03115c9c6c99f` is bound; WU1 remains `faf870ab0a29e6a271b7391776fc2f9cf25c12ac`.
+- Current work unit: WU2 closure is satisfied; WU3 remains unchecked and becomes eligible only after the identity-correction PR merges.
+- Delivery: sequential-to-develop on live `develop@3212c438f0ef5be886b090478acfba3a38d64102`; #347 WU2 implementation `d53a57c04f34efd20fc825aff5c03115c9c6c99f` is bound; WU1 remains `faf870ab0a29e6a271b7391776fc2f9cf25c12ac`.
 
 ## Completed Tasks
 
@@ -14,7 +14,13 @@
 ## Completed WU2 Identity Closure
 
 - #347 implementation/TDD/native evidence remains verified; `remediation-manifest.v1.json` records WU2 as `reviewed-develop-merged` with `d53a57c04f34efd20fc825aff5c03115c9c6c99f` and the stable apply-progress receipt.
-- WU2 is complete. WU3 remains blocked pending this closure PR's review/green CI/merge.
+- WU2 is complete and its closure gate is satisfied.
+
+## WU3 Identity and Reforecast Decision
+
+- Production reconstruction remains `main@868dc70` + #331/#333/#334/#335/#336 + reviewed WU1/WU2 runtime patches + future approved WU3–WU7 patches. #338/#341/#344/#351 are excluded candidate patch identities while remaining normal `develop` prerequisites/history. WU2 closure `3212c43…` is receipt/gate metadata, not an automatic runtime patch. Candidate tooling rejects hidden AND optional dependencies and #314.
+- WU3 is expected at 327–362 authored lines under the global ≤350 target: at/near 350 it must stop for reforecast and reviewer-burden approval before continuing; hard stop 390, no size exception. It extends—not replaces, weakens, or reorders—the current #351 CI release gate.
+- Before work, audit live `develop`, branches, worktrees, and paths; any overlap/new commit requires refresh AND re-plan. A clean WU3 worktree ignores dirty-root/stale-worktree contamination and owns only root-importer (`.`) entries required by explicit `package.json` tooling pins/scripts. Preserve merged deepmerge; reject other/external importers, `autoInstallPeers` changes, or unrelated resolutions. Add AJV only if schema execution proves necessary.
 
 ## Implementation
 
@@ -64,4 +70,4 @@
 
 ## Remaining Work
 
-- [ ] 2.1 WU3 remains blocked until this WU2 closure PR is reviewed/CI-green/merged; all later tasks remain unchecked.
+- [ ] 2.1 WU3 becomes eligible only after the identity-correction PR merges; all later tasks remain unchecked.
