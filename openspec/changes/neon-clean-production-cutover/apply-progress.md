@@ -4,7 +4,7 @@
 
 - Completed: 1/15 tasks
 - Current work unit: 1.1 / WU1
-- Delivery: sequential-to-develop; this work unit remains uncommitted and targets `develop`, never `main` or a parent branch.
+- Delivery: sequential-to-develop; WU1 is committed for review and targets `develop`, never `main` or a parent branch. WU2 may bind only its final reviewed `develop` merge identity.
 
 ## Completed Task
 
