@@ -9,7 +9,7 @@ async function readManifest() {
 }
 
 describe('WU1/WU2 remediation manifest', () => {
-  it('contains only the exact reviewed, review-bound authority contract', async () => {
+  it('contains only the exact reviewed-develop-merged authority contract', async () => {
     expect(await readManifest()).toEqual({
       schemaVersion: 1,
       kind: 'remediation-manifest',
@@ -19,7 +19,7 @@ describe('WU1/WU2 remediation manifest', () => {
       },
       receipts: {
         wu1: { status: 'reviewed-develop-merged', reviewedDevelopMerge: 'faf870ab0a29e6a271b7391776fc2f9cf25c12ac', implementationReceipt: 'openspec/changes/neon-clean-production-cutover/apply-progress.md' },
-        wu2: { status: 'candidate-awaits-review', candidateBranch: 'fix/neon-clean-production-cutover-wu2', reviewedDevelopMerge: null, reviewBoundary: 'Independent review and a develop merge are required; this file grants no authority.' },
+        wu2: { status: 'reviewed-develop-merged', reviewedDevelopMerge: 'd53a57c04f34efd20fc825aff5c03115c9c6c99f', implementationReceipt: 'openspec/changes/neon-clean-production-cutover/apply-progress.md' },
       },
     })
   })

@@ -21,10 +21,9 @@
       "implementationReceipt": "openspec/changes/neon-clean-production-cutover/apply-progress.md"
     },
     "wu2": {
-      "status": "candidate-awaits-review",
-      "candidateBranch": "fix/neon-clean-production-cutover-wu2",
-      "reviewedDevelopMerge": null,
-      "reviewBoundary": "Independent review and a develop merge are required; this file grants no authority."
+      "status": "reviewed-develop-merged",
+      "reviewedDevelopMerge": "d53a57c04f34efd20fc825aff5c03115c9c6c99f",
+      "implementationReceipt": "openspec/changes/neon-clean-production-cutover/apply-progress.md"
     }
   }
 }
