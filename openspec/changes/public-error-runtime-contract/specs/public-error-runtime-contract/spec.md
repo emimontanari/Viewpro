@@ -44,9 +44,9 @@ Both Docker builders MUST be dependency-aware from `viewpro-app`, install frozen
 - **THEN** it exits `0` without Nest, listener, HTTP, or database activity; spawn, import, assertion, nonzero exit, signal, or timeout fails verification. `exit` proves direct-child termination, `close` additionally proves stdio closure; exit-only failure tears down parent stdio and unrefs the child, while neither event reports `runtime_smoke_termination_unconfirmed` without a reap/orphan claim.
 
 #### Scenario: App New marker is Node-only, opt-in, and exact
-- **GIVEN** `src/instrumentation.ts` statically imports `@viewpro/contracts`
+- **GIVEN** `src/instrumentation-node.ts` statically imports `@viewpro/contracts`
 - **WHEN** `NEXT_RUNTIME=nodejs` and `VIEWPRO_RUNTIME_MARKER_PORT` is present
-- **THEN** instrumentation dynamically imports `instrumentation-node.ts` independently of the Sentry early return; that helper alone imports `node:http`, validates the port, awaits bind, rejects bind errors, then unrefs a successful `127.0.0.1` listener. It exposes only `GET /runtime-contract` and returns exactly status `200`, `text/plain`, and bytes `viewpro-contract-runtime:not-generated-yet\n`.
+- **THEN** Edge-safe `instrumentation.ts` dynamically imports that Node-only helper independently of the Sentry early return; the helper alone imports `node:http`, validates the port, awaits bind, rejects bind errors, then unrefs a successful `127.0.0.1` listener. It exposes only `GET /runtime-contract` and returns exactly status `200`, `text/plain`, and bytes `viewpro-contract-runtime:not-generated-yet\n`.
 - **AND GIVEN** the marker variable is absent
 - **THEN** no marker listener exists.
 - **AND GIVEN** `NEXT_RUNTIME` is not `nodejs`
@@ -64,7 +64,7 @@ Both Docker builders MUST be dependency-aware from `viewpro-app`, install frozen
 
 ### Requirement: Manual authenticated Vercel blocking gate
 
-No committed schema, capture, comparator, hashing, alias, or automated Vercel/release tooling is part of this capability. Before rollout, the maintainer or release operator MUST attach authenticated evidence to the release record (not the repository) for the exact deployment ID, full reviewed SHA, production target, READY state, current documented `viewpro-app` root/build settings, deployment-specific HTTPS URL, and a successful request smoke. A reviewer MUST record pass or fail. Missing, stale, mismatched, or drifted evidence blocks rollout. Future automation is out of scope and requires a separate operations child.
+Exactly `viewpro-app/apps/app-new/vercel.json` MAY be versioned and MUST set `buildCommand` to `cd ../.. && pnpm exec turbo run build --filter=next-shadcn-dashboard-starter`, so Turbo builds `@viewpro/contracts` before App New; both App New preview projects MUST receive that ordering from the repository-owned config independently of dashboard settings. No Vercel evidence schema, capture, comparator, hashing, alias, or automated Vercel/release tooling is part of this capability. Before rollout, the maintainer or release operator MUST attach authenticated evidence to the release record (not the repository) for the exact deployment ID, full reviewed SHA, production target, READY state, current documented `viewpro-app` root/build settings, deployment-specific HTTPS URL, and a successful request smoke. A reviewer MUST record pass or fail. Missing, stale, mismatched, or drifted evidence blocks rollout. Future automation is out of scope and requires a separate operations child.
 
 #### Scenario: Manual evidence blocks drift
 - **GIVEN** a pending rollout
