@@ -17,7 +17,7 @@ Concurrency: EVERY WU inspects `develop`/branch/worktree/planned-path overlap; o
 Two-stage manifests: WU2 closes WU1/WU2 reviewed remediation identities/receipts; gates only WU3-WU7 implementation/compatibility. WU3 commits tooling/schema/template (never instance); WU3-WU7 emit reviewed develop-merge identities/receipts. Post-WU7 review/CI/merge: read-only-tooling assembles provisional isolated candidate from known-prefix+WU1-WU7 patches in disposable-worktree; no provider/traffic-authority; deterministic full-tree/runtime-path/image-digests. Checkpoint 5.2 creates/closes populated `release-manifest.v1.json` outside candidate Git/private evidence; independently reassembles exact identities/verifies digests. External closure+independent reproduction+single-use authorization permits promotion; unrelated `develop`/public evidence/instance cannot alter bound tree.
 
 ### P1 — #327
-- [ ] 1.1 **WU1 (320–350):** RED→GREEN platform-sync/tenant/platform-data specs; visible-render/zero-I/O-idle/receipt.
+- [x] 1.1 **WU1 (320–350):** RED→GREEN platform-sync/tenant/platform-data specs; visible-render/zero-I/O-idle/receipt.
 - [ ] 1.2 **WU2 (300–340):** `sentry.service`; platform-sync/sentry specs; replace #334 fixture, sanitize telemetry, close WU1/WU2 remediation manifest.
 
 ### P2 — Candidate

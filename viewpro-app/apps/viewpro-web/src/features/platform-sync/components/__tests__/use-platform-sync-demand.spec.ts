@@ -44,6 +44,38 @@ afterEach(() => {
 });
 
 describe('usePlatformSyncDemand', () => {
+  it('keeps a hidden dashboard idle until it becomes visible', async () => {
+    vi.useFakeTimers();
+    setVisibility('hidden');
+    mockDemand.mockResolvedValue(makeStatus());
+
+    renderWithClient();
+    await act(async () => vi.advanceTimersByTimeAsync(4000));
+
+    expect(mockDemand).not.toHaveBeenCalled();
+
+    setVisibility('visible');
+    await act(async () => window.dispatchEvent(new Event('focus')));
+
+    expect(mockDemand).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores hidden focus and resumes demand on the next visible cadence', async () => {
+    vi.useFakeTimers();
+    setVisibility('hidden');
+    mockDemand.mockResolvedValue(makeStatus());
+
+    renderWithClient();
+    await act(async () => window.dispatchEvent(new Event('focus')));
+
+    expect(mockDemand).not.toHaveBeenCalled();
+
+    setVisibility('visible');
+    await act(async () => vi.advanceTimersByTimeAsync(4000));
+
+    expect(mockDemand).toHaveBeenCalledTimes(1);
+  });
+
   it('demands on mount, focus, and each visible 4s cadence tick — but not while hidden', async () => {
     vi.useFakeTimers();
     mockDemand.mockResolvedValue(makeStatus());
