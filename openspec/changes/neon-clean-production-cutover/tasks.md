@@ -4,36 +4,40 @@
 
 | Field | Value |
 |---|---|
-| Estimated changed lines | 2,391–2,641 total; WU3a ~344; WU3b ~182 |
+| Estimated changed lines | 2,230–2,430 total; WU3 330–350 |
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
-| Suggested split | WU3a PR → WU3b PR; both target `develop` |
-| Delivery strategy | force-chained/sequential-to-develop |
+| Suggested split | Seven autonomous WU PRs, each sequentially targeting `develop` |
+| Delivery strategy | sequential-to-develop |
 
 Decision needed before apply: No
 Chained PRs recommended: Yes
 Chain strategy: stacked-to-main
 400-line budget risk: High
 
-Table and guard lines are metadata; only `sequential-to-develop` routes. The token is non-operational: no PR targets `main` or a parent branch. Split approval is complete via the maintainer interactive decision and Engram #8114; native reset is phase-scoped. WU3b follows WU3a review/green CI/merge/fetch/audit; WU4 waits for WU3b. Reviewed WU3a/WU3b patches join candidate identity; exclusions and no-provider/no-populated-manifest authority remain.
+Non-operational token; sequential-to-develop; separate native reset approval.
 
 ### Suggested Work Units
 
 | Unit | Goal | Likely PR | Notes |
 |---|---|---|---|
-| WU3a | Candidate repository/process/real-audit authority | WU3a | Then-live `origin/develop`; review/CI/merge; revert WU3a files |
-| WU3b | Closed remediation/release schema, template, tree/path/dependency classification | WU3b | Clean `origin/develop` after WU3a merge; review/CI/merge; revert WU3b extension |
+| WU1 | Platform-sync/tenant foundation | PR 1 | — |
+| WU2 | Remediation closure | PR 2 | WU1 |
+| WU3 | Candidate tooling/schema | PR 3 | WU2; no populated manifest |
+| WU4 | Receipts/checkpoint tooling | PR 4 | WU3 |
+| WU5 | Roles/bootstrap lane | PR 5 | WU4 |
+| WU6 | Backup lineage/retention | PR 6 | WU5 |
+| WU7 | Sessions/cutover evidence | PR 7 | WU6 |
 
 ## Phase 1: Completed Foundation
 
-- [x] 1.1 **WU1 (320–350):** Preserve RED→GREEN platform-sync/tenant/platform-data evidence, visible render, and zero-I/O idle receipt.
-- [x] 1.2 **WU2 (300–340):** Preserve reviewed merge `d53a57c…`, closure metadata `3212c43…`, and exact remediation manifest gate.
+- [x] 1.1 **WU1 (320–350):** Preserve platform-sync/tenant/platform-data RED→GREEN evidence and zero-I/O idle receipt.
+- [x] 1.2 **WU2 (300–340):** Preserve reviewed merge `d53a57c…`, closure metadata `3212c43…`, and remediation gate.
 
-## Phase 2: Candidate Slices
+## Phase 2: Candidate and Receipts
 
-- [ ] 2.1a **WU3a (~344; target/stop 350, native max 390):** RED→GREEN `candidate.mjs`/baseline spec, justified root `package.json`, root-importer lock entries, additive CI, canonical repo/resolved Git, detached identity, porcelain-v2 `-z`, scrubbed env, and bounded TERM→KILL cleanup; prove RED-CUT-01/02/04 with real repositories/processes. No reset/acquire/settle occurs in this planning PR.
-- [ ] 2.1b **WU3b (~182; target/stop 350, native max 390):** After WU3a merge, RED→GREEN NUL tree parsing, path/dependency/#314/excluded-patch classification and closed remediation/release validation; add only `release-manifest.v1.schema.json` and unpopulated template; prove RED-CUT-03. Do not alter WU3a authority.
-- [ ] 2.2 **WU4 (330–350):** After WU3b review/CI/merge, implement receipt/checkpoint tooling and schema for RED-CUT-05–07, JCS redaction, and fail-closed generation/digest/state bindings.
+- [ ] 2.1 **WU3 (330–350; pause before >350; hard stop 390, no over-350 approval):** Create `viewpro-app/scripts/production-cutover/candidate.v1.json`, `candidate.mjs`, `candidate.spec.mjs`, `release-manifest.v1.schema.json`, and unpopulated `release-manifest.v1.template.json`; validate exact prefix/WU1/WU2/future WU3–WU7 identity order, final-tree NUL classification, closed manifests, bounded subprocess failure, RED-CUT-01–04, and the trusted disposable-worktree precondition. Add only additive CI in `.github/workflows/ci.yml`; no package/lock churn.
+- [ ] 2.2 **WU4 (330–350):** After reviewed WU3 merge, implement receipt/checkpoint tooling, JCS redaction, and fail-closed generation/digest/state bindings for RED-CUT-05–07.
 
 ## Phase 3: Fresh Lanes
 
@@ -44,12 +48,12 @@ Table and guard lines are metadata; only `sequential-to-develop` routes. The tok
 
 - [ ] 4.1 **WU7 (330–350):** Implement session tests, runbook, evidence templates, and RED-CUT-12/13 receipt; emit identity only, never an instance.
 - [ ] 5.1 Keep provider qualification read-only.
-- [ ] 5.2 Assemble the provisional candidate only after WU7, read-only.
-- [ ] 5.3 Close the external manifest and reproduce identities/digests independently.
-- [ ] 5.4 Require fresh single-use provisioning authorization.
-- [ ] 5.5 Require fresh single-use activation with backend-first order.
+- [ ] 5.2 After WU7 review/green CI/merge, assemble provisionally from the known prefix plus reviewed WU1–WU7.
+- [ ] 5.3 Independently close external manifest; reproduce identities, tree, runtime, image digests.
+- [ ] 5.4 Execute Step1 **Freeze** once as the local fail-closed/rollback boundary; obtain/consume fresh single-use provisioning authorization for Step2 **Bootstrap** and Step3 **Staging** exactly once.
+- [ ] 5.5 After Step3 readiness/receipts and independent closure, obtain/consume separate fresh single-use activation authorization and resume—not restart—Steps4–10: **Secret rotation** (invalidate product JWTs/cookies, platform JWTs/step-up, abandoned refresh/reset/verification tokens; reject cross-generation writes) → **Product backend** → **Platform backend** → **Frontends** → **Fresh login/session validation** → **Backups/heartbeats** → **Checkpoint/resume**; neither authority is reusable; failure/retry requires fresh scoped authorization.
 - [ ] 5.6 Collect #327 D.5 evidence for ≥24h.
-- [ ] 5.7 Verify/archive #327 and open the internal-pilot gate.
+- [ ] 5.7 Verify/archive #327 and open internal pilot.
 - [ ] 5.8 Verify/archive cutover after one-month evidence/retention.
 
-Strict TDD records RED/GREEN, review/CI, and native admission separately. No native reset/acquire/settle occurs here. After merge, WU3a uses a fresh then-live `origin/develop` worktree plus maintainer-authorized reset/acquire; settle follows strict TDD, fresh 3-lens review, and final evidence. WU3b gets its own clean reset/acquire after WU3a merges.
+Candidate identity excludes #338/#341/#344/#351; `3212c438…` is closure metadata only. TDD, review/CI/merge, and native admission remain separate; no reset/acquire/settle occurs here.
