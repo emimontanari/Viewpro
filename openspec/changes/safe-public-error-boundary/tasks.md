@@ -24,11 +24,11 @@ PR0: planning-only proposal/spec/design/tasks to `develop`; no product WU; WU1/W
 
 ## Phase 1: WU1 — Catalog + Direct Consumer
 
-- [ ] 1.1 RED: Extend `packages/contracts/test/runtime-contract.spec.ts` to fail unless ordered 13-code prefix is `phone.too_short`, `DOCUMENT_DUPLICATE_APPROVED`, `OUTCOME_LABEL_NOT_FOUND`, `LABEL_NAME_COLLIDES_BUILTIN`, `LABEL_ALREADY_DELETED`, `RESOLUTION_COMMENT_REQUIRED`, `SELF_APPROVAL_FORBIDDEN`, `STATUS_CHANGE_REQUEST_ALREADY_RESOLVED`, `STATUS_CHANGE_REQUEST_SUPERSEDED`, `NOT_ASSIGNED_TO_ENGAGEMENT`, `ENGAGEMENT_ARCHIVED`, `TARGET_STATUS_SAME_AS_CURRENT`, `STATUS_CHANGE_REQUEST_ALREADY_PENDING`; append `REQUEST_FAILED`; prove uniqueness/order, append-only, require/import exports, guard, envelope.
-- [ ] 1.2 RED: Create `apps/app-new/src/lib/api-client.test.ts`; fail for valid/unknown/missing codes, canonical/invalid IDs, status authority, malformed/non-JSON bodies, ignored details/prose, local fallback, and never-throw parsing.
-- [ ] 1.3 GREEN: In `packages/contracts/src/index.ts`, make `PUBLIC_ERROR_CODES` single truth and derive `PublicErrorCode`, membership guard, and `{ statusCode, errorCode, requestId }` exports.
-- [ ] 1.4 GREEN: In `apps/app-new/src/lib/api-client.ts`, implement safe `ApiError`/parser: retain status, valid code, lowercase UUID-v4 ID; drop prose/details; use local fallback. No feature parsers, BFFs, or invitation copy.
-- [ ] 1.5 REFACTOR: Rerun unchanged WU1 command and `pnpm --filter @viewpro/contracts typecheck && pnpm --filter next-shadcn-dashboard-starter typecheck`.
+- [x] 1.1 RED: Extend `packages/contracts/test/runtime-contract.spec.ts` to fail unless ordered 13-code prefix is `phone.too_short`, `DOCUMENT_DUPLICATE_APPROVED`, `OUTCOME_LABEL_NOT_FOUND`, `LABEL_NAME_COLLIDES_BUILTIN`, `LABEL_ALREADY_DELETED`, `RESOLUTION_COMMENT_REQUIRED`, `SELF_APPROVAL_FORBIDDEN`, `STATUS_CHANGE_REQUEST_ALREADY_RESOLVED`, `STATUS_CHANGE_REQUEST_SUPERSEDED`, `NOT_ASSIGNED_TO_ENGAGEMENT`, `ENGAGEMENT_ARCHIVED`, `TARGET_STATUS_SAME_AS_CURRENT`, `STATUS_CHANGE_REQUEST_ALREADY_PENDING`; append `REQUEST_FAILED`; prove uniqueness/order, append-only, require/import exports, guard, envelope.
+- [x] 1.2 RED: Create `apps/app-new/src/lib/api-client.test.ts`; fail for valid/unknown/missing codes, canonical/invalid IDs, status authority, malformed/non-JSON bodies, ignored details/prose, local fallback, and never-throw parsing.
+- [x] 1.3 GREEN: In `packages/contracts/src/index.ts`, make `PUBLIC_ERROR_CODES` single truth and derive `PublicErrorCode`, membership guard, and `{ statusCode, errorCode, requestId }` exports.
+- [x] 1.4 GREEN: In `apps/app-new/src/lib/api-client.ts`, implement safe `ApiError`/parser: retain status, valid code, lowercase UUID-v4 ID; drop prose/details; use local fallback. No feature parsers, BFFs, or invitation copy.
+- [x] 1.5 REFACTOR: Rerun unchanged WU1 command and `pnpm --filter @viewpro/contracts typecheck && pnpm --filter next-shadcn-dashboard-starter typecheck`.
 
 ## Phase 2: WU2 — Global Producer Boundary + Correlation
 
