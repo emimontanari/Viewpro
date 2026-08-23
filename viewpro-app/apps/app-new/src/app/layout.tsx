@@ -1,5 +1,6 @@
 import Providers from '@/components/layout/providers';
 import { Toaster } from '@/components/ui/sonner';
+import { buildThemeColorPreloadScript, COLOR_MODE_POLICY } from '@/components/themes/color-mode';
 import { fontVariables } from '@/components/themes/font.config';
 import { DEFAULT_THEME, THEMES } from '@/components/themes/theme.config';
 import ThemeProvider from '@/components/themes/theme-provider';
@@ -11,18 +12,13 @@ import NextTopLoader from 'nextjs-toploader';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import '../styles/globals.css';
 
-const META_THEME_COLORS = {
-  light: '#ffffff',
-  dark: '#09090b'
-};
-
 export const metadata: Metadata = {
   title: BRAND.metadata.appTitle,
   description: BRAND.metadata.defaultDescription
 };
 
 export const viewport: Viewport = {
-  themeColor: META_THEME_COLORS.light
+  themeColor: COLOR_MODE_POLICY.colors.light
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -34,18 +30,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang='es' translate='no' suppressHydrationWarning data-theme={themeToApply}>
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                // Set meta theme color
-                if (localStorage.theme === 'dark' || ((!('theme' in localStorage) || localStorage.theme === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '${META_THEME_COLORS.dark}')
-                }
-              } catch (_) {}
-            `
-          }}
-        />
+        <script dangerouslySetInnerHTML={{ __html: buildThemeColorPreloadScript() }} />
       </head>
       <body
         className={cn(
@@ -55,13 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       >
         <NextTopLoader color='var(--primary)' showSpinner={false} />
         <NuqsAdapter>
-          <ThemeProvider
-            attribute='class'
-            defaultTheme='system'
-            enableSystem
-            disableTransitionOnChange
-            enableColorScheme
-          >
+          <ThemeProvider attribute='class' disableTransitionOnChange enableColorScheme>
             <Providers activeThemeValue={themeToApply}>
               <Toaster />
               {children}
