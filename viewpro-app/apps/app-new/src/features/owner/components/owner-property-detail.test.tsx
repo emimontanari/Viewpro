@@ -7,7 +7,8 @@ import { OwnerPropertyDetail } from './owner-property-detail';
 
 const nuqsMockState = vi.hoisted(() => ({
   initialTab: undefined as string | undefined,
-  initialDoc: null as string | null
+  initialDoc: null as string | null,
+  initialEngagement: null as string | null
 }));
 
 vi.mock('./owner-document-requests', () => ({
@@ -47,6 +48,7 @@ vi.mock('nuqs', async () => {
         nuqsMockState.initialTab ?? parser.defaultValue ?? 'summary'
       );
       const docState = React.useState<string | null>(nuqsMockState.initialDoc);
+      const engagementState = React.useState<string | null>(nuqsMockState.initialEngagement);
       const fallbackState = React.useState<string | null>(parser.defaultValue ?? null);
 
       if (key === 'tab') {
@@ -54,6 +56,9 @@ vi.mock('nuqs', async () => {
       }
       if (key === 'doc') {
         return docState;
+      }
+      if (key === 'engagement') {
+        return engagementState;
       }
       return fallbackState;
     }
@@ -172,6 +177,7 @@ describe('OwnerPropertyDetail', () => {
   beforeEach(() => {
     nuqsMockState.initialTab = undefined;
     nuqsMockState.initialDoc = null;
+    nuqsMockState.initialEngagement = null;
     useQueryMock.mockReset();
     prefetchQueryMock.mockReset();
     useQueryClientMock.mockReturnValue({ prefetchQuery: prefetchQueryMock } as never);
@@ -319,6 +325,43 @@ describe('OwnerPropertyDetail', () => {
     );
   });
 
+  it('scopes the detail to the engagement carried by the card link', async () => {
+    const user = userEvent.setup();
+    nuqsMockState.initialEngagement = 'engagement-2';
+    mockOwnerPropertyDetailQueriesWithMultipleAgencies();
+
+    render(<OwnerPropertyDetail propertyId='property-1' />);
+
+    expect(screen.getByText('Inmobiliaria: Otra Inmobiliaria')).toBeInTheDocument();
+    expect(screen.queryByText('Inmobiliaria: ViewPro Demo Inmobiliaria')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Seguimiento' }));
+
+    expect(screen.getByText('Gestión con Otra Inmobiliaria')).toBeInTheDocument();
+    expect(screen.queryByText('Gestión con ViewPro Demo Inmobiliaria')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Documentos' }));
+
+    expect(screen.getByTestId('owner-document-requests')).toHaveTextContent(
+      'Documentos de engagement-2'
+    );
+  });
+
+  it('falls back to the default engagement when the scope does not match', async () => {
+    const user = userEvent.setup();
+    nuqsMockState.initialEngagement = 'engagement-from-another-property';
+    mockOwnerPropertyDetailQueriesWithMultipleAgencies();
+
+    render(<OwnerPropertyDetail propertyId='property-1' />);
+
+    expect(screen.getByText('Inmobiliaria: ViewPro Demo Inmobiliaria')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Seguimiento' }));
+
+    expect(screen.getByText('Gestión con ViewPro Demo Inmobiliaria')).toBeInTheDocument();
+    expect(screen.getByText('Gestión con Otra Inmobiliaria')).toBeInTheDocument();
+  });
+
   it('renders property content while engagements are still loading', async () => {
     const user = userEvent.setup();
     useQueryMock.mockImplementation((options: { queryKey?: readonly unknown[] }) => {
@@ -346,6 +389,16 @@ describe('OwnerPropertyDetail', () => {
     expect(screen.getByText('Cargando gestiones activas...')).toBeInTheDocument();
   });
 });
+
+const multiAgencyEngagementsResponse: OwnerEngagementsResponse = [
+  engagementsResponse[0]!,
+  {
+    ...engagementsResponse[0]!,
+    id: 'engagement-2',
+    tenant: { id: 'tenant-2', name: 'Otra Inmobiliaria' },
+    status: 'CAPTURE'
+  }
+];
 
 function mockOwnerPropertyDetailQueries({
   includeTimeline = false
@@ -377,4 +430,26 @@ function isOwnerEngagementsQuery(queryKey: readonly unknown[] | undefined) {
 
 function isOwnerTimelineQuery(queryKey: readonly unknown[] | undefined) {
   return queryKey?.includes('timeline');
+}
+
+function mockOwnerPropertyDetailQueriesWithMultipleAgencies() {
+  useQueryMock.mockImplementation((options: { queryKey?: readonly unknown[] }) => {
+    if (isOwnerEngagementsQuery(options.queryKey)) {
+      return {
+        data: multiAgencyEngagementsResponse,
+        isError: false,
+        isLoading: false
+      } as ReturnType<typeof useQuery>;
+    }
+
+    if (isOwnerTimelineQuery(options.queryKey)) {
+      return {
+        data: { ...timelineResponse, items: [] },
+        isError: false,
+        isLoading: false
+      } as ReturnType<typeof useQuery>;
+    }
+
+    return { data: ownerProperty, isError: false, isLoading: false } as ReturnType<typeof useQuery>;
+  });
 }
