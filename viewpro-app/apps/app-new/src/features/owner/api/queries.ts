@@ -52,6 +52,19 @@ export const ownerEngagementTimelineOptions = (
     queryFn: () => getOwnerEngagementTimeline(engagementId, filters)
   });
 
+const OWNER_LATEST_MOVEMENT_FILTERS: OwnerTimelineFilters = {
+  order: 'desc',
+  page: 1,
+  pageSize: 1
+};
+
+/**
+ * Latest owner-visible movement for a single engagement, used by the owner home screen
+ * to describe recent activity and the next action without loading a full timeline page.
+ */
+export const ownerEngagementLatestMovementOptions = (engagementId: string) =>
+  ownerEngagementTimelineOptions(engagementId, OWNER_LATEST_MOVEMENT_FILTERS);
+
 export const ownerDocumentRequestsOptions = (
   propertyEngagementId: string,
   filters: Omit<OwnerDocumentRequestsFilters, 'propertyEngagementId'> = {}

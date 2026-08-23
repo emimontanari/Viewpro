@@ -19,20 +19,23 @@ import { propertyStatusOptions } from '@/features/products/constants/product-opt
 import { cn } from '@/lib/utils';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { ownerPropertiesOptions, ownerPropertyEngagementsOptions } from '../api/queries';
+import {
+  ownerEngagementLatestMovementOptions,
+  ownerPropertiesOptions,
+  ownerPropertyEngagementsOptions
+} from '../api/queries';
 import { trackOwnerWhatsappContactClick } from '../api/service';
-import type { OwnerEngagement, OwnerProperty } from '../api/types';
+import type { OwnerEngagement, OwnerMovement, OwnerProperty } from '../api/types';
+import {
+  buildOwnerHomeEngagementCards,
+  filterOwnerHomeEngagementCardsByAgency,
+  type OwnerHomeEngagementCard
+} from '../utils/owner-home-engagement-cards';
 import { buildOwnerPropertyWhatsappHref } from '../utils/owner-whatsapp-contact';
 
 type OwnerAgency = {
   id: string;
   name: string;
-};
-
-type OwnerPropertyWithAgencies = {
-  agencies: OwnerAgency[];
-  engagements: OwnerEngagement[];
-  property: OwnerProperty;
 };
 
 type OwnerStatusSummaryViewModel = {
@@ -42,6 +45,7 @@ type OwnerStatusSummaryViewModel = {
   tone: string;
 };
 
+const ALL_AGENCIES_VALUE = 'all';
 const EMPTY_OWNER_PROPERTIES: OwnerProperty[] = [];
 
 export function OwnerHome() {
@@ -50,19 +54,50 @@ export function OwnerHome() {
   const engagementQueries = useQueries({
     queries: properties.map((property) => ownerPropertyEngagementsOptions(property.id))
   });
-  const propertyRecords = React.useMemo(
-    () =>
-      buildOwnerPropertyAgencyRecords(
-        properties,
-        engagementQueries.map((query) => query.data)
-      ),
-    [engagementQueries, properties]
+  const visibleEngagements = React.useMemo(
+    () => engagementQueries.flatMap((query) => query.data ?? []),
+    [engagementQueries]
   );
-  const agencies = React.useMemo(() => getOwnerAgencies(propertyRecords), [propertyRecords]);
+  const movementQueries = useQueries({
+    queries: visibleEngagements.map((engagement) =>
+      ownerEngagementLatestMovementOptions(engagement.id)
+    )
+  });
+  const latestMovementByEngagementId = React.useMemo(
+    () =>
+      buildLatestMovementIndex(
+        visibleEngagements,
+        movementQueries.map((query) => query.data)
+      ),
+    [movementQueries, visibleEngagements]
+  );
+  const unreadableActivityEngagementIds = React.useMemo(
+    () =>
+      new Set(
+        visibleEngagements
+          .filter((_engagement, index) => movementQueries[index]?.isError)
+          .map((engagement) => engagement.id)
+      ),
+    [movementQueries, visibleEngagements]
+  );
+  const cards = React.useMemo(
+    () =>
+      buildOwnerHomeEngagementCards({
+        properties,
+        engagementsByProperty: engagementQueries.map((query) => query.data),
+        latestMovementByEngagementId
+      }),
+    [engagementQueries, latestMovementByEngagementId, properties]
+  );
+  const agencies = React.useMemo(() => getOwnerAgencies(cards), [cards]);
   const hasMultipleAgencies = agencies.length > 1;
   const [selectedAgencyId, setSelectedAgencyId] = React.useState<string | null>(null);
 
-  if (propertiesQuery.isLoading || engagementQueries.some((query) => query.isLoading)) {
+  if (
+    propertiesQuery.isLoading ||
+    engagementQueries.some((query) => query.isLoading) ||
+    movementQueries.some((query) => query.isLoading)
+  ) {
     return <OwnerHomeSkeleton />;
   }
 
@@ -84,18 +119,9 @@ export function OwnerHome() {
     );
   }
 
-  const effectiveSelectedAgencyId = getEffectiveSelectedAgencyId({
-    agencies,
-    hasMultipleAgencies,
-    selectedAgencyId
-  });
-  const visibleRecords = getVisibleOwnerPropertyRecords({
-    hasMultipleAgencies,
-    propertyRecords,
-    selectedAgencyId: effectiveSelectedAgencyId
-  });
-  const selectedAgency = agencies.find((agency) => agency.id === effectiveSelectedAgencyId) ?? null;
-  const currentAgency = selectedAgency ?? (!hasMultipleAgencies ? (agencies[0] ?? null) : null);
+  const effectiveSelectedAgencyId = getEffectiveSelectedAgencyId({ agencies, selectedAgencyId });
+  const visibleCards = filterOwnerHomeEngagementCardsByAgency(cards, effectiveSelectedAgencyId);
+  const singleAgency = hasMultipleAgencies ? null : (agencies[0] ?? null);
 
   return (
     <div className='space-y-6'>
@@ -104,15 +130,19 @@ export function OwnerHome() {
       {hasMultipleAgencies ? (
         <OwnerAgencySelector
           agencies={agencies}
-          selectedAgencyId={effectiveSelectedAgencyId ?? agencies[0]?.id ?? ''}
+          selectedAgencyId={effectiveSelectedAgencyId ?? ALL_AGENCIES_VALUE}
           onSelectedAgencyChange={setSelectedAgencyId}
         />
       ) : null}
 
-      {visibleRecords.length > 0 ? (
+      {visibleCards.length > 0 ? (
         <section className='grid gap-4'>
-          {visibleRecords.map((record) => (
-            <OwnerPropertyCard key={record.property.id} record={record} />
+          {visibleCards.map((card) => (
+            <OwnerEngagementSummaryCard
+              key={card.id}
+              card={card}
+              hasUnreadableActivity={unreadableActivityEngagementIds.has(card.id)}
+            />
           ))}
         </section>
       ) : (
@@ -122,8 +152,8 @@ export function OwnerHome() {
         />
       )}
 
-      {currentAgency ? (
-        <OwnerAgencySummary agency={currentAgency} propertyCount={visibleRecords.length} />
+      {singleAgency ? (
+        <OwnerAgencySummary agency={singleAgency} propertyCount={visibleCards.length} />
       ) : null}
     </div>
   );
@@ -219,7 +249,7 @@ function OwnerAgencySelector({
 }: {
   agencies: OwnerAgency[];
   selectedAgencyId: string;
-  onSelectedAgencyChange: (agencyId: string) => void;
+  onSelectedAgencyChange: (agencyId: string | null) => void;
 }) {
   return (
     <Card className='py-0'>
@@ -231,11 +261,17 @@ function OwnerAgencySelector({
           </p>
         </div>
         <div className='sm:w-72'>
-          <Select value={selectedAgencyId} onValueChange={onSelectedAgencyChange}>
+          <Select
+            value={selectedAgencyId}
+            onValueChange={(nextValue) =>
+              onSelectedAgencyChange(nextValue === ALL_AGENCIES_VALUE ? null : nextValue)
+            }
+          >
             <SelectTrigger aria-label='Inmobiliaria' className='w-full'>
-              <SelectValue placeholder='Elegí una inmobiliaria' />
+              <SelectValue placeholder='Todas las inmobiliarias' />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value={ALL_AGENCIES_VALUE}>Todas las inmobiliarias</SelectItem>
               {agencies.map((agency) => (
                 <SelectItem key={agency.id} value={agency.id}>
                   {agency.name}
@@ -249,27 +285,31 @@ function OwnerAgencySelector({
   );
 }
 
-function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
-  const property = record.property;
-  const engagement = record.engagements[0] ?? null;
+function OwnerEngagementSummaryCard({
+  card,
+  hasUnreadableActivity
+}: {
+  card: OwnerHomeEngagementCard;
+  hasUnreadableActivity: boolean;
+}) {
+  const { agency, engagement, property } = card;
   const primaryImage = property.primaryImage ?? property.images[0] ?? null;
-  const statusSummary = engagement ? getOwnerStatusSummary(engagement.status) : null;
-  const contactHref = engagement
-    ? buildOwnerPropertyWhatsappHref({ contact: engagement.contact, property })
-    : null;
+  const statusSummary = getOwnerStatusSummary(engagement.status);
+  const contactHref = buildOwnerPropertyWhatsappHref({ contact: engagement.contact, property });
   const isContactConfigured = Boolean(contactHref);
   const contactLabel = isContactConfigured
-    ? (engagement?.contact.displayLabel ?? 'Contactar inmobiliaria')
+    ? (engagement.contact.displayLabel ?? 'Contactar inmobiliaria')
     : 'Contacto';
   const propertyLocation = formatPropertyLocation(property);
   const displayTitle = formatOwnerPropertyTitle(property);
+  const detailHref = buildOwnerEngagementDetailHref(card);
   const handleContactClick = React.useCallback(() => {
-    if (!engagement || !contactHref) {
+    if (!contactHref) {
       return;
     }
 
     void trackOwnerWhatsappContactClick(engagement.id).catch(() => undefined);
-  }, [contactHref, engagement]);
+  }, [contactHref, engagement.id]);
 
   return (
     <Card className='overflow-hidden py-0 transition-shadow hover:shadow-md'>
@@ -317,27 +357,30 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
                 {displayTitle}
               </h2>
               <p className='text-sm text-muted-foreground break-words'>{propertyLocation}</p>
+              <p className='text-sm font-medium text-muted-foreground'>Gestión con {agency.name}</p>
             </div>
 
             {statusSummary ? <OwnerStatusSummary status={statusSummary} /> : null}
+
+            <OwnerEngagementActivity card={card} hasUnreadableActivity={hasUnreadableActivity} />
           </div>
 
           <div className='grid content-start gap-3 lg:border-l lg:pl-5'>
             <Button asChild size='lg' className='w-full'>
-              <Link href={`/owner/properties/${property.id}`}>
+              <Link href={detailHref}>
                 Abrir propiedad
                 <Icons.arrowRight className='ml-2 size-4' aria-hidden='true' />
               </Link>
             </Button>
             <div className='grid grid-cols-3 gap-3 lg:grid-cols-1'>
               <OwnerActionTile
-                href={`/owner/properties/${property.id}?tab=tracking`}
+                href={`${detailHref}&tab=tracking`}
                 icon={Icons.trendingUp}
                 label='Seguimiento'
                 ariaLabel='Ver seguimiento'
               />
               <OwnerActionTile
-                href={`/owner/properties/${property.id}?tab=documents`}
+                href={`${detailHref}&tab=documents`}
                 icon={Icons.page}
                 label='Documentación'
                 ariaLabel='Ver documentación'
@@ -357,6 +400,59 @@ function OwnerPropertyCard({ record }: { record: OwnerPropertyWithAgencies }) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function OwnerEngagementActivity({
+  card,
+  hasUnreadableActivity
+}: {
+  card: OwnerHomeEngagementCard;
+  hasUnreadableActivity: boolean;
+}) {
+  if (hasUnreadableActivity) {
+    return (
+      <div className='mt-[18px] space-y-1 rounded-xl border border-dashed p-3'>
+        <p className='text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase'>
+          Última actividad
+        </p>
+        <p className='text-sm text-muted-foreground'>
+          No pudimos cargar la actividad de esta gestión.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className='mt-[18px] grid gap-3 sm:grid-cols-2'>
+      <div className='space-y-1 rounded-xl border border-dashed p-3'>
+        <p className='text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase'>
+          Última actividad
+        </p>
+        {card.latestMovement ? (
+          <>
+            <p className='line-clamp-2 text-sm text-foreground'>
+              {card.latestMovement.observation}
+            </p>
+            <p className='text-xs text-muted-foreground'>
+              {formatMovementDate(card.latestMovement)}
+            </p>
+          </>
+        ) : (
+          <p className='text-sm text-muted-foreground'>Todavía no hay movimientos registrados.</p>
+        )}
+      </div>
+      <div className='space-y-1 rounded-xl border border-dashed p-3'>
+        <p className='text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase'>
+          Próxima acción
+        </p>
+        {card.nextAction ? (
+          <p className='line-clamp-2 text-sm text-foreground'>{card.nextAction}</p>
+        ) : (
+          <p className='text-sm text-muted-foreground'>Sin próxima acción informada.</p>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -472,85 +568,53 @@ function OwnerFallbackState({ title, description }: { title: string; description
   );
 }
 
-function buildOwnerPropertyAgencyRecords(
-  properties: OwnerProperty[],
-  engagementsByProperty: Array<OwnerEngagement[] | undefined>
-): OwnerPropertyWithAgencies[] {
-  return properties.map((property, index) => {
-    const engagements = engagementsByProperty[index] ?? [];
+function buildLatestMovementIndex(
+  engagements: OwnerEngagement[],
+  timelinePages: Array<{ items: OwnerMovement[] } | undefined>
+) {
+  const latestMovementByEngagementId: Record<string, OwnerMovement | null> = {};
 
-    return {
-      property,
-      engagements,
-      agencies: getUniqueAgenciesFromEngagements(engagements)
-    };
+  engagements.forEach((engagement, index) => {
+    latestMovementByEngagementId[engagement.id] = timelinePages[index]?.items[0] ?? null;
   });
+
+  return latestMovementByEngagementId;
 }
 
-function getOwnerAgencies(propertyRecords: OwnerPropertyWithAgencies[]) {
-  return getUniqueAgencies(propertyRecords.flatMap((record) => record.agencies));
+function buildOwnerEngagementDetailHref(card: OwnerHomeEngagementCard) {
+  return `/owner/properties/${card.property.id}?engagement=${encodeURIComponent(card.id)}`;
 }
 
-function getEffectiveSelectedAgencyId({
-  agencies,
-  hasMultipleAgencies,
-  selectedAgencyId
-}: {
-  agencies: OwnerAgency[];
-  hasMultipleAgencies: boolean;
-  selectedAgencyId: string | null;
-}) {
-  if (!hasMultipleAgencies) {
-    return null;
-  }
-
-  return selectedAgencyId && agencies.some((agency) => agency.id === selectedAgencyId)
-    ? selectedAgencyId
-    : (agencies[0]?.id ?? null);
-}
-
-function getVisibleOwnerPropertyRecords({
-  hasMultipleAgencies,
-  propertyRecords,
-  selectedAgencyId
-}: {
-  hasMultipleAgencies: boolean;
-  propertyRecords: OwnerPropertyWithAgencies[];
-  selectedAgencyId: string | null;
-}) {
-  if (!hasMultipleAgencies) {
-    return propertyRecords;
-  }
-
-  if (!selectedAgencyId) {
-    return [];
-  }
-
-  return propertyRecords
-    .map((record) => ({
-      ...record,
-      engagements: record.engagements.filter(
-        (engagement) => engagement.tenant.id === selectedAgencyId
-      ),
-      agencies: record.agencies.filter((agency) => agency.id === selectedAgencyId)
-    }))
-    .filter((record) => record.agencies.length > 0);
-}
-
-function getUniqueAgenciesFromEngagements(engagements: OwnerEngagement[]) {
-  return getUniqueAgencies(engagements.map((engagement) => engagement.tenant));
-}
-
-function getUniqueAgencies(values: OwnerAgency[]) {
+function getOwnerAgencies(cards: OwnerHomeEngagementCard[]) {
   const agencies = new Map<string, OwnerAgency>();
 
-  for (const agency of values) {
-    agencies.set(agency.id, agency);
+  for (const card of cards) {
+    agencies.set(card.agency.id, card.agency);
   }
 
   return [...agencies.values()].toSorted((firstAgency, secondAgency) =>
     firstAgency.name.localeCompare(secondAgency.name, 'es')
   );
+}
+
+function getEffectiveSelectedAgencyId({
+  agencies,
+  selectedAgencyId
+}: {
+  agencies: OwnerAgency[];
+  selectedAgencyId: string | null;
+}) {
+  return selectedAgencyId && agencies.some((agency) => agency.id === selectedAgencyId)
+    ? selectedAgencyId
+    : null;
+}
+
+function formatMovementDate(movement: OwnerMovement) {
+  return new Intl.DateTimeFormat('es-AR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  }).format(new Date(movement.createdAt));
 }
 
 function formatPropertyCount(count: number) {
