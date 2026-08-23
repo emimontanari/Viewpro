@@ -1,20 +1,19 @@
+import { isPublicErrorCode, type PublicErrorCode } from '@viewpro/contracts';
+
 const DEFAULT_API_URL = 'http://localhost:3001/api';
+const GENERIC_API_ERROR_MESSAGE = 'La solicitud falló.';
+const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 export type ApiError = {
   status: number;
   message: string;
-  details?: unknown;
+  errorCode?: PublicErrorCode;
+  requestId?: string;
 };
 
 type ApiRequestOptions = Omit<RequestInit, 'body' | 'credentials'> & {
   body?: unknown;
   tenantId?: string | null;
-};
-
-type ErrorResponseBody = {
-  message?: string | string[];
-  error?: string;
-  statusCode?: number;
 };
 
 export const apiUrl = trimTrailingSlash(process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL);
@@ -80,47 +79,41 @@ async function parseJsonResponse(response: Response): Promise<unknown> {
     return undefined;
   }
 
-  const text = await response.text();
-  if (!text) {
-    return undefined;
-  }
-
   try {
-    return JSON.parse(text) as unknown;
+    const text = await response.text();
+    if (!text) {
+      return undefined;
+    }
+
+    try {
+      return JSON.parse(text) as unknown;
+    } catch {
+      return undefined;
+    }
   } catch {
-    return text;
+    return undefined;
   }
 }
 
 function toApiError(response: Response, body: unknown): ApiError {
-  const parsedBody = isErrorResponseBody(body) ? body : undefined;
-  const message = Array.isArray(parsedBody?.message)
-    ? parsedBody.message.join(', ')
-    : parsedBody?.message || parsedBody?.error || response.statusText || 'La solicitud falló.';
+  const parsedBody = asRecord(body);
+  const errorCode = isPublicErrorCode(parsedBody?.errorCode) ? parsedBody.errorCode : undefined;
+  const requestId = isCanonicalRequestId(parsedBody?.requestId) ? parsedBody.requestId : undefined;
 
   return {
-    details: body,
-    message,
-    status: response.status
+    status: response.status,
+    message: GENERIC_API_ERROR_MESSAGE,
+    ...(errorCode ? { errorCode } : {}),
+    ...(requestId ? { requestId } : {})
   };
 }
 
-function isErrorResponseBody(body: unknown): body is ErrorResponseBody {
-  if (!body || typeof body !== 'object') {
-    return false;
-  }
+function asRecord(body: unknown): Record<string, unknown> | undefined {
+  return body && typeof body === 'object' ? (body as Record<string, unknown>) : undefined;
+}
 
-  const candidate = body as { error?: unknown; message?: unknown; statusCode?: unknown };
-  const hasValidMessage =
-    candidate.message === undefined ||
-    typeof candidate.message === 'string' ||
-    (Array.isArray(candidate.message) &&
-      candidate.message.every((message) => typeof message === 'string'));
-  const hasValidError = candidate.error === undefined || typeof candidate.error === 'string';
-  const hasValidStatusCode =
-    candidate.statusCode === undefined || typeof candidate.statusCode === 'number';
-
-  return hasValidMessage && hasValidError && hasValidStatusCode;
+function isCanonicalRequestId(value: unknown): value is string {
+  return typeof value === 'string' && UUID_V4_PATTERN.test(value);
 }
 
 function normalizeApiPath(path: string) {
