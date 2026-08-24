@@ -11,7 +11,7 @@ Chained PRs recommended: Yes
 Chain strategy: stacked-to-main (non-operational token)
 400-line budget risk: High
 
-`L: node --test scripts/production-cutover/lineage-contract.spec.mjs; isolated/no-network; rollback none` → `T: node --test scripts/production-cutover/tree-evidence-contract.spec.mjs; isolated/no-network; rollback L` → `R: node --test scripts/production-cutover/release-contract.spec.mjs; isolated/no-network; rollback T` → `Q: node --test scripts/production-cutover/candidate.spec.mjs; disposable local audit only; rollback Q/CI then R/T/L`.
+`L: node --test scripts/production-cutover/lineage-contract.spec.mjs; isolated/no-network; rollback none` → `T: node --test scripts/production-cutover/tree-evidence-contract.spec.mjs; isolated/no-network; rollback T then L` → `R: node --test scripts/production-cutover/release-contract.spec.mjs; isolated/no-network; rollback R then T then L` → `Q: node --test scripts/production-cutover/candidate.spec.mjs; disposable local audit only; rollback Q/CI then R/T/L`.
 
 External WU3 only; 2.1–2.4 internal, never `WU3a`. Caps count add+del/tests/progress; Strict-TDD safety→RED→GREEN→triangulation; deterministic isolated/no-network; diff/status, complete tracked+untracked add+del accounting, package/lock/no-authority scans, fresh-reviews. Pure contracts accept plain Object/null own-key records; reject inherited/custom/prototype authority keys. Native acquire needs authority+reviewed predecessor merge/refreshed `develop`; settle own reviewed evidence. Pure slices lack repo/Git/process/CLI/CI/provider/final-WU3 authority; planning grants none. Rollback Q/CI→R/T/L re-blocks WU4.
 

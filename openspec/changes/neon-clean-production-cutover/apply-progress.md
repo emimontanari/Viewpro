@@ -2,7 +2,7 @@
 
 ## Synchronization Scope
 
-This is a planning-progress synchronization only. It merges the full persisted apply-progress history and the preserved failed WU3-Contracts worktree evidence into the approved four-slice replan. No implementation, task-checkbox, proposal, specification, design, source, test, package, lockfile, CI, native, provider, or production state changed.
+This is a planning-progress synchronization only. It merges the full persisted apply-progress history and the preserved failed WU3-Contracts worktree evidence into the approved four-slice replan. Planning/design state changed: `design.md` and the four-slice task plan were regenerated. Implementation, task-checkbox, proposal, specification, source, test, package, lockfile, CI, native, provider, and production state did not change.
 
 ## Cumulative Status
 
