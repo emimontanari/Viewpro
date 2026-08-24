@@ -1,6 +1,6 @@
 # Apply Progress: Safe Public Error Boundary
 ## Status and Identity
-WU1 / PR1, WU2a / PR2, and WU2b / PR3 are complete in Strict TDD mode; operations remain untouched.
+WU1 / PR1, WU2a / PR2, and WU2b / PR3 are complete in Strict TDD mode; Operations 4.1-4.3 are complete and the candidate is torn down.
 - Delivery: chained `stacked-to-develop`: WU1 / PR1 → WU2a / PR2 → WU2b / PR3 → Operations.
 - Initial WU1 evidence revision: `sha256:5c47fb60a3fd122ed0e90a007a32498a19edd7d803dd60e86119c883fdb10406`.
 - WU1 evidence revision: `sha256:71777a02c1a057cef5581059b5df5cb3c3f0fea794fa675cf893ced6bb8b408a`, reproduced by `git diff --binary 863d78e^ 863d78e -- viewpro-app/packages/contracts/src/index.ts viewpro-app/packages/contracts/test/runtime-contract.spec.ts viewpro-app/apps/app-new/src/lib/api-client.ts viewpro-app/apps/app-new/src/lib/api-client.test.ts | shasum -a 256`.
