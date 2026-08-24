@@ -1,44 +1,59 @@
 # Apply Progress: Neon Clean Production Cutover
 
+## Synchronization Scope
+
+This is a planning-progress synchronization only. It merges the full persisted apply-progress history and the preserved failed WU3-Contracts worktree evidence into the approved four-slice replan. Planning/design state changed: `design.md` and the four-slice task plan were regenerated. Implementation, task-checkbox, proposal, specification, source, test, package, lockfile, CI, native, provider, and production state did not change.
+
 ## Cumulative Status
 
-- Completed: 2/16 tasks. WU1 and WU2 are the only completed tasks; all 14 remaining tasks remain unchecked in the task plan.
-- Design gate passed and the 16-task plan is generated. This planning branch has no implementation authority.
-- Delivery remains `sequential-to-develop`. No active native attempt or objective exists; `decision_required: false` and `next_action: begin`. Neither approved WU3 successor has been acquired.
+- Task plan: 18 total tasks; exactly 2/18 are complete. Only WU1 and WU2 are complete. All WU3 through WU7 and closure tasks remain pending, with existing task checkboxes left untouched.
+- Delivery: `sequential-to-develop`. Each approved WU3 slice starts only after its predecessor has a successful review and merge, followed by refreshed `develop`.
+- Planning and design gates passed; the 18-task plan was regenerated. This synchronization grants no implementation or native authority.
+- Native state is idle: no active objective or attempt, `decision_required: false`, and `next_action: begin`. No new slice has been acquired.
 
 ## Completed Foundation History
 
 - [x] 1.1 **WU1:** RED→GREEN platform-sync/tenant/platform-data evidence, visible render, zero-I/O idle receipt; reviewed `develop` merge `faf870ab0a29e6a271b7391776fc2f9cf25c12ac`.
 - [x] 1.2 **WU2:** #347 implementation merge `d53a57c04f34efd20fc825aff5c03115c9c6c99f` and exact remediation-manifest closure. `3212c43…` is closure metadata only, never a runtime patch or base.
 
-## WU3 Historical Failure Evidence
+## Preserved WU3 Attempt History
 
 - Production reconstruction remains the original prefix `main@868dc70` + #331/#333/#334/#335/#336 + reviewed WU1/WU2 + future reviewed WU3–WU7 patches. #338/#341/#344/#351 remain excluded; normal `develop` history is retained.
-- Attempt 5 is terminal failed with full negative evidence `sha256:e448a25dcbcaf1db88f994d05ef987bfecef4d044319320babe6ec61542496a2`.
-- Attempt 6 is terminal failed with full negative evidence `sha256:666da4d8ae325d2c0ef01351db0ecb8b05bad374d1b3c794d9f6ae25f02d27f3`. Its 307-line diff is non-mergeable negative evidence and MUST NOT be copied or salvaged. Deterministic attacks included child-lifetime source swap, post-validation config/alternates injection, `core.trustctime=false` same-size-plus-mtime dirtiness bypass, and post-cleanliness mutation.
-- Attempt 7 is terminal failed with exact evidence `sha256:e21a67d37149bf785b187343082475e23435ce8489378c659705942901edcedf`. The failed 229-line candidate remains preserved in `/Users/emimontanari/Work/Apps/Viewpro-worktrees/neon-clean-production-cutover-wu3-bounded`; it is historical negative evidence only. A coherent contract-complete correction forecast is 482 changed lines, above the former 350-line cap.
+- **Attempt 5 — WU3 candidate manifest tooling CI:** terminal failed; negative evidence `sha256:e448a25dcbcaf1db88f994d05ef987bfecef4d044319320babe6ec61542496a2`. Focused tests passed 8/8 and typecheck passed 10/10, but a real-worktree audit failed `candidate_tree_invalid`; three fresh reviews failed because the mock-only gate could not audit a reconstructed candidate. The preserved 195-line working diff is historical evidence; no correction was attempted after its complete forecast exceeded the prior review stop.
+- **Attempt 6 — WU3a candidate repository/process audit authority:** terminal failed; negative evidence `sha256:666da4d8ae325d2c0ef01351db0ecb8b05bad374d1b3c794d9f6ae25f02d27f3`. Its 307-line diff is non-mergeable historical evidence and must not be copied or salvaged. Focused tests passed 11/11 and typecheck passed, but deterministic attacks reproduced child-lifetime source swap, post-validation config/alternates injection, `core.trustctime=false` same-size-plus-mtime dirtiness bypass, and post-cleanliness mutation.
+- **Attempt 7 — WU3 bounded candidate manifest tooling/schema/CI:** terminal failed; negative evidence `sha256:e21a67d37149bf785b187343082475e23435ce8489378c659705942901edcedf`. The preserved 229-line candidate in `/Users/emimontanari/Work/Apps/Viewpro-worktrees/neon-clean-production-cutover-wu3-bounded` is historical evidence only; focused candidate tests passed 10/10 and `git diff --check` passed. Qualification is the sole future remediation boundary for this evidence and the sole final-WU3 identity binder.
+- **Attempt 8 — WU3-Contracts:** terminal failed; settled evidence `sha256:4f2ba1c39662dc5136829e63e87f5d848af1f7975f9039482b02824df61940ce`. Preserve the 151-line candidate in `/Users/emimontanari/Work/Apps/Viewpro-worktrees/neon-clean-production-cutover-wu3-contracts` and all review evidence. Its original closed-data validator test cycle was RED `ERR_MODULE_NOT_FOUND`, then GREEN 2/2 for `node --test scripts/production-cutover/candidate.spec.mjs`; runtime harness was N/A because the candidate had no runtime, repository, or network boundary. Three independent reviews returned FAIL: the 2/2 result did not establish the missing exact identity, exception, parser, evidence, remediation, and release-schema contracts. A complete correction forecasts 593 changed lines (174 implementation, 175 tests, 44 configuration, 104 schema, 25 template, 71 progress), above the 260-line cap; no partial correction was attempted.
 
-## Approved Two-Slice WU3 Plan
+## Planning Reset and Current Native Admission
 
-- The maintainer approved autonomous WU3 slices after attempt 7 failed. The old single-WU3 objective was reset successfully at native revision `sha256:2a94188f48f7cde972531306a952ae5724e808122fb4e787f6f8c8ae16441a50` from clean baseline `c78740b914aa0a2eebac56d286fdd10106cf9b7d`, identity `sha256:fa6a9345db57c2cb272d653d6559130ae865144e2a2eff7c165a018f78403ad5`, and tree `d4067821e79d085766606c81e37179a0bda25ae7`.
-- **WU3-Contracts:** target 238, hard 260. It is next only after planning review/merge and explicit apply authorization. It cannot claim final WU3 identity or remediate the failed evidence.
-- **WU3-Qualification:** target 244, hard 270. It depends on the reviewed WU3-Contracts merge and refreshed `develop`. Only its final closure may remediate `sha256:e21a67d37149bf785b187343082475e23435ce8489378c659705942901edcedf` and bind the single aggregate WU3 identity.
-- WU4 remains blocked until both slices merge and the WU3 final closure passes. WU5–WU7 remain sequentially blocked after their preceding reviewed merge.
+- Planning reset revision: `sha256:38f2df20e3592c8278789fe70ca1579fabfeb19ae7586f399b53324ac33dad14`.
+- Clean base: `develop@b1e598e3d025539258e176a3e227cf3cb9f133dd`.
+- Reset identity: `sha256:38b510759547b914bb4803d6a8525f654b2fd55df08e5ef3190a0edb351703e2` (`38b510…`); reset tree: `2849c127c9893a9cb7580fc2723e2f188ddf56a7` (`2849c127…`).
+- The reset preserves attempts 5–8 as history. It does not authorize acquire, reset, settle, implementation, or a successor slice.
 
-## Authority and Native Admission
+## Approved WU3 Four-Slice Sequence
 
-- This synchronization records the maintainer-approved design/task amendments and historical progress. Proposal, specification, source, test, configuration, CI, native, and provider state remain untouched by the synchronization itself. Task-plan checkboxes remain untouched.
-- No package, lockfile, provider, manifest, source, test, configuration, CI, runtime, deployment, traffic, or production authority is granted here.
-- This synchronization performed no native reset, acquire, or settle. The read-only native status confirms the post-reset idle state recorded above; no successor may start without the stated planning and explicit apply gates.
-- Exact delivery rollback ordering remains: Contracts alone before Qualification merges; afterward revert Qualification/CI, then Contracts. Any such rollback invalidates final WU3 closure and re-blocks WU4. Preserve attempts 5, 6, and 7 and the bounded worktree as historical evidence; never reset, acquire, settle, or remove that evidence as part of rollback.
+| Slice | Budget | Required predecessor and admission | Direct Node command | Runtime boundary / rollback |
+|---|---:|---|---|---|
+| Lineage Contracts | 147 / 190 | WU2 reviewed merge → refreshed `develop` → explicit apply authority | `node --test scripts/production-cutover/lineage-contract.spec.mjs` | Isolated/no-network; rollback none |
+| Tree/Evidence Contracts | 204 / 250 | Lineage reviewed merge → refreshed `develop` → explicit apply authority | `node --test scripts/production-cutover/tree-evidence-contract.spec.mjs` | Isolated/no-network; rollback Lineage |
+| Release Contracts | 242 / 290 | Tree/Evidence reviewed merge → refreshed `develop` → explicit apply authority | `node --test scripts/production-cutover/release-contract.spec.mjs` | Isolated/no-network; rollback Tree/Evidence, then Lineage |
+| Qualification | 244 / 270 | Three reviewed merges → refreshed `develop` → explicit apply authority | `node --test scripts/production-cutover/candidate.spec.mjs` | Disposable local audit only; rollback Qualification/CI, then Release, Tree/Evidence, Lineage |
 
-## Remaining Work
+- The sequence is `Lineage → Tree/Evidence → Release → Qualification`, with review, merge, and refreshed-`develop` dependencies between every slice. All slices remain `sequential-to-develop`.
+- Lineage owns only immutable ordered prefix/identity closure validation; it has no tree/evidence, release, repository audit, or WU3-identity authority.
+- Tree/Evidence owns only byte-level tree/evidence contract validation; it has no lineage semantics or repository/Git/process audit authority.
+- Release owns only release/remediation contract validation. Its final reviewed closure is the sole aggregate Contracts remediation of attempt-8 evidence `sha256:4f2ba1c39662dc5136829e63e87f5d848af1f7975f9039482b02824df61940ce`; it cannot bind final WU3 identity.
+- Qualification alone may compose the local audit and direct-Node CI boundary. It is the sole remediation of attempt-7 evidence `sha256:e21a67d37149bf785b187343082475e23435ce8489378c659705942901edcedf` and the sole final WU3 identity binder; it has no provider or promotion authority.
+- No slice has package, lockfile, provider, or populated authoritative-manifest authority. Pure contract slices also have no repository, Git, process, CLI, or CI authority. A committed template remains unpopulated.
+- Rollback is strictly reverse dependency order: Qualification/CI → Release → Tree/Evidence → Lineage. Any rollback invalidates final WU3 closure and re-blocks WU4.
 
-- [ ] WU3-Contracts — planning review/merge, then explicit apply authorization before any native acquisition.
-- [ ] WU3-Qualification — only after reviewed Contracts merge and refreshed `develop`; its closure is the sole eligible aggregate-WU3 identity and attempt-7 remediation boundary.
-- [ ] WU4 — blocked until both WU3 slice merges and WU3 final closure pass.
-- [ ] WU5–WU7 — remain sequentially blocked on the preceding reviewed merge.
+## Blocking and Next Action
 
-## Next Action
+- WU4 remains blocked until all four WU3 slices are independently reviewed and merged and Qualification closure passes. WU5–WU7 and closure work remain sequentially blocked thereafter.
+- Next action: `planning-gate`. Review the regenerated plan and merge it before any explicit apply authorization. Do not acquire a slice or change native state.
 
-Next action: planning review only. Do not begin WU3-Contracts until that review/merge completes and explicit apply authorization is granted. No provider, application, source, test, package, lockfile, CI, runtime, deployment, traffic, production, reset, acquire, or settle mutation is authorized by this artifact.
+## Synchronization Boundaries
+
+- This record grants no implementation, task-completion, native, provider, network, package, lockfile, populated authoritative-manifest, deployment, traffic, production, commit, push, or PR authority.
+- No new TDD cycle, test execution, native acquisition, reset, or settlement occurred during this synchronization.
