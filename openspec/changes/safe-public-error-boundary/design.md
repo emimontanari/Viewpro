@@ -2,7 +2,7 @@
 
 ## Approach and Decisions
 
-Two WUs close disclosure; PR2 follows PR1. Defer feature/BFF actionability, #340/WU3a, CI/root metadata/cutover, invitation UI/copy, producer annotations.
+WU1 plus two remaining WU2 slices close disclosure: merged WU1; dormant WU2a / PR2 (361 lines measured); then wiring WU2b / PR3 (120–180). Defer feature/BFF actionability, #340/WU3a, CI/root metadata/cutover, invitation UI/copy, producer annotations.
 
 | Decision | Choice / rationale |
 |---|---|
@@ -17,7 +17,7 @@ Two WUs close disclosure; PR2 follows PR1. Defer feature/BFF actionability, #340
 | 1 | `packages/contracts/src/index.ts`, `packages/contracts/test/runtime-contract.spec.ts`, `apps/app-new/src/lib/api-client.ts` | `apps/app-new/src/lib/api-client.test.ts` |
 | 2 | API `common/{filters/global-exception.filter.ts,errors/api-error-response.ts,middleware/request-id.middleware.ts}`, `bootstrap/create-app.ts`, `config/{app.config.ts,app.config.spec.ts,env.schema.ts,__tests__/env.schema.spec.ts}`, `test/errors.e2e-spec.ts` | `common/middleware/request-id.middleware.spec.ts` |
 
-## WU1 — Catalog + Direct Consumer (220–310 lines; 90 headroom)
+## WU1 — Catalog + Direct Consumer (340 lines measured; 60 headroom)
 
 Unique ordered `PUBLIC_ERROR_CODES`: `phone.too_short`, `DOCUMENT_DUPLICATE_APPROVED`, `OUTCOME_LABEL_NOT_FOUND`, `LABEL_NAME_COLLIDES_BUILTIN`, `LABEL_ALREADY_DELETED`, `RESOLUTION_COMMENT_REQUIRED`, `SELF_APPROVAL_FORBIDDEN`, `STATUS_CHANGE_REQUEST_ALREADY_RESOLVED`, `STATUS_CHANGE_REQUEST_SUPERSEDED`, `NOT_ASSIGNED_TO_ENGAGEMENT`, `ENGAGEMENT_ARCHIVED`, `TARGET_STATUS_SAME_AS_CURRENT`, `STATUS_CHANGE_REQUEST_ALREADY_PENDING`, `REQUEST_FAILED`; derive `PublicErrorCode`, guard, `{statusCode,errorCode,requestId}`. Tests: tuple/13-code prefix/uniqueness, require/import exports.
 
@@ -25,11 +25,11 @@ Unique ordered `PUBLIC_ERROR_CODES`: `phone.too_short`, `DOCUMENT_DUPLICATE_APPR
 
 **Strict TDD:** RED `runtime-contract.spec.ts`: require/import catalog/guards; `api-client.test.ts`: malformed/legacy/extra, valid status/code/ID, fallback. Initially fail; run unchanged `pnpm --filter @viewpro/contracts test && pnpm --filter next-shadcn-dashboard-starter exec vitest run src/lib/api-client.test.ts` for RED/GREEN/REFACTOR, then package/App typechecks.
 
-## WU2 — Global Producer Boundary + Correlation (280–370 lines; 30 headroom)
+## WU2a / PR2 — Dormant Producer Boundary + Correlation (361 lines measured)
 
-Config owns default-false boolean `PUBLIC_ERROR_ENVELOPE_ENABLED`; `createApiApp` injects it. Enabled every-route errors are `{statusCode,errorCode,requestId}`; catalog codes pass, unknown/missing becomes `REQUEST_FAILED`, no auth/invitation annotation. Disabled keeps legacy body.
+Config owns default-false boolean `PUBLIC_ERROR_ENVELOPE_ENABLED`; `GlobalExceptionFilter` receives named, dormant options while `createApiApp` remains unchanged. Enabled direct-filter errors are `{statusCode,errorCode,requestId}`; catalog codes pass, unknown/missing becomes `REQUEST_FAILED`, no auth/invitation annotation. Disabled keeps legacy body.
 
-Middleware replaces inbound IDs with lowercase UUID-v4 `randomUUID()` in `request.requestId`/header; body/telemetry reuse it. Test-only `errors.e2e-spec.ts` mounts real middleware/filter+throwing routes+capture double; capture failure cannot alter response. `createApiApp` proves unset/false/true wiring.
+Middleware replaces inbound IDs with lowercase UUID-v4 `randomUUID()` in `request.requestId`/header; body/telemetry reuse it. Existing `errors.e2e-spec.ts` holds direct filter assertions and secure-ID legacy regressions; capture failure cannot alter response. WU2a / PR2 targets `develop`; reviewed WU2b / PR3 targets PR2 and wires `createApiApp` with configured lifecycle proof.
 
 **Strict TDD:** RED: config states/invalid input, inbound replacement, exact 4xx/5xx, 13 codes, fallback, fresh equality, contained telemetry failure. Run unchanged `pnpm --filter @viewpro/api exec vitest run src/config/app.config.spec.ts src/config/__tests__/env.schema.spec.ts src/common/middleware/request-id.middleware.spec.ts test/errors.e2e-spec.ts` for GREEN/REFACTOR, then API typecheck.
 
@@ -71,7 +71,7 @@ if(state==='true'?(keys!=='errorCode,requestId,statusCode'||body.requestId!==ids
 NODE
 ```
 
-True: exact keys/header-body equality/attacker replacement/3 fresh IDs; unset/false legacy keys/header replacement. Exhaustive all-13 proof local; smoke needn't cover every producer. RED: arbitrary process cwd is ignored/safe; missing/non-repository/mismatched `EXPECTED_REPO_ROOT` exits pre-`curl`; dirty/staged/untracked candidate likewise; clean exact-HEAD proceeds to revision/HTTP. Stop on metadata/SHA/config mismatch, failed/mixed shape, forbidden key/code, telemetry effect, excluded dependency, or ≥400 lines. Rollback: set false, redeploy/reconcile, rerun smoke before WU2→WU1.
+True: exact keys/header-body equality/attacker replacement/3 fresh IDs; unset/false legacy keys/header replacement. Exhaustive all-13 proof local; smoke needn't cover every producer. RED: arbitrary process cwd is ignored/safe; missing/non-repository/mismatched `EXPECTED_REPO_ROOT` exits pre-`curl`; dirty/staged/untracked candidate likewise; clean exact-HEAD proceeds to revision/HTTP. Stop on metadata/SHA/config mismatch, failed/mixed shape, forbidden key/code, telemetry effect, excluded dependency, or ≥400 lines. Rollback: set false, redeploy/reconcile, rerun smoke before WU2b→WU2a→WU1.
 
 ## Risks/Dependencies/Threat Matrix
 

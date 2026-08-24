@@ -37,6 +37,30 @@ describe('validateEnv — non-production', () => {
   it('accepts defaults under NODE_ENV=test', () => {
     expect(() => validateEnv({ ...baseValid, NODE_ENV: 'test' })).not.toThrow()
   })
+
+  const publicErrorEnvelopeStates = [
+    [undefined, false],
+    ['false', false],
+    ['true', true],
+  ] as const
+
+  it.each(publicErrorEnvelopeStates)(
+    'resolves PUBLIC_ERROR_ENVELOPE_ENABLED=%s to %s',
+    (value, expected) => {
+      const config = {
+        ...baseValid,
+        ...(value === undefined ? {} : { PUBLIC_ERROR_ENVELOPE_ENABLED: value }),
+      }
+
+      expect(validateEnv(config).PUBLIC_ERROR_ENVELOPE_ENABLED).toBe(expected)
+    },
+  )
+
+  it('rejects an invalid public error envelope value', () => {
+    expect(() => validateEnv({ ...baseValid, PUBLIC_ERROR_ENVELOPE_ENABLED: 'enabled' })).toThrow(
+      /PUBLIC_ERROR_ENVELOPE_ENABLED/,
+    )
+  })
 })
 
 describe('validateEnv — production hardening', () => {

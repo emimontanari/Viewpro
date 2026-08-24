@@ -1,6 +1,8 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common'
+import { randomUUID } from 'node:crypto'
 import type { Request, Response } from 'express'
 import type { SanitizedSentryException, SentryService } from '../../observability/sentry.service'
+import { isPublicErrorCode, type PublicErrorEnvelope } from '@viewpro/contracts'
 import type { ApiErrorResponse } from '../errors/api-error-response'
 
 type HttpExceptionBody = {
@@ -10,17 +12,28 @@ type HttpExceptionBody = {
   errorCode?: string
 }
 
+export type GlobalExceptionFilterOptions = {
+  publicErrorEnvelopeEnabled?: boolean
+}
+
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   constructor(
     private readonly nodeEnv = process.env.NODE_ENV ?? 'development',
     private readonly sentryService?: Pick<SentryService, 'captureException'>,
+    private readonly options: GlobalExceptionFilterOptions = {},
   ) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp()
     const response = ctx.getResponse<Response>()
     const request = ctx.getRequest<Request & { requestId?: string }>()
+    const requestId = request.requestId ?? randomUUID()
+
+    if (!request.requestId) {
+      request.requestId = requestId
+      response.setHeader('x-request-id', requestId)
+    }
 
     const statusCode =
       exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR
@@ -32,26 +45,38 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         ? (exceptionResponse as HttpExceptionBody)
         : undefined
 
-    const payload: ApiErrorResponse = {
-      statusCode,
-      error: body?.error ?? (statusCode === 500 ? 'Internal Server Error' : 'Error'),
-      message: this.resolveMessage(statusCode, body?.message, exceptionResponse),
-      ...(body?.errorCode ? { errorCode: body.errorCode } : {}),
-      path: request.url,
-      timestamp: new Date().toISOString(),
-      requestId: request.requestId,
-    }
+    const payload: ApiErrorResponse = this.options.publicErrorEnvelopeEnabled
+      ? this.publicErrorPayload(statusCode, body?.errorCode, requestId)
+      : {
+          statusCode,
+          error: body?.error ?? (statusCode === 500 ? 'Internal Server Error' : 'Error'),
+          message: this.resolveMessage(statusCode, body?.message, exceptionResponse),
+          ...(body?.errorCode ? { errorCode: body.errorCode } : {}),
+          path: request.url,
+          timestamp: new Date().toISOString(),
+          requestId,
+        }
 
     if (shouldCaptureException(exception, statusCode)) {
-      this.sentryService?.captureException(sanitizeExceptionForSentry(exception, statusCode), {
-        requestId: request.requestId,
-        path: request.url,
-        statusCode,
-        environment: this.nodeEnv,
-      })
+      try {
+        this.sentryService?.captureException(sanitizeExceptionForSentry(exception, statusCode), {
+          requestId,
+          path: safeRoutePath(request),
+          statusCode,
+          environment: this.nodeEnv,
+        })
+      } catch {}
     }
 
     response.status(statusCode).json(payload)
+  }
+
+  private publicErrorPayload(statusCode: number, errorCode: unknown, requestId: string): PublicErrorEnvelope {
+    return {
+      statusCode,
+      errorCode: isPublicErrorCode(errorCode) ? errorCode : 'REQUEST_FAILED',
+      requestId,
+    }
   }
 
   private resolveMessage(
@@ -69,6 +94,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
 function shouldCaptureException(exception: unknown, statusCode: number) {
   return !(exception instanceof HttpException) || statusCode >= 500
+}
+
+function safeRoutePath(request: Request) {
+  return typeof request.route?.path === 'string' ? request.route.path : 'unmatched_route'
 }
 
 function sanitizeExceptionForSentry(exception: unknown, statusCode: number): SanitizedSentryException {
