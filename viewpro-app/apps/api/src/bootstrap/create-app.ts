@@ -39,7 +39,11 @@ export async function createApiApp() {
       transform: true,
     }),
   )
-  app.useGlobalFilters(new GlobalExceptionFilter(configService.get<string>('app.nodeEnv'), sentryService))
+  app.useGlobalFilters(
+    new GlobalExceptionFilter(configService.get<string>('app.nodeEnv'), sentryService, {
+      publicErrorEnvelopeEnabled: configService.get<boolean>('app.publicErrorEnvelope.enabled'),
+    }),
+  )
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle(API_BRAND.apiTitle)

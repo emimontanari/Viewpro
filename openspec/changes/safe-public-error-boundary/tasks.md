@@ -40,9 +40,9 @@ Stacked: WU1 / PR1 → WU2a / PR2 → WU2b / PR3 → Operations.
 
 ## Phase 3: WU2b — Real App Wiring and Lifecycle Proof
 
-- [ ] 3.1 RED: After WU2a, E2E cover real-app states, correlation, attacker replacement, telemetry, and cleanup failures.
-- [ ] 3.2 GREEN: Wire `requestIdMiddleware`, config, filter, and `SentryService` through `apps/api/src/bootstrap/create-app.ts`; production disabled.
-- [ ] 3.3 REFACTOR: Run the PR3 command above and prove isolated PR3 ≤400.
+- [x] 3.1 RED: After WU2a, E2E cover real-app states, correlation, attacker replacement, telemetry, and cleanup failures.
+- [x] 3.2 GREEN: Wire `requestIdMiddleware`, config, filter, and `SentryService` through `apps/api/src/bootstrap/create-app.ts`; production disabled.
+- [x] 3.3 REFACTOR: Run the PR3 command above and prove isolated PR3 ≤400.
 - [ ] 4.1 Isolated Dokploy only; arbitrary cwd ignored/safe; record absolute `EXPECTED_REPO_ROOT`, `REVIEWED_SHA`, `safe-public-error-boundary/<REVIEWED_SHA>`, evidence/operator, deployment ID/revision, config revision; reconcile.
 - [ ] 4.2 RED: invalid/mismatched root or dirty candidate exits before `curl`; clean exact HEAD runs `design.md` unset/false/true smoke; stop on metadata/SHA/config mismatch, failed/mixed shape, forbidden key/code, telemetry, excluded dependency, or ≥400 lines.
 - [ ] 4.3 Switch off/reconcile; false-state smoke before WU2b→WU2a→WU1; no production authorization.
