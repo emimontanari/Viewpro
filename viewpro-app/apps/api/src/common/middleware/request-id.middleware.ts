@@ -6,8 +6,7 @@ export function requestIdMiddleware(
   response: Response,
   next: NextFunction,
 ) {
-  const incomingRequestId = request.header('x-request-id')
-  const requestId = incomingRequestId?.trim() || randomUUID()
+  const requestId = randomUUID()
 
   request.requestId = requestId
   response.setHeader('x-request-id', requestId)

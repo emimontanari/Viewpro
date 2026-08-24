@@ -33,9 +33,9 @@ Global shaping closes disclosure across all routes; only the direct client adopt
 
 | Unit | Delivery | Budget |
 |---|---|---:|
-| WU/PR1 | Catalog + direct safe consumer | 220–310 lines |
-| WU/PR2 | Producer boundary + correlation | 280–370 lines |
-| Operations | Enablement evidence | 0 repository lines |
+| WU1 / PR1 | Merged catalog + direct safe consumer | 340 lines measured |
+| WU2a / PR2 | Dormant producer boundary + correlation | 361 lines measured |
+| WU2b / PR3 → Operations | Wiring, then enablement evidence | 120–180 lines; operations 0 |
 
 ## Affected Areas
 
@@ -54,12 +54,12 @@ Global shaping closes disclosure across all routes; only the direct client adopt
 
 ## Rollback Plan
 
-Switch off first and verify false-state smoke. Revert PR2, then PR1 only when no enabled producer depends on its exports.
+Switch off first and verify false-state smoke. Revert WU2b, then WU2a, then WU1 only when no enabled producer depends on its exports.
 
 ## Dependencies
 
 - Approved #285, amended #356, and completed predecessor #346 / PR #355.
-- PR2 depends on PR1. No dependency on #340/WU3a surfaces.
+- WU2a / PR2 depends on merged WU1; WU2b / PR3 depends on WU2a. No dependency on #340/WU3a surfaces.
 
 ## Success Criteria
 

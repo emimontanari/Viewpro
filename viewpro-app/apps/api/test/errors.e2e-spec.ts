@@ -1,9 +1,17 @@
 import { BadRequestException, HttpException, HttpStatus } from '@nestjs/common'
 import type { ArgumentsHost, INestApplication } from '@nestjs/common'
+import { PUBLIC_ERROR_CODES } from '@viewpro/contracts'
 import request from 'supertest'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createApiApp } from '../src/bootstrap/create-app'
 import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter'
+
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+const PUBLIC_ERROR_CASES = [
+  ...PUBLIC_ERROR_CODES.map((errorCode) => [errorCode, errorCode] as const),
+  [undefined, 'REQUEST_FAILED'],
+  ['unknown-code', 'REQUEST_FAILED'],
+] as const
 
 describe('GlobalExceptionFilter (e2e)', () => {
   let app: INestApplication
@@ -18,10 +26,10 @@ describe('GlobalExceptionFilter (e2e)', () => {
     await app.close()
   })
 
-  it('returns consistent not found error payload with request id', async () => {
+  it('keeps the legacy error body and replaces an incoming request ID', async () => {
     const response = await request(app.getHttpServer())
       .get('/api/missing-route')
-      .set('x-request-id', 'test-request-id')
+      .set('x-request-id', 'attacker-request-id')
       .expect(404)
 
     expect(response.body).toMatchObject({
@@ -29,10 +37,11 @@ describe('GlobalExceptionFilter (e2e)', () => {
       error: 'Not Found',
       message: 'Cannot GET /api/missing-route',
       path: '/api/missing-route',
-      requestId: 'test-request-id',
+      requestId: expect.stringMatching(UUID_V4),
     })
+    expect(response.body.requestId).not.toBe('attacker-request-id')
     expect(response.body.timestamp).toEqual(expect.any(String))
-    expect(response.headers['x-request-id']).toBe('test-request-id')
+    expect(response.headers['x-request-id']).toBe(response.body.requestId)
   })
 })
 
@@ -48,7 +57,7 @@ describe('GlobalExceptionFilter Sentry capture policy', () => {
 
     expect(captureException).toHaveBeenCalledWith({ type: 'UnhandledException', statusCode: 500 }, {
       requestId: 'request-500',
-      path: '/api/admin/summary',
+      path: 'unmatched_route',
       statusCode: 500,
       environment: 'production',
     })
@@ -69,7 +78,7 @@ describe('GlobalExceptionFilter Sentry capture policy', () => {
     expect(captureException).toHaveBeenCalledTimes(1)
     expect(captureException).toHaveBeenCalledWith({ type: 'HttpException', statusCode: 502 }, {
       requestId: 'request-502',
-      path: '/api/documents',
+      path: 'unmatched_route',
       statusCode: 502,
       environment: 'production',
     })
@@ -110,6 +119,106 @@ function createMockArgumentsHost(path: string, requestId: string, status = vi.fn
       getRequest: () => ({ url: path, requestId }),
     }),
   } as ArgumentsHost
+}
+
+describe('GlobalExceptionFilter direct boundary', () => {
+  it.each(PUBLIC_ERROR_CASES)('shapes enabled %s as %s', (errorCode, expectedErrorCode) => {
+    const host = createDirectArgumentsHost({ requestId: 'server-request-id' })
+    const filter = createEnabledFilter()
+
+    filter.catch(
+      new HttpException({ errorCode, message: 'private producer message' }, HttpStatus.CONFLICT),
+      host.argumentsHost,
+    )
+
+    expect(host.json).toHaveBeenCalledWith({
+      statusCode: HttpStatus.CONFLICT,
+      errorCode: expectedErrorCode,
+      requestId: 'server-request-id',
+    })
+  })
+
+  it('uses a matched route template without leaking the raw URL', () => {
+    const captureException = vi.fn()
+    const filter = new GlobalExceptionFilter('production', { captureException })
+    const host = createDirectArgumentsHost({
+      path: '/api/team-invitations/credential-token?redirect=https://attacker.example',
+      requestId: 'request-500',
+      routePath: '/api/team-invitations/:token',
+    })
+
+    filter.catch(new Error('database password leaked in original error'), host.argumentsHost)
+
+    expect(captureException).toHaveBeenCalledWith(
+      { type: 'UnhandledException', statusCode: HttpStatus.INTERNAL_SERVER_ERROR },
+      expect.objectContaining({ path: '/api/team-invitations/:token' }),
+    )
+    expect(JSON.stringify(captureException.mock.calls[0])).not.toMatch(
+      /database password leaked|credential-token|attacker\.example/,
+    )
+  })
+
+  it('uses an unmatched route and fresh ID when telemetry throws', () => {
+    const captureException = vi.fn(() => {
+      throw new Error('telemetry unavailable')
+    })
+    const filter = createEnabledFilter({ captureException })
+    const host = createDirectArgumentsHost({
+      path: '/api/team-invitations/credential-token?redirect=https://attacker.example',
+    })
+
+    filter.catch(new Error('producer failed'), host.argumentsHost)
+
+    expect(host.request.requestId).toMatch(UUID_V4)
+    expect(host.setHeader).toHaveBeenCalledWith('x-request-id', host.request.requestId)
+    expect(host.json).toHaveBeenCalledWith({
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      errorCode: 'REQUEST_FAILED',
+      requestId: host.request.requestId,
+    })
+    expect(captureException).toHaveBeenCalledWith(
+      { type: 'UnhandledException', statusCode: HttpStatus.INTERNAL_SERVER_ERROR },
+      expect.objectContaining({ requestId: host.request.requestId, path: 'unmatched_route' }),
+    )
+  })
+})
+
+type DirectArgumentsHostOptions = {
+  path?: string
+  requestId?: string
+  routePath?: string
+}
+
+function createDirectArgumentsHost({
+  path = '/api/test',
+  requestId,
+  routePath,
+}: DirectArgumentsHostOptions = {}) {
+  const json = vi.fn()
+  const status = vi.fn(() => ({ json }))
+  const setHeader = vi.fn()
+  const request = {
+    url: path,
+    ...(requestId ? { requestId } : {}),
+    ...(routePath ? { route: { path: routePath } } : {}),
+  } as { requestId?: string; url: string }
+
+  return {
+    argumentsHost: {
+      switchToHttp: () => ({
+        getResponse: () => ({ status, setHeader }),
+        getRequest: () => request,
+      }),
+    } as ArgumentsHost,
+    json,
+    request,
+    setHeader,
+    status,
+  }
+}
+
+function createEnabledFilter(sentryService?: { captureException: ReturnType<typeof vi.fn> }) {
+  return new GlobalExceptionFilter('test', sentryService, { publicErrorEnvelopeEnabled: true })
 }
 
 describe('GlobalExceptionFilter production sanitization (e2e)', () => {
@@ -180,11 +289,12 @@ describe('GlobalExceptionFilter production sanitization (e2e)', () => {
       error: 'Not Found',
       message: 'Resource not found',
       path: '/api/production-missing-route',
-      requestId: 'production-request-id',
+      requestId: expect.stringMatching(UUID_V4),
     })
+    expect(response.body.requestId).not.toBe('production-request-id')
     expect(response.body.message).not.toContain('/api/production-missing-route')
     expect(response.body.timestamp).toEqual(expect.any(String))
-    expect(response.headers['x-request-id']).toBe('production-request-id')
+    expect(response.headers['x-request-id']).toBe(response.body.requestId)
   })
 })
 

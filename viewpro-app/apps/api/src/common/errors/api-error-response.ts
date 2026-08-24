@@ -1,4 +1,6 @@
-export type ApiErrorResponse = {
+import type { PublicErrorEnvelope } from '@viewpro/contracts'
+
+export type ApiErrorResponse = PublicErrorEnvelope | {
   statusCode: number
   error: string
   message: string | string[]
