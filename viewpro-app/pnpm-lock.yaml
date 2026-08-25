@@ -75,6 +75,9 @@ importers:
       cookie-parser:
         specifier: 1.4.7
         version: 1.4.7
+      libphonenumber-js:
+        specifier: 1.13.1
+        version: 1.13.1
       nestjs-cls:
         specifier: ^6.2.1
         version: 6.2.1(@nestjs/common@11.1.21(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.21)(reflect-metadata@0.2.2)(rxjs@7.8.2)
