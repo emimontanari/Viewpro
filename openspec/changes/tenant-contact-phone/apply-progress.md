@@ -130,3 +130,48 @@ Reverse order: this slice (WU2b) reverts before WU2a (`src/common/phone/`) is sa
 
 ### Remaining
 Phases 4-6 pending (WU3 registration form, WU4 settings parity, WU5 e2e). Out of scope for this batch per the launch instructions — no App New view, settings use case, or BFF route was touched.
+
+---
+
+## Phase 4 (WU3) — Registration Form
+
+### Completed Tasks
+- [x] 4.1 RED: `apps/app-new/src/features/auth/components/sign-up-view.test.tsx` created (new file, did not exist before). 6 cases: exact submitted-key shape (5 known keys + `whatsappPhone`, no `country`, no network-body drift), local empty-phone rejection with no network call, one distinct message per phone code (`phone.required`, `phone.invalid`, `phone.country_unsupported`), and a codeless-400 fallback to the existing generic message.
+- [x] 4.2 GREEN: `whatsappPhone: string` added to `RegisterTenantInput` in `apps/app-new/src/lib/session.ts`; `sign-up-view.tsx` gained a `whatsappPhone` field (`type='tel'`, `FormTextField`, presence-only `onBlur` validator), a static `description` string ("Se registra como número de Argentina (+54).") as the AR affordance — plain presentational text on the phone field itself, never a separate field or select — and a `PHONE_ERROR_MESSAGES` code→message map consulted before the existing `getApiErrorMessage` fallback.
+- [x] 4.3 REFACTOR: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/auth src/lib && pnpm --filter next-shadcn-dashboard-starter typecheck` — both clean.
+
+### Strict TDD Cycle Evidence
+
+| Step | Command | Result |
+|---|---|---|
+| RED | `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/auth/components/sign-up-view.test.tsx` | exit 1; **6 failed, 6 total** — every failure: `TestingLibraryElementError: Unable to find a label with the text of: Teléfono de contacto *`, i.e. the phone field did not exist yet |
+| GREEN | same command unchanged | **6/6 passed** |
+| REFACTOR | `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/auth src/lib && pnpm --filter next-shadcn-dashboard-starter typecheck` | **9 test files, 40/40 tests passed**; typecheck clean (no output) |
+
+### Work Unit Evidence
+- Focused command: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/auth/components/sign-up-view.test.tsx` → 6/6.
+- Runtime harness: N/A — Vitest + Testing Library render only; no live app or BFF boundary in this flow (matches the tasks.md forecast table).
+- Changed lines: `git diff --numstat` (new test file measured via `git add -N`) → `sign-up-view.test.tsx` +153/-0 (new file), `sign-up-view.tsx` +53/-5, `session.ts` +1/-0 = **207 additions + 5 deletions = 212 changed lines**, under the 400-line single-unit budget (forecast was 155–210; the exact-key-shape and codeless-fallback cases pushed it slightly above the high end).
+- Rollback boundary: revert `sign-up-view.tsx`, `session.ts`; delete `sign-up-view.test.tsx`. Per the tasks.md forecast table, this is **coupled to WU2b** — reverting the client alone against an API that still requires the field breaks registration outright; revert together with or before WU2b, never after.
+
+### The house-pattern accessible-name trap
+The shared `Button` component's loading-aware branch (`isLoading` prop defined, used by every `SubmitButton`) always renders a visually-hidden `Spinner` (`aria-label="Loading"`) in the DOM via a `invisible` Tailwind class. Tailwind CSS is not loaded in the jsdom test environment, so `invisible` never actually applies `visibility: hidden`, and the accessibility tree includes the spinner's label unconditionally — the button's computed accessible name is always `"Crear cuentaLoading"`, never the plain label. An exact-string `getByRole('button', { name: 'Crear cuenta' })` therefore never matches, in every render, submitting or not. This is precisely why the existing invitation-view tests (`team-invitation-acceptance-view.tsx` callers, `owner-invitation-acceptance-view.test.tsx`) query submit buttons with a **regex** (`/Crear cuenta y entrar/`), not an exact string. Diagnosed with a throwaway debug spec (rendered, dumped accessible roles, deleted before commit — not part of the final diff) rather than guessing; fixed by matching the same regex convention (`/Crear cuenta/`) in the new test, not by touching the shared `Button` component.
+
+### Deviations and Issues
+- None against design.md — matches ADR-2 (client keeps a presence guard only, no `libphonenumber-js` import into `apps/app-new`) and ADR-3 (no `country` key ever submitted; the AR affordance is static text on the existing field, not a new field or select) exactly.
+- The task brief's own field-count phrasing ("five known keys plus `whatsappPhone`") assumes `lastName` is present as an explicit key even when empty (`value.lastName || undefined` still assigns the key with value `undefined`), which is how the pre-existing code already behaved; the new key-shape test pins that unchanged behavior rather than altering it.
+
+### Non-Negotiables Verified
+- No fixture in `sign-up-view.test.tsx` is hand-built: every `ApiError` comes from `apiErrorFrom(status, body)` → `toApiError({ status } as Response, body)`, matching `owner-invitation-acceptance-view.test.tsx`'s helper exactly. No test asserts on server prose `toApiError` cannot emit.
+- No `country` key is ever submitted: `registerTenant` is called with exactly `{ email, firstName, lastName, password, tenantName, whatsappPhone }`; the key-shape test asserts this with `Object.keys(...).sort()` equality and `not.toHaveProperty('country')`.
+- `apps/api`, the settings feature, the BFF route, and `whatsapp-phone.utils.ts` were not touched — confirmed by `git status --porcelain` showing only `sign-up-view.tsx`, `session.ts` (modified) and `sign-up-view.test.tsx` (new, untracked) inside `viewpro-app/apps/app-new/`, plus the pre-existing untouched `exploration.md` under `openspec/changes/archive/`.
+- No assertion was weakened or deleted to force a pass.
+
+### Engram
+No `mem_*` tool was available to this sub-agent (same as every prior sub-agent in this session, per the launch note — confirmed absent from this session's tool list, not just untried). This file and the `tasks.md` `[x]` marks are the persisted record; hand back to the orchestrator to mirror into Engram if needed.
+
+### Rollback Boundary
+Revert `sign-up-view.tsx`, `session.ts`; delete `sign-up-view.test.tsx`. Must revert together with or before WU2b — never after, per the tasks.md coupling note.
+
+### Remaining
+Phases 5-6 pending (WU4 settings parity, WU5 e2e). Explicitly out of scope for this batch per the launch instructions — no `apps/api`, settings feature, or BFF route was touched.
