@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "production-cutover-tree-byte-contract",
+  "default": {
+    "mode": "100644",
+    "type": "blob"
+  },
+  "exceptions": [
+    {
+      "path": ".githooks/pre-push",
+      "mode": "100755",
+      "type": "blob",
+      "hash": "d8016a819c234d99c5e8b627e34e1349695b3a44"
+    },
+    {
+      "path": "viewpro-app/apps/app-new/.claude/skills/tanstack-form",
+      "mode": "120000",
+      "type": "blob",
+      "hash": "d12d02091264079b6e212b88678e90f9651ec6e7"
+    },
+    {
+      "path": "viewpro-app/apps/app-new/.claude/skills/tanstack-query",
+      "mode": "120000",
+      "type": "blob",
+      "hash": "a1aae1817a41407e92a0c2038623bdf7c146c4fd"
+    }
+  ]
+}
