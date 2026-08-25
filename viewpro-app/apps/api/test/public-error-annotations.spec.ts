@@ -11,6 +11,8 @@ import { RefreshSessionUseCase } from '../src/auth/use-cases/refresh-session.use
 import { ResetPasswordUseCase } from '../src/auth/use-cases/reset-password.use-case'
 import { VerifyEmailUseCase } from '../src/auth/use-cases/verify-email.use-case'
 import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter'
+import { AcceptTeamInvitationUseCase } from '../src/team/use-cases/accept-team-invitation.use-case'
+import { ValidateTeamInvitationUseCase } from '../src/team/use-cases/validate-team-invitation.use-case'
 
 const apiRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -181,5 +183,220 @@ describe('Public error annotations — per-file exhaustiveness guard (WU-A)', ()
 
     expect(countMatches(loginSource, /errorCode:/g)).toBe(0)
     expect(countMatches(registerTenantSource, /errorCode:/g)).toBe(0)
+  })
+})
+
+/**
+ * Minimal deps for AcceptTeamInvitationUseCase (WU-B1). Only the collaborator
+ * needed by the exercised throw path is given a meaningful mock; the rest
+ * are unused stubs, matching the pattern in team-invitations.use-cases.spec.ts.
+ */
+function createAcceptTeamInvitationUseCase(overrides: { repository?: Record<string, unknown> } = {}) {
+  const repository = {
+    validateByTokenHash: vi.fn(),
+    acceptForNewUser: vi.fn(),
+    acceptForExistingUser: vi.fn(),
+    ...overrides.repository,
+  }
+
+  return new AcceptTeamInvitationUseCase(
+    repository as never,
+    { findByEmail: vi.fn(), findById: vi.fn() } as never,
+    { findActiveManyByUserId: vi.fn() } as never,
+    { hash: vi.fn(), verify: vi.fn() } as never,
+    { create: vi.fn() } as never,
+    { signAccessToken: vi.fn(), generateRefreshToken: vi.fn(), hashRefreshToken: vi.fn(), getRefreshTokenExpiresAt: vi.fn() } as never,
+  )
+}
+
+describe('Public error annotations — production emission boundary (WU-B1)', () => {
+  it('ValidateTeamInvitationUseCase rejects a missing token as INVITATION_NOT_FOUND', async () => {
+    const useCase = new ValidateTeamInvitationUseCase({
+      validateByTokenHash: vi.fn().mockResolvedValue({ status: 'notFound' }),
+    } as never)
+
+    const thrown = await throwFrom(() => useCase.execute('missing-token'))
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'INVITATION_NOT_FOUND',
+      message: 'Resource not found',
+    })
+  })
+
+  it('ValidateTeamInvitationUseCase rejects an expired token as INVITATION_EXPIRED', async () => {
+    const useCase = new ValidateTeamInvitationUseCase({
+      validateByTokenHash: vi.fn().mockResolvedValue({ status: 'expired' }),
+    } as never)
+
+    const thrown = await throwFrom(() => useCase.execute('expired-token'))
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'INVITATION_EXPIRED',
+      message: 'Request failed',
+    })
+  })
+
+  it('ValidateTeamInvitationUseCase rejects a revoked token as INVITATION_REVOKED', async () => {
+    const useCase = new ValidateTeamInvitationUseCase({
+      validateByTokenHash: vi.fn().mockResolvedValue({ status: 'revoked' }),
+    } as never)
+
+    const thrown = await throwFrom(() => useCase.execute('revoked-token'))
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'INVITATION_REVOKED',
+      message: 'Request failed',
+    })
+  })
+
+  it('ValidateTeamInvitationUseCase rejects an already-accepted token as INVITATION_ALREADY_ACCEPTED', async () => {
+    const useCase = new ValidateTeamInvitationUseCase({
+      validateByTokenHash: vi.fn().mockResolvedValue({ status: 'alreadyAccepted' }),
+    } as never)
+
+    const thrown = await throwFrom(() => useCase.execute('accepted-token'))
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'INVITATION_ALREADY_ACCEPTED',
+      message: 'Request failed',
+    })
+  })
+
+  it('AcceptTeamInvitationUseCase rejects a mismatched authenticated email as INVITATION_EMAIL_MISMATCH', async () => {
+    const useCase = createAcceptTeamInvitationUseCase({
+      repository: {
+        validateByTokenHash: vi.fn().mockResolvedValue({
+          status: 'valid',
+          invitation: { email: 'invited@example.com' },
+          emailRegistered: true,
+        }),
+      },
+    })
+
+    const thrown = await throwFrom(() =>
+      useCase.execute(
+        'raw-token',
+        { mode: 'current-session' },
+        { id: 'other-user', email: 'other@example.com' },
+      ),
+    )
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'INVITATION_EMAIL_MISMATCH',
+      message: 'Request failed',
+    })
+  })
+
+  it('AcceptTeamInvitationUseCase rejects a wrong login-mode password as INVITATION_INVALID_CREDENTIALS', async () => {
+    const useCase = createAcceptTeamInvitationUseCase({
+      repository: {
+        validateByTokenHash: vi.fn().mockResolvedValue({
+          status: 'valid',
+          invitation: { email: 'invited@example.com' },
+          emailRegistered: true,
+        }),
+      },
+    })
+
+    const thrown = await throwFrom(() => useCase.execute('raw-token', { mode: 'login', password: 'wrong-password' }))
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'INVITATION_INVALID_CREDENTIALS',
+      message: 'Request failed',
+    })
+  })
+
+  it('AcceptTeamInvitationUseCase rejects a current-session acceptance without an authenticated user as SESSION_EXPIRED', async () => {
+    const useCase = createAcceptTeamInvitationUseCase({
+      repository: {
+        validateByTokenHash: vi.fn().mockResolvedValue({
+          status: 'valid',
+          invitation: { email: 'invited@example.com' },
+          emailRegistered: true,
+        }),
+      },
+    })
+
+    const thrown = await throwFrom(() => useCase.execute('raw-token', { mode: 'current-session' }, null))
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'SESSION_EXPIRED',
+      message: 'Request failed',
+    })
+  })
+
+  it('AcceptTeamInvitationUseCase rejects a register-mode acceptance already claimed by another member as INVITATION_ALREADY_MEMBER', async () => {
+    const useCase = createAcceptTeamInvitationUseCase({
+      repository: {
+        acceptForNewUser: vi.fn().mockResolvedValue({ status: 'alreadyMember' }),
+      },
+    })
+
+    const thrown = await throwFrom(() =>
+      useCase.execute('raw-token', { mode: 'register', firstName: 'New', password: 'password123' }),
+    )
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'INVITATION_ALREADY_MEMBER',
+      message: 'Request failed',
+    })
+  })
+
+  it('AcceptTeamInvitationUseCase rejects a register-mode acceptance for an already-registered email as INVITATION_EMAIL_ALREADY_REGISTERED', async () => {
+    const useCase = createAcceptTeamInvitationUseCase({
+      repository: {
+        acceptForNewUser: vi.fn().mockResolvedValue({ status: 'userAlreadyExists' }),
+      },
+    })
+
+    const thrown = await throwFrom(() =>
+      useCase.execute('raw-token', { mode: 'register', firstName: 'New', password: 'password123' }),
+    )
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'INVITATION_EMAIL_ALREADY_REGISTERED',
+      message: 'Request failed',
+    })
+  })
+
+  it('AcceptTeamInvitationUseCase rejects a register-mode acceptance over the tenant user limit as TENANT_USER_LIMIT_EXCEEDED', async () => {
+    const useCase = createAcceptTeamInvitationUseCase({
+      repository: {
+        acceptForNewUser: vi.fn().mockResolvedValue({ status: 'tenantUserLimitExceeded' }),
+      },
+    })
+
+    const thrown = await throwFrom(() =>
+      useCase.execute('raw-token', { mode: 'register', firstName: 'New', password: 'password123' }),
+    )
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'TENANT_USER_LIMIT_EXCEEDED',
+      message: 'Request failed',
+    })
+  })
+})
+
+describe('Public error annotations — per-file exhaustiveness guard (WU-B1)', () => {
+  it('validate-team-invitation.use-case.ts annotates every NotFoundException/GoneException throw with an errorCode', () => {
+    const source = readSource('team/use-cases/validate-team-invitation.use-case.ts')
+
+    expect(countMatches(source, /throw new (?:NotFoundException|GoneException)\(/g)).toBe(
+      countMatches(source, /errorCode:/g),
+    )
+  })
+
+  // BadRequestException is deliberately excluded from the shared exhaustiveness pattern
+  // (design.md ADR-2) because the four DTO-validation throws in this file
+  // (first-name, password x2, unsupported mode) stay unannotated by scope.
+  it('accept-team-invitation.use-case.ts annotates every Forbidden/Unauthorized/NotFound/Gone/ConflictException throw with an errorCode', () => {
+    const source = readSource('team/use-cases/accept-team-invitation.use-case.ts')
+
+    expect(
+      countMatches(
+        source,
+        /throw new (?:ForbiddenException|UnauthorizedException|NotFoundException|GoneException|ConflictException)\(/g,
+      ),
+    ).toBe(countMatches(source, /errorCode:/g))
   })
 })

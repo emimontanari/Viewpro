@@ -79,7 +79,7 @@ export class AcceptTeamInvitationUseCase {
       if (currentUser) {
         const invitation = await this.validateInvitationForCredentialFlow(tokenHash)
         if (normalizeEmail(currentUser.email) !== normalizeEmail(invitation.invitation.email)) {
-          throw new ForbiddenException('Team invitation belongs to another email')
+          throw new ForbiddenException({ errorCode: 'INVITATION_EMAIL_MISMATCH', message: 'Team invitation belongs to another email' })
         }
       }
 
@@ -101,14 +101,14 @@ export class AcceptTeamInvitationUseCase {
       }
 
       if (currentUser && normalizeEmail(currentUser.email) !== normalizeEmail(invitation.invitation.email)) {
-        throw new ForbiddenException('Team invitation belongs to another email')
+        throw new ForbiddenException({ errorCode: 'INVITATION_EMAIL_MISMATCH', message: 'Team invitation belongs to another email' })
       }
 
       const user = await this.usersRepository.findByEmail(invitation.invitation.email)
       const validPassword = user ? await this.passwordHasher.verify(user.passwordHash, dto.password) : false
 
       if (!user || !validPassword) {
-        throw new UnauthorizedException('Invalid email or password')
+        throw new UnauthorizedException({ errorCode: 'INVITATION_INVALID_CREDENTIALS', message: 'Invalid email or password' })
       }
 
       return this.teamInvitationsRepository.acceptForExistingUser({
@@ -120,11 +120,11 @@ export class AcceptTeamInvitationUseCase {
 
     if (dto.mode === 'current-session') {
       if (!currentUser) {
-        throw new UnauthorizedException('Authentication required')
+        throw new UnauthorizedException({ errorCode: 'SESSION_EXPIRED', message: 'Authentication required' })
       }
 
       if (normalizeEmail(currentUser.email) !== normalizeEmail(invitation.invitation.email)) {
-        throw new ForbiddenException('Team invitation belongs to another email')
+        throw new ForbiddenException({ errorCode: 'INVITATION_EMAIL_MISMATCH', message: 'Team invitation belongs to another email' })
       }
 
       return this.teamInvitationsRepository.acceptForExistingUser({
@@ -155,7 +155,7 @@ export class AcceptTeamInvitationUseCase {
 
     const user = await this.usersRepository.findById(userId)
     if (!user) {
-      throw new UnauthorizedException('Authentication required')
+      throw new UnauthorizedException({ errorCode: 'SESSION_EXPIRED', message: 'Authentication required' })
     }
 
     const memberships = await this.membershipsRepository.findActiveManyByUserId(user.id)
@@ -166,55 +166,55 @@ export class AcceptTeamInvitationUseCase {
 
   private throwForValidateResult(result: ValidateTeamInvitationResult): asserts result is Extract<ValidateTeamInvitationResult, { status: 'valid' }> {
     if (result.status === 'notFound') {
-      throw new NotFoundException('Team invitation not found')
+      throw new NotFoundException({ errorCode: 'INVITATION_NOT_FOUND', message: 'Team invitation not found' })
     }
 
     if (result.status === 'expired') {
-      throw new GoneException('Team invitation has expired')
+      throw new GoneException({ errorCode: 'INVITATION_EXPIRED', message: 'Team invitation has expired' })
     }
 
     if (result.status === 'revoked') {
-      throw new GoneException('Team invitation is no longer available')
+      throw new GoneException({ errorCode: 'INVITATION_REVOKED', message: 'Team invitation is no longer available' })
     }
 
     if (result.status === 'alreadyAccepted') {
-      throw new GoneException('Team invitation was already accepted')
+      throw new GoneException({ errorCode: 'INVITATION_ALREADY_ACCEPTED', message: 'Team invitation was already accepted' })
     }
   }
 
   private throwForAcceptResult(result: Exclude<AcceptTeamInvitationResult, { status: 'accepted' }>): never {
     if (result.status === 'notFound') {
-      throw new NotFoundException('Team invitation not found')
+      throw new NotFoundException({ errorCode: 'INVITATION_NOT_FOUND', message: 'Team invitation not found' })
     }
 
     if (result.status === 'expired') {
-      throw new GoneException('Team invitation has expired')
+      throw new GoneException({ errorCode: 'INVITATION_EXPIRED', message: 'Team invitation has expired' })
     }
 
     if (result.status === 'revoked') {
-      throw new GoneException('Team invitation is no longer available')
+      throw new GoneException({ errorCode: 'INVITATION_REVOKED', message: 'Team invitation is no longer available' })
     }
 
     if (result.status === 'alreadyAccepted') {
-      throw new GoneException('Team invitation was already accepted')
+      throw new GoneException({ errorCode: 'INVITATION_ALREADY_ACCEPTED', message: 'Team invitation was already accepted' })
     }
 
     if (result.status === 'alreadyMember') {
-      throw new ConflictException('User is already a member of this tenant')
+      throw new ConflictException({ errorCode: 'INVITATION_ALREADY_MEMBER', message: 'User is already a member of this tenant' })
     }
 
     if (result.status === 'userAlreadyExists') {
-      throw new ConflictException('Team invitation email is already registered')
+      throw new ConflictException({ errorCode: 'INVITATION_EMAIL_ALREADY_REGISTERED', message: 'Team invitation email is already registered' })
     }
 
     if (result.status === 'emailMismatch') {
-      throw new ForbiddenException('Team invitation belongs to another email')
+      throw new ForbiddenException({ errorCode: 'INVITATION_EMAIL_MISMATCH', message: 'Team invitation belongs to another email' })
     }
 
     if (result.status === 'tenantUserLimitExceeded') {
-      throw new ConflictException(TENANT_USER_LIMIT_EXCEEDED_MESSAGE)
+      throw new ConflictException({ errorCode: 'TENANT_USER_LIMIT_EXCEEDED', message: TENANT_USER_LIMIT_EXCEEDED_MESSAGE })
     }
 
-    throw new UnauthorizedException('Authentication required')
+    throw new UnauthorizedException({ errorCode: 'SESSION_EXPIRED', message: 'Authentication required' })
   }
 }
