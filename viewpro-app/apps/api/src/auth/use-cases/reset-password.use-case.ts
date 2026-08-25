@@ -26,7 +26,7 @@ export class ResetPasswordUseCase {
     const resetToken = await this.passwordResetTokenRepository.findByTokenHash(tokenHash)
 
     if (!resetToken || resetToken.usedAt || resetToken.expiresAt <= new Date()) {
-      throw new BadRequestException('Invalid or expired reset token')
+      throw new BadRequestException({ errorCode: 'AUTH_TOKEN_INVALID', message: 'Invalid or expired reset token' })
     }
 
     const passwordHash = await this.passwordHasher.hash(dto.password)
