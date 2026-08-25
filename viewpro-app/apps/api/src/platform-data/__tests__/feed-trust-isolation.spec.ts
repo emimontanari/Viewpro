@@ -270,6 +270,7 @@ describe('PlatformDataController — GET /internal/platform/tenants/:id/summary 
     const managerRes = await agent
       .post('/api/auth/register-tenant')
       .send({
+        whatsappPhone: '3510000000',
         email: `summary-manager-${uniqueSuffix}@test.local`,
         password: 'password123',
         firstName: 'Summary',

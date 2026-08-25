@@ -590,7 +590,7 @@ describe('Status Change Requests (e2e)', () => {
     const agent = request.agent(app.getHttpServer())
     const res = await agent
       .post('/api/auth/register-tenant')
-      .send({ email, password: 'password123', firstName: 'User', tenantName })
+      .send({ whatsappPhone: '3510000000', email, password: 'password123', firstName: 'User', tenantName })
       .expect(201)
 
     return {

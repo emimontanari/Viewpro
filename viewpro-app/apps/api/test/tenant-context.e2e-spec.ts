@@ -123,6 +123,7 @@ describe('Tenant context and permissions (e2e)', () => {
     const response = await agent
       .post('/api/auth/register-tenant')
       .send({
+        whatsappPhone: '3510000000',
         email,
         password: 'password123',
         firstName: 'Owner',

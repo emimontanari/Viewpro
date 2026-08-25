@@ -11,6 +11,11 @@ export type RegisterTenantRecordInput = {
   tenantName: string
   tenantSlug: string
   role: TenantRole
+  // Canonical E.164 agency contact phone, already validated by
+  // `parseArContactPhone` in the use case. Lands on `Tenant.whatsappPhone`
+  // ONLY — never on `User.whatsappPhone` (spec.md "Personal phone remains
+  // untouched").
+  whatsappPhone: string
 }
 
 export type RegisteredTenantRecord = {

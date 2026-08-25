@@ -735,7 +735,7 @@ describe("Analytics reports (e2e)", () => {
 		const agent = request.agent(app.getHttpServer());
 		const response = await agent
 			.post("/api/auth/register-tenant")
-			.send({ email, password: "password123", firstName: "Owner", tenantName })
+			.send({ whatsappPhone: "3510000000", email, password: "password123", firstName: "Owner", tenantName })
 			.expect(201);
 
 		return {

@@ -643,6 +643,7 @@ describe("Team invitation acceptance (e2e)", () => {
 		const response = await agent
 			.post("/api/auth/register-tenant")
 			.send({
+				whatsappPhone: "3510000000",
 				email,
 				password: managerPassword,
 				firstName: "Owner",

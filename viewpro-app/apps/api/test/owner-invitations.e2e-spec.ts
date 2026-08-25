@@ -523,6 +523,7 @@ describe("Owner invitations (e2e)", () => {
 		const response = await agent
 			.post("/api/auth/register-tenant")
 			.send({
+				whatsappPhone: "3510000000",
 				email,
 				password: managerPassword,
 				firstName: "Manager",

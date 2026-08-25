@@ -15,6 +15,7 @@ import { AcceptOwnerInvitationUseCase } from '../src/owner-invitations/use-cases
 import { ValidateOwnerInvitationUseCase } from '../src/owner-invitations/use-cases/validate-owner-invitation.use-case'
 import { AcceptTeamInvitationUseCase } from '../src/team/use-cases/accept-team-invitation.use-case'
 import { ValidateTeamInvitationUseCase } from '../src/team/use-cases/validate-team-invitation.use-case'
+import { RegisterTenantUseCase } from '../src/auth/use-cases/register-tenant.use-case'
 
 const apiRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -576,5 +577,74 @@ describe('Public error annotations — per-file exhaustiveness guard (WU-B2)', (
         /throw new (?:ForbiddenException|UnauthorizedException|NotFoundException|GoneException|ConflictException)\(/g,
       ),
     ).toBe(countMatches(source, /errorCode:/g))
+  })
+})
+
+/**
+ * Minimal deps for RegisterTenantUseCase (WU2b). Every collaborator is an
+ * unused stub except the ones needed to reach `execute`'s constructor —
+ * `parseArContactPhone` runs as the first statement and throws before any
+ * of them are invoked, so none need meaningful mock behavior here.
+ */
+function createRegisterTenantUseCase() {
+  return new RegisterTenantUseCase(
+    { findByEmail: vi.fn() } as never,
+    { findBySlug: vi.fn() } as never,
+    { hash: vi.fn() } as never,
+    { create: vi.fn() } as never,
+    { registerTenant: vi.fn() } as never,
+    { create: vi.fn() } as never,
+    { sendEmailVerification: vi.fn() } as never,
+    {
+      signAccessToken: vi.fn(),
+      generateRefreshToken: vi.fn(),
+      hashRefreshToken: vi.fn(),
+      getRefreshTokenExpiresAt: vi.fn(),
+      generateEmailVerificationToken: vi.fn(),
+      hashEmailVerificationToken: vi.fn(),
+      getEmailVerificationExpiresAt: vi.fn(),
+    } as never,
+    { getOrThrow: vi.fn() } as never,
+  )
+}
+
+const registerTenantBaseDto = { email: 'a@b.com', password: 'password123', firstName: 'A', tenantName: 'T' }
+
+describe('Public error annotations — production emission boundary (WU2b)', () => {
+  it('RegisterTenantUseCase rejects an absent phone as phone.required', async () => {
+    const useCase = createRegisterTenantUseCase()
+
+    const thrown = await throwFrom(() => useCase.execute({ ...registerTenantBaseDto } as never))
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'phone.required',
+      message: 'Invalid request payload',
+    })
+  })
+
+  it('RegisterTenantUseCase rejects an unparseable phone as phone.invalid', async () => {
+    const useCase = createRegisterTenantUseCase()
+
+    const thrown = await throwFrom(() =>
+      useCase.execute({ ...registerTenantBaseDto, whatsappPhone: '123' } as never),
+    )
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'phone.invalid',
+      message: 'Invalid request payload',
+    })
+  })
+
+  it('RegisterTenantUseCase rejects a valid non-AR phone as phone.country_unsupported', async () => {
+    const useCase = createRegisterTenantUseCase()
+
+    const thrown = await throwFrom(() =>
+      useCase.execute({ ...registerTenantBaseDto, whatsappPhone: '+56912345678' } as never),
+    )
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'phone.country_unsupported',
+      message: 'Invalid request payload',
+    })
   })
 })
