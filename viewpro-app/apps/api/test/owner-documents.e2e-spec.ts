@@ -183,7 +183,7 @@ describe('Owner document endpoints (e2e)', () => {
     const agent = request.agent(app.getHttpServer())
     const response = await agent
       .post('/api/auth/register-tenant')
-      .send({ email, password: 'password123', firstName: 'OwnerDocument', tenantName })
+      .send({ whatsappPhone: '3510000000', email, password: 'password123', firstName: 'OwnerDocument', tenantName })
       .expect(201)
 
     return { agent, userId: response.body.user.id as string, tenantId: response.body.memberships[0].tenant.id as string }

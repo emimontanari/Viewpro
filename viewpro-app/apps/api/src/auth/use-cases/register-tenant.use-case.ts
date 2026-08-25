@@ -1,6 +1,7 @@
-import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common'
+import { BadRequestException, ConflictException, Inject, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { TenantRole } from '@prisma/client'
+import { parseArContactPhone } from '../../common/phone/ar-contact-phone'
 import { EMAIL_SENDER, type EmailSender } from '../../email/email-sender.port'
 import type { RegisterTenantDto } from '../dto/register-tenant.dto'
 import { mapAuthUser } from '../responses/auth-user.response'
@@ -45,6 +46,16 @@ export class RegisterTenantUseCase {
   ) {}
 
   async execute(dto: RegisterTenantDto): Promise<AuthSessionResult> {
+    // Mandatory agency contact phone (#287) — parsed FIRST, before any I/O.
+    // Pure and cheap, avoids an argon2 hash on a request that will 400, and
+    // keeps a garbage-phone submission from ever reaching the email-existence
+    // lookup below (design.md ADR-3, enumeration-protection rationale).
+    const phoneResult = parseArContactPhone(dto.whatsappPhone)
+    if (!phoneResult.ok) {
+      const { errorCode } = phoneResult
+      throw new BadRequestException({ errorCode })
+    }
+
     const email = normalizeEmail(dto.email)
     const existingUser = await this.usersRepository.findByEmail(email)
 
@@ -62,6 +73,7 @@ export class RegisterTenantUseCase {
       tenantName: dto.tenantName.trim(),
       tenantSlug,
       role: TenantRole.PRINCIPAL_MANAGER,
+      whatsappPhone: phoneResult.e164,
     })
 
     const { accessToken, refreshToken } = await this.createSession(user.id, user.email)

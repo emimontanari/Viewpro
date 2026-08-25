@@ -72,3 +72,61 @@ Delete `apps/api/src/common/phone/`; revert the one added line in `apps/api/pack
 
 ### Engram
 No `mem_*` tool was available to this sub-agent, matching every prior sub-agent noted in the launch instructions. This file and the `tasks.md` `[x]` marks are the persisted record; hand back to the orchestrator to mirror into Engram if needed.
+
+---
+
+## Phase 3 (WU2b) — Registration Wiring and Fixtures
+
+### Completed Tasks
+- [x] 3.1 RED: `apps/api/test/register-tenant.use-cases.spec.ts` created (3 rejection cases, 1 "throws BadRequestException" type check, 1 success case asserting `registrationRepository.registerTenant` receives the canonical E.164, plus a second describe block exercising `PrismaAuthRegistrationRepository` directly for the `tenant.create`/`user.create` split). 3 production boundary cases appended to `apps/api/test/public-error-annotations.spec.ts`.
+- [x] 3.2 GREEN: `register-tenant.dto.ts` gained `@IsOptional() @IsString() whatsappPhone?: string`; `register-tenant.use-case.ts` calls `parseArContactPhone(dto.whatsappPhone)` as the first statement, throws `new BadRequestException({ errorCode })` via destructured shorthand (no literal `errorCode:` in this file — keeps the pre-existing "excludes register-tenant.use-case.ts from guard scope" assertion in `public-error-annotations.spec.ts` green without modification); `auth-registration.repository.ts` port gained a required `whatsappPhone: string` field; `prisma-auth-registration.repository.ts` added `whatsappPhone: input.whatsappPhone` to `tx.tenant.create` data only.
+- [x] 3.3 GREEN: Added `whatsappPhone: '3510000000'` to all `.post('/api/auth/register-tenant')` fixture bodies.
+- [x] 3.4 REFACTOR: full suite + typecheck green.
+
+### Strict TDD Cycle Evidence
+
+| Step | Command | Result |
+|---|---|---|
+| Safety net | `NODE_ENV=production pnpm --filter @viewpro/api exec vitest run test/public-error-annotations.spec.ts` | 33/33 before any RED file existed |
+| RED | `NODE_ENV=production pnpm --filter @viewpro/api exec vitest run test/register-tenant.use-cases.spec.ts test/public-error-annotations.spec.ts` | exit 1; **9 failed, 34 passed (43 total)** — all 9 failures were the predicted ones (3 phone-rejection cases × 2 files [use-case spec + boundary spec] = 6, plus "throws BadRequestException" type check, plus the E.164-forwarding success case, plus `tenant.create` persists whatsappPhone). The regression guard "`user.create` called without `whatsappPhone`" passed immediately in RED — legitimate, since the pre-wiring code never touched that field either; it is a preserved-invariant assertion, not new behavior. |
+| GREEN | same command unchanged | **43/43 passed** |
+| REFACTOR | `pnpm --filter @viewpro/api exec vitest run && pnpm --filter @viewpro/api typecheck` | **full suite 117/117 files, 1281/1281 tests passed**; typecheck clean (no output) |
+
+### Work Unit Evidence
+- Focused command: `NODE_ENV=production pnpm --filter @viewpro/api exec vitest run test/register-tenant.use-cases.spec.ts test/public-error-annotations.spec.ts` → 43/43.
+- Runtime harness: hermetic `new GlobalExceptionFilter('production', undefined, {})` + direct `ArgumentsHost` (ADR-5), reused from `public-error-annotations.spec.ts`'s existing pattern — proves all 3 phone codes survive production sanitization (`message: 'Invalid request payload'`) in one assertion per case.
+- Full API suite: `pnpm --filter @viewpro/api exec vitest run` → **117 test files, 1281 tests, all passing.** Both Postgres containers (5432, 5434) were already healthy in this session; no environmental attribution needed.
+- Rollback boundary: revert `register-tenant.dto.ts`, `register-tenant.use-case.ts`, `auth-registration.repository.ts`, `prisma-auth-registration.repository.ts`, the 20 e2e/collateral fixture files listed below, `public-error-annotations.spec.ts`, `src/auth/use-cases/register-tenant.use-case.spec.ts`, `src/auth/__tests__/prisma-auth-registration.repository.spec.ts`; delete `test/register-tenant.use-cases.spec.ts`. Restores optional registration; tenants registered meanwhile keep their persisted phone.
+
+### The 29th fixture site — enumeration correction
+The task brief's own suggested enumeration (`rg -l "post\(.{1}/api/auth/register-tenant.{1}\)" test/`) scopes to `test/` only, and correctly found 28 sites across 19 files (18 single-quote, 10 double-quote — verified exactly as described). All 28 were patched with a small Node script (bracket-depth matching on the `.send({...})` object, inserting `whatsappPhone: '3510000000'` as the first key, single- or double-quoted to match each file's existing style) rather than a quote-specific find/replace.
+
+Running the **full** suite (task 3.4, as mandated) surfaced a 29th call site the `test/`-scoped enumeration structurally could not see: `src/platform-data/__tests__/feed-trust-isolation.spec.ts:271`, a colocated spec under `src/`, not `test/`. It failed with `expected 201, got 400` inside a shared `seedTenantWithMovement` helper, used by 4 tests. Patched identically (same script, same value). This is exactly the scenario task 3.4's own text warns about — "the only thing that proves all 28 fixture sites were found" — and it proved there were actually 29.
+
+### Additional collateral not listed in design.md's WU2b file table
+Two pre-existing files were not in design.md's WU2b "Modify" list but required updates to keep the suite and typecheck green, since the port's `whatsappPhone` field is required (not optional) and the use-case now rejects a phoneless DTO:
+- `src/auth/use-cases/register-tenant.use-case.spec.ts` — colocated unit spec for this exact use case (email verification / soft-failure behavior); its `dto` fixture gained `whatsappPhone: '3510000000'`.
+- `src/auth/__tests__/prisma-auth-registration.repository.spec.ts` — colocated repository unit spec (outbox emission / trialEndsAt); its 3 `repo.registerTenant({...})` call sites each gained `whatsappPhone: '+543510000000'`.
+
+Neither required behavioral changes — both are additive fixture fixes, not weakened assertions.
+
+### Deviations and Issues
+- The design's own snippet for the throw (`throw new BadRequestException({ errorCode })`, shorthand) turns out to be load-bearing, not just a style choice: it keeps the file's literal source free of `errorCode:` (colon form), so the pre-existing `public-error-annotations.spec.ts` test asserting `register-tenant.use-case.ts` is excluded from the per-file exhaustiveness guard (enumeration protection) needed **no edit**. A destructured `const { errorCode } = phoneResult` before the throw was necessary to get the shorthand; `throw new BadRequestException({ errorCode: phoneResult.errorCode })` would have broken that assertion.
+- None otherwise — implementation matches design.md ADR-3 exactly (parse first, before `findByEmail`; DTO stays permissive; port/impl carry `whatsappPhone` only into `tenant.create`).
+
+### Non-Negotiables Verified
+- `ar-contact-phone.ts` and `whatsapp-phone.utils.ts`: `git diff --stat` shows zero changes to either file.
+- `tx.user.create` in `prisma-auth-registration.repository.ts`: unchanged, still only `email`, `passwordHash`, `firstName`, `lastName` — no `whatsappPhone` key, confirmed by both the new RED-then-GREEN test and direct source inspection.
+- No assertion was weakened or deleted to force a pass; the only "unexpected" failures (the 29th fixture site) were fixed at the fixture level, matching the pattern of the other 28, not by relaxing the test.
+
+### Changed Lines
+`git diff --numstat` across all touched files (staged as one working set, then unstaged — no commit made): **337 additions + 5 deletions = 342 changed lines.** Under the 400-line single-unit budget, though above design.md's WU2b forecast of 175–235 — the new `register-tenant.use-cases.spec.ts` (206 lines) and the `public-error-annotations.spec.ts` boundary cases (70 lines) both ran larger than forecast, and the 29th fixture site plus the two collateral spec files added a small amount the design didn't itemize.
+
+### Engram
+No `mem_*` tool was available to this sub-agent (same as every prior sub-agent in this session, per the launch note — confirmed absent from this session's tool list, not just untried). This file and the `tasks.md` `[x]` marks are the persisted record; hand back to the orchestrator to mirror into Engram if needed.
+
+### Rollback Boundary
+Reverse order: this slice (WU2b) reverts before WU2a (`src/common/phone/`) is safe to revert, since WU2b is the only current importer. See "Work Unit Evidence" above for the exact file list.
+
+### Remaining
+Phases 4-6 pending (WU3 registration form, WU4 settings parity, WU5 e2e). Out of scope for this batch per the launch instructions — no App New view, settings use case, or BFF route was touched.

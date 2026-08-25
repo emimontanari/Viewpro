@@ -403,6 +403,7 @@ async function buildTenantWithManagerAndSeller(
   const managerRes = await managerAgent
     .post('/api/auth/register-tenant')
     .send({
+      whatsappPhone: '3510000000',
       email: `manager-${suffix}@test.local`,
       password: 'password123',
       firstName: 'Manager',
@@ -424,6 +425,7 @@ async function buildTenantWithManagerAndSeller(
   const sellerRes = await sellerAgent
     .post('/api/auth/register-tenant')
     .send({
+      whatsappPhone: '3510000000',
       email: `seller-${suffix}@test.local`,
       password: 'password123',
       firstName: 'Seller',
@@ -465,6 +467,7 @@ async function buildIsolationTenant(
   const managerRes = await managerAgent
     .post('/api/auth/register-tenant')
     .send({
+      whatsappPhone: '3510000000',
       email: `iso-manager-${suffix}@test.local`,
       password: 'password123',
       firstName: 'Iso',
@@ -478,6 +481,7 @@ async function buildIsolationTenant(
   const isoOwnerRes = await request(app.getHttpServer())
     .post('/api/auth/register-tenant')
     .send({
+      whatsappPhone: '3510000000',
       email: `iso-owner-${suffix}@test.local`,
       password: 'password123',
       firstName: 'IsoOwner',
@@ -557,6 +561,7 @@ async function buildOwnerSession(
   const ownerRes = await ownerAgent
     .post('/api/auth/register-tenant')
     .send({
+      whatsappPhone: '3510000000',
       email: `owner-${suffix}@test.local`,
       password: 'password123',
       firstName: 'DemoOwner',
@@ -591,6 +596,7 @@ async function buildAdminSession(
   const adminRes = await adminAgent
     .post('/api/auth/register-tenant')
     .send({
+      whatsappPhone: '3510000000',
       email: `admin-${suffix}@test.local`,
       password: 'password123',
       firstName: 'Admin',

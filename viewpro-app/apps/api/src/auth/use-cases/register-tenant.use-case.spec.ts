@@ -29,6 +29,7 @@ const dto = {
   password: 'super-secret',
   firstName: 'Jane',
   tenantName: 'Acme',
+  whatsappPhone: '3510000000',
 }
 
 function buildTokenService() {
