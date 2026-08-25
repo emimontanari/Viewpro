@@ -9,11 +9,13 @@
 | Chained PRs recommended | Yes |
 | Suggested split | PR1 (WU1) → PR2 (WU2a) → PR3 (WU2b) → PR4 (WU3) → PR5 (WU4) → PR6 (WU5) |
 | Delivery strategy | ask-on-risk |
-| Chain strategy | pending — orchestrator asks the user before `sdd-apply` starts WU1 |
+| Chain strategy | `sequential-to-develop` — confirmed by the maintainer |
 
 Decision needed before apply: Yes
 Chained PRs recommended: Yes
-Chain strategy: pending
+Chain strategy: sequential-to-develop
+
+Every slice targets `develop` directly and lands in the strict order above, never stacked on the previous branch. Stacking is not an option in this repository: `.github/workflows/ci.yml` only triggers on `pull_request` with base `develop` or `main`, so a PR based on a feature branch runs neither `Test` nor `Build · Typecheck · Lint` — it shows CodeRabbit and Vercel green and no tests at all. Sequential-to-develop is the only shape that gets a slice actually verified before it merges.
 400-line budget risk: Medium
 
 No single unit is forecast to exceed 400 lines; WU4 (185–260, 140-line headroom) is closest and carries the settings-inversion risk the design flagged as "revised up." Given the strict sequential dependency chain (each unit imports the previous one's production code) and the explicit WU3/WU2b revert coupling below, **feature-branch-chain** is the natural fit — recommend it to the user, but the choice is theirs to confirm per `ask-on-risk`.
