@@ -36,7 +36,6 @@ Phase 1 (WU-A) complete in Strict TDD mode; phases 2-6 not started. Delivery is 
 Revert `packages/contracts/src/index.ts`, `packages/contracts/test/runtime-contract.spec.ts`, `auth.guard.ts`, `get-current-user.use-case.ts`, `refresh-session.use-case.ts`, `verify-email.use-case.ts`, `reset-password.use-case.ts`; delete `apps/api/test/public-error-annotations.spec.ts`. WU-A reverts **last** — B1, B2 and C1 must revert first, or their producers reference absent codes.
 
 ## Remaining
-<<<<<<< HEAD
 Phases 3-6 pending. No user-visible behavior changes until the view slices C1 and C2 ship; WU-A/B1 only make the codes available on the wire.
 
 ---
@@ -114,10 +113,9 @@ Revert `apps/api/src/owner-invitations/use-cases/validate-owner-invitation.use-c
 
 ## Remaining
 Phases 4-6 pending. No user-visible behavior changes until the view slices C1 and C2 ship; WU-A/B1/B2 only make the codes available on the wire.
-=======
 Phases 2-6 pending. No user-visible behavior changes until the view slices C1 and C2 ship; WU-A only makes the codes available on the wire.
 
-## WU-C1 batch (Phase 4, tasks 4.1-4.8)
+# WU-C1 Batch (Phase 4 — Invitation Acceptance View Branching)
 
 ### Completed Tasks
 - [x] 4.1 `toApiError` exported from `apps/app-new/src/lib/api-client.ts` (one-word change).
@@ -146,4 +144,30 @@ Phases 2-6 pending. No user-visible behavior changes until the view slices C1 an
 
 ### Engram
 No `mem_*` tool was available in this session (same as prior sub-agents per the launch note). This section and the tasks.md `[x]` marks are the persisted record; hand back to the orchestrator to mirror into Engram if needed.
->>>>>>> 5c2c47f (fix(errors): branch invitation recovery copy on errorCode)
+
+# WU-C2 Batch (Phase 5 — Token-State View Branching)
+
+### Completed Tasks
+- [x] 5.1-5.2 RED: created `verify-email-view.test.tsx` and `reset-password-view.test.tsx` (both new files, none existed before), each with an `AUTH_TOKEN_INVALID` case, an ordinary-DTO 400 case, and a non-400 case — all built through `apiErrorFrom(status, body)` routed via C1's exported `toApiError` (ADR-4), never hand-built.
+- [x] 5.3 GREEN: `verify-email-view.tsx` and `reset-password-view.tsx` now branch on `errorCode === 'AUTH_TOKEN_INVALID'` before falling back to `getApiErrorMessage(error)`; each supplies its own flow-specific copy (request a new verification email vs. request a new reset link) per the design's copy-intent table.
+- [x] 5.4 REFACTOR: `vitest run src/features/auth src/lib/api-client.test.ts` → 26/26; `pnpm --filter next-shadcn-dashboard-starter typecheck` → clean.
+
+### TDD Cycle Evidence
+| Task | Test File(s) | Layer | RED | GREEN | REFACTOR |
+|---|---|---|---|---|---|
+| 5.1-5.3 | `verify-email-view.test.tsx` | Integration (RTL) | ✅ 1 failed / 2 passed (token-branch case failed; generic/non-400 already passed unchanged) | ✅ 3/3 | ✅ included in broader suite |
+| 5.1-5.3 | `reset-password-view.test.tsx` | Integration (RTL) | ✅ 1 failed / 2 passed (same shape) | ✅ 3/3 | ✅ included in broader suite |
+
+RED confirmed the branch was genuinely missing, not a fixture artifact: the generic-fallback and non-400 cases were green from the first run because that path was already correct and untouched; only the two `AUTH_TOKEN_INVALID` cases failed pre-implementation.
+
+### Design deviations
+None — implementation matches design (`verify-email-view.tsx:36`, `reset-password-view.tsx:51` branch before the existing `getApiErrorMessage(error)` fallback, no code map needed since each view has exactly one code to handle).
+
+### Work Unit Evidence
+- Focused command: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/auth/components/verify-email-view.test.tsx src/features/auth/components/reset-password-view.test.tsx` → 6/6.
+- Runtime harness: Vitest + Testing Library component render, real `toApiError` parser — no live app/BFF in this flow.
+- Rollback boundary: revert `verify-email-view.tsx`, `reset-password-view.tsx`; delete both new `.test.tsx` files. Must revert first among the shipped units — its tests import C1's `toApiError` export.
+- Diff measured against `fix/actionable-auth-errors-wu-c1`: **173 changed lines** (169 additions + 4 deletions) — `verify-email-view.tsx` 12+2, `reset-password-view.tsx` 12+2, `verify-email-view.test.tsx` 65 new, `reset-password-view.test.tsx` 80 new. Well under the 400-line budget and within the 150–210 forecast.
+
+### Engram
+No `mem_*` tool was available in this session (same as WU-C1). This section and the tasks.md `[x]` marks are the persisted record.

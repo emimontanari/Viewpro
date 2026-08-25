@@ -73,10 +73,10 @@ No single work unit is projected to exceed the 400-line budget. C1 is the only M
 
 ## Phase 5: WU-C2 — Token-State View Branching
 
-- [ ] 5.1 RED: Create `apps/app-new/src/features/auth/components/verify-email-view.test.tsx` (new file) rejecting through `apiErrorFrom(400, { errorCode: 'AUTH_TOKEN_INVALID' })` and asserting expired-link recovery copy, plus an ordinary-DTO-validation 400 case asserting the existing generic fallback is unchanged.
-- [ ] 5.2 RED: Create `apps/app-new/src/features/auth/components/reset-password-view.test.tsx` (new file) with the equivalent `AUTH_TOKEN_INVALID` and generic-fallback cases. `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/auth/components/verify-email-view.test.tsx src/features/auth/components/reset-password-view.test.tsx` — confirm both files fail (no branch exists yet).
-- [ ] 5.3 GREEN: In `verify-email-view.tsx:36` and `reset-password-view.tsx:51`, branch on `errorCode === 'AUTH_TOKEN_INVALID'` before the `getApiErrorMessage(error)` fallback, each rendering its own flow-specific copy. Rerun 5.2 unchanged; confirm GREEN.
-- [ ] 5.4 REFACTOR: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/auth src/lib/api-client.test.ts && pnpm --filter next-shadcn-dashboard-starter typecheck`
+- [x] 5.1 RED: Create `apps/app-new/src/features/auth/components/verify-email-view.test.tsx` (new file) rejecting through `apiErrorFrom(400, { errorCode: 'AUTH_TOKEN_INVALID' })` and asserting expired-link recovery copy, plus an ordinary-DTO-validation 400 case asserting the existing generic fallback is unchanged.
+- [x] 5.2 RED: Create `apps/app-new/src/features/auth/components/reset-password-view.test.tsx` (new file) with the equivalent `AUTH_TOKEN_INVALID` and generic-fallback cases. `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/auth/components/verify-email-view.test.tsx src/features/auth/components/reset-password-view.test.tsx` — confirm both files fail (no branch exists yet).
+- [x] 5.3 GREEN: In `verify-email-view.tsx:36` and `reset-password-view.tsx:51`, branch on `errorCode === 'AUTH_TOKEN_INVALID'` before the `getApiErrorMessage(error)` fallback, each rendering its own flow-specific copy. Rerun 5.2 unchanged; confirm GREEN.
+- [x] 5.4 REFACTOR: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/auth src/lib/api-client.test.ts && pnpm --filter next-shadcn-dashboard-starter typecheck`
 
 ## Phase 6: Archive-time note (executed by `sdd-archive`, not by this apply)
 
