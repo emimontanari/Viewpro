@@ -62,14 +62,14 @@ No single work unit is projected to exceed the 400-line budget. C1 is the only M
 
 ## Phase 4: WU-C1 — Invitation Acceptance View Branching
 
-- [ ] 4.1 RED: Add `export` to `toApiError` in `apps/app-new/src/lib/api-client.ts`.
-- [ ] 4.2 RED: Replace both hand-built `apiError(status, message)` helpers (`team-invitation-acceptance-view.test.tsx:203`, `owner-invitation-acceptance-view.test.tsx:243-245`) with `apiErrorFrom(status, body)` routed through the exported `toApiError`; rewrite every existing fixture call (`team :77,170,178,187`; `owner :159,167,175,188,200`) as `apiErrorFrom(status, { errorCode })`.
-- [ ] 4.3 RED: Add new per-code fixture cases for the codes not yet covered (`INVITATION_EMAIL_ALREADY_REGISTERED`, `TENANT_USER_LIMIT_EXCEEDED`, `SESSION_EXPIRED` for team; the owner equivalents) asserting distinct recovery copy per code.
-- [ ] 4.4 Verify checkpoint (ADR-4, mandatory): run `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/team-invitations/components/team-invitation-acceptance-view.test.tsx src/features/owner-invitations/components/owner-invitation-acceptance-view.test.tsx` and confirm the pre-existing prose-matching cases FAIL. If they stay green, the helper replacement was unfaithful — stop and fix before proceeding.
-- [ ] 4.5 GREEN: In both `*-acceptance-view.tsx`, add the `INVITATION_ERROR_COPY` code map with status-fallback (ADR-3); delete `const message = error.message.toLowerCase()` and both `message.includes(...)` branches. Rerun 4.4's command unchanged; confirm GREEN.
-- [ ] 4.6 REFACTOR: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/lib/api-client.test.ts src/features/team-invitations src/features/owner-invitations && pnpm --filter next-shadcn-dashboard-starter typecheck`
-- [ ] 4.7 REFACTOR: Grep both view sources for `message.includes(` — confirm zero matches remain.
-- [ ] 4.8 REFACTOR: Measure the WU-C1 diff; if changed lines exceed 320, split into C1a (team view + test + `toApiError` export) and C1b (owner view + test) before requesting review.
+- [x] 4.1 RED: Add `export` to `toApiError` in `apps/app-new/src/lib/api-client.ts`.
+- [x] 4.2 RED: Replace both hand-built `apiError(status, message)` helpers (`team-invitation-acceptance-view.test.tsx:203`, `owner-invitation-acceptance-view.test.tsx:243-245`) with `apiErrorFrom(status, body)` routed through the exported `toApiError`; rewrite every existing fixture call (`team :77,170,178,187`; `owner :159,167,175,188,200`) as `apiErrorFrom(status, { errorCode })`.
+- [x] 4.3 RED: Add new per-code fixture cases for the codes not yet covered (`INVITATION_EMAIL_ALREADY_REGISTERED`, `TENANT_USER_LIMIT_EXCEEDED`, `SESSION_EXPIRED` for team; the owner equivalents) asserting distinct recovery copy per code.
+- [x] 4.4 Verify checkpoint (ADR-4, mandatory): run `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/team-invitations/components/team-invitation-acceptance-view.test.tsx src/features/owner-invitations/components/owner-invitation-acceptance-view.test.tsx` and confirm the pre-existing prose-matching cases FAIL. If they stay green, the helper replacement was unfaithful — stop and fix before proceeding.
+- [x] 4.5 GREEN: In both `*-acceptance-view.tsx`, add the `INVITATION_ERROR_COPY` code map with status-fallback (ADR-3); delete `const message = error.message.toLowerCase()` and both `message.includes(...)` branches. Rerun 4.4's command unchanged; confirm GREEN.
+- [x] 4.6 REFACTOR: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/lib/api-client.test.ts src/features/team-invitations src/features/owner-invitations && pnpm --filter next-shadcn-dashboard-starter typecheck`
+- [x] 4.7 REFACTOR: Grep both view sources for `message.includes(` — confirm zero matches remain.
+- [x] 4.8 REFACTOR: Measure the WU-C1 diff; if changed lines exceed 320, split into C1a (team view + test + `toApiError` export) and C1b (owner view + test) before requesting review. **271 changed lines (214+/57-), under 320 — no split needed.**
 
 ## Phase 5: WU-C2 — Token-State View Branching
 

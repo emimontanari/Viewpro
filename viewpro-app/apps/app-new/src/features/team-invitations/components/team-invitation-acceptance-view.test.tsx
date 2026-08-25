@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ApiError } from '@/lib/api-client';
+import { toApiError, type ApiError } from '@/lib/api-client';
 import { getSessionWithRefresh, type Session } from '@/lib/session';
 import { setSelectedTenantId } from '@/lib/tenant-selection';
 import { acceptTeamInvitation, getTeamInvitation } from '../api/service';
@@ -74,7 +74,7 @@ describe('TeamInvitationAcceptanceView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getTeamInvitationMock.mockResolvedValue(invitation);
-    getSessionWithRefreshMock.mockRejectedValue(apiError(401, 'Authentication required'));
+    getSessionWithRefreshMock.mockRejectedValue(apiErrorFrom(401, {}));
     acceptTeamInvitationMock.mockResolvedValue(acceptedSession);
   });
 
@@ -167,7 +167,9 @@ describe('TeamInvitationAcceptanceView', () => {
   });
 
   it('shows expired invitation guidance', async () => {
-    getTeamInvitationMock.mockRejectedValueOnce(apiError(410, 'Team invitation has expired'));
+    getTeamInvitationMock.mockRejectedValueOnce(
+      apiErrorFrom(410, { errorCode: 'INVITATION_EXPIRED' })
+    );
 
     render(<TeamInvitationAcceptanceView token='token-1' />);
 
@@ -175,7 +177,9 @@ describe('TeamInvitationAcceptanceView', () => {
   });
 
   it('shows invalid-link guidance for unknown invitations', async () => {
-    getTeamInvitationMock.mockRejectedValueOnce(apiError(404, 'Team invitation not found'));
+    getTeamInvitationMock.mockRejectedValueOnce(
+      apiErrorFrom(404, { errorCode: 'INVITATION_NOT_FOUND' })
+    );
 
     render(<TeamInvitationAcceptanceView token='token-1' />);
 
@@ -185,7 +189,7 @@ describe('TeamInvitationAcceptanceView', () => {
   it('shows wrong-account copy for backend 403 responses', async () => {
     getTeamInvitationMock.mockResolvedValueOnce({ ...invitation, emailRegistered: true });
     acceptTeamInvitationMock.mockRejectedValueOnce(
-      apiError(403, 'Team invitation belongs to another email')
+      apiErrorFrom(403, { errorCode: 'INVITATION_EMAIL_MISMATCH' })
     );
     const user = userEvent.setup();
 
@@ -198,8 +202,86 @@ describe('TeamInvitationAcceptanceView', () => {
     expect(pushMock).not.toHaveBeenCalled();
     expect(refreshMock).not.toHaveBeenCalled();
   });
+
+  it('shows revoked invitation guidance', async () => {
+    getTeamInvitationMock.mockRejectedValueOnce(
+      apiErrorFrom(410, { errorCode: 'INVITATION_REVOKED' })
+    );
+
+    render(<TeamInvitationAcceptanceView token='token-1' />);
+
+    expect(await screen.findByText(/esta invitación ya no está disponible/i)).toBeInTheDocument();
+  });
+
+  it('shows already-accepted guidance with a sign-in link', async () => {
+    getTeamInvitationMock.mockRejectedValueOnce(
+      apiErrorFrom(410, { errorCode: 'INVITATION_ALREADY_ACCEPTED' })
+    );
+
+    render(<TeamInvitationAcceptanceView token='token-1' />);
+
+    expect(await screen.findByText(/invitación ya aceptada/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /iniciar sesión/i })).toHaveLength(2);
+  });
+
+  it('shows already-member guidance distinct from other 409 states', async () => {
+    getTeamInvitationMock.mockRejectedValueOnce(
+      apiErrorFrom(409, { errorCode: 'INVITATION_ALREADY_MEMBER' })
+    );
+
+    render(<TeamInvitationAcceptanceView token='token-1' />);
+
+    expect(await screen.findByText(/ya pertenecés a esta inmobiliaria/i)).toBeInTheDocument();
+  });
+
+  it('shows already-registered-email guidance distinct from already-member', async () => {
+    getTeamInvitationMock.mockRejectedValueOnce(
+      apiErrorFrom(409, { errorCode: 'INVITATION_EMAIL_ALREADY_REGISTERED' })
+    );
+
+    render(<TeamInvitationAcceptanceView token='token-1' />);
+
+    expect(await screen.findByText(/ese email ya tiene una cuenta/i)).toBeInTheDocument();
+  });
+
+  it('shows tenant-user-limit guidance without a sign-in link', async () => {
+    getTeamInvitationMock.mockRejectedValueOnce(
+      apiErrorFrom(409, { errorCode: 'TENANT_USER_LIMIT_EXCEEDED' })
+    );
+
+    render(<TeamInvitationAcceptanceView token='token-1' />);
+
+    expect(
+      await screen.findByText(/la inmobiliaria alcanzó su límite de usuarios/i)
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /iniciar sesión/i })).toHaveLength(1);
+  });
+
+  it('shows session-expired guidance without password copy', async () => {
+    getTeamInvitationMock.mockRejectedValueOnce(
+      apiErrorFrom(401, { errorCode: 'SESSION_EXPIRED' })
+    );
+
+    render(<TeamInvitationAcceptanceView token='token-1' />);
+
+    expect(
+      await screen.findByText(/tu sesión expiró mientras completabas la invitación/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/revisá tu contraseña/i)).not.toBeInTheDocument();
+  });
+
+  it('shows invalid-credentials guidance distinct from session expiry', async () => {
+    getTeamInvitationMock.mockRejectedValueOnce(
+      apiErrorFrom(401, { errorCode: 'INVITATION_INVALID_CREDENTIALS' })
+    );
+
+    render(<TeamInvitationAcceptanceView token='token-1' />);
+
+    expect(await screen.findByText(/revisá tu contraseña/i)).toBeInTheDocument();
+    expect(screen.queryByText(/tu sesión expiró/i)).not.toBeInTheDocument();
+  });
 });
 
-function apiError(status: number, message: string): ApiError {
-  return { status, message };
+function apiErrorFrom(status: number, body: unknown): ApiError {
+  return toApiError({ status } as Response, body);
 }

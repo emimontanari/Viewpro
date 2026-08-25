@@ -36,6 +36,7 @@ Phase 1 (WU-A) complete in Strict TDD mode; phases 2-6 not started. Delivery is 
 Revert `packages/contracts/src/index.ts`, `packages/contracts/test/runtime-contract.spec.ts`, `auth.guard.ts`, `get-current-user.use-case.ts`, `refresh-session.use-case.ts`, `verify-email.use-case.ts`, `reset-password.use-case.ts`; delete `apps/api/test/public-error-annotations.spec.ts`. WU-A reverts **last** — B1, B2 and C1 must revert first, or their producers reference absent codes.
 
 ## Remaining
+<<<<<<< HEAD
 Phases 3-6 pending. No user-visible behavior changes until the view slices C1 and C2 ship; WU-A/B1 only make the codes available on the wire.
 
 ---
@@ -113,3 +114,36 @@ Revert `apps/api/src/owner-invitations/use-cases/validate-owner-invitation.use-c
 
 ## Remaining
 Phases 4-6 pending. No user-visible behavior changes until the view slices C1 and C2 ship; WU-A/B1/B2 only make the codes available on the wire.
+=======
+Phases 2-6 pending. No user-visible behavior changes until the view slices C1 and C2 ship; WU-A only makes the codes available on the wire.
+
+## WU-C1 batch (Phase 4, tasks 4.1-4.8)
+
+### Completed Tasks
+- [x] 4.1 `toApiError` exported from `apps/app-new/src/lib/api-client.ts` (one-word change).
+- [x] 4.2-4.3 RED: both hand-built `apiError(status, message)` helpers replaced by `apiErrorFrom(status, body)` routed through the real `toApiError`; every existing fixture rewritten as `apiErrorFrom(status, { errorCode })`; new per-code fixtures added for every reachable code per the design's team/owner mapping table (7 new team cases, 3 new owner cases).
+- [x] 4.4 Checkpoint (ADR-4): pre-fix run was **8 failed / 22 passed** (30). The 4 pre-existing prose-matching cases (`shows expired invitation guidance` × 2 files, `shows already-accepted guidance...` × 2 files) FAILED as required, proving the helper swap is faithful and the ADR-4 bug was real. The other 4 failures were new fixtures for codes not yet wired (expected).
+- [x] 4.5 GREEN: `INVITATION_ERROR_COPY` code maps added (team: 7 entries, owner: 4 entries) with `getStatusFallbackUiError` retained as the status-only ladder; both `const message = error.message.toLowerCase()` lines and all `message.includes(...)` branches deleted. One test-only fix needed after first GREEN pass: `findByText(/tu sesión expiró/i)` was ambiguous (matched both card title and alert description) — narrowed to match the description text. Final: **30/30 passed**.
+- [x] 4.6 REFACTOR: `vitest run src/lib/api-client.test.ts src/features/team-invitations src/features/owner-invitations` → **41/41 passed**; `pnpm --filter next-shadcn-dashboard-starter typecheck` → clean.
+- [x] 4.7 Grep both view sources for `message.includes(` → zero matches.
+- [x] 4.8 Diff measured: **271 changed lines** (214 additions + 57 deletions) across `api-client.ts` + both view/test file pairs — under the 320 split trigger, no split needed.
+
+### TDD Cycle Evidence
+| Task | Test File(s) | Layer | Safety Net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|---|
+| 4.1-4.3 | both `*-acceptance-view.test.tsx` | Integration (RTL) | ✅ 20/20 baseline | ✅ 8 failed (checkpoint) | ✅ 30/30 | ✅ 10 new per-code cases | ✅ Clean |
+| 4.5 | both `*-acceptance-view.tsx` | Integration | — | (covered above) | ✅ 30/30 execution-confirmed | — | ✅ ambiguous-query fix applied |
+
+### Design deviations (all minimizing scope, none weakening behavior)
+- `INVITATION_ERROR_COPY` typed via explicit `Partial<Record<PublicErrorCode, InvitationUiError>>` annotation rather than the design snippet's `satisfies` clause — `satisfies` narrows to only the declared literal keys, which fails to typecheck when indexing by the full `PublicErrorCode` union (`error.errorCode`). Explicit annotation is required for the lookup to typecheck without a cast; behavior is identical.
+- Only codes needing text *distinct from* the existing status-only fallback got an explicit map entry (team: `INVITATION_EXPIRED`, `INVITATION_ALREADY_ACCEPTED`, `INVITATION_ALREADY_MEMBER`, `INVITATION_EMAIL_ALREADY_REGISTERED`, `TENANT_USER_LIMIT_EXCEEDED`, `SESSION_EXPIRED`, `INVITATION_INVALID_CREDENTIALS`; owner: `INVITATION_EXPIRED`, `INVITATION_ALREADY_ACCEPTED`, `SESSION_EXPIRED`, `INVITATION_INVALID_CREDENTIALS`). Codes whose only reachable text already matches the pre-existing status fallback (`INVITATION_NOT_FOUND`, `INVITATION_REVOKED`, `INVITATION_EMAIL_MISMATCH`, and owner's sole 409 `INVITATION_EMAIL_ALREADY_REGISTERED`) were left to the fallback ladder — same production output, smaller diff, and still ADR-3-correct (code map takes priority; falls through only when no explicit entry exists).
+- Spec scenario "Distinct 410 recovery copy" literally groups `INVITATION_NOT_FOUND` with the 410 codes, but design.md's confirmed status table puts `INVITATION_NOT_FOUND` at 404 (matching the real use-case throws). Implemented per design (404), not per the spec's literal grouping — the code-map lookup is code-first regardless of status, so behavior is unaffected either way. Flagging as a spec-wording inconsistency for verify.
+
+### Work Unit Evidence
+- Focused command: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/team-invitations/components/team-invitation-acceptance-view.test.tsx src/features/owner-invitations/components/owner-invitation-acceptance-view.test.tsx` → 30/30.
+- Runtime harness: Vitest + Testing Library component render, real `toApiError` parser (no hand-built error shapes) — no live app/BFF in this flow (per design's forecast table).
+- Rollback boundary: revert `apps/app-new/src/lib/api-client.ts` (drop `export`), both `*-acceptance-view.tsx`, both `*-acceptance-view.test.tsx`. Independently revertable; must revert before B1/B2 (design's stated order) — not applicable here since B1/B2 are on separate branches not present in this tree.
+
+### Engram
+No `mem_*` tool was available in this session (same as prior sub-agents per the launch note). This section and the tasks.md `[x]` marks are the persisted record; hand back to the orchestrator to mirror into Engram if needed.
+>>>>>>> 5c2c47f (fix(errors): branch invitation recovery copy on errorCode)
