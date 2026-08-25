@@ -429,16 +429,28 @@ describe("team invitation use cases", () => {
 		const useCase = new ValidateTeamInvitationUseCase(repository as never);
 
 		await expect(useCase.execute("missing")).rejects.toThrow(
-			new NotFoundException("Team invitation not found"),
+			new NotFoundException({
+				errorCode: "INVITATION_NOT_FOUND",
+				message: "Team invitation not found",
+			}),
 		);
 		await expect(useCase.execute("expired")).rejects.toThrow(
-			new GoneException("Team invitation has expired"),
+			new GoneException({
+				errorCode: "INVITATION_EXPIRED",
+				message: "Team invitation has expired",
+			}),
 		);
 		await expect(useCase.execute("revoked")).rejects.toThrow(
-			new GoneException("Team invitation is no longer available"),
+			new GoneException({
+				errorCode: "INVITATION_REVOKED",
+				message: "Team invitation is no longer available",
+			}),
 		);
 		await expect(useCase.execute("accepted")).rejects.toThrow(
-			new GoneException("Team invitation was already accepted"),
+			new GoneException({
+				errorCode: "INVITATION_ALREADY_ACCEPTED",
+				message: "Team invitation was already accepted",
+			}),
 		);
 	});
 
@@ -506,7 +518,10 @@ describe("team invitation use cases", () => {
 				password: "password123",
 			}),
 		).rejects.toThrow(
-			new ConflictException("Team invitation email is already registered"),
+			new ConflictException({
+				errorCode: "INVITATION_EMAIL_ALREADY_REGISTERED",
+				message: "Team invitation email is already registered",
+			}),
 		);
 	});
 
@@ -529,7 +544,10 @@ describe("team invitation use cases", () => {
 				{ id: "other-user", email: "other@example.com" },
 			),
 		).rejects.toThrow(
-			new ForbiddenException("Team invitation belongs to another email"),
+			new ForbiddenException({
+				errorCode: "INVITATION_EMAIL_MISMATCH",
+				message: "Team invitation belongs to another email",
+			}),
 		);
 		expect(deps.passwordHasher.hash).not.toHaveBeenCalled();
 		expect(deps.repository.acceptForNewUser).not.toHaveBeenCalled();
@@ -601,7 +619,10 @@ describe("team invitation use cases", () => {
 				{ id: "other-user", email: "other@example.com" },
 			),
 		).rejects.toThrow(
-			new ForbiddenException("Team invitation belongs to another email"),
+			new ForbiddenException({
+				errorCode: "INVITATION_EMAIL_MISMATCH",
+				message: "Team invitation belongs to another email",
+			}),
 		);
 		expect(deps.passwordHasher.verify).not.toHaveBeenCalled();
 		expect(deps.repository.acceptForExistingUser).not.toHaveBeenCalled();
@@ -627,7 +648,12 @@ describe("team invitation use cases", () => {
 				mode: "login",
 				password: "password123",
 			}),
-		).rejects.toThrow(new UnauthorizedException("Invalid email or password"));
+		).rejects.toThrow(
+			new UnauthorizedException({
+				errorCode: "INVITATION_INVALID_CREDENTIALS",
+				message: "Invalid email or password",
+			}),
+		);
 		expect(deps.repository.acceptForExistingUser).not.toHaveBeenCalled();
 	});
 
@@ -674,7 +700,12 @@ describe("team invitation use cases", () => {
 
 		await expect(
 			deps.useCase.execute("raw-token", { mode: "current-session" }, null),
-		).rejects.toThrow(new UnauthorizedException("Authentication required"));
+		).rejects.toThrow(
+			new UnauthorizedException({
+				errorCode: "SESSION_EXPIRED",
+				message: "Authentication required",
+			}),
+		);
 		await expect(
 			deps.useCase.execute(
 				"raw-token",
@@ -682,7 +713,10 @@ describe("team invitation use cases", () => {
 				{ id: "other-user", email: "other@example.com" },
 			),
 		).rejects.toThrow(
-			new ForbiddenException("Team invitation belongs to another email"),
+			new ForbiddenException({
+				errorCode: "INVITATION_EMAIL_MISMATCH",
+				message: "Team invitation belongs to another email",
+			}),
 		);
 	});
 
@@ -707,25 +741,46 @@ describe("team invitation use cases", () => {
 		};
 
 		await expect(deps.useCase.execute("raw-token", dto)).rejects.toThrow(
-			new NotFoundException("Team invitation not found"),
+			new NotFoundException({
+				errorCode: "INVITATION_NOT_FOUND",
+				message: "Team invitation not found",
+			}),
 		);
 		await expect(deps.useCase.execute("raw-token", dto)).rejects.toThrow(
-			new GoneException("Team invitation has expired"),
+			new GoneException({
+				errorCode: "INVITATION_EXPIRED",
+				message: "Team invitation has expired",
+			}),
 		);
 		await expect(deps.useCase.execute("raw-token", dto)).rejects.toThrow(
-			new GoneException("Team invitation is no longer available"),
+			new GoneException({
+				errorCode: "INVITATION_REVOKED",
+				message: "Team invitation is no longer available",
+			}),
 		);
 		await expect(deps.useCase.execute("raw-token", dto)).rejects.toThrow(
-			new GoneException("Team invitation was already accepted"),
+			new GoneException({
+				errorCode: "INVITATION_ALREADY_ACCEPTED",
+				message: "Team invitation was already accepted",
+			}),
 		);
 		await expect(deps.useCase.execute("raw-token", dto)).rejects.toThrow(
-			new ConflictException("User is already a member of this tenant"),
+			new ConflictException({
+				errorCode: "INVITATION_ALREADY_MEMBER",
+				message: "User is already a member of this tenant",
+			}),
 		);
 		await expect(deps.useCase.execute("raw-token", dto)).rejects.toThrow(
-			new ForbiddenException("Team invitation belongs to another email"),
+			new ForbiddenException({
+				errorCode: "INVITATION_EMAIL_MISMATCH",
+				message: "Team invitation belongs to another email",
+			}),
 		);
 		await expect(deps.useCase.execute("raw-token", dto)).rejects.toThrow(
-			new UnauthorizedException("Authentication required"),
+			new UnauthorizedException({
+				errorCode: "SESSION_EXPIRED",
+				message: "Authentication required",
+			}),
 		);
 	});
 });

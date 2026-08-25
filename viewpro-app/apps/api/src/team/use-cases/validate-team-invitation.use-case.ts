@@ -20,19 +20,19 @@ export class ValidateTeamInvitationUseCase {
     })
 
     if (result.status === 'notFound') {
-      throw new NotFoundException('Team invitation not found')
+      throw new NotFoundException({ errorCode: 'INVITATION_NOT_FOUND', message: 'Team invitation not found' })
     }
 
     if (result.status === 'expired') {
-      throw new GoneException('Team invitation has expired')
+      throw new GoneException({ errorCode: 'INVITATION_EXPIRED', message: 'Team invitation has expired' })
     }
 
     if (result.status === 'revoked') {
-      throw new GoneException('Team invitation is no longer available')
+      throw new GoneException({ errorCode: 'INVITATION_REVOKED', message: 'Team invitation is no longer available' })
     }
 
     if (result.status === 'alreadyAccepted') {
-      throw new GoneException('Team invitation was already accepted')
+      throw new GoneException({ errorCode: 'INVITATION_ALREADY_ACCEPTED', message: 'Team invitation was already accepted' })
     }
 
     return toTeamInvitationPublicResponse(result.invitation, result.emailRegistered)

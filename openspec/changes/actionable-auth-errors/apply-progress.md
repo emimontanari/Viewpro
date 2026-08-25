@@ -36,4 +36,41 @@ Phase 1 (WU-A) complete in Strict TDD mode; phases 2-6 not started. Delivery is 
 Revert `packages/contracts/src/index.ts`, `packages/contracts/test/runtime-contract.spec.ts`, `auth.guard.ts`, `get-current-user.use-case.ts`, `refresh-session.use-case.ts`, `verify-email.use-case.ts`, `reset-password.use-case.ts`; delete `apps/api/test/public-error-annotations.spec.ts`. WU-A reverts **last** — B1, B2 and C1 must revert first, or their producers reference absent codes.
 
 ## Remaining
-Phases 2-6 pending. No user-visible behavior changes until the view slices C1 and C2 ship; WU-A only makes the codes available on the wire.
+Phases 3-6 pending. No user-visible behavior changes until the view slices C1 and C2 ship; WU-A/B1 only make the codes available on the wire.
+
+---
+
+# WU-B1 Batch (Phase 2 — Team Invitation Annotations)
+
+## Status and Identity
+Phase 2 (WU-B1) complete in Strict TDD mode, tasks 2.1-2.6. Independent of WU-B2 per delivery order; builds on WU-A's merged catalog.
+
+## Completed Tasks
+- [x] 2.1-2.2 RED: 10 boundary cases (one per distinct state→code pair: 4 validate + 6 accept-unique) and 2 per-file exhaustiveness guards appended to `public-error-annotations.spec.ts`.
+- [x] 2.3 Pre-GREEN grep: no test/consumer binds the legacy `error` field on team routes.
+- [x] 2.4 GREEN: all 23 sites annotated inline per ADR-1 (4 in `validate-team-invitation.use-case.ts`, 19 in `accept-team-invitation.use-case.ts`, including both duplicated helper methods), every message string byte-identical.
+- [x] 2.5-2.6 REFACTOR: focused matrix green, typecheck clean, both `'Authentication required'` message-text sites confirmed unchanged.
+
+## Strict TDD Cycle Evidence
+
+| Step | Command | Result |
+|---|---|---|
+| Safety net | `NODE_ENV=production pnpm --filter @viewpro/api exec vitest run test/public-error-annotations.spec.ts` | 11/11 before edits (WU-A baseline) |
+| RED | same command | exit 1; **12 failed, 11 passed** — 10 boundary cases missing `errorCode`, 2 exhaustiveness guards showing throw-count vs `errorCode:`-count mismatch |
+| GREEN | same command | **23/23** |
+| REFACTOR | `test/public-error-annotations.spec.ts test/team-invitations.use-cases.spec.ts test/team.use-cases.spec.ts test/errors.e2e-spec.ts` + `pnpm --filter @viewpro/api typecheck` | **97/97**, typecheck clean |
+| Extra regression (not in prescribed command, run for safety) | `test/team-invitations.e2e-spec.ts test/team.e2e-spec.ts` | **38/38** |
+
+## Work Unit Evidence
+- Runtime harness: same hermetic `new GlobalExceptionFilter('production', undefined, {})` + `ArgumentsHost` as WU-A (ADR-2); no live app needed.
+- Message preservation: all 23 throw sites keep their original string byte-identical, now nested at `message:` inside the object literal.
+- WU-B1 count: **312 additions + 40 deletions = 352 changed lines**, 48 under the 400-line budget (forecast was 110-170; see deviation below for why it's higher).
+
+## Deviations and Issues
+- **Unforecasted**: `team-invitations.use-cases.spec.ts` uses `.rejects.toThrow(new XException("message string"))` on 7 tests covering the 23 annotated sites. Vitest's `toThrow(errorInstance)` (confirmed in `@vitest/expect` source: `equals(thrown, expected, [...customTesters, iterableEquality])`) performs **full deep-equality** on the thrown object, not a message-only comparison. Since the annotated exceptions moved from string-form (auto-deriving `.response = {statusCode, error, message}`) to object-form (`.response = {errorCode, message}`), these 7 tests failed on `.response.statusCode`/`.response.error` even though every message string was byte-identical — the non-negotiable "message strings do not change" held; only the exception's structural footprint changed, which is ADR-1's documented, intentional consequence. Fix: updated the *expected exception construction* in all 7 tests from `new XException("string")` to `new XException({ errorCode: '<code>', message: '<same string>' })` — same message text, now also positively asserting `errorCode` (a strictly stronger check, not a weakened one). This is the two `'Authentication required'` sites task 2.6 calls out (`:677,728` in the pre-edit file), plus 5 more sites the task list did not anticipate. Net: task 2.5's REFACTOR step required editing a second test file beyond the ones the task named; recorded here rather than silently absorbed. Same risk applies structurally to WU-B2's `owner-invitations.use-cases.spec.ts` if it uses the same `.rejects.toThrow(new XException(string))` pattern — worth checking early in that batch.
+
+## Rollback Boundary
+Revert `apps/api/src/team/use-cases/validate-team-invitation.use-case.ts`, `apps/api/src/team/use-cases/accept-team-invitation.use-case.ts`, the WU-B1 blocks in `apps/api/test/public-error-annotations.spec.ts`, and the 7 test-expectation edits in `apps/api/test/team-invitations.use-cases.spec.ts`. Independent of WU-B2. Must revert before WU-A (catalog).
+
+## Remaining
+Phases 3-6 pending.

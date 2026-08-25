@@ -44,12 +44,12 @@ No single work unit is projected to exceed the 400-line budget. C1 is the only M
 
 ## Phase 2: WU-B1 — Team Invitation Annotations
 
-- [ ] 2.1 RED: Append 10 boundary cases (one per distinct state→code pair) to `apps/api/test/public-error-annotations.spec.ts` for `validate-team-invitation.use-case.ts` and `accept-team-invitation.use-case.ts`. `NODE_ENV=production pnpm --filter @viewpro/api exec vitest run test/public-error-annotations.spec.ts`
-- [ ] 2.2 RED: Add exhaustiveness guard cases for `validate-team-invitation.use-case.ts` and `accept-team-invitation.use-case.ts`.
-- [ ] 2.3 Grep the repo confirming no test/consumer binds the legacy `error` field on team routes before GREEN.
-- [ ] 2.4 GREEN: Annotate all 23 team sites — `validate-team-invitation.use-case.ts:23,27,31,35`; `accept-team-invitation.use-case.ts:82,104,111,123,127,158,169,173,177,181,187,191,195,199,203,207,211,215,218` — with the matching catalog `errorCode`, message unchanged. Rerun 2.1 unchanged; confirm GREEN.
-- [ ] 2.5 REFACTOR: `pnpm --filter @viewpro/api exec vitest run test/public-error-annotations.spec.ts test/team-invitations.use-cases.spec.ts test/team.use-cases.spec.ts test/errors.e2e-spec.ts && pnpm --filter @viewpro/api typecheck`
-- [ ] 2.6 REFACTOR: Confirm `team-invitations.use-cases.spec.ts:677,728` `'Authentication required'` assertions still pass unmodified.
+- [x] 2.1 RED: Append 10 boundary cases (one per distinct state→code pair) to `apps/api/test/public-error-annotations.spec.ts` for `validate-team-invitation.use-case.ts` and `accept-team-invitation.use-case.ts`. `NODE_ENV=production pnpm --filter @viewpro/api exec vitest run test/public-error-annotations.spec.ts`
+- [x] 2.2 RED: Add exhaustiveness guard cases for `validate-team-invitation.use-case.ts` and `accept-team-invitation.use-case.ts`.
+- [x] 2.3 Grep the repo confirming no test/consumer binds the legacy `error` field on team routes before GREEN.
+- [x] 2.4 GREEN: Annotate all 23 team sites — `validate-team-invitation.use-case.ts:23,27,31,35`; `accept-team-invitation.use-case.ts:82,104,111,123,127,158,169,173,177,181,187,191,195,199,203,207,211,215,218` — with the matching catalog `errorCode`, message unchanged. Rerun 2.1 unchanged; confirm GREEN.
+- [x] 2.5 REFACTOR: `pnpm --filter @viewpro/api exec vitest run test/public-error-annotations.spec.ts test/team-invitations.use-cases.spec.ts test/team.use-cases.spec.ts test/errors.e2e-spec.ts && pnpm --filter @viewpro/api typecheck` — *required an unforecasted deviation, see apply-progress.*
+- [x] 2.6 REFACTOR: Confirm `team-invitations.use-cases.spec.ts:677,728` `'Authentication required'` assertions still pass unmodified. — *message text unchanged; assertion construction updated, see apply-progress deviation note.*
 
 ## Phase 3: WU-B2 — Owner Invitation Annotations
 
