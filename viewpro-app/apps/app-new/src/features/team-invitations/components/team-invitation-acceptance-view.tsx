@@ -4,12 +4,13 @@ import * as React from 'react';
 import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import type { PublicErrorCode } from '@viewpro/contracts';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppForm, useFormFields } from '@/components/ui/tanstack-form';
 import { InteractiveGridPattern } from '@/features/auth/components/interactive-grid';
-import { getApiErrorMessage, isApiError } from '@/lib/api-client';
+import { getApiErrorMessage, isApiError, type ApiError } from '@/lib/api-client';
 import { BRAND } from '@/lib/brand/brand';
 import { getSessionWithRefresh, type Session } from '@/lib/session';
 import { setSelectedTenantId } from '@/lib/tenant-selection';
@@ -544,6 +545,45 @@ function TermsText() {
   );
 }
 
+const INVITATION_ERROR_COPY: Partial<Record<PublicErrorCode, InvitationUiError>> = {
+  INVITATION_EXPIRED: {
+    title: 'Invitación expirada',
+    description: 'Esta invitación expiró. Pedile a la inmobiliaria que te envíe un nuevo link.'
+  },
+  INVITATION_ALREADY_ACCEPTED: {
+    title: 'Invitación ya aceptada',
+    description: BRAND.auth.teamInvitationAlreadyAccepted,
+    showSignInLink: true
+  },
+  INVITATION_ALREADY_MEMBER: {
+    title: 'Ya pertenecés a esta inmobiliaria',
+    description:
+      'Este usuario ya pertenece a la inmobiliaria invitante. Iniciá sesión para continuar.',
+    showSignInLink: true
+  },
+  INVITATION_EMAIL_ALREADY_REGISTERED: {
+    title: 'Ese email ya tiene una cuenta',
+    description:
+      'Ese email ya está registrado en InmoView. Iniciá sesión con él en lugar de crear una cuenta nueva.',
+    showSignInLink: true
+  },
+  TENANT_USER_LIMIT_EXCEEDED: {
+    title: 'La inmobiliaria alcanzó su límite de usuarios',
+    description:
+      'Pedile a un administrador que libere un lugar o actualice el plan antes de aceptar esta invitación.'
+  },
+  SESSION_EXPIRED: {
+    title: 'Tu sesión expiró',
+    description:
+      'Tu sesión expiró mientras completabas la invitación. Iniciá sesión de nuevo y volvé a abrir el link.',
+    showSignInLink: true
+  },
+  INVITATION_INVALID_CREDENTIALS: {
+    title: 'No pudimos validar tus credenciales',
+    description: 'Revisá tu contraseña y volvé a intentarlo.'
+  }
+};
+
 function getInvitationUiError(error: unknown): InvitationUiError {
   if (!isApiError(error)) {
     return {
@@ -552,28 +592,17 @@ function getInvitationUiError(error: unknown): InvitationUiError {
     };
   }
 
-  const message = error.message.toLowerCase();
+  const byCode = error.errorCode ? INVITATION_ERROR_COPY[error.errorCode] : undefined;
 
+  return byCode ?? getStatusFallbackUiError(error);
+}
+
+function getStatusFallbackUiError(error: ApiError): InvitationUiError {
   if (error.status === 404) {
     return {
       title: 'Link inválido',
       description:
         'El link de invitación no es válido. Revisá el enlace o pedí una nueva invitación.'
-    };
-  }
-
-  if (error.status === 410 && message.includes('expired')) {
-    return {
-      title: 'Invitación expirada',
-      description: 'Esta invitación expiró. Pedile a la inmobiliaria que te envíe un nuevo link.'
-    };
-  }
-
-  if (error.status === 410 && message.includes('accepted')) {
-    return {
-      title: 'Invitación ya aceptada',
-      description: BRAND.auth.teamInvitationAlreadyAccepted,
-      showSignInLink: true
     };
   }
 

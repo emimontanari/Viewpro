@@ -95,7 +95,7 @@ async function parseJsonResponse(response: Response): Promise<unknown> {
   }
 }
 
-function toApiError(response: Response, body: unknown): ApiError {
+export function toApiError(response: Response, body: unknown): ApiError {
   const parsedBody = asRecord(body);
   const errorCode = isPublicErrorCode(parsedBody?.errorCode) ? parsedBody.errorCode : undefined;
   const requestId = isCanonicalRequestId(parsedBody?.requestId) ? parsedBody.requestId : undefined;
