@@ -22,7 +22,23 @@ const establishedPublicErrorCodes = [
   'STATUS_CHANGE_REQUEST_ALREADY_PENDING',
 ] as const
 
-const expectedPublicErrorCodes = [...establishedPublicErrorCodes, 'REQUEST_FAILED'] as const
+const frozenPublicErrorCodes = [...establishedPublicErrorCodes, 'REQUEST_FAILED'] as const
+
+const appendedPublicErrorCodes = [
+  'SESSION_EXPIRED',
+  'INVITATION_NOT_FOUND',
+  'INVITATION_EXPIRED',
+  'INVITATION_REVOKED',
+  'INVITATION_ALREADY_ACCEPTED',
+  'INVITATION_EMAIL_MISMATCH',
+  'INVITATION_ALREADY_MEMBER',
+  'INVITATION_EMAIL_ALREADY_REGISTERED',
+  'TENANT_USER_LIMIT_EXCEEDED',
+  'INVITATION_INVALID_CREDENTIALS',
+  'AUTH_TOKEN_INVALID',
+] as const
+
+const expectedPublicErrorCodes = [...frozenPublicErrorCodes, ...appendedPublicErrorCodes] as const
 
 function runNode(args: string[]) {
   return execFileSync(process.execPath, args, {
@@ -71,8 +87,8 @@ describe('@viewpro/contracts runtime contract', () => {
     }
 
     expect(contract.codes).toEqual(expectedPublicErrorCodes)
-    expect(contract.codes.slice(0, establishedPublicErrorCodes.length)).toEqual(
-      establishedPublicErrorCodes,
+    expect(contract.codes.slice(0, frozenPublicErrorCodes.length)).toEqual(
+      frozenPublicErrorCodes,
     )
     expect(new Set(contract.codes).size).toBe(contract.codes.length)
     expect(contract.accepted).toEqual(expectedPublicErrorCodes.map(() => true))

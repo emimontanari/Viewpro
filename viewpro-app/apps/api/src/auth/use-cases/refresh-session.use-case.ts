@@ -20,14 +20,14 @@ export class RefreshSessionUseCase {
 
   async execute(rawRefreshToken: string | undefined): Promise<RefreshedSessionResult> {
     if (!rawRefreshToken) {
-      throw new UnauthorizedException('Authentication required')
+      throw new UnauthorizedException({ errorCode: 'SESSION_EXPIRED', message: 'Authentication required' })
     }
 
     const tokenHash = this.tokenService.hashRefreshToken(rawRefreshToken)
     const storedToken = await this.refreshTokenRepository.findByTokenHash(tokenHash)
 
     if (!storedToken || storedToken.revokedAt || storedToken.expiresAt <= new Date()) {
-      throw new UnauthorizedException('Authentication required')
+      throw new UnauthorizedException({ errorCode: 'SESSION_EXPIRED', message: 'Authentication required' })
     }
 
     const body = await this.getCurrentUserUseCase.execute(storedToken.userId)
