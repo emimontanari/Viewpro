@@ -11,6 +11,8 @@ import { RefreshSessionUseCase } from '../src/auth/use-cases/refresh-session.use
 import { ResetPasswordUseCase } from '../src/auth/use-cases/reset-password.use-case'
 import { VerifyEmailUseCase } from '../src/auth/use-cases/verify-email.use-case'
 import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter'
+import { AcceptOwnerInvitationUseCase } from '../src/owner-invitations/use-cases/accept-owner-invitation.use-case'
+import { ValidateOwnerInvitationUseCase } from '../src/owner-invitations/use-cases/validate-owner-invitation.use-case'
 import { AcceptTeamInvitationUseCase } from '../src/team/use-cases/accept-team-invitation.use-case'
 import { ValidateTeamInvitationUseCase } from '../src/team/use-cases/validate-team-invitation.use-case'
 
@@ -391,6 +393,182 @@ describe('Public error annotations — per-file exhaustiveness guard (WU-B1)', (
   // (first-name, password x2, unsupported mode) stay unannotated by scope.
   it('accept-team-invitation.use-case.ts annotates every Forbidden/Unauthorized/NotFound/Gone/ConflictException throw with an errorCode', () => {
     const source = readSource('team/use-cases/accept-team-invitation.use-case.ts')
+
+    expect(
+      countMatches(
+        source,
+        /throw new (?:ForbiddenException|UnauthorizedException|NotFoundException|GoneException|ConflictException)\(/g,
+      ),
+    ).toBe(countMatches(source, /errorCode:/g))
+  })
+})
+
+/**
+ * Minimal deps for AcceptOwnerInvitationUseCase (WU-B2). Only the collaborator
+ * needed by the exercised throw path is given a meaningful mock; the rest
+ * are unused stubs, matching the pattern used for WU-B1.
+ */
+function createAcceptOwnerInvitationUseCase(overrides: { repository?: Record<string, unknown> } = {}) {
+  const repository = {
+    findByTokenHash: vi.fn(),
+    findUserByEmail: vi.fn(),
+    acceptForNewOwner: vi.fn(),
+    acceptForExistingOwner: vi.fn(),
+    ...overrides.repository,
+  }
+
+  return new AcceptOwnerInvitationUseCase(
+    repository as never,
+    { hash: vi.fn(), verify: vi.fn() } as never,
+    { create: vi.fn() } as never,
+    { signAccessToken: vi.fn(), generateRefreshToken: vi.fn(), hashRefreshToken: vi.fn(), getRefreshTokenExpiresAt: vi.fn() } as never,
+  )
+}
+
+function validOwnerInvitation(overrides: Record<string, unknown> = {}) {
+  return {
+    status: 'PENDING',
+    acceptedAt: null,
+    revokedAt: null,
+    expiresAt: new Date(Date.now() + 60_000),
+    email: 'invited@example.com',
+    ...overrides,
+  }
+}
+
+describe('Public error annotations — production emission boundary (WU-B2)', () => {
+  it('ValidateOwnerInvitationUseCase rejects a missing token as INVITATION_NOT_FOUND', async () => {
+    const useCase = new ValidateOwnerInvitationUseCase({
+      findByTokenHash: vi.fn().mockResolvedValue(null),
+    } as never)
+
+    const thrown = await throwFrom(() => useCase.execute('missing-token'))
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'INVITATION_NOT_FOUND',
+      message: 'Resource not found',
+    })
+  })
+
+  it('ValidateOwnerInvitationUseCase rejects an expired token as INVITATION_EXPIRED', async () => {
+    const useCase = new ValidateOwnerInvitationUseCase({
+      findByTokenHash: vi.fn().mockResolvedValue(validOwnerInvitation({ expiresAt: new Date(Date.now() - 1000) })),
+    } as never)
+
+    const thrown = await throwFrom(() => useCase.execute('expired-token'))
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'INVITATION_EXPIRED',
+      message: 'Request failed',
+    })
+  })
+
+  it('ValidateOwnerInvitationUseCase rejects a revoked token as INVITATION_REVOKED', async () => {
+    const useCase = new ValidateOwnerInvitationUseCase({
+      findByTokenHash: vi.fn().mockResolvedValue(validOwnerInvitation({ status: 'REVOKED', revokedAt: new Date() })),
+    } as never)
+
+    const thrown = await throwFrom(() => useCase.execute('revoked-token'))
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'INVITATION_REVOKED',
+      message: 'Request failed',
+    })
+  })
+
+  it('ValidateOwnerInvitationUseCase rejects an already-accepted token as INVITATION_ALREADY_ACCEPTED', async () => {
+    const useCase = new ValidateOwnerInvitationUseCase({
+      findByTokenHash: vi.fn().mockResolvedValue(validOwnerInvitation({ status: 'ACCEPTED', acceptedAt: new Date() })),
+    } as never)
+
+    const thrown = await throwFrom(() => useCase.execute('accepted-token'))
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'INVITATION_ALREADY_ACCEPTED',
+      message: 'Request failed',
+    })
+  })
+
+  it('AcceptOwnerInvitationUseCase rejects a mismatched authenticated email as INVITATION_EMAIL_MISMATCH', async () => {
+    const useCase = createAcceptOwnerInvitationUseCase({
+      repository: { findByTokenHash: vi.fn().mockResolvedValue(validOwnerInvitation()) },
+    })
+
+    const thrown = await throwFrom(() =>
+      useCase.execute(
+        'raw-token',
+        { mode: 'current-session' },
+        { id: 'other-user', email: 'other@example.com' },
+      ),
+    )
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'INVITATION_EMAIL_MISMATCH',
+      message: 'Request failed',
+    })
+  })
+
+  it('AcceptOwnerInvitationUseCase rejects a wrong login-mode password as INVITATION_INVALID_CREDENTIALS', async () => {
+    const useCase = createAcceptOwnerInvitationUseCase({
+      repository: {
+        findByTokenHash: vi.fn().mockResolvedValue(validOwnerInvitation()),
+        findUserByEmail: vi.fn().mockResolvedValue({ id: 'user-1', passwordHash: 'hashed' }),
+      },
+    })
+
+    const thrown = await throwFrom(() => useCase.execute('raw-token', { mode: 'login', password: 'wrong-password' }))
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'INVITATION_INVALID_CREDENTIALS',
+      message: 'Request failed',
+    })
+  })
+
+  it('AcceptOwnerInvitationUseCase rejects a current-session acceptance without an authenticated user as SESSION_EXPIRED', async () => {
+    const useCase = createAcceptOwnerInvitationUseCase({
+      repository: { findByTokenHash: vi.fn().mockResolvedValue(validOwnerInvitation()) },
+    })
+
+    const thrown = await throwFrom(() => useCase.execute('raw-token', { mode: 'current-session' }, null))
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'SESSION_EXPIRED',
+      message: 'Request failed',
+    })
+  })
+
+  it('AcceptOwnerInvitationUseCase rejects a register-mode acceptance for an already-registered email as INVITATION_EMAIL_ALREADY_REGISTERED', async () => {
+    const useCase = createAcceptOwnerInvitationUseCase({
+      repository: {
+        acceptForNewOwner: vi.fn().mockResolvedValue({ status: 'userAlreadyExists' }),
+      },
+    })
+
+    const thrown = await throwFrom(() =>
+      useCase.execute('raw-token', { mode: 'register', firstName: 'New', password: 'password123' }),
+    )
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'INVITATION_EMAIL_ALREADY_REGISTERED',
+      message: 'Request failed',
+    })
+  })
+})
+
+describe('Public error annotations — per-file exhaustiveness guard (WU-B2)', () => {
+  it('validate-owner-invitation.use-case.ts annotates every NotFoundException/GoneException throw with an errorCode', () => {
+    const source = readSource('owner-invitations/use-cases/validate-owner-invitation.use-case.ts')
+
+    expect(countMatches(source, /throw new (?:NotFoundException|GoneException)\(/g)).toBe(
+      countMatches(source, /errorCode:/g),
+    )
+  })
+
+  // BadRequestException is deliberately excluded from the shared exhaustiveness pattern
+  // (design.md ADR-2) because the three DTO-validation throws in this file
+  // (first-name, password, unsupported mode) stay unannotated by scope.
+  it('accept-owner-invitation.use-case.ts annotates every Forbidden/Unauthorized/NotFound/Gone/ConflictException throw with an errorCode', () => {
+    const source = readSource('owner-invitations/use-cases/accept-owner-invitation.use-case.ts')
 
     expect(
       countMatches(

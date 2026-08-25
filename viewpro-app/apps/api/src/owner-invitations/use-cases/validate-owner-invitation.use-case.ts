@@ -28,19 +28,19 @@ export class ValidateOwnerInvitationUseCase {
 		);
 
 		if (!invitation) {
-			throw new NotFoundException("Owner invitation not found");
+			throw new NotFoundException({ errorCode: "INVITATION_NOT_FOUND", message: "Owner invitation not found" });
 		}
 
 		if (invitation.status === OwnerInvitationStatus.ACCEPTED || invitation.acceptedAt) {
-			throw new GoneException("Owner invitation was already accepted");
+			throw new GoneException({ errorCode: "INVITATION_ALREADY_ACCEPTED", message: "Owner invitation was already accepted" });
 		}
 
 		if (invitation.status === OwnerInvitationStatus.REVOKED || invitation.revokedAt) {
-			throw new GoneException("Owner invitation is no longer available");
+			throw new GoneException({ errorCode: "INVITATION_REVOKED", message: "Owner invitation is no longer available" });
 		}
 
 		if (invitation.expiresAt.getTime() <= Date.now()) {
-			throw new GoneException("Owner invitation has expired");
+			throw new GoneException({ errorCode: "INVITATION_EXPIRED", message: "Owner invitation has expired" });
 		}
 
 		return mapOwnerInvitation(invitation);

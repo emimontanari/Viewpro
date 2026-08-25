@@ -53,12 +53,12 @@ No single work unit is projected to exceed the 400-line budget. C1 is the only M
 
 ## Phase 3: WU-B2 — Owner Invitation Annotations
 
-- [ ] 3.1 RED: Append 8 boundary cases to `apps/api/test/public-error-annotations.spec.ts` for `validate-owner-invitation.use-case.ts` and `accept-owner-invitation.use-case.ts` (`INVITATION_ALREADY_MEMBER` not reachable in this flow — omit). `NODE_ENV=production pnpm --filter @viewpro/api exec vitest run test/public-error-annotations.spec.ts`
-- [ ] 3.2 RED: Add exhaustiveness guard cases for `validate-owner-invitation.use-case.ts` and `accept-owner-invitation.use-case.ts`.
-- [ ] 3.3 Grep the repo confirming no test/consumer binds the legacy `error` field on owner routes before GREEN.
-- [ ] 3.4 GREEN: Annotate all 18 owner sites — `validate-owner-invitation.use-case.ts:31,35,39,43`; `accept-owner-invitation.use-case.ts:110,122,140,149,155,159,163,171,175,179,183,187,191,194` — with matching catalog `errorCode`, message unchanged. Rerun 3.1 unchanged; confirm GREEN.
-- [ ] 3.5 REFACTOR: `pnpm --filter @viewpro/api exec vitest run test/public-error-annotations.spec.ts test/errors.e2e-spec.ts test/owner-portal.use-cases.spec.ts && pnpm --filter @viewpro/api typecheck`
-- [ ] 3.6 REFACTOR: Confirm `owner-portal.e2e-spec.ts:640` and `owner-documents.e2e-spec.ts:169` `'Authentication required'` assertions still pass unmodified.
+- [x] 3.1 RED: Append 8 boundary cases to `apps/api/test/public-error-annotations.spec.ts` for `validate-owner-invitation.use-case.ts` and `accept-owner-invitation.use-case.ts` (`INVITATION_ALREADY_MEMBER` not reachable in this flow — omit). `NODE_ENV=production pnpm --filter @viewpro/api exec vitest run test/public-error-annotations.spec.ts`
+- [x] 3.2 RED: Add exhaustiveness guard cases for `validate-owner-invitation.use-case.ts` and `accept-owner-invitation.use-case.ts`.
+- [x] 3.3 Grep the repo confirming no test/consumer binds the legacy `error` field on owner routes before GREEN.
+- [x] 3.4 GREEN: Annotate all 18 owner sites — `validate-owner-invitation.use-case.ts:31,35,39,43`; `accept-owner-invitation.use-case.ts:110,122,140,149,155,159,163,171,175,179,183,187,191,194` — with matching catalog `errorCode`, message unchanged. Rerun 3.1 unchanged; confirm GREEN.
+- [x] 3.5 REFACTOR: `pnpm --filter @viewpro/api exec vitest run test/public-error-annotations.spec.ts test/errors.e2e-spec.ts test/owner-portal.use-cases.spec.ts && pnpm --filter @viewpro/api typecheck`
+- [x] 3.6 REFACTOR: Confirm `owner-portal.e2e-spec.ts:640` and `owner-documents.e2e-spec.ts:169` `'Authentication required'` assertions still pass unmodified.
 
 ## Phase 4: WU-C1 — Invitation Acceptance View Branching
 
