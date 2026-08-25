@@ -107,7 +107,7 @@ export class AcceptOwnerInvitationUseCase {
 				: false;
 
 			if (!user || !validPassword) {
-				throw new UnauthorizedException("Invalid email or password");
+				throw new UnauthorizedException({ errorCode: "INVITATION_INVALID_CREDENTIALS", message: "Invalid email or password" });
 			}
 
 			return this.ownerInvitationsRepository.acceptForExistingOwner({
@@ -119,7 +119,7 @@ export class AcceptOwnerInvitationUseCase {
 
 		if (mode === "current-session") {
 			if (!currentUser) {
-				throw new UnauthorizedException("Authentication required");
+				throw new UnauthorizedException({ errorCode: "SESSION_EXPIRED", message: "Authentication required" });
 			}
 
 			this.assertMatchingEmail(currentUser.email, invitation.email);
@@ -137,7 +137,7 @@ export class AcceptOwnerInvitationUseCase {
 		const invitation = await this.ownerInvitationsRepository.findByTokenHash(tokenHash);
 
 		if (!invitation) {
-			throw new NotFoundException("Owner invitation not found");
+			throw new NotFoundException({ errorCode: "INVITATION_NOT_FOUND", message: "Owner invitation not found" });
 		}
 
 		this.throwForInvitationAvailability(invitation);
@@ -146,21 +146,21 @@ export class AcceptOwnerInvitationUseCase {
 
 	private assertMatchingEmail(userEmail: string, invitationEmail: string) {
 		if (normalizeEmail(userEmail) !== normalizeEmail(invitationEmail)) {
-			throw new ForbiddenException("Owner invitation belongs to another email");
+			throw new ForbiddenException({ errorCode: "INVITATION_EMAIL_MISMATCH", message: "Owner invitation belongs to another email" });
 		}
 	}
 
 	private throwForInvitationAvailability(invitation: OwnerInvitationDetails) {
 		if (invitation.status === OwnerInvitationStatus.ACCEPTED || invitation.acceptedAt) {
-			throw new GoneException("Owner invitation was already accepted");
+			throw new GoneException({ errorCode: "INVITATION_ALREADY_ACCEPTED", message: "Owner invitation was already accepted" });
 		}
 
 		if (invitation.status === OwnerInvitationStatus.REVOKED || invitation.revokedAt) {
-			throw new GoneException("Owner invitation is no longer available");
+			throw new GoneException({ errorCode: "INVITATION_REVOKED", message: "Owner invitation is no longer available" });
 		}
 
 		if (invitation.expiresAt.getTime() <= Date.now()) {
-			throw new GoneException("Owner invitation has expired");
+			throw new GoneException({ errorCode: "INVITATION_EXPIRED", message: "Owner invitation has expired" });
 		}
 	}
 
@@ -168,30 +168,30 @@ export class AcceptOwnerInvitationUseCase {
 		result: Exclude<AcceptOwnerInvitationResult, { status: "accepted" }>,
 	): never {
 		if (result.status === "notFound") {
-			throw new NotFoundException("Owner invitation not found");
+			throw new NotFoundException({ errorCode: "INVITATION_NOT_FOUND", message: "Owner invitation not found" });
 		}
 
 		if (result.status === "expired") {
-			throw new GoneException("Owner invitation has expired");
+			throw new GoneException({ errorCode: "INVITATION_EXPIRED", message: "Owner invitation has expired" });
 		}
 
 		if (result.status === "revoked") {
-			throw new GoneException("Owner invitation is no longer available");
+			throw new GoneException({ errorCode: "INVITATION_REVOKED", message: "Owner invitation is no longer available" });
 		}
 
 		if (result.status === "alreadyAccepted") {
-			throw new GoneException("Owner invitation was already accepted");
+			throw new GoneException({ errorCode: "INVITATION_ALREADY_ACCEPTED", message: "Owner invitation was already accepted" });
 		}
 
 		if (result.status === "userAlreadyExists") {
-			throw new ConflictException("Owner email is already registered");
+			throw new ConflictException({ errorCode: "INVITATION_EMAIL_ALREADY_REGISTERED", message: "Owner email is already registered" });
 		}
 
 		if (result.status === "emailMismatch") {
-			throw new ForbiddenException("Owner invitation belongs to another email");
+			throw new ForbiddenException({ errorCode: "INVITATION_EMAIL_MISMATCH", message: "Owner invitation belongs to another email" });
 		}
 
-		throw new UnauthorizedException("Authentication required");
+		throw new UnauthorizedException({ errorCode: "SESSION_EXPIRED", message: "Authentication required" });
 	}
 
 	private async createSession(

@@ -74,3 +74,42 @@ Revert `apps/api/src/team/use-cases/validate-team-invitation.use-case.ts`, `apps
 
 ## Remaining
 Phases 3-6 pending.
+
+---
+
+# WU-B2 Batch (Phase 3 — Owner Invitation Annotations)
+
+## Status and Identity
+Phase 3 (WU-B2) complete in Strict TDD mode, tasks 3.1-3.6. Independent of WU-B1 per delivery order; builds on WU-A's merged catalog.
+
+## Completed Tasks
+- [x] 3.1-3.2 RED: 8 boundary cases (one per distinct state→code pair) and 2 per-file exhaustiveness guards appended to `public-error-annotations.spec.ts`.
+- [x] 3.3 Pre-GREEN grep: no test/consumer binds the legacy `error` field on owner routes.
+- [x] 3.4 GREEN: all 18 sites annotated inline per ADR-1 (4 in `validate-owner-invitation.use-case.ts`, 14 in `accept-owner-invitation.use-case.ts`), every message string byte-identical (verified by `git diff` against `fix/actionable-auth-errors-wu-b1`, message-only lines unchanged).
+- [x] 3.5-3.6 REFACTOR: focused matrix green, typecheck clean, both `'Authentication required'` message-text sites (`owner-portal.e2e-spec.ts:640`, `owner-documents.e2e-spec.ts:169`) confirmed unchanged.
+
+## Strict TDD Cycle Evidence
+
+| Step | Command | Result |
+|---|---|---|
+| Safety net | `NODE_ENV=production pnpm --filter @viewpro/api exec vitest run test/public-error-annotations.spec.ts` | 23/23 before edits (WU-A+B1 baseline) |
+| RED | same command | exit 1; **10 failed, 23 passed** — 8 boundary cases missing `errorCode`, 2 exhaustiveness guards showing throw-count vs `errorCode:`-count mismatch |
+| GREEN | same command | **33/33** |
+| REFACTOR | `test/public-error-annotations.spec.ts test/errors.e2e-spec.ts test/owner-portal.use-cases.spec.ts` + `pnpm --filter @viewpro/api typecheck` | **99/99**, typecheck clean |
+| Extra regression (owner e2e, not in prescribed command, run for safety) | `test/owner-portal.e2e-spec.ts test/owner-documents.e2e-spec.ts test/owner-invitations.e2e-spec.ts` | **32/32** |
+| WU-A/B1 regression matrix (unaffected files, run for safety) | `test/public-error-annotations.spec.ts test/errors.e2e-spec.ts test/auth.use-cases.spec.ts test/team-invitations.use-cases.spec.ts` | **99/99** |
+
+## Work Unit Evidence
+- Runtime harness: same hermetic `new GlobalExceptionFilter('production', undefined, {})` + `ArgumentsHost` as WU-A/B1 (ADR-2); no live app needed for the boundary spec. `errors.e2e-spec.ts`, `owner-portal.use-cases.spec.ts`, and the three owner e2e suites required Docker (both Postgres containers were already healthy at batch start — no environmental blockers).
+- Message preservation: all 18 throw sites keep their original string byte-identical, now nested at `message:` inside the object literal — confirmed by a targeted `git diff` against `fix/actionable-auth-errors-wu-b1` showing only the exception-construction shape changed, not any message text.
+- WU-B2 count: **196 additions + 18 deletions = 214 changed lines**, 186 under the 400-line budget (forecast was 100-160; slightly above due to the 178-line test-file addition, consistent with WU-B1's pattern of the boundary-spec block outweighing the mechanical production-file edits).
+
+## Deviations and Issues
+- **Vitest deep-equality shape issue (from WU-B1) did not recur.** No `apps/api/test/owner-invitations.use-cases.spec.ts` exists, and a repository-wide grep found zero references to `AcceptOwnerInvitationUseCase`/`ValidateOwnerInvitationUseCase` combined with `.rejects.toThrow(new ...)` in any test file. The only other `.rejects.toThrow(new XException(...))` uses in owner-adjacent files (`owner-portal.use-cases.spec.ts`, `owner-documents.use-cases.spec.ts`) target unrelated use cases this change never touches, so no test-expectation edits were needed this batch.
+- Task 3.1's own text says "8 boundary cases" and the implementation matches exactly (4 validate-state pairs + 4 accept-only pairs: `INVITATION_EMAIL_MISMATCH`, `INVITATION_INVALID_CREDENTIALS`, `SESSION_EXPIRED`, `INVITATION_EMAIL_ALREADY_REGISTERED`), no correction needed.
+
+## Rollback Boundary
+Revert `apps/api/src/owner-invitations/use-cases/validate-owner-invitation.use-case.ts`, `apps/api/src/owner-invitations/use-cases/accept-owner-invitation.use-case.ts`, and the WU-B2 blocks in `apps/api/test/public-error-annotations.spec.ts`. Independent of WU-B1. Must revert before WU-A (catalog).
+
+## Remaining
+Phases 4-6 pending. No user-visible behavior changes until the view slices C1 and C2 ship; WU-A/B1/B2 only make the codes available on the wire.
