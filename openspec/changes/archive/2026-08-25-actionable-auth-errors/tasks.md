@@ -78,8 +78,10 @@ No single work unit is projected to exceed the 400-line budget. C1 is the only M
 - [x] 5.3 GREEN: In `verify-email-view.tsx:36` and `reset-password-view.tsx:51`, branch on `errorCode === 'AUTH_TOKEN_INVALID'` before the `getApiErrorMessage(error)` fallback, each rendering its own flow-specific copy. Rerun 5.2 unchanged; confirm GREEN.
 - [x] 5.4 REFACTOR: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/auth src/lib/api-client.test.ts && pnpm --filter next-shadcn-dashboard-starter typecheck`
 
-## Phase 6: Archive-time note (executed by `sdd-archive`, not by this apply)
+## Archive-time reconciliation (not an implementation task)
 
-- [ ] 6.1 Edit `openspec/specs/safe-public-error-boundary/spec.md`'s trailing `## Explicit scope` sentence, removing "actionable codes; invitation/session/credential behavior;" and leaving the remaining deferrals intact, per the delta's mandatory reconciliation note.
+`sdd-archive` must edit the parent spec's trailing `## Explicit scope` sentence during the merge, removing "actionable codes; invitation/session/credential behavior;" and leaving the remaining deferrals intact. That sentence sits outside every `### Requirement:` block, so delta mechanics cannot reach it, and the merged spec would otherwise contradict its own requirements.
+
+This is recorded as a mandatory section in `specs/safe-public-error-boundary/spec.md`, which is where archive reads it. It is deliberately **not** a checklist item: apply can never complete it, so an unticked task here would block `verify` permanently.
 
 Deferred / out of scope: `login.use-case.ts:35` and `register-tenant.use-case.ts:52` stay vague (enumeration protection); the register-tenant 409 existence leak is a documented residual; staff RBAC `Insufficient permissions` and ordinary 400 DTO validation outside the two token-state sites; staff-side team invitation lifecycle (`create:51`, `resend:44,48`, `revoke:26,30`, 5 sites, no consumer in scope); the wider App New dead-branch class (issue #374); `apps/viewpro-api`/`apps/viewpro-web` (separate bounded context, issue #372 not a dependency); the `throwForInvitationState` dedup refactor (ADR-1 follow-up); a per-token rate limiter closing the `AuthThrottlerGuard` `ip:path:email` residual.
