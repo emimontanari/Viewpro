@@ -4,16 +4,18 @@
 
 | Field | Value |
 |---|---|
-| Estimated changed lines | Exact WU3 total 837: L147/190, T204/250, R242/290, Q244/270; Contracts 593 |
-| Split / delivery | PR1 L → PR2 T → PR3 R → PR4 Q; reviewed→refreshed `develop`; ask-always; approved; `sequential-to-develop`; no exception |
-Decision needed before apply: No
-Chained PRs recommended: Yes
-Chain strategy: stacked-to-main (non-operational token)
-400-line budget risk: High
+| Evidence budget | Semantic implementation ≤200 lines; fixed evidence allowance ≤20 lines; total semantic attempt cap 220; full PR review budget 400 |
+| Delivery | Sequential independent WU PRs; dependency order Lineage → Tree/Byte → Release → Qualification |
 
-`L: node --test scripts/production-cutover/lineage-contract.spec.mjs; isolated/no-network; rollback none` → `T: node --test scripts/production-cutover/tree-evidence-contract.spec.mjs; isolated/no-network; rollback T then L` → `R: node --test scripts/production-cutover/release-contract.spec.mjs; isolated/no-network; rollback R then T then L` → `Q: node --test scripts/production-cutover/candidate.spec.mjs; disposable local audit only; rollback Q/CI then R/T/L`.
+## Shared Execution Contract
 
-External WU3 only; 2.1–2.4 internal, never `WU3a`. Caps count add+del/tests/progress; Strict-TDD safety→RED→GREEN→triangulation; deterministic isolated/no-network; diff/status, complete tracked+untracked add+del accounting, package/lock/no-authority scans, fresh-reviews. Pure contracts accept plain Object/null own-key records; reject inherited/custom/prototype authority keys. Native acquire needs authority+reviewed predecessor merge/refreshed `develop`; settle own reviewed evidence. Pure slices lack repo/Git/process/CLI/CI/provider/final-WU3 authority; planning grants none. Rollback Q/CI→R/T/L re-blocks WU4.
+Authorities: proposal/spec/design own requirements; `tasks.md` owns planned work and completion; progress/native ledger own execution history; exact commit, PR/CI, and human review own delivery evidence.
+
+Terminal sequence: freeze scope, scenarios, reviews, budgets, and rollback → strict RED–GREEN–REFACTOR → run every frozen review before settlement → at most one consolidated correction → settle → commit the exact unchanged tree → CI and human review own delivery. A second independent blocking class returns to planning with no further mutation-review loop.
+
+Drift routing: no owned-path or semantic-dependency overlap means no native rebaseline; docs-only overlap means reconcile text/readability; spec/code/test/policy or semantic-dependency overlap means fresh bounded semantic evidence; conflict or unclear impact goes to a maintainer.
+
+Upstream-only paths: `BASE=$(git merge-base origin/develop HEAD)` then `git diff --name-only "$BASE"..origin/develop`. Authored committed PR scope: `BASE=$(git merge-base origin/develop HEAD)` then `git diff "$BASE"...HEAD`.
 
 ## Phase 1: Foundation
 
@@ -23,7 +25,7 @@ External WU3 only; 2.1–2.4 internal, never `WU3a`. Caps count add+del/tests/pr
 ## Phase 2: WU3 Sequential Contracts
 
 - [x] 2.1 **WU3-Lineage-Contracts (147/190):** WU2 reviewed merge→refreshed `develop`; own `viewpro-app/scripts/production-cutover/{candidate.v1.json,lineage-contract.mjs,lineage-contract.spec.mjs}`; `main@868dc70` + #331/#333/#334/#335/#336, WU1 `faf870ab0a29e6a271b7391776fc2f9cf25c12ac`, WU2 `d53a57c04f34efd20fc825aff5c03115c9c6c99f`, exclusions `#338/#341/#344/#351/#314`, ordered/recursive closure, final≠prefix. RED-CUT-01 first: arbitrary/retargeted/duplicate/reordered/unknown/drift/prototype/authority-key; `node --test scripts/production-cutover/lineage-contract.spec.mjs`. No tree/evidence/release/repo audit/WU3 identity.
-- [ ] 2.2 **WU3-Tree-Evidence-Contracts (204/250):** 2.1 reviewed merge→refreshed `develop`; own `viewpro-app/scripts/production-cutover/{final-tree.v1.json,tree-evidence-contract.mjs,tree-evidence-contract.spec.mjs}`; byte/UTF-8/NUL/type/hash/path, default `100644 blob`, exceptions `.githooks/pre-push` `100755:d8016a819c234d99c5e8b627e34e1349695b3a44`, tanstack-form `120000:d12d02091264079b6e212b88678e90f9651ec6e7`, tanstack-query `120000:a1aae1817a41407e92a0c2038623bdf7c146c4fd`, recursive evidence. RED-CUT-03 first: duplicate/missing/changed, executable/symlink/submodule, control/disguised, malformed/nested; `node --test scripts/production-cutover/tree-evidence-contract.spec.mjs`. No lineage/repo audit.
+- [x] 2.2 **WU3-Tree/Byte Contracts:** After 2.1, own exactly `viewpro-app/scripts/production-cutover/{final-tree.v1.json,tree-byte-contract.mjs,tree-byte-contract.spec.mjs}` and the Tree/Byte delta specification; preserve exact policy bytes, closed JSON, fatal UTF-8, canonical paths/hashes, deterministic isolation, and explicit non-authority. Behavior command: `node --test scripts/production-cutover/tree-byte-contract.spec.mjs`.
 - [ ] 2.3 **WU3-Release-Contracts (242/290):** 2.2 reviewed merge→refreshed `develop`; own `viewpro-app/scripts/production-cutover/{release-contract.mjs,release-contract.spec.mjs,release-manifest.v1.schema.json,release-manifest.v1.template.json}`; recursive WU1/WU2 remediation, seven-WU schema/cross-fields, unpopulated template. RED-CUT-01/03 first: remediation/patch/order/prefix-final/unknown/malformed/populated-template; `node --test scripts/production-cutover/release-contract.spec.mjs`. Final reviewed closure solely remediates negative attempt-8 candidate `sha256:4f2ba1c39662dc5136829e63e87f5d848af1f7975f9039482b02824df61940ce`; no final WU3 authority.
 - [ ] 2.4 **WU3-Qualification (244/270):** Three reviewed merges→refreshed `develop`; own `viewpro-app/scripts/production-cutover/{candidate.mjs,candidate.spec.mjs}`; add direct-Node CI in `.github/workflows/ci.yml`; RED-CUT-02/04 first: `node --test scripts/production-cutover/candidate.spec.mjs`; canonical root/detached exact commit/tree, ordered identities/exclusions, tracked blobs, local audit, bounded spawn/nonzero/signal/timeout/output, TERM→KILL→confirmed-close/drain. Solely remediates `sha256:e21a67d37149bf785b187343082475e23435ce8489378c659705942901edcedf` and binds one aggregate WU3 identity; no provider/promotion authority.
 - [ ] 2.5 **WU4 (330–350):** Blocked until four reviewed merges/final Qualification closure; implement receipts/checkpoints, JCS redaction, fail-closed RED-CUT-05–07.
