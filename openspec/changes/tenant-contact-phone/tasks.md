@@ -33,9 +33,9 @@ No single unit is forecast to exceed 400 lines; WU4 (185–260, 140-line headroo
 
 ## Phase 1: WU1 — Catalog Growth to 28 Codes
 
-- [ ] 1.1 RED: In `packages/contracts/test/runtime-contract.spec.ts`, add `phoneContactPublicErrorCodes` and fold it into `expectedPublicErrorCodes`; add `expect(contract.codes).toHaveLength(28)`. `pnpm --filter @viewpro/contracts test`
-- [ ] 1.2 GREEN: Append `phone.required`, `phone.invalid`, `phone.country_unsupported` after `'AUTH_TOKEN_INVALID'` in `packages/contracts/src/index.ts`. Rerun 1.1's command unchanged; confirm GREEN.
-- [ ] 1.3 REFACTOR: `pnpm --filter @viewpro/contracts test && pnpm --filter @viewpro/contracts typecheck && pnpm --filter @viewpro/api typecheck`
+- [x] 1.1 RED: In `packages/contracts/test/runtime-contract.spec.ts`, add `phoneContactPublicErrorCodes` and fold it into `expectedPublicErrorCodes`; add `expect(contract.codes).toHaveLength(28)`. `pnpm --filter @viewpro/contracts test`
+- [x] 1.2 GREEN: Append `phone.required`, `phone.invalid`, `phone.country_unsupported` after `'AUTH_TOKEN_INVALID'` in `packages/contracts/src/index.ts`. Rerun 1.1's command unchanged; confirm GREEN.
+- [x] 1.3 REFACTOR: `pnpm --filter @viewpro/contracts test && pnpm --filter @viewpro/contracts typecheck && pnpm --filter @viewpro/api typecheck`
 
 ## Phase 2: WU2a — AR Contact Phone Parser Module
 
