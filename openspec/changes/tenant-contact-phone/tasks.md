@@ -39,9 +39,9 @@ No single unit is forecast to exceed 400 lines; WU4 (185–260, 140-line headroo
 
 ## Phase 2: WU2a — AR Contact Phone Parser Module
 
-- [ ] 2.1 RED: Create `apps/api/src/common/phone/ar-contact-phone.spec.ts` against the not-yet-existing module: the full four-verdict matrix (required ×4, invalid ×4, unsupported ×3, ok ×5 including legacy `3510000000`). `pnpm --filter @viewpro/api exec vitest run src/common/phone/ar-contact-phone.spec.ts`
-- [ ] 2.2 GREEN: Add `libphonenumber-js` (default/min entry) to `apps/api/package.json` dependencies, `pnpm install`; create `apps/api/src/common/phone/ar-contact-phone.ts` implementing `parseArContactPhone(input: unknown)` per ADR-1's four-step ordered verdict. Rerun 2.1's command unchanged; confirm GREEN.
-- [ ] 2.3 REFACTOR: `pnpm --filter @viewpro/api exec vitest run src/common/phone src/common/whatsapp && pnpm --filter @viewpro/api typecheck` (the `whatsapp` leg proves the sibling module was added without disturbing `whatsapp-phone.utils.ts`).
+- [x] 2.1 RED: Create `apps/api/src/common/phone/ar-contact-phone.spec.ts` against the not-yet-existing module: the full four-verdict matrix (required ×5, invalid ×4, unsupported ×3, ok ×5 including legacy `3510000000`). `pnpm --filter @viewpro/api exec vitest run src/common/phone/ar-contact-phone.spec.ts`
+- [x] 2.2 GREEN: Add `libphonenumber-js` (default/min entry) to `apps/api/package.json` dependencies, `pnpm install`; create `apps/api/src/common/phone/ar-contact-phone.ts` implementing `parseArContactPhone(input: unknown)` per ADR-1's four-step ordered verdict. Rerun 2.1's command unchanged; confirm GREEN.
+- [x] 2.3 REFACTOR: `pnpm --filter @viewpro/api exec vitest run src/common/phone src/common/whatsapp && pnpm --filter @viewpro/api typecheck` (the `whatsapp` leg proves the sibling module was added without disturbing `whatsapp-phone.utils.ts`).
 
 ## Phase 3: WU2b — Registration Wiring and Fixtures
 
