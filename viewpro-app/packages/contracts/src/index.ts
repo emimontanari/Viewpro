@@ -28,6 +28,9 @@ export const PUBLIC_ERROR_CODES = [
   'TENANT_USER_LIMIT_EXCEEDED',
   'INVITATION_INVALID_CREDENTIALS',
   'AUTH_TOKEN_INVALID',
+  'phone.required',
+  'phone.invalid',
+  'phone.country_unsupported',
 ] as const
 
 export type PublicErrorCode = (typeof PUBLIC_ERROR_CODES)[number]

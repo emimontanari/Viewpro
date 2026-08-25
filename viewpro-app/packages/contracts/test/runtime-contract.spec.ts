@@ -22,9 +22,9 @@ const establishedPublicErrorCodes = [
   'STATUS_CHANGE_REQUEST_ALREADY_PENDING',
 ] as const
 
-const frozenPublicErrorCodes = [...establishedPublicErrorCodes, 'REQUEST_FAILED'] as const
-
-const appendedPublicErrorCodes = [
+const frozenPublicErrorCodes = [
+  ...establishedPublicErrorCodes,
+  'REQUEST_FAILED',
   'SESSION_EXPIRED',
   'INVITATION_NOT_FOUND',
   'INVITATION_EXPIRED',
@@ -38,7 +38,16 @@ const appendedPublicErrorCodes = [
   'AUTH_TOKEN_INVALID',
 ] as const
 
-const expectedPublicErrorCodes = [...frozenPublicErrorCodes, ...appendedPublicErrorCodes] as const
+const phoneContactPublicErrorCodes = [
+  'phone.required',
+  'phone.invalid',
+  'phone.country_unsupported',
+] as const
+
+const expectedPublicErrorCodes = [
+  ...frozenPublicErrorCodes,
+  ...phoneContactPublicErrorCodes,
+] as const
 
 function runNode(args: string[]) {
   return execFileSync(process.execPath, args, {
@@ -87,6 +96,7 @@ describe('@viewpro/contracts runtime contract', () => {
     }
 
     expect(contract.codes).toEqual(expectedPublicErrorCodes)
+    expect(contract.codes).toHaveLength(28)
     expect(contract.codes.slice(0, frozenPublicErrorCodes.length)).toEqual(
       frozenPublicErrorCodes,
     )
