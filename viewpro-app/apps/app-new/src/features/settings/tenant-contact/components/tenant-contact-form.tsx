@@ -1,6 +1,7 @@
 'use client'
 
 import { toast } from 'sonner'
+import type { PublicErrorCode } from '@viewpro/contracts'
 import { useAppForm, useFormFields } from '@/components/ui/tanstack-form'
 import { normalizePhone, tenantWhatsappPhoneSchema } from '@/features/settings/schemas/tenant-whatsapp-phone'
 import { useUpdateTenantWhatsappPhone } from '../api/queries'
@@ -11,6 +12,24 @@ type FormValues = {
 
 type TenantContactFormProps = {
   defaultPhone: string | null
+}
+
+// The client never parses or validates phone shape/country — only presence.
+// Validity and the AR-only rule are decided exclusively by the server, which
+// answers with one of these three codes, the same ones registration uses
+// (design.md ADR-2, ADR-6).
+const PHONE_ERROR_MESSAGES: Partial<Record<PublicErrorCode, string>> = {
+  'phone.required': 'Ingresá el teléfono de contacto de la inmobiliaria.',
+  'phone.invalid': 'Ese teléfono no es válido. Revisá el número e intentá de nuevo.',
+  'phone.country_unsupported': 'Por ahora solo aceptamos teléfonos de Argentina.'
+}
+
+function getPhoneErrorMessage(error: unknown): string | null {
+  if (!error || typeof error !== 'object' || !('errorCode' in error)) {
+    return null
+  }
+  const { errorCode } = error as { errorCode: string | null }
+  return errorCode ? (PHONE_ERROR_MESSAGES[errorCode as PublicErrorCode] ?? null) : null
 }
 
 export function TenantContactForm({ defaultPhone }: TenantContactFormProps) {
@@ -25,16 +44,15 @@ export function TenantContactForm({ defaultPhone }: TenantContactFormProps) {
       onSubmit: tenantWhatsappPhoneSchema
     },
     onSubmit: async ({ value }) => {
+      // Trimmed raw value only — no local reshaping. The server's
+      // parseArContactPhone output (canonical E.164) is the only
+      // canonical form (design.md ADR-6).
       const normalized = normalizePhone(value.whatsappPhone)
       try {
         await mutation.mutateAsync({ whatsappPhone: normalized })
         toast.success('Teléfono actualizado')
       } catch (error) {
-        const errorCode =
-          error && typeof error === 'object' && 'errorCode' in error
-            ? (error as { errorCode: string }).errorCode
-            : null
-        toast.error(errorCode ? `Error: ${errorCode}` : 'No se pudo actualizar el teléfono.')
+        toast.error(getPhoneErrorMessage(error) ?? 'No se pudo actualizar el teléfono.')
       }
     }
   })

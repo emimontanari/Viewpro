@@ -2,6 +2,16 @@ import { bffFetch, proxyBffErrorResponse, proxyJsonResponse } from '@/lib/bff-ap
 import { type NextRequest, NextResponse } from 'next/server';
 import * as z from 'zod';
 
+/**
+ * Transport shape only — deliberately permissive (#287 WU4, design.md
+ * ADR-6). The phone is mandatory now and `null` is rejected, but that rule
+ * is enforced exclusively by the API use case via `parseArContactPhone`,
+ * which answers with `phone.required` / `phone.invalid` /
+ * `phone.country_unsupported`. Tightening this schema to `z.string()` would
+ * make this route 400 locally with no `errorCode`, swallowing
+ * `phone.required` before it ever reaches the API — a third rule on one
+ * column, exactly what ADR-6 exists to prevent.
+ */
 const updateWhatsappPhoneSchema = z.object({
   whatsappPhone: z.string().nullable()
 });

@@ -73,9 +73,50 @@ describe('TenantContactForm', () => {
     })
   })
 
-  // CT-4 (S-11): submitting a too-short value blocks the mutation
-  it('shows a validation error and does not call the mutation when the phone is too short', async () => {
+  // CT-4 (S-11, INVERTED): the field is now mandatory (#287 WU4, ADR-6) — an
+  // empty submission is rejected client-side and never reaches the mutation.
+  // The old too-short digit-count check is gone: only the server decides
+  // validity/country now, via parseArContactPhone.
+  it('shows a required-phone validation error and does not call the mutation when the field is empty', async () => {
     const user = userEvent.setup()
+
+    renderForm(null)
+
+    const input = screen.getByRole('textbox', { name: /teléfono/i })
+    await user.clear(input)
+    await user.click(screen.getByRole('button', { name: /guardar/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Ingresá el teléfono de contacto de la inmobiliaria.')).toBeVisible()
+    })
+    expect(updateMock).not.toHaveBeenCalled()
+  })
+
+  // CT-5 (INVERTED): clearing the field used to be a valid way to null out
+  // the stored phone. It is mandatory now, so clearing and submitting must
+  // be blocked the same way CT-4 blocks a never-filled field.
+  it('shows a required-phone validation error and does not call the mutation when the field is cleared', async () => {
+    const user = userEvent.setup()
+
+    renderForm('+5493510000000')
+
+    const input = screen.getByRole('textbox', { name: /teléfono/i })
+    await user.clear(input)
+    await user.click(screen.getByRole('button', { name: /guardar/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Ingresá el teléfono de contacto de la inmobiliaria.')).toBeVisible()
+    })
+    expect(updateMock).not.toHaveBeenCalled()
+  })
+
+  // A non-empty value that looks invalid is NOT rejected client-side — the
+  // client only guards presence; validity and country are the server's job
+  // (design.md ADR-2/ADR-6). The mutation is called and the server's code
+  // surfaces through the error toast, covered below.
+  it('calls the mutation with a non-empty value even when it looks invalid, deferring to the server', async () => {
+    const user = userEvent.setup()
+    updateMock.mockResolvedValueOnce(undefined)
 
     renderForm(null)
 
@@ -85,24 +126,7 @@ describe('TenantContactForm', () => {
     await user.click(screen.getByRole('button', { name: /guardar/i }))
 
     await waitFor(() => {
-      expect(screen.getByText(/phone\.too_short/i)).toBeVisible()
-    })
-    expect(updateMock).not.toHaveBeenCalled()
-  })
-
-  // CT-5: clearing the field and submitting calls the mutation with null
-  it('calls the mutation with null when the input is cleared and submitted', async () => {
-    const user = userEvent.setup()
-    updateMock.mockResolvedValueOnce(undefined)
-
-    renderForm('+5493510000000')
-
-    const input = screen.getByRole('textbox', { name: /teléfono/i })
-    await user.clear(input)
-    await user.click(screen.getByRole('button', { name: /guardar/i }))
-
-    await waitFor(() => {
-      expect(updateMock).toHaveBeenCalledWith({ whatsappPhone: null })
+      expect(updateMock).toHaveBeenCalledWith({ whatsappPhone: '123' })
     })
   })
 
@@ -123,21 +147,46 @@ describe('TenantContactForm', () => {
     })
   })
 
-  it('shows an error toast with the errorCode when the mutation fails', async () => {
+  // INVERTED: `phone.too_short` no longer exists on this path; the server
+  // now answers with one of the three real codes shared with registration
+  // (design.md ADR-6), and the client shows the matching real message
+  // instead of the raw `Error: ${errorCode}` string.
+  it('shows the real message for phone.invalid when the server rejects the mutation', async () => {
     const user = userEvent.setup()
-    const error = Object.assign(new Error('Demasiado corto'), { errorCode: 'phone.too_short' })
+    const error = Object.assign(new Error('Invalid request payload'), { errorCode: 'phone.invalid' })
     updateMock.mockRejectedValueOnce(error)
 
     renderForm(null)
 
     const input = screen.getByRole('textbox', { name: /teléfono/i })
     await user.clear(input)
-    await user.type(input, '+5493510000001')
+    await user.type(input, '123')
     await user.click(screen.getByRole('button', { name: /guardar/i }))
 
     await waitFor(() => {
       expect(toastMock.error).toHaveBeenCalledWith(
-        expect.stringContaining('phone.too_short')
+        'Ese teléfono no es válido. Revisá el número e intentá de nuevo.'
+      )
+    })
+  })
+
+  it('shows the real message for phone.country_unsupported when the server rejects the mutation', async () => {
+    const user = userEvent.setup()
+    const error = Object.assign(new Error('Invalid request payload'), {
+      errorCode: 'phone.country_unsupported'
+    })
+    updateMock.mockRejectedValueOnce(error)
+
+    renderForm(null)
+
+    const input = screen.getByRole('textbox', { name: /teléfono/i })
+    await user.clear(input)
+    await user.type(input, '+56912345678')
+    await user.click(screen.getByRole('button', { name: /guardar/i }))
+
+    await waitFor(() => {
+      expect(toastMock.error).toHaveBeenCalledWith(
+        'Por ahora solo aceptamos teléfonos de Argentina.'
       )
     })
   })

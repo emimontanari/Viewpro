@@ -16,6 +16,7 @@ import { ValidateOwnerInvitationUseCase } from '../src/owner-invitations/use-cas
 import { AcceptTeamInvitationUseCase } from '../src/team/use-cases/accept-team-invitation.use-case'
 import { ValidateTeamInvitationUseCase } from '../src/team/use-cases/validate-team-invitation.use-case'
 import { RegisterTenantUseCase } from '../src/auth/use-cases/register-tenant.use-case'
+import { UpdateTenantWhatsappPhoneUseCase } from '../src/tenants/use-cases/update-tenant-whatsapp-phone.use-case'
 
 const apiRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -640,6 +641,52 @@ describe('Public error annotations — production emission boundary (WU2b)', () 
 
     const thrown = await throwFrom(() =>
       useCase.execute({ ...registerTenantBaseDto, whatsappPhone: '+56912345678' } as never),
+    )
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'phone.country_unsupported',
+      message: 'Invalid request payload',
+    })
+  })
+})
+
+/**
+ * Minimal deps for UpdateTenantWhatsappPhoneUseCase (WU4). `parseArContactPhone`
+ * runs before any repository call, so the repository mock never needs to
+ * resolve meaningfully for these three rejection cases.
+ */
+function createUpdateTenantWhatsappPhoneUseCase() {
+  return new UpdateTenantWhatsappPhoneUseCase({ updateWhatsappPhone: vi.fn() } as never)
+}
+
+describe('Public error annotations — production emission boundary (WU4)', () => {
+  it('UpdateTenantWhatsappPhoneUseCase rejects null as phone.required', async () => {
+    const useCase = createUpdateTenantWhatsappPhoneUseCase()
+
+    const thrown = await throwFrom(() => useCase.execute({ tenantId: 'tenant-1', whatsappPhone: null }))
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'phone.required',
+      message: 'Invalid request payload',
+    })
+  })
+
+  it('UpdateTenantWhatsappPhoneUseCase rejects an unparseable phone as phone.invalid', async () => {
+    const useCase = createUpdateTenantWhatsappPhoneUseCase()
+
+    const thrown = await throwFrom(() => useCase.execute({ tenantId: 'tenant-1', whatsappPhone: '123' }))
+
+    expect(catchThroughProductionFilter(thrown)).toMatchObject({
+      errorCode: 'phone.invalid',
+      message: 'Invalid request payload',
+    })
+  })
+
+  it('UpdateTenantWhatsappPhoneUseCase rejects a valid non-AR phone as phone.country_unsupported', async () => {
+    const useCase = createUpdateTenantWhatsappPhoneUseCase()
+
+    const thrown = await throwFrom(() =>
+      useCase.execute({ tenantId: 'tenant-1', whatsappPhone: '+56912345678' }),
     )
 
     expect(catchThroughProductionFilter(thrown)).toMatchObject({
