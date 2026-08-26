@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "production-cutover-release-manifest.v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "status", "authority", "prefix", "workUnits", "final", "closure", "remediation"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "production-cutover-release-manifest" },
+    "status": { "const": "unpopulated-template" }, "authority": { "const": "external-only" },
+    "prefix": { "const": null },
+    "workUnits": { "const": [] },
+    "final": { "const": null }, "closure": { "const": null },
+    "remediation": { "const": null }
+  }
+}

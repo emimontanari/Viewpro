@@ -2,8 +2,8 @@
 
 ## Cumulative Status
 
-- Tasks: **4/18 complete** — WU1, WU2, 2.1 Lineage, and 2.2 Tree/Byte; later work remains pending.
-- Native state has no active attempt. This ledger records semantic execution history; exact commit, PR/CI, and human review own delivery evidence.
+- Tasks: **5/18 complete** — WU1, WU2, 2.1 Lineage, 2.2 Tree/Byte, and 2.3 Release; later work remains pending.
+- Attempt 17 is active after factual acquisition; this correction is un-settled and terminal status remains exclusively in the native ledger.
 
 ## Preserved Attempt and Reset History
 
@@ -15,10 +15,7 @@
 
 ## Attempt 13 — WU3-Lineage-Contracts Terminal Passed
 
-- Attempt 13 passed; task 2.1 remains complete and its history is immutable.
-- Acquire request/token: `wu3-lineage-proxy-correction-acquire-20260824` / `sha256:080c0ca442658060b164fbdfb674141b6c834905d97b4cf27b42620cf96fa272`; settlement evidence: `sha256:1f254d8ae54a505fe8b4eda2f2f09ee89ce8ebb988ff877f08359c3501587874`.
-- Candidate evidence digest: `sha256:1f254d8ae54a505fe8b4eda2f2f09ee89ce8ebb988ff877f08359c3501587874`; SHA-256 uses `c343ddee267ced73349c0405dadbae242a3ac212` plus NUL then five lexicographic UTF-8 path/NUL/bytes/NUL records, replacing only this token with `<self>` before hashing.
-- Exact scope: `candidate.v1.json`, `lineage-contract.mjs`, `lineage-contract.spec.mjs`, `tasks.md`, and this receipt; frozen local `node:util` `types.isProxy` guards before reflection/reads, and `dense()` reads its local length only after that rejection.
+- Attempt 13 terminal evidence remains in the native ledger; task 2.1 stays complete with its immutable Lineage scope and proxy guard history.
 
 ### TDD Cycle Evidence
 
@@ -38,4 +35,10 @@
 
 ## Tree/Byte Execution History
 
-Attempt 14 failed and reset. Attempt 15 terminally passed with evidence `sha256:8764521cb22aab2f1d1e52fc99db33a21b697cc27a4058f39fd91473b71edd5b`; its settled blobs are present here as `final-tree.v1.json` `f6f55cf0ae989fb56b8afd19e4bff5d7d5f637c3`, `tree-byte-contract.mjs` `a47bee91eb68d277edbf5aab95fc60d4a3ff7c05`, and `tree-byte-contract.spec.mjs` `8c287d94194658a21df22708a56e64594623b7f5`. Attempt 16 was interrupted and administratively reset because non-overlapping upstream drift did not require semantic rebaseline; no Attempt 17 was created.
+Attempt 14 failed and reset. Attempt 15 terminally passed with evidence `sha256:8764521cb22aab2f1d1e52fc99db33a21b697cc27a4058f39fd91473b71edd5b`; its settled blobs are present here as `final-tree.v1.json` `f6f55cf0ae989fb56b8afd19e4bff5d7d5f637c3`, `tree-byte-contract.mjs` `a47bee91eb68d277edbf5aab95fc60d4a3ff7c05`, and `tree-byte-contract.spec.mjs` `8c287d94194658a21df22708a56e64594623b7f5`. Attempt 16 was interrupted and reset; Attempt 17 was acquired for the Release correction and remains active without a settlement claim.
+## WU3 Release Contracts — Task 2.3 Correction
+- Task 2.3 remains `[x]`; 5/18 tasks are complete. This seven-path ≤220/400 candidate corrects prefixed final/closure consistency, proxy rejection, captured dispatch, and explicit denials without design deviation.
+| TDD Cycle Evidence | Safety | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|
+| 2.3 correction | 5/5 | prefixed valid contract: false≠true | 6/6 | root/nested transparent and revoked proxies; poisoned parse/regex/every; prefix/closure/authority cases | 6/6 |
+- Focused `node --test scripts/production-cutover/release-contract.spec.mjs`: 6/6 passed; JSON, hostile probes, path, package/lock, diff, scope, process, and non-authority audits passed before parent validation. Native status consumed: apply ready, repo-local root allowed, no warnings. Remaining work is the 13 unchecked rows in `tasks.md`; parent owns validation and settlement.
