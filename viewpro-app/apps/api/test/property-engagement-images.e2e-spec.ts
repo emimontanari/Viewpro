@@ -26,7 +26,7 @@ describe('Property engagement images (e2e)', () => {
     process.env.API_PUBLIC_URL = 'http://localhost:3001'
 
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
     prisma = app.get(PrismaService)
   })
 

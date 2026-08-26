@@ -37,7 +37,7 @@ describe('Register Tenant — mandatory AR contact phone (e2e, #287 WU5)', () =>
     process.env.COOKIE_SECURE = 'false'
 
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
     prisma = app.get(PrismaService)
   })
 

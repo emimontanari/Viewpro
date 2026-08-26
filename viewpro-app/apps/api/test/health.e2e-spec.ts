@@ -9,7 +9,7 @@ describe('HealthController (e2e)', () => {
   beforeAll(async () => {
     process.env.NODE_ENV = 'test'
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
   })
 
   afterAll(async () => {

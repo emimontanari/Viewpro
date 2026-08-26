@@ -41,7 +41,7 @@ describe('Trust Path Isolation', () => {
 
     const { createApiApp } = await import('../../bootstrap/create-app.js')
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
   })
 
   afterAll(async () => {

@@ -74,7 +74,7 @@ describe('Security isolation — negative test catalogue (B-1..B-7)', () => {
     process.env.COOKIE_SECURE = 'false'
 
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
     prisma = app.get(PrismaService)
 
     // ── 1. Create Tenant A (demo-like) ──

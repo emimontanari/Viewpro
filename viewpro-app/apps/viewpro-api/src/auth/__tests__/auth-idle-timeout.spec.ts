@@ -112,7 +112,7 @@ describe('GET /api/auth/me — idle-timeout re-issue, sessionExp carry-forward, 
     app.use(cookieParser())
     app.setGlobalPrefix('api')
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
-    await app.init()
+    await app.listen(0)
     await seedOperatorFixture(app, { email: SEEDED_EMAIL, password: SEEDED_PASSWORD })
 
     const operatorRepository = app.get<IOperatorRepository>(OPERATOR_REPOSITORY)

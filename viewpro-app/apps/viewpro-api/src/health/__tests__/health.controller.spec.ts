@@ -16,7 +16,7 @@ describe('HealthController (integration)', () => {
 
     app = moduleFixture.createNestApplication()
     app.setGlobalPrefix('api')
-    await app.init()
+    await app.listen(0)
   })
 
   afterAll(async () => {
