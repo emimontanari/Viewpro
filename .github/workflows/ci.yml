@@ -193,6 +193,8 @@ jobs:
             scripts/production-cutover/lineage-contract.spec.mjs \
             scripts/production-cutover/tree-byte-contract.spec.mjs \
             scripts/production-cutover/release-contract.spec.mjs \
+            scripts/production-cutover/receipt.spec.mjs \
+            scripts/production-cutover/checkpoint.spec.mjs \
             scripts/production-cutover/candidate.spec.mjs
 
   audit:
