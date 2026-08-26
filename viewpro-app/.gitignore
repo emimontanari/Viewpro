@@ -1,2 +1,5 @@
 # Local Pi runtime state
 .atl/
+
+# Temporary workspace created by test/focused-test-rejection.spec.ts
+.focused-rejection-probe-*/

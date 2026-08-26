@@ -2,7 +2,6 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
 	test: {
-		allowOnly: !Boolean(process.env.CI),
 		globals: true,
 		environment: "node",
 		// E2E specs share the local Postgres test database and clean tables between cases.
