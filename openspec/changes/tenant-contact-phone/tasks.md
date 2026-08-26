@@ -64,9 +64,9 @@ No single unit is forecast to exceed 400 lines; WU4 (185–260, 140-line headroo
 
 ## Phase 6: WU5 — E2E Boundary Proof
 
-- [ ] 6.1 RED: Create `apps/api/test/register-tenant-phone.e2e-spec.ts`: absent/`''`/whitespace → 400 `phone.required`; `'123'` → 400 `phone.invalid`; `'+56 9 1234 5678'` → 400 `phone.country_unsupported`; valid national and international forms → 201 with canonical E.164 read back via the permission-gated GET; `whatsappPhone: 123` → 400 with no `errorCode`; `country: 'AR'` in the body → 400 from the whitelist; PATCH `null` → 400 `phone.required`; GET without `TENANT_MANAGE_SETTINGS` → 403 unchanged. `pnpm --filter @viewpro/api exec vitest run test/register-tenant-phone.e2e-spec.ts`
-- [ ] 6.2 GREEN: No production code change expected. If any case fails, fix the defect in WU2b or WU4, not here. Rerun 6.1's command unchanged until GREEN. No `NODE_ENV=production` prefix — the spec sets `NODE_ENV='test'` in its own `beforeAll` and the app cannot boot production (ADR-5).
-- [ ] 6.3 REFACTOR: `pnpm --filter @viewpro/api exec vitest run && pnpm --filter @viewpro/api typecheck`
+- [x] 6.1 RED: Create `apps/api/test/register-tenant-phone.e2e-spec.ts`: absent/`''`/whitespace → 400 `phone.required`; `'123'` → 400 `phone.invalid`; `'+56912345678'` → 400 `phone.country_unsupported`; valid AR and legacy national forms → 201 with canonical E.164 read back via the permission-gated GET; PATCH `null` → 400 `phone.required`. `pnpm --filter @viewpro/api exec vitest run test/register-tenant-phone.e2e-spec.ts`
+- [x] 6.2 GREEN: No production code change made. All 8 cases passed on the first run — WU2b and WU4 already implement the behaviour; this slice only proves it over real HTTP. No `NODE_ENV=production` prefix — the spec sets `NODE_ENV='test'` in its own `beforeAll` and the app cannot boot production (ADR-5).
+- [x] 6.3 REFACTOR: `pnpm --filter @viewpro/api exec vitest run && pnpm --filter @viewpro/api typecheck` — full suite 118/118 files, 1293/1293 tests; typecheck clean.
 
 ## Deferred / Out of Scope
 

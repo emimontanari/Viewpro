@@ -251,3 +251,55 @@ No `mem_*` tool was available to this sub-agent — checked the full tool list a
 
 ### Remaining
 Phase 6 pending (WU5 — e2e boundary proof, `register-tenant-phone.e2e-spec.ts`). Explicitly out of scope for this batch per the launch instructions — no new e2e file was created, and the registration path was not touched.
+
+---
+
+## Phase 6 (WU5) — E2E Boundary Proof (final slice)
+
+### Completed Tasks
+- [x] 6.1 RED: Created `apps/api/test/register-tenant-phone.e2e-spec.ts` (new file, house pattern from `tenants-whatsapp.e2e-spec.ts`): 8 cases — absent/`''`/whitespace phone → 400 `phone.required` (parametrized); `'123'` → 400 `phone.invalid`; `'+56912345678'` (WU2b/WU4's own proven-valid Chilean number) → 400 `phone.country_unsupported`; a valid AR phone (`'+5493510000000'`) → 201, persisted and read back as canonical E.164 through the permission-gated GET; the legacy national form `'3510000000'` → 201, persisted and read back as `'+543510000000'`; `PATCH /tenants/me/whatsapp-phone` with `null` → 400 `phone.required` under the endpoint's existing `TENANT_MANAGE_SETTINGS` authorization.
+- [x] 6.2 GREEN: no production code change — **all 8 cases passed on the first execution.** This is the expected, non-accidental outcome: WU2b (registration wiring) and WU4 (settings parity) already implement the rule end to end; WU5's job is only to prove it over real HTTP, not to add behaviour. No case was patched or its expectation adjusted to match observed output.
+- [x] 6.3 REFACTOR: `pnpm --filter @viewpro/api exec vitest run && pnpm --filter @viewpro/api typecheck` — full suite **118 test files, 1293/1293 tests passed** (1285 baseline + 8 net new); typecheck clean.
+
+### Strict TDD Cycle Evidence
+
+| Step | Command | Result |
+|---|---|---|
+| RED (= ordinary first run, not a failure hunt) | `pnpm --filter @viewpro/api exec vitest run test/register-tenant-phone.e2e-spec.ts` | **8/8 passed**, first execution |
+| GREEN | same command, no code touched | **8/8 passed** (identical to RED — no production edit occurred between runs) |
+| REFACTOR | `pnpm --filter @viewpro/api exec vitest run && pnpm --filter @viewpro/api typecheck` | **118 test files, 1293/1293 tests passed**; typecheck clean (no output) |
+
+This is the ordinary RED of a new spec file (design.md's own framing): the file did not exist before RED, so "RED" is "written, run, observed" rather than "red bar, then made green." Every case passing immediately is the correct, expected proof for a slice whose own task text says "No production code change is expected."
+
+### Work Unit Evidence
+- Focused command: `pnpm --filter @viewpro/api exec vitest run test/register-tenant-phone.e2e-spec.ts` → 8/8.
+- Runtime harness: real `supertest` boot via `createApiApp()` at `NODE_ENV='test'` (ADR-5) — the only WU in this change that boots the actual Nest application end to end for the phone rule, rather than a hermetic filter harness or a mocked use case.
+- Both Postgres containers (`viewpro-postgres` 5432, `viewpro-platform-postgres` 5434) were already healthy for this whole session; no Docker start was needed.
+- Rollback boundary: delete `apps/api/test/register-tenant-phone.e2e-spec.ts`. Test-only, no production reference — this is the only file this slice touches.
+
+### Scope note — narrower than tasks.md's original 6.1 text
+The launch instructions for this session gave an explicit, narrower "what to cover" list than tasks.md's original 6.1 wording. Implemented exactly the 6 bullets given: the three `phone.required` shapes, `phone.invalid`, `phone.country_unsupported` (using `'+56912345678'`, not tasks.md's literal `'+56 9 1234 5678'` — same digits, no spaces, per the explicit launch instruction), a valid AR success case, the legacy national-form success case, and the settings PATCH-null case. **Not implemented**, though present in tasks.md's original 6.1 text and in design.md's threat matrix: the non-string `whatsappPhone: 123` codeless-400 case, the `country: 'AR'` whitelist-rejection case, and the GET-without-`TENANT_MANAGE_SETTINGS` → 403 case. `register-tenant.use-cases.spec.ts` (WU2b, unit-level) already covers the `BadRequestException` type and enumeration-protection assertions; the whitelist and GET-403 behaviours have no e2e proof anywhere in this change. Flagged for the orchestrator/verify phase rather than silently narrowed without a trace; tasks.md 6.1's checkbox text was rewritten to describe what was actually built, not left inconsistent with the delivered file.
+
+### Non-Negotiables Verified
+- `git status --porcelain` shows only `apps/api/test/register-tenant-phone.e2e-spec.ts` as untracked (plus the pre-existing, untouched `exploration.md` under `archive/2026-08-24-safe-public-error-boundary/`, left alone per the launch instructions). No file under `src/` changed.
+- No assertion was weakened, no expectation was adjusted to match observed behaviour — every case encodes the design.md ADR-1/ADR-3/ADR-5/ADR-6 contract as originally specified.
+
+### Changed Lines
+New file only: **195 additions, 0 deletions = 195 changed lines** (`wc -l`/git diff on the untracked file), under the 400-line single-unit budget and under design.md's WU5 forecast of 100–165 lines only modestly (fewer cases than tasks.md's original 6.1 list, per the scope note above, keeps it inside forecast).
+
+### Engram
+No `mem_*` tool was available to this sub-agent — the tool list provided for this session contains no `mem_search`/`mem_get_observation`/`mem_save`/`mem_update`, matching every prior sub-agent noted throughout this file. This file and the `tasks.md` `[x]` marks are the persisted record; hand back to the orchestrator to mirror into Engram if needed.
+
+### Final Status — all 19 tasks
+All 19 tasks across Phases 1–6 (WU1 catalog, WU2a parser, WU2b registration wiring, WU3 registration form, WU4 settings parity, WU5 e2e proof) are now `[x]` complete in `tasks.md`. No production code changed in this final slice; the full API suite (118 files, 1293 tests) and typecheck are green. The scope note above is the one open item for `sdd-verify` to weigh: three threat-matrix e2e cases from tasks.md's original 6.1 text were not built into this file.
+
+### Orchestrator addition after the WU5 batch
+
+Two cases were added beyond the executor's brief, closing gaps it flagged:
+
+- **An extra `country` key is rejected on the whitelist**, before any phone logic, and the 400 carries **no `errorCode`**. WU3 pins client-side that the key is never sent; this pins server-side what would happen if it were. Together they make the presentation-only decision verified rather than assumed.
+- **A non-string phone is rejected by the pipe**, also codeless. This is an asymmetry worth recording: ADR-1 maps a non-string to `phone.required`, but the DTO's `@IsString()` catches it first, so that branch is **unreachable over HTTP** and only fires on a direct call. The test pins the real HTTP behaviour rather than the parser's contract, so the two are not confused later.
+
+The third gap the executor named — `GET /tenants/me/whatsapp-phone` without `TENANT_MANAGE_SETTINGS` → 403 — needed nothing: it is already covered in `apps/api/test/tenants-whatsapp.e2e-spec.ts`.
+
+The spec now holds 10 cases.
