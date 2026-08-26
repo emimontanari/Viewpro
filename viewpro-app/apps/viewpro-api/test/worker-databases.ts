@@ -14,11 +14,12 @@ const DEFAULT_BASE_URL =
   'postgresql://viewpro_platform:viewpro_platform@localhost:5434/viewpro_platform_test'
 
 /**
- * Worker slots, and therefore databases, to prepare. Kept small on purpose:
- * every slot is a real database that global setup clones before the run starts,
- * so more slots buy parallelism at a fixed startup cost.
+ * Worker slots, and therefore databases, to prepare.
+ *
+ * Two, matching apps/api. See the note there: four is measurably faster but
+ * pushed the whole `turbo test` run past the retries often enough to matter.
  */
-export const TEST_WORKER_COUNT = Number(process.env.VIEWPRO_PLATFORM_TEST_WORKERS ?? 4)
+export const TEST_WORKER_COUNT = Number(process.env.VIEWPRO_PLATFORM_TEST_WORKERS ?? 2)
 
 /** Base URL every derived database name is built from. */
 export function baseDatabaseUrl(): string {

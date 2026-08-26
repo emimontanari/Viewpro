@@ -16,11 +16,20 @@ const DEFAULT_BASE_URL =
 	"postgresql://viewpro:viewpro@localhost:5432/viewpro_test?schema=public";
 
 /**
- * Worker slots, and therefore databases, to prepare. Kept small on purpose:
- * every slot is a real database that global setup has to clone before the run
- * starts, so more slots buy parallelism at a fixed startup cost.
+ * Worker slots, and therefore databases, to prepare.
+ *
+ * Two, not more, and the reason is measured rather than guessed. Four workers
+ * finish this suite in ~85s against ~195s serial, but running every workspace
+ * at once through `turbo test` failed 1 run in 3 even with `retry: 2`. Two
+ * workers finish in ~110-140s depending on machine load, and passed 3 of 3
+ * under that same load. A gate that is a minute slower is worth more than one
+ * that is occasionally wrong.
+ *
+ * The socket-level flakiness underneath is not caused by parallelism — the
+ * previous serial configuration fails too under `--retry=0` — but parallelism
+ * raises it past what the retries absorb. Raise this once that is fixed.
  */
-export const TEST_WORKER_COUNT = Number(process.env.VIEWPRO_TEST_WORKERS ?? 4);
+export const TEST_WORKER_COUNT = Number(process.env.VIEWPRO_TEST_WORKERS ?? 2);
 
 /** Base URL every derived database name is built from. */
 export function baseDatabaseUrl(): string {
