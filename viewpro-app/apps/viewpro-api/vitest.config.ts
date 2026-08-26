@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
+import { TEST_WORKER_COUNT } from './test/worker-databases'
 
 export default defineConfig({
   resolve: {
@@ -12,8 +13,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    // Keep files serial until the suite has per-worker database isolation.
-    fileParallelism: false,
+    // Each worker owns a database prepared by test/global-setup.ts, so the
+    // cleanups between cases can only reach their own worker's data.
+    globalSetup: ['./test/global-setup.ts'],
+    // One worker per prepared database, no more.
+    maxWorkers: TEST_WORKER_COUNT,
+    minWorkers: 1,
     // Suites that boot a full Nest app + connect to Postgres in beforeAll can
     // exceed vitest's 10s default on slower CI runners (locally they land ~9.9s).
     // Give app/DB bootstrap real headroom so CI is deterministic, not on the edge.
