@@ -6,12 +6,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 /**
  * Guards a monorepo-wide property from inside a single workspace.
  *
- * Vitest rejects `.only` under CI on its own: `allowOnly` defaults to
- * `!process.env.CI`. That is why three of the four workspace configs never
- * mention it and are protected anyway — and it is also why the protection is
- * invisible. Nothing in the repository states it, so a dependency upgrade that
- * changed the default would reopen the hole inside a diff nobody reads as a
- * change to test policy.
+ * Vitest rejects `.only` under CI on its own: `allowOnly` defaults to `!isCI`,
+ * where std-env's `isCI` is `!!env.CI` plus roughly fifty provider-specific
+ * variables — `GITHUB_ACTIONS` among them. That is why three of the four
+ * workspace configs never mention it and are protected anyway, and it is also
+ * why the protection is invisible. Nothing in the repository states it, so a
+ * dependency upgrade that changed the default would reopen the hole inside a
+ * diff nobody reads as a change to test policy.
  *
  * These cases make it visible: the first two pin the behaviour of the installed
  * Vitest in both directions, and the third proves no workspace opts back out.
@@ -46,13 +47,21 @@ describe("focused tests are rejected under CI", () => {
 		rmSync(probeDir, { recursive: true, force: true });
 	});
 
+	/**
+	 * Builds the child environment from an allowlist instead of inheriting one.
+	 *
+	 * Deleting `CI` is not enough to simulate a developer's machine: on GitHub
+	 * Actions `GITHUB_ACTIONS` alone keeps `isCI` true, and chasing that list
+	 * variable by variable would break on the next provider. Starting from
+	 * nothing means no CI marker can leak in, wherever this suite runs.
+	 */
 	function runProbe({ ci }: { ci: boolean }) {
-		const env = { ...process.env };
-		if (ci) {
-			env.CI = "true";
-		} else {
-			delete env.CI;
-		}
+		const env: NodeJS.ProcessEnv = {
+			PATH: process.env.PATH,
+			HOME: process.env.HOME,
+			TMPDIR: process.env.TMPDIR,
+		};
+		if (ci) env.CI = "true";
 
 		try {
 			const stdout = execFileSync(
