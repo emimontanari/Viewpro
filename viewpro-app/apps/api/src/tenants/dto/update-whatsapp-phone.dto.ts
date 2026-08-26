@@ -1,16 +1,19 @@
-import { IsDefined, IsString, ValidateIf } from 'class-validator'
+import { IsOptional, IsString } from 'class-validator'
 
 export class UpdateWhatsappPhoneDto {
   /**
-   * Raw WhatsApp phone value. The use case normalizes and validates it.
-   * Pass null to clear the stored phone number.
+   * Raw WhatsApp phone value. The use case parses and validates it with
+   * `parseArContactPhone`, the same Argentine mandatory rule enforced at
+   * registration (#287 WU4, design.md ADR-6). The phone is mandatory now:
+   * an absent key or an explicit `null` both reach the use case and both
+   * become `phone.required`.
    *
-   * The key is required: omitting it would be ambiguous between "no change"
-   * and "clear to null". Callers must send either a string or explicit null.
-   * This mirrors the BFF Zod contract `z.object({ whatsappPhone: z.string().nullable() })`.
+   * MUST stay `@IsOptional() @IsString()`, never `@IsDefined()`. The global
+   * `ValidationPipe` has no `exceptionFactory`, so a `class-validator`
+   * rejection carries no `errorCode` — the verdict is thrown from the use
+   * case, always (design.md ADR-3, ADR-6).
    */
-  @IsDefined()
-  @ValidateIf((_, value) => value !== null)
+  @IsOptional()
   @IsString()
-  whatsappPhone!: string | null
+  whatsappPhone?: string | null
 }

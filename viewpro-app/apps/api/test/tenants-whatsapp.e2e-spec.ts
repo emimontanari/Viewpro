@@ -1,10 +1,10 @@
 /**
- * E2E tests for the WhatsApp phone endpoints (Stage 23.3 — Phase 3).
+ * E2E tests for the WhatsApp phone endpoints.
  *
  * Covers:
  *   S-1  — PRINCIPAL_MANAGER PATCH valid phone → 204; GET returns updated value
- *   S-2  — PRINCIPAL_MANAGER PATCH null → 204; GET returns null
- *   S-3  — PATCH too-short phone → 400 with code phone.too_short
+ *   S-2  — PRINCIPAL_MANAGER PATCH null → 400 with code phone.required (#287 WU4, INVERTED)
+ *   S-3  — PATCH unparseable phone → 400 with code phone.invalid (#287 WU4, INVERTED)
  *   S-4  — MANAGER role PATCH → 403
  *   S-5  — AGENT role PATCH → 403
  *   S-6  — Unauthenticated PATCH → 401
@@ -76,43 +76,31 @@ describe('Tenants WhatsApp Phone (e2e)', () => {
     expect(row?.whatsappPhone).toBe('+5493510000000')
   })
 
-  // ─── S-2: Clear phone to null ─────────────────────────────────────────────────
+  // ─── S-2 (INVERTED): null is mandatory-rejected, not a clear operation ────────
 
-  it('S-2: PRINCIPAL_MANAGER PATCH null → 204; GET returns { whatsappPhone: null }', async () => {
-    const manager = await registerTenantSession('pm-clear-phone@example.com', 'PM Clear Phone Homes')
+  it('S-2: PRINCIPAL_MANAGER PATCH null → 400 with error code phone.required', async () => {
+    const manager = await registerTenantSession('pm-null-phone@example.com', 'PM Null Phone Homes')
 
-    // First set a value
-    await manager.agent
-      .patch('/api/tenants/me/whatsapp-phone')
-      .set('x-tenant-id', manager.tenantId)
-      .send({ whatsappPhone: '+5493510000000' })
-      .expect(204)
-
-    // Then clear it
-    await manager.agent
+    const res = await manager.agent
       .patch('/api/tenants/me/whatsapp-phone')
       .set('x-tenant-id', manager.tenantId)
       .send({ whatsappPhone: null })
-      .expect(204)
+      .expect(400)
 
-    const getRes = await manager.agent
-      .get('/api/tenants/me/whatsapp-phone')
-      .set('x-tenant-id', manager.tenantId)
-      .expect(200)
+    expect(res.body).toMatchObject({ errorCode: 'phone.required' })
 
-    expect(getRes.body).toEqual({ whatsappPhone: null })
-
+    // The value set at registration must survive the rejected PATCH untouched.
     const row = await prisma.tenant.findUnique({
       where: { id: manager.tenantId },
       select: { whatsappPhone: true },
     })
-    expect(row?.whatsappPhone).toBeNull()
+    expect(row?.whatsappPhone).toBe('+543510000000')
   })
 
-  // ─── S-3: Phone too short ─────────────────────────────────────────────────────
+  // ─── S-3 (INVERTED): the code is phone.invalid now, not phone.too_short ──────
 
-  it('S-3: PATCH too-short phone → 400 with error code phone.too_short', async () => {
-    const manager = await registerTenantSession('pm-too-short@example.com', 'PM Too Short Homes')
+  it('S-3: PATCH unparseable phone → 400 with error code phone.invalid', async () => {
+    const manager = await registerTenantSession('pm-invalid-phone@example.com', 'PM Invalid Phone Homes')
 
     const res = await manager.agent
       .patch('/api/tenants/me/whatsapp-phone')
@@ -120,7 +108,7 @@ describe('Tenants WhatsApp Phone (e2e)', () => {
       .send({ whatsappPhone: '123' })
       .expect(400)
 
-    expect(res.body).toMatchObject({ errorCode: 'phone.too_short' })
+    expect(res.body).toMatchObject({ errorCode: 'phone.invalid' })
   })
 
   // ─── S-4: MANAGER role → 403 ─────────────────────────────────────────────────

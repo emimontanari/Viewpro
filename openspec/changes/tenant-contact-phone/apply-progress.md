@@ -175,3 +175,79 @@ Revert `sign-up-view.tsx`, `session.ts`; delete `sign-up-view.test.tsx`. Must re
 
 ### Remaining
 Phases 5-6 pending (WU4 settings parity, WU5 e2e). Explicitly out of scope for this batch per the launch instructions — no `apps/api`, settings feature, or BFF route was touched.
+
+---
+
+## Phase 5 (WU4) — Settings Parity
+
+### Completed Tasks
+- [x] 5.1 RED: Inverted `tenants-whatsapp.use-cases.spec.ts` (5 of its original 8 `UpdateTenantWhatsappPhoneUseCase` cases changed; 2 new cases added); inverted e2e S-2/S-3 in `tenants-whatsapp.e2e-spec.ts`; rewrote `tenant-contact-form.test.tsx`; added 3 production boundary cases to `public-error-annotations.spec.ts`.
+- [x] 5.2 GREEN: `update-whatsapp-phone.dto.ts` → `@IsOptional() @IsString() whatsappPhone?: string | null`; `update-tenant-whatsapp-phone.use-case.ts` → drops both `whatsapp-phone.utils` imports, calls `parseArContactPhone`, throws via the same `const { errorCode } = phoneResult` shorthand as `register-tenant.use-case.ts`; BFF `route.ts` gained a doc comment only (Zod untouched, still `z.string().nullable()`); `tenant-whatsapp-phone.ts` client schema drops `MIN_DIGIT_COUNT`/`countDigits`/the `phone.too_short` refine, keeps a presence-only check; `tenant-contact-form.tsx` submits the trimmed raw value and replaces `` `Error: ${errorCode}` `` with the three real `PHONE_ERROR_MESSAGES` (mirroring `sign-up-view.tsx`'s map pattern).
+- [x] 5.3 REFACTOR: full API suite + typecheck, full App New settings/tenants-api suite + typecheck, all green.
+
+### Strict TDD Cycle Evidence
+
+| Step | Command | Result |
+|---|---|---|
+| Safety net | `NODE_ENV=production pnpm --filter @viewpro/api exec vitest run test/tenants-whatsapp.use-cases.spec.ts test/public-error-annotations.spec.ts` | 48/48 before any edit |
+| Safety net | `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/settings` | 7/7 before any edit |
+| RED (`tenants-whatsapp.use-cases.spec.ts` alone) | `NODE_ENV=production pnpm --filter @viewpro/api exec vitest run test/tenants-whatsapp.use-cases.spec.ts` | exit 1; **6 failed, 7 passed (13 total)** — all 6 failures were the predicted inversions (null/whitespace/empty no longer clear to null, `'123'` no longer `phone.too_short`, `+56912345678` doesn't yet reject, `'3510000000'` didn't yet canonicalize) |
+| RED (App New) | `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/settings` | exit 1; **5 failed, 4 passed (9 total)** — all 5 failures were the predicted ones (old schema still showed `phone.too_short`, still blocked `'123'` client-side, form still rendered `Error: ${errorCode}`) |
+| GREEN (API, combined) | `NODE_ENV=production pnpm --filter @viewpro/api exec vitest run test/tenants-whatsapp.use-cases.spec.ts test/public-error-annotations.spec.ts` | **52/52 passed** |
+| GREEN (App New) | same settings command unchanged | **9/9 passed** |
+
+**Procedural note, reported rather than hidden**: the 3 new `public-error-annotations.spec.ts` WU4 boundary cases were written *after* the standalone `tenants-whatsapp.use-cases.spec.ts` RED run above, and the combined two-file command was only ever executed once — after the DTO/use-case GREEN implementation, where it passed 52/52 directly. The RED state for those 3 specific boundary cases (against the pre-GREEN use case) was therefore never separately observed and executed, only reasoned about (the old use case could not have produced `phone.invalid`/`phone.country_unsupported`/a rejection of `null`, since it only ever threw `phone.too_short` or persisted). This satisfies Strict TDD's "test written before production code" law but not its "execute and observe RED" gate for that specific file. Flagged here rather than backfilled with a fabricated count.
+| REFACTOR | `pnpm --filter @viewpro/api exec vitest run` | **117 test files, 1285/1285 tests passed** (1281 baseline + 4 net new) |
+| REFACTOR | `pnpm --filter @viewpro/api typecheck` | clean (no output) |
+| REFACTOR | `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/settings src/app/api/tenants` | **2 test files, 15/15 passed** |
+| REFACTOR | `pnpm --filter next-shadcn-dashboard-starter typecheck` | clean (no output) |
+
+Both Postgres containers (5432, 5434) were already healthy for this whole session — the DB-backed `tenants-whatsapp.e2e-spec.ts` (S-2/S-3 inverted) ran as part of the full API suite with no environmental attribution needed.
+
+### Inverted expectations — old behaviour each one encoded
+
+`tenants-whatsapp.use-cases.spec.ts` (5 of 8 `UpdateTenantWhatsappPhoneUseCase` cases inverted, matching design.md's own count):
+
+1. **`persists null when input is null (clear operation — S-2)`** → now `throws phone.required when input is null`. Encoded the old "null clears the stored phone" contract; the field is mandatory now, so null is a rejection, not a clear operation.
+2. **`persists null when input is an empty string (FR-3 clear)`** → now `throws phone.required ... empty string`. Same clear-semantics inversion.
+3. **`persists null when input is whitespace-only (FR-3 clear)`** → now `throws phone.required ... whitespace-only`. Same clear-semantics inversion.
+4. **`throws BadRequestException with code phone.too_short when digit count < 8`** → now `throws phone.invalid for an unparseable phone`. Encoded the old digit-count threshold rule (`MIN_DIGIT_COUNT`-style check); `parseArContactPhone` replaces it with real AR parse/validity, and `'123'` fails that as `phone.invalid`, not a length check.
+5. **`does not add a leading + when the input has none (D2)`** → repurposed into `canonicalizes a bare national-form legacy value on unedited re-save (INVERTED D2)`, using `'3510000000'` → `'+543510000000'` per the task brief. Encoded the old pass-through-digits contract (no canonicalization); `parseArContactPhone` always returns canonical E.164, so a bare national-form input now *gains* the leading `+` instead of being persisted unchanged — this is exactly the legacy re-save case the brief called out as load-bearing.
+
+Two cases were **not** inverted because their expected output is unchanged by the new implementation (same real library behavior, different code path to reach it): `normalizes by stripping non-[+\d] characters (D2)` and `preserves the leading + (D2, FR-5)` both still resolve to the identical `+5493510000000` output. Two new cases were added, not inversions: `throws phone.country_unsupported for a valid non-AR phone` and `canonicalizes a legacy national-form value` (the `+54 9 351-000-0000` D2 variant, kept alongside the repurposed bare-digit-string case).
+
+`tenants-whatsapp.e2e-spec.ts` — S-2 and S-3 inverted per the task brief:
+- **S-2** `PRINCIPAL_MANAGER PATCH null → 204; GET returns null` → now `PATCH null → 400 phone.required`, plus an assertion that the registration-time value survives the rejected PATCH untouched. Encoded the old clear-to-null contract.
+- **S-3** `PATCH too-short phone → 400 phone.too_short` → now `PATCH unparseable phone → 400 phone.invalid`, same input (`'123'`), new code. Encoded the old digit-count-threshold code.
+
+`tenant-contact-form.test.tsx` — CT-4 and CT-5 inverted:
+- **CT-4** `shows a validation error ... when the phone is too short` (input `'123'`, blocked client-side) → now `'123'` is **not** blocked client-side (client only guards presence per ADR-2/ADR-6); a new CT-4 covers the empty-field required case, and a separate new test confirms `'123'` reaches the mutation and is deferred to the server. Encoded the old client-side digit-count check that no longer exists.
+- **CT-5** `calls the mutation with null when the input is cleared and submitted` → now clearing is blocked client-side with the required message, same as CT-4. Encoded the old clear-to-null contract.
+- The final error-toast test (`phone.too_short` → raw `Error: ${errorCode}` string) was replaced with two tests asserting the real `phone.invalid` and `phone.country_unsupported` messages, since `phone.too_short` is no longer emitted on this path.
+
+### Deviation from the task brief's own example — documented, not silently substituted
+The task brief's own text names `'+5691234567'` as the non-AR example expected to yield `phone.country_unsupported`. Probed directly against `libphonenumber-js@1.13.1` (same verification discipline as WU2a): `'+5691234567'` is **not** a valid Chilean number (`isValid(): false`, one digit short of the required 9-digit Chilean mobile length) — it fails at the *validity* check inside `parseArContactPhone`, before country is ever read, so it would actually resolve to `phone.invalid`, not `phone.country_unsupported`. Using the brief's literal number would have tested the wrong verdict for the wrong reason. Used `'+56912345678'` instead — the exact number WU2b's own `ar-contact-phone.spec.ts` and `public-error-annotations.spec.ts` boundary cases already use as a proven-valid Chilean number — in both `tenants-whatsapp.use-cases.spec.ts` and the new WU4 boundary cases, for consistency with the existing precedent.
+
+### `whatsapp-phone.utils.ts` orphan check
+**Not fully orphaned — one of its two exports lost its only caller, the other did not.**
+- `isValidWhatsappPhone` still has a live caller: `apps/api/src/owner-portal/owner-whatsapp-contact.ts` (the read-side owner-portal mapper, ADR-1's explicitly-preserved consumer — "null-is-valid" is correct there).
+- `normalizeWhatsappPhone` now has **zero** production callers (`rg` confirms no matches outside its own definition and `whatsapp-phone.utils.spec.ts`) — `UpdateTenantWhatsappPhoneUseCase` was its last caller and no longer imports it.
+- Verdict: the file/module stays alive; only `normalizeWhatsappPhone` is now dead code. Left untouched per the launch instructions — removal, if any, belongs to a follow-up.
+
+### Non-Negotiables Verified
+- DTO stayed `@IsOptional() @IsString()`, never tightened to `@IsDefined()` — verified by reading the edited file back and by the RED/GREEN cycle itself (a codeless-pipe 400 would have shown up as a different, unpredicted failure shape).
+- BFF Zod schema (`route.ts`) is byte-unchanged except the added doc comment — `z.object({ whatsappPhone: z.string().nullable() })` untouched, confirmed by `git diff`.
+- `ar-contact-phone.ts`, the registration path, and the sign-up form were not touched — confirmed by `git status --porcelain` showing only the 9 files listed below.
+- No assertion was weakened or deleted to force a pass; every inversion above encodes a genuinely different (new) invariant than the one it replaced, not a relaxation of the same invariant.
+
+### Changed Lines
+`git diff --numstat` across all 9 touched files: **244 additions + 114 deletions = 358 changed lines**, under the 400-line single-unit budget (design.md's WU4 forecast was 185–260; came in higher than forecast because the e2e S-2 inversion added a persisted-value assertion and the form test file grew by 3 net cases, but still comfortably under budget).
+
+### Rollback Boundary
+Revert `update-whatsapp-phone.dto.ts`, `update-tenant-whatsapp-phone.use-case.ts`, `tenants-whatsapp.use-cases.spec.ts`, `tenants-whatsapp.e2e-spec.ts`, `public-error-annotations.spec.ts`, the BFF `route.ts` doc comment, `tenant-whatsapp-phone.ts` (client schema), and `tenant-contact-form.{tsx,test.tsx}`. Restores the clearable settings contract and `phone.too_short` emission. Independent of WU3 (per the tasks.md forecast table) — no shared file with the registration-form slice.
+
+### Engram
+No `mem_*` tool was available to this sub-agent — checked the full tool list at the start of this session and confirmed no `mem_search`/`mem_get_observation`/`mem_save`/`mem_update` tool exists, matching every prior sub-agent noted in this file. This file and the `tasks.md` `[x]` marks are the persisted record; hand back to the orchestrator to mirror into Engram if needed.
+
+### Remaining
+Phase 6 pending (WU5 — e2e boundary proof, `register-tenant-phone.e2e-spec.ts`). Explicitly out of scope for this batch per the launch instructions — no new e2e file was created, and the registration path was not touched.
