@@ -198,6 +198,7 @@ jobs:
             scripts/production-cutover/roles.spec.mjs \
             scripts/production-cutover/bootstrap.spec.mjs \
             scripts/production-cutover/backup-lineage.spec.mjs \
+            scripts/production-cutover/rollback.spec.mjs \
             scripts/production-cutover/candidate.spec.mjs
 
       # Retention arithmetic is UTC-anchored, and a local-time implementation is
