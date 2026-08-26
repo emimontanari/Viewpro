@@ -3,3 +3,6 @@
 
 # Temporary workspace created by test/focused-test-rejection.spec.ts
 .focused-rejection-probe-*/
+
+# Per-worker upload roots created by apps/api tests
+uploads-test*/
