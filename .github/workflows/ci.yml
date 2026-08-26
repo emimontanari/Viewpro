@@ -195,6 +195,8 @@ jobs:
             scripts/production-cutover/release-contract.spec.mjs \
             scripts/production-cutover/receipt.spec.mjs \
             scripts/production-cutover/checkpoint.spec.mjs \
+            scripts/production-cutover/roles.spec.mjs \
+            scripts/production-cutover/bootstrap.spec.mjs \
             scripts/production-cutover/candidate.spec.mjs
 
   audit:

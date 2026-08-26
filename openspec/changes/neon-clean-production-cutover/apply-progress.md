@@ -2,8 +2,8 @@
 
 ## Cumulative Status
 
-- Tasks: **7/18 complete** — WU1, WU2, 2.1 Lineage, 2.2 Tree/Byte, 2.3 Release, 2.4 Qualification, and 2.5 WU4 receipts/checkpoints; later work remains pending.
-- Attempt 22 carries WU4; terminal status remains exclusively in the native ledger.
+- Tasks: **8/18 complete** — WU1, WU2, 2.1 Lineage, 2.2 Tree/Byte, 2.3 Release, 2.4 Qualification, 2.5 WU4 receipts/checkpoints, and 3.1 WU5 roles/bootstrap; later work remains pending.
+- Attempt 23 carries WU5; terminal status remains exclusively in the native ledger.
 
 ## Preserved Attempt and Reset History
 
@@ -63,3 +63,13 @@ Attempt 14 failed and reset. Attempt 15 terminally passed with evidence `sha256:
 - Focused `node --test scripts/production-cutover/{receipt,checkpoint}.spec.mjs`: 42/42 passed; composed contract suites 86/86. One independent four-lens review ran before settlement and returned eight blockers; one consolidated correction addressed them and a targeted validator re-ran every reviewer mutation.
 - Design consequences of that review: validation reasons over a canonical data-only snapshot, because an own non-enumerable member passed an `ownKeys` count yet vanished from the digest projection, binding two different trees to one identity; member NAMES and redaction key versions are scanned like values, because both reach the public receipt as cleartext; every member is bound to its claimed form, because a content scan alone is not a redaction boundary; denials name the member and never reproduce its value; the key version is length prefixed and the key carries a 32-byte floor; and `resumePoint` contains exceptions, reads only the validated view, and reports completion independently of whether resuming is permitted.
 - Three review findings were test-validity defects rather than runtime bugs, and one was a recurrence within this work unit: the activation sequence had no oracle independent of the module, four of six content patterns were shadowed by structural rules, and three of this author's own hardening tests passed under the mutation they claimed to cover. All are now pinned. Budget reconciled from the historical `330–350` to the delivered `1299/1360`; the `<=400` review-size guidance remains waived for this change.
+
+## WU5 Roles and Bootstrap — Task 3.1
+
+- Task 3.1 is `[x]`; 8/18 tasks are complete. This six-path candidate adds the least-privilege lane role model, the clean bootstrap allowlist, and the per-lane activation baseline. RED-CUT-09/10/11 were recovered from `800d1a3` and restated in the delta spec, because `e083fc3` removed the design table and task 3.1 referenced identifiers nothing in the repository still defined. RED-CUT-11's recovered row names the already-merged `checkpoint.mjs`; the baseline validator was placed in `bootstrap.mjs` instead, which stays inside this work unit's paths and does not reopen a reviewed module.
+| TDD Cycle Evidence | Safety | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|
+| 3.1 | 126/126 | modules absent, then every hostile case failing | 40/40 | 57 defect mutations, all caught after correction | 40/40 |
+- Focused `node --test scripts/production-cutover/{roles,bootstrap}.spec.mjs`: 40/40 passed; composed contract suites 126/126. One independent four-lens review ran before settlement and returned four blockers; one consolidated correction addressed them and a targeted validator re-ran every reviewer mutation.
+- Design consequences of that review: an expiry must be a real instant rather than a well-shaped one, because `9999-99-99T99:99:99.999Z` matches the shape, sorts after every real date, and made exceptions permanent; an approval must be a non-empty string, because `null`, `false` and `0` are what a serializer writes for an absent approval and all three admitted excess ownership; accessors and `toJSON` are refused before serialization rather than invoked; denials name a closed-vocabulary token or a position, never a caller-supplied string; migrator ownership is bounded to migration objects; a fault carries a reason distinct from every in-band rejection.
+- The most consequential finding was methodological. This author's own mutation battery scored 22 of 22 and an independent battery of 139 found 72 survivors, because the author's mutations targeted the paths the author's tests already covered. RED-CUT-09 was enumerated as a hand-written blacklist of twelve pairs against a closed allowlist model, so 22 of 35 denied pairs were unprovable and widening the permitted table went unnoticed. The oracle is now derived from the complement of the required and permitted sets over the whole grant vocabulary, and both sets are pinned as independent literals. Budget reconciled from the historical `320–350` to the delivered `1152/1220`; the `<=400` review-size guidance remains waived for this change.

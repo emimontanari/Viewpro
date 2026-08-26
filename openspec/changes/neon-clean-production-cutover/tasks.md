@@ -32,7 +32,7 @@ Upstream-only paths: `BASE=$(git merge-base origin/develop HEAD)` then `git diff
 
 ## Phase 3: Fresh
 
-- [ ] 3.1 **WU5 (320–350):** Implement RED-CUT-09–11 roles/bootstrap, grants, allowlists, readiness, acquire→settle; stop before provisioning.
+- [x] 3.1 **WU5 (1152/1220):** Four reviewed merges→refreshed `develop`; own `viewpro-app/scripts/production-cutover/{roles,bootstrap}.{mjs,spec.mjs}`; least-privilege lane model judged as a closed complement, bounded migrator ownership, genuinely-approved and genuinely-unexpired owner exceptions, clean bootstrap allowlist over a closed census, and a per-lane activation baseline requiring a well-formed digest and readiness exactly `200`. RED-CUT-09/10/11 restated in the delta spec because `e083fc3` removed the design table; recovered from `800d1a3`. `node --test scripts/production-cutover/{roles,bootstrap}.spec.mjs`; stops before provisioning, no provider/promotion authority.
 - [ ] 3.2 **WU6 (300–340):** Implement RED-CUT-08 backup lineage, heartbeat/pruning receipts, one-month retention.
 
 ## Phase 4: Cutover
