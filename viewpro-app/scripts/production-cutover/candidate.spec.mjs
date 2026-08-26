@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
@@ -287,20 +287,52 @@ test('keeps Git stderr out of the compared output', async () => {
   }
 });
 
-test('fails closed when the candidate borrows objects through alternates', async () => {
-  const parent = mkdtempSync(join(tmpdir(), 'qualify-alt-'));
-  const clone = join(parent, 'candidate');
+// A standalone repository holding only the pinned contract files. Built rather than
+// cloned: `git clone --local`/`--shared` behaviour depends on whether the source is
+// shallow, which differs between a developer checkout and a CI one.
+const buildStandaloneCandidate = () => {
+  const parent = mkdtempSync(join(tmpdir(), 'qualify-standalone-'));
+  const repo = join(parent, 'candidate');
+  const contracts = join(repo, 'viewpro-app/scripts/production-cutover');
+  mkdirSync(contracts, { recursive: true });
+  for (const file of pinnedContractFiles) {
+    copyFileSync(join(repoRoot, 'viewpro-app/scripts/production-cutover', file), join(contracts, file));
+  }
+  git(parent, ['init', '--quiet', repo]);
+  git(repo, ['add', '--all']);
+  git(repo, [
+    '-c', 'user.email=qualification@example.invalid',
+    '-c', 'user.name=Qualification Fixture',
+    '-c', 'commit.gpgsign=false',
+    '-c', 'core.hooksPath=/dev/null',
+    'commit', '--quiet', '--no-verify', '-m', 'fixture: pinned contract files',
+  ]);
+  const commit = git(repo, ['rev-parse', 'HEAD']);
+  git(repo, ['checkout', '--quiet', '--detach', commit]);
+  return { parent, repo, commit, tree: git(repo, ['rev-parse', 'HEAD^{tree}']) };
+};
+
+test('qualifies a standalone candidate, and rejects one borrowing objects', async () => {
+  const fixture = buildStandaloneCandidate();
+  const target = { root: fixture.repo, commit: fixture.commit, tree: fixture.tree };
   try {
-    // `--shared` writes objects/info/alternates, which is exactly the object-substitution
-    // surface the audit must reject. A standalone clone is used rather than a linked
-    // worktree, because a worktree reads the outer repository's object configuration.
-    git(repoRoot, ['clone', '--shared', '--quiet', repoRoot, clone]);
-    git(clone, ['checkout', '--quiet', '--detach', head]);
-    const result = await qualifyCandidate({ root: clone, commit: head, tree: headTree });
-    assert.equal(result.reason, 'object-alternates');
-    assert.equal(result.authority, false);
+    // The same fixture proves both directions, so the rejection cannot be a false
+    // positive from some unrelated defect in the fixture itself.
+    const clean = await qualifyCandidate(target);
+    assert.equal(clean.reason, '');
+    assert.equal(clean.ok, true);
+
+    const alternates = git(fixture.repo, ['rev-parse', '--git-path', 'objects/info/alternates']);
+    const alternatesPath = join(fixture.repo, alternates);
+    mkdirSync(join(alternatesPath, '..'), { recursive: true });
+    writeFileSync(alternatesPath, `${join(repoRoot, '.git/objects')}\n`);
+
+    const borrowed = await qualifyCandidate(target);
+    assert.equal(borrowed.reason, 'object-alternates');
+    assert.equal(borrowed.ok, false);
+    assert.equal(borrowed.authority, false);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    rmSync(fixture.parent, { recursive: true, force: true });
   }
 });
 
