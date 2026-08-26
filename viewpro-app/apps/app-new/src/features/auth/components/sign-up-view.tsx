@@ -2,11 +2,12 @@
 
 import * as React from 'react';
 import * as z from 'zod';
+import type { PublicErrorCode } from '@viewpro/contracts';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAppForm, useFormFields } from '@/components/ui/tanstack-form';
-import { getApiErrorMessage } from '@/lib/api-client';
+import { getApiErrorMessage, isApiError } from '@/lib/api-client';
 import { BRAND } from '@/lib/brand/brand';
 import { registerTenant } from '@/lib/session';
 import { setSelectedTenantId } from '@/lib/tenant-selection';
@@ -22,19 +23,42 @@ type SignUpValues = {
   email: string;
   password: string;
   tenantName: string;
+  whatsappPhone: string;
 };
+
+const PHONE_REQUIRED_MESSAGE = 'Ingresá el teléfono de contacto de la inmobiliaria.';
 
 const signUpSchema = z.object({
   firstName: z.string().min(1, 'Ingresá tu nombre.'),
   lastName: z.string(),
   email: z.email('Ingresá un email válido.'),
   password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.'),
-  tenantName: z.string().min(2, 'Ingresá el nombre de tu inmobiliaria.')
+  tenantName: z.string().min(2, 'Ingresá el nombre de tu inmobiliaria.'),
+  whatsappPhone: z.string().trim().min(1, PHONE_REQUIRED_MESSAGE)
 });
+
+// The client never parses or validates phone shape/country — only presence.
+// Validity and the AR-only rule are decided exclusively by the server, which
+// answers with one of these three codes. Mirroring that logic client-side
+// would be a second rule on one column (see design.md ADR-2).
+const PHONE_ERROR_MESSAGES: Partial<Record<PublicErrorCode, string>> = {
+  'phone.required': PHONE_REQUIRED_MESSAGE,
+  'phone.invalid': 'Ese teléfono no es válido. Revisá el número e intentá de nuevo.',
+  'phone.country_unsupported': 'Por ahora solo aceptamos teléfonos de Argentina.'
+};
+
+function getPhoneErrorMessage(error: unknown): string | null {
+  if (!isApiError(error) || !error.errorCode) {
+    return null;
+  }
+
+  return PHONE_ERROR_MESSAGES[error.errorCode] ?? null;
+}
 
 function SignUpForm() {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+  const [phoneErrorMessage, setPhoneErrorMessage] = React.useState<string | null>(null);
   const { FormTextField } = useFormFields<SignUpValues>();
   const form = useAppForm({
     defaultValues: {
@@ -42,21 +66,27 @@ function SignUpForm() {
       firstName: '',
       lastName: '',
       password: '',
-      tenantName: ''
+      tenantName: '',
+      whatsappPhone: ''
     } as SignUpValues,
     validators: {
       onSubmit: signUpSchema
     },
     onSubmit: async ({ value }) => {
       setErrorMessage(null);
+      setPhoneErrorMessage(null);
 
       try {
+        // No `country` key is ever sent: the AR affordance below is
+        // presentation-only, and the global ValidationPipe 400s on any
+        // undeclared key before phone logic runs (design.md ADR-3).
         const session = await registerTenant({
           email: value.email,
           firstName: value.firstName,
           lastName: value.lastName || undefined,
           password: value.password,
-          tenantName: value.tenantName
+          tenantName: value.tenantName,
+          whatsappPhone: value.whatsappPhone.trim()
         });
 
         if (session.memberships[0]) {
@@ -66,7 +96,13 @@ function SignUpForm() {
         router.push('/dashboard');
         router.refresh();
       } catch (error) {
-        setErrorMessage(getApiErrorMessage(error));
+        const phoneMessage = getPhoneErrorMessage(error);
+
+        if (phoneMessage) {
+          setPhoneErrorMessage(phoneMessage);
+        } else {
+          setErrorMessage(getApiErrorMessage(error));
+        }
       }
     }
   });
@@ -122,6 +158,18 @@ function SignUpForm() {
               placeholder='Nombre de la inmobiliaria'
               validators={{ onBlur: z.string().min(2, 'Ingresá el nombre de tu inmobiliaria.') }}
             />
+            <FormTextField
+              name='whatsappPhone'
+              label='Teléfono de contacto'
+              required
+              type='tel'
+              placeholder='351 000 0000'
+              description='Se registra como número de Argentina (+54).'
+              validators={{ onBlur: z.string().trim().min(1, PHONE_REQUIRED_MESSAGE) }}
+            />
+            {phoneErrorMessage ? (
+              <p className='text-destructive text-sm font-normal'>{phoneErrorMessage}</p>
+            ) : null}
             <form.SubmitButton className='w-full'>Crear cuenta</form.SubmitButton>
           </form.Form>
         </form.AppForm>

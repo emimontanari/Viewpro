@@ -48,6 +48,7 @@ export type RegisterTenantInput = LoginInput & {
   firstName: string;
   lastName?: string;
   tenantName: string;
+  whatsappPhone: string;
 };
 
 export function login(input: LoginInput) {

@@ -52,9 +52,9 @@ No single unit is forecast to exceed 400 lines; WU4 (185–260, 140-line headroo
 
 ## Phase 4: WU3 — Registration Form
 
-- [ ] 4.1 RED: Create `apps/app-new/src/features/auth/components/sign-up-view.test.tsx` (new file): reject `registerTenant` with each of the three codes, asserting a distinct field-level message never equal to the generic `getApiErrorMessage` string; one case asserting the submitted body has exactly the five known keys plus `whatsappPhone` and no `country` key. `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/auth/components/sign-up-view.test.tsx`
-- [ ] 4.2 GREEN: Add `whatsappPhone` to `RegisterTenantInput` in `apps/app-new/src/lib/session.ts`; add a phone `FormTextField` plus a static AR affordance (outside the form value object, never a form field) and a code→message map consulted before the `getApiErrorMessage` fallback in `sign-up-view.tsx`. Rerun 4.1's command unchanged; confirm GREEN.
-- [ ] 4.3 REFACTOR: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/auth src/lib && pnpm --filter next-shadcn-dashboard-starter typecheck`
+- [x] 4.1 RED: Create `apps/app-new/src/features/auth/components/sign-up-view.test.tsx` (new file): reject `registerTenant` with each of the three codes, asserting a distinct field-level message never equal to the generic `getApiErrorMessage` string; one case asserting the submitted body has exactly the five known keys plus `whatsappPhone` and no `country` key. `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/auth/components/sign-up-view.test.tsx`
+- [x] 4.2 GREEN: Add `whatsappPhone` to `RegisterTenantInput` in `apps/app-new/src/lib/session.ts`; add a phone `FormTextField` plus a static AR affordance (outside the form value object, never a form field) and a code→message map consulted before the `getApiErrorMessage` fallback in `sign-up-view.tsx`. Rerun 4.1's command unchanged; confirm GREEN.
+- [x] 4.3 REFACTOR: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/auth src/lib && pnpm --filter next-shadcn-dashboard-starter typecheck`
 
 ## Phase 5: WU4 — Settings Parity
 
