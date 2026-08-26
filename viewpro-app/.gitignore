@@ -6,3 +6,6 @@
 
 # Per-worker upload roots created by apps/api tests
 uploads-test*/
+
+# Temporary fixtures created by scripts/restore-drill parity tests
+scripts/restore-drill/fixtures/.parity-*/

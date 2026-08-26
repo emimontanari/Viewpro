@@ -30,7 +30,7 @@ describe('GlobalExceptionFilter (e2e)', () => {
     previousPublicErrorEnvelopeEnabled = process.env.PUBLIC_ERROR_ENVELOPE_ENABLED
     process.env.PUBLIC_ERROR_ENVELOPE_ENABLED = 'false'
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
   })
 
   afterAll(async () => {
@@ -109,7 +109,7 @@ describe.each(APP_LIFECYCLE_STATES)('GlobalExceptionFilter configured $name life
     }
 
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
   })
 
   afterAll(async () => {
@@ -360,7 +360,7 @@ describe('GlobalExceptionFilter production sanitization (e2e)', () => {
     process.env.PROPERTY_IMAGES_PUBLIC_BASE_URL = 'https://images.viewpro.example'
 
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
   })
 
   afterAll(async () => {

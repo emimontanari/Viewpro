@@ -37,7 +37,7 @@ describe('PlatformDataController — change-feed endpoint', () => {
 
     const { createApiApp } = await import('../../bootstrap/create-app.js')
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
 
     const { PrismaService } = await import('../../database/prisma.service.js')
     prisma = app.get(PrismaService)
@@ -298,7 +298,7 @@ describe('PlatformDataController — GET /internal/platform/tenants (T-10/T-11)'
 
     const { createApiApp } = await import('../../bootstrap/create-app.js')
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
 
     const { PrismaService } = await import('../../database/prisma.service.js')
     prisma = app.get(PrismaService)

@@ -16,7 +16,7 @@ describe('Tenant context and permissions (e2e)', () => {
     process.env.COOKIE_SECURE = 'false'
 
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
     prisma = app.get(PrismaService)
   })
 

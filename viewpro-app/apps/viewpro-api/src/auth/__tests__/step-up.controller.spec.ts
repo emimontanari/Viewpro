@@ -40,7 +40,7 @@ async function buildApp(throttleLimit: number): Promise<INestApplication> {
   app.use(cookieParser())
   app.setGlobalPrefix('api')
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
-  await app.init()
+  await app.listen(0)
   return app
 }
 

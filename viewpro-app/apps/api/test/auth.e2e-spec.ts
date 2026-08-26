@@ -15,7 +15,7 @@ describe('AuthController (e2e)', () => {
     process.env.COOKIE_SECURE = 'false'
 
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
     prisma = app.get(PrismaService)
   })
 
@@ -208,7 +208,7 @@ describe('AuthController throttling (e2e)', () => {
     process.env.COOKIE_SECURE = 'false'
 
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
   })
 
   afterAll(async () => {

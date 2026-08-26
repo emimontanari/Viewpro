@@ -59,7 +59,7 @@ describe('OperatorsController (viewpro-api) — operators/manage (T1.3.11)', () 
     app.use(cookieParser())
     app.setGlobalPrefix('api')
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
-    await app.init()
+    await app.listen(0)
 
     prisma = moduleFixture.get(PrismaService)
 
