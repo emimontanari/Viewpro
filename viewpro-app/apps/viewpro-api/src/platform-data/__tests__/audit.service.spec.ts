@@ -373,7 +373,7 @@ describe('AuditService.listAudit — actor identity resolution (Slice 1, Phase 1
 
     expect(result.items).toHaveLength(1)
     expect(result.items[0]?.actorEmail).toBeNull()
-    expect((result.items[0]?.actor as { id: string }).id).toBe('op-does-not-exist')
+    expect((result.items[0]!.actor as { id: string }).id).toBe('op-does-not-exist')
   })
 })
 

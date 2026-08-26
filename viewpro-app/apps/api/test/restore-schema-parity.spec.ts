@@ -1,3 +1,5 @@
+/* oxlint-disable vitest/expect-expect -- assertions live in the sanitizedExit2/cliExit2 helpers, which the rule cannot see through */
+/* oxlint-disable promise/always-return -- the .then() here records a settled flag for a fake-timer assertion */
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -73,7 +75,7 @@ function runEscapedParityCli() { const directory = localDirectory('.escaped path
 beforeEach(() => Object.assign(process.env, childEnv, { ARBITRARY_PARENT: 'synthetic-denied', PGPASSWORD: 'synthetic-denied' }))
 afterEach(() => {
   for (const path of temporary.splice(0)) rmSync(path, { recursive: true, force: true })
-  for (const [key, value] of Object.entries(runnerEnv)) value === undefined ? delete process.env[key] : process.env[key] = value
+  for (const [key, value] of Object.entries(runnerEnv)) { if (value === undefined) delete process.env[key]; else process.env[key] = value }
 })
 
 describe('restore migration contract', () => {
@@ -201,7 +203,7 @@ describe('restore schema parity', () => {
   it('frames required ledger fields and rejects saturation or free-form logs', async () => {
     const state = input(); const ledger = join(state.psqlPath, '..', 'ledger.tsv')
     for (const [rows, expected, exitCode] of [['init\tstarted\tfinished\t\nrolled\tstarted\tfinished\trolled\nincomplete\tstarted\t\t\n', { applied: 1, rolledBack: 1, incomplete: 1 }, 1], ['x\tstarted\tfinished\t\n'.repeat(999), { applied: 999, rolledBack: 0, incomplete: 0 }, 1], ['', { applied: 0, rolledBack: 0, incomplete: 0 }, 1], ['x\tstarted\tfinished\t\n'.repeat(1000), 'ledger_output_invalid'], ['hostile\tstarted\tfinished\t\tprivate\tlog\n', 'command_output_invalid'], ['bad\n', 'command_output_invalid']]) {
-      writeFileSync(ledger, rows); const result = await runParity(state); typeof expected === 'string' ? sanitizedExit2(result, expected) : expect(result).toMatchObject({ exitCode, output: { ledger: expected } })
+      writeFileSync(ledger, rows); const result = await runParity(state); if (typeof expected === 'string') sanitizedExit2(result, expected); else expect(result).toMatchObject({ exitCode, output: { ledger: expected } })
     }
   })
   it('requires migration source, ignores Prisma metadata, and compares application chronology', async () => {

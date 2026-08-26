@@ -600,21 +600,6 @@ describe('Status Change Requests (e2e)', () => {
     }
   }
 
-  async function loginAs(email: string) {
-    const agent = request.agent(app.getHttpServer())
-    const loginRes = await agent
-      .post('/api/auth/login')
-      .send({ email, password: 'password123' })
-      .expect(200)
-    return { agent, userId: loginRes.body.user.id as string }
-  }
-
-  async function registerUser(email: string) {
-    // Register a user via a throwaway tenant registration, then use the userId
-    const throwaway = await registerTenantSession(email, `throwaway-${email}`)
-    return { agent: throwaway.agent, userId: throwaway.userId }
-  }
-
   async function setupSellerManagerPair(suffix: string) {
     // Register the manager (creates tenant + PRINCIPAL_MANAGER membership)
     const managerSession = await registerTenantSession(`manager-${suffix}@test.com`, `Test Tenant ${suffix}`)

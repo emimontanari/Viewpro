@@ -1,7 +1,7 @@
 import type { INestApplication } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import request from 'supertest'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 // ---------------------------------------------------------------------------
 // Spec: Trust Path Isolation

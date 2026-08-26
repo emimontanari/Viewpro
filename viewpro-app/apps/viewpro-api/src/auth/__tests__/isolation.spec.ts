@@ -13,7 +13,6 @@ import { AuthModule } from '../auth.module'
 const ISOLATION_EMAIL = 'isolation-test@viewpro.app'
 const ISOLATION_PASSWORD = 'isolation-test-password'
 
-const PLATFORM_SECRET = process.env.ACCESS_TOKEN_SECRET ?? 'test-access-token-secret'
 const INMOVIEW_SECRET = 'completely-different-inmoview-secret'
 
 describe('Isolation regression — InmoView DB unset, own JWT secret', () => {

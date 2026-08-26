@@ -1,8 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common'
-import { AnalyticsActorType, TenantStatus } from '@prisma/client'
+import { TenantStatus } from '@prisma/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CommandActor } from '../admin-actor'
-import { ADMIN_TENANT_STATUS_REPOSITORY } from '../admin-tenant-status.repository'
 import { AdminTenantStatusService } from '../admin-tenant-status.service'
 
 // ---------------------------------------------------------------------------
@@ -24,10 +23,6 @@ function makeStatusRepoStub() {
       updatedAt: new Date(),
     }),
   }
-}
-
-function buildService(repoStub: ReturnType<typeof makeStatusRepoStub>) {
-  return new AdminTenantStatusService({ [ADMIN_TENANT_STATUS_REPOSITORY]: repoStub } as any)
 }
 
 describe('AdminTenantStatusService — CommandActor dual-actor attribution', () => {

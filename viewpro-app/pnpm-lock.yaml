@@ -109,6 +109,9 @@ importers:
       '@types/supertest':
         specifier: 7.2.0
         version: 7.2.0
+      oxlint:
+        specifier: ^1.57.0
+        version: 1.66.0
       prisma:
         specifier: 6.19.2
         version: 6.19.2(typescript@6.0.3)
@@ -468,6 +471,9 @@ importers:
       '@types/supertest':
         specifier: 7.2.0
         version: 7.2.0
+      oxlint:
+        specifier: ^1.57.0
+        version: 1.66.0
       prisma:
         specifier: 6.19.2
         version: 6.19.2(typescript@6.0.3)
@@ -759,6 +765,9 @@ importers:
 
   packages/contracts:
     devDependencies:
+      oxlint:
+        specifier: ^1.57.0
+        version: 1.66.0
       typescript:
         specifier: 6.0.3
         version: 6.0.3
