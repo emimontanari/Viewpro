@@ -75,7 +75,12 @@ jobs:
       - name: Prune backups older than 30 days
         run: |
           set -euo pipefail
-          CUTOFF=$(date -u -d '30 days ago' +%s)
+          # Widened from 30 days: the cutover contract retains an old generation for one
+          # calendar month, and 30 days is a day short of that on every 31-day month.
+          # This only ever keeps MORE than before. It does not make the job
+          # lineage-aware — the prune is still per-object age, so it cannot yet honour a
+          # retention window that opens at the cutover rather than at each upload.
+          CUTOFF=$(date -u -d '45 days ago' +%s)
           for prefix in inmoview-prod viewpro-platform-prod; do
             aws s3api list-objects-v2 --bucket "$BUCKET" --prefix "${prefix}/" \
               --endpoint-url "$R2_ENDPOINT" --query 'Contents[].{Key:Key,LastModified:LastModified}' --output json 2>/dev/null \
