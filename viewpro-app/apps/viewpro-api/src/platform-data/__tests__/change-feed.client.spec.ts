@@ -93,7 +93,6 @@ describe('ChangeFeedClient', () => {
     const mockFetch = vi.fn().mockImplementation((_url: string, init: RequestInit) => {
       const headers = init.headers as Record<string, string>
       const token = (headers['Authorization'] ?? '').replace('Bearer ', '')
-      const verifier = new JwtService({ secret: PLATFORM_CONTROL_SECRET })
       // Synchronously decode (no verify) to inspect the jti
       const parts = token.split('.')
       if (parts[1]) {
@@ -220,7 +219,7 @@ describe('ChangeFeedClient', () => {
     vi.useFakeTimers()
     vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => Promise.resolve({
       ok: true,
-      json: () => new Promise((_, reject) => init.signal?.addEventListener('abort', () => reject(new Error('aborted')))),
+      json: () => new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(new Error('aborted')))),
     } as Response)))
     const client = new ChangeFeedClient({ inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL, platformControlSecret: PLATFORM_CONTROL_SECRET })
     const request = client.fetchChanges(0)

@@ -193,7 +193,6 @@ describe('DeleteLabelUseCase', () => {
 
 describe('ListLabelsUseCase', () => {
   it('returns only active labels when activeOnly=true (S-5)', async () => {
-    const softDeletedLabel = { ...existingLabel, deletedAt: new Date() }
     const repo = buildMockRepo({
       findMany: vi.fn().mockResolvedValue([existingLabel]),
     })

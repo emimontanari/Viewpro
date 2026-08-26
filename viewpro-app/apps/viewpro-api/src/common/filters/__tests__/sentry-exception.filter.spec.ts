@@ -14,7 +14,8 @@ describe('SentryExceptionFilter', () => {
     const captureException = vi.fn()
     const delegate = vi.spyOn(BaseExceptionFilter.prototype, 'catch').mockImplementation(() => undefined)
     new SentryExceptionFilter({} as never, { captureException } as never).catch(exception, {} as never)
-    expected ? expect(captureException).toHaveBeenCalledWith(expected) : expect(captureException).not.toHaveBeenCalled()
+    if (expected) expect(captureException).toHaveBeenCalledWith(expected)
+    else expect(captureException).not.toHaveBeenCalled()
     expect(delegate).toHaveBeenCalledWith(exception, expect.anything())
   })
 

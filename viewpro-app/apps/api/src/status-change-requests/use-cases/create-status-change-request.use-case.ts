@@ -4,7 +4,6 @@ import {
   Inject,
   Injectable,
   Logger,
-  NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common'
 import { Prisma, TenantMembershipStatus, TenantRole } from '@prisma/client'

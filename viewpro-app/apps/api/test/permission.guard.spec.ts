@@ -14,6 +14,7 @@ import {
 
 function createExecutionContext(permissions: Permission[]): ExecutionContext {
 	return {
+		// oxlint-disable-next-line typescript/no-extraneous-class -- a bare class is what Nest's getClass() returns here
 		getClass: () => class TestController {},
 		getHandler: () => function testHandler() {},
 		switchToHttp: () => ({

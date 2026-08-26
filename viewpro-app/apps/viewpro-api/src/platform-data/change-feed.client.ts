@@ -214,6 +214,7 @@ export class ChangeFeedClient {
       if (controller.signal.aborted) throw new ChangeFeedTimeoutError()
       throw new Error(
         `Data-lane request to InmoView change-feed failed: ${(err as Error).message}`,
+        { cause: err },
       )
     }
 
@@ -261,6 +262,7 @@ export class ChangeFeedClient {
     } catch (err) {
       throw new Error(
         `Backfill request to InmoView tenants endpoint failed: ${(err as Error).message}`,
+        { cause: err },
       )
     }
 

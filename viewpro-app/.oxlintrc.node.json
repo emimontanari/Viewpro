@@ -1,0 +1,86 @@
+{
+  "$schema": "./apps/app-new/node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node", "vitest"],
+  "env": {
+    "es2024": true,
+    "node": true
+  },
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/generated/**",
+    "**/prisma/migrations/**",
+    "**/node_modules/**"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "no-console": "off",
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "no-unused-expressions": "error",
+    "no-unsafe-optional-chaining": "error",
+    "preserve-caught-error": "error",
+
+    "promise/no-return-wrap": "error",
+    "promise/param-names": "error",
+    // Cannot distinguish NestJS ExceptionFilter.catch(exception, host)
+    // from Promise.catch; every hit in this repo is an exception filter.
+    "promise/valid-params": "off",
+    "promise/no-multiple-resolved": "error",
+
+    "import/no-anonymous-default-export": "warn",
+    "import/no-unassigned-import": "off",
+
+    "no-shadow": "off",
+
+    // Off because the rule fights this codebase, not because it finds defects.
+    // NestJS modules are decorated empty classes by design; the rule says so itself.
+    "typescript/no-extraneous-class": ["error", { "allowWithDecorator": true }],
+    // `_`-prefixed names are the agreed opt-out for no-unused-vars above, so
+    // forbidding the prefix would contradict the rule directly beside it.
+    "no-underscore-dangle": "off",
+    // Preference for toSorted() over sort(); no defect class behind it.
+    "unicorn/no-array-sort": "off",
+    // Test factories deliberately live beside the cases they build.
+    "unicorn/consistent-function-scoping": "off",
+    // 439 hits, all `vi.fn()` without type parameters. Adopting it would be a
+    // mechanical rewrite of the entire test suite that catches nothing.
+    "vitest/require-mock-type-parameters": "off",
+    // Both hits are the fake-timer pattern: the assertion is stored, timers are
+    // advanced, then it is awaited. Correct code the rule cannot see.
+    "vitest/valid-expect": "off",
+
+    // Deferred, not dismissed. These three are worth adopting, but each one
+    // rewrites assertions rather than tidying syntax, so they belong in a
+    // change someone can review case by case instead of riding along with a
+    // lint config. Counts are as of 2026-08-26 and are the point of writing
+    // them down: a number that grows is visible, a rule that is merely absent
+    // is not. Tracked in #395.
+    "vitest/require-to-throw-message": "off",
+    "vitest/no-conditional-expect": "off",
+    "typescript/no-explicit-any": "off"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.ts", "**/*.mts", "**/*.cts"],
+      "rules": {
+        "constructor-super": "off",
+        "no-const-assign": "off",
+        "no-dupe-class-members": "off",
+        "no-dupe-keys": "off",
+        "no-func-assign": "off",
+        "no-import-assign": "off",
+        "no-new-native-nonconstructor": "off",
+        "no-obj-calls": "off",
+        "no-redeclare": "off",
+        "no-setter-return": "off",
+        "no-this-before-super": "off",
+        "no-unsafe-negation": "off",
+        "no-var": "error",
+        "prefer-rest-params": "error",
+        "prefer-spread": "error"
+      }
+    }
+  ]
+}

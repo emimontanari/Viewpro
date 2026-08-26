@@ -37,7 +37,7 @@ describe('seedOperatorFixture', () => {
   })
 
   afterAll(async () => {
-    await expect(app.close()).resolves.toBeUndefined()
+    await app.close()
   })
 
   it('fails closed before dependency resolution outside test runtime or against an unsafe URL', async () => {

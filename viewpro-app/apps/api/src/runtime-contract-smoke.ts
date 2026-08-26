@@ -65,7 +65,8 @@ function runCommand(
         child.stderr?.destroy()
         child.unref()
       }
-      failure ? reject(failure) : resolve(result!)
+      if (failure) reject(failure)
+      else resolve(result!)
     }
     const abandon = () => finish(smokeFailure('runtime_smoke_termination_unconfirmed'), undefined, true)
     const timeout = setTimeout(() => {

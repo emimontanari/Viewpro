@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ForbiddenException } from '@nestjs/common'
 import type { ExecutionContext } from '@nestjs/common'
 import type { Reflector } from '@nestjs/core'
-import { StepUpGuard, STEP_UP_STATUS_TARGETS_KEY } from '../step-up.guard'
+import { StepUpGuard } from '../step-up.guard'
 import type { TokenService } from '../../tokens/token.service'
 
 const OPERATOR_ID = 'op-123'

@@ -21,7 +21,6 @@ import {
   GlobalRole,
   MovementBuiltInOutcome,
   MovementType,
-  PropertyEngagementStatus,
   PropertyOperationType,
   PropertyType,
   TenantRole,
