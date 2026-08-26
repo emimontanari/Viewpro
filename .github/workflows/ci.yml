@@ -165,6 +165,36 @@ jobs:
       - name: Test
         run: pnpm exec turbo run test --concurrency=1
 
+  production-cutover:
+    name: Production cutover contracts
+    runs-on: ubuntu-latest
+    # Qualification bounds its own subprocesses and reports residue rather than stalling,
+    # so this is a backstop against an unforeseen hang, not the intended failure signal.
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      # Qualification builds throwaway worktrees from the checkout, and this job runs
+      # candidate code, so no credentials are persisted into the workspace.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # node --test does not discover *.spec.mjs by directory, so each file is listed.
+      # Qualification spawns Git and makes timing assertions, so it runs unparallelised.
+      - name: Contracts
+        run: |
+          node --test --test-concurrency=1 \
+            scripts/production-cutover/lineage-contract.spec.mjs \
+            scripts/production-cutover/tree-byte-contract.spec.mjs \
+            scripts/production-cutover/release-contract.spec.mjs \
+            scripts/production-cutover/candidate.spec.mjs
+
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest

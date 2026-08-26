@@ -2,8 +2,8 @@
 
 ## Cumulative Status
 
-- Tasks: **5/18 complete** — WU1, WU2, 2.1 Lineage, 2.2 Tree/Byte, and 2.3 Release; later work remains pending.
-- Attempt 17 is active after factual acquisition; this correction is un-settled and terminal status remains exclusively in the native ledger.
+- Tasks: **6/18 complete** — WU1, WU2, 2.1 Lineage, 2.2 Tree/Byte, 2.3 Release, and 2.4 Qualification; later work remains pending.
+- Attempt 21 carries Qualification; terminal status remains exclusively in the native ledger.
 
 ## Preserved Attempt and Reset History
 
@@ -42,3 +42,13 @@ Attempt 14 failed and reset. Attempt 15 terminally passed with evidence `sha256:
 |---|---|---|---|---|---|
 | 2.3 correction | 5/5 | prefixed valid contract: false≠true | 6/6 | root/nested transparent and revoked proxies; poisoned parse/regex/every; prefix/closure/authority cases | 6/6 |
 - Focused `node --test scripts/production-cutover/release-contract.spec.mjs`: 6/6 passed; JSON, hostile probes, path, package/lock, diff, scope, process, and non-authority audits passed before parent validation. Native status consumed: apply ready, repo-local root allowed, no warnings. Remaining work is the 13 unchecked rows in `tasks.md`; parent owns validation and settlement.
+
+## WU3 Qualification — Task 2.4
+
+- Task 2.4 is `[x]`; 6/18 tasks are complete. This four-path candidate qualifies one detached candidate from closed audits and wires the first CI coverage the production-cutover contracts have ever had. Attempts 19 and 20 failed and were reset under maintainer authorization; attempt 21 carries this work and solely remediates `sha256:3326e44f6288e08ca6a541b895b56e2067cbf50b6f712ca86437880f03305a4a`.
+| TDD Cycle Evidence | Safety | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|
+| 2.4 | 44/44 | constant-success stub rejected by every test | 23/23 | 13 defect mutations, 10 caught | 23/23 |
+- Focused `node --test scripts/production-cutover/candidate.spec.mjs`: 23/23 passed; composed contract suites 44/44. Two independent four-lens reviews ran before settlement; the first returned six blockers and the attempt was settled failed rather than corrected, and the second returned two, both corrected once and re-validated.
+- Design consequences of those reviews: `git hash-object` is removed from the trust path entirely because clean filters make it execute attacker configuration and report a spoofed identity, so worktree blob identity is computed in process; settlement is terminating and absolutely bounded, since a group that never reports close or exit would otherwise hang the caller forever; every probe fails closed as a set; and all fixtures are self-built, because continuous integration leaves `HEAD` attached or detached depending on the event.
+- Known uncovered by construction: injecting a fault into exactly one probe, and a non-ENOENT alternates read fault, are unreachable from a test against the closed operation table. Budget reconciled from the historical `244/270` to the delivered `1017/1080`; the `<=400` review-size guidance was waived for this work unit by the maintainer.
