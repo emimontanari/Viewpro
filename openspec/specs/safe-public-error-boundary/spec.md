@@ -8,9 +8,9 @@ API disclosure boundary.
 
 ### Requirement: Canonical public error catalog
 
-Types and runtime membership MUST derive from one exact, unique, ordered tuple of 25 codes: `phone.too_short`, `DOCUMENT_DUPLICATE_APPROVED`, `OUTCOME_LABEL_NOT_FOUND`, `LABEL_NAME_COLLIDES_BUILTIN`, `LABEL_ALREADY_DELETED`, `RESOLUTION_COMMENT_REQUIRED`, `SELF_APPROVAL_FORBIDDEN`, `STATUS_CHANGE_REQUEST_ALREADY_RESOLVED`, `STATUS_CHANGE_REQUEST_SUPERSEDED`, `NOT_ASSIGNED_TO_ENGAGEMENT`, `ENGAGEMENT_ARCHIVED`, `TARGET_STATUS_SAME_AS_CURRENT`, `STATUS_CHANGE_REQUEST_ALREADY_PENDING`, `REQUEST_FAILED`, `SESSION_EXPIRED`, `INVITATION_NOT_FOUND`, `INVITATION_EXPIRED`, `INVITATION_REVOKED`, `INVITATION_ALREADY_ACCEPTED`, `INVITATION_EMAIL_MISMATCH`, `INVITATION_ALREADY_MEMBER`, `INVITATION_EMAIL_ALREADY_REGISTERED`, `TENANT_USER_LIMIT_EXCEEDED`, `INVITATION_INVALID_CREDENTIALS`, `AUTH_TOKEN_INVALID`. It MUST preserve the prefix/order of the first 14 codes exactly as before. Further growth beyond these 25 codes MUST occur only through an explicit SDD delta to this requirement. Established codes MUST pass enabled unchanged; unknown/missing codes MUST become `REQUEST_FAILED`.
+Types and runtime membership MUST derive from one exact, unique, ordered tuple of 28 codes: `phone.too_short`, `DOCUMENT_DUPLICATE_APPROVED`, `OUTCOME_LABEL_NOT_FOUND`, `LABEL_NAME_COLLIDES_BUILTIN`, `LABEL_ALREADY_DELETED`, `RESOLUTION_COMMENT_REQUIRED`, `SELF_APPROVAL_FORBIDDEN`, `STATUS_CHANGE_REQUEST_ALREADY_RESOLVED`, `STATUS_CHANGE_REQUEST_SUPERSEDED`, `NOT_ASSIGNED_TO_ENGAGEMENT`, `ENGAGEMENT_ARCHIVED`, `TARGET_STATUS_SAME_AS_CURRENT`, `STATUS_CHANGE_REQUEST_ALREADY_PENDING`, `REQUEST_FAILED`, `SESSION_EXPIRED`, `INVITATION_NOT_FOUND`, `INVITATION_EXPIRED`, `INVITATION_REVOKED`, `INVITATION_ALREADY_ACCEPTED`, `INVITATION_EMAIL_MISMATCH`, `INVITATION_ALREADY_MEMBER`, `INVITATION_EMAIL_ALREADY_REGISTERED`, `TENANT_USER_LIMIT_EXCEEDED`, `INVITATION_INVALID_CREDENTIALS`, `AUTH_TOKEN_INVALID`, `phone.required`, `phone.invalid`, `phone.country_unsupported`. It MUST preserve the prefix/order of the first 14 codes exactly as before. Further growth beyond these 28 codes MUST occur only through an explicit SDD delta to this requirement. Established codes MUST pass enabled unchanged; unknown/missing codes MUST become `REQUEST_FAILED`.
 
-(Previously: froze the tuple at the original 14 codes and stated it "MUST NOT add auth, invitation, or actionable codes." This delta, delivered by the sibling `actionable-auth-errors` capability, appends the 11 codes defined by that capability's "Catalog growth to twenty-five codes" requirement and closes the tuple at exactly 25.)
+(Previously: froze the tuple at the original 14 codes and stated it "MUST NOT add auth, invitation, or actionable codes." This delta, delivered by the sibling `actionable-auth-errors` capability, appends the 11 codes defined by that capability's "Catalog growth to twenty-five codes" requirement and closes the tuple at exactly 25. This second delta, delivered by the sibling `tenant-contact-phone` capability, appends the 3 codes defined by that capability's "Catalog growth to twenty-eight codes" requirement and closes the tuple at exactly 28.)
 
 #### Scenario: Catalog preservation
 - GIVEN the runtime tuple and codes
@@ -22,10 +22,10 @@ Types and runtime membership MUST derive from one exact, unique, ordered tuple o
 - WHEN the enabled boundary shapes it
 - THEN `errorCode` is `REQUEST_FAILED`
 
-#### Scenario: Frozen prefix and closed 25-code tuple
-- GIVEN the runtime `PUBLIC_ERROR_CODES` tuple after `actionable-auth-errors`
+#### Scenario: Frozen prefix and closed 28-code tuple
+- GIVEN the runtime `PUBLIC_ERROR_CODES` tuple after `tenant-contact-phone`
 - WHEN its first 14 entries and total length are asserted
-- THEN the first 14 entries are unchanged and the tuple contains exactly 25 entries in the frozen append order
+- THEN the first 14 entries are unchanged and the tuple contains exactly 28 entries in the frozen append order
 
 ### Requirement: Focused tolerant direct consumer
 

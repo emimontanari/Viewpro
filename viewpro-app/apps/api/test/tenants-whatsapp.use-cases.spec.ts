@@ -17,6 +17,7 @@
 
 import { BadRequestException } from '@nestjs/common'
 import { describe, expect, it, vi } from 'vitest'
+import { PrismaTenantsRepository } from '../src/tenants/prisma-tenants.repository'
 import type { TenantsRepository } from '../src/tenants/tenants.repository'
 import { GetTenantWhatsappPhoneUseCase } from '../src/tenants/use-cases/get-tenant-whatsapp-phone.use-case'
 import { UpdateTenantWhatsappPhoneUseCase } from '../src/tenants/use-cases/update-tenant-whatsapp-phone.use-case'
@@ -181,5 +182,33 @@ describe('GetTenantWhatsappPhoneUseCase', () => {
     const result = await useCase.execute({ tenantId: TENANT_ID })
 
     expect(result).toEqual({ whatsappPhone: null })
+  })
+})
+
+describe('PrismaTenantsRepository — the settings write never touches the personal phone (#287)', () => {
+  it('writes only to tenant, never to user', async () => {
+    const tenantUpdate = vi.fn().mockResolvedValue({ id: 'tenant-1' })
+    const userUpdate = vi.fn()
+
+    const prisma = {
+      tenant: { update: tenantUpdate },
+      user: { update: userUpdate },
+    }
+
+    const repository = new PrismaTenantsRepository(prisma as never)
+    await repository.updateWhatsappPhone('tenant-1', '+543510000000')
+
+    // The registration half of this requirement is pinned in
+    // register-tenant.use-cases.spec.ts; this is its settings twin. Structure
+    // makes the violation impossible today — the repository injects only
+    // Prisma and issues a single tenant.update — but structure is not proof,
+    // and the agency contact and the personal seller number must stay
+    // separate on both write paths.
+    expect(tenantUpdate).toHaveBeenCalledTimes(1)
+    expect(tenantUpdate.mock.calls[0]![0]).toMatchObject({
+      where: { id: 'tenant-1' },
+      data: { whatsappPhone: '+543510000000' },
+    })
+    expect(userUpdate).not.toHaveBeenCalled()
   })
 })

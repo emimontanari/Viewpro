@@ -303,3 +303,11 @@ Two cases were added beyond the executor's brief, closing gaps it flagged:
 The third gap the executor named — `GET /tenants/me/whatsapp-phone` without `TENANT_MANAGE_SETTINGS` → 403 — needed nothing: it is already covered in `apps/api/test/tenants-whatsapp.e2e-spec.ts`.
 
 The spec now holds 10 cases.
+
+### Verify blocker closed
+
+`sdd-verify` returned CHANGES REQUIRED on one gap: the requirement *personal phone remains untouched* has two scenarios, and only the registration one was pinned (`register-tenant.use-cases.spec.ts:204`). The settings twin was left to structure — the repository injects only Prisma and issues a single `tenant.update`, so the violation is impossible today. Structure is not proof.
+
+Added `PrismaTenantsRepository — the settings write never touches the personal phone` to `tenants-whatsapp.use-cases.spec.ts`, mirroring the registration precedent. **Confirmed it can fail**: injecting a `user.update` into the repository turns it red with `expected "vi.fn()" to not be called at all, but actually been called 1 times`; removing it returns green. No production change.
+
+Root cause worth recording: the design's threat matrix assigned a RED to the registration half only, so `tasks.md` never asked for the settings half. A spec scenario outran its task list.
