@@ -22,7 +22,8 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  SidebarRail
+  SidebarRail,
+  useSidebar
 } from '@/components/ui/sidebar';
 import { UserAvatarProfile } from '@/components/user-avatar-profile';
 import { navGroups } from '@/config/nav-config';
@@ -33,6 +34,7 @@ import { getUserDisplayName } from '@/lib/session';
 import { BRAND } from '@/lib/brand/brand';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { Icons } from '../icons';
 import { OrgSwitcher } from '../org-switcher';
 
@@ -48,7 +50,18 @@ export default function AppSidebar({
   const pathname = usePathname();
   const { session, signOut } = useSession();
   const router = useRouter();
+  const { setOpenMobile } = useSidebar();
   const filteredGroups = useFilteredNavGroups(navGroupsConfig);
+
+  // On mobile the sidebar is a Sheet laid over the page, so navigating leaves
+  // the destination hidden behind it. Closing on pathname change covers every
+  // exit at once — the links below, the footer menu's router.push calls, and
+  // the browser's own back button — rather than an onClick per link that the
+  // next link added here would forget. Desktop is untouched: setOpenMobile
+  // only drives the Sheet.
+  useEffect(() => {
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
   const isOwnerVariant = variant === 'owner';
   const user = session?.user;
   const avatarUser = user
