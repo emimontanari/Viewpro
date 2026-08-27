@@ -9,3 +9,6 @@ uploads-test*/
 
 # Temporary fixtures created by scripts/restore-drill parity tests
 scripts/restore-drill/fixtures/.parity-*/
+
+# Temporary workspace created by test/lint-config-is-live.spec.ts
+.lint-config-probe-*/
