@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:seeded": "playwright test --config playwright.seeded.config.ts",
-    "lint": "oxlint",
+    "lint": "oxlint --deny-warnings",
     "lint:fix": "oxlint --fix && pnpm format",
     "lint:strict": "oxlint --deny-warnings",
     "format": "oxfmt --write .",

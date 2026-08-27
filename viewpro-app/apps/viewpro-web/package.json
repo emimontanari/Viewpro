@@ -8,7 +8,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "oxlint",
+    "lint": "oxlint --deny-warnings",
     "lint:fix": "oxlint --fix && pnpm format",
     "lint:strict": "oxlint --deny-warnings",
     "format": "oxfmt --write .",

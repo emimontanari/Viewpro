@@ -340,10 +340,10 @@ describe('formatActivityTimestamp()', () => {
   });
 });
 
-describe('buildTenantActivityDetail', () => {
-  const toMap = (fields: { label: string; value: string }[]) =>
-    Object.fromEntries(fields.map((field) => [field.label, field.value]));
+const toMap = (fields: { label: string; value: string }[]) =>
+  Object.fromEntries(fields.map((field) => [field.label, field.value]));
 
+describe('buildTenantActivityDetail', () => {
   it('surfaces who/when plus the movement technical fields', () => {
     const detail = toMap(
       buildTenantActivityDetail({

@@ -68,8 +68,8 @@ describe('SignUpViewPage', () => {
     });
 
     const submittedBody = registerTenantMock.mock.calls[0]![0];
-    expect(Object.keys(submittedBody).sort()).toEqual(
-      ['email', 'firstName', 'lastName', 'password', 'tenantName', 'whatsappPhone'].sort()
+    expect(Object.keys(submittedBody).toSorted()).toEqual(
+      ['email', 'firstName', 'lastName', 'password', 'tenantName', 'whatsappPhone'].toSorted()
     );
     expect(submittedBody).not.toHaveProperty('country');
     expect(submittedBody.whatsappPhone).toBe('3510000000');
