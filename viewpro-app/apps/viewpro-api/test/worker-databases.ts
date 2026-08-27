@@ -16,10 +16,10 @@ const DEFAULT_BASE_URL =
 /**
  * Worker slots, and therefore databases, to prepare.
  *
- * Two, matching apps/api. See the note there: four is measurably faster but
- * pushed the whole `turbo test` run past the retries often enough to matter.
+ * Four, matching apps/api. See the note there for what made two the cap and
+ * what had to change before raising it.
  */
-export const TEST_WORKER_COUNT = Number(process.env.VIEWPRO_PLATFORM_TEST_WORKERS ?? 2)
+export const TEST_WORKER_COUNT = Number(process.env.VIEWPRO_PLATFORM_TEST_WORKERS ?? 4)
 
 /** Base URL every derived database name is built from. */
 export function baseDatabaseUrl(): string {

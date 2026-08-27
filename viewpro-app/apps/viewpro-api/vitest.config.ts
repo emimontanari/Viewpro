@@ -25,8 +25,10 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     // Same rationale as apps/api: best-effort async side effects (ingest/mirror
-    // writes) can race assertions on slower CI runners. Stopgap until per-worker
-    // DB isolation lands; a retry cannot rescue a deterministic failure.
+    // writes) can race assertions on slower CI runners. Per-worker DB isolation
+    // has since landed (#398), so that half of the original reason is retired;
+    // the timing race is not, and it is about CI hardware rather than this
+    // machine. A retry cannot rescue a deterministic failure.
     retry: process.env.VIEWPRO_PLATFORM_TEST_RETRY === '0' ? 0 : 2,
     include: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
     setupFiles: ['./test/setup-env.ts'],
