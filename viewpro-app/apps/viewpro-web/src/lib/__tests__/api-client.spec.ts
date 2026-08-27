@@ -25,6 +25,11 @@ function jsonResponse(status: number, body: unknown) {
   });
 }
 
+async function loadApiRequest() {
+  const mod = await import('../api-client');
+  return mod.apiRequest;
+}
+
 describe('toApiError — code propagation (D12)', () => {
   const originalFetch = global.fetch;
 
@@ -173,11 +178,6 @@ describe('apiRequest — 401 session-expired interceptor (D7)', () => {
     });
     vi.restoreAllMocks();
   });
-
-  async function loadApiRequest() {
-    const mod = await import('../api-client');
-    return mod.apiRequest;
-  }
 
   it('redirects to sign-in with reason=session_expired for a 401 from a non-exempt path', async () => {
     vi.mocked(global.fetch).mockResolvedValueOnce(

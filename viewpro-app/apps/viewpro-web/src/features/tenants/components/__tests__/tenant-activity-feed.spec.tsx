@@ -70,6 +70,13 @@ function renderFeed(overrides: Partial<React.ComponentProps<typeof TenantActivit
   return props;
 }
 
+async function expandItem(testId: string) {
+  const user = userEvent.setup();
+  const item = screen.getByTestId(testId);
+  await user.click(within(item).getByRole('button'));
+  return user;
+}
+
 describe('TenantActivityFeed — category filter', () => {
   it('shows all items and all filter chips by default ("Todos" active)', () => {
     renderFeed();
@@ -358,13 +365,6 @@ describe('TenantActivityFeed — "Ver documento" action button', () => {
     }
     openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
   });
-
-  async function expandItem(testId: string) {
-    const user = userEvent.setup();
-    const item = screen.getByTestId(testId);
-    await user.click(within(item).getByRole('button'));
-    return user;
-  }
 
   it('shows the "Ver documento" button when the item has an uploaded currentVersion', async () => {
     renderFeed({ items: [DOCUMENT_ITEM_WITH_VERSION] });
