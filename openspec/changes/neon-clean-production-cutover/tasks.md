@@ -37,7 +37,7 @@ Upstream-only paths: `BASE=$(git merge-base origin/develop HEAD)` then `git diff
 
 ## Phase 4: Cutover
 
-- [ ] 4.1 **WU7 (330–350):** Implement session tests, runbook, evidence templates, RED-CUT-12/13; identity only, never an instance.
+- [x] 4.1 **WU7 (1005/1080):** Six reviewed merges→refreshed `develop`; own `viewpro-app/apps/{api,viewpro-api}/test/production-cutover-session.spec.ts` and `viewpro-app/scripts/production-cutover/rollback.{mjs,spec.mjs}` as a declared additive path; rotation judged through the deployed token services and guards, control lane proven on its own verifier, and a post-write reversal refused without generation-bound unexpired authority. RED-CUT-12/13 restated in the delta spec because `e083fc3` removed the design table; recovered from `800d1a3`. `node --test scripts/production-cutover/rollback.spec.mjs` plus both vitest session suites; identity only, never an instance.
 
 ## Phase 5: Closure
 
