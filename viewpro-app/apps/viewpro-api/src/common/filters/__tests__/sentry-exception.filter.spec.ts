@@ -14,8 +14,10 @@ describe('SentryExceptionFilter', () => {
     const captureException = vi.fn()
     const delegate = vi.spyOn(BaseExceptionFilter.prototype, 'catch').mockImplementation(() => undefined)
     new SentryExceptionFilter({} as never, { captureException } as never).catch(exception, {} as never)
-    if (expected) expect(captureException).toHaveBeenCalledWith(expected)
-    else expect(captureException).not.toHaveBeenCalled()
+    // One assertion over the recorded calls rather than a branch per case: the
+    // "not captured" expectation then runs on every row instead of only when
+    // `expected` happens to be falsy.
+    expect(captureException.mock.calls).toEqual(expected ? [[expected]] : [])
     expect(delegate).toHaveBeenCalledWith(exception, expect.anything())
   })
 

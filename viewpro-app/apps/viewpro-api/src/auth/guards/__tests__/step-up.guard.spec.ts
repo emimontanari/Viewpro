@@ -57,18 +57,14 @@ describe('StepUpGuard', () => {
 
     await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException)
 
-    try {
-      await guard.canActivate(context)
-      expect.unreachable()
-    } catch (error) {
-      expect(error).toBeInstanceOf(ForbiddenException)
-      const response = (error as ForbiddenException).getResponse()
-      expect(response).toEqual({
-        statusCode: 403,
-        code: 'STEP_UP_REQUIRED',
-        message: 'Step-up verification required',
-      })
-    }
+    const error = await guard.canActivate(context).catch((thrown: unknown) => thrown)
+
+    expect(error).toBeInstanceOf(ForbiddenException)
+    expect((error as ForbiddenException).getResponse()).toEqual({
+      statusCode: 403,
+      code: 'STEP_UP_REQUIRED',
+      message: 'Step-up verification required',
+    })
   })
 
   it('expired/forged step-up cookie (verify rejects) throws the same 403 shape', async () => {
@@ -79,18 +75,14 @@ describe('StepUpGuard', () => {
       userId: OPERATOR_ID,
     })
 
-    try {
-      await guard.canActivate(context)
-      expect.unreachable()
-    } catch (error) {
-      expect(error).toBeInstanceOf(ForbiddenException)
-      const response = (error as ForbiddenException).getResponse()
-      expect(response).toEqual({
-        statusCode: 403,
-        code: 'STEP_UP_REQUIRED',
-        message: 'Step-up verification required',
-      })
-    }
+    const error = await guard.canActivate(context).catch((thrown: unknown) => thrown)
+
+    expect(error).toBeInstanceOf(ForbiddenException)
+    expect((error as ForbiddenException).getResponse()).toEqual({
+      statusCode: 403,
+      code: 'STEP_UP_REQUIRED',
+      message: 'Step-up verification required',
+    })
   })
 
   it('valid step-up cookie but payload.sub !== request.user.id throws 403 STEP_UP_REQUIRED (AC5)', async () => {

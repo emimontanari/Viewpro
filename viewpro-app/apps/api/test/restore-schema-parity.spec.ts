@@ -203,6 +203,7 @@ describe('restore schema parity', () => {
   it('frames required ledger fields and rejects saturation or free-form logs', async () => {
     const state = input(); const ledger = join(state.psqlPath, '..', 'ledger.tsv')
     for (const [rows, expected, exitCode] of [['init\tstarted\tfinished\t\nrolled\tstarted\tfinished\trolled\nincomplete\tstarted\t\t\n', { applied: 1, rolledBack: 1, incomplete: 1 }, 1], ['x\tstarted\tfinished\t\n'.repeat(999), { applied: 999, rolledBack: 0, incomplete: 0 }, 1], ['', { applied: 0, rolledBack: 0, incomplete: 0 }, 1], ['x\tstarted\tfinished\t\n'.repeat(1000), 'ledger_output_invalid'], ['hostile\tstarted\tfinished\t\tprivate\tlog\n', 'command_output_invalid'], ['bad\n', 'command_output_invalid']]) {
+  // oxlint-disable-next-line vitest/no-conditional-expect -- if/else where both branches assert, one per result shape
       writeFileSync(ledger, rows); const result = await runParity(state); if (typeof expected === 'string') sanitizedExit2(result, expected); else expect(result).toMatchObject({ exitCode, output: { ledger: expected } })
     }
   })
