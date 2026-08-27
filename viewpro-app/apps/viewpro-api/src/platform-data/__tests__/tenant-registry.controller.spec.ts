@@ -74,7 +74,7 @@ describe('TenantRegistryController (integration — test DB)', () => {
     app.use(cookieParser())
     app.setGlobalPrefix('api')
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
-    await app.init()
+    await app.listen(0)
 
     prisma = moduleFixture.get(PrismaService)
 

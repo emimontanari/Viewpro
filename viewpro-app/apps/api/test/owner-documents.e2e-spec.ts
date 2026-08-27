@@ -19,7 +19,7 @@ describe('Owner document endpoints (e2e)', () => {
     process.env.DOCUMENT_STORAGE_DRIVER = 'fake'
 
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
     prisma = app.get(PrismaService)
   })
 

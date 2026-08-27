@@ -91,7 +91,7 @@ describe('TenantDetailController (integration — test DB, mocked InmoView clien
     app.use(cookieParser())
     app.setGlobalPrefix('api')
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
-    await app.init()
+    await app.listen(0)
 
     prisma = moduleFixture.get(PrismaService)
     await seedOperatorFixture(app, { email: TEST_EMAIL, password: TEST_PASSWORD })
@@ -305,7 +305,7 @@ describe('TenantDetailController.documentReadUrl (integration — test DB, mocke
     app.use(cookieParser())
     app.setGlobalPrefix('api')
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
-    await app.init()
+    await app.listen(0)
 
     prisma = moduleFixture.get(PrismaService)
     await seedOperatorFixture(app, { email: DOC_TEST_EMAIL, password: DOC_TEST_PASSWORD })

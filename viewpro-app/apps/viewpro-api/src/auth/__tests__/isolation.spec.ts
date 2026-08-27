@@ -34,7 +34,7 @@ describe('Isolation regression — InmoView DB unset, own JWT secret', () => {
     app = moduleFixture.createNestApplication()
     app.setGlobalPrefix('api')
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
-    await app.init()
+    await app.listen(0)
     await seedOperatorFixture(app, { email: ISOLATION_EMAIL, password: ISOLATION_PASSWORD })
   })
 
