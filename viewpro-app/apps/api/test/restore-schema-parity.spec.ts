@@ -196,7 +196,10 @@ describe('restore schema parity', () => {
     for (const schemas of [['private'], ['public; DROP TABLE'], ['public\n']]) sanitizedExit2(await runParity({ ...first, schemas }), 'schema_invalid')
     sanitizedExit2(await runParity({ ...first, migrationDir: join(first.directory, 'missing;path') }), 'migration_path_invalid')
     expect(readFileSync(join(first.psqlPath, '..', 'calls.jsonl'), 'utf8').trim().split('\n')).toHaveLength(4)
-    const timeoutMs = 250; const spawned: unknown[][] = []; await runParity(first, { timeoutMs, spawnProcess: (...args) => { spawned.push(args); return spawn(...args) } })
+    // No timeoutMs here on purpose: this asserts WHICH commands are spawned, not
+    // timeout behaviour, and 250ms is not enough for two real node spawns on a
+    // loaded machine — the first would time out and the second never happen.
+    const spawned: unknown[][] = []; await runParity(first, { spawnProcess: (...args) => { spawned.push(args); return spawn(...args) } })
     expect(spawned).toEqual(Array.from({ length: 2 }, () => [first.psqlPath, ['-X', '-w', '-v', 'ON_ERROR_STOP=1', '-A', '-t', '-F', '\t'], expect.objectContaining({ env: childEnv, shell: false })]))
     for (const [, , options] of spawned) { expect(options).not.toHaveProperty('timeout'); expect(options).not.toHaveProperty('killSignal') }
   })
