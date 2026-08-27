@@ -119,8 +119,8 @@ describe("production cutover — product session invalidation", () => {
 			callerId: "inmoview",
 		});
 		// Rotating the session secret does not retire it, and does not admit it either.
-		await expect(verifyServiceToken(controlToken, CURRENT_SECRET)).rejects.toThrow();
-		await expect(current.tokenService.verifyAccessToken(controlToken)).rejects.toThrow();
+		await expect(verifyServiceToken(controlToken, CURRENT_SECRET)).rejects.toThrow('invalid signature');
+		await expect(current.tokenService.verifyAccessToken(controlToken)).rejects.toThrow('invalid signature');
 
 		// A session token fails the control lane on its own requirements, not merely its
 		// key: it carries no issuer, audience or token id.
@@ -128,8 +128,8 @@ describe("production cutover — product session invalidation", () => {
 			sub: "user-4",
 			email: "g@h.test",
 		});
-		await expect(verifyServiceToken(session, CONTROL_SECRET)).rejects.toThrow();
-		await expect(verifyServiceToken(session, CURRENT_SECRET)).rejects.toThrow();
+		await expect(verifyServiceToken(session, CONTROL_SECRET)).rejects.toThrow('invalid signature');
+		await expect(verifyServiceToken(session, CURRENT_SECRET)).rejects.toThrow('jwt audience invalid');
 	});
 
 	it("stores database-backed tokens as an irreversible digest", async () => {

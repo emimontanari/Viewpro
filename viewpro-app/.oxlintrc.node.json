@@ -51,14 +51,16 @@
     // advanced, then it is awaited. Correct code the rule cannot see.
     "vitest/valid-expect": "off",
 
-    // Deferred, not dismissed. Both rewrite assertions rather than tidying
-    // syntax, so each belongs in a change someone can review case by case.
-    // Counts are as of 2026-08-26 and are the point of writing them down: a
-    // number that grows is visible, a rule that is merely absent is not.
-    // vitest/no-conditional-expect was the third and is now adopted; of its 20
-    // sites exactly one was a real defect, which is the yardstick for these.
-    // Tracked in #395.
-    "vitest/require-to-throw-message": "off",
+    // Deferred, not dismissed. It rewrites types rather than tidying syntax,
+    // so it belongs in a change someone can review case by case. The count is
+    // as of 2026-08-26 and is the point of writing it down: a number that grows
+    // is visible, a rule that is merely absent is not.
+    //
+    // The other two are now adopted, and their ratios are the yardstick for
+    // this one: no-conditional-expect flagged 20 sites and exactly one was a
+    // defect; require-to-throw-message flagged 43 and none were, though it did
+    // separate two assertions that had been failing for different reasons
+    // while claiming the same thing. Tracked in #395.
     "typescript/no-explicit-any": "off"
   },
   "overrides": [

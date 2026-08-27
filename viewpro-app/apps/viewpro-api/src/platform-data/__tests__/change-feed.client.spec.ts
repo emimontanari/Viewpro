@@ -168,7 +168,7 @@ describe('ChangeFeedClient', () => {
     const token = authHeader.replace('Bearer ', '')
 
     const wrongVerifier = new JwtService({ secret: 'wrong-secret-completely-different' })
-    await expect(wrongVerifier.verifyAsync(token)).rejects.toThrow()
+    await expect(wrongVerifier.verifyAsync(token)).rejects.toThrow('invalid signature')
   })
 
   it('fetchChanges returns parsed ChangeFeedResponse', async () => {
@@ -212,7 +212,7 @@ describe('ChangeFeedClient', () => {
       platformControlSecret: PLATFORM_CONTROL_SECRET,
     })
 
-    await expect(client.fetchChanges(0)).rejects.toThrow()
+    await expect(client.fetchChanges(0)).rejects.toThrow('Data-lane change-feed returned non-2xx')
   })
 
   it('fetchChanges aborts stalled body parsing after two seconds', async () => {
@@ -321,7 +321,7 @@ describe('ChangeFeedClient', () => {
       platformControlSecret: PLATFORM_CONTROL_SECRET,
     })
 
-    await expect(client.fetchAllTenants()).rejects.toThrow()
+    await expect(client.fetchAllTenants()).rejects.toThrow('Backfill tenants endpoint returned non')
   })
 
   // -------------------------------------------------------------------------
@@ -439,7 +439,7 @@ describe('ChangeFeedClient', () => {
       platformControlSecret: PLATFORM_CONTROL_SECRET,
     })
 
-    await expect(client.fetchTenantSummary('does-not-exist', 0, 20)).rejects.toThrow()
+    await expect(client.fetchTenantSummary('does-not-exist', 0, 20)).rejects.toThrow('Tenant-summary endpoint returned non')
   })
 
   it('fetchTenantSummary throws on network failure', async () => {
@@ -450,7 +450,7 @@ describe('ChangeFeedClient', () => {
       platformControlSecret: PLATFORM_CONTROL_SECRET,
     })
 
-    await expect(client.fetchTenantSummary('tenant-1', 0, 20)).rejects.toThrow()
+    await expect(client.fetchTenantSummary('tenant-1', 0, 20)).rejects.toThrow('Tenant-summary request to InmoView')
   })
 
   // -------------------------------------------------------------------------
@@ -625,6 +625,6 @@ describe('ChangeFeedClient', () => {
       platformControlSecret: PLATFORM_CONTROL_SECRET,
     })
 
-    await expect(client.fetchDocumentReadUrl('tenant-1', 'version-1')).rejects.toThrow()
+    await expect(client.fetchDocumentReadUrl('tenant-1', 'version-1')).rejects.toThrow('Document-read-url request to InmoView')
   })
 })
