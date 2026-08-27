@@ -10,6 +10,11 @@ const apiBaseUrl = `http://${host}:${apiPort}`;
 const documentStorageRoot = resolve(workspaceRoot, 'apps/api/.document-storage-seeded');
 const accessTokenSecret =
   process.env.VIEWPRO_APP_NEW_SEEDED_E2E_ACCESS_TOKEN_SECRET ?? 'app-new-seeded-auth-e2e-local';
+// Required by the API env schema since 2026-07-20 and never added here, which
+// is why this suite has not started since. Local-only value, min 16 chars.
+const platformControlSecret =
+  process.env.VIEWPRO_APP_NEW_SEEDED_E2E_PLATFORM_CONTROL_SECRET ??
+  'app-new-seeded-platform-control-local';
 
 export default defineConfig({
   testDir: './tests/seeded',
@@ -20,16 +25,26 @@ export default defineConfig({
   expect: {
     timeout: 10_000
   },
+  // A committed .only would otherwise run one journey and report the suite green.
+  forbidOnly: Boolean(process.env.CI),
+  // One retry in CI so a flake does not fail the branch, and exactly one — a
+  // second would start hiding real failures rather than absorbing noise.
+  retries: process.env.CI ? 1 : 0,
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: webBaseUrl,
-    trace: 'on-first-retry'
+    // retain-on-failure, not on-first-retry: a journey that fails both attempts
+    // is the one worth a trace, and on-first-retry drops it after the retry passes.
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure'
   },
   webServer: [
     {
       // AUTH_RATE_LIMIT_LOGIN_LIMIT=100: the seeded suite runs 22 tests with multiple sign-ins.
       // The default limit of 5 per 60s is too restrictive for a serial E2E run. This override
       // is scoped to the local dev test server only (NODE_ENV=development).
-      command: `pnpm --filter @viewpro/api build && NODE_ENV=development PORT=${apiPort} CORS_ORIGIN=${webBaseUrl} COOKIE_SECURE=false ACCESS_TOKEN_SECRET=${accessTokenSecret} DOCUMENT_STORAGE_DRIVER=local DOCUMENT_STORAGE_LOCAL_ROOT=${documentStorageRoot} DOCUMENT_STORAGE_SIGNING_SECRET=${accessTokenSecret} API_PUBLIC_URL=${apiBaseUrl} AUTH_RATE_LIMIT_LOGIN_LIMIT=100 pnpm --filter @viewpro/api exec node dist/main.js`,
+      command: `pnpm --filter @viewpro/api build && NODE_ENV=development PORT=${apiPort} CORS_ORIGIN=${webBaseUrl} COOKIE_SECURE=false ACCESS_TOKEN_SECRET=${accessTokenSecret} PLATFORM_CONTROL_SECRET=${platformControlSecret} DOCUMENT_STORAGE_DRIVER=local DOCUMENT_STORAGE_LOCAL_ROOT=${documentStorageRoot} DOCUMENT_STORAGE_SIGNING_SECRET=${accessTokenSecret} API_PUBLIC_URL=${apiBaseUrl} AUTH_RATE_LIMIT_LOGIN_LIMIT=100 pnpm --filter @viewpro/api exec node dist/main.js`,
       cwd: workspaceRoot,
       url: `${apiBaseUrl}/api/health`,
       reuseExistingServer: !process.env.CI,

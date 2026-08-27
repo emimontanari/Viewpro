@@ -3,6 +3,28 @@
 All tests run serially (`fullyParallel: false, workers: 1`). Each test uses a fresh page context.
 Run with: `pnpm --filter next-shadcn-dashboard-starter test:seeded`
 
+## In CI
+
+The `Seeded E2E` job in `.github/workflows/ci.yml` runs this suite on every pull
+request, against its own `viewpro_seeded` database. It is a separate job from
+`Test` on purpose: it boots the real API and web server, so it neither shares the
+per-worker test databases nor competes with the unit gate for the runner.
+
+- **Budget**: ~2 minutes of journeys plus server boot; the job caps at 20 minutes
+  as a backstop against a web server that never comes up, not as a target.
+- **`forbidOnly`** is on under CI. A committed `.only` fails the job instead of
+  running one journey and reporting the suite green.
+- **One retry** under CI, and exactly one — a second would start hiding real
+  failures rather than absorbing noise.
+- **On failure**, traces, screenshots and video are retained and uploaded as the
+  `seeded-e2e-report` artifact. `retain-on-failure`, not `on-first-retry`: a
+  journey that fails both attempts is the one worth a trace.
+
+This suite had not started since 2026-07-20 — `PLATFORM_CONTROL_SECRET` became
+required by the API env schema and the Playwright config was never updated. It
+was invisible because nothing ran it. Keeping it in CI is what stops that
+recurring; if you add an env var the API requires, add it here too.
+
 ## Audit-row trace table
 
 | Test name (substring)                                        | Audit row (2026-06-13)                              | FR(s)         | File                   |
