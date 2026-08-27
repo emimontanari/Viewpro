@@ -213,6 +213,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The Playwright config builds the API with a direct `pnpm --filter ... build`,
+      # which bypasses turbo's `@viewpro/api#build -> db:generate` dependency, so
+      # the client has to be generated here or the build fails on missing types.
+      - name: Generate Prisma client
+        run: pnpm --filter @viewpro/api db:generate
+
       - name: Apply migrations
         run: pnpm --filter @viewpro/api exec prisma migrate deploy
 
