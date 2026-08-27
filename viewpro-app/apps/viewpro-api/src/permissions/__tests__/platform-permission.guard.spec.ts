@@ -85,13 +85,10 @@ describe('PlatformPermissionGuard', () => {
 
     await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException)
 
-    try {
-      await guard.canActivate(context)
-      expect.unreachable()
-    } catch (error) {
-      expect(error).toBeInstanceOf(ForbiddenException)
-      expect((error as ForbiddenException).getResponse()).toEqual(PERMISSION_DENIED_RESPONSE)
-    }
+    const error = await guard.canActivate(context).catch((thrown: unknown) => thrown)
+
+    expect(error).toBeInstanceOf(ForbiddenException)
+    expect((error as ForbiddenException).getResponse()).toEqual(PERMISSION_DENIED_RESPONSE)
   })
 
   it('metadata present but request.user absent → UnauthorizedException (defensive, unreachable behind AuthGuard)', async () => {
@@ -106,13 +103,10 @@ describe('PlatformPermissionGuard', () => {
     const { guard } = makeGuard({ metadata: PLATFORM_PERMISSIONS.METRICS_READ, findById })
     const context = makeContext({ userId: OPERATOR_ID })
 
-    try {
-      await guard.canActivate(context)
-      expect.unreachable()
-    } catch (error) {
-      expect(error).toBeInstanceOf(ForbiddenException)
-      expect((error as ForbiddenException).getResponse()).toEqual(PERMISSION_DENIED_RESPONSE)
-    }
+    const error = await guard.canActivate(context).catch((thrown: unknown) => thrown)
+
+    expect(error).toBeInstanceOf(ForbiddenException)
+    expect((error as ForbiddenException).getResponse()).toEqual(PERMISSION_DENIED_RESPONSE)
   })
 
   it('operator SUSPENDED → 403 PERMISSION_DENIED even though the role would otherwise grant the permission (status hardening, D6)', async () => {
@@ -120,13 +114,10 @@ describe('PlatformPermissionGuard', () => {
     const { guard } = makeGuard({ metadata: PLATFORM_PERMISSIONS.METRICS_READ, findById })
     const context = makeContext({ userId: OPERATOR_ID })
 
-    try {
-      await guard.canActivate(context)
-      expect.unreachable()
-    } catch (error) {
-      expect(error).toBeInstanceOf(ForbiddenException)
-      expect((error as ForbiddenException).getResponse()).toEqual(PERMISSION_DENIED_RESPONSE)
-    }
+    const error = await guard.canActivate(context).catch((thrown: unknown) => thrown)
+
+    expect(error).toBeInstanceOf(ForbiddenException)
+    expect((error as ForbiddenException).getResponse()).toEqual(PERMISSION_DENIED_RESPONSE)
   })
 
   it('operator ACTIVE but role lacks the required permission → 403 PERMISSION_DENIED', async () => {
@@ -134,13 +125,10 @@ describe('PlatformPermissionGuard', () => {
     const { guard } = makeGuard({ metadata: PLATFORM_PERMISSIONS.TENANT_STATUS_WRITE, findById })
     const context = makeContext({ userId: OPERATOR_ID })
 
-    try {
-      await guard.canActivate(context)
-      expect.unreachable()
-    } catch (error) {
-      expect(error).toBeInstanceOf(ForbiddenException)
-      expect((error as ForbiddenException).getResponse()).toEqual(PERMISSION_DENIED_RESPONSE)
-    }
+    const error = await guard.canActivate(context).catch((thrown: unknown) => thrown)
+
+    expect(error).toBeInstanceOf(ForbiddenException)
+    expect((error as ForbiddenException).getResponse()).toEqual(PERMISSION_DENIED_RESPONSE)
   })
 
   it('operator ACTIVE and role grants the required permission → canActivate resolves true', async () => {

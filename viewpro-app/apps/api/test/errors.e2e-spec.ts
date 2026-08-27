@@ -134,6 +134,7 @@ describe.each(APP_LIFECYCLE_STATES)('GlobalExceptionFilter configured $name life
     expect(Object.keys(second.body).sort()).toEqual(expectedKeys)
 
     if (value === 'true') {
+      // oxlint-disable-next-line vitest/no-conditional-expect
       expect(first.body).toEqual({
         statusCode: 404,
         errorCode: 'REQUEST_FAILED',

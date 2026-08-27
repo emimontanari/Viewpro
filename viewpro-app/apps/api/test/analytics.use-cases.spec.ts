@@ -829,6 +829,7 @@ describe("Activity feed use case", () => {
 					currentVersion:
 						expectedVersionStatus === null
 							? null
+							// oxlint-disable-next-line vitest/no-conditional-expect
 							: expect.objectContaining({ status: expectedVersionStatus }),
 				},
 			});

@@ -51,14 +51,14 @@
     // advanced, then it is awaited. Correct code the rule cannot see.
     "vitest/valid-expect": "off",
 
-    // Deferred, not dismissed. These three are worth adopting, but each one
-    // rewrites assertions rather than tidying syntax, so they belong in a
-    // change someone can review case by case instead of riding along with a
-    // lint config. Counts are as of 2026-08-26 and are the point of writing
-    // them down: a number that grows is visible, a rule that is merely absent
-    // is not. Tracked in #395.
+    // Deferred, not dismissed. Both rewrite assertions rather than tidying
+    // syntax, so each belongs in a change someone can review case by case.
+    // Counts are as of 2026-08-26 and are the point of writing them down: a
+    // number that grows is visible, a rule that is merely absent is not.
+    // vitest/no-conditional-expect was the third and is now adopted; of its 20
+    // sites exactly one was a real defect, which is the yardstick for these.
+    // Tracked in #395.
     "vitest/require-to-throw-message": "off",
-    "vitest/no-conditional-expect": "off",
     "typescript/no-explicit-any": "off"
   },
   "overrides": [

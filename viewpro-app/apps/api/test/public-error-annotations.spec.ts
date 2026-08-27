@@ -43,6 +43,7 @@ async function throwFrom(operation: () => Promise<unknown> | unknown): Promise<u
   try {
     await operation()
   } catch (error) {
+    // oxlint-disable-next-line vitest/no-conditional-expect
     expect(error).toBeInstanceOf(HttpException)
     return error
   }

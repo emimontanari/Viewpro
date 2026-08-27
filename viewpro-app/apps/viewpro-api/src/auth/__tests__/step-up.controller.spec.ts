@@ -106,11 +106,16 @@ describe('POST /api/auth/step-up (integration)', () => {
     // so a `viewpro_platform_stepup_token=` header MAY be present, but only as
     // an expired clear (no live/valid step-up token is ever issued here).
     const stepUpCookie = extractCookie(res.headers as Record<string, unknown>, 'viewpro_platform_stepup_token')
+    // The comment above is the contract: the header MAY be absent. Asserting
+    // unconditionally would pin behaviour the endpoint does not promise, and
+    // res.status is already asserted for every run.
+    // oxlint-disable-next-line vitest/no-conditional-expect
     if (stepUpCookie) {
       const hasMaxAgeZero = /max-age=0/i.test(stepUpCookie)
       const expiresMatch = stepUpCookie.match(/expires=([^;]+)/i)
       const expiresValue = expiresMatch?.[1]
       const hasExpiredDate = expiresValue !== undefined && new Date(expiresValue).getTime() <= Date.now()
+      // oxlint-disable-next-line vitest/no-conditional-expect
       expect(hasMaxAgeZero || hasExpiredDate).toBe(true)
     }
   })
