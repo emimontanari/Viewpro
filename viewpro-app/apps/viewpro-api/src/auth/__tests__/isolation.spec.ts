@@ -70,7 +70,7 @@ describe('Isolation regression — InmoView DB unset, own JWT secret', () => {
 
     // JwtService with InmoView secret should reject the platform token
     const inmoviewJwtService = new JwtService({ secret: INMOVIEW_SECRET })
-    await expect(inmoviewJwtService.verifyAsync(token)).rejects.toThrow()
+    await expect(inmoviewJwtService.verifyAsync(token)).rejects.toThrow('invalid signature')
   })
 
   it('Set-Cookie cookie name is exactly viewpro_platform_access_token', async () => {

@@ -687,7 +687,7 @@ describe('IngestService — replay / duplicate-delivery threat-matrix (T-19)', (
           payload: { newStatus: 'TRIAL' },
         },
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow(/platformMirrorEvent/)
   })
 
   // Same UNIQUE(sourceEventId) enforcement for TENANT_STATUS_CHANGED rows.
@@ -713,7 +713,7 @@ describe('IngestService — replay / duplicate-delivery threat-matrix (T-19)', (
           payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE' },
         },
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow(/platformMirrorEvent/)
   })
 })
 

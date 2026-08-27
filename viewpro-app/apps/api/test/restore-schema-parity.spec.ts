@@ -310,7 +310,7 @@ describe('restore schema parity', () => {
         writeFileSync(join(directory, 'hang.txt'), 'enabled'); const cli = spawn(process.execPath, [join(appRoot, 'scripts/restore-drill/schema-parity.mjs'), '--migration-dir', state.migrationDir, '--schema', 'public', '--schema', 'audit', '--psql', state.psqlPath], { env: process.env }); let stdout = ''; let stderr = ''
         cli.stdout.on('data', (chunk) => { stdout += chunk }); cli.stderr.on('data', (chunk) => { stderr += chunk })
         while (!existsSync(join(directory, 'pid.txt'))) await new Promise((resolve) => setTimeout(resolve, 5)); psqlPid = Number(readFileSync(join(directory, 'pid.txt'), 'utf8')); cli.kill(signal)
-        const status = await new Promise<number | null>((resolve) => cli.once('close', (code) => resolve(code))); cliExit2({ status, stdout, stderr }, 'command_failed'); expect(existsSync(join(directory, 'term.txt'))).toBe(true); expect(() => process.kill(psqlPid!, 0)).toThrow()
+        const status = await new Promise<number | null>((resolve) => cli.once('close', (code) => resolve(code))); cliExit2({ status, stdout, stderr }, 'command_failed'); expect(existsSync(join(directory, 'term.txt'))).toBe(true); expect(() => process.kill(psqlPid!, 0)).toThrow(/ESRCH/)
       } finally { if (psqlPid) try { process.kill(psqlPid, 'SIGKILL') } catch {} }
     }
   })
@@ -321,13 +321,13 @@ describe('restore schema parity', () => {
     rmSync(join(directory, 'exact-required.txt')); for (const sql of ["SELECT 'CREATE TABLE x'", '-- CREATE TABLE x', '/* CREATE TABLE x */', 'SELECT "CREATE TABLE x"', 'SELECT $$CREATE TABLE x$$']) expect(spawnSync(state.psqlPath, ['-X'], { env: childEnv, input: sql }).status).toBe(0)
     expect(spawnSync(state.psqlPath, [], { env: childEnv, input: 'SELECT 1;' }).stdout.toString()).toContain('startup')
     writeFileSync(join(directory, 'signal.txt'), 'SIGTERM'); sanitizedExit2(await runParity(state), 'command_failed'); cliExit2(runParityCli(state), 'command_failed'); rmSync(join(directory, 'signal.txt'))
-    writeFileSync(join(directory, 'hang.txt'), 'enabled'); const timed = await runParity(state, { timeoutMs: 250 }); sanitizedExit2(timed, 'command_failed'); expect(existsSync(join(directory, 'term.txt'))).toBe(true); const pid = Number(readFileSync(join(directory, 'pid.txt'), 'utf8')); expect(JSON.stringify(timed)).not.toContain(String(pid)); expect(() => process.kill(pid, 0)).toThrow(); rmSync(join(directory, 'hang.txt'))
+    writeFileSync(join(directory, 'hang.txt'), 'enabled'); const timed = await runParity(state, { timeoutMs: 250 }); sanitizedExit2(timed, 'command_failed'); expect(existsSync(join(directory, 'term.txt'))).toBe(true); const pid = Number(readFileSync(join(directory, 'pid.txt'), 'utf8')); expect(JSON.stringify(timed)).not.toContain(String(pid)); expect(() => process.kill(pid, 0)).toThrow(/ESRCH/); rmSync(join(directory, 'hang.txt'))
     const hostile = join(directory, 'psql;touch shell-marker'); writeFileSync(hostile, readFileSync(state.psqlPath)); chmodSync(hostile, 0o755); expect(await runParity({ ...state, psqlPath: hostile })).toMatchObject({ exitCode: 0 }); expect(existsSync(join(directory, 'shell-marker'))).toBe(false)
     expect(readFileSync(join(directory, 'calls.jsonl'), 'utf8').trim().split('\n').map(JSON.parse).every((call) => JSON.stringify(call.env) === JSON.stringify(childEnvDigest))).toBe(true)
   })
   it('bounds CLI default hang cleanup independently', { timeout: 8_000 }, () => {
     const state = input(); const directory = state.directory; writeFileSync(join(directory, 'hang.txt'), 'enabled')
     const before = existsSync(join(directory, 'calls.jsonl')) ? readFileSync(join(directory, 'calls.jsonl'), 'utf8').trim().split('\n').length : 0; const started = Date.now(); cliExit2(runParityCli(state), 'command_failed')
-    expect(Date.now() - started).toBeLessThan(defaultTimeoutMs * 3); const pid = Number(readFileSync(join(directory, 'pid.txt'), 'utf8')); expect(readFileSync(join(directory, 'calls.jsonl'), 'utf8').trim().split('\n')).toHaveLength(before + 1); expect(() => process.kill(pid, 0)).toThrow()
+    expect(Date.now() - started).toBeLessThan(defaultTimeoutMs * 3); const pid = Number(readFileSync(join(directory, 'pid.txt'), 'utf8')); expect(readFileSync(join(directory, 'calls.jsonl'), 'utf8').trim().split('\n')).toHaveLength(before + 1); expect(() => process.kill(pid, 0)).toThrow(/ESRCH/)
   })
 })

@@ -159,7 +159,7 @@ describe('ChangeRoleOperatorUseCase (T1.3.5)', () => {
     const failingAudit = { appendNative: vi.fn().mockRejectedValue(new Error('audit sink down')) }
     const useCase = new ChangeRoleOperatorUseCase(repo, prisma, failingAudit as unknown as AuditLogRepository)
 
-    await expect(useCase.execute(TARGET_ID, 'OPERATIONS', ACTOR)).rejects.toThrow()
+    await expect(useCase.execute(TARGET_ID, 'OPERATIONS', ACTOR)).rejects.toThrow('audit sink down')
 
     expect(committed.has(TARGET_ID)).toBe(false)
   })

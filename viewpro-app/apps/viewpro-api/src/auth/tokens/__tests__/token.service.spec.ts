@@ -90,7 +90,7 @@ describe('TokenService — cookie name and security attributes', () => {
     const token = await serviceA.signAccessToken({ sub: 'op-999', email: 'x@y.com' })
 
     // serviceB has a different secret; verifyAccessToken should throw
-    await expect(serviceB.verifyAccessToken(token)).rejects.toThrow()
+    await expect(serviceB.verifyAccessToken(token)).rejects.toThrow('invalid signature')
   })
 })
 
@@ -194,13 +194,13 @@ describe('TokenService — step-up sign/verify/cookie (D1-D3)', () => {
   it('a step-up token (STEP_UP_TOKEN_SECRET) fails verifyAccessToken (cross-verify direction 1)', async () => {
     const stepUpToken = await tokenService.signStepUpToken({ sub: 'op-123' })
 
-    await expect(tokenService.verifyAccessToken(stepUpToken)).rejects.toThrow()
+    await expect(tokenService.verifyAccessToken(stepUpToken)).rejects.toThrow('invalid signature')
   })
 
   it('an access token (ACCESS_TOKEN_SECRET) fails verifyStepUpToken (cross-verify direction 2)', async () => {
     const accessToken = await tokenService.signAccessToken({ sub: 'op-123', email: 'op@viewpro.app' })
 
-    await expect(tokenService.verifyStepUpToken(accessToken)).rejects.toThrow()
+    await expect(tokenService.verifyStepUpToken(accessToken)).rejects.toThrow('invalid signature')
   })
 
   it('setStepUpCookie uses exactly the STEP_UP_TOKEN_COOKIE constant as cookie name', () => {

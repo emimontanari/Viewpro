@@ -80,7 +80,7 @@ describe('reversal foreign key (integration — test DB)', () => {
 
     // No application code deletes payments — this simulates a direct database
     // touch, which is exactly the scenario the constraint has to survive.
-    await expect(prisma.tenantPayment.delete({ where: { id: original.id } })).rejects.toThrow()
+    await expect(prisma.tenantPayment.delete({ where: { id: original.id } })).rejects.toThrow(/tenantPayment\.delete\(\)/)
 
     expect(await prisma.tenantPayment.count({ where: { tenantId: TENANT } })).toBe(2)
   })
@@ -93,7 +93,7 @@ describe('reversal foreign key (integration — test DB)', () => {
       recordedByOperatorId: 'operator-1',
     })
 
-    await expect(prisma.tenantPayment.delete({ where: { id: original.id } })).rejects.toThrow()
+    await expect(prisma.tenantPayment.delete({ where: { id: original.id } })).rejects.toThrow(/tenantPayment\.delete\(\)/)
 
     // The defect this guards: with ON DELETE SET NULL the link would be nulled,
     // the reversal row would satisfy NOT_REVERSED, and the cancelled amount

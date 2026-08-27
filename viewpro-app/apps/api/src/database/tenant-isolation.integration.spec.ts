@@ -199,7 +199,7 @@ describe("tenant isolation enforcement (integration)", () => {
 			inTenant(tenantAId, () =>
 				prisma.tenantMovementOutcomeLabel.findUniqueOrThrow({ where: { id: labelBId } }),
 			),
-		).rejects.toThrow();
+		).rejects.toThrow('No TenantMovementOutcomeLabel found');
 	});
 
 	it("cannot update another tenant's row by id (throws, no mutation)", async () => {
@@ -210,7 +210,7 @@ describe("tenant isolation enforcement (integration)", () => {
 					data: { label: "hijacked" },
 				}),
 			),
-		).rejects.toThrow();
+		).rejects.toThrow(/update\(\)/);
 
 		const untouched = await prisma.tenantMovementOutcomeLabel.findUnique({
 			where: { id: labelBId },
@@ -223,7 +223,7 @@ describe("tenant isolation enforcement (integration)", () => {
 			inTenant(tenantAId, () =>
 				prisma.tenantMovementOutcomeLabel.delete({ where: { id: labelBId } }),
 			),
-		).rejects.toThrow();
+		).rejects.toThrow(/delete\(\)/);
 
 		const survivor = await prisma.tenantMovementOutcomeLabel.findUnique({
 			where: { id: labelBId },

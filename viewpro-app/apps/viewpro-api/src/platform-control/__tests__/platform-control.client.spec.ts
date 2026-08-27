@@ -50,7 +50,7 @@ describe('PlatformControlClient — token minting', () => {
 
     // Attempt to verify with a DIFFERENT secret — must throw
     const wrongVerifier = new JwtService({ secret: ACCESS_TOKEN_SECRET })
-    await expect(wrongVerifier.verifyAsync(token)).rejects.toThrow()
+    await expect(wrongVerifier.verifyAsync(token)).rejects.toThrow('invalid signature')
   })
 
   it('postTenantStatus calls InmoView with Authorization Bearer header', async () => {

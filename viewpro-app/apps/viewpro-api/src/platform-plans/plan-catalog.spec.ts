@@ -41,7 +41,7 @@ describe('PLAN_CATALOG', () => {
     // the shared singleton passed by reference into the control-lane call.
     expect(() => {
       ;(PLAN_CATALOG.BASICO as { maxUsers: number | null }).maxUsers = 999
-    }).toThrow()
+    }).toThrow(/Cannot assign to read only property/)
     expect(PLAN_CATALOG.BASICO.maxUsers).toBe(3)
   })
 })

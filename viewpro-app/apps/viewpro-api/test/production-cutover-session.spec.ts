@@ -196,8 +196,8 @@ describe('production cutover — platform session invalidation', () => {
       sub: 'op-1',
     })
     // Neither token verifies as the other kind.
-    await expect(current.tokenService.verifyStepUpToken(access)).rejects.toThrow()
-    await expect(current.tokenService.verifyAccessToken(stepUp)).rejects.toThrow()
+    await expect(current.tokenService.verifyStepUpToken(access)).rejects.toThrow('invalid signature')
+    await expect(current.tokenService.verifyAccessToken(stepUp)).rejects.toThrow('invalid signature')
   })
 
   it('leaves the control lane untouched by a session rotation', async () => {
@@ -211,8 +211,8 @@ describe('production cutover — platform session invalidation', () => {
       { issuer: 'viewpro-api', audience: 'inmoview-control', expiresIn: '15m' },
     )
 
-    await expect(current.tokenService.verifyAccessToken(controlToken)).rejects.toThrow()
-    await expect(current.tokenService.verifyStepUpToken(controlToken)).rejects.toThrow()
+    await expect(current.tokenService.verifyAccessToken(controlToken)).rejects.toThrow('invalid signature')
+    await expect(current.tokenService.verifyStepUpToken(controlToken)).rejects.toThrow('invalid signature')
 
     // And a session token fails the control lane's own requirements, not merely its key.
     const session = await current.tokenService.signAccessToken({
@@ -225,7 +225,7 @@ describe('production cutover — platform session invalidation', () => {
         issuer: 'viewpro-api',
         audience: 'inmoview-control',
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow('invalid signature')
   })
 
   it('refuses a request carrying no cookie at all', async () => {

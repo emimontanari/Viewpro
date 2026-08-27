@@ -84,7 +84,7 @@ describe('RejectStatusChangeRequestUseCase', () => {
   it('throws when resolutionComment is blank (empty string)', async () => {
     await expect(
       useCase.execute(makeTenantContext(), makeManager(), REQUEST_ID, { resolutionComment: '' }),
-    ).rejects.toThrow()
+    ).rejects.toThrow('A resolution comment is required')
   })
 
   // FR-20: self-rejection forbidden
