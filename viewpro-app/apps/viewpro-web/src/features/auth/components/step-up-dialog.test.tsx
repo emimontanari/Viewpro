@@ -89,3 +89,26 @@ describe('StepUpDialog', () => {
     expect(screen.getByRole('button', { name: /cancelar/i })).toBeDisabled();
   });
 });
+
+describe('password visibility (#281)', () => {
+  it('reveals the step-up password and keeps what was typed', () => {
+    render(<StepUpDialog open isVerifying={false} onSubmit={noop} />);
+
+    const input = screen.getByLabelText('Contraseña');
+    fireEvent.change(input, { target: { value: 'secreto-123' } });
+    expect(input).toHaveAttribute('type', 'password');
+
+    const toggle = screen.getByRole('button', { name: 'Mostrar contraseña' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(toggle).toHaveAttribute('aria-controls', 'step-up-password');
+
+    fireEvent.click(toggle);
+
+    expect(input).toHaveAttribute('type', 'text');
+    expect(input).toHaveValue('secreto-123');
+    expect(screen.getByRole('button', { name: 'Ocultar contraseña' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+});

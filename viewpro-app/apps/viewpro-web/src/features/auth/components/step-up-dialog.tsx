@@ -16,6 +16,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { PasswordRevealToggle } from '@/components/ui/password-reveal-toggle';
 import { Label } from '@/components/ui/label';
 
 type Props = {
@@ -28,6 +29,7 @@ type Props = {
 
 export function StepUpDialog({ open, isVerifying, error, onSubmit, onOpenChange }: Props) {
   const [password, setPassword] = React.useState('');
+  const [revealed, setRevealed] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) {
@@ -64,14 +66,21 @@ export function StepUpDialog({ open, isVerifying, error, onSubmit, onOpenChange 
         >
           <div className='space-y-2'>
             <Label htmlFor='step-up-password'>Contraseña</Label>
-            <Input
-              id='step-up-password'
-              type='password'
-              autoComplete='current-password'
-              disabled={isVerifying}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
+            <div className='relative'>
+              <Input
+                id='step-up-password'
+                type={revealed ? 'text' : 'password'}
+                autoComplete='current-password'
+                disabled={isVerifying}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+              <PasswordRevealToggle
+                controls='step-up-password'
+                revealed={revealed}
+                onToggle={() => setRevealed((shown) => !shown)}
+              />
+            </div>
             {error ? <p className='text-destructive text-sm'>{error}</p> : null}
           </div>
           <DialogFooter>
