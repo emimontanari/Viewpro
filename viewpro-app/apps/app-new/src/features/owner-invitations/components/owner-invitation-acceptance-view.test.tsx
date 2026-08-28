@@ -40,7 +40,6 @@ const invitation: OwnerInvitationResponse = {
   property: {
     id: 'property-1',
     title: 'Casa Palermo',
-    addressLine: 'Uriarte 1234',
     city: 'CABA',
     province: 'Buenos Aires'
   },
@@ -73,7 +72,9 @@ describe('OwnerInvitationAcceptanceView', () => {
 
     expect(await screen.findByText('Casa Palermo')).toBeInTheDocument();
     expect(screen.getByText('owner@example.com')).toBeInTheDocument();
-    expect(screen.getByText('Uriarte 1234, CABA, Buenos Aires')).toBeInTheDocument();
+    // #303: locality identifies the property; the street address does not ship.
+    expect(screen.getByText('CABA, Buenos Aires')).toBeInTheDocument();
+    expect(screen.queryByText(/Uriarte 1234/)).not.toBeInTheDocument();
     expect(screen.getByLabelText('Nombre *')).toHaveValue('Ana');
     expect(screen.getByLabelText('Apellido')).toHaveValue('García');
   });

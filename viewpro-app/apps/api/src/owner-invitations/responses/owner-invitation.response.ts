@@ -7,10 +7,14 @@ export type OwnerInvitationResponse = {
 	emailRegistered: boolean;
 	ownerFirstName: string;
 	ownerLastName: string;
+	/**
+	 * Enough to recognise the property, not enough to locate it. The street
+	 * address is deliberately absent (#303): whoever holds this link is not
+	 * necessarily the invited owner until they accept.
+	 */
 	property: {
 		id: string;
 		title: string;
-		addressLine: string;
 		city: string;
 		province: string;
 	};
@@ -27,7 +31,12 @@ export function mapOwnerInvitation(
 		emailRegistered: invitation.emailRegistered,
 		ownerFirstName: invitation.propertyAssetOwner.ownerFirstName,
 		ownerLastName: invitation.propertyAssetOwner.ownerLastName,
-		property: invitation.propertyAssetOwner.propertyAsset,
+		property: {
+			id: invitation.propertyAssetOwner.propertyAsset.id,
+			title: invitation.propertyAssetOwner.propertyAsset.title,
+			city: invitation.propertyAssetOwner.propertyAsset.city,
+			province: invitation.propertyAssetOwner.propertyAsset.province,
+		},
 		expiresAt: invitation.expiresAt.toISOString(),
 	};
 }
