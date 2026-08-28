@@ -67,9 +67,12 @@ export async function bffRequest<TResponse>(
   let response: Response;
   try {
     response = await fetch(url, {
+      ...init,
+      // After the spread, not before: a caller must not be able to turn these
+      // off by accident. `credentials: 'omit'` would silently drop auth and
+      // `force-cache` would serve another tenant's data from the bfcache.
       cache: 'no-store',
       credentials: 'include',
-      ...init,
       ...(controller ? { signal: controller.signal } : {})
     });
   } catch (error) {

@@ -119,4 +119,15 @@ describe('bffRequest', () => {
     });
     expect(vi.mocked(global.fetch).mock.calls[0]?.[1]?.signal).toBe(controller.signal);
   });
+
+  it('does not let a caller turn off credentials or no-store', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(jsonResponse(200, { ok: true }));
+
+    await bffRequest('/api/x', { cache: 'force-cache', credentials: 'omit' });
+
+    expect(vi.mocked(global.fetch).mock.calls[0]?.[1]).toMatchObject({
+      cache: 'no-store',
+      credentials: 'include'
+    });
+  });
 });
