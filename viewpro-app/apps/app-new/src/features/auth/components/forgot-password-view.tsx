@@ -20,7 +20,7 @@ export const forgotPasswordSchema = z.object({
 
 // Shown on success regardless of whether the account exists (no email enumeration).
 const GENERIC_CONFIRMATION =
-  'Si existe una cuenta con ese email, te enviamos un link para restablecer la contraseña. Revisá tu bandeja de entrada y el spam.';
+  'Si existe una cuenta con ese email, va a recibir un link para restablecer la contraseña. Puede tardar unos minutos; revisá también el spam.';
 
 function ForgotPasswordForm() {
   const [submitted, setSubmitted] = React.useState(false);
