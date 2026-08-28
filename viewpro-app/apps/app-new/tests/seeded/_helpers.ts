@@ -127,7 +127,7 @@ export async function signInSellerWithTenantContext(
   await page.goto(`/auth/sign-in?redirect_url=${encodeURIComponent('/dashboard/product')}`);
   await page.evaluate(() => localStorage.clear());
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Contraseña').fill(demoPassword);
+  await page.getByLabel('Contraseña *', { exact: true }).fill(demoPassword);
   await page.getByRole('button', { name: 'Entrar' }).click();
 
   // Wait for the product list to render — confirms the active tenant context is set.
