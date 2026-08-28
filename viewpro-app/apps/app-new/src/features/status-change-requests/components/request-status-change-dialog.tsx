@@ -1,5 +1,6 @@
 'use client';
 
+import { creationErrorMessage } from '../approval-error-message';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -147,9 +148,7 @@ export function RequestStatusChangeDialog({
           {/* Error */}
           {createMutation.isError && (
             <p className='text-sm text-destructive'>
-              {createMutation.error instanceof Error
-                ? createMutation.error.message
-                : 'No se pudo enviar la solicitud.'}
+              {creationErrorMessage(createMutation.error)}
             </p>
           )}
 

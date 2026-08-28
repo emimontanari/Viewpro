@@ -1,5 +1,6 @@
 'use client';
 
+import { approvalErrorMessage } from '../approval-error-message';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -36,16 +37,7 @@ export function StatusChangeRequestsBandejaPage() {
       const result = await approveMutation.mutateAsync({ requestId, engagementId });
       toast.success(`Aprobada · estado actualizado a ${result.targetStatus}`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-      if (message.includes('SUPERSEDED') || message.includes('changed')) {
-        toast.error(
-          'El estado de la propiedad cambió desde que se creó esta solicitud. Revisá antes de aprobar.'
-        );
-      } else if (message.includes('ALREADY_RESOLVED') || message.includes('already resolved')) {
-        toast.error('Esta solicitud ya fue resuelta.');
-      } else {
-        toast.error('No se pudo aprobar la solicitud.');
-      }
+      toast.error(approvalErrorMessage(error));
     }
   }
 

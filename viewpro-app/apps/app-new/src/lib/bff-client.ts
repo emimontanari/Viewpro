@@ -1,5 +1,7 @@
 import { isPublicErrorCode, type PublicErrorCode } from '@viewpro/contracts';
 
+export type { PublicErrorCode };
+
 /**
  * The client used by feature services to reach this app's own BFF routes under
  * `src/app/api/**`.
