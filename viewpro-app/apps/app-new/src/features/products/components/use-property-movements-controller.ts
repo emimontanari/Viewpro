@@ -1,3 +1,4 @@
+import { messageFor } from '@/lib/bff-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -38,7 +39,7 @@ export function usePropertyMovementsController({
       toast.success('Actualización agregada');
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo agregar la actualización');
+      toast.error(messageFor(error, 'No se pudo agregar la actualización'));
     }
   });
 

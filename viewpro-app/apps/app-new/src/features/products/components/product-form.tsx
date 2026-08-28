@@ -1,5 +1,8 @@
 'use client';
 
+import { messageFor } from '@/lib/bff-client';
+import { isPropertyLimitReached, PROPERTY_LIMIT_REACHED_MESSAGE } from '../error-messages';
+import { approvalErrorMessage } from '@/features/status-change-requests/approval-error-message';
 import { useAppForm, useFormFields } from '@/components/ui/tanstack-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -195,16 +198,12 @@ function PropertyEngagementEditor({
         return;
       }
 
-      // Stage 26.3 MUI-1: map the backend limit-exceeded message to a user-readable toast.
-      // Backend constant: TENANT_ACTIVE_PROPERTY_ENGAGEMENT_LIMIT_EXCEEDED_MESSAGE
-      // Source: apps/api/src/tenant-limits/tenant-limit-enforcement.constants.ts
-      if (
-        error instanceof Error &&
-        error.message.toLowerCase().includes('tenant active property engagement limit exceeded')
-      ) {
-        toast.error(
-          'Alcanzaste el límite de propiedades activas del plan. Archivá una propiedad o contactá a soporte.'
-        );
+      // Saving a property raises exactly one conflict: the tenant's active
+      // property limit. This used to lowercase the backend's English sentence
+      // and search it for a substring, which meant the sentence itself was one
+      // reword away from reaching the user instead of this copy.
+      if (isPropertyLimitReached(error)) {
+        toast.error(PROPERTY_LIMIT_REACHED_MESSAGE);
         return;
       }
 
@@ -405,7 +404,7 @@ function PropertyEngagementDetails({
       toast.success('Propiedad restaurada');
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo restaurar la propiedad');
+      toast.error(messageFor(error, 'No se pudo restaurar la propiedad'));
     }
   });
 
@@ -430,14 +429,7 @@ function PropertyEngagementDetails({
       await queryClient.invalidateQueries({ queryKey: productKeys.detail(propertyEngagement.id) });
       toast.success(`Aprobada · estado actualizado a ${result.targetStatus}`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-      if (message.includes('SUPERSEDED') || message.includes('changed')) {
-        toast.error(
-          'El estado cambió desde que se creó la solicitud. Revisá antes de aprobar.'
-        );
-      } else {
-        toast.error('No se pudo aprobar la solicitud.');
-      }
+      toast.error(approvalErrorMessage(error));
     }
   }
 

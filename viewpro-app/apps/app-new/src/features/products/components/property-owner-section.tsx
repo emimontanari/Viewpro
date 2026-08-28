@@ -1,5 +1,7 @@
 'use client';
 
+import { messageFor } from '@/lib/bff-client';
+import { ownerLinkErrorMessage } from '../error-messages';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -51,7 +53,7 @@ export function PropertyOwnerSection({
       toast.success('Propietario vinculado');
     },
     onError: (error) => {
-      toast.error(getOwnerLinkErrorMessage(error));
+      toast.error(ownerLinkErrorMessage(error));
     }
   });
 
@@ -92,7 +94,7 @@ export function PropertyOwnerSection({
       }
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'No se pudo generar el link de invitación.';
+        messageFor(error, 'No se pudo generar el link de invitación.');
       setInvitationManagementMessage(message);
       toast.error(message);
     } finally {
@@ -122,7 +124,7 @@ export function PropertyOwnerSection({
       toast.success(message);
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'No se pudo revocar la invitación.';
+      const message = messageFor(error, 'No se pudo revocar la invitación.');
       setInvitationManagementMessage(message);
       toast.error(message);
     }
@@ -156,14 +158,3 @@ export function PropertyOwnerSection({
   );
 }
 
-function getOwnerLinkErrorMessage(error: unknown) {
-  if (!(error instanceof Error)) {
-    return 'No se pudo vincular el propietario.';
-  }
-
-  if (error.message.includes('already linked')) {
-    return 'Ese propietario ya está vinculado a esta propiedad.';
-  }
-
-  return error.message || 'No se pudo vincular el propietario.';
-}
