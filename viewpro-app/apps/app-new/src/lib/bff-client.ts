@@ -1,5 +1,7 @@
 import { isPublicErrorCode, type PublicErrorCode } from '@viewpro/contracts';
 
+export type { PublicErrorCode };
+
 /**
  * The client used by feature services to reach this app's own BFF routes under
  * `src/app/api/**`.
@@ -67,9 +69,12 @@ export async function bffRequest<TResponse>(
   let response: Response;
   try {
     response = await fetch(url, {
+      ...init,
+      // After the spread, not before: a caller must not be able to turn these
+      // off by accident. `credentials: 'omit'` would silently drop auth and
+      // `force-cache` would serve another tenant's data from the bfcache.
       cache: 'no-store',
       credentials: 'include',
-      ...init,
       ...(controller ? { signal: controller.signal } : {})
     });
   } catch (error) {
@@ -101,4 +106,22 @@ export function toBffError(response: Response, body: unknown): BffError {
   const errorCode = isPublicErrorCode(parsed?.errorCode) ? parsed.errorCode : undefined;
 
   return new BffError(response.status, errorCode);
+}
+
+/**
+ * The sentence to show for a failure.
+ *
+ * A BffError carries nothing showable — its message is the generic, on purpose —
+ * so the caller's own copy wins. An Error thrown locally is different: the app
+ * wrote that sentence, and it is usually more specific than any fallback
+ * ('La carga del documento tardó demasiado.' beats 'No se pudo subir el
+ * documento'). This keeps that distinction in one place instead of asking every
+ * `onError` to remember it.
+ */
+export function messageFor(error: unknown, fallback: string): string {
+  if (isBffError(error)) {
+    return fallback;
+  }
+
+  return error instanceof Error && error.message ? error.message : fallback;
 }

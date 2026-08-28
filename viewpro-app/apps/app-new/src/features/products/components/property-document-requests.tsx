@@ -1,5 +1,6 @@
 'use client';
 
+import { messageFor } from '@/lib/bff-client';
 import { Icons, type Icon } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -149,7 +150,7 @@ export function PropertyDocumentRequests({
       toast.success('Solicitud de documento creada');
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo solicitar el documento');
+      toast.error(messageFor(error, 'No se pudo solicitar el documento'));
     }
   });
   const readDocumentMutation = useMutation({
@@ -158,7 +159,7 @@ export function PropertyDocumentRequests({
       window.open(readUrl.url, '_blank', 'noopener,noreferrer');
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo abrir el documento');
+      toast.error(messageFor(error, 'No se pudo abrir el documento'));
     }
   });
   const approveDocumentMutation = useMutation({
@@ -168,7 +169,7 @@ export function PropertyDocumentRequests({
       toast.success('Documento aprobado');
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo aprobar el documento');
+      toast.error(messageFor(error, 'No se pudo aprobar el documento'));
     }
   });
   const rejectDocumentMutation = useMutation({
@@ -180,7 +181,7 @@ export function PropertyDocumentRequests({
       toast.success('Documento rechazado');
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo rechazar el documento');
+      toast.error(messageFor(error, 'No se pudo rechazar el documento'));
     }
   });
 

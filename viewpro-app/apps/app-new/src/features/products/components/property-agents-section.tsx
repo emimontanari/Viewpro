@@ -1,5 +1,6 @@
 'use client';
 
+import { agentAssignmentErrorMessage } from '../error-messages';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -41,7 +42,7 @@ export function PropertyAgentsSection({
       toast.success('Vendedor asignado');
     },
     onError: (error) => {
-      toast.error(getAgentAssignmentErrorMessage(error, 'No se pudo asignar el vendedor'));
+      toast.error(agentAssignmentErrorMessage(error, 'No se pudo asignar el vendedor'));
     },
     onSettled: () => {
       setAssigningAgentUserId(null);
@@ -57,7 +58,7 @@ export function PropertyAgentsSection({
       toast.success('Vendedor quitado');
     },
     onError: (error) => {
-      toast.error(getAgentAssignmentErrorMessage(error, 'No se pudo quitar el vendedor'));
+      toast.error(agentAssignmentErrorMessage(error, 'No se pudo quitar el vendedor'));
     },
     onSettled: () => {
       setRemovingAgentId(null);
@@ -188,14 +189,3 @@ function getAssignAllAgentsSuccessMessage(count: number) {
   return `${count} vendedores asignados`;
 }
 
-function getAgentAssignmentErrorMessage(error: unknown, fallback: string) {
-  if (!(error instanceof Error)) {
-    return fallback;
-  }
-
-  if (error.message.includes('already assigned')) {
-    return 'El vendedor ya está asignado a esta propiedad.';
-  }
-
-  return error.message || fallback;
-}

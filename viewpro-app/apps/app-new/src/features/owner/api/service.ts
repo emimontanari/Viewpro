@@ -1,3 +1,4 @@
+import { bffRequest } from '@/lib/bff-client';
 import type {
   CreateOwnerDocumentUploadUrlPayload,
   CreateOwnerDocumentUploadUrlResponse,
@@ -18,89 +19,80 @@ import type {
 const DEFAULT_APP_URL = 'http://localhost:3000';
 const OWNER_API_PATH = '/api/owner';
 const OWNER_REQUEST_TIMEOUT_MS = 10_000;
+const DOCUMENT_UPLOAD_FAILED_MESSAGE = 'No se pudo subir el documento.';
 const FAKE_DOCUMENT_STORAGE_HOST = 'fake-documents.local';
 const FAKE_DOCUMENT_STORAGE_MESSAGE =
   'La API está usando almacenamiento documental fake. Para subir o abrir documentos desde el navegador, reiniciá la API con DOCUMENT_STORAGE_DRIVER=local y API_PUBLIC_URL=http://localhost:3001.';
 const APP_URL = trimTrailingSlash(process.env.NEXT_PUBLIC_APP_URL ?? DEFAULT_APP_URL);
 
+function ownerRequest<TResponse>(path: string, init: RequestInit = {}): Promise<TResponse> {
+  return bffRequest<TResponse>(path, init, { timeoutMs: OWNER_REQUEST_TIMEOUT_MS });
+}
+
 export async function getOwnerProperties(): Promise<OwnerPropertiesResponse> {
-  const response = await apiFetch(`${OWNER_API_PATH}/properties`);
-  return parseJsonResponse<OwnerPropertiesResponse>(response);
+  return ownerRequest<OwnerPropertiesResponse>(`${OWNER_API_PATH}/properties`);
 }
 
 export async function getOwnerProperty(id: string): Promise<OwnerProperty> {
-  const response = await apiFetch(`${OWNER_API_PATH}/properties/${id}`);
-  return parseJsonResponse<OwnerProperty>(response);
+  return ownerRequest<OwnerProperty>(`${OWNER_API_PATH}/properties/${id}`);
 }
 
 export async function getOwnerPropertyEngagements(id: string): Promise<OwnerEngagementsResponse> {
-  const response = await apiFetch(`${OWNER_API_PATH}/properties/${id}/engagements`);
-  return parseJsonResponse<OwnerEngagementsResponse>(response);
+  return ownerRequest<OwnerEngagementsResponse>(`${OWNER_API_PATH}/properties/${id}/engagements`);
 }
 
 export async function getOwnerEngagementTimeline(
   id: string,
   filters: OwnerTimelineFilters = {}
 ): Promise<OwnerTimelineResponse> {
-  const response = await apiFetch(
+  return ownerRequest<OwnerTimelineResponse>(
     `${OWNER_API_PATH}/engagements/${id}/timeline${buildTimelineQuery(filters)}`
   );
-  return parseJsonResponse<OwnerTimelineResponse>(response);
 }
 
 export async function trackOwnerWhatsappContactClick(engagementId: string): Promise<void> {
-  const response = await apiFetch(
+  await ownerRequest<void>(
     `${OWNER_API_PATH}/engagements/${engagementId}/whatsapp-contact-click`,
     {
       keepalive: true,
       method: 'POST'
     }
   );
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => undefined);
-    throw new Error(getErrorMessage(body, response.statusText));
-  }
 }
 
 export async function trackOwnerMovementWhatsappContactClick(
   engagementId: string,
   movementId: string
 ): Promise<void> {
-  const response = await apiFetch(
+  await ownerRequest<void>(
     `${OWNER_API_PATH}/engagements/${engagementId}/movements/${movementId}/whatsapp-contact-click`,
     {
       keepalive: true,
       method: 'POST'
     }
   );
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => undefined);
-    throw new Error(getErrorMessage(body, response.statusText));
-  }
 }
 
 export async function getOwnerDocumentRequests(
   filters: OwnerDocumentRequestsFilters = {}
 ): Promise<OwnerDocumentRequestsResponse> {
-  const response = await apiFetch(
+  return ownerRequest<OwnerDocumentRequestsResponse>(
     `${OWNER_API_PATH}/document-requests${buildDocumentRequestsQuery(filters)}`
   );
-  return parseJsonResponse<OwnerDocumentRequestsResponse>(response);
 }
 
 export async function createOwnerDocumentUploadUrl(
   requestId: string,
   payload: CreateOwnerDocumentUploadUrlPayload
 ): Promise<CreateOwnerDocumentUploadUrlResponse> {
-  const response = await apiFetch(`${OWNER_API_PATH}/document-requests/${requestId}/upload-url`, {
-    body: JSON.stringify(payload),
-    headers: { 'content-type': 'application/json' },
-    method: 'POST'
-  });
-
-  return parseJsonResponse<CreateOwnerDocumentUploadUrlResponse>(response);
+  return ownerRequest<CreateOwnerDocumentUploadUrlResponse>(
+    `${OWNER_API_PATH}/document-requests/${requestId}/upload-url`,
+    {
+      body: JSON.stringify(payload),
+      headers: { 'content-type': 'application/json' },
+      method: 'POST'
+    }
+  );
 }
 
 export async function uploadOwnerDocumentFile(
@@ -126,23 +118,19 @@ export async function uploadOwnerDocumentFile(
 }
 
 export async function confirmOwnerDocumentUpload(versionId: string): Promise<OwnerDocumentVersion> {
-  const response = await apiFetch(
+  return ownerRequest<OwnerDocumentVersion>(
     `${OWNER_API_PATH}/document-versions/${versionId}/confirm-upload`,
-    {
-      method: 'POST'
-    }
+    { method: 'POST' }
   );
-
-  return parseJsonResponse<OwnerDocumentVersion>(response);
 }
 
 export async function createOwnerDocumentReadUrl(
   versionId: string
 ): Promise<OwnerDocumentVersionUrlResponse> {
-  const response = await apiFetch(`${OWNER_API_PATH}/document-versions/${versionId}/read-url`, {
-    method: 'POST'
-  });
-  const body = await parseJsonResponse<OwnerDocumentVersionUrlResponse>(response);
+  const body = await ownerRequest<OwnerDocumentVersionUrlResponse>(
+    `${OWNER_API_PATH}/document-versions/${versionId}/read-url`,
+    { method: 'POST' }
+  );
 
   assertBrowserReachableDocumentStorageUrl(body.readUrl.url);
 
@@ -184,28 +172,6 @@ function appendSearchParam(
   searchParams.set(key, String(value));
 }
 
-async function apiFetch(path: string, init: RequestInit = {}) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), OWNER_REQUEST_TIMEOUT_MS);
-
-  try {
-    return await fetch(getFetchUrl(path), {
-      cache: 'no-store',
-      credentials: 'include',
-      ...init,
-      signal: controller.signal
-    });
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('El portal propietario tardó demasiado.', { cause: error });
-    }
-
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
 function getFetchUrl(path: string) {
   if (path.startsWith('http://') || path.startsWith('https://') || typeof window !== 'undefined') {
     return path;
@@ -226,16 +192,6 @@ function isFakeDocumentStorageUrl(value: string) {
   } catch {
     return false;
   }
-}
-
-async function parseJsonResponse<TResponse>(response: Response): Promise<TResponse> {
-  const body = await response.json().catch(() => undefined);
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(body, response.statusText));
-  }
-
-  return body as TResponse;
 }
 
 function uploadBlobWithProgress(
@@ -264,7 +220,7 @@ function uploadBlobWithProgress(
       options.onProgress?.({ loaded: event.loaded, total: 0, percent: 35 });
     });
 
-    attachEventListener(xhr, 'error', () => reject(new Error('No se pudo subir el documento.')));
+    attachEventListener(xhr, 'error', () => reject(new Error(DOCUMENT_UPLOAD_FAILED_MESSAGE)));
     attachEventListener(xhr, 'timeout', () =>
       reject(new Error('La carga del documento tardó demasiado.'))
     );
@@ -272,7 +228,7 @@ function uploadBlobWithProgress(
       const body = parseJson(xhr.responseText);
 
       if (xhr.status < 200 || xhr.status >= 300) {
-        reject(new Error(getErrorMessage(body, xhr.statusText || 'No se pudo subir el documento')));
+        reject(new Error(DOCUMENT_UPLOAD_FAILED_MESSAGE));
         return;
       }
 
@@ -312,22 +268,6 @@ function parseJson(value: string) {
   } catch {
     return undefined;
   }
-}
-
-function getErrorMessage(body: unknown, fallback: string) {
-  if (body && typeof body === 'object' && 'message' in body) {
-    const message = (body as { message?: unknown }).message;
-
-    if (typeof message === 'string') {
-      return message;
-    }
-
-    if (Array.isArray(message)) {
-      return message.join(', ');
-    }
-  }
-
-  return fallback;
 }
 
 function trimTrailingSlash(value: string) {

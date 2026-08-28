@@ -170,8 +170,10 @@ describe('PropertyOwnerSection', () => {
 
     await user.click(screen.getByRole('button', { name: /revocar invitación/i }));
 
+    // Was `findByText('No pending owner invitation link found')`: the backend's
+    // English sentence, rendered on screen and asserted as correct.
     await expect(
-      screen.findByText('No pending owner invitation link found')
+      screen.findByText('No se pudo revocar la invitación.')
     ).resolves.toBeVisible();
     expect(screen.getByRole('button', { name: 'Ver detalle de Ana Owner' })).toBeInTheDocument();
   });

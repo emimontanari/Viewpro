@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  BffError,
   bffRequest,
+  messageFor,
   GENERIC_BFF_ERROR_MESSAGE,
   hasErrorCode,
   isBffError
@@ -119,4 +121,37 @@ describe('bffRequest', () => {
     });
     expect(vi.mocked(global.fetch).mock.calls[0]?.[1]?.signal).toBe(controller.signal);
   });
+
+  it('does not let a caller turn off credentials or no-store', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(jsonResponse(200, { ok: true }));
+
+    await bffRequest('/api/x', { cache: 'force-cache', credentials: 'omit' });
+
+    expect(vi.mocked(global.fetch).mock.calls[0]?.[1]).toMatchObject({
+      cache: 'no-store',
+      credentials: 'include'
+    });
+  });
 });
+
+describe('messageFor', () => {
+  it('prefers the caller fallback over a BffError, which carries nothing showable', () => {
+    expect(messageFor(new BffError(500), 'No se pudo subir el documento')).toBe(
+      'No se pudo subir el documento'
+    );
+  });
+
+  it('keeps a locally thrown sentence, because the app wrote that one', () => {
+    const local = new Error('La carga del documento tardó demasiado.');
+
+    expect(messageFor(local, 'No se pudo subir el documento')).toBe(
+      'La carga del documento tardó demasiado.'
+    );
+  });
+
+  it('falls back for an empty message or a non-Error', () => {
+    expect(messageFor(new Error(''), 'fallback')).toBe('fallback');
+    expect(messageFor('a string', 'fallback')).toBe('fallback');
+  });
+});
+

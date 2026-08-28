@@ -1,3 +1,4 @@
+import { toBffError } from '@/lib/bff-client';
 // ============================================================
 // Property Engagement Service — Temporary Product-Named Adapter
 // ============================================================
@@ -321,7 +322,7 @@ export async function deleteMovementOutcomeLabel(labelId: string): Promise<void>
   });
   if (!response.ok) {
     const body = await response.json().catch(() => undefined);
-    throw new Error(getErrorMessage(body, 'No se pudo eliminar la etiqueta.'));
+    throw toBffError(response, body);
   }
 }
 
@@ -387,7 +388,11 @@ async function parseJsonResponse<TResponse>(
   const body = await response.json().catch(() => undefined);
 
   if (!response.ok && !options.allowedErrorStatuses?.includes(response.status)) {
-    throw new Error(getErrorMessage(body, response.statusText));
+    // Same error shape as the rest of the app. This service keeps its own
+    // transport rather than moving to `bffRequest`, because
+    // `allowedErrorStatuses` has no equivalent there — but there is no reason
+    // for it to keep its own error vocabulary too.
+    throw toBffError(response, body);
   }
 
   return body as TResponse;
@@ -397,18 +402,3 @@ function trimTrailingSlash(value: string) {
   return value.endsWith('/') ? value.slice(0, -1) : value;
 }
 
-function getErrorMessage(body: unknown, fallback: string) {
-  if (body && typeof body === 'object' && 'message' in body) {
-    const message = (body as { message?: unknown }).message;
-
-    if (typeof message === 'string') {
-      return message;
-    }
-
-    if (Array.isArray(message)) {
-      return message.join(', ');
-    }
-  }
-
-  return fallback || 'La solicitud de propiedades falló.';
-}
