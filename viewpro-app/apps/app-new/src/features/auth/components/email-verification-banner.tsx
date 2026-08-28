@@ -21,7 +21,12 @@ export function EmailVerificationBanner() {
 
     try {
       await resendVerification();
-      toast.success('Te reenviamos el email de verificación. Revisá tu bandeja.');
+      // Only what the system can back. The API catches and logs send failures
+      // (resend-email-verification.use-case.ts), so a resolved call proves the
+      // request was accepted — not that a message left, and not that it arrived.
+      toast.success(
+        `Pedimos un nuevo email de verificación para ${session.user.email}. Puede tardar unos minutos.`
+      );
     } catch {
       toast.error('No pudimos reenviar el email. Probá de nuevo en un momento.');
     } finally {
@@ -35,7 +40,8 @@ export function EmailVerificationBanner() {
         <AlertTitle>Verificá tu email</AlertTitle>
         <AlertDescription className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
           <span>
-            Te enviamos un link a {session.user.email}. Verificá tu cuenta para asegurar el acceso.
+            Enviamos un link de verificación a {session.user.email}. Si no llegó, revisá spam o
+            pedí uno nuevo.
           </span>
           <Button size='sm' variant='outline' onClick={handleResend} disabled={sending}>
             {sending ? 'Enviando…' : 'Reenviar email'}

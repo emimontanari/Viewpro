@@ -69,10 +69,24 @@ describe('InviteTeamMemberDialog', () => {
     renderDialog({ invitationUrl: 'http://localhost:3000/team-invitations/raw-token-1' });
 
     expect(
-      screen.getByText('Link de la invitación (también enviado por email):')
+      screen.getByText('Link de la invitación:')
     ).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'http://localhost:3000/team-invitations/raw-token-1' })
     ).toHaveAttribute('href', 'http://localhost:3000/team-invitations/raw-token-1');
+  });
+});
+
+/**
+ * create-team-invitation.use-case.ts catches and logs a send failure, so a
+ * created invitation proves a link exists — never that an email left or
+ * arrived. The dialog must not promise the email channel (#350).
+ */
+describe('invite dialog — says only what it can back (#350)', () => {
+  it('does not promise the email was sent automatically', () => {
+    renderDialog();
+
+    const description = screen.getByText(/Creá una invitación/i);
+    expect(description.textContent).not.toMatch(/le enviamos el link por email|automáticamente/i);
   });
 });
