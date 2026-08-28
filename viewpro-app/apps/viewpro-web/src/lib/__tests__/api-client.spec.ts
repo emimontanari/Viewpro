@@ -336,3 +336,74 @@ describe('apiRequest — 401 session-expired interceptor (D7)', () => {
     expect(assignSpy).toHaveBeenCalledTimes(2);
   });
 });
+
+/**
+ * #372: the client used to copy the server's body onto the error — `details`
+ * verbatim and `message` built from `parsedBody.message || parsedBody.error`.
+ * getApiErrorMessage then handed that prose straight to a toast, so backend
+ * wording was user-visible copy nobody wrote for a user.
+ *
+ * `code` is deliberately untouched. It is this bounded context's vocabulary
+ * (viewpro-api: STEP_UP_REQUIRED, LAST_OWNER_PROTECTED, …), not the product
+ * catalogue, and screens map it to local copy themselves.
+ */
+describe('toApiError — no server prose, no raw body (#372)', () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    global.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('drops the raw response body entirely', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      jsonResponse(400, { statusCode: 400, message: 'internal detail', secret: 'do-not-forward' })
+    );
+
+    let caught: ApiError | undefined;
+    try {
+      await apiRequest('/tenants');
+    } catch (error) {
+      caught = error as ApiError;
+    }
+
+    expect(caught).toBeDefined();
+    expect(caught).not.toHaveProperty('details');
+    expect(JSON.stringify(caught)).not.toContain('do-not-forward');
+  });
+
+  it('does not use the server sentence as the message', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      jsonResponse(400, { statusCode: 400, message: 'Tenant slug must match ^[a-z0-9-]+$' })
+    );
+
+    let caught: ApiError | undefined;
+    try {
+      await apiRequest('/tenants');
+    } catch (error) {
+      caught = error as ApiError;
+    }
+
+    expect(caught?.message).not.toContain('slug must match');
+    expect(caught?.message).toBeTruthy();
+  });
+
+  it('keeps the code, because the screens branch on it', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      jsonResponse(409, { statusCode: 409, code: 'LAST_OWNER_PROTECTED', message: 'raw prose' })
+    );
+
+    let caught: ApiError | undefined;
+    try {
+      await apiRequest('/operators/1');
+    } catch (error) {
+      caught = error as ApiError;
+    }
+
+    expect(caught?.code).toBe('LAST_OWNER_PROTECTED');
+    expect(caught?.status).toBe(409);
+  });
+})
