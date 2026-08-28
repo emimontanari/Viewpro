@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { GENERIC_BFF_ERROR_MESSAGE } from '@/lib/bff-client';
 import {
   getAdminDashboardData,
   getAdminSummary,
@@ -220,19 +221,28 @@ describe('admin API service', () => {
     );
   });
 
-  it('raises Spanish-facing errors from BFF responses', async () => {
+  it('does not forward the backend sentence, whatever language it is in', async () => {
+    // This test used to assert the opposite, and it convinced itself the leak
+    // was harmless by feeding a Spanish fixture. The real admin backend throws
+    // English: 'ViewPro admin access required', 'Tenant not found',
+    // 'Cancelled tenant cannot change status'. That is what an operator was
+    // actually being shown.
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ message: 'No se pudo cargar el admin.' }), {
+        new Response(JSON.stringify({ message: 'ViewPro admin access required' }), {
           headers: { 'content-type': 'application/json' },
-          status: 500,
-          statusText: 'Internal Server Error'
+          status: 403,
+          statusText: 'Forbidden'
         })
       )
     );
 
-    await expect(getAdminSummary()).rejects.toThrow('No se pudo cargar el admin.');
+    const error = await getAdminSummary().catch((thrown: unknown) => thrown);
+
+    expect((error as Error).message).toBe(GENERIC_BFF_ERROR_MESSAGE);
+    expect((error as Error).message).not.toContain('admin access required');
+    expect((error as { status: number }).status).toBe(403);
   });
 });
 

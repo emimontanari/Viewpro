@@ -52,8 +52,8 @@ export function TeamManagementSection({ members, pendingInvitations }: TeamManag
         toast.warning('Invitación creada. Copiá el link manualmente.');
       }
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo crear la invitación.');
+    onError: () => {
+      toast.error('No se pudo crear la invitación.');
     }
   });
 
@@ -87,8 +87,8 @@ export function TeamManagementSection({ members, pendingInvitations }: TeamManag
       replaceMember(updatedMember);
       toast.success('Rol actualizado.');
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el rol.');
+    onError: () => {
+      toast.error('No se pudo actualizar el rol.');
     }
   });
 
@@ -98,8 +98,8 @@ export function TeamManagementSection({ members, pendingInvitations }: TeamManag
       replaceMember(updatedMember);
       toast.success('Acceso desactivado.');
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo desactivar el acceso.');
+    onError: () => {
+      toast.error('No se pudo desactivar el acceso.');
     }
   });
 
@@ -118,14 +118,12 @@ export function TeamManagementSection({ members, pendingInvitations }: TeamManag
 
       try {
         await refreshPendingInvitations();
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : 'No se pudieron actualizar las invitaciones.'
-        );
+      } catch {
+        toast.error('No se pudieron actualizar las invitaciones.');
       }
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo regenerar la invitación.');
+    onError: () => {
+      toast.error('No se pudo regenerar la invitación.');
     }
   });
 
@@ -138,8 +136,8 @@ export function TeamManagementSection({ members, pendingInvitations }: TeamManag
       );
       toast.success('Invitación revocada.');
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo revocar la invitación.');
+    onError: () => {
+      toast.error('No se pudo revocar la invitación.');
     }
   });
 

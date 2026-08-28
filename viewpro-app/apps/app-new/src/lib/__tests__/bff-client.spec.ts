@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  BffError,
   bffRequest,
+  messageFor,
   GENERIC_BFF_ERROR_MESSAGE,
   hasErrorCode,
   isBffError
@@ -131,3 +133,25 @@ describe('bffRequest', () => {
     });
   });
 });
+
+describe('messageFor', () => {
+  it('prefers the caller fallback over a BffError, which carries nothing showable', () => {
+    expect(messageFor(new BffError(500), 'No se pudo subir el documento')).toBe(
+      'No se pudo subir el documento'
+    );
+  });
+
+  it('keeps a locally thrown sentence, because the app wrote that one', () => {
+    const local = new Error('La carga del documento tardó demasiado.');
+
+    expect(messageFor(local, 'No se pudo subir el documento')).toBe(
+      'La carga del documento tardó demasiado.'
+    );
+  });
+
+  it('falls back for an empty message or a non-Error', () => {
+    expect(messageFor(new Error(''), 'fallback')).toBe('fallback');
+    expect(messageFor('a string', 'fallback')).toBe('fallback');
+  });
+});
+

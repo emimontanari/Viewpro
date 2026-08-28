@@ -107,3 +107,21 @@ export function toBffError(response: Response, body: unknown): BffError {
 
   return new BffError(response.status, errorCode);
 }
+
+/**
+ * The sentence to show for a failure.
+ *
+ * A BffError carries nothing showable — its message is the generic, on purpose —
+ * so the caller's own copy wins. An Error thrown locally is different: the app
+ * wrote that sentence, and it is usually more specific than any fallback
+ * ('La carga del documento tardó demasiado.' beats 'No se pudo subir el
+ * documento'). This keeps that distinction in one place instead of asking every
+ * `onError` to remember it.
+ */
+export function messageFor(error: unknown, fallback: string): string {
+  if (isBffError(error)) {
+    return fallback;
+  }
+
+  return error instanceof Error && error.message ? error.message : fallback;
+}
