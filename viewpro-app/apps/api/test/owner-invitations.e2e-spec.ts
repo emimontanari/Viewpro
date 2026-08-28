@@ -78,12 +78,17 @@ describe("Owner invitations (e2e)", () => {
 			property: {
 				id: engagement.body.property.id,
 				title: "Invitation property",
-				addressLine: "Av. Invitacion 123",
 				city: "Buenos Aires",
 				province: "CABA",
 			},
 			expiresAt: invitation.expiresAt.toISOString(),
 		});
+		// #303 criterion 2: the street address is not part of the default payload.
+		// City and province stay — they let the owner recognise which property this
+		// is without handing the exact location to whoever holds the link.
+		expect(response.body.property).not.toHaveProperty("addressLine");
+		expect(JSON.stringify(response.body)).not.toContain("Av. Invitacion 123");
+
 		expect(response.body).not.toHaveProperty("tokenHash");
 		expect(JSON.stringify(response.body)).not.toContain(
 			hashOwnerInvitationToken(rawToken),

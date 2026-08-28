@@ -294,7 +294,7 @@ function InvitationSummary({ invitation }: { invitation: OwnerInvitationResponse
         Propiedad invitada
       </p>
       <h2 className='mt-2 text-lg font-semibold'>{invitation.property.title}</h2>
-      <p className='text-muted-foreground text-sm'>{formatPropertyAddress(invitation)}</p>
+      <p className='text-muted-foreground text-sm'>{formatPropertyLocality(invitation)}</p>
       <div className='mt-4 space-y-1'>
         <p className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>
           Email invitado
@@ -606,10 +606,8 @@ function getStatusFallbackUiError(error: ApiError): InvitationUiError {
   };
 }
 
-function formatPropertyAddress(invitation: OwnerInvitationResponse) {
-  return [
-    invitation.property.addressLine,
-    invitation.property.city,
-    invitation.property.province
-  ].join(', ');
+// Locality, not an address. The invitation surface identifies the property
+// without publishing where it is — see #303.
+function formatPropertyLocality(invitation: OwnerInvitationResponse) {
+  return [invitation.property.city, invitation.property.province].filter(Boolean).join(', ');
 }

@@ -1,7 +1,6 @@
 export type OwnerInvitationProperty = {
   id: string;
   title: string;
-  addressLine: string;
   city: string;
   province: string;
 };
