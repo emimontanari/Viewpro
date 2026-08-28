@@ -78,3 +78,53 @@ describe('ResetPasswordViewPage', () => {
 function apiErrorFrom(status: number, body: unknown): ApiError {
   return toApiError({ status } as Response, body);
 }
+
+describe('password visibility (#281)', () => {
+  it('reveals and re-hides each password field independently, keeping what was typed', async () => {
+    const user = userEvent.setup();
+    render(<ResetPasswordViewPage />);
+
+    const nueva = screen.getByLabelText('Contraseña nueva *');
+    const repetir = screen.getByLabelText('Repetir contraseña *');
+    await user.type(nueva, 'newpassword1');
+    await user.type(repetir, 'newpassword1');
+
+    expect(nueva).toHaveAttribute('type', 'password');
+
+    const toggles = screen.getAllByRole('button', { name: /^(Mostrar|Ocultar) contraseña$/ });
+    expect(toggles).toHaveLength(2);
+
+    await user.click(toggles[0]!);
+
+    // Revealed, still holding the typed value, and only this field changed.
+    expect(nueva).toHaveAttribute('type', 'text');
+    expect(nueva).toHaveValue('newpassword1');
+    expect(repetir).toHaveAttribute('type', 'password');
+
+    await user.click(toggles[0]!);
+    expect(nueva).toHaveAttribute('type', 'password');
+    expect(nueva).toHaveValue('newpassword1');
+  });
+
+  it('announces its state rather than relying on the icon', async () => {
+    const user = userEvent.setup();
+    render(<ResetPasswordViewPage />);
+
+    const toggle = screen.getAllByRole('button', { name: /^(Mostrar|Ocultar) contraseña$/ })[0]!;
+
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(toggle).toHaveAttribute('aria-controls', 'password');
+
+    await user.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('leaves non-password fields alone', () => {
+    render(<ResetPasswordViewPage />);
+
+    // Two password fields, two toggles — and the submit button is not one of them.
+    expect(screen.getAllByRole('button', { name: /^(Mostrar|Ocultar) contraseña$/ })).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /Guardar contraseña/ })).not.toHaveAttribute('aria-pressed');
+  });
+});
