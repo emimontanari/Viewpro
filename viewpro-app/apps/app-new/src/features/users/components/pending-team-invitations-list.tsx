@@ -5,6 +5,7 @@ import type { PendingTeamInvitation } from '../api/types';
 
 type PendingTeamInvitationsListProps = {
   copiedInvitationUrl: string | null;
+  onDismissCopiedLink: () => void;
   invitations: PendingTeamInvitation[];
   isRegeneratingInvitationId?: string | null;
   isRevokingInvitationId?: string | null;
@@ -14,6 +15,7 @@ type PendingTeamInvitationsListProps = {
 
 export function PendingTeamInvitationsList({
   copiedInvitationUrl,
+  onDismissCopiedLink,
   invitations,
   isRegeneratingInvitationId = null,
   isRevokingInvitationId = null,
@@ -31,7 +33,18 @@ export function PendingTeamInvitationsList({
       <CardContent className='space-y-4'>
         {copiedInvitationUrl ? (
           <div className='bg-muted/40 rounded-lg border p-4 text-sm'>
-            <p className='text-muted-foreground mb-2 font-medium'>Copiá este link manualmente:</p>
+            <div className='mb-2 flex items-start justify-between gap-2'>
+              <p className='text-muted-foreground font-medium'>Copiá este link manualmente:</p>
+              <Button
+                type='button'
+                size='sm'
+                variant='ghost'
+                onClick={onDismissCopiedLink}
+                aria-label='Listo, ocultar el link de invitación'
+              >
+                Listo
+              </Button>
+            </div>
             <a
               href={copiedInvitationUrl}
               className='text-primary break-all underline underline-offset-4'

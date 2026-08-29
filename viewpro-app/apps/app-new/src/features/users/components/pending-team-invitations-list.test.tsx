@@ -71,6 +71,7 @@ function renderList(overrides: Partial<ComponentProps<typeof PendingTeamInvitati
     <PendingTeamInvitationsList
       copiedInvitationUrl={null}
       invitations={[...pendingInvitations]}
+      onDismissCopiedLink={vi.fn()}
       onRegenerateAndCopy={vi.fn()}
       onRevoke={vi.fn()}
       {...overrides}

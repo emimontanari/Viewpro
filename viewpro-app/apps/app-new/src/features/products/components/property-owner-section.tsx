@@ -138,6 +138,7 @@ export function PropertyOwnerSection({
         isArchived={isArchived}
         isLinkDisabled={linkOwnerMutation.isPending}
         manualInvitationFallback={manualInvitationFallback}
+        onDismissManualInvitation={() => setManualInvitationFallback(null)}
         ownerEmail={ownerEmail}
         ownerName={ownerName}
         owners={owners}
