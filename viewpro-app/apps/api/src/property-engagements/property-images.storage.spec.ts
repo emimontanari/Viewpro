@@ -110,7 +110,7 @@ describe("property image storage", () => {
 		await storage.delete(savedImage.storageKey);
 		await expect(
 			readFile(join(uploadsRoot, savedImage.storageKey), "utf8"),
-		).rejects.toThrow();
+		).rejects.toThrow(/ENOENT/);
 		await rm(uploadsRoot, { force: true, recursive: true });
 	});
 

@@ -196,7 +196,7 @@ describe('CreateOperatorUseCase (T1.3.1)', () => {
         { email: 'atomic@viewpro.app', role: 'ANALYST', tempPassword: 'a-strong-temp-pw12' },
         ACTOR,
       ),
-    ).rejects.toThrow()
+    ).rejects.toThrow('audit sink down')
 
     // The operator must NOT remain committed when the audit write failed.
     expect(committed).toHaveLength(0)

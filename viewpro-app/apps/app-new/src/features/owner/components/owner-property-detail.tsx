@@ -34,20 +34,25 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
   );
   const [highlightDocId] = useQueryState('doc', parseAsString);
   const [highlightMovementId] = useQueryState('movement', parseAsString);
+  const [engagementScopeId] = useQueryState('engagement', parseAsString);
   const activeTab = getOwnerDetailTab(tabQueryValue);
   const propertyQuery = useQuery(ownerPropertyOptions(propertyId));
   const engagementsQuery = useQuery(ownerPropertyEngagementsOptions(propertyId));
-  const firstEngagementId = engagementsQuery.data?.[0]?.id;
+  // The owner home links each card to its own engagement. An unknown or absent scope
+  // keeps the pre-existing default so a bare detail URL behaves exactly as before.
+  const scopedEngagement =
+    engagementsQuery.data?.find((engagement) => engagement.id === engagementScopeId) ?? null;
+  const activeEngagementId = scopedEngagement?.id ?? engagementsQuery.data?.[0]?.id;
 
   useEffect(() => {
-    if (!firstEngagementId || engagementsQuery.isError) {
+    if (!activeEngagementId || engagementsQuery.isError) {
       return;
     }
 
     void queryClient.prefetchQuery(
-      ownerDocumentRequestsOptions(firstEngagementId, OWNER_DOCUMENT_PREFETCH_FILTERS)
+      ownerDocumentRequestsOptions(activeEngagementId, OWNER_DOCUMENT_PREFETCH_FILTERS)
     );
-  }, [engagementsQuery.isError, firstEngagementId, queryClient]);
+  }, [activeEngagementId, engagementsQuery.isError, queryClient]);
 
   if (propertyQuery.isLoading) {
     return <OwnerPropertyDetailSkeleton />;
@@ -67,7 +72,10 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
   const isEngagementsError = engagementsQuery.isError;
   const engagements = isEngagementsError ? [] : (engagementsQuery.data ?? []);
   const primaryEngagement =
-    isEngagementsLoading || isEngagementsError ? null : (engagements[0] ?? null);
+    isEngagementsLoading || isEngagementsError
+      ? null
+      : (scopedEngagement ?? engagements[0] ?? null);
+  const trackedEngagements = scopedEngagement ? [scopedEngagement] : engagements;
 
   return (
     <div className='space-y-6'>
@@ -135,20 +143,20 @@ export function OwnerPropertyDetail({ propertyId }: { propertyId: string }) {
               description='La propiedad ya está visible. Reintentá en unos instantes para ver la gestión activa.'
             />
           ) : null}
-          {!isEngagementsLoading && !isEngagementsError && engagements.length > 0 ? (
+          {!isEngagementsLoading && !isEngagementsError && trackedEngagements.length > 0 ? (
             <section className='space-y-4'>
-              {engagements.map((engagement) => (
+              {trackedEngagements.map((engagement) => (
                 <OwnerEngagementCard
                   key={engagement.id}
                   engagement={engagement}
                   highlightMovementId={highlightMovementId}
                   property={property}
-                  scrollSectionOnMiss={engagements.length === 1}
+                  scrollSectionOnMiss={trackedEngagements.length === 1}
                 />
               ))}
             </section>
           ) : null}
-          {!isEngagementsLoading && !isEngagementsError && engagements.length === 0 ? (
+          {!isEngagementsLoading && !isEngagementsError && trackedEngagements.length === 0 ? (
             <OwnerDetailState
               title='Todavía no hay gestiones activas'
               description='Cuando la inmobiliaria informe avances sobre esta propiedad, los vas a ver acá.'

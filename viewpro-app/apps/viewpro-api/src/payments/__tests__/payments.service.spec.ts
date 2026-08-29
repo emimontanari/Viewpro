@@ -131,7 +131,7 @@ describe('PaymentsService (integration — test DB)', () => {
   it('does not append an audit row when the payment itself is rejected', async () => {
     await expect(
       service.record(input({ periodStart: '2026-08-31', periodEnd: '2026-08-01' }), ACTOR),
-    ).rejects.toThrow()
+    ).rejects.toThrow('Period end must be after period start')
 
     expect(await auditRows('PAYMENT_RECORDED')).toHaveLength(0)
   })

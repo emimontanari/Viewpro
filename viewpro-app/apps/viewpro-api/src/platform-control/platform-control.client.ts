@@ -120,6 +120,7 @@ export class PlatformControlClient {
     } catch (err) {
       throw new Error(
         `Control-lane request to InmoView failed: ${(err as Error).message}`,
+        { cause: err },
       )
     }
 

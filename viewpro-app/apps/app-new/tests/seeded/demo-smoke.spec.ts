@@ -190,7 +190,7 @@ test('existing demo owner can accept another property invitation', async ({ page
   await expect(page.getByText(OWNER_EMAIL)).toBeVisible();
   await expect(page.getByText('Este email ya tiene cuenta.')).toBeVisible();
 
-  await page.getByLabel('Contraseña').fill(DEMO_PASSWORD);
+  await page.getByLabel('Contraseña *', { exact: true }).fill(DEMO_PASSWORD);
   await page.getByRole('button', { name: 'Aceptar invitación' }).click();
   await page.waitForURL('**/owner');
 
@@ -529,7 +529,9 @@ async function openOwnerPropertyDetail(page: Page) {
   await expect(page.getByRole('link', { name: 'Nueva propiedad' })).toHaveCount(0);
 
   await page.getByRole('link', { name: 'Abrir propiedad' }).first().click();
-  await expect(page).toHaveURL(/\/owner\/properties\/[a-f0-9-]+$/i);
+  // owner-home.tsx builds this href with the engagement it opened, so pin the
+  // parameter instead of dropping the anchor: the link is meant to carry it.
+  await expect(page).toHaveURL(/\/owner\/properties\/[a-f0-9-]+\?engagement=[a-f0-9-]+$/i);
   await expect(page.getByRole('heading', { name: OWNER_VISIBLE_PROPERTY_TITLE })).toBeVisible();
 }
 
@@ -562,7 +564,7 @@ async function signIn(page: Page, email: string, redirectPath = '/dashboard') {
   await page.goto(`/auth/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`);
   await page.evaluate(() => localStorage.clear());
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Contraseña').fill(DEMO_PASSWORD);
+  await page.getByLabel('Contraseña *', { exact: true }).fill(DEMO_PASSWORD);
   await page.getByRole('button', { name: 'Entrar' }).click();
 
   await page.waitForURL(`**${redirectPath}`);
@@ -1336,7 +1338,7 @@ async function getIsolationIds(page: Page, demoPassword: string): Promise<{
   await page.goto('/auth/sign-in');
   await page.evaluate(() => localStorage.clear());
   await page.getByLabel('Email').fill(ISOLATION_MANAGER_EMAIL);
-  await page.getByLabel('Contraseña').fill(demoPassword);
+  await page.getByLabel('Contraseña *', { exact: true }).fill(demoPassword);
   await page.getByRole('button', { name: 'Entrar' }).click();
   await page.waitForURL('**/dashboard');
 

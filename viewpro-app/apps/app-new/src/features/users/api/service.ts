@@ -1,3 +1,4 @@
+import { bffRequest, isBffError } from '@/lib/bff-client';
 import type {
   CreateTeamInvitationPayload,
   PendingTeamInvitationsResponse,
@@ -10,87 +11,95 @@ import type {
   UsersResponse
 } from './types';
 
-const DEFAULT_APP_URL = 'http://localhost:3000';
 const USERS_API_PATH = '/api/users';
 const TEAM_INVITATIONS_API_PATH = '/api/team/invitations';
 const TEAM_MEMBERS_API_PATH = '/api/team/members';
 const USERS_REQUEST_TIMEOUT_MS = 10_000;
-const APP_URL = trimTrailingSlash(process.env.NEXT_PUBLIC_APP_URL ?? DEFAULT_APP_URL);
+
+const options = { timeoutMs: USERS_REQUEST_TIMEOUT_MS };
 
 export async function getUsers(
   _filters: UserFilters = {},
   init: RequestInit = {}
 ): Promise<UsersResponse> {
-  const response = await apiFetch(USERS_API_PATH, init);
-  return parseJsonResponse<UsersResponse>(response);
+  return bffRequest<UsersResponse>(USERS_API_PATH, init, options);
 }
 
 export async function getTeamInvitations(
   init: RequestInit = {}
 ): Promise<PendingTeamInvitationsResponse> {
-  const response = await apiFetch(TEAM_INVITATIONS_API_PATH, init);
-  return parseJsonResponse<PendingTeamInvitationsResponse>(response);
+  return bffRequest<PendingTeamInvitationsResponse>(TEAM_INVITATIONS_API_PATH, init, options);
 }
 
 export async function getTeamInvitationsOrEmptyOnForbidden(
   init: RequestInit = {}
 ): Promise<PendingTeamInvitationsResponse> {
-  const response = await apiFetch(TEAM_INVITATIONS_API_PATH, init);
+  try {
+    return await getTeamInvitations(init);
+  } catch (error) {
+    // A member who cannot see invitations is not an error to report: the panel
+    // renders empty. Only 403 — anything else still propagates, because a 500
+    // silently rendering "no invitations" is how a real outage looks like a
+    // quiet team.
+    if (isBffError(error) && error.status === 403) {
+      return { items: [] };
+    }
 
-  if (response.status === 403) {
-    return { items: [] };
+    throw error;
   }
-
-  return parseJsonResponse<PendingTeamInvitationsResponse>(response);
 }
 
 export async function createTeamInvitation(
   data: CreateTeamInvitationPayload
 ): Promise<TeamInvitationLinkResponse> {
-  const response = await apiFetch(TEAM_INVITATIONS_API_PATH, {
-    body: JSON.stringify(data),
-    headers: { 'content-type': 'application/json' },
-    method: 'POST'
-  });
-
-  return parseJsonResponse<TeamInvitationLinkResponse>(response);
+  return bffRequest<TeamInvitationLinkResponse>(
+    TEAM_INVITATIONS_API_PATH,
+    {
+      body: JSON.stringify(data),
+      headers: { 'content-type': 'application/json' },
+      method: 'POST'
+    },
+    options
+  );
 }
 
 export async function resendTeamInvitation(id: string): Promise<TeamInvitationLinkResponse> {
-  const response = await apiFetch(teamInvitationActionPath(id, 'resend'), {
-    method: 'POST'
-  });
-
-  return parseJsonResponse<TeamInvitationLinkResponse>(response);
+  return bffRequest<TeamInvitationLinkResponse>(
+    teamInvitationActionPath(id, 'resend'),
+    { method: 'POST' },
+    options
+  );
 }
 
 export async function revokeTeamInvitation(id: string): Promise<TeamInvitationResponse> {
-  const response = await apiFetch(teamInvitationActionPath(id, 'revoke'), {
-    method: 'POST'
-  });
-
-  return parseJsonResponse<TeamInvitationResponse>(response);
+  return bffRequest<TeamInvitationResponse>(
+    teamInvitationActionPath(id, 'revoke'),
+    { method: 'POST' },
+    options
+  );
 }
 
 export async function updateTeamMemberRole(
   membershipId: string,
   payload: UpdateTeamMemberRolePayload
 ): Promise<User> {
-  const response = await apiFetch(teamMemberActionPath(membershipId, 'role'), {
-    body: JSON.stringify(payload),
-    headers: { 'content-type': 'application/json' },
-    method: 'PATCH'
-  });
-
-  return parseJsonResponse<User>(response);
+  return bffRequest<User>(
+    teamMemberActionPath(membershipId, 'role'),
+    {
+      body: JSON.stringify(payload),
+      headers: { 'content-type': 'application/json' },
+      method: 'PATCH'
+    },
+    options
+  );
 }
 
 export async function deactivateTeamMember(membershipId: string): Promise<User> {
-  const response = await apiFetch(teamMemberActionPath(membershipId, 'deactivate'), {
-    method: 'POST'
-  });
-
-  return parseJsonResponse<User>(response);
+  return bffRequest<User>(
+    teamMemberActionPath(membershipId, 'deactivate'),
+    { method: 'POST' },
+    options
+  );
 }
 
 export async function createUser(_data?: UserMutationPayload): Promise<never> {
@@ -108,70 +117,10 @@ export async function deleteUser(_id?: number | string): Promise<never> {
   throw new Error('User deletion is not supported yet.');
 }
 
-async function apiFetch(path: string, init: RequestInit = {}) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), USERS_REQUEST_TIMEOUT_MS);
-
-  try {
-    return await fetch(getFetchUrl(path), {
-      cache: 'no-store',
-      credentials: 'include',
-      ...init,
-      signal: controller.signal
-    });
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('La solicitud del equipo tardó demasiado.', { cause: error });
-    }
-
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
 function teamInvitationActionPath(id: string, action: 'resend' | 'revoke') {
   return `${TEAM_INVITATIONS_API_PATH}/${encodeURIComponent(id)}/${action}`;
 }
 
 function teamMemberActionPath(membershipId: string, action: 'role' | 'deactivate') {
   return `${TEAM_MEMBERS_API_PATH}/${encodeURIComponent(membershipId)}/${action}`;
-}
-
-function getFetchUrl(path: string) {
-  if (path.startsWith('http://') || path.startsWith('https://') || typeof window !== 'undefined') {
-    return path;
-  }
-
-  return `${APP_URL}${path}`;
-}
-
-async function parseJsonResponse<TResponse>(response: Response): Promise<TResponse> {
-  const body = await response.json().catch(() => undefined);
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(body, response.statusText));
-  }
-
-  return body as TResponse;
-}
-
-function trimTrailingSlash(value: string) {
-  return value.endsWith('/') ? value.slice(0, -1) : value;
-}
-
-function getErrorMessage(body: unknown, fallback: string) {
-  if (body && typeof body === 'object' && 'message' in body) {
-    const message = (body as { message?: unknown }).message;
-
-    if (typeof message === 'string') {
-      return message;
-    }
-
-    if (Array.isArray(message)) {
-      return message.join(', ');
-    }
-  }
-
-  return fallback || 'No se pudo cargar el equipo.';
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { messageFor } from '@/lib/bff-client';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -40,7 +41,7 @@ export function QuickStatusSelect({
       toast.success(`Estado cambiado a ${getStatusLabel(nextStatus)}`);
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el estado');
+      toast.error(messageFor(error, 'No se pudo actualizar el estado'));
     }
   });
 

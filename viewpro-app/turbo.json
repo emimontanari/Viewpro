@@ -6,6 +6,14 @@
       "outputs": ["src/generated/**"]
     },
     "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "dist/**"]
+    },
+    "@viewpro/api#build": {
+      "dependsOn": ["^build", "db:generate"],
+      "outputs": [".next/**", "dist/**"]
+    },
+    "@viewpro/platform-api#build": {
       "dependsOn": ["^build", "db:generate"],
       "outputs": [".next/**", "dist/**"]
     },
@@ -13,11 +21,33 @@
       "cache": false,
       "persistent": true
     },
+    "@viewpro/api#dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true,
+      "interruptible": true,
+      "passThroughEnv": ["PLATFORM_CONTROL_SECRET"]
+    },
+    "next-shadcn-dashboard-starter#dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true,
+      "interruptible": true
+    },
     "lint": {
       "dependsOn": ["^lint"]
     },
     "typecheck": {
-      "dependsOn": ["^typecheck", "db:generate"]
+      "dependsOn": ["^build", "^typecheck"]
+    },
+    "@viewpro/api#typecheck": {
+      "dependsOn": ["^build", "^typecheck", "db:generate"]
+    },
+    "@viewpro/platform-api#typecheck": {
+      "dependsOn": ["^build", "^typecheck", "db:generate"]
+    },
+    "next-shadcn-dashboard-starter#typecheck": {
+      "dependsOn": ["^build", "^typecheck"]
     },
     "test": {
       "dependsOn": ["^test", "db:generate"]

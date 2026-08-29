@@ -18,7 +18,7 @@ export class AuthGuard implements CanActivate {
     const token = request.cookies?.[ACCESS_TOKEN_COOKIE]
 
     if (!token) {
-      throw new UnauthorizedException('Authentication required')
+      throw new UnauthorizedException({ errorCode: 'SESSION_EXPIRED', message: 'Authentication required' })
     }
 
     try {
@@ -26,7 +26,7 @@ export class AuthGuard implements CanActivate {
       request.user = { id: payload.sub, email: payload.email }
       return true
     } catch {
-      throw new UnauthorizedException('Authentication required')
+      throw new UnauthorizedException({ errorCode: 'SESSION_EXPIRED', message: 'Authentication required' })
     }
   }
 }

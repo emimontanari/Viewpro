@@ -15,7 +15,7 @@ describe('AuthController (e2e)', () => {
     process.env.COOKIE_SECURE = 'false'
 
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
     prisma = app.get(PrismaService)
   })
 
@@ -38,6 +38,7 @@ describe('AuthController (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post('/api/auth/register-tenant')
       .send({
+        whatsappPhone: '3510000000',
         email: 'Owner@Example.com',
         password: 'password123',
         firstName: 'Owner',
@@ -94,6 +95,7 @@ describe('AuthController (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post('/api/auth/register-tenant')
       .send({
+        whatsappPhone: '3510000000',
         email: 'DUPLICATE@example.com',
         password: 'password123',
         firstName: 'Other',
@@ -186,6 +188,7 @@ describe('AuthController (e2e)', () => {
     return request(app.getHttpServer())
       .post('/api/auth/register-tenant')
       .send({
+        whatsappPhone: '3510000000',
         email,
         password: 'password123',
         firstName: 'Owner',
@@ -205,7 +208,7 @@ describe('AuthController throttling (e2e)', () => {
     process.env.COOKIE_SECURE = 'false'
 
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
   })
 
   afterAll(async () => {
@@ -247,6 +250,7 @@ describe('AuthController throttling (e2e)', () => {
       await request(app.getHttpServer())
         .post('/api/auth/register-tenant')
         .send({
+          whatsappPhone: '3510000000',
           email: 'rate-limit-register@example.com',
           password: 'short',
           firstName: 'Owner',
@@ -258,6 +262,7 @@ describe('AuthController throttling (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/auth/register-tenant')
       .send({
+        whatsappPhone: '3510000000',
         email: 'rate-limit-register@example.com',
         password: 'short',
         firstName: 'Owner',

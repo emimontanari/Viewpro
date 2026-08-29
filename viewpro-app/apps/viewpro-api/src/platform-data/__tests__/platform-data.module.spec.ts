@@ -3,11 +3,15 @@ import { ThrottlerModule } from '@nestjs/throttler'
 import { describe, expect, it } from 'vitest'
 import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
+import { SENTRY_CAPTURE, SentryService } from '../../observability/sentry.service'
 import { AuditLogRepository } from '../audit-log.repository'
 import { AuditController } from '../audit.controller'
 import { AuditService } from '../audit.service'
 import { ChangeFeedClient } from '../change-feed.client'
+import { MetricsController } from '../metrics.controller'
 import { PlatformDataModule } from '../platform-data.module'
+import { PlatformSyncController } from '../platform-sync.controller'
+import { PlatformSyncCoordinator } from '../platform-sync-coordinator'
 import { PlatformTenantRepository } from '../platform-tenant.repository'
 import { TenantDetailController } from '../tenant-detail.controller'
 import { TenantDetailService } from '../tenant-detail.service'
@@ -45,5 +49,35 @@ describe('PlatformDataModule (viewpro-api) — DI graph resolves (no live DB req
     expect(moduleRef.get(AuditController)).toBeInstanceOf(AuditController)
     expect(moduleRef.get(AuditService)).toBeInstanceOf(AuditService)
     expect(moduleRef.get(PlatformTenantRepository)).toBeInstanceOf(PlatformTenantRepository)
+    expect(moduleRef.get(SENTRY_CAPTURE)).toBeInstanceOf(SentryService)
+  })
+
+  // B.3 — old-web/new-API compatibility (#327, Slice B): the additive demand
+  // route must resolve alongside the pre-existing GET metrics route so old
+  // web (unaware of it) keeps working unchanged once this module deploys.
+  it('adds PlatformSyncController alongside the pre-existing MetricsController without displacing it', async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [ConfigModule, ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]), DatabaseModule, PlatformDataModule],
+    }).compile()
+
+    expect(moduleRef.get(MetricsController)).toBeInstanceOf(MetricsController)
+    expect(moduleRef.get(PlatformSyncController)).toBeInstanceOf(PlatformSyncController)
+  })
+
+  // D.3 — timer retirement (#327): idle must perform no sync work at all.
+  // Checked via provider-metadata reflection so this never needs to import
+  // the retired class.
+  it('provides no interval poll job — the coordinator is reachable only through authenticated demand', async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [ConfigModule, ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]), DatabaseModule, PlatformDataModule],
+    }).compile()
+    expect(moduleRef.get(PlatformSyncCoordinator)).toBeInstanceOf(PlatformSyncCoordinator)
+
+    const providers = (Reflect.getMetadata('providers', PlatformDataModule) ?? []) as Array<
+      { provide?: unknown; name?: string } | (new (...args: never[]) => unknown)
+    >
+    const tokenName = (provider: (typeof providers)[number]) =>
+      typeof provider === 'function' ? provider.name : typeof provider.provide === 'function' ? (provider.provide as { name: string }).name : undefined
+    expect(providers.some((provider) => tokenName(provider) === 'PlatformDataPollJob')).toBe(false)
   })
 })

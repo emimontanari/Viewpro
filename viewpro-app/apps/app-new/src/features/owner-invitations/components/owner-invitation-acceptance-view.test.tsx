@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ApiError } from '@/lib/api-client';
+import { toApiError, type ApiError } from '@/lib/api-client';
 import { getSessionWithRefresh, type Session } from '@/lib/session';
 import { acceptOwnerInvitation, getOwnerInvitation } from '../api/service';
 import type { OwnerInvitationResponse } from '../api/types';
@@ -40,7 +40,6 @@ const invitation: OwnerInvitationResponse = {
   property: {
     id: 'property-1',
     title: 'Casa Palermo',
-    addressLine: 'Uriarte 1234',
     city: 'CABA',
     province: 'Buenos Aires'
   },
@@ -64,7 +63,7 @@ describe('OwnerInvitationAcceptanceView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getOwnerInvitationMock.mockResolvedValue(invitation);
-    getSessionWithRefreshMock.mockRejectedValue(apiError(401, 'Authentication required'));
+    getSessionWithRefreshMock.mockRejectedValue(apiErrorFrom(401, {}));
     acceptOwnerInvitationMock.mockResolvedValue(acceptedSession);
   });
 
@@ -73,7 +72,9 @@ describe('OwnerInvitationAcceptanceView', () => {
 
     expect(await screen.findByText('Casa Palermo')).toBeInTheDocument();
     expect(screen.getByText('owner@example.com')).toBeInTheDocument();
-    expect(screen.getByText('Uriarte 1234, CABA, Buenos Aires')).toBeInTheDocument();
+    // #303: locality identifies the property; the street address does not ship.
+    expect(screen.getByText('CABA, Buenos Aires')).toBeInTheDocument();
+    expect(screen.queryByText(/Uriarte 1234/)).not.toBeInTheDocument();
     expect(screen.getByLabelText('Nombre *')).toHaveValue('Ana');
     expect(screen.getByLabelText('Apellido')).toHaveValue('García');
   });
@@ -157,7 +158,9 @@ describe('OwnerInvitationAcceptanceView', () => {
   });
 
   it('shows expired invitation guidance', async () => {
-    getOwnerInvitationMock.mockRejectedValueOnce(apiError(410, 'Owner invitation has expired'));
+    getOwnerInvitationMock.mockRejectedValueOnce(
+      apiErrorFrom(410, { errorCode: 'INVITATION_EXPIRED' })
+    );
 
     render(<OwnerInvitationAcceptanceView token='token-1' />);
 
@@ -165,7 +168,9 @@ describe('OwnerInvitationAcceptanceView', () => {
   });
 
   it('shows invalid-link guidance for unknown invitations', async () => {
-    getOwnerInvitationMock.mockRejectedValueOnce(apiError(404, 'Owner invitation not found'));
+    getOwnerInvitationMock.mockRejectedValueOnce(
+      apiErrorFrom(404, { errorCode: 'INVITATION_NOT_FOUND' })
+    );
 
     render(<OwnerInvitationAcceptanceView token='token-1' />);
 
@@ -174,20 +179,18 @@ describe('OwnerInvitationAcceptanceView', () => {
 
   it('shows already-accepted guidance with a sign-in link', async () => {
     getOwnerInvitationMock.mockRejectedValueOnce(
-      apiError(410, 'Owner invitation was already accepted')
+      apiErrorFrom(410, { errorCode: 'INVITATION_ALREADY_ACCEPTED' })
     );
 
     render(<OwnerInvitationAcceptanceView token='token-1' />);
 
     expect(await screen.findByText(/esta invitación ya fue aceptada/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: /iniciar sesión/i })).toContainEqual(
-      expect.objectContaining({ href: expect.stringContaining('/auth/sign-in') })
-    );
+    expect(screen.getAllByRole('link', { name: /iniciar sesión/i })).toHaveLength(2);
   });
 
   it('shows unavailable guidance for revoked invitations', async () => {
     getOwnerInvitationMock.mockRejectedValueOnce(
-      apiError(410, 'Owner invitation is no longer available')
+      apiErrorFrom(410, { errorCode: 'INVITATION_REVOKED' })
     );
 
     render(<OwnerInvitationAcceptanceView token='token-1' />);
@@ -198,7 +201,7 @@ describe('OwnerInvitationAcceptanceView', () => {
   it('shows submit-time existing-user guidance without redirecting', async () => {
     const user = userEvent.setup();
     acceptOwnerInvitationMock.mockRejectedValueOnce(
-      apiError(409, 'Owner email is already registered')
+      apiErrorFrom(409, { errorCode: 'INVITATION_EMAIL_ALREADY_REGISTERED' })
     );
 
     render(<OwnerInvitationAcceptanceView token='token-1' />);
@@ -207,11 +210,43 @@ describe('OwnerInvitationAcceptanceView', () => {
     await user.click(screen.getByRole('button', { name: /Crear cuenta y entrar/ }));
 
     expect(await screen.findByText(/este email ya está registrado/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: /iniciar sesión/i })).toContainEqual(
-      expect.objectContaining({ href: expect.stringContaining('/auth/sign-in') })
-    );
+    expect(screen.getAllByRole('link', { name: /iniciar sesión/i })).toHaveLength(2);
     expect(pushMock).not.toHaveBeenCalled();
     expect(refreshMock).not.toHaveBeenCalled();
+  });
+
+  it('shows email-mismatch guidance for backend 403 responses', async () => {
+    getOwnerInvitationMock.mockRejectedValueOnce(
+      apiErrorFrom(403, { errorCode: 'INVITATION_EMAIL_MISMATCH' })
+    );
+
+    render(<OwnerInvitationAcceptanceView token='token-1' />);
+
+    expect(await screen.findByText(/usá el email invitado/i)).toBeInTheDocument();
+  });
+
+  it('shows session-expired guidance without password copy', async () => {
+    getOwnerInvitationMock.mockRejectedValueOnce(
+      apiErrorFrom(401, { errorCode: 'SESSION_EXPIRED' })
+    );
+
+    render(<OwnerInvitationAcceptanceView token='token-1' />);
+
+    expect(
+      await screen.findByText(/tu sesión expiró mientras completabas la invitación/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/revisá tu contraseña/i)).not.toBeInTheDocument();
+  });
+
+  it('shows invalid-credentials guidance distinct from session expiry', async () => {
+    getOwnerInvitationMock.mockRejectedValueOnce(
+      apiErrorFrom(401, { errorCode: 'INVITATION_INVALID_CREDENTIALS' })
+    );
+
+    render(<OwnerInvitationAcceptanceView token='token-1' />);
+
+    expect(await screen.findByText(/revisá tu contraseña/i)).toBeInTheDocument();
+    expect(screen.queryByText(/tu sesión expiró/i)).not.toBeInTheDocument();
   });
 
   it('prevents submitting without a first name', async () => {
@@ -240,6 +275,6 @@ describe('OwnerInvitationAcceptanceView', () => {
   });
 });
 
-function apiError(status: number, message: string): ApiError {
-  return { status, message };
+function apiErrorFrom(status: number, body: unknown): ApiError {
+  return toApiError({ status } as Response, body);
 }

@@ -4,9 +4,15 @@ const DEFAULT_API_URL = 'http://localhost:3002/api';
 
 export type ApiError = {
   status: number;
+  /** Local copy. Never the server's sentence — see toApiError. */
   message: string;
+  /**
+   * This context's vocabulary (viewpro-api): STEP_UP_REQUIRED,
+   * LAST_OWNER_PROTECTED, … Screens map it to their own copy. Kept verbatim and
+   * deliberately unvalidated: these codes are not in PUBLIC_ERROR_CODES, which
+   * is the product API's catalogue, not the platform's.
+   */
   code?: string;
-  details?: unknown;
 };
 
 type ApiRequestOptions = Omit<RequestInit, 'body' | 'credentials'> & {
@@ -165,18 +171,31 @@ async function parseJsonResponse(response: Response): Promise<unknown> {
   }
 }
 
+/**
+ * Builds the error the app throws, carrying only what the app decided to say.
+ *
+ * The body is read for its `code` and then dropped. It used to travel whole as
+ * `details` — which nothing ever read — and its `message` became the toast the
+ * operator saw, so backend wording was user-facing copy nobody wrote for a
+ * user. `status` and `code` are what screens branch on; the sentence is ours.
+ */
 function toApiError(response: Response, body: unknown): ApiError {
   const parsedBody = isErrorResponseBody(body) ? body : undefined;
-  const message = Array.isArray(parsedBody?.message)
-    ? parsedBody.message.join(', ')
-    : parsedBody?.message || parsedBody?.error || response.statusText || 'La solicitud falló.';
 
   return {
     code: parsedBody?.code,
-    details: body,
-    message,
+    message: localMessageForStatus(response.status),
     status: response.status
   };
+}
+
+function localMessageForStatus(status: number): string {
+  if (status === 401) return 'Tu sesión expiró. Iniciá sesión de nuevo.';
+  if (status === 403) return 'No tenés permiso para hacer esto.';
+  if (status === 404) return 'No encontramos lo que buscabas.';
+  if (status === 409) return 'La operación no se pudo completar por el estado actual.';
+  if (status >= 500) return 'Algo salió mal de nuestro lado. Volvé a intentarlo.';
+  return 'No pudimos completar la solicitud.';
 }
 
 function isErrorResponseBody(body: unknown): body is ErrorResponseBody {

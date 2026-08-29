@@ -20,7 +20,6 @@ const USER_ACCESS_SECRET = 'test-access-token-secret'
 
 const signer = new JwtService({ secret: PLATFORM_CONTROL_SECRET })
 const userSigner = new JwtService({ secret: USER_ACCESS_SECRET })
-const wrongSecretSigner = new JwtService({ secret: OTHER_SECRET })
 
 async function makeServiceToken(overrides: Record<string, unknown> = {}, overrideSecret?: string): Promise<string> {
   const base = { iss: 'viewpro-api', aud: 'inmoview-control', sub: 'op-1', jti: 'token-id-1' }

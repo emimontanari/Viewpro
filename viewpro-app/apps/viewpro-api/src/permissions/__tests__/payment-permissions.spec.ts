@@ -50,12 +50,16 @@ describe('payment permissions — separation of duties', () => {
 
   it('every role that can write money can also read it', () => {
     // A writer who cannot read their own ledger cannot verify what they wrote.
-    for (const role of ['ANALYST', 'OPERATIONS', 'OWNER'] as const) {
-      const permissions = getPermissionsForRole(role)
+    const writers = (['ANALYST', 'OPERATIONS', 'OWNER'] as const).filter((role) =>
+      getPermissionsForRole(role).includes(PLATFORM_PERMISSIONS.PAYMENTS_WRITE),
+    )
+    const writersWithoutRead = writers.filter(
+      (role) => !getPermissionsForRole(role).includes(PLATFORM_PERMISSIONS.PAYMENTS_READ),
+    )
 
-      if (permissions.includes(PLATFORM_PERMISSIONS.PAYMENTS_WRITE)) {
-        expect(permissions).toContain(PLATFORM_PERMISSIONS.PAYMENTS_READ)
-      }
-    }
+    // Pinning the premise too: with no writers at all the invariant below is
+    // vacuously true, which is how this test used to pass while proving nothing.
+    expect(writers).toEqual(['OPERATIONS', 'OWNER'])
+    expect(writersWithoutRead).toEqual([])
   })
 })

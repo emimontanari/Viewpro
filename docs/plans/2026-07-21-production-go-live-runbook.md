@@ -202,7 +202,7 @@ SEED_OPERATOR_PASSWORD="<password fuerte>" \
 - [ ] `curl https://<api-console>/api/health` → 200 (plataforma viva).
 - [ ] Registrar una inmobiliaria real en `app.inmoview.app` (self-service) → debería loguear + mandar email de verificación (banner "verificá tu email").
 - [ ] Probar "olvidé mi contraseña" → llega el email (Resend configurado).
-- [ ] Loguear a la consola de operador con el operador seedeado → ver el tenant recién registrado aparecer (poll-job del change-feed).
+- [ ] Log in to the operator console with the seeded operator → see the newly registered tenant appear (authenticated demand triggers the change-feed sync; idle performs no synchronization work — timer retired in Slice D, issue #327).
 - [ ] Subir una imagen a una propiedad → confirmar que persiste tras un redeploy (valida `PROPERTY_IMAGES_STORAGE_DRIVER=s3`).
 - [ ] Verificar en Sentry (prod) que llegan eventos.
 

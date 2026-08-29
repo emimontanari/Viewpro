@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeAll, beforeEach, afterAll } from 'vitest'
-import { execSync } from 'node:child_process'
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { ValidationPipe } from '@nestjs/common'
@@ -15,6 +14,7 @@ import { TenantDetailController } from '../tenant-detail.controller'
 import { TenantDetailService } from '../tenant-detail.service'
 import { ChangeFeedClient, DocumentReadUrlFetchError, TenantSummaryFetchError } from '../change-feed.client'
 import { AuditLogRepository } from '../audit-log.repository'
+import { seedOperatorFixture } from '../../test-support/operator.fixture'
 
 /**
  * platform-tenant-tracking (PR1) — RED: `TenantDetailController`/
@@ -60,28 +60,12 @@ function extractPlatformCookie(headers: Record<string, unknown>): string {
   return (found.split(';')[0] ?? '').trim()
 }
 
-// Module-scope (not describe-local) so the Slice 2a documentReadUrl describe
-// block below can reuse it without duplicating the seed-shell-out logic.
-function seedOperator(email: string, password: string): void {
-  execSync('pnpm db:seed', {
-    cwd: process.cwd(),
-    env: {
-      ...process.env,
-      SEED_OPERATOR_EMAIL: email,
-      SEED_OPERATOR_PASSWORD: password,
-    },
-  })
-}
-
 describe('TenantDetailController (integration — test DB, mocked InmoView client)', () => {
   let app: INestApplication
   let prisma: PrismaService
   let mockFetchTenantSummary: ReturnType<typeof vi.fn<ChangeFeedClient['fetchTenantSummary']>>
 
   beforeAll(async () => {
-    seedOperator(TEST_EMAIL, TEST_PASSWORD)
-    seedOperator(TEST_EMAIL_DENIED, TEST_PASSWORD_DENIED)
-
     mockFetchTenantSummary = vi.fn()
     const mockChangeFeedClient: Pick<ChangeFeedClient, 'fetchTenantSummary'> = {
       fetchTenantSummary: mockFetchTenantSummary,
@@ -107,9 +91,11 @@ describe('TenantDetailController (integration — test DB, mocked InmoView clien
     app.use(cookieParser())
     app.setGlobalPrefix('api')
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
-    await app.init()
+    await app.listen(0)
 
     prisma = moduleFixture.get(PrismaService)
+    await seedOperatorFixture(app, { email: TEST_EMAIL, password: TEST_PASSWORD })
+    await seedOperatorFixture(app, { email: TEST_EMAIL_DENIED, password: TEST_PASSWORD_DENIED })
   })
 
   afterAll(async () => {
@@ -292,9 +278,6 @@ describe('TenantDetailController.documentReadUrl (integration — test DB, mocke
   const DOC_DENIED_PASSWORD = 'document-read-url-denied-password'
 
   beforeAll(async () => {
-    seedOperator(DOC_TEST_EMAIL, DOC_TEST_PASSWORD)
-    seedOperator(DOC_DENIED_EMAIL, DOC_DENIED_PASSWORD)
-
     mockFetchDocumentReadUrl = vi.fn()
     const mockChangeFeedClient: Pick<ChangeFeedClient, 'fetchDocumentReadUrl'> = {
       fetchDocumentReadUrl: mockFetchDocumentReadUrl,
@@ -322,9 +305,11 @@ describe('TenantDetailController.documentReadUrl (integration — test DB, mocke
     app.use(cookieParser())
     app.setGlobalPrefix('api')
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
-    await app.init()
+    await app.listen(0)
 
     prisma = moduleFixture.get(PrismaService)
+    await seedOperatorFixture(app, { email: DOC_TEST_EMAIL, password: DOC_TEST_PASSWORD })
+    await seedOperatorFixture(app, { email: DOC_DENIED_EMAIL, password: DOC_DENIED_PASSWORD })
   })
 
   afterAll(async () => {

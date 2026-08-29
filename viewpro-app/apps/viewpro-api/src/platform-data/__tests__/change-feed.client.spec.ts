@@ -19,6 +19,7 @@ describe('ChangeFeedClient', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.useRealTimers()
   })
 
   it('fetchChanges calls GET INMOVIEW_API_INTERNAL_URL/api/internal/platform/changes?since=<cursor>', async () => {
@@ -92,7 +93,6 @@ describe('ChangeFeedClient', () => {
     const mockFetch = vi.fn().mockImplementation((_url: string, init: RequestInit) => {
       const headers = init.headers as Record<string, string>
       const token = (headers['Authorization'] ?? '').replace('Bearer ', '')
-      const verifier = new JwtService({ secret: PLATFORM_CONTROL_SECRET })
       // Synchronously decode (no verify) to inspect the jti
       const parts = token.split('.')
       if (parts[1]) {
@@ -168,7 +168,7 @@ describe('ChangeFeedClient', () => {
     const token = authHeader.replace('Bearer ', '')
 
     const wrongVerifier = new JwtService({ secret: 'wrong-secret-completely-different' })
-    await expect(wrongVerifier.verifyAsync(token)).rejects.toThrow()
+    await expect(wrongVerifier.verifyAsync(token)).rejects.toThrow('invalid signature')
   })
 
   it('fetchChanges returns parsed ChangeFeedResponse', async () => {
@@ -212,7 +212,22 @@ describe('ChangeFeedClient', () => {
       platformControlSecret: PLATFORM_CONTROL_SECRET,
     })
 
-    await expect(client.fetchChanges(0)).rejects.toThrow()
+    await expect(client.fetchChanges(0)).rejects.toThrow('Data-lane change-feed returned non-2xx')
+  })
+
+  it('fetchChanges aborts stalled body parsing after two seconds', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => Promise.resolve({
+      ok: true,
+      json: () => new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(new Error('aborted')))),
+    } as Response)))
+    const client = new ChangeFeedClient({ inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL, platformControlSecret: PLATFORM_CONTROL_SECRET })
+    const request = client.fetchChanges(0)
+
+    await Promise.resolve()
+    const assertion = expect(request).rejects.toMatchObject({ name: 'ChangeFeedTimeoutError' })
+    await vi.advanceTimersByTimeAsync(2000)
+    await assertion
   })
 
   // -------------------------------------------------------------------------
@@ -306,7 +321,7 @@ describe('ChangeFeedClient', () => {
       platformControlSecret: PLATFORM_CONTROL_SECRET,
     })
 
-    await expect(client.fetchAllTenants()).rejects.toThrow()
+    await expect(client.fetchAllTenants()).rejects.toThrow('Backfill tenants endpoint returned non')
   })
 
   // -------------------------------------------------------------------------
@@ -424,7 +439,7 @@ describe('ChangeFeedClient', () => {
       platformControlSecret: PLATFORM_CONTROL_SECRET,
     })
 
-    await expect(client.fetchTenantSummary('does-not-exist', 0, 20)).rejects.toThrow()
+    await expect(client.fetchTenantSummary('does-not-exist', 0, 20)).rejects.toThrow('Tenant-summary endpoint returned non')
   })
 
   it('fetchTenantSummary throws on network failure', async () => {
@@ -435,7 +450,7 @@ describe('ChangeFeedClient', () => {
       platformControlSecret: PLATFORM_CONTROL_SECRET,
     })
 
-    await expect(client.fetchTenantSummary('tenant-1', 0, 20)).rejects.toThrow()
+    await expect(client.fetchTenantSummary('tenant-1', 0, 20)).rejects.toThrow('Tenant-summary request to InmoView')
   })
 
   // -------------------------------------------------------------------------
@@ -610,6 +625,6 @@ describe('ChangeFeedClient', () => {
       platformControlSecret: PLATFORM_CONTROL_SECRET,
     })
 
-    await expect(client.fetchDocumentReadUrl('tenant-1', 'version-1')).rejects.toThrow()
+    await expect(client.fetchDocumentReadUrl('tenant-1', 'version-1')).rejects.toThrow('Document-read-url request to InmoView')
   })
 })

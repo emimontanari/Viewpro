@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common'
+import { NotFoundException } from '@nestjs/common'
 import { PropertyEngagementStatus } from '@prisma/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TenantContext } from '../../tenant-context/tenant-context.types'
@@ -84,7 +84,7 @@ describe('RejectStatusChangeRequestUseCase', () => {
   it('throws when resolutionComment is blank (empty string)', async () => {
     await expect(
       useCase.execute(makeTenantContext(), makeManager(), REQUEST_ID, { resolutionComment: '' }),
-    ).rejects.toThrow()
+    ).rejects.toThrow('A resolution comment is required')
   })
 
   // FR-20: self-rejection forbidden

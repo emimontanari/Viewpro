@@ -6,6 +6,13 @@ import { TENANT_ID_CLS_KEY } from "../tenant-context/tenant-context.store";
 import { DatabaseModule } from "./database.module";
 import { PrismaService } from "./prisma.service";
 
+/** Identifiers this suite owns. Every delete below is filtered by one of them. */
+const FIXTURE_USER_EMAIL = "isolation@test.local";
+const FIXTURE_TENANT_SLUGS = ["iso-a", "iso-b"];
+
+/** A row this suite does not own, used to prove cleanup never reaches outside. */
+const OUTSIDER_USER_EMAIL = "isolation-outsider@test.local";
+
 /**
  * Proves the Phase 3a enforce actively blocks cross-tenant reads: with tenant A
  * active in the ALS, class-A queries never see tenant B's rows, even when the
@@ -19,6 +26,36 @@ describe("tenant isolation enforcement (integration)", () => {
 	let tenantBId: string;
 	let labelAId: string;
 	let labelBId: string;
+	let outsiderUserId: string;
+	let outsiderAssetId: string;
+
+	/**
+	 * Deletes only what this suite creates.
+	 *
+	 * An unfiltered deleteMany() would wipe the whole local database, and it
+	 * breaks outright the moment any surviving row holds a non-cascading foreign
+	 * key onto users — ten models carry one today, so naming them here would be a
+	 * list that silently rots every time an eleventh is added. Filtering by the
+	 * fixtures' own identity removes the dependency on what else the database
+	 * happens to hold.
+	 */
+	async function deleteOwnFixtures() {
+		const tenants = await prisma.tenant.findMany({
+			where: { slug: { in: FIXTURE_TENANT_SLUGS } },
+			select: { id: true },
+		});
+		const tenantIds = tenants.map((tenant) => tenant.id);
+
+		if (tenantIds.length > 0) {
+			await prisma.tenantMovementOutcomeLabel.deleteMany({
+				where: { tenantId: { in: tenantIds } },
+			});
+			await prisma.tenantMembership.deleteMany({ where: { tenantId: { in: tenantIds } } });
+			await prisma.tenant.deleteMany({ where: { id: { in: tenantIds } } });
+		}
+
+		await prisma.user.deleteMany({ where: { email: FIXTURE_USER_EMAIL } });
+	}
 
 	beforeAll(async () => {
 		moduleRef = await Test.createTestingModule({
@@ -28,14 +65,36 @@ describe("tenant isolation enforcement (integration)", () => {
 		prisma = moduleRef.get(PrismaService);
 		cls = moduleRef.get(ClsService);
 
-		// No ALS context here → enforcement is skipped, so the seed spans tenants.
-		await prisma.tenantMovementOutcomeLabel.deleteMany();
-		await prisma.tenantMembership.deleteMany();
-		await prisma.tenant.deleteMany();
-		await prisma.user.deleteMany();
+		// No ALS context anywhere in this hook → enforcement is skipped, so the
+		// seed spans tenants.
+
+		// Stand in for whatever unrelated data a developer's database already
+		// holds. It is created before the cleanup runs so the assertion below is
+		// about cleanup's reach, not about ordering.
+		await prisma.propertyAsset.deleteMany({
+			where: { createdBy: { email: OUTSIDER_USER_EMAIL } },
+		});
+		await prisma.user.deleteMany({ where: { email: OUTSIDER_USER_EMAIL } });
+		const outsider = await prisma.user.create({
+			data: { email: OUTSIDER_USER_EMAIL, passwordHash: "x", firstName: "Outsider" },
+		});
+		const outsiderAsset = await prisma.propertyAsset.create({
+			data: {
+				title: "Outsider asset",
+				addressLine: "Calle 1",
+				city: "CABA",
+				province: "CABA",
+				propertyType: "HOUSE",
+				createdByUserId: outsider.id,
+			},
+		});
+		outsiderUserId = outsider.id;
+		outsiderAssetId = outsiderAsset.id;
+
+		await deleteOwnFixtures();
 
 		const user = await prisma.user.create({
-			data: { email: "isolation@test.local", passwordHash: "x", firstName: "Iso" },
+			data: { email: FIXTURE_USER_EMAIL, passwordHash: "x", firstName: "Iso" },
 		});
 		const tenantA = await prisma.tenant.create({ data: { name: "A", slug: "iso-a" } });
 		const tenantB = await prisma.tenant.create({ data: { name: "B", slug: "iso-b" } });
@@ -53,10 +112,20 @@ describe("tenant isolation enforcement (integration)", () => {
 	});
 
 	afterAll(async () => {
-		await prisma.tenantMovementOutcomeLabel.deleteMany();
-		await prisma.tenant.deleteMany();
-		await prisma.user.deleteMany();
+		await deleteOwnFixtures();
+		await prisma.propertyAsset.deleteMany({ where: { id: outsiderAssetId } });
+		await prisma.user.deleteMany({ where: { id: outsiderUserId } });
 		await moduleRef.close();
+	});
+
+	it("setup cleanup leaves rows this suite does not own untouched", async () => {
+		const outsiderUser = await prisma.user.findUnique({ where: { id: outsiderUserId } });
+		const outsiderAsset = await prisma.propertyAsset.findUnique({
+			where: { id: outsiderAssetId },
+		});
+
+		expect(outsiderUser?.email).toBe(OUTSIDER_USER_EMAIL);
+		expect(outsiderAsset?.createdByUserId).toBe(outsiderUserId);
 	});
 
 	function inTenant<T>(tenantId: string, fn: () => Promise<T>): Promise<T> {
@@ -130,7 +199,7 @@ describe("tenant isolation enforcement (integration)", () => {
 			inTenant(tenantAId, () =>
 				prisma.tenantMovementOutcomeLabel.findUniqueOrThrow({ where: { id: labelBId } }),
 			),
-		).rejects.toThrow();
+		).rejects.toThrow('No TenantMovementOutcomeLabel found');
 	});
 
 	it("cannot update another tenant's row by id (throws, no mutation)", async () => {
@@ -141,7 +210,7 @@ describe("tenant isolation enforcement (integration)", () => {
 					data: { label: "hijacked" },
 				}),
 			),
-		).rejects.toThrow();
+		).rejects.toThrow(/update\(\)/);
 
 		const untouched = await prisma.tenantMovementOutcomeLabel.findUnique({
 			where: { id: labelBId },
@@ -154,7 +223,7 @@ describe("tenant isolation enforcement (integration)", () => {
 			inTenant(tenantAId, () =>
 				prisma.tenantMovementOutcomeLabel.delete({ where: { id: labelBId } }),
 			),
-		).rejects.toThrow();
+		).rejects.toThrow(/delete\(\)/);
 
 		const survivor = await prisma.tenantMovementOutcomeLabel.findUnique({
 			where: { id: labelBId },

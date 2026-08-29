@@ -41,8 +41,8 @@ describe('parseBusinessDayStart', () => {
   })
 
   it('throws on non-date-only input', () => {
-    expect(() => parseBusinessDayStart('not-a-date', 'America/Argentina/Buenos_Aires')).toThrow()
-    expect(() => parseBusinessDayStart('2026-06-15T00:00:00', 'America/Argentina/Buenos_Aires')).toThrow()
+    expect(() => parseBusinessDayStart('not-a-date', 'America/Argentina/Buenos_Aires')).toThrow('parseBusinessDayStart expects')
+    expect(() => parseBusinessDayStart('2026-06-15T00:00:00', 'America/Argentina/Buenos_Aires')).toThrow('parseBusinessDayStart expects')
   })
 })
 
@@ -78,6 +78,6 @@ describe('parseBusinessDayExclusiveEnd', () => {
   })
 
   it('throws on non-date-only input', () => {
-    expect(() => parseBusinessDayExclusiveEnd('bad-date', 'America/Argentina/Buenos_Aires')).toThrow()
+    expect(() => parseBusinessDayExclusiveEnd('bad-date', 'America/Argentina/Buenos_Aires')).toThrow('parseBusinessDayExclusiveEnd expects')
   })
 })

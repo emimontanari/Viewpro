@@ -1,8 +1,6 @@
 import { NotFoundException } from '@nestjs/common'
-import { TenantStatus } from '@prisma/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CommandActor } from '../admin-actor'
-import { ADMIN_TENANT_LIMITS_REPOSITORY } from '../admin-tenant-limits.repository'
 import { AdminTenantLimitsService } from '../admin-tenant-limits.service'
 
 // ---------------------------------------------------------------------------

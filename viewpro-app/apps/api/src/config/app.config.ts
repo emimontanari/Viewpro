@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config'
+import { parsePublicErrorEnvelopeEnabled } from './env.schema'
 
 type NodeEnv = 'development' | 'test' | 'production'
 
@@ -98,5 +99,8 @@ export const appConfig = registerAs('app', () => {
       fromAddress: process.env.EMAIL_FROM_ADDRESS ?? 'no-reply@inmoview.app',
     },
     sentry: getSentryConfig(nodeEnv),
+    publicErrorEnvelope: {
+      enabled: parsePublicErrorEnvelopeEnabled(process.env.PUBLIC_ERROR_ENVELOPE_ENABLED),
+    },
   }
 })

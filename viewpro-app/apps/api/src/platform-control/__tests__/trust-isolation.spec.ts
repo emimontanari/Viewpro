@@ -1,7 +1,7 @@
 import type { INestApplication } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import request from 'supertest'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 // ---------------------------------------------------------------------------
 // Spec: Trust Path Isolation
@@ -41,7 +41,7 @@ describe('Trust Path Isolation', () => {
 
     const { createApiApp } = await import('../../bootstrap/create-app.js')
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
   })
 
   afterAll(async () => {

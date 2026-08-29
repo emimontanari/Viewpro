@@ -6,10 +6,11 @@ import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import {
@@ -18,6 +19,8 @@ import {
   SidebarMenuItem,
   useSidebar
 } from '@/components/ui/sidebar';
+import { workspaceAdministrationAccess } from '@/config/nav-config';
+import { canAccessNavigation } from '@/lib/navigation-access';
 import { getMembershipRoleLabel } from '@/lib/session';
 import { useActiveTenant } from '@/lib/session-context';
 import { setSelectedTenantId } from '@/lib/tenant-selection';
@@ -26,6 +29,10 @@ export function OrgSwitcher() {
   const { isMobile, state } = useSidebar();
   const router = useRouter();
   const { activeMembership, isTenantLoading, memberships } = useActiveTenant();
+  const canManageWorkspaces = canAccessNavigation(workspaceAdministrationAccess, {
+    resolved: !isTenantLoading,
+    membership: activeMembership
+  });
 
   const handleOrganizationSwitch = (tenantId: string) => {
     setSelectedTenantId(tenantId);
@@ -133,33 +140,41 @@ export function OrgSwitcher() {
             <DropdownMenuLabel className='text-muted-foreground text-xs'>
               Inmobiliarias
             </DropdownMenuLabel>
-            {memberships.map((membership, index) => {
-              const isActive = membership.tenant.id === activeMembership.tenant.id;
-              return (
-                <DropdownMenuItem
+            <DropdownMenuRadioGroup
+              value={activeMembership.tenant.id}
+              onValueChange={handleOrganizationSwitch}
+            >
+              {memberships.map((membership) => (
+                <DropdownMenuRadioItem
                   key={membership.id}
-                  onClick={() => handleOrganizationSwitch(membership.tenant.id)}
+                  value={membership.tenant.id}
+                  aria-label={`${membership.tenant.name}, ${getMembershipRoleLabel(membership.role)}`}
                   className='gap-2 p-2'
                 >
                   <div className='flex size-6 items-center justify-center overflow-hidden rounded-md border'>
                     <Icons.galleryVerticalEnd className='size-3.5 shrink-0' />
                   </div>
-                  {membership.tenant.name}
-                  {isActive ? <Icons.check className='ml-auto size-4' /> : null}
-                  {!isActive ? <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut> : null}
+                  <div className='grid text-left'>
+                    <span>{membership.tenant.name}</span>
+                    <span className='text-muted-foreground text-xs'>{getMembershipRoleLabel(membership.role)}</span>
+                  </div>
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+            {canManageWorkspaces ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className='gap-2 p-2'
+                  onClick={() => router.push('/dashboard/workspaces')}
+                >
+                  <div className='flex size-6 items-center justify-center rounded-md border bg-transparent'>
+                    <Icons.add className='size-4' />
+                  </div>
+                  <div className='text-muted-foreground font-medium'>Administrar inmobiliarias</div>
                 </DropdownMenuItem>
-              );
-            })}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className='gap-2 p-2'
-              onClick={() => router.push('/dashboard/workspaces')}
-            >
-              <div className='flex size-6 items-center justify-center rounded-md border bg-transparent'>
-                <Icons.add className='size-4' />
-              </div>
-              <div className='text-muted-foreground font-medium'>Administrar inmobiliarias</div>
-            </DropdownMenuItem>
+              </>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { assertSafeTestDatabaseUrl } from '../src/database/test-database-url.guard'
+import { currentPoolId, workerDatabaseUrl } from './worker-databases'
 
 process.env.VIEWPRO_TEST_RUN = 'true'
 process.env.NODE_ENV = 'test'
@@ -10,10 +11,11 @@ delete process.env.INMV_DATABASE_URL
 
 loadEnvFile(resolve(process.cwd(), '.env.test'))
 
-process.env.DATABASE_URL ??=
-  'postgresql://viewpro_platform:viewpro_platform@localhost:5434/viewpro_platform_test'
+// Each worker gets its own database, prepared by test/global-setup.ts. Suites
+// clean shared tables between cases, so they must not share one.
+process.env.DATABASE_URL = workerDatabaseUrl(currentPoolId())
 // No separate pooler in dev/test — migrations use the same connection.
-process.env.DIRECT_URL ??= process.env.DATABASE_URL
+process.env.DIRECT_URL = process.env.DATABASE_URL
 process.env.ACCESS_TOKEN_SECRET ??= 'test-access-token-secret'
 process.env.STEP_UP_TOKEN_SECRET ??= 'test-step-up-token-secret-min16'
 process.env.COOKIE_DOMAIN ??= 'localhost'

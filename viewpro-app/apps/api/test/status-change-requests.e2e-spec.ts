@@ -45,7 +45,7 @@ describe('Status Change Requests (e2e)', () => {
     process.env.COOKIE_SECURE = 'false'
 
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
     prisma = app.get(PrismaService)
   })
 
@@ -590,7 +590,7 @@ describe('Status Change Requests (e2e)', () => {
     const agent = request.agent(app.getHttpServer())
     const res = await agent
       .post('/api/auth/register-tenant')
-      .send({ email, password: 'password123', firstName: 'User', tenantName })
+      .send({ whatsappPhone: '3510000000', email, password: 'password123', firstName: 'User', tenantName })
       .expect(201)
 
     return {
@@ -598,21 +598,6 @@ describe('Status Change Requests (e2e)', () => {
       userId: res.body.user.id as string,
       tenantId: res.body.memberships[0].tenant.id as string,
     }
-  }
-
-  async function loginAs(email: string) {
-    const agent = request.agent(app.getHttpServer())
-    const loginRes = await agent
-      .post('/api/auth/login')
-      .send({ email, password: 'password123' })
-      .expect(200)
-    return { agent, userId: loginRes.body.user.id as string }
-  }
-
-  async function registerUser(email: string) {
-    // Register a user via a throwaway tenant registration, then use the userId
-    const throwaway = await registerTenantSession(email, `throwaway-${email}`)
-    return { agent: throwaway.agent, userId: throwaway.userId }
   }
 
   async function setupSellerManagerPair(suffix: string) {

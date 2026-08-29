@@ -20,7 +20,7 @@ describe('assertSafeTestDatabaseUrl', () => {
       assertSafeTestDatabaseUrl(
         'postgresql://viewpro_platform:viewpro_platform@localhost:5434/viewpro_platform',
       ),
-    ).toThrow()
+    ).toThrow('Refusing to run platform-api tests')
   })
 
   it('passes when DATABASE_URL points at viewpro_platform_test', () => {
@@ -34,13 +34,13 @@ describe('assertSafeTestDatabaseUrl', () => {
   it('throws when DATABASE_URL points at the production viewpro DB', () => {
     expect(() =>
       assertSafeTestDatabaseUrl('postgresql://user:pass@localhost:5432/viewpro'),
-    ).toThrow()
+    ).toThrow('Refusing to run platform-api tests')
   })
 
   it('throws when DATABASE_URL is an empty string', () => {
     // Note: passing undefined uses the default param (process.env.DATABASE_URL).
     // Pass empty string to explicitly test missing-URL guard.
-    expect(() => assertSafeTestDatabaseUrl('')).toThrow()
+    expect(() => assertSafeTestDatabaseUrl('')).toThrow('Refusing to run platform-api tests')
   })
 
   it('passes when DATABASE_URL points at viewpro_test', () => {

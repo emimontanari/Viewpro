@@ -10,7 +10,7 @@
  * legend list carrying the semantic values, which is what we assert on.
  */
 import * as React from 'react';
-import { vi, describe, it, expect, beforeAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 
 import type { MetricsSummary } from '@/features/metrics/api/types';

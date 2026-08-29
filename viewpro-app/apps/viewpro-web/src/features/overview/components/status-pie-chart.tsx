@@ -50,6 +50,11 @@ export function StatusPieChart({ byStatus }: Props) {
             <ChartTooltip cursor={false} content={<ChartTooltipContent nameKey='key' hideLabel />} />
             <Pie data={data} dataKey='value' nameKey='key' innerRadius={55} strokeWidth={4}>
               <Label
+                // A recharts render prop, not a component: it returns bare
+                // <text>/<tspan> with no state, hooks or focus, so there is
+                // nothing for a remount to lose. This component has no test,
+                // so silencing the rule beats refactoring it blind.
+                // oxlint-disable-next-line react/no-unstable-nested-components
                 content={({ viewBox }) => {
                   if (!viewBox || !('cx' in viewBox)) return null;
                   return (

@@ -17,16 +17,11 @@
 import type { INestApplication } from '@nestjs/common'
 import {
   GlobalRole,
-  NotificationSurface,
-  NotificationType,
   PropertyAssetOwnerAccessStatus,
   PropertyEngagementStatus,
   PropertyOperationType,
   PropertyType,
-  StatusChangeRequestStatus,
   TenantRole,
-  TenantStatus,
-  UserStatus,
 } from '@prisma/client'
 import { randomUUID } from 'node:crypto'
 import request from 'supertest'
@@ -59,7 +54,6 @@ describe('Security isolation — negative test catalogue (B-1..B-7)', () => {
   let tenantBAssetId: string
 
   let demoManagerSession: TestSession
-  let isolationManagerSession: TestSession
   let demoSellerSession: TestSession // NOT assigned to the unassigned engagement
   let demoOwnerSession: TestSession
   let adminSession: { agent: ReturnType<typeof request.agent>; userId: string }
@@ -80,7 +74,7 @@ describe('Security isolation — negative test catalogue (B-1..B-7)', () => {
     process.env.COOKIE_SECURE = 'false'
 
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
     prisma = app.get(PrismaService)
 
     // ── 1. Create Tenant A (demo-like) ──
@@ -110,7 +104,6 @@ describe('Security isolation — negative test catalogue (B-1..B-7)', () => {
     tenantBId = tenantBSetup.tenantId
     tenantBEngagementId = tenantBSetup.engagementId
     tenantBAssetId = tenantBSetup.assetId
-    isolationManagerSession = tenantBSetup.manager
 
     // ── 3. Create a demo owner (no tenant membership) in Tenant A context ──
     demoOwnerSession = await buildOwnerSession(prisma, app, 'iso-owner', tenantAId, tenantBAssetId)
@@ -403,6 +396,7 @@ async function buildTenantWithManagerAndSeller(
   const managerRes = await managerAgent
     .post('/api/auth/register-tenant')
     .send({
+      whatsappPhone: '3510000000',
       email: `manager-${suffix}@test.local`,
       password: 'password123',
       firstName: 'Manager',
@@ -411,7 +405,6 @@ async function buildTenantWithManagerAndSeller(
     .expect(201)
 
   const tenantId = managerRes.body.memberships[0].tenant.id as string
-  const managerUserId = managerRes.body.user.id as string
 
   // Re-login to get a clean session cookie
   const mgr = request.agent(app.getHttpServer())
@@ -424,6 +417,7 @@ async function buildTenantWithManagerAndSeller(
   const sellerRes = await sellerAgent
     .post('/api/auth/register-tenant')
     .send({
+      whatsappPhone: '3510000000',
       email: `seller-${suffix}@test.local`,
       password: 'password123',
       firstName: 'Seller',
@@ -465,6 +459,7 @@ async function buildIsolationTenant(
   const managerRes = await managerAgent
     .post('/api/auth/register-tenant')
     .send({
+      whatsappPhone: '3510000000',
       email: `iso-manager-${suffix}@test.local`,
       password: 'password123',
       firstName: 'Iso',
@@ -478,6 +473,7 @@ async function buildIsolationTenant(
   const isoOwnerRes = await request(app.getHttpServer())
     .post('/api/auth/register-tenant')
     .send({
+      whatsappPhone: '3510000000',
       email: `iso-owner-${suffix}@test.local`,
       password: 'password123',
       firstName: 'IsoOwner',
@@ -557,13 +553,13 @@ async function buildOwnerSession(
   const ownerRes = await ownerAgent
     .post('/api/auth/register-tenant')
     .send({
+      whatsappPhone: '3510000000',
       email: `owner-${suffix}@test.local`,
       password: 'password123',
       firstName: 'DemoOwner',
       tenantName: `Owner Throwaway ${suffix}`,
     })
     .expect(201)
-  const ownerId = ownerRes.body.user.id as string
   const ownerTenantId = ownerRes.body.memberships[0].tenant.id as string
 
   // Log in again with a clean agent
@@ -591,6 +587,7 @@ async function buildAdminSession(
   const adminRes = await adminAgent
     .post('/api/auth/register-tenant')
     .send({
+      whatsappPhone: '3510000000',
       email: `admin-${suffix}@test.local`,
       password: 'password123',
       firstName: 'Admin',

@@ -3,7 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as ownerService from '../api/service';
-import type { OwnerEngagementsResponse, OwnerPropertiesResponse } from '../api/types';
+import type {
+  OwnerEngagementsResponse,
+  OwnerMovement,
+  OwnerPropertiesResponse
+} from '../api/types';
 import { OwnerHome } from './owner-home';
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -83,11 +87,11 @@ describe('OwnerHome', () => {
     expect(screen.queryByRole('combobox', { name: /Inmobiliaria/i })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Ver seguimiento/i })).toHaveAttribute(
       'href',
-      '/owner/properties/property-1?tab=tracking'
+      '/owner/properties/property-1?engagement=engagement-tenant-1&tab=tracking'
     );
     expect(screen.getByRole('link', { name: /Ver documentación/i })).toHaveAttribute(
       'href',
-      '/owner/properties/property-1?tab=documents'
+      '/owner/properties/property-1?engagement=engagement-tenant-1&tab=documents'
     );
     expect(screen.getByText('Documentación')).toBeInTheDocument();
     expect(screen.queryByText('Ficha técnica')).not.toBeInTheDocument();
@@ -148,7 +152,7 @@ describe('OwnerHome', () => {
     expect(screen.getByRole('heading', { name: 'Departamento en Venta' })).toBeInTheDocument();
   });
 
-  it('renders an agency selector and filters properties when the owner has multiple agencies', () => {
+  it('offers an agency filter without hiding engagements by default', () => {
     mockOwnerHomeData(
       [
         buildOwnerProperty({ id: 'property-1', title: 'Casa visible por ViewPro' }),
@@ -164,8 +168,135 @@ describe('OwnerHome', () => {
 
     expect(screen.getByRole('combobox', { name: /Inmobiliaria/i })).toBeInTheDocument();
     expect(screen.getByText('Seleccioná inmobiliaria')).toBeInTheDocument();
-    expect(screen.getByText('Casa visible por Otra Inmobiliaria')).toBeInTheDocument();
-    expect(screen.queryByText('Casa visible por ViewPro')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Casa visible por Otra Inmobiliaria' })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Casa visible por ViewPro' })).toBeInTheDocument();
+  });
+
+  it('renders one card per engagement when a property is worked by two agencies', () => {
+    mockOwnerHomeData(
+      [buildOwnerProperty({ id: 'property-1', title: 'Casa compartida' })],
+      [
+        [
+          buildOwnerEngagement({ tenant: { id: 'tenant-1', name: 'ViewPro Demo Inmobiliaria' } }),
+          buildOwnerEngagement({ tenant: { id: 'tenant-2', name: 'Otra Inmobiliaria' } })
+        ]
+      ]
+    );
+
+    render(<OwnerHome />);
+
+    const detailLinks = screen.getAllByRole('link', { name: /Abrir propiedad/i });
+
+    expect(detailLinks).toHaveLength(2);
+    expect(detailLinks.map((link) => link.getAttribute('href'))).toEqual([
+      '/owner/properties/property-1?engagement=engagement-tenant-1',
+      '/owner/properties/property-1?engagement=engagement-tenant-2'
+    ]);
+    expect(screen.getByText('Gestión con ViewPro Demo Inmobiliaria')).toBeInTheDocument();
+    expect(screen.getByText('Gestión con Otra Inmobiliaria')).toBeInTheDocument();
+  });
+
+  it('never borrows activity from another agency engagement', () => {
+    mockOwnerHomeData(
+      [buildOwnerProperty({ id: 'property-1', title: 'Casa compartida' })],
+      [
+        [
+          buildOwnerEngagement({ tenant: { id: 'tenant-1', name: 'ViewPro Demo Inmobiliaria' } }),
+          buildOwnerEngagement({ tenant: { id: 'tenant-2', name: 'Otra Inmobiliaria' } })
+        ]
+      ],
+      {
+        'engagement-tenant-1': buildOwnerMovement({
+          createdAt: '2026-08-20T10:00:00.000Z',
+          nextStep: 'Coordinar firma de reserva',
+          observation: 'Recibimos una oferta formal'
+        })
+      }
+    );
+
+    render(<OwnerHome />);
+
+    expect(screen.getByText('Recibimos una oferta formal')).toBeInTheDocument();
+    expect(screen.getByText('Coordinar firma de reserva')).toBeInTheDocument();
+    expect(screen.getAllByText('Recibimos una oferta formal')).toHaveLength(1);
+    expect(screen.getByText('Todavía no hay movimientos registrados.')).toBeInTheDocument();
+    expect(screen.getByText('Sin próxima acción informada.')).toBeInTheDocument();
+  });
+
+  it('states the missing next action while still showing the latest movement', () => {
+    mockOwnerHomeData(ownerPropertiesResponse, [singleAgencyEngagements], {
+      'engagement-tenant-1': buildOwnerMovement({
+        createdAt: '2026-08-20T10:00:00.000Z',
+        nextStep: null,
+        observation: 'Publicamos la propiedad'
+      })
+    });
+
+    render(<OwnerHome />);
+
+    expect(screen.getByText('Publicamos la propiedad')).toBeInTheDocument();
+    expect(screen.getByText('Sin próxima acción informada.')).toBeInTheDocument();
+    expect(screen.queryByText('Todavía no hay movimientos registrados.')).not.toBeInTheDocument();
+  });
+
+  it('orders cards by latest movement date and breaks ties by engagement id', () => {
+    const sameTimestamp = '2026-08-18T12:00:00.000Z';
+    mockOwnerHomeData(
+      [
+        buildOwnerProperty({ id: 'property-1', title: 'Casa sin movimientos' }),
+        buildOwnerProperty({ id: 'property-2', title: 'Casa empatada z' }),
+        buildOwnerProperty({ id: 'property-3', title: 'Casa empatada a' }),
+        buildOwnerProperty({ id: 'property-4', title: 'Casa más reciente' })
+      ],
+      [
+        [buildOwnerEngagement({ tenant: { id: 'silent', name: 'Sin actividad' } })],
+        [buildOwnerEngagement({ tenant: { id: 'tie-z', name: 'Empate Z' } })],
+        [buildOwnerEngagement({ tenant: { id: 'tie-a', name: 'Empate A' } })],
+        [buildOwnerEngagement({ tenant: { id: 'recent', name: 'Reciente' } })]
+      ],
+      {
+        'engagement-tie-z': buildOwnerMovement({ createdAt: sameTimestamp }),
+        'engagement-tie-a': buildOwnerMovement({ createdAt: sameTimestamp }),
+        'engagement-recent': buildOwnerMovement({ createdAt: '2026-08-22T12:00:00.000Z' })
+      }
+    );
+
+    render(<OwnerHome />);
+
+    const renderedTitles = screen
+      .getAllByRole('link', { name: /Abrir propiedad/i })
+      .map((link) => link.getAttribute('href'));
+
+    expect(renderedTitles).toEqual([
+      '/owner/properties/property-4?engagement=engagement-recent',
+      '/owner/properties/property-3?engagement=engagement-tie-a',
+      '/owner/properties/property-2?engagement=engagement-tie-z',
+      '/owner/properties/property-1?engagement=engagement-silent'
+    ]);
+  });
+
+  it('states that activity could not be loaded instead of claiming there is none', () => {
+    useQueryMock.mockReturnValue({
+      data: ownerPropertiesResponse,
+      isError: false,
+      isLoading: false
+    } as ReturnType<typeof useQuery>);
+    useQueriesMock.mockImplementation((options) => {
+      const queries = (options as { queries: Array<{ queryKey: readonly unknown[] }> }).queries;
+
+      return queries.map((query) =>
+        query.queryKey.includes('timeline')
+          ? { data: undefined, isError: true, isLoading: false }
+          : { data: singleAgencyEngagements, isError: false, isLoading: false }
+      ) as ReturnType<typeof useQueries>;
+    });
+
+    render(<OwnerHome />);
+
+    expect(screen.getByText('No pudimos cargar la actividad de esta gestión.')).toBeInTheDocument();
+    expect(screen.queryByText('Todavía no hay movimientos registrados.')).not.toBeInTheDocument();
   });
 
   it('renders a WhatsApp contact link and tracks clicks best-effort', async () => {
@@ -266,20 +397,69 @@ describe('OwnerHome', () => {
 
 function mockOwnerHomeData(
   properties: OwnerPropertiesResponse,
-  engagementsByProperty: OwnerEngagementsResponse[]
+  engagementsByProperty: OwnerEngagementsResponse[],
+  latestMovementByEngagementId: Record<string, OwnerMovement> = {}
 ) {
   useQueryMock.mockReturnValue({
     data: properties,
     isError: false,
     isLoading: false
   } as ReturnType<typeof useQuery>);
-  useQueriesMock.mockReturnValue(
-    engagementsByProperty.map((engagements) => ({
-      data: engagements,
-      isError: false,
-      isLoading: false
-    })) as ReturnType<typeof useQueries>
-  );
+  useQueriesMock.mockImplementation((options) => {
+    const queries = (options as { queries: Array<{ queryKey: readonly unknown[] }> }).queries;
+
+    return queries.map((query, index) => {
+      if (isTimelineQueryKey(query.queryKey)) {
+        const movement = latestMovementByEngagementId[String(query.queryKey[2])];
+
+        return {
+          data: {
+            items: movement ? [movement] : [],
+            page: 1,
+            pageSize: 1,
+            total: movement ? 1 : 0
+          },
+          isError: false,
+          isLoading: false
+        };
+      }
+
+      return { data: engagementsByProperty[index], isError: false, isLoading: false };
+    }) as ReturnType<typeof useQueries>;
+  });
+}
+
+function isTimelineQueryKey(queryKey: readonly unknown[]) {
+  return queryKey.includes('timeline');
+}
+
+function buildOwnerMovement(input: {
+  createdAt: string;
+  nextStep?: string | null;
+  observation?: string;
+}): OwnerMovement {
+  return {
+    id: `movement-${input.createdAt}`,
+    propertyEngagementId: 'engagement-tenant-1',
+    type: 'STATUS_CHANGE',
+    observation: input.observation ?? 'Movimiento visible para el propietario',
+    nextStep: input.nextStep ?? null,
+    previousStatus: null,
+    newStatus: null,
+    source: 'AGENCY',
+    interestCount: null,
+    visitCount: null,
+    offerAmountCents: null,
+    interestLevel: null,
+    createdBy: { id: 'user-1', email: 'agente@viewpro.test', firstName: 'Agente' },
+    contact: {
+      available: true,
+      targetType: 'assigned_seller',
+      displayLabel: 'Contactar vendedor',
+      whatsappPhone: '+5493510000001'
+    },
+    createdAt: input.createdAt
+  };
 }
 
 function buildOwnerProperty(input: {

@@ -2,7 +2,7 @@ import type { INestApplication } from '@nestjs/common'
 import { TenantStatus } from '@prisma/client'
 import { JwtService } from '@nestjs/jwt'
 import request from 'supertest'
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 // ---------------------------------------------------------------------------
 // T-09 — RED: integration test — outbox write inside repo $transaction
@@ -35,7 +35,7 @@ describe('Outbox write integration — $transaction atomicity', () => {
 
     const { createApiApp } = await import('../../bootstrap/create-app.js')
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
 
     const { PrismaService } = await import('../../database/prisma.service.js')
     prisma = app.get(PrismaService)

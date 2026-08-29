@@ -1,5 +1,6 @@
 'use client';
 
+import { messageFor } from '@/lib/bff-client';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -34,7 +35,7 @@ export function CellAction({ canManageProperties = true, data }: CellActionProps
       toast.success(isArchived ? 'Propiedad restaurada' : 'Propiedad archivada');
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo actualizar la propiedad');
+      toast.error(messageFor(error, 'No se pudo actualizar la propiedad'));
     }
   });
 

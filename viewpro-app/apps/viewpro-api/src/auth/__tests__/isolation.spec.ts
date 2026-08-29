@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { execSync } from 'node:child_process'
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { ValidationPipe } from '@nestjs/common'
@@ -8,12 +7,12 @@ import { JwtService } from '@nestjs/jwt'
 import request from 'supertest'
 import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
+import { seedOperatorFixture } from '../../test-support/operator.fixture'
 import { AuthModule } from '../auth.module'
 
 const ISOLATION_EMAIL = 'isolation-test@viewpro.app'
 const ISOLATION_PASSWORD = 'isolation-test-password'
 
-const PLATFORM_SECRET = process.env.ACCESS_TOKEN_SECRET ?? 'test-access-token-secret'
 const INMOVIEW_SECRET = 'completely-different-inmoview-secret'
 
 describe('Isolation regression — InmoView DB unset, own JWT secret', () => {
@@ -22,16 +21,6 @@ describe('Isolation regression — InmoView DB unset, own JWT secret', () => {
   beforeAll(async () => {
     // Ensure no InmoView DB env vars are set (belt-and-suspenders over setup-env.ts)
     delete process.env.INMV_DATABASE_URL
-
-    // Seed an operator while platform DATABASE_URL is set
-    execSync('pnpm db:seed', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        SEED_OPERATOR_EMAIL: ISOLATION_EMAIL,
-        SEED_OPERATOR_PASSWORD: ISOLATION_PASSWORD,
-      },
-    })
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -45,7 +34,8 @@ describe('Isolation regression — InmoView DB unset, own JWT secret', () => {
     app = moduleFixture.createNestApplication()
     app.setGlobalPrefix('api')
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
-    await app.init()
+    await app.listen(0)
+    await seedOperatorFixture(app, { email: ISOLATION_EMAIL, password: ISOLATION_PASSWORD })
   })
 
   afterAll(async () => {
@@ -80,7 +70,7 @@ describe('Isolation regression — InmoView DB unset, own JWT secret', () => {
 
     // JwtService with InmoView secret should reject the platform token
     const inmoviewJwtService = new JwtService({ secret: INMOVIEW_SECRET })
-    await expect(inmoviewJwtService.verifyAsync(token)).rejects.toThrow()
+    await expect(inmoviewJwtService.verifyAsync(token)).rejects.toThrow('invalid signature')
   })
 
   it('Set-Cookie cookie name is exactly viewpro_platform_access_token', async () => {

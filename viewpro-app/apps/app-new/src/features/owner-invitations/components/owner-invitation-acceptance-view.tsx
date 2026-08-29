@@ -4,11 +4,12 @@ import * as React from 'react';
 import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import type { PublicErrorCode } from '@viewpro/contracts';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppForm, useFormFields } from '@/components/ui/tanstack-form';
-import { getApiErrorMessage, isApiError } from '@/lib/api-client';
+import { getApiErrorMessage, isApiError, type ApiError } from '@/lib/api-client';
 import { BRAND } from '@/lib/brand/brand';
 import { getSessionWithRefresh, type Session } from '@/lib/session';
 import { cn } from '@/lib/utils';
@@ -293,7 +294,7 @@ function InvitationSummary({ invitation }: { invitation: OwnerInvitationResponse
         Propiedad invitada
       </p>
       <h2 className='mt-2 text-lg font-semibold'>{invitation.property.title}</h2>
-      <p className='text-muted-foreground text-sm'>{formatPropertyAddress(invitation)}</p>
+      <p className='text-muted-foreground text-sm'>{formatPropertyLocality(invitation)}</p>
       <div className='mt-4 space-y-1'>
         <p className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>
           Email invitado
@@ -518,6 +519,28 @@ function TermsText() {
   );
 }
 
+const INVITATION_ERROR_COPY: Partial<Record<PublicErrorCode, InvitationUiError>> = {
+  INVITATION_EXPIRED: {
+    title: 'Invitación expirada',
+    description: 'Esta invitación expiró. Pedile a la inmobiliaria que te envíe un nuevo link.'
+  },
+  INVITATION_ALREADY_ACCEPTED: {
+    title: 'Invitación ya aceptada',
+    description: 'Esta invitación ya fue aceptada. Iniciá sesión para acceder al portal.',
+    showSignInLink: true
+  },
+  SESSION_EXPIRED: {
+    title: 'Tu sesión expiró',
+    description:
+      'Tu sesión expiró mientras completabas la invitación. Iniciá sesión de nuevo y volvé a abrir el link.',
+    showSignInLink: true
+  },
+  INVITATION_INVALID_CREDENTIALS: {
+    title: 'No pudimos validar tus credenciales',
+    description: 'Revisá tu contraseña y volvé a intentarlo.'
+  }
+};
+
 function getInvitationUiError(error: unknown): InvitationUiError {
   if (!isApiError(error)) {
     return {
@@ -526,8 +549,12 @@ function getInvitationUiError(error: unknown): InvitationUiError {
     };
   }
 
-  const message = error.message.toLowerCase();
+  const byCode = error.errorCode ? INVITATION_ERROR_COPY[error.errorCode] : undefined;
 
+  return byCode ?? getStatusFallbackUiError(error);
+}
+
+function getStatusFallbackUiError(error: ApiError): InvitationUiError {
   if (error.status === 404) {
     return {
       title: 'Link inválido',
@@ -540,21 +567,6 @@ function getInvitationUiError(error: unknown): InvitationUiError {
     return {
       title: 'Email ya registrado',
       description: BRAND.auth.ownerInvitationEmailRegistered,
-      showSignInLink: true
-    };
-  }
-
-  if (error.status === 410 && message.includes('expired')) {
-    return {
-      title: 'Invitación expirada',
-      description: 'Esta invitación expiró. Pedile a la inmobiliaria que te envíe un nuevo link.'
-    };
-  }
-
-  if (error.status === 410 && message.includes('accepted')) {
-    return {
-      title: 'Invitación ya aceptada',
-      description: 'Esta invitación ya fue aceptada. Iniciá sesión para acceder al portal.',
       showSignInLink: true
     };
   }
@@ -594,10 +606,8 @@ function getInvitationUiError(error: unknown): InvitationUiError {
   };
 }
 
-function formatPropertyAddress(invitation: OwnerInvitationResponse) {
-  return [
-    invitation.property.addressLine,
-    invitation.property.city,
-    invitation.property.province
-  ].join(', ');
+// Locality, not an address. The invitation surface identifies the property
+// without publishing where it is — see #303.
+function formatPropertyLocality(invitation: OwnerInvitationResponse) {
+  return [invitation.property.city, invitation.property.province].filter(Boolean).join(', ');
 }

@@ -20,7 +20,7 @@ export class VerifyEmailUseCase {
     const verificationToken = await this.emailVerificationTokenRepository.findByTokenHash(tokenHash)
 
     if (!verificationToken || verificationToken.usedAt || verificationToken.expiresAt <= new Date()) {
-      throw new BadRequestException('Invalid or expired verification token')
+      throw new BadRequestException({ errorCode: 'AUTH_TOKEN_INVALID', message: 'Invalid or expired verification token' })
     }
 
     await this.usersRepository.markEmailVerified(verificationToken.userId)

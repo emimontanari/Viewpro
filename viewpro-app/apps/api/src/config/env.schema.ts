@@ -19,6 +19,18 @@ const ACCESS_TOKEN_SECRET_DEV_PLACEHOLDER = "change-me-in-real-env";
 // Minimum length required for the session-signing secret in production.
 const ACCESS_TOKEN_SECRET_MIN_LENGTH = 32;
 
+export function parsePublicErrorEnvelopeEnabled(value: unknown): boolean {
+	if (value === undefined || value === false || value === "false") {
+		return false;
+	}
+
+	if (value === true || value === "true") {
+		return true;
+	}
+
+	throw new Error("PUBLIC_ERROR_ENVELOPE_ENABLED must be true or false");
+}
+
 class EnvironmentVariables {
 	@IsIn(["development", "test", "production"])
 	NODE_ENV: "development" | "test" | "production" = "development";
@@ -171,6 +183,10 @@ class EnvironmentVariables {
 	@Max(1)
 	@Type(() => Number)
 	SENTRY_TRACES_SAMPLE_RATE = 0;
+
+	@IsBoolean()
+	@Transform(({ value }) => parsePublicErrorEnvelopeEnabled(value))
+	PUBLIC_ERROR_ENVELOPE_ENABLED = false;
 
 	// Required — no default. Shared with viewpro-api; a weak/missing secret would
 	// let a forged service token drive tenant control commands. Fail fast at boot.

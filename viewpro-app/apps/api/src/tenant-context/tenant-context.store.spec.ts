@@ -33,7 +33,7 @@ describe('TenantContextStore', () => {
         void cls.run(async () => {
           store.setTenantId('tenant-A')
           // Yield across an async boundary so the other context runs in between.
-          await new Promise((r) => setTimeout(r, 10))
+          await new Promise<void>((resolve) => setTimeout(resolve, 10))
           seen.push(store.getTenantId())
           resolve()
         })

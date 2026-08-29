@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { GENERIC_BFF_ERROR_MESSAGE } from '@/lib/bff-client';
 import {
   getNotifications,
   getUnreadNotificationCount,
@@ -139,7 +140,7 @@ describe('notifications API service', () => {
     );
   });
 
-  it('surfaces API error messages', async () => {
+  it('does not surface the API error sentence, and reports the status instead', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
@@ -151,7 +152,14 @@ describe('notifications API service', () => {
       )
     );
 
-    await expect(getNotifications()).rejects.toThrow('Tenant context required');
+    // This used to assert the opposite. 'Tenant context required' is the
+    // backend's own sentence: copy nobody wrote for an operator, in a register
+    // nobody chose, reaching a toast. The status is what a caller can branch on.
+    const error = await getNotifications().catch((thrown: unknown) => thrown);
+
+    expect((error as Error).message).toBe(GENERIC_BFF_ERROR_MESSAGE);
+    expect((error as Error).message).not.toContain('Tenant context');
+    expect((error as { status: number }).status).toBe(403);
   });
 });
 

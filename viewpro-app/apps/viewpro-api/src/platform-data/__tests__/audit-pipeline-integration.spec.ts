@@ -146,7 +146,7 @@ describe('Audit pipeline — full-pipeline regression (T-20/T-21, guards a/b/d)'
     const evt = makeAuditEvent({ id: 'evt-guard-d-replay', seqNo: 5 })
 
     await ingestService.ingestBatch([evt])
-    await expect(ingestService.ingestBatch([evt])).resolves.toBeUndefined()
+    await expect(ingestService.ingestBatch([evt])).resolves.toEqual({ kind: 'succeeded', advancedCursor: 5 })
 
     const rows = await prisma.platformAuditLog.findMany({
       where: { sourceEventId: 'evt-guard-d-replay' },

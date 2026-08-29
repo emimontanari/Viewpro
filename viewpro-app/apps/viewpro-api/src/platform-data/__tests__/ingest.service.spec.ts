@@ -535,7 +535,7 @@ describe('IngestService — platform_tenants routing (T-14/T-15, A8/A9)', () => 
       payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE' },
     })
 
-    await expect(ingestService.ingestBatch([poisonEvent, laterEvent])).resolves.toBeUndefined()
+    await expect(ingestService.ingestBatch([poisonEvent, laterEvent])).resolves.toEqual({ kind: 'succeeded', advancedCursor: 8 })
 
     // The projection row was written with all-null limits (well-formed-enough).
     const poisonRow = await prisma.platformTenant.findUnique({ where: { id: 't-no-limits' } })
@@ -687,7 +687,7 @@ describe('IngestService — replay / duplicate-delivery threat-matrix (T-19)', (
           payload: { newStatus: 'TRIAL' },
         },
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow(/platformMirrorEvent/)
   })
 
   // Same UNIQUE(sourceEventId) enforcement for TENANT_STATUS_CHANGED rows.
@@ -713,7 +713,7 @@ describe('IngestService — replay / duplicate-delivery threat-matrix (T-19)', (
           payload: { previousStatus: 'TRIAL', newStatus: 'ACTIVE' },
         },
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow(/platformMirrorEvent/)
   })
 })
 
@@ -804,7 +804,7 @@ describe('IngestService — AUDIT_LOGGED routing (T-16/T-17)', () => {
     const evt = makeAuditEvent({ id: 'evt-audit-route-replay' })
 
     await ingestService.ingestBatch([evt])
-    await expect(ingestService.ingestBatch([evt])).resolves.toBeUndefined()
+    await expect(ingestService.ingestBatch([evt])).resolves.toEqual({ kind: 'succeeded', advancedCursor: 1 })
 
     const auditRows = await prisma.platformAuditLog.findMany({
       where: { sourceEventId: 'evt-audit-route-replay' },
@@ -976,7 +976,7 @@ describe('IngestService — AUDIT_LOGGED routing (T-16/T-17)', () => {
       tenantId: 't-audit-valid',
     })
 
-    await expect(ingestService.ingestBatch([malformedAudit, validAudit])).resolves.toBeUndefined()
+    await expect(ingestService.ingestBatch([malformedAudit, validAudit])).resolves.toEqual({ kind: 'succeeded', advancedCursor: 21 })
 
     const malformedRows = await prisma.platformAuditLog.findMany({
       where: { sourceEventId: 'evt-audit-batch-malformed' },
@@ -1128,7 +1128,7 @@ describe('IngestService — TENANT_LIMITS_CHANGED routing (platform-manual-plans
 
     // Ingest the malformed event alone first — must not throw, must not
     // touch the limits (still the TENANT_REGISTERED values), cursor advances.
-    await expect(ingestService.ingestBatch([malformedEvent])).resolves.toBeUndefined()
+    await expect(ingestService.ingestBatch([malformedEvent])).resolves.toEqual({ kind: 'succeeded', advancedCursor: 3 })
 
     const rowAfterMalformed = await prisma.platformTenant.findUnique({ where: { id: 't-limits' } })
     expect(rowAfterMalformed?.maxUsers).toBe(5)
@@ -1173,7 +1173,7 @@ describe('IngestService — TENANT_LIMITS_CHANGED routing (platform-manual-plans
 
     await expect(
       ingestService.ingestBatch([malformedEvent, laterStatusEvent]),
-    ).resolves.toBeUndefined()
+    ).resolves.toEqual({ kind: 'succeeded', advancedCursor: 6 })
 
     const laterRow = await prisma.platformTenant.findUnique({ where: { id: 't-after-limits-poison' } })
     expect(laterRow?.latestStatus).toBe('ACTIVE')

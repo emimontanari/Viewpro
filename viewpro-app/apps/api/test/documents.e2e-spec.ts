@@ -23,7 +23,7 @@ describe("Documents internal endpoints (e2e)", () => {
 		process.env.COOKIE_SECURE = "false";
 
 		app = await createApiApp();
-		await app.init();
+		await app.listen(0);
 		prisma = app.get(PrismaService);
 	});
 
@@ -848,6 +848,7 @@ describe("Documents internal endpoints (e2e)", () => {
 		const response = await agent
 			.post("/api/auth/register-tenant")
 			.send({
+				whatsappPhone: "3510000000",
 				email,
 				password: "password123",
 				firstName: "Document",

@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest'
-import { execSync } from 'node:child_process'
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { HttpException, ValidationPipe } from '@nestjs/common'
@@ -14,6 +13,7 @@ import { PrismaService } from '../../database/prisma.service'
 import { PermissionsModule } from '../../permissions/permissions.module'
 import { PlatformControlModule } from '../platform-control.module'
 import { PlatformControlClient } from '../platform-control.client'
+import { seedOperatorFixture } from '../../test-support/operator.fixture'
 
 // T-11 — must match STEP_UP_TOKEN_SECRET set in test/setup-env.ts
 const STEP_UP_TOKEN_SECRET =
@@ -69,18 +69,8 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
     postTenantLimits: ReturnType<typeof vi.fn>
   }
 
-  function seedOperator(email: string, password: string): void {
-    execSync('pnpm db:seed', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        SEED_OPERATOR_EMAIL: email,
-        SEED_OPERATOR_PASSWORD: password,
-      },
-    })
-  }
-
   beforeAll(async () => {
+    const setupStartedAt = performance.now()
     mockClient = {
       mintServiceToken: vi.fn().mockReturnValue('mocked-service-token'),
       postTenantStatus: vi.fn().mockResolvedValue({ status: 'updated' }),
@@ -105,32 +95,17 @@ describe('PlatformControlController (viewpro-api) — operator endpoints', () =>
     app.use(cookieParser())
     app.setGlobalPrefix('api')
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
-    await app.init()
+    await app.listen(0)
 
     prisma = moduleFixture.get(PrismaService)
 
-    // Seed test operators (idempotent upsert) — production seed stays OWNER-only.
-    seedOperator(TEST_EMAIL, TEST_PASSWORD)
-    seedOperator(TEST_EMAIL_B, TEST_PASSWORD_B)
-
-    // T-07 — role fixtures seeded directly via Prisma (no real signup exists).
-    seedOperator(TEST_EMAIL_ANALYST, TEST_PASSWORD_ANALYST)
-    await prisma.operator.update({ where: { email: TEST_EMAIL_ANALYST }, data: { role: 'ANALYST' } })
-
-    seedOperator(TEST_EMAIL_OPERATIONS, TEST_PASSWORD_OPERATIONS)
-    await prisma.operator.update({ where: { email: TEST_EMAIL_OPERATIONS }, data: { role: 'OPERATIONS' } })
-
-    seedOperator(TEST_EMAIL_ROLE_CHANGE, TEST_PASSWORD_ROLE_CHANGE)
-    await prisma.operator.update({ where: { email: TEST_EMAIL_ROLE_CHANGE }, data: { role: 'OPERATIONS' } })
-
-    seedOperator(TEST_EMAIL_SUSPEND, TEST_PASSWORD_SUSPEND)
-    // OWNER by default — has every permission until suspended mid-test. Reset
-    // explicitly on every run: a prior run's SUSPENDED mutation persists
-    // across test executions (upsert's `update: {}` never resets it).
-    await prisma.operator.update({
-      where: { email: TEST_EMAIL_SUSPEND },
-      data: { status: 'ACTIVE', role: 'OWNER' },
-    })
+    await seedOperatorFixture(app, { email: TEST_EMAIL, password: TEST_PASSWORD })
+    await seedOperatorFixture(app, { email: TEST_EMAIL_B, password: TEST_PASSWORD_B })
+    await seedOperatorFixture(app, { email: TEST_EMAIL_ANALYST, password: TEST_PASSWORD_ANALYST, role: 'ANALYST' })
+    await seedOperatorFixture(app, { email: TEST_EMAIL_OPERATIONS, password: TEST_PASSWORD_OPERATIONS, role: 'OPERATIONS' })
+    await seedOperatorFixture(app, { email: TEST_EMAIL_ROLE_CHANGE, password: TEST_PASSWORD_ROLE_CHANGE, role: 'OPERATIONS' })
+    await seedOperatorFixture(app, { email: TEST_EMAIL_SUSPEND, password: TEST_PASSWORD_SUSPEND })
+    process.stdout.write(`PLATFORM_CONTROL_SETUP_MS=${Math.round(performance.now() - setupStartedAt)}\n`)
   })
 
   afterAll(async () => {

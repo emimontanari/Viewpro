@@ -43,7 +43,6 @@ export async function createPlatformApp() {
     new SentryExceptionFilter(
       app.get(HttpAdapterHost).httpAdapter,
       sentryService,
-      configService.get<string>('app.nodeEnv') ?? 'development',
     ),
   )
 

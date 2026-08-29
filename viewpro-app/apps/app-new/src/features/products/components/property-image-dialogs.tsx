@@ -1,5 +1,6 @@
 'use client';
 
+import { messageFor } from '@/lib/bff-client';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -93,7 +94,7 @@ export function PropertyImagePreviewDialog({
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : 'No se pudo marcar la imagen como principal'
+        messageFor(error, 'No se pudo marcar la imagen como principal')
       );
     }
   });

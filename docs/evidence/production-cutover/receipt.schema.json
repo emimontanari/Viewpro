@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "production-cutover-receipt.v1",
+  "title": "Production cutover public receipt",
+  "description": "The redacted public receipt. Carries no secret value, host, role name, project identifier, or raw provider response; private evidence correlates to it only through key-versioned HMAC references. Canonicalized per RFC 8785 before digesting.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "generation",
+    "state",
+    "digest",
+    "versions",
+    "aliases",
+    "base",
+    "patches",
+    "tree",
+    "pathDigests",
+    "imageDigests",
+    "deployment",
+    "secrets",
+    "backup",
+    "evidence",
+    "timestamps"
+  ],
+  "$defs": {
+    "identity": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "instant": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+    },
+    "reference": {
+      "description": "A key-versioned HMAC-SHA256 correlation. Never a plain hash, because a plain digest of a low-entropy identifier such as a hostname is recoverable by enumeration.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keyVersion", "hmac"],
+      "properties": {
+        "keyVersion": { "type": "string", "minLength": 1 },
+        "hmac": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    }
+  },
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "production-cutover-receipt" },
+    "generation": { "type": "integer", "minimum": 0 },
+    "state": { "enum": ["staged", "activated", "closed"] },
+    "digest": { "$ref": "#/$defs/digest" },
+    "versions": { "type": "object", "additionalProperties": { "type": "string" } },
+    "aliases": {
+      "description": "Pinned and non-authoritative. An alias never restates the digest.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "base": { "$ref": "#/$defs/identity" },
+    "patches": { "type": "array", "items": { "$ref": "#/$defs/identity" } },
+    "tree": { "$ref": "#/$defs/identity" },
+    "pathDigests": { "type": "object", "additionalProperties": { "$ref": "#/$defs/identity" } },
+    "imageDigests": { "type": "object", "additionalProperties": { "$ref": "#/$defs/digest" } },
+    "deployment": { "type": "object", "additionalProperties": { "$ref": "#/$defs/reference" } },
+    "secrets": { "type": "array", "items": { "$ref": "#/$defs/reference" } },
+    "backup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lineage", "heartbeat"],
+      "properties": {
+        "lineage": { "$ref": "#/$defs/reference" },
+        "heartbeat": { "$ref": "#/$defs/instant" }
+      }
+    },
+    "evidence": { "type": "object", "additionalProperties": { "$ref": "#/$defs/digest" } },
+    "timestamps": { "type": "object", "additionalProperties": { "$ref": "#/$defs/instant" } }
+  }
+}

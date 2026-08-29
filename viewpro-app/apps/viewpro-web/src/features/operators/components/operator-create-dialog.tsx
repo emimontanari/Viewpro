@@ -16,6 +16,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { PasswordRevealToggle } from '@/components/ui/password-reveal-toggle';
 import { Label } from '@/components/ui/label';
 import type { CreateOperatorPayload, OperatorRole } from '@/features/operators/api/types';
 
@@ -36,6 +37,7 @@ const ROLE_OPTIONS: { value: OperatorRole; label: string }[] = [
 
 export function OperatorCreateDialog({ open, isSaving, inlineError, onClose, onSubmit }: Props) {
   const [email, setEmail] = React.useState('');
+  const [revealed, setRevealed] = React.useState(false);
   const [role, setRole] = React.useState<OperatorRole>(DEFAULT_ROLE);
   const [tempPassword, setTempPassword] = React.useState('');
 
@@ -103,16 +105,23 @@ export function OperatorCreateDialog({ open, isSaving, inlineError, onClose, onS
           </div>
           <div className='space-y-2'>
             <Label htmlFor='operator-temp-password'>Contraseña temporal</Label>
-            <Input
-              id='operator-temp-password'
-              type='password'
-              required
-              minLength={12}
-              autoComplete='new-password'
-              disabled={isSaving}
-              value={tempPassword}
-              onChange={(event) => setTempPassword(event.target.value)}
-            />
+            <div className='relative'>
+              <Input
+                id='operator-temp-password'
+                type={revealed ? 'text' : 'password'}
+                required
+                minLength={12}
+                autoComplete='new-password'
+                disabled={isSaving}
+                value={tempPassword}
+                onChange={(event) => setTempPassword(event.target.value)}
+              />
+              <PasswordRevealToggle
+                controls='operator-temp-password'
+                revealed={revealed}
+                onToggle={() => setRevealed((shown) => !shown)}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button type='button' variant='outline' disabled={isSaving} onClick={onClose}>

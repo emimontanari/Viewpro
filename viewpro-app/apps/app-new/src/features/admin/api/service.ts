@@ -1,3 +1,4 @@
+import { bffRequest } from '@/lib/bff-client';
 import type {
   AdminActivityListResponse,
   AdminDashboardData,
@@ -11,13 +12,15 @@ import type {
   UpdateAdminTenantStatusPayload
 } from './types';
 
-const DEFAULT_APP_URL = 'http://localhost:3000';
 const ADMIN_API_PATH = '/api/admin';
 const ADMIN_REQUEST_TIMEOUT_MS = 10_000;
-const APP_URL = trimTrailingSlash(process.env.NEXT_PUBLIC_APP_URL ?? DEFAULT_APP_URL);
+
+function adminRequest<TResponse>(path: string, init: RequestInit = {}): Promise<TResponse> {
+  return bffRequest<TResponse>(path, init, { timeoutMs: ADMIN_REQUEST_TIMEOUT_MS });
+}
 
 export function getAdminSummary(init: RequestInit = {}): Promise<AdminSummary> {
-  return apiFetchJson<AdminSummary>(`${ADMIN_API_PATH}/summary`, init);
+  return adminRequest<AdminSummary>(`${ADMIN_API_PATH}/summary`, init);
 }
 
 export function listAdminTenants(
@@ -32,7 +35,7 @@ export function listAdminTenants(
     searchParams.set('status', input.status);
   }
 
-  return apiFetchJson<AdminTenantsResponse>(`${ADMIN_API_PATH}/tenants?${searchParams}`, init);
+  return adminRequest<AdminTenantsResponse>(`${ADMIN_API_PATH}/tenants?${searchParams}`, init);
 }
 
 export function listAdminActivity(
@@ -47,7 +50,7 @@ export function listAdminActivity(
     searchParams.set('tenantId', input.tenantId);
   }
 
-  return apiFetchJson<AdminActivityListResponse>(
+  return adminRequest<AdminActivityListResponse>(
     `${ADMIN_API_PATH}/activity?${searchParams}`,
     init
   );
@@ -57,7 +60,7 @@ export function updateAdminTenantStatus(
   tenantId: string,
   payload: UpdateAdminTenantStatusPayload
 ): Promise<AdminTenantStatusUpdateResponse> {
-  return apiFetchJson<AdminTenantStatusUpdateResponse>(
+  return adminRequest<AdminTenantStatusUpdateResponse>(
     `${ADMIN_API_PATH}/tenants/${encodeURIComponent(tenantId)}/status`,
     {
       body: JSON.stringify(payload),
@@ -71,7 +74,7 @@ export function updateAdminTenantLimits(
   tenantId: string,
   payload: UpdateAdminTenantLimitsPayload
 ): Promise<AdminTenantLimitsUpdateResponse> {
-  return apiFetchJson<AdminTenantLimitsUpdateResponse>(
+  return adminRequest<AdminTenantLimitsUpdateResponse>(
     `${ADMIN_API_PATH}/tenants/${encodeURIComponent(tenantId)}/limits`,
     {
       body: JSON.stringify(payload),
@@ -89,69 +92,4 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   ]);
 
   return { activity, summary, tenants };
-}
-
-async function apiFetchJson<TResponse>(path: string, init: RequestInit = {}): Promise<TResponse> {
-  const response = await apiFetch(path, init);
-  return parseJsonResponse<TResponse>(response);
-}
-
-async function apiFetch(path: string, init: RequestInit = {}) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), ADMIN_REQUEST_TIMEOUT_MS);
-
-  try {
-    return await fetch(getFetchUrl(path), {
-      cache: 'no-store',
-      credentials: 'include',
-      ...init,
-      signal: controller.signal
-    });
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('La solicitud admin tardó demasiado.', { cause: error });
-    }
-
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-async function parseJsonResponse<TResponse>(response: Response): Promise<TResponse> {
-  const body = await response.json().catch(() => undefined);
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(body, response.statusText));
-  }
-
-  return body as TResponse;
-}
-
-function getFetchUrl(path: string) {
-  if (path.startsWith('http://') || path.startsWith('https://') || typeof window !== 'undefined') {
-    return path;
-  }
-
-  return `${APP_URL}${path}`;
-}
-
-function getErrorMessage(body: unknown, fallback: string) {
-  if (body && typeof body === 'object' && 'message' in body) {
-    const message = (body as { message?: unknown }).message;
-
-    if (typeof message === 'string') {
-      return message;
-    }
-
-    if (Array.isArray(message)) {
-      return message.join(', ');
-    }
-  }
-
-  return fallback || 'No se pudo cargar el admin.';
-}
-
-function trimTrailingSlash(value: string) {
-  return value.endsWith('/') ? value.slice(0, -1) : value;
 }

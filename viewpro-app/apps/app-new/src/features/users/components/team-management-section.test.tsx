@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { BffError } from '@/lib/bff-client';
 import { useActiveTenant } from '@/lib/session-context';
 import { toast } from 'sonner';
 import {
@@ -257,13 +258,13 @@ describe('TeamManagementSection', () => {
 
   it('shows pending invitation action errors without removing the item', async () => {
     const user = userEvent.setup();
-    resendTeamInvitationMock.mockRejectedValueOnce(new Error('No autorizado'));
+    resendTeamInvitationMock.mockRejectedValueOnce(new BffError(403));
     renderTeamManagementSection();
 
     await user.click(screen.getByRole('button', { name: /regenerar y copiar link/i }));
 
     await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith('No autorizado');
+      expect(toastMock.error).toHaveBeenCalledWith('No se pudo regenerar la invitación.');
     });
     expect(screen.getByText('agente@example.com')).toBeInTheDocument();
   });
@@ -321,20 +322,22 @@ describe('TeamManagementSection', () => {
 
   it('shows team member mutation errors without changing the row', async () => {
     const user = userEvent.setup();
-    updateTeamMemberRoleMock.mockRejectedValueOnce(new Error('No autorizado'));
+    updateTeamMemberRoleMock.mockRejectedValueOnce(new BffError(403));
     renderTeamManagementSection();
 
     await user.click(screen.getByRole('button', { name: /hacer encargado/i }));
 
     await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith('No autorizado');
+      expect(toastMock.error).toHaveBeenCalledWith('No se pudo actualizar el rol.');
     });
     expect(screen.getAllByText('Vendedor').length).toBeGreaterThan(0);
   });
 
   it('shows API errors without a manual link', async () => {
     const user = userEvent.setup();
-    createTeamInvitationMock.mockRejectedValueOnce(new Error('Forbidden'));
+    // This asserted `toHaveBeenCalledWith('Forbidden')` — the operator was
+    // shown that single English word as a toast.
+    createTeamInvitationMock.mockRejectedValueOnce(new BffError(403));
     renderTeamManagementSection();
 
     await user.click(screen.getByRole('button', { name: /invitar miembro/i }));
@@ -342,7 +345,7 @@ describe('TeamManagementSection', () => {
     await user.click(screen.getByRole('button', { name: /crear invitación/i }));
 
     await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith('Forbidden');
+      expect(toastMock.error).toHaveBeenCalledWith('No se pudo crear la invitación.');
     });
     expect(screen.queryByText('Copiá este link manualmente:')).not.toBeInTheDocument();
   });

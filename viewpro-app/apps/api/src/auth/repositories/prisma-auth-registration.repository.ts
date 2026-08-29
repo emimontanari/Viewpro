@@ -38,6 +38,7 @@ export class PrismaAuthRegistrationRepository implements AuthRegistrationReposit
           name: input.tenantName,
           slug: input.tenantSlug,
           trialEndsAt,
+          whatsappPhone: input.whatsappPhone,
         },
       })
 

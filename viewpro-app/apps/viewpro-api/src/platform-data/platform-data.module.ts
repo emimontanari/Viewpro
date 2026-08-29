@@ -3,13 +3,15 @@ import { ConfigService } from '@nestjs/config'
 import { PaymentsModule } from '../payments/payments.module'
 import { AuthModule } from '../auth/auth.module'
 import { PermissionsModule } from '../permissions/permissions.module'
+import { ObservabilityModule } from '../observability/observability.module'
 import { ChangeFeedClient } from './change-feed.client'
 import { IngestService } from './ingest.service'
 import { MirrorRepository } from './mirror.repository'
 import { CursorRepository } from './cursor.repository'
 import { PlatformTenantRepository } from './platform-tenant.repository'
 import { AuditLogRepository } from './audit-log.repository'
-import { PlatformDataPollJob } from './platform-data-poll-job'
+import { PlatformSyncCoordinator } from './platform-sync-coordinator'
+import { PlatformSyncController } from './platform-sync.controller'
 import { MetricsService } from './metrics.service'
 import { MetricsController } from './metrics.controller'
 import { TenantRegistryService } from './tenant-registry.service'
@@ -33,7 +35,11 @@ import { TenantDetailController } from './tenant-detail.controller'
  *  - CursorRepository: platform_ingest_cursor CRUD
  *  - PlatformTenantRepository: platform_tenants CRUD (A7/A8/A9)
  *  - AuditLogRepository: platform_audit_log append-only CRUD (A8)
- *  - PlatformDataPollJob: setInterval-based poll loop with overlap guard (D9)
+ *  - PlatformSyncController: POST /operators/platform-sync/demand — authenticated
+ *    demand starts/joins the shared PlatformSyncCoordinator promise and races
+ *    it (Slice B, issue #327). Slice D (#327) retired the unconditional
+ *    setInterval poll job (D9): idle now performs no feed/cursor/projection
+ *    work at all — synchronization runs only through authenticated demand.
  *  - MetricsService: latest-event-wins aggregate from mirror (D6)
  *  - MetricsController: GET /operators/metrics/summary (Phase 4 AuthGuard)
  *  - TenantRegistryService / TenantRegistryController: GET /operators/tenants (A10/A11)
@@ -45,8 +51,8 @@ import { TenantDetailController } from './tenant-detail.controller'
  * DatabaseModule is @Global() so PrismaService is available without explicit import.
  */
 @Module({
-  imports: [PaymentsModule, AuthModule, PermissionsModule],
-  controllers: [MetricsController, TenantRegistryController, AuditController, TenantDetailController],
+  imports: [PaymentsModule, AuthModule, PermissionsModule, ObservabilityModule],
+  controllers: [MetricsController, TenantRegistryController, AuditController, TenantDetailController, PlatformSyncController],
   providers: [
     // ChangeFeedClient's constructor is typed (ConfigService | Options) for a
     // dual DI/unit-test construction mode. A union param emits `Object` under
@@ -61,19 +67,7 @@ import { TenantDetailController } from './tenant-detail.controller'
     PlatformTenantRepository,
     AuditLogRepository,
     IngestService,
-    {
-      provide: PlatformDataPollJob,
-      inject: [ChangeFeedClient, IngestService, CursorRepository, ConfigService],
-      useFactory: (
-        feedClient: ChangeFeedClient,
-        ingestService: IngestService,
-        cursorRepo: CursorRepository,
-        configService: ConfigService,
-      ) => {
-        const pollIntervalMs = configService.get<number>('app.platformData.pollIntervalMs', 5000)
-        return new PlatformDataPollJob(feedClient, ingestService, cursorRepo, pollIntervalMs)
-      },
-    },
+    PlatformSyncCoordinator,
     MetricsService,
     TenantRegistryService,
     AuditService,

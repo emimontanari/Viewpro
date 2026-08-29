@@ -206,13 +206,13 @@ describe('SessionProvider — signOut (D5)', () => {
 
 // ─── Hook guard ───────────────────────────────────────────────────────────────
 
+const ConsumerWithoutProvider = () => {
+  useSession();
+  return null;
+};
+
 describe('useSession()', () => {
   it('throws when used outside SessionProvider', () => {
-    const ConsumerWithoutProvider = () => {
-      useSession();
-      return null;
-    };
-
     // Suppress React error boundary output in test
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
 

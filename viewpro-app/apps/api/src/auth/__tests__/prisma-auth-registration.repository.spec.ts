@@ -129,6 +129,7 @@ describe('PrismaAuthRegistrationRepository — TENANT_REGISTERED emit (T-08/T-09
       tenantName: 'Acme Corp',
       tenantSlug: 'acme-corp',
       role: TenantRole.PRINCIPAL_MANAGER,
+      whatsappPhone: '+543510000000',
     })
 
     // A4: emit must be called once
@@ -174,6 +175,7 @@ describe('PrismaAuthRegistrationRepository — TENANT_REGISTERED emit (T-08/T-09
         tenantName: 'Acme Corp',
         tenantSlug: 'acme-corp',
         role: TenantRole.PRINCIPAL_MANAGER,
+        whatsappPhone: '+543510000000',
       })
 
       const expectedTrialEndsAt = new Date('2026-07-30T13:33:38.492Z')
@@ -211,6 +213,7 @@ describe('PrismaAuthRegistrationRepository — TENANT_REGISTERED emit (T-08/T-09
         tenantName: 'Acme Corp',
         tenantSlug: 'acme-corp',
         role: TenantRole.PRINCIPAL_MANAGER,
+        whatsappPhone: '+543510000000',
       }),
     ).rejects.toThrow('unique slug constraint violation')
 

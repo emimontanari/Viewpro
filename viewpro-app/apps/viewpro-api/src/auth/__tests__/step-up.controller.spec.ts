@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { execSync } from 'node:child_process'
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { ValidationPipe } from '@nestjs/common'
@@ -8,6 +7,7 @@ import cookieParser from 'cookie-parser'
 import request from 'supertest'
 import { ConfigModule } from '../../config/config.module'
 import { DatabaseModule } from '../../database/database.module'
+import { seedOperatorFixture } from '../../test-support/operator.fixture'
 import { AuthModule } from '../auth.module'
 
 /**
@@ -40,7 +40,7 @@ async function buildApp(throttleLimit: number): Promise<INestApplication> {
   app.use(cookieParser())
   app.setGlobalPrefix('api')
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
-  await app.init()
+  await app.listen(0)
   return app
 }
 
@@ -59,16 +59,8 @@ describe('POST /api/auth/step-up (integration)', () => {
   let app: INestApplication
 
   beforeAll(async () => {
-    execSync('pnpm db:seed', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        SEED_OPERATOR_EMAIL: SEEDED_EMAIL,
-        SEED_OPERATOR_PASSWORD: SEEDED_PASSWORD,
-      },
-    })
-
     app = await buildApp(100)
+    await seedOperatorFixture(app, { email: SEEDED_EMAIL, password: SEEDED_PASSWORD })
   })
 
   afterAll(async () => {
@@ -114,11 +106,16 @@ describe('POST /api/auth/step-up (integration)', () => {
     // so a `viewpro_platform_stepup_token=` header MAY be present, but only as
     // an expired clear (no live/valid step-up token is ever issued here).
     const stepUpCookie = extractCookie(res.headers as Record<string, unknown>, 'viewpro_platform_stepup_token')
+    // The comment above is the contract: the header MAY be absent. Asserting
+    // unconditionally would pin behaviour the endpoint does not promise, and
+    // res.status is already asserted for every run.
+    // oxlint-disable-next-line vitest/no-conditional-expect
     if (stepUpCookie) {
       const hasMaxAgeZero = /max-age=0/i.test(stepUpCookie)
       const expiresMatch = stepUpCookie.match(/expires=([^;]+)/i)
       const expiresValue = expiresMatch?.[1]
       const hasExpiredDate = expiresValue !== undefined && new Date(expiresValue).getTime() <= Date.now()
+      // oxlint-disable-next-line vitest/no-conditional-expect
       expect(hasMaxAgeZero || hasExpiredDate).toBe(true)
     }
   })
@@ -128,16 +125,8 @@ describe('POST /api/auth/step-up — throttled (D8, AuthThrottlerGuard reused)',
   let app: INestApplication
 
   beforeAll(async () => {
-    execSync('pnpm db:seed', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        SEED_OPERATOR_EMAIL: SEEDED_EMAIL,
-        SEED_OPERATOR_PASSWORD: SEEDED_PASSWORD,
-      },
-    })
-
     app = await buildApp(5)
+    await seedOperatorFixture(app, { email: SEEDED_EMAIL, password: SEEDED_PASSWORD })
   })
 
   afterAll(async () => {

@@ -12,7 +12,6 @@ const invitation: OwnerInvitationResponse = {
   property: {
     id: 'property-1',
     title: 'Casa Palermo',
-    addressLine: 'Uriarte 1234',
     city: 'CABA',
     province: 'Buenos Aires'
   },

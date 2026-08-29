@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "kind": "production-cutover-release-manifest",
+  "status": "unpopulated-template",
+  "authority": "external-only",
+  "prefix": null,
+  "workUnits": [],
+  "final": null,
+  "closure": null,
+  "remediation": null
+}

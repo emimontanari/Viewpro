@@ -1,8 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common'
-import {
-  isValidWhatsappPhone,
-  normalizeWhatsappPhone,
-} from '../../common/whatsapp/whatsapp-phone.utils'
+import { parseArContactPhone } from '../../common/phone/ar-contact-phone'
 import { TENANTS_REPOSITORY, type TenantsRepository } from '../tenants.repository'
 
 export type UpdateTenantWhatsappPhoneInput = {
@@ -18,12 +15,14 @@ export class UpdateTenantWhatsappPhoneUseCase {
   ) {}
 
   async execute(input: UpdateTenantWhatsappPhoneInput): Promise<void> {
-    const normalized = normalizeWhatsappPhone(input.whatsappPhone)
-
-    if (!isValidWhatsappPhone(normalized)) {
-      throw new BadRequestException({ errorCode: 'phone.too_short' })
+    // Same mandatory Argentine rule as registration (#287 WU4, design.md
+    // ADR-6): one rule, one module, shared with RegisterTenantUseCase.
+    const phoneResult = parseArContactPhone(input.whatsappPhone)
+    if (!phoneResult.ok) {
+      const { errorCode } = phoneResult
+      throw new BadRequestException({ errorCode })
     }
 
-    await this.tenantsRepository.updateWhatsappPhone(input.tenantId, normalized)
+    await this.tenantsRepository.updateWhatsappPhone(input.tenantId, phoneResult.e164)
   }
 }

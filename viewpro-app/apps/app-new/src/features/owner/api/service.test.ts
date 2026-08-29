@@ -108,7 +108,7 @@ describe('owner document API service', () => {
     );
   });
 
-  it('surfaces movement WhatsApp contact tracking errors to callers that choose to await it', async () => {
+  it('fails the movement tracking call without repeating the backend sentence', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ message: 'Owner movement not found' }), {
         headers: { 'content-type': 'application/json' },
@@ -117,12 +117,18 @@ describe('owner document API service', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(
-      trackOwnerMovementWhatsappContactClick('engagement-1', 'missing-movement')
-    ).rejects.toThrow('Owner movement not found');
+    const error = await trackOwnerMovementWhatsappContactClick(
+      'engagement-1',
+      'missing-movement'
+    ).catch((thrown: unknown) => thrown);
+
+    // Still rejects — a caller that awaits this still learns it failed. What
+    // changed is that 'Owner movement not found' stays server-side.
+    expect((error as { status: number }).status).toBe(404);
+    expect((error as Error).message).not.toContain('Owner movement');
   });
 
-  it('surfaces WhatsApp contact tracking errors to callers that choose to await it', async () => {
+  it('fails the tracking call without repeating the backend sentence', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ message: 'Property engagement not found' }), {
         headers: { 'content-type': 'application/json' },
@@ -131,9 +137,12 @@ describe('owner document API service', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(trackOwnerWhatsappContactClick('missing-engagement')).rejects.toThrow(
-      'Property engagement not found'
+    const error = await trackOwnerWhatsappContactClick('missing-engagement').catch(
+      (thrown: unknown) => thrown
     );
+
+    expect((error as { status: number }).status).toBe(404);
+    expect((error as Error).message).not.toContain('Property engagement');
   });
 
   it('rejects fake document read URLs before returning them to the UI', async () => {

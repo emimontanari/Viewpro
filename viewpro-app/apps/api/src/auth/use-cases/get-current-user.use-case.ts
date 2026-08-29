@@ -18,7 +18,7 @@ export class GetCurrentUserUseCase {
     const user = await this.usersRepository.findById(userId)
 
     if (!user || user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException('Authentication required')
+      throw new UnauthorizedException({ errorCode: 'SESSION_EXPIRED', message: 'Authentication required' })
     }
 
     const memberships = await this.membershipsRepository.findActiveManyByUserId(user.id)

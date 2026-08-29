@@ -5,7 +5,7 @@ import * as z from 'zod';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppForm, useFormFields } from '@/components/ui/tanstack-form';
-import { getApiErrorMessage } from '@/lib/api-client';
+import { getApiErrorMessage, isApiError } from '@/lib/api-client';
 import { resetPassword } from '@/lib/session';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -26,6 +26,16 @@ export const resetPasswordSchema = z
     message: 'Las contraseñas no coinciden.',
     path: ['confirmPassword']
   });
+
+// `verify-email` and `reset-password` share the `AUTH_TOKEN_INVALID` code — it does not
+// distinguish invalid from expired, so each view supplies its own flow-specific recovery copy.
+function getResetPasswordErrorMessage(error: unknown): string {
+  if (isApiError(error) && error.errorCode === 'AUTH_TOKEN_INVALID') {
+    return 'El link para restablecer la contraseña es inválido o expiró. Pedí un nuevo link desde "olvidé mi contraseña".';
+  }
+
+  return getApiErrorMessage(error);
+}
 
 function ResetPasswordForm({ token }: { token: string }) {
   const router = useRouter();
@@ -48,7 +58,7 @@ function ResetPasswordForm({ token }: { token: string }) {
         router.push('/auth/sign-in');
         router.refresh();
       } catch (error) {
-        setErrorMessage(getApiErrorMessage(error));
+        setErrorMessage(getResetPasswordErrorMessage(error));
       }
     }
   });

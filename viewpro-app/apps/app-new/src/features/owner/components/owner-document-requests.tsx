@@ -1,5 +1,6 @@
 'use client';
 
+import { messageFor } from '@/lib/bff-client';
 import { Icons, type Icon } from '@/components/icons';
 import {
   Accordion,
@@ -177,7 +178,7 @@ export function OwnerDocumentRequests({
       clearUploadDialog();
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'No se pudo subir el documento';
+      const message = messageFor(error, 'No se pudo subir el documento');
       setUploadPhase('idle');
       setUploadProgress(0);
       setUploadErrorMessage(message);
@@ -190,7 +191,7 @@ export function OwnerDocumentRequests({
       window.open(readUrl.url, '_blank', 'noopener,noreferrer');
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'No se pudo abrir el documento');
+      toast.error(messageFor(error, 'No se pudo abrir el documento'));
     }
   });
 

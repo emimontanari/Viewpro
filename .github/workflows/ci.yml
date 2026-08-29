@@ -21,7 +21,7 @@ defaults:
 
 jobs:
   quality:
-    name: Typecheck · Lint · Build
+    name: Build · Typecheck · Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,8 +38,52 @@ jobs:
           cache: pnpm
           cache-dependency-path: viewpro-app/pnpm-lock.yaml
 
+      - name: Validate Vercel ignored-build policy
+        run: |
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+          const { spawnSync } = require('node:child_process');
+          const { existsSync, mkdtempSync, rmSync, writeFileSync } = require('node:fs');
+          const { tmpdir } = require('node:os');
+          const { join } = require('node:path');
+
+          const config = require('./apps/app-new/vercel.json');
+          const command = config.ignoreCommand;
+          assert.equal(typeof command, 'string', 'vercel.json must define ignoreCommand');
+          assert.match(command, /VERCEL_ENV/);
+          assert.match(command, /production/);
+          assert.match(command, /exit 1/);
+          assert.match(command, /npx turbo-ignore/);
+
+          const directory = mkdtempSync(join(tmpdir(), 'vercel-ignore-'));
+          const probe = join(directory, 'turbo-ignore-called');
+          const fakeNpx = join(directory, 'npx');
+          writeFileSync(
+            fakeNpx,
+            '#!/bin/sh\n[ "$1" = turbo-ignore ] || exit 64\n: > "$VERCEL_IGNORE_PROBE"\nexit 73\n',
+            { mode: 0o755 }
+          );
+
+          try {
+            const environment = { ...process.env, PATH: `${directory}:${process.env.PATH}`, VERCEL_IGNORE_PROBE: probe };
+            const production = spawnSync('/bin/sh', ['-c', command], { env: { ...environment, VERCEL_ENV: 'production' } });
+            assert.equal(production.status, 1, 'production must continue the build');
+            assert.equal(existsSync(probe), false, 'production must not invoke turbo-ignore');
+
+            const preview = spawnSync('/bin/sh', ['-c', command], { env: { ...environment, VERCEL_ENV: 'preview' } });
+            assert.equal(preview.status, 73, 'preview must preserve turbo-ignore exit status');
+            assert.equal(existsSync(probe), true, 'preview must delegate to turbo-ignore');
+            console.log('Vercel ignored-build policy validated');
+          } finally {
+            rmSync(directory, { recursive: true, force: true });
+          }
+          NODE
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
 
       - name: Typecheck
         run: pnpm typecheck
@@ -47,11 +91,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Build
-        run: pnpm build
-
   test:
     name: Test
+    needs: quality
     runs-on: ubuntu-latest
 
     services:
@@ -122,6 +164,125 @@ jobs:
       # runner and reproducing the aggregate beforeAll timeout seen locally.
       - name: Test
         run: pnpm exec turbo run test --concurrency=1
+
+  seeded-e2e:
+    name: Seeded E2E
+    needs: quality
+    runs-on: ubuntu-latest
+    # The 32 journeys take ~2 minutes locally plus server boot. This is a backstop
+    # against a web server that never comes up, not the intended failure signal.
+    timeout-minutes: 20
+
+    services:
+      # A dedicated database, not viewpro_test: this suite runs the real API in
+      # development mode against seeded data, while the unit gate runs against
+      # per-worker test databases that every suite wipes.
+      postgres-seeded:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: viewpro
+          POSTGRES_PASSWORD: viewpro
+          POSTGRES_DB: viewpro_seeded
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U viewpro -d viewpro_seeded"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://viewpro:viewpro@localhost:5432/viewpro_seeded?schema=public
+      DIRECT_URL: postgresql://viewpro:viewpro@localhost:5432/viewpro_seeded?schema=public
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: viewpro-app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Build through turbo, not step by step. The Playwright config boots the API
+      # with a direct `pnpm --filter @viewpro/api build`, which bypasses the
+      # dependency graph: it misses db:generate and it misses @viewpro/contracts.
+      # Enumerating those here would rot the same way the env var did, so let
+      # turbo resolve them — its `@viewpro/api#build` already declares both.
+      - name: Build the API and its dependencies
+        run: pnpm exec turbo run build --filter=@viewpro/api
+
+      - name: Apply migrations
+        run: pnpm --filter @viewpro/api exec prisma migrate deploy
+
+      - name: Install Chromium
+        run: pnpm --filter next-shadcn-dashboard-starter exec playwright install --with-deps chromium
+
+      # The config seeds the database in globalSetup and boots the real API and
+      # web server itself, so this is the whole journey suite in one command.
+      - name: Seeded journeys
+        run: pnpm --filter next-shadcn-dashboard-starter test:seeded
+
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seeded-e2e-report
+          path: viewpro-app/apps/app-new/playwright-report
+          retention-days: 7
+
+  production-cutover:
+    name: Production cutover contracts
+    runs-on: ubuntu-latest
+    # Qualification bounds its own subprocesses and reports residue rather than stalling,
+    # so this is a backstop against an unforeseen hang, not the intended failure signal.
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      # Qualification builds throwaway worktrees from the checkout, and this job runs
+      # candidate code, so no credentials are persisted into the workspace.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # node --test does not discover *.spec.mjs by directory, so each file is listed.
+      # Qualification spawns Git and makes timing assertions, so it runs unparallelised.
+      - name: Contracts
+        run: |
+          node --test --test-concurrency=1 \
+            scripts/production-cutover/lineage-contract.spec.mjs \
+            scripts/production-cutover/tree-byte-contract.spec.mjs \
+            scripts/production-cutover/release-contract.spec.mjs \
+            scripts/production-cutover/receipt.spec.mjs \
+            scripts/production-cutover/checkpoint.spec.mjs \
+            scripts/production-cutover/roles.spec.mjs \
+            scripts/production-cutover/bootstrap.spec.mjs \
+            scripts/production-cutover/backup-lineage.spec.mjs \
+            scripts/production-cutover/rollback.spec.mjs \
+            scripts/production-cutover/candidate.spec.mjs
+
+      # Retention arithmetic is UTC-anchored, and a local-time implementation is
+      # indistinguishable from a UTC one on a UTC runner. Running this one suite off UTC
+      # is what makes the anchoring observable where CI actually runs.
+      - name: Retention arithmetic off UTC
+        env:
+          TZ: Pacific/Kiritimati
+        run: node --test scripts/production-cutover/backup-lineage.spec.mjs
 
   audit:
     name: Dependency audit

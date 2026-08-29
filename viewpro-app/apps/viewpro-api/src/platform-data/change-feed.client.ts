@@ -52,6 +52,14 @@ export type PlatformDocumentReadUrlResponse = {
 // Request timeout for the operator document-read hop. Bounds a hung InmoView so
 // the operator request fails over to 502 (URL withheld) instead of hanging.
 const DOCUMENT_READ_URL_FETCH_TIMEOUT_MS = 10_000
+const CHANGE_FEED_FETCH_TIMEOUT_MS = 2_000
+
+export class ChangeFeedTimeoutError extends Error {
+  constructor() {
+    super('Data-lane change-feed request timed out')
+    this.name = 'ChangeFeedTimeoutError'
+  }
+}
 
 /**
  * Typed error thrown by `fetchDocumentReadUrl`. Mirrors `TenantSummaryFetchError`
@@ -189,6 +197,8 @@ export class ChangeFeedClient {
     const url = `${baseUrl}/api/internal/platform/changes?since=${since}`
     const token = this.mintIngestToken()
 
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), CHANGE_FEED_FETCH_TIMEOUT_MS)
     let response: Response
     try {
       response = await fetch(url, {
@@ -197,20 +207,32 @@ export class ChangeFeedClient {
           // Token is NOT logged — only sent in the Authorization header
           Authorization: `Bearer ${token}`,
         },
+        signal: controller.signal,
       })
     } catch (err) {
+      clearTimeout(timeout)
+      if (controller.signal.aborted) throw new ChangeFeedTimeoutError()
       throw new Error(
         `Data-lane request to InmoView change-feed failed: ${(err as Error).message}`,
+        { cause: err },
       )
     }
 
     if (!response.ok) {
+      clearTimeout(timeout)
       throw new Error(
         `Data-lane change-feed returned non-2xx status: ${response.status}`,
       )
     }
 
-    return response.json() as Promise<ChangeFeedResponse>
+    try {
+      return await response.json() as ChangeFeedResponse
+    } catch (err) {
+      if (controller.signal.aborted) throw new ChangeFeedTimeoutError()
+      throw err
+    } finally {
+      clearTimeout(timeout)
+    }
   }
 
   /**
@@ -240,6 +262,7 @@ export class ChangeFeedClient {
     } catch (err) {
       throw new Error(
         `Backfill request to InmoView tenants endpoint failed: ${(err as Error).message}`,
+        { cause: err },
       )
     }
 

@@ -11,7 +11,7 @@ describe('CORS configuration (e2e)', () => {
     process.env.CORS_ORIGIN = 'http://localhost:3000,http://127.0.0.1:3100'
 
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
   })
 
   afterAll(async () => {

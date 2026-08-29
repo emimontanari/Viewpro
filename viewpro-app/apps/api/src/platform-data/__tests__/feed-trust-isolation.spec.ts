@@ -51,7 +51,7 @@ describe('Change-Feed — trust-isolation + read-only invariants', () => {
 
     const { createApiApp } = await import('../../bootstrap/create-app.js')
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
 
     const { PrismaService } = await import('../../database/prisma.service.js')
     prisma = app.get(PrismaService)
@@ -172,7 +172,7 @@ describe('Threat matrix — GET /internal/platform/tenants (T-19)', () => {
 
     const { createApiApp } = await import('../../bootstrap/create-app.js')
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
 
     const { PrismaService } = await import('../../database/prisma.service.js')
     prisma = app.get(PrismaService)
@@ -241,7 +241,7 @@ describe('PlatformDataController — GET /internal/platform/tenants/:id/summary 
 
     const { createApiApp } = await import('../../bootstrap/create-app.js')
     app = await createApiApp()
-    await app.init()
+    await app.listen(0)
 
     const { PrismaService } = await import('../../database/prisma.service.js')
     prisma = app.get(PrismaService)
@@ -270,6 +270,7 @@ describe('PlatformDataController — GET /internal/platform/tenants/:id/summary 
     const managerRes = await agent
       .post('/api/auth/register-tenant')
       .send({
+        whatsappPhone: '3510000000',
         email: `summary-manager-${uniqueSuffix}@test.local`,
         password: 'password123',
         firstName: 'Summary',

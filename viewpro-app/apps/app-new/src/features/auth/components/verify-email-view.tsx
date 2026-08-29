@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getApiErrorMessage } from '@/lib/api-client';
+import { getApiErrorMessage, isApiError } from '@/lib/api-client';
 import { verifyEmail } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,6 +13,16 @@ import { useSearchParams } from 'next/navigation';
 import { AuthShell } from './auth-shell';
 
 type VerifyStatus = 'verifying' | 'success' | 'error';
+
+// Both `verify-email` and `reset-password` share the `AUTH_TOKEN_INVALID` code — it does not
+// distinguish invalid from expired, so each view supplies its own flow-specific recovery copy.
+function getVerifyEmailErrorMessage(error: unknown): string {
+  if (isApiError(error) && error.errorCode === 'AUTH_TOKEN_INVALID') {
+    return 'El link de verificación es inválido o expiró. Iniciá sesión y pedí un nuevo link de verificación desde el panel.';
+  }
+
+  return getApiErrorMessage(error);
+}
 
 function VerifyEmailCard({ token }: { token: string }) {
   const queryClient = useQueryClient();
@@ -33,7 +43,7 @@ function VerifyEmailCard({ token }: { token: string }) {
         void queryClient.invalidateQueries({ queryKey: ['session'] });
       })
       .catch((error) => {
-        setErrorMessage(getApiErrorMessage(error));
+        setErrorMessage(getVerifyEmailErrorMessage(error));
         setStatus('error');
       });
   }, [token, queryClient]);

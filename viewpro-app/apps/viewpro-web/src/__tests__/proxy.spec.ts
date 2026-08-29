@@ -11,7 +11,7 @@
  *   - ACCESS_TOKEN_SECRET is NOT imported or used (D3 invariant — structural check)
  */
 
-import { vi, describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import proxy, { isProtectedAppPath } from '../proxy';
 
 // ─── NextRequest / NextResponse test doubles ─────────────────────────────────

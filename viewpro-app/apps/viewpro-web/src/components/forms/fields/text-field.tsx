@@ -1,7 +1,9 @@
 'use client';
 
 import { useStore } from '@tanstack/react-form';
+import { useState } from 'react';
 import { Input } from '@/components/ui/input';
+import { PasswordRevealToggle } from '@/components/ui/password-reveal-toggle';
 import { FieldDescription, FieldLabel } from '@/components/ui/field';
 import {
   useFieldContext,
@@ -31,6 +33,11 @@ export function TextField({
   ...inputProps
 }: TextFieldProps) {
   const field = useFieldContext();
+  // Password fields get a reveal control. It is local state on purpose: which
+  // field is currently revealed is not form data and must not outlive the form.
+  const [revealed, setRevealed] = useState(false);
+  const isPassword = type === 'password';
+  const resolvedType = isPassword && revealed ? 'text' : type;
   const isTouched = useStore(field.store, (s) => s.meta.isTouched);
   const isValid = useStore(field.store, (s) => s.meta.isValid);
   const isValidating = useStore(field.store, (s) => s.meta.isValidating);
@@ -46,7 +53,7 @@ export function TextField({
         <div className='relative'>
           <Input
             id={field.name}
-            type={type}
+            type={resolvedType}
             value={value ?? ''}
             onBlur={field.handleBlur}
             onChange={(e) => {
@@ -61,8 +68,15 @@ export function TextField({
             className={className}
             {...inputProps}
           />
+          {isPassword && (
+            <PasswordRevealToggle
+              controls={field.name}
+              revealed={revealed}
+              onToggle={() => setRevealed((shown) => !shown)}
+            />
+          )}
           {isValidating && (
-            <div className='absolute top-1/2 right-3 -translate-y-1/2'>
+            <div className={`absolute top-1/2 ${isPassword ? 'right-10' : 'right-3'} -translate-y-1/2`}>
               <Spinner className='h-4 w-4' />
             </div>
           )}
