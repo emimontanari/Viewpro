@@ -65,6 +65,14 @@ jobs:
           # succeeding gzip would look like success and upload a truncated file.
           set -uo pipefail
           STAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+          # Without `set -e` this line no longer aborts the step on its own, and
+          # an empty stamp would collapse every object key to a fixed
+          # "<name>-.sql.gz" — so each nightly run would overwrite the previous
+          # archive instead of adding one. Cheap to check, silent to lose.
+          if [ -z "$STAMP" ]; then
+            echo "::error::empty timestamp; refusing to build backup filenames"
+            exit 1
+          fi
           FAILED=""
           dump_one() {
             local name="$1" url="$2"
