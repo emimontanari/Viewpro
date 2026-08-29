@@ -18,6 +18,7 @@ type PropertyOwnerCardProps = {
   manualInvitationFallback?: ManualInvitationFallback | null;
   onCopyInvitationLink?: (owner: PropertyLinkedOwner) => void;
   onRevokeInvitationLink?: (owner: PropertyLinkedOwner) => void;
+  onDismissManualInvitation: () => void;
   onLinkOwner: () => void;
   ownerEmail: string | null;
   ownerName: string | null;
@@ -36,6 +37,7 @@ export function PropertyOwnerCard({
   isArchived,
   isLinkDisabled,
   manualInvitationFallback = null,
+  onDismissManualInvitation,
   onCopyInvitationLink,
   onRevokeInvitationLink,
   onLinkOwner,
@@ -100,7 +102,18 @@ export function PropertyOwnerCard({
                   ) : null}
                   {manualInvitationFallback?.ownerId === owner.id ? (
                     <div className='mt-3 rounded-md border border-dashed bg-muted/40 p-2 text-xs'>
-                      <p className='font-medium'>Copiá este link manualmente:</p>
+                      <div className='flex items-start justify-between gap-2'>
+                        <p className='font-medium'>Copiá este link manualmente:</p>
+                        <Button
+                          type='button'
+                          size='sm'
+                          variant='ghost'
+                          onClick={onDismissManualInvitation}
+                          aria-label='Listo, ocultar el link de invitación'
+                        >
+                          Listo
+                        </Button>
+                      </div>
                       <a
                         href={manualInvitationFallback.invitationUrl}
                         className='break-all underline underline-offset-4'

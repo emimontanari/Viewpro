@@ -112,6 +112,24 @@ describe('PropertyOwnerSection', () => {
     );
   });
 
+  it('lets the operator dismiss the manual invitation fallback', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockRejectedValue(new Error('clipboard blocked'));
+    vi.stubGlobal('fetch', mockInvitationLinkResponse());
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    renderPropertyOwnerSection({ owners: [invitedOwner] });
+
+    await user.click(screen.getByRole('button', { name: /regenerar y copiar link/i }));
+    await screen.findByText('Copiá este link manualmente:');
+
+    await user.click(screen.getByRole('button', { name: /listo/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Copiá este link manualmente:')).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Ver detalle de Ana Owner' })).toBeInTheDocument();
+  });
+
   it('hides owner invitation actions while archived', () => {
     renderPropertyOwnerSection({ isArchived: true, owners: [invitedOwner] });
 

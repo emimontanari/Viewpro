@@ -178,6 +178,7 @@ export function TeamManagementSection({ members, pendingInvitations }: TeamManag
       {canManageTeam ? (
         <PendingTeamInvitationsList
           copiedInvitationUrl={copiedInvitationUrl}
+          onDismissCopiedLink={() => setCopiedInvitationUrl(null)}
           invitations={pendingInvitationsState}
           isRegeneratingInvitationId={resendMutation.isPending ? resendMutation.variables : null}
           isRevokingInvitationId={revokeMutation.isPending ? revokeMutation.variables : null}

@@ -241,6 +241,27 @@ describe('TeamManagementSection', () => {
     expect(toastMock.warning).toHaveBeenCalledWith('Link regenerado. Copialo manualmente.');
   });
 
+  it('lets the operator dismiss the manual link once they are done with it', async () => {
+    const user = userEvent.setup();
+    writeTextMock.mockRejectedValueOnce(new Error('blocked'));
+    renderTeamManagementSection();
+
+    await user.click(screen.getByRole('button', { name: /regenerar y copiar link/i }));
+    await screen.findByRole('link', {
+      name: 'http://localhost:3000/team-invitations/fresh-token'
+    });
+
+    await user.click(screen.getByRole('button', { name: /listo/i }));
+
+    // Dismissing must not require another action. Before this, the block only
+    // cleared when the operator regenerated or revoked, so a link they had
+    // already copied by hand kept sitting there looking like pending work.
+    await waitFor(() => {
+      expect(screen.queryByText('Copiá este link manualmente:')).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('agente@example.com')).toBeInTheDocument();
+  });
+
   it('revokes a pending invitation and removes it from the list', async () => {
     const user = userEvent.setup();
     renderTeamManagementSection();

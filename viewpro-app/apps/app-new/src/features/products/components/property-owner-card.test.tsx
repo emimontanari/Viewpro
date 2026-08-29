@@ -137,6 +137,7 @@ function renderPropertyOwnerCard(props: Partial<ComponentProps<typeof PropertyOw
       ownerEmail={null}
       ownerName={null}
       owners={[]}
+      onDismissManualInvitation={vi.fn()}
       onLinkOwner={vi.fn()}
       {...props}
     />
