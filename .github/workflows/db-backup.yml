@@ -57,20 +57,47 @@ jobs:
 
       - name: Dump and upload both databases
         run: |
-          set -euo pipefail
+          # Deliberately NOT `set -e`: with it, a failure on the first database
+          # aborted the step and the second was never attempted, so one broken
+          # database silently cost the backup of both. Each dump now runs
+          # independently and the step fails at the end if any of them did.
+          # `pipefail` still matters — without it a failing pg_dump feeding a
+          # succeeding gzip would look like success and upload a truncated file.
+          set -uo pipefail
           STAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+          # Without `set -e` this line no longer aborts the step on its own, and
+          # an empty stamp would collapse every object key to a fixed
+          # "<name>-.sql.gz" — so each nightly run would overwrite the previous
+          # archive instead of adding one. Cheap to check, silent to lose.
+          if [ -z "$STAMP" ]; then
+            echo "::error::empty timestamp; refusing to build backup filenames"
+            exit 1
+          fi
+          FAILED=""
           dump_one() {
             local name="$1" url="$2"
             local file="${name}-${STAMP}.sql.gz"
             echo "Dumping ${name}..."
-            pg_dump --no-owner --no-privileges "$url" | gzip -9 > "$file"
+            if ! pg_dump --no-owner --no-privileges "$url" | gzip -9 > "$file"; then
+              echo "::error::pg_dump failed for ${name}"
+              # Never leave a truncated dump behind for the upload to pick up.
+              rm -f "$file"
+              return 1
+            fi
             local size; size=$(du -h "$file" | cut -f1)
             echo "  ${file} (${size})"
-            aws s3 cp "$file" "s3://${BUCKET}/${name}/${file}" --endpoint-url "$R2_ENDPOINT" --only-show-errors
+            if ! aws s3 cp "$file" "s3://${BUCKET}/${name}/${file}" --endpoint-url "$R2_ENDPOINT" --only-show-errors; then
+              echo "::error::upload failed for ${name}"
+              return 1
+            fi
             echo "  uploaded → s3://${BUCKET}/${name}/${file}"
           }
-          dump_one "inmoview-prod" "${{ secrets.NEON_PROD_DIRECT_URL }}"
-          dump_one "viewpro-platform-prod" "${{ secrets.NEON_PLATFORM_DIRECT_URL }}"
+          dump_one "inmoview-prod" "${{ secrets.NEON_PROD_DIRECT_URL }}" || FAILED="${FAILED} inmoview-prod"
+          dump_one "viewpro-platform-prod" "${{ secrets.NEON_PLATFORM_DIRECT_URL }}" || FAILED="${FAILED} viewpro-platform-prod"
+          if [ -n "$FAILED" ]; then
+            echo "::error::backup failed for:${FAILED}"
+            exit 1
+          fi
 
       - name: Prune backups older than 30 days
         run: |
