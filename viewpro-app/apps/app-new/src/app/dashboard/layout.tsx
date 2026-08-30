@@ -2,11 +2,13 @@ import KBar from '@/components/kbar';
 import AppSidebar from '@/components/layout/app-sidebar';
 import Header from '@/components/layout/header';
 import { InfoSidebar } from '@/components/layout/info-sidebar';
+import { AdminAccessNotice } from '@/features/auth/components/admin-access-notice';
 import { EmailVerificationBanner } from '@/features/auth/components/email-verification-banner';
 import { InfobarProvider } from '@/components/ui/infobar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { BRAND } from '@/lib/brand/brand';
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { cookies } from 'next/headers';
 
 export const metadata: Metadata = {
@@ -28,6 +30,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <AppSidebar />
         <SidebarInset>
           <Header />
+          <Suspense fallback={null}>
+            <AdminAccessNotice />
+          </Suspense>
           <EmailVerificationBanner />
           <InfobarProvider defaultOpen={false}>
             {children}
