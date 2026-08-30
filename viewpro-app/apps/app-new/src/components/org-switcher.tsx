@@ -20,7 +20,7 @@ import {
   useSidebar
 } from '@/components/ui/sidebar';
 import { workspaceAdministrationAccess } from '@/config/nav-config';
-import { canAccessNavigation } from '@/lib/navigation-access';
+import { canAccessNavigation, toNavigationAccessContext } from '@/lib/navigation-access';
 import { getMembershipRoleLabel } from '@/lib/session';
 import { useActiveTenant } from '@/lib/session-context';
 import { setSelectedTenantId } from '@/lib/tenant-selection';
@@ -29,10 +29,10 @@ export function OrgSwitcher() {
   const { isMobile, state } = useSidebar();
   const router = useRouter();
   const { activeMembership, isTenantLoading, memberships } = useActiveTenant();
-  const canManageWorkspaces = canAccessNavigation(workspaceAdministrationAccess, {
-    resolved: !isTenantLoading,
-    membership: activeMembership
-  });
+  const canManageWorkspaces = canAccessNavigation(
+    workspaceAdministrationAccess,
+    toNavigationAccessContext(activeMembership, isTenantLoading)
+  );
 
   const handleOrganizationSwitch = (tenantId: string) => {
     setSelectedTenantId(tenantId);
