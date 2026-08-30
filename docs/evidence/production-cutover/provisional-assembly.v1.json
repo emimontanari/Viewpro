@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "kind": "production-cutover-provisional-assembly",
+  "status": "provisional",
+  "authority": "none",
+  "note": "Identity only. This records which reviewed develop merge each work unit resolved to, and nothing about any deployed environment. It authorises nothing: external closure and independent reproduction are what gate promotion, and neither has happened. Task 5.2 only.",
+  "prefix": ["main@868dc70", "#331", "#333", "#334", "#335", "#336"],
+  "exclusions": ["#338", "#341", "#344", "#351", "#314"],
+  "workUnits": [
+    {
+      "workUnit": "WU1",
+      "identity": "faf870ab0a29e6a271b7391776fc2f9cf25c12ac",
+      "source": "pinned in candidate.v1.json before this change began"
+    },
+    {
+      "workUnit": "WU2",
+      "identity": "d53a57c04f34efd20fc825aff5c03115c9c6c99f",
+      "source": "pinned in candidate.v1.json before this change began"
+    },
+    {
+      "workUnit": "WU3",
+      "identity": "c154e8728b8bc7c8cf1dd5fa7a60164334d58958",
+      "source": "aggregate: WU3 was delivered in four reviewed slices, and this is the merge at which the last of them landed",
+      "slices": [
+        { "task": "2.1 Lineage contracts", "pullRequest": 369, "identity": "afb2c74154932e89995587a42ddeec0ad3666394" },
+        { "task": "2.2 Tree/Byte contracts", "pullRequest": 386, "identity": "623b286a6caab19c1e3dc7f85e076ff586fb6f1d" },
+        { "task": "2.3 Release contracts", "pullRequest": 390, "identity": "a2e45f7a8371e4339b365b6612a890638db59d3b" },
+        { "task": "2.4 Qualification", "pullRequest": 397, "identity": "c154e8728b8bc7c8cf1dd5fa7a60164334d58958" }
+      ]
+    },
+    {
+      "workUnit": "WU4",
+      "identity": "35bc9cf4a5e910beeca7d02782120ba17b18c9a3",
+      "source": "task 2.5, receipts and checkpoints, pull request 400"
+    },
+    {
+      "workUnit": "WU5",
+      "identity": "90eda61fbcda8a5ed852d0a388571ca4a43b86aa",
+      "source": "task 3.1, roles and bootstrap, pull request 401"
+    },
+    {
+      "workUnit": "WU6",
+      "identity": "860e4cde0eb6b007829280c3b37cea11878e7726",
+      "source": "task 3.2, backup lineage, pull request 402"
+    },
+    {
+      "workUnit": "WU7",
+      "identity": "20422dd6e6125f4ad91b8377e834a5f891e5873d",
+      "source": "task 4.1, session and rollback, pull request 405"
+    }
+  ],
+  "final": [
+    "main@868dc70",
+    "#331",
+    "#333",
+    "#334",
+    "#335",
+    "#336",
+    "faf870ab0a29e6a271b7391776fc2f9cf25c12ac",
+    "d53a57c04f34efd20fc825aff5c03115c9c6c99f",
+    "c154e8728b8bc7c8cf1dd5fa7a60164334d58958",
+    "35bc9cf4a5e910beeca7d02782120ba17b18c9a3",
+    "90eda61fbcda8a5ed852d0a388571ca4a43b86aa",
+    "860e4cde0eb6b007829280c3b37cea11878e7726",
+    "20422dd6e6125f4ad91b8377e834a5f891e5873d"
+  ],
+  "closure": [],
+  "validation": {
+    "validateLineage": "accepted",
+    "validateReleaseRecord": "accepted",
+    "releaseAuthority": "denied",
+    "note": "Checked against the contracts as merged, by the assembly spec beside this file. Acceptance means the identities are well formed, ordered, unique, and consistent with the pinned prefix and fixed work units. It does not mean the candidate is closed."
+  },
+  "openGaps": [
+    "The nightly backup prune measures per-object age, not per-lineage retention, so it cannot yet honour a window that opens at the cutover. WU6 widened the cutoff, which only retains more.",
+    "Rotating the product access secret also invalidates every outstanding signed document URL, because local document storage signs with the same key. WU7 records the consequence; nobody has scheduled it.",
+    "candidate.mjs still composes WU3 through WU7 from placeholder identities, which were correct when it was written and are now superseded by the identities above. Binding the real ones belongs to task 5.3, which is an independent step."
+  ]
+}

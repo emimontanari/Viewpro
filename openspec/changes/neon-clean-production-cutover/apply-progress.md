@@ -2,7 +2,7 @@
 
 ## Cumulative Status
 
-- Tasks: **10/18 complete** — WU1, WU2, 2.1 Lineage, 2.2 Tree/Byte, 2.3 Release, 2.4 Qualification, 2.5 WU4 receipts/checkpoints, 3.1 WU5 roles/bootstrap, 3.2 WU6 backup lineage, and 4.1 WU7 session/rollback; later work remains pending.
+- Tasks: **11/18 complete** — WU1, WU2, 2.1 Lineage, 2.2 Tree/Byte, 2.3 Release, 2.4 Qualification, 2.5 WU4 receipts/checkpoints, 3.1 WU5 roles/bootstrap, 3.2 WU6 backup lineage, 4.1 WU7 session/rollback, and 5.2 provisional assembly; later work remains pending.
 - Attempt 25 carries WU7; terminal status remains exclusively in the native ledger.
 
 ## Preserved Attempt and Reset History
@@ -96,3 +96,12 @@ Attempt 14 failed and reset. Attempt 15 terminally passed with evidence `sha256:
 - Other consequences of that review: six of seven refusal sites in `rollback.mjs` could echo a caller value with the suite green, so every site is now driven with a hostile value and the refusal vocabulary is exported and asserted closed; an authority is bound to the generation it licences and carries an expiry ceiling, because an unbound grant with a distant expiry is a standing licence; and a null options object threw past the fault backstop, because destructuring in a parameter list sits outside the body's guard.
 - Declared, not claimed as covered: the `authorityKeys` set is dominated by the member-name check and no test can observe its removal — it is retained only for parity with five sibling modules and is documented as not load-bearing. The `reversal-faulted` backstop and the inner snapshot catch are unreachable while every guard refuses non-data before serialization. The write boundary is an attested input, not a determination the module makes, and the delta spec now says so.
 - A claim made earlier in this work unit was wrong and is corrected here: the session suites are insulated from the socket-layer flakiness only in their assertions. They still run under the workspace `globalSetup`, which migrates a worker database before any file, and the `retry` policy still applies to them. Budget reconciled from the historical `330–350` to the delivered `1005/1080`; the `<=400` review-size guidance remains waived for this change.
+
+## Provisional Assembly — Task 5.2
+
+- Task 5.2 is `[x]`; 11/18 tasks are complete. Every code work unit is delivered: phases one through four are closed, and the seven reviewed develop merges are now recorded as one identity per work unit in `docs/evidence/production-cutover/provisional-assembly.v1.json`.
+- WU3 was delivered in four reviewed slices, and the lineage model carries one identity per work unit, so its aggregate is the merge at which the last slice landed. All four slices are recorded beside it rather than discarded.
+- The artifact does not merely claim that the merged contracts accept it. `scripts/production-cutover/assembly.spec.mjs` performs that validation, 9/9, and additionally proves the acceptance is a property of these identities rather than of the record's shape: drifting any one of the seven is rejected. It also asserts the artifact carries identity only, with no secret, host, project identifier or connection string.
+- Assembling is not closing. `releaseAuthority()` still returns false, the artifact records `status: provisional` and `authority: none`, and the suite asserts both. Task 5.3 is an independent closure by someone who did not build these contracts.
+- The artifact records the gaps that remain open rather than implying closure: the nightly prune still measures per-object age rather than per-lineage retention; rotating the product access secret also invalidates every outstanding signed document URL; and `candidate.mjs` still composes WU3 through WU7 from the placeholder identities that were correct when it was written. Binding the real identities there belongs to 5.3, not here, because this work unit must not rebind what an independent step exists to close.
+- The remaining seven tasks are not code. 5.1 is a standing constraint, 5.3 requires an independent party, 5.4 and 5.5 freeze and cut over production under single-use authority, and 5.6 and 5.8 are a twenty-four hour and a one-month observation window. None of them is this author's to perform.

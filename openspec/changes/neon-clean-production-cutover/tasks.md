@@ -42,7 +42,7 @@ Upstream-only paths: `BASE=$(git merge-base origin/develop HEAD)` then `git diff
 ## Phase 5: Closure
 
 - [ ] 5.1 Keep provider qualification read-only; no mutation.
-- [ ] 5.2 After WU7 review/CI/merge, provisionally assemble prefix + reviewed WU1–WU7.
+- [x] 5.2 After WU7 review/CI/merge, provisionally assemble prefix + reviewed WU1–WU7; recorded in `docs/evidence/production-cutover/provisional-assembly.v1.json` and checked against the merged Lineage and Release contracts by `scripts/production-cutover/assembly.spec.mjs`. Identity only; authority remains denied and closure remains 5.3's.
 - [ ] 5.3 Independently close external manifest; reproduce identities/tree/runtime/image digests.
 - [ ] 5.4 Gated freeze once; consume single-use Bootstrap/Staging authority once.
 - [ ] 5.5 After readiness/closure, resume (not restart) rotation→Product→Platform→frontends→session→backups/heartbeats→checkpoint; retry needs fresh scoped authority.
