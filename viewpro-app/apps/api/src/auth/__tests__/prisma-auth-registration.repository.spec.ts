@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { TenantRole } from '@prisma/client'
 import type { Prisma } from '@prisma/client'
+import { mockDelegate, mockTransactionClient, partialMock } from '../../test-support/prisma-mock'
+import type { PrismaService } from '../../database/prisma.service'
+import type { PlatformOutboxWriter } from '../../platform-data/platform-outbox-writer'
 
 // ---------------------------------------------------------------------------
 // T-08 — RED: unit tests — PrismaAuthRegistrationRepository emits TENANT_REGISTERED
@@ -17,7 +20,12 @@ import type { Prisma } from '@prisma/client'
 type RegistrationRepoClass =
   import('../repositories/prisma-auth-registration.repository.js').PrismaAuthRegistrationRepository
 
-let PrismaAuthRegistrationRepository: new (...args: any[]) => RegistrationRepoClass
+// Typed from the real constructor rather than `any[]`: a parameter added or
+// reordered there becomes an error here instead of a runtime surprise.
+let PrismaAuthRegistrationRepository: new (
+  prisma: PrismaService,
+  outboxWriter: PlatformOutboxWriter,
+) => RegistrationRepoClass
 
 beforeEach(async () => {
   const mod = await import('../repositories/prisma-auth-registration.repository.js')
@@ -74,32 +82,34 @@ function makeMockPrismaService(overrides?: {
   const tenantCreate = overrides?.tenantCreate ?? vi.fn().mockResolvedValue(mockTenant)
   const membershipCreate = overrides?.membershipCreate ?? vi.fn().mockResolvedValue(mockMembership)
 
-  const mockTx: Partial<Prisma.TransactionClient> = {
-    user: { create: vi.fn().mockResolvedValue(mockUser) } as any,
-    tenant: { create: tenantCreate } as any,
-    tenantMembership: { create: membershipCreate } as any,
-  }
+  const mockTx = mockTransactionClient({
+    user: mockDelegate('user', { create: vi.fn().mockResolvedValue(mockUser) }),
+    tenant: mockDelegate('tenant', { create: tenantCreate }),
+    tenantMembership: mockDelegate('tenantMembership', { create: membershipCreate }),
+  })
 
-  return {
-    $transaction: vi.fn().mockImplementation(async (fn: (tx: Prisma.TransactionClient) => Promise<any>) => {
-      return fn(mockTx as Prisma.TransactionClient)
+  return partialMock<PrismaService>({
+    $transaction: vi.fn().mockImplementation(async (fn: (tx: Prisma.TransactionClient) => Promise<unknown>) => {
+      return fn(mockTx)
     }),
-  }
+  })
 }
 
 function makeMockPrismaServiceWithRollback() {
-  const mockTx: Partial<Prisma.TransactionClient> = {
-    user: { create: vi.fn().mockResolvedValue(mockUser) } as any,
-    tenant: { create: vi.fn().mockRejectedValue(new Error('unique slug constraint violation')) } as any,
-    tenantMembership: { create: vi.fn() } as any,
-  }
-
-  return {
-    $transaction: vi.fn().mockImplementation(async (fn: (tx: Prisma.TransactionClient) => Promise<any>) => {
-      // Simulate rollback: just propagate the error (transaction aborts)
-      return fn(mockTx as Prisma.TransactionClient)
+  const mockTx = mockTransactionClient({
+    user: mockDelegate('user', { create: vi.fn().mockResolvedValue(mockUser) }),
+    tenant: mockDelegate('tenant', {
+      create: vi.fn().mockRejectedValue(new Error('unique slug constraint violation')),
     }),
-  }
+    tenantMembership: mockDelegate('tenantMembership', { create: vi.fn() }),
+  })
+
+  return partialMock<PrismaService>({
+    $transaction: vi.fn().mockImplementation(async (fn: (tx: Prisma.TransactionClient) => Promise<unknown>) => {
+      // Simulate rollback: just propagate the error (transaction aborts)
+      return fn(mockTx)
+    }),
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -115,10 +125,10 @@ describe('PrismaAuthRegistrationRepository — TENANT_REGISTERED emit (T-08/T-09
     // For RED phase: test fails if constructor doesn't accept writer
     let repo: RegistrationRepoClass
     try {
-      repo = new PrismaAuthRegistrationRepository(mockPrisma as any, mockWriter as any)
+      repo = new PrismaAuthRegistrationRepository(mockPrisma, mockWriter)
     } catch {
       // If constructor doesn't accept two args yet, create with one and manually set
-      repo = new PrismaAuthRegistrationRepository(mockPrisma as any)
+      repo = new PrismaAuthRegistrationRepository(mockPrisma, undefined as unknown as PlatformOutboxWriter)
     }
 
     await repo.registerTenant({
@@ -162,9 +172,9 @@ describe('PrismaAuthRegistrationRepository — TENANT_REGISTERED emit (T-08/T-09
 
       let repo: RegistrationRepoClass
       try {
-        repo = new PrismaAuthRegistrationRepository(mockPrisma as any, mockWriter as any)
+        repo = new PrismaAuthRegistrationRepository(mockPrisma, mockWriter)
       } catch {
-        repo = new PrismaAuthRegistrationRepository(mockPrisma as any)
+        repo = new PrismaAuthRegistrationRepository(mockPrisma, undefined as unknown as PlatformOutboxWriter)
       }
 
       await repo.registerTenant({
@@ -199,9 +209,9 @@ describe('PrismaAuthRegistrationRepository — TENANT_REGISTERED emit (T-08/T-09
 
     let repo: RegistrationRepoClass
     try {
-      repo = new PrismaAuthRegistrationRepository(mockPrisma as any, mockWriter as any)
+      repo = new PrismaAuthRegistrationRepository(mockPrisma, mockWriter)
     } catch {
-      repo = new PrismaAuthRegistrationRepository(mockPrisma as any)
+      repo = new PrismaAuthRegistrationRepository(mockPrisma, undefined as unknown as PlatformOutboxWriter)
     }
 
     await expect(
