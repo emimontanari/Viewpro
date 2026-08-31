@@ -141,10 +141,11 @@ describe('restore migration contract', () => {
     expect(codeOf(() => foldMigrations(root, { repositoryRoot: appRoot, expectedTables: ['"public"."missing"'] }))).toBe('expected_tables_invalid')
   })
 
-  it('folds the exact 23 product and 6 platform repository tables', () => {
+  it('folds the exact 25 product and 6 platform repository tables', () => {
     expect(foldMigrations(join(appRoot, 'apps/api/prisma/migrations'), { repositoryRoot: appRoot }).tables).toEqual([
       '"public"."analytics_events"', '"public"."document_requests"', '"public"."document_versions"', '"public"."documents"',
-      '"public"."email_verification_tokens"', '"public"."movements"', '"public"."notifications"', '"public"."owner_invitations"',
+      '"public"."email_verification_tokens"', '"public"."feedback_reports"', '"public"."feedback_submission_attempts"',
+      '"public"."movements"', '"public"."notifications"', '"public"."owner_invitations"',
       '"public"."password_reset_tokens"', '"public"."platform_command_log"', '"public"."platform_outbox_events"', '"public"."property_agents"',
       '"public"."property_asset_images"', '"public"."property_asset_owners"', '"public"."property_assets"', '"public"."property_engagements"',
       '"public"."refresh_tokens"', '"public"."status_change_requests"', '"public"."team_invitations"', '"public"."tenant_memberships"',
@@ -244,7 +245,7 @@ describe('restore schema parity', () => {
     cliNoSpawn(state, ['--migration-dir', state.migrationDir, '--schema', 'private', '--psql', state.psqlPath], 'schema_invalid')
   })
   it('emits complete product and platform repository receipts', async () => {
-    for (const [migrationDir, count] of [[join(appRoot, 'apps/api/prisma/migrations'), 23], [join(appRoot, 'apps/viewpro-api/prisma/migrations'), 6]]) {
+    for (const [migrationDir, count] of [[join(appRoot, 'apps/api/prisma/migrations'), 25], [join(appRoot, 'apps/viewpro-api/prisma/migrations'), 6]]) {
       const state = input(); writeFileSync(join(state.psqlPath, '..', 'catalog.tsv'), catalogRows(migrationDir)); writeFileSync(join(state.psqlPath, '..', 'ledger.tsv'), appliedLedger(migrationDir))
       expect(await runParity({ ...state, migrationDir })).toMatchObject({ exitCode: 0, output: { pass: true, expectedCount: count, actualCount: count, missing: [], unexpectedCount: 0 } }); const cli = runParityCli({ ...state, migrationDir }); expect(cli).toMatchObject({ status: 0 }); expect(JSON.parse(cli.stdout)).toMatchObject({ pass: true, expectedCount: count, actualCount: count, missing: [], unexpectedCount: 0 })
     }

@@ -32,6 +32,11 @@
 - Executed from `viewpro-app/apps/api`: `pnpm exec vitest run src/feedback/__tests__/feedback-rate-limit.guard.spec.ts src/feedback/__tests__/feedback-rate-limit.repository.spec.ts src/database/tenant-isolation.registry.spec.ts test/feedback-rate-limit.e2e-spec.ts --silent`; all 4 files / 6 tests passed against real PostgreSQL.
 - `git diff --check` passed. No design deviations.
 
+## Post-apply CI correction
+
+- The first PR CI run exposed two stale exact-table-count assertions in `test/restore-schema-parity.spec.ts` (expected 23 product tables while S1 correctly adds two feedback tables). The correction updates the expected product count to 25 and includes both new tables in the canonical list; no product behavior or S1 scope boundary changed.
+- Native remediation acquire for the settled S1 evidence returned `complete`, so no second SDD attempt was launched. The correction will be validated by the PR CI rerun.
+
 ## Delivery and status
 
 - PR boundary: S1 only, ordinary/unmanaged delivery, no commit or lifecycle action performed.
