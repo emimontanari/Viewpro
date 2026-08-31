@@ -2,6 +2,8 @@ import { NotFoundException } from '@nestjs/common'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CommandActor } from '../admin-actor'
 import { AdminTenantLimitsService } from '../admin-tenant-limits.service'
+import type { AdminTenantLimitsRepository } from '../admin-tenant-limits.repository'
+import { partialMock } from '../../test-support/prisma-mock'
 
 // ---------------------------------------------------------------------------
 // Spec: Dual-Actor Audit Attribution (limits service)
@@ -36,7 +38,7 @@ describe('AdminTenantLimitsService — CommandActor dual-actor attribution', () 
 
   beforeEach(() => {
     repoStub = makeLimitsRepoStub()
-    service = new AdminTenantLimitsService(repoStub as any)
+    service = new AdminTenantLimitsService(partialMock<AdminTenantLimitsRepository>(repoStub))
   })
 
   describe('Operator actor path (control-lane command stamps operator actor)', () => {

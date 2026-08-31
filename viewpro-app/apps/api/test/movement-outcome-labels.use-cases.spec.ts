@@ -1,20 +1,29 @@
 import { ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException } from '@nestjs/common'
-import { TenantRole } from '@prisma/client'
+import { TenantRole, TenantStatus, UserStatus } from '@prisma/client'
 import { describe, expect, it, vi } from 'vitest'
 import type { MovementOutcomeLabelsRepository } from '../src/movement-outcome-labels/movement-outcome-labels.repository'
 import { CreateLabelUseCase } from '../src/movement-outcome-labels/use-cases/create-label.use-case'
 import { DeleteLabelUseCase } from '../src/movement-outcome-labels/use-cases/delete-label.use-case'
 import { ListLabelsUseCase } from '../src/movement-outcome-labels/use-cases/list-labels.use-case'
+import type { CurrentUser } from '../src/auth/types/current-user'
+import { PERMISSIONS } from '../src/permissions/permissions.constants'
+import type { TenantContext } from '../src/tenant-context/tenant-context.types'
 
-const tenantContext = {
+// Typed rather than cast. The two fields the cast was hiding — tenantStatus and
+// userStatus — are the ones TenantMembershipGuard checks before a request ever
+// reaches a use case, so a fixture without them was not a context the product
+// can produce.
+const tenantContext: TenantContext = {
   tenantId: 'tenant-1',
   tenantSlug: 'tenant-one',
+  tenantStatus: TenantStatus.ACTIVE,
   role: TenantRole.AGENT,
-  permissions: ['movements.outcome_labels.manage', 'tenant.view'],
+  permissions: [PERMISSIONS.MOVEMENTS_OUTCOME_LABELS_MANAGE, PERMISSIONS.TENANT_VIEW],
   membershipId: 'membership-1',
+  userStatus: UserStatus.ACTIVE,
 }
 
-const currentUser = { id: 'user-1', email: 'agent@example.com' }
+const currentUser: CurrentUser = { id: 'user-1', email: 'agent@example.com' }
 
 const existingLabel = {
   id: 'label-1',
@@ -44,7 +53,7 @@ describe('CreateLabelUseCase', () => {
     const repo = buildMockRepo()
     const useCase = new CreateLabelUseCase(repo)
 
-    const result = await useCase.execute(tenantContext as any, currentUser as any, {
+    const result = await useCase.execute(tenantContext, currentUser, {
       label: 'Espera doc',
       color: '#3B82F6',
     })
@@ -58,7 +67,7 @@ describe('CreateLabelUseCase', () => {
     const useCase = new CreateLabelUseCase(repo)
 
     await expect(
-      useCase.execute(tenantContext as any, currentUser as any, {
+      useCase.execute(tenantContext, currentUser, {
         label: 'EN_CAPTACION',
       }),
     ).rejects.toThrow(UnprocessableEntityException)
@@ -69,7 +78,7 @@ describe('CreateLabelUseCase', () => {
     const useCase = new CreateLabelUseCase(repo)
 
     await expect(
-      useCase.execute(tenantContext as any, currentUser as any, {
+      useCase.execute(tenantContext, currentUser, {
         label: 'en_captacion',
       }),
     ).rejects.toThrow(UnprocessableEntityException)
@@ -83,7 +92,7 @@ describe('CreateLabelUseCase', () => {
     })
     const useCase = new CreateLabelUseCase(repo)
 
-    const result = await useCase.execute(tenantContext as any, currentUser as any, {
+    const result = await useCase.execute(tenantContext, currentUser, {
       label: 'Espera doc',
     })
 
@@ -99,7 +108,7 @@ describe('CreateLabelUseCase', () => {
     })
     const useCase = new CreateLabelUseCase(repo)
 
-    const result = await useCase.execute(tenantContext as any, currentUser as any, {
+    const result = await useCase.execute(tenantContext, currentUser, {
       label: 'Espera doc',
     })
 
@@ -114,7 +123,7 @@ describe('CreateLabelUseCase', () => {
     const useCase = new CreateLabelUseCase(repo)
 
     await expect(
-      useCase.execute(tenantContext as any, currentUser as any, { label: 'Valid label' }),
+      useCase.execute(tenantContext, currentUser, { label: 'Valid label' }),
     ).rejects.toThrow('DB connection error')
   })
 })
@@ -126,33 +135,33 @@ describe('DeleteLabelUseCase', () => {
     const repo = buildMockRepo()
     const useCase = new DeleteLabelUseCase(repo)
 
-    await useCase.execute(tenantContext as any, currentUser as any, 'label-1')
+    await useCase.execute(tenantContext, currentUser, 'label-1')
 
     expect(repo.softDelete).toHaveBeenCalledWith({ id: 'label-1', tenantId: 'tenant-1' })
   })
 
   it('soft-deletes a label when caller is a MANAGER (S-15)', async () => {
     const managerContext = { ...tenantContext, role: TenantRole.MANAGER }
-    const otherUser = { id: 'other-user', email: 'manager@example.com' }
+    const otherUser: CurrentUser = { id: 'other-user', email: 'manager@example.com' }
     const repo = buildMockRepo({
       findByIdForTenant: vi.fn().mockResolvedValue({ ...existingLabel, createdByUserId: 'creator-user' }),
     })
     const useCase = new DeleteLabelUseCase(repo)
 
-    await useCase.execute(managerContext as any, otherUser as any, 'label-1')
+    await useCase.execute(managerContext, otherUser, 'label-1')
 
     expect(repo.softDelete).toHaveBeenCalledOnce()
   })
 
   it('soft-deletes a label when caller is a PRINCIPAL_MANAGER (S-15)', async () => {
     const pmContext = { ...tenantContext, role: TenantRole.PRINCIPAL_MANAGER }
-    const otherUser = { id: 'other-user', email: 'pm@example.com' }
+    const otherUser: CurrentUser = { id: 'other-user', email: 'pm@example.com' }
     const repo = buildMockRepo({
       findByIdForTenant: vi.fn().mockResolvedValue({ ...existingLabel, createdByUserId: 'creator-user' }),
     })
     const useCase = new DeleteLabelUseCase(repo)
 
-    await useCase.execute(pmContext as any, otherUser as any, 'label-1')
+    await useCase.execute(pmContext, otherUser, 'label-1')
 
     expect(repo.softDelete).toHaveBeenCalledOnce()
   })
@@ -164,7 +173,7 @@ describe('DeleteLabelUseCase', () => {
     const useCase = new DeleteLabelUseCase(repo)
 
     await expect(
-      useCase.execute(tenantContext as any, { id: 'not-the-creator', email: 'x@example.com' } as any, 'label-1'),
+      useCase.execute(tenantContext, { id: 'not-the-creator', email: 'x@example.com' } satisfies CurrentUser, 'label-1'),
     ).rejects.toThrow(ForbiddenException)
   })
 
@@ -173,7 +182,7 @@ describe('DeleteLabelUseCase', () => {
     const useCase = new DeleteLabelUseCase(repo)
 
     await expect(
-      useCase.execute(tenantContext as any, currentUser as any, 'unknown-id'),
+      useCase.execute(tenantContext, currentUser, 'unknown-id'),
     ).rejects.toThrow(NotFoundException)
   })
 
@@ -184,7 +193,7 @@ describe('DeleteLabelUseCase', () => {
     const useCase = new DeleteLabelUseCase(repo)
 
     await expect(
-      useCase.execute(tenantContext as any, currentUser as any, 'label-1'),
+      useCase.execute(tenantContext, currentUser, 'label-1'),
     ).rejects.toThrow(ConflictException)
   })
 })
@@ -198,7 +207,7 @@ describe('ListLabelsUseCase', () => {
     })
     const useCase = new ListLabelsUseCase(repo)
 
-    const result = await useCase.execute(tenantContext as any, { activeOnly: true })
+    const result = await useCase.execute(tenantContext, { activeOnly: true })
 
     expect(result).toHaveLength(1)
     expect(result[0].deletedAt).toBeNull()
@@ -212,7 +221,7 @@ describe('ListLabelsUseCase', () => {
     })
     const useCase = new ListLabelsUseCase(repo)
 
-    const result = await useCase.execute(tenantContext as any, { activeOnly: false })
+    const result = await useCase.execute(tenantContext, { activeOnly: false })
 
     expect(result).toHaveLength(2)
     expect(repo.findMany).toHaveBeenCalledWith({ tenantId: 'tenant-1', activeOnly: false })

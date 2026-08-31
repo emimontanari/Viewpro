@@ -55,9 +55,14 @@ function makeContext(authHeader?: string): { ctx: ExecutionContext; request: Rec
   return { ctx, request }
 }
 
+// The module is imported inside beforeEach so each case gets a fresh one after
+// vi.resetModules(), but the type is still the real class: a constructor
+// parameter added there becomes an error here rather than a runtime surprise.
+type PlatformControlGuardClass =
+  typeof import('../platform-control.guard.js').PlatformControlGuard
+
 describe('PlatformControlGuard', () => {
-  // biome-ignore lint/suspicious/noExplicitAny: guard loaded dynamically
-  let Guard: any
+  let Guard: PlatformControlGuardClass
 
   beforeEach(async () => {
     process.env.PLATFORM_CONTROL_SECRET = PLATFORM_CONTROL_SECRET

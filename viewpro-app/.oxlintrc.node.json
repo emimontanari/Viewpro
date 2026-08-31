@@ -61,7 +61,7 @@
     // Note it needs an explicit severity: it sits outside the correctness and
     // suspicious categories enabled above, so deleting this line turns it OFF
     // rather than on — which is not how the other two deferred rules behaved.
-    "typescript/no-explicit-any": "off"
+    "typescript/no-explicit-any": "error"
 
     // Deferred, not dismissed. It rewrites types rather than tidying syntax,
     // so it belongs in a change someone can review case by case. The count is

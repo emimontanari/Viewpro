@@ -3,6 +3,8 @@ import { TenantStatus } from '@prisma/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CommandActor } from '../admin-actor'
 import { AdminTenantStatusService } from '../admin-tenant-status.service'
+import type { AdminTenantStatusRepository } from '../admin-tenant-status.repository'
+import { partialMock } from '../../test-support/prisma-mock'
 
 // ---------------------------------------------------------------------------
 // Spec: Dual-Actor Audit Attribution
@@ -32,7 +34,7 @@ describe('AdminTenantStatusService — CommandActor dual-actor attribution', () 
   beforeEach(() => {
     repoStub = makeStatusRepoStub()
     // Direct instantiation: inject stub via DI token
-    service = new AdminTenantStatusService(repoStub as any)
+    service = new AdminTenantStatusService(partialMock<AdminTenantStatusRepository>(repoStub))
   })
 
   describe('Operator actor path (control-lane command stamps operator actor)', () => {
