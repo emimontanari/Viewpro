@@ -11,6 +11,7 @@ import { ConfigModule } from './config/config.module'
 import { DatabaseModule } from './database/database.module'
 import { DocumentsModule } from './documents/documents.module'
 import { HealthModule } from './health/health.module'
+import { FeedbackModule } from './feedback/feedback.module'
 import { MembershipsModule } from './memberships/memberships.module'
 import { MovementsModule } from './movements/movements.module'
 import { MovementOutcomeLabelsModule } from './movement-outcome-labels/movement-outcome-labels.module'
@@ -69,6 +70,7 @@ import { UsersModule } from './users/users.module'
     PlatformControlModule,
     PlatformDataModule,
     HealthModule,
+    FeedbackModule,
     ObservabilityModule,
   ],
 })
