@@ -45,6 +45,17 @@ jobs:
       R2_ENDPOINT: ${{ secrets.R2_S3_ENDPOINT }}
       BUCKET: inmoview-backups
     steps:
+      # The job did not check out the repository before: it only needed
+      # pg_dump and the aws CLI. It now also needs the DSN splitter, which lives
+      # in the repo so it can be unit-tested — inlining that parser here would
+      # have put untested logic in the path of the only backup.
+      # Node itself is preinstalled on ubuntu-latest; no setup-node needed.
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: viewpro-app/scripts/backup
+          sparse-checkout-cone-mode: false
+
       - name: Install PostgreSQL 17 client
         run: |
           sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
@@ -56,6 +67,14 @@ jobs:
           /usr/lib/postgresql/17/bin/pg_dump --version
 
       - name: Dump and upload both databases
+        # The DSNs arrive as environment variables, not as command arguments.
+        # Passed positionally they landed in pg_dump's argv, where the whole
+        # connection string — credentials included — is readable in the runner's
+        # process table (/proc/PID/cmdline is world-readable; /proc/PID/environ
+        # is not), and stays out of the logs only because GitHub masks it.
+        env:
+          INMOVIEW_PROD_DSN: ${{ secrets.NEON_PROD_DIRECT_URL }}
+          VIEWPRO_PLATFORM_PROD_DSN: ${{ secrets.NEON_PLATFORM_DIRECT_URL }}
         run: |
           # Deliberately NOT `set -e`: with it, a failure on the first database
           # aborted the step and the second was never attempted, so one broken
@@ -74,11 +93,24 @@ jobs:
             exit 1
           fi
           FAILED=""
+          # Takes the NAME of the variable holding the DSN, never the DSN itself.
+          # The connection reaches pg_dump through the PG* variables libpq reads
+          # from the environment, so it is never an argv element. The subshell
+          # keeps those variables out of the outer shell, so the second
+          # database's dump cannot inherit the first one's credentials.
           dump_one() {
-            local name="$1" url="$2"
+            local name="$1" dsn_var="$2"
             local file="${name}-${STAMP}.sql.gz"
+            local conn
+            if ! conn=$(DSN="${!dsn_var:-}" node viewpro-app/scripts/backup/dsn-to-pgenv.mjs); then
+              echo "::error::${dsn_var} is missing or unparseable; refusing to dump ${name}"
+              return 1
+            fi
             echo "Dumping ${name}..."
-            if ! pg_dump --no-owner --no-privileges "$url" | gzip -9 > "$file"; then
+            if ! (
+                   while IFS='=' read -r key value; do export "$key=$value"; done <<< "$conn"
+                   pg_dump --no-owner --no-privileges
+                 ) | gzip -9 > "$file"; then
               echo "::error::pg_dump failed for ${name}"
               # Never leave a truncated dump behind for the upload to pick up.
               rm -f "$file"
@@ -92,8 +124,8 @@ jobs:
             fi
             echo "  uploaded → s3://${BUCKET}/${name}/${file}"
           }
-          dump_one "inmoview-prod" "${{ secrets.NEON_PROD_DIRECT_URL }}" || FAILED="${FAILED} inmoview-prod"
-          dump_one "viewpro-platform-prod" "${{ secrets.NEON_PLATFORM_DIRECT_URL }}" || FAILED="${FAILED} viewpro-platform-prod"
+          dump_one "inmoview-prod" INMOVIEW_PROD_DSN || FAILED="${FAILED} inmoview-prod"
+          dump_one "viewpro-platform-prod" VIEWPRO_PLATFORM_PROD_DSN || FAILED="${FAILED} viewpro-platform-prod"
           if [ -n "$FAILED" ]; then
             echo "::error::backup failed for:${FAILED}"
             exit 1

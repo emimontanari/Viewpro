@@ -274,7 +274,8 @@ jobs:
             scripts/production-cutover/bootstrap.spec.mjs \
             scripts/production-cutover/backup-lineage.spec.mjs \
             scripts/production-cutover/rollback.spec.mjs \
-            scripts/production-cutover/candidate.spec.mjs
+            scripts/production-cutover/candidate.spec.mjs \
+            scripts/backup/dsn-to-pgenv.spec.mjs
 
       # Retention arithmetic is UTC-anchored, and a local-time implementation is
       # indistinguishable from a UTC one on a UTC runner. Running this one suite off UTC
