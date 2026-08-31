@@ -29,6 +29,8 @@ export const TENANT_OWNED_MODELS: ReadonlySet<string> = new Set([
 	"PlatformCommandLog",
 	"PlatformOutboxEvent",
 	"StatusChangeRequest",
+	"FeedbackReport",
+	"FeedbackSubmissionAttempt",
 ]);
 
 /**

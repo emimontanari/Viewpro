@@ -16,6 +16,11 @@ enum UserStatus {
   SUSPENDED
 }
 
+enum FeedbackType {
+  ERROR
+  SUGGESTION
+}
+
 enum GlobalRole {
   USER
   VIEWPRO_ADMIN
@@ -211,6 +216,8 @@ model User {
   sentTeamInvitations              TeamInvitation[]
   notifications                    Notification[]
   createdMovementOutcomeLabels     TenantMovementOutcomeLabel[]
+  feedbackReports                  FeedbackReport[]
+  feedbackSubmissionAttempts       FeedbackSubmissionAttempt[]
 
   statusChangeRequestsRequested StatusChangeRequest[] @relation("StatusChangeRequestRequestedBy")
   statusChangeRequestsResolved  StatusChangeRequest[] @relation("StatusChangeRequestResolvedBy")
@@ -241,8 +248,41 @@ model Tenant {
   notifications        Notification[]
   movementOutcomeLabels TenantMovementOutcomeLabel[]
   statusChangeRequests  StatusChangeRequest[]
+  feedbackReports       FeedbackReport[]
+  feedbackSubmissionAttempts FeedbackSubmissionAttempt[]
 
   @@map("tenants")
+}
+
+model FeedbackReport {
+  id          String       @id @default(uuid())
+  tenantId    String
+  userId      String
+  type        FeedbackType
+  description String
+  pathname    String?
+  requestId   String?      @db.Uuid
+  createdAt   DateTime     @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, userId, createdAt])
+  @@map("feedback_reports")
+}
+
+model FeedbackSubmissionAttempt {
+  id          String   @id @default(uuid())
+  tenantId    String
+  userId      String
+  attemptedAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId, attemptedAt])
+  @@map("feedback_submission_attempts")
 }
 
 model TenantMembership {
