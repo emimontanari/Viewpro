@@ -67,7 +67,8 @@ const acceptedSession: Session = {
       permissions: [],
       tenant: invitation.tenant
     }
-  ]
+  ],
+  hasOwnerAccess: false
 };
 
 describe('TeamInvitationAcceptanceView', () => {

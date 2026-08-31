@@ -21,6 +21,9 @@ import type { AuthSessionResult } from "../../auth/use-cases/register-tenant.use
 import { normalizeEmail } from "../../auth/utils/slugify";
 import { hashOwnerInvitationToken } from "../../property-engagements/owner-invitation-token";
 import type { AcceptOwnerInvitationDto } from "../dto/accept-owner-invitation.dto";
+import { mapMembership } from "../../auth/responses/me.response";
+import type { MembershipsRepository } from "../../memberships/memberships.repository";
+import { MEMBERSHIPS_REPOSITORY } from "../../memberships/memberships.repository";
 import {
 	OWNER_INVITATIONS_REPOSITORY,
 	type AcceptOwnerInvitationResult,
@@ -37,6 +40,8 @@ export class AcceptOwnerInvitationUseCase {
 		@Inject(REFRESH_TOKEN_REPOSITORY)
 		private readonly refreshTokenRepository: RefreshTokenRepository,
 		@Inject(TokenService) private readonly tokenService: TokenService,
+		@Inject(MEMBERSHIPS_REPOSITORY)
+		private readonly membershipsRepository: MembershipsRepository,
 	) {}
 
 	async execute(
@@ -209,7 +214,19 @@ export class AcceptOwnerInvitationUseCase {
 			expiresAt: this.tokenService.getRefreshTokenExpiresAt(),
 		});
 
-		const body: MeResponse = { user: mapAuthUser(user), memberships: [] };
+		// Was hardcoded to []. An existing seller can accept an owner invitation
+		// through the login mode, and that returned a session claiming they had no
+		// memberships — the same dual-context erasure this issue is about, in the
+		// other direction (#326, criterion 9).
+		const memberships = await this.membershipsRepository.findActiveManyByUserId(user.id);
+
+		const body: MeResponse = {
+			user: mapAuthUser(user),
+			memberships: memberships.map(mapMembership),
+			// Accepting is what activates owner access, so this is a fact of what
+			// just happened rather than a value to look up.
+			hasOwnerAccess: true,
+		};
 		return { accessToken, refreshToken, body };
 	}
 }

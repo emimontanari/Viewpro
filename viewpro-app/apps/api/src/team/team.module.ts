@@ -18,9 +18,11 @@ import { ResendTeamInvitationUseCase } from "./use-cases/resend-team-invitation.
 import { RevokeTeamInvitationUseCase } from "./use-cases/revoke-team-invitation.use-case";
 import { UpdateTeamMemberRoleUseCase } from "./use-cases/update-team-member-role.use-case";
 import { ValidateTeamInvitationUseCase } from "./use-cases/validate-team-invitation.use-case";
+import { OwnerAccessModule } from '../owner-access/owner-access.module'
 
 @Module({
 	imports: [
+    OwnerAccessModule,
 		AuthModule,
 		EmailModule,
 		MembershipsModule,

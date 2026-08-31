@@ -57,7 +57,8 @@ const acceptedSession: Session = {
     globalRole: 'USER',
     emailVerifiedAt: null
   },
-  memberships: []
+  memberships: [],
+  hasOwnerAccess: false
 };
 
 describe('OwnerInvitationAcceptanceView', () => {

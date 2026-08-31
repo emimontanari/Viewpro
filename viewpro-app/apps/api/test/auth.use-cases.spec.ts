@@ -133,5 +133,11 @@ function makeLoginUseCase(input: {
 				.mockReturnValue(new Date("2026-02-01T00:00:00.000Z")),
 		} as never,
 		input.analyticsService as never,
+		// #326: the session now reports whether this identity can also enter the
+		// owner portal. These cases are about seller login analytics, so the
+		// ordinary seller-only answer is the right default here.
+		{
+			hasActiveOwnerAccess: vi.fn().mockResolvedValue(input.hasOwnerAccess ?? false),
+		} as never,
 	);
 }

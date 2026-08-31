@@ -20,6 +20,8 @@ import type { TenantsRepository } from '../../tenants/tenants.repository'
 import { TENANTS_REPOSITORY } from '../../tenants/tenants.repository'
 import type { UsersRepository } from '../../users/users.repository'
 import { USERS_REPOSITORY } from '../../users/users.repository'
+import type { OwnerAccessRepository } from '../../owner-access/owner-access.repository'
+import { OWNER_ACCESS_REPOSITORY } from '../../owner-access/owner-access.repository'
 
 export type AuthSessionResult = {
   accessToken: string
@@ -43,6 +45,9 @@ export class RegisterTenantUseCase {
     @Inject(EMAIL_SENDER) private readonly emailSender: EmailSender,
     private readonly tokenService: TokenService,
     private readonly configService: ConfigService,
+    // Appended last on purpose: the specs construct these positionally, so
+    // inserting in the middle silently shifts every argument after it.
+    @Inject(OWNER_ACCESS_REPOSITORY) private readonly ownerAccessRepository: OwnerAccessRepository,
   ) {}
 
   async execute(dto: RegisterTenantDto): Promise<AuthSessionResult> {
@@ -83,7 +88,13 @@ export class RegisterTenantUseCase {
     return {
       accessToken,
       refreshToken,
-      body: { user: mapAuthUser(user), memberships: memberships.map(mapMembership) },
+      body: {
+        user: mapAuthUser(user),
+        memberships: memberships.map(mapMembership),
+        // Registering a tenant does not erase owner access this identity may
+        // already hold: that is precisely the dual-context case (#326).
+        hasOwnerAccess: await this.ownerAccessRepository.hasActiveOwnerAccess(user.id),
+      },
     }
   }
 

@@ -56,7 +56,8 @@ describe('SignUpViewPage', () => {
         globalRole: 'USER',
         emailVerifiedAt: null
       },
-      memberships: []
+      memberships: [],
+      hasOwnerAccess: false
     });
 
     render(<SignUpViewPage />);
