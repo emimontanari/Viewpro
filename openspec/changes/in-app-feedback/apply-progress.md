@@ -139,3 +139,33 @@
 - Consumed authoritative status `applyState: ready`, `nextRecommended: apply`, supplied root `/Users/emimontanari/Work/Apps/Viewpro-worktrees/in-app-feedback-s4-bff`, strict TDD, and parent-provided token `sha256:80608addd16b8352d2025ad71ba51497a9562d777b7c77c1e2174904f7252964`; no native attempt action was taken.
 - Completed the S4 implementation task; the canonical `tasks.md` plan remains unchanged in this work unit and will be reconciled through the normal SDD evidence/sync flow.
 - Deferred parent lifecycle actions: settle the supplied native S4 attempt, independently verify, then perform ordinary commit/PR delivery; RDD remains disabled.
+
+## S5 — Authenticated floating feedback flow
+
+- Added the client-only `FeedbackWidget` and mounted it after the authenticated dashboard structure, leaving navigation, auth, owners, BFF/service, and icon registry untouched.
+- The floating Spanish-labelled trigger uses `Icons.chat`, safe-area placement, the Radix dialog, exactly `ERROR`/`SUGGESTION`, 10–2000 local validation/count, duplicate prevention, spinner, durable acceptance, structured safe failures, retry preservation, explicit discard, and `aria-live`/alert feedback.
+- Mount and unmount each call the S4 clear-only provenance API; the widget has no request-ID field and passes only typed `{ type, description }` to the existing service.
+
+## S5 TDD Cycle Evidence
+
+| Task | Layer | Safety net / RED | GREEN / TRIANGULATE | REFACTOR |
+|---|---|---|---|---|
+| S5 widget | Component integration | New focused test failed before production because `./feedback-widget` did not exist. | 9 tests pass: choices/bounds, invalid input, duplicate progress, durable success, generic retry, discard, 429/session copy, lifecycle, and equal-status/prose isolation. | Re-ran focused tests after lifecycle cleanup, mock isolation, accessibility label, and lint fixes. |
+
+## S5 Deliberate falsification evidence
+
+| Mutation | Expected failing proof | Restoration |
+|---|---|---|
+| Omitted mount clear | Lifecycle test expected first mount clear once, received zero. | Restored mount clear; focused suite passed. |
+| Omitted unmount cleanup | Lifecycle test expected two calls after unmount, received one. | Restored cleanup; focused suite passed. |
+| Branched generic copy on `error.message` | Equal-status/different-message test returned `one` versus `another`; hostile-prose assertion also failed. | Restored structured status/errorCode-only copy; focused suite passed. |
+| Added a Request ID form input | No-request-ID provenance assertion found the injected input. | Removed it; focused suite passed. |
+
+## S5 Verification and delivery
+
+- Bootstrap from `viewpro-app`: `pnpm install --frozen-lockfile`, `pnpm --filter @viewpro/contracts build`, and `pnpm db:generate` passed. The pre-bootstrap focused command could not find `vitest`; after installation the RED command failed as expected on the missing widget import.
+- Passed focused command repeatedly after GREEN/restorations: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/feedback/components/feedback-widget.test.tsx` (final: 1 file / 9 tests).
+- Passed: `pnpm --filter next-shadcn-dashboard-starter lint:strict`, `pnpm --filter next-shadcn-dashboard-starter typecheck`, and package `test` (112 files / 694 tests); `git diff --check` passed.
+- No design deviation. S5 PR boundary is widget, focused test, dashboard mount, and this evidence only; ordinary/unmanaged delivery applies and RDD remains disabled. No commit, push, PR, review, or attempt acquisition/settlement was performed; parent retains the supplied S5 attempt token and lifecycle.
+- Consumed authoritative native status: `applyState: ready`, `nextRecommended: apply`, repo-local root `/Users/emimontanari/Work/Apps/Viewpro-worktrees/in-app-feedback-s5-widget`, and that root is the only allowed edit root. No action-context warnings.
+- Task artifact is intentionally stale by explicit parent direction, so `tasks.md` was not edited. Exact S5 row remains unchecked: `- [ ] Implement and verify the complete floating widget with safe success, retry, rate-limit, and accessibility states. <!-- sdd-owner: implementation -->`.

@@ -4,6 +4,7 @@ import Header from '@/components/layout/header';
 import { InfoSidebar } from '@/components/layout/info-sidebar';
 import { AdminAccessNotice } from '@/features/auth/components/admin-access-notice';
 import { EmailVerificationBanner } from '@/features/auth/components/email-verification-banner';
+import { FeedbackWidget } from '@/features/feedback/components/feedback-widget';
 import { InfobarProvider } from '@/components/ui/infobar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { BRAND } from '@/lib/brand/brand';
@@ -40,6 +41,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </InfobarProvider>
         </SidebarInset>
       </SidebarProvider>
+      <FeedbackWidget />
     </KBar>
   );
 }
