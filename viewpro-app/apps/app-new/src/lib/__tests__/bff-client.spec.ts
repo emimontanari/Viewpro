@@ -5,7 +5,9 @@ import {
   messageFor,
   GENERIC_BFF_ERROR_MESSAGE,
   hasErrorCode,
-  isBffError
+  isBffError,
+  clearLatestApplicationRequestId,
+  getLatestApplicationRequestId
 } from '@/lib/bff-client';
 
 function jsonResponse(status: number, body: unknown) {
@@ -20,10 +22,12 @@ describe('bffRequest', () => {
 
   beforeEach(() => {
     global.fetch = vi.fn();
+    clearLatestApplicationRequestId();
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
+    vi.unstubAllGlobals();
   });
 
   it('returns the parsed body on success', async () => {
@@ -131,6 +135,67 @@ describe('bffRequest', () => {
       cache: 'no-store',
       credentials: 'include'
     });
+  });
+
+  it('captures a canonical response header in browser memory over a body fallback', async () => {
+    const headerRequestId = '01234567-89ab-4cde-8fab-0123456789ab';
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ requestId: '12345678-1234-4abc-8def-123456789abc' }), {
+headers: { 'content-type': 'application/json', 'x-request-id': headerRequestId },
+status: 200
+      })
+    );
+
+    await bffRequest('/api/x');
+
+    expect(getLatestApplicationRequestId()).toBe(headerRequestId);
+  });
+
+  it('captures a canonical body request ID only when the header is absent', async () => {
+    const bodyRequestId = '12345678-1234-4abc-8def-123456789abc';
+    vi.mocked(global.fetch).mockResolvedValueOnce(jsonResponse(200, { requestId: bodyRequestId }));
+
+    await bffRequest('/api/x');
+
+    expect(getLatestApplicationRequestId()).toBe(bodyRequestId);
+  });
+
+  it.each(['12345678-1234-1abc-8def-123456789abc', '12345678-1234-4ABC-8DEF-123456789ABC', 'not-a-request-id'])('does not capture an invalid, uppercase, or non-v4 response ID: %s', async (requestId) => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(jsonResponse(200, { requestId }));
+
+    await bffRequest('/api/x');
+
+    expect(getLatestApplicationRequestId()).toBeUndefined();
+  });
+
+  it('does not capture or reveal request IDs during SSR', async () => {
+    vi.stubGlobal('window', undefined);
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ requestId: '12345678-1234-4abc-8def-123456789abc' }), {
+headers: {
+'content-type': 'application/json',
+'x-request-id': '01234567-89ab-4cde-8fab-0123456789ab'
+},
+status: 200
+      })
+    );
+
+    await bffRequest('/api/x');
+
+    expect(getLatestApplicationRequestId()).toBeUndefined();
+  });
+});
+
+describe('request ID export surface', () => {
+  it('exposes only a getter and zero-argument clear lifecycle function', async () => {
+    const clientExports = await import('@/lib/bff-client');
+    const requestIdExports = Object.keys(clientExports).filter((key) => /requestid/i.test(key));
+
+    expect(requestIdExports.toSorted()).toEqual([
+      'clearLatestApplicationRequestId',
+      'getLatestApplicationRequestId'
+    ]);
+    expect(clearLatestApplicationRequestId).toHaveLength(0);
   });
 });
 

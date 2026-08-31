@@ -108,3 +108,34 @@
 
 - Independent verification reproduced a full API-suite cleanup failure in the S2 feedback e2e fixture: existing `property_assets` rows could reference users before the suite deleted users. The fixture now deletes property-asset owners, agents, engagements, and assets before users, matching the repository's established e2e cleanup order; this is test isolation only and does not change product behavior.
 - `feedback.controller.spec.ts` is updated only as the existing S2 use-case constructor fixture required by the S3 notifier dependency; it remains within the feedback test surface.
+
+## S4 — Provenance-preserving BFF submission
+
+- Added `POST /api/feedback`, which proxies JSON to `/feedback` with the existing authenticated/tenant-aware `bffFetch` transport and preserves proxy status/body error semantics.
+- `proxyJsonResponse` forwards only a canonical lowercase UUIDv4 backend `x-request-id`; `bffRequest` keeps only the latest canonical header (preferred) or body fallback in browser-private memory.
+- Added typed `submitFeedback({ type, description })`; it derives `window.location.pathname`, reads the clear-only private ID getter, and conditionally sends that proven value without accepting a caller request-ID argument.
+
+## S4 TDD Cycle Evidence
+
+| Task | Layer | Safety net / RED | GREEN / TRIANGULATE | REFACTOR |
+|---|---|---|---|---|
+| BFF provenance | Unit | Existing client safety net passed 13 tests after bootstrap; new tests failed for missing route/service/exports and absent header propagation. | 26 mandated focused tests passed: header preference/body fallback, invalid/uppercase/non-v4 rejection, SSR empty, clear-only exports, pathname, and service provenance. | Extracted canonical checks and reran focused tests after lint cleanup. |
+| Feedback BFF route | Route unit | New route test failed because `./route` was absent. | 2 tests passed for POST proxying and 502 body/status transport. | No further refactor needed. |
+
+## S4 Deliberate falsification evidence
+
+| Mutation | Expected failing proof | Restoration |
+|---|---|---|
+| Forwarded arbitrary `x-request-id` values | `bff-api.test.ts` failed 2 allowlist cases (uppercase and arbitrary IDs). | Restored canonical UUIDv4 filter; 3 tests passed. |
+| Added public `setLatestApplicationRequestId(requestId)` | Export-surface test failed on the extra value-taking setter. | Removed setter; client suite passed 20 tests. |
+| Added a caller `requestId` parameter to `submitFeedback` | Service provenance test failed because the exported function had two parameters. | Removed the parameter; service suite passed 3 tests. |
+| Allowed SSR capture and SSR getter access | SSR provenance test exposed the canonical ID instead of `undefined`. | Restored browser guard; client suite passed 20 tests. |
+
+## S4 Verification and delivery
+
+- Bootstrap passed from `viewpro-app`: `pnpm install --frozen-lockfile`; `pnpm --filter @viewpro/contracts build`; `pnpm db:generate`. Initial safety run could not resolve contracts before its required build; the post-bootstrap safety net passed 13 client tests.
+- Passed: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/lib/bff-api.test.ts src/lib/__tests__/bff-client.spec.ts src/features/feedback/api/service.test.ts` (3 files / 26 tests); route test separately (1 file / 2 tests); `lint:strict`; `typecheck`; and package `test` (111 files / 685 tests).
+- `git diff --check` passed. No design deviations. PR boundary: S4 only, ordinary/unmanaged delivery; no commit, push, PR, RDD, or lifecycle action was performed.
+- Consumed authoritative status `applyState: ready`, `nextRecommended: apply`, supplied root `/Users/emimontanari/Work/Apps/Viewpro-worktrees/in-app-feedback-s4-bff`, strict TDD, and parent-provided token `sha256:80608addd16b8352d2025ad71ba51497a9562d777b7c77c1e2174904f7252964`; no native attempt action was taken.
+- Completed the S4 implementation task; the canonical `tasks.md` plan remains unchanged in this work unit and will be reconciled through the normal SDD evidence/sync flow.
+- Deferred parent lifecycle actions: settle the supplied native S4 attempt, independently verify, then perform ordinary commit/PR delivery; RDD remains disabled.

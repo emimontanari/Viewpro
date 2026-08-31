@@ -44,14 +44,22 @@ export async function bffFetch(path: string, init: BffFetchOptions = {}) {
   }
 }
 
+const CANONICAL_UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
 export async function proxyJsonResponse(response: Response, successStatus = response.status) {
   const body = await response.json().catch(() => undefined);
+  const headers = new Headers();
+  const requestId = response.headers.get('x-request-id');
 
-  if (body === undefined) {
-    return new NextResponse(null, { status: successStatus });
+  if (requestId && CANONICAL_UUID_V4.test(requestId)) {
+    headers.set('x-request-id', requestId);
   }
 
-  return NextResponse.json(body, { status: successStatus });
+  if (body === undefined) {
+    return new NextResponse(null, { headers, status: successStatus });
+  }
+
+  return NextResponse.json(body, { headers, status: successStatus });
 }
 
 export function proxyBffErrorResponse(
