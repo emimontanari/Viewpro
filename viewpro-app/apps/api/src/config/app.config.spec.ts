@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAppPublicUrl } from "./app.config";
+import { getAppPublicUrl, getFeedbackEmailConfig } from "./app.config";
 
 describe("getAppPublicUrl", () => {
 	it("defaults to the local app origin outside production", () => {
@@ -18,5 +18,11 @@ describe("getAppPublicUrl", () => {
 		expect(() => getAppPublicUrl(undefined, "production")).toThrow(
 			"APP_PUBLIC_URL",
 		);
+	});
+
+	it("keeps the feedback recipient as one configured value", () => {
+		expect(getFeedbackEmailConfig({ FEEDBACK_RECIPIENT_EMAIL: " recipient@example.com " })).toEqual({
+			feedbackRecipient: "recipient@example.com",
+		});
 	});
 });

@@ -55,6 +55,10 @@ export function getAuthRateLimitConfig(): {
   }
 }
 
+export function getFeedbackEmailConfig(env: SentryEnvironment = process.env) {
+  return { feedbackRecipient: env.FEEDBACK_RECIPIENT_EMAIL?.trim() }
+}
+
 export function getSentryConfig(nodeEnv: NodeEnv, env: SentryEnvironment = process.env) {
   const tracesSampleRate = Number(env.SENTRY_TRACES_SAMPLE_RATE ?? 0)
 
@@ -97,6 +101,7 @@ export const appConfig = registerAs('app', () => {
     email: {
       apiKey: process.env.RESEND_API_KEY,
       fromAddress: process.env.EMAIL_FROM_ADDRESS ?? 'no-reply@inmoview.app',
+      ...getFeedbackEmailConfig(),
     },
     sentry: getSentryConfig(nodeEnv),
     publicErrorEnvelope: {

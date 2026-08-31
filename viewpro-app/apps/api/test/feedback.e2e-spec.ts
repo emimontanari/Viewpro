@@ -13,6 +13,8 @@ describe("feedback submission (e2e)", () => {
 	beforeAll(async () => { app = await createApiApp(); await app.listen(0); prisma = app.get(PrismaService); });
 	beforeEach(async () => {
 		await prisma.feedbackReport.deleteMany(); await prisma.feedbackSubmissionAttempt.deleteMany();
+		await prisma.propertyAssetOwner.deleteMany(); await prisma.propertyAgent.deleteMany();
+		await prisma.propertyEngagement.deleteMany(); await prisma.propertyAsset.deleteMany();
 		await prisma.refreshToken.deleteMany(); await prisma.tenantMembership.deleteMany(); await prisma.tenant.deleteMany(); await prisma.user.deleteMany();
 	});
 	afterAll(() => app.close());

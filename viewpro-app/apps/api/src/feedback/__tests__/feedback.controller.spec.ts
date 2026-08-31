@@ -18,10 +18,14 @@ describe("FeedbackController", () => {
 
 describe("SubmitFeedbackUseCase", () => {
 	it("persists server-derived attribution and leaves a persistence failure unaccepted", async () => {
-		const create = vi.fn().mockResolvedValue({ id: "report-1" });
-		const useCase = new SubmitFeedbackUseCase({ create } as never);
+		const create = vi.fn().mockResolvedValue({
+			id: "report-1", tenantId: "tenant-server", userId: "user-server", type: body.type,
+			description: body.description, createdAt: new Date("2026-08-31T10:00:00.000Z"),
+			user: { email: "member@example.com" }, tenant: { name: "Tenant" },
+		});
+		const useCase = new SubmitFeedbackUseCase({ create } as never, { notify: vi.fn() } as never);
 		await expect(useCase.execute(tenant, user, body)).resolves.toEqual({ accepted: true });
 		expect(create).toHaveBeenCalledWith({ ...body, tenantId: "tenant-server", userId: "user-server" });
-		await expect(new SubmitFeedbackUseCase({ create: vi.fn().mockRejectedValue(new Error("database secret")) } as never).execute(tenant, user, body)).rejects.toThrow("database secret");
+		await expect(new SubmitFeedbackUseCase({ create: vi.fn().mockRejectedValue(new Error("database secret")) } as never, { notify: vi.fn() } as never).execute(tenant, user, body)).rejects.toThrow("database secret");
 	});
 });
