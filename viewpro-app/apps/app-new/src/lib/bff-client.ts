@@ -14,6 +14,17 @@ export type { PublicErrorCode };
 
 const APP_URL =
   typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000');
+const CANONICAL_UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+let latestApplicationRequestId: string | undefined;
+
+export function getLatestApplicationRequestId(): string | undefined {
+  return typeof window === 'undefined' ? undefined : latestApplicationRequestId;
+}
+
+export function clearLatestApplicationRequestId(): void {
+  latestApplicationRequestId = undefined;
+}
 
 /**
  * What the app is allowed to know about a failed BFF call.
@@ -88,17 +99,35 @@ export async function bffRequest<TResponse>(
     if (timeoutId) clearTimeout(timeoutId);
   }
 
+  const capturedHeaderRequestId = captureApplicationRequestId(response.headers.get('x-request-id'));
+
   if (response.status === 204) {
     return undefined as TResponse;
   }
 
-  const body = await response.json().catch(() => undefined);
+    const body = await response.json().catch(() => undefined);
+    if (!capturedHeaderRequestId) {
+      captureApplicationRequestId(requestIdFromBody(body));
+    }
 
   if (!response.ok) {
     throw toBffError(response, body);
   }
 
   return body as TResponse;
+}
+
+function captureApplicationRequestId(requestId: unknown): boolean {
+  if (typeof window !== 'undefined' && typeof requestId === 'string' && CANONICAL_UUID_V4.test(requestId)) {
+    latestApplicationRequestId = requestId;
+    return true;
+  }
+
+  return false;
+}
+
+function requestIdFromBody(body: unknown): unknown {
+  return body && typeof body === 'object' ? (body as Record<string, unknown>).requestId : undefined;
 }
 
 export function toBffError(response: Response, body: unknown): BffError {
