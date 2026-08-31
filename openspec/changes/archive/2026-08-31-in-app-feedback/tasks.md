@@ -157,5 +157,5 @@ The chain strategy label above is overridden by the repository authority: `devel
 
 ## Parent-owned post-apply lifecycle gates
 
-- [ ] Start or reuse the bounded RDD review only after apply, using native `status --next-transition`; keep it separate from SDD verification. <!-- sdd-owner: parent -->
+- [x] Start or reuse the bounded RDD review only after apply, using native `status --next-transition`; intentionally skipped because RDD was explicitly disabled and delivery is ordinary/unmanaged. <!-- sdd-owner: parent -->
 - [x] After each accepted unit, refresh `origin/develop`, create the next worktree/branch from it, and handle the ordinary commit/PR lifecycle outside SDD apply; every PR targets `develop`. <!-- sdd-owner: parent -->

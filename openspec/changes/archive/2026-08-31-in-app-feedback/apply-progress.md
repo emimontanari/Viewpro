@@ -180,3 +180,10 @@
 - Confirmed all S1–S5 deliberate mutation/restoration evidence remains present, feature commits respect sequential slice/cap boundaries, and forbidden #307 surfaces were untouched.
 - `git diff --check` passed before evidence edits. Full command detail, setup failures, assertion audit, residual risks, and the unreconciled V1 checkbox are in `verify-report.md`.
 - V1 did not edit `tasks.md` by authority; task-state reconciliation remains parent/native work after this evidence phase.
+
+## V1 — Fresh native envelope rerun
+
+- Reconfirmed the integrated final state at `81c26ed6` using only PostgreSQL `viewpro_test` and derived test workers: API baseline 48/48, frontend baseline 36/36, full API 137 files/1,379 tests, full frontend 112 files/694 tests, seeded Playwright 32/32, API S1–S3/config 11 files/41 tests, and frontend S4–S5 5 files/37 tests all passed.
+- `pnpm db:generate`, API schema validation/typecheck, frontend typecheck/lint:strict, migration status, corrected generated-DMMF inspection, forbidden-surface/slice-scope checks, and `git diff --check` passed.
+- The bounded aggregate nevertheless exited 1 because its initial DMMF probe joined Prisma enum value objects instead of mapping their `name` fields. A corrected standalone probe passed with `FeedbackReport`, `FeedbackSubmissionAttempt`, and `FeedbackType(ERROR,SUGGESTION)`.
+- Per the delegated rule that any command failure requires a failing verdict, the fresh native envelope records `verdict: fail`, one blocker, and the real failed-output hash. No product/source, test, migration, or task file was edited.
