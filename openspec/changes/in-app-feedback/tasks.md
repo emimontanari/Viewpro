@@ -145,7 +145,7 @@ The chain strategy label above is overridden by the repository authority: `devel
 
 ### V1 — Full contract and regression verification
 
-- [ ] Run the final cross-slice verification phase and record evidence without creating a test-only source PR. <!-- sdd-owner: implementation -->
+- [x] Run the final cross-slice verification phase and record evidence without creating a test-only source PR. <!-- sdd-owner: implementation -->
 - Objective: verify the integrated chain, all mutation evidence, baseline preservation, and rollout safety after S1–S5 merge.
 - Dependencies: S1–S5 merged sequentially into refreshed `develop`; use a clearly marked PostgreSQL test/per-worker database.
 - Allowed paths: `openspec/changes/in-app-feedback/apply-progress.md` and `openspec/changes/in-app-feedback/verify-report.md` evidence only; any code hardening returns to its owning S1–S5 unit.

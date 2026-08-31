@@ -169,3 +169,14 @@
 - No design deviation. S5 PR boundary is widget, focused test, dashboard mount, and this evidence only; ordinary/unmanaged delivery applies and RDD remains disabled. No commit, push, PR, review, or attempt acquisition/settlement was performed; parent retains the supplied S5 attempt token and lifecycle.
 - Consumed authoritative native status: `applyState: ready`, `nextRecommended: apply`, repo-local root `/Users/emimontanari/Work/Apps/Viewpro-worktrees/in-app-feedback-s5-widget`, and that root is the only allowed edit root. No action-context warnings.
 - Task artifact is intentionally stale by explicit parent direction, so `tasks.md` was not edited. Exact S5 row remains unchecked: `- [ ] Implement and verify the complete floating widget with safe success, retry, rate-limit, and accessibility states. <!-- sdd-owner: implementation -->`.
+
+## V1 — Final cross-slice verification
+
+- Verified the integrated chain at `f4d4eca1` using PostgreSQL `viewpro_test` and derived workers only; no development/production database was used.
+- Recorded premise baselines: API command remained 48/48; frontend command passed 36/36 because seven S4 provenance tests now extend the original 29-test subset.
+- Passed `pnpm db:generate`, API schema validation/typecheck, full API (137 files / 1,379 tests), full frontend (112 files / 694 tests), strict frontend lint, and seeded Playwright (32 tests).
+- Focused cross-slice aggregates passed: API S1–S3/config 11 files / 41 tests; frontend S4–S5 5 files / 37 tests.
+- `prisma migrate status` reports 30 migrations and an up-to-date test schema; generated DMMF exposes both feedback models and `FeedbackType(ERROR,SUGGESTION)`.
+- Confirmed all S1–S5 deliberate mutation/restoration evidence remains present, feature commits respect sequential slice/cap boundaries, and forbidden #307 surfaces were untouched.
+- `git diff --check` passed before evidence edits. Full command detail, setup failures, assertion audit, residual risks, and the unreconciled V1 checkbox are in `verify-report.md`.
+- V1 did not edit `tasks.md` by authority; task-state reconciliation remains parent/native work after this evidence phase.
