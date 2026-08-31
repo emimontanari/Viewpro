@@ -74,3 +74,37 @@
 - No design deviation; notification is intentionally deferred to S3. PR boundary is S2 only, ordinary/unmanaged delivery, no commit or lifecycle action.
 - Consumed authoritative status: `applyState: ready`, `nextRecommended: apply`, root `/Users/emimontanari/Work/Apps/Viewpro-worktrees/in-app-feedback-s2-boundary`, strict TDD active, and supplied native attempt token `sha256:cba0b0db47ad364a33bb46023770deb7789186e8d2a41f5ed268c35cc70731d7`; no attempt was acquired or settled here.
 - Task persistence warning: the delegated path restriction explicitly prohibited `tasks.md` edits, so the completed S2 implementation row remains unchecked and cannot be reported as reconciled by apply. Exact unchecked row: `- [ ] Implement and verify authenticated tenant-member validation and durable report creation. <!-- sdd-owner: implementation -->`.
+
+## S3 — Durable-before-email notification and production configuration
+
+- Added a feedback-only notifier port, escaped approved-field text/HTML renderer, Resend adapter, deterministic development/test no-op, and module token binding; shared email abstractions, routing, health, Sentry, UI, and BFF were untouched.
+- `SubmitFeedbackUseCase` now awaits durable report creation before exactly one notification call; notifier errors are mapped to the closed categories/codes and logged only as `{ reportId, timestamp, category, code }`, while accepted success is retained.
+- Production validation now requires one trimmed valid `FEEDBACK_RECIPIENT_EMAIL` and `RESEND_API_KEY`; app config exposes the recipient and `.env.example` documents it.
+
+## S3 TDD Cycle Evidence
+
+| Task | Layer | RED | GREEN / triangulation | REFACTOR |
+|---|---|---|---|---|
+| notifier/template | Unit | Missing template/adapter imports and unimplemented ordering, failure, escape, and redaction assertions failed. | Focused suite passed 24 tests: escaping/literal text, optional fields, durable-before-one-send, persistence rejection, no-op, and all four closed diagnostics. | Kept rendering pure and notifier port narrow; final focused suite and typecheck passed. |
+| production config | Unit | Missing recipient/key validation and recipient trim assertions failed. | Missing, malformed, multi-recipient, and missing-key production cases fail; single trimmed recipient passes. | Retained validation as the production readiness gate and deterministic non-production adapter selection. |
+
+## S3 Deliberate falsification evidence
+
+| Mutation | Expected failing proof | Restoration |
+|---|---|---|
+| Rethrew the caught notifier failure | `feedback-notifier.spec.ts` rejected hostile provider failure instead of resolving accepted success. | Restored swallow-plus-sanitized log; focused suite green. |
+| Logged `description` rather than allowlisted diagnostic | Exact logger payload/redaction assertion failed. | Restored exactly `{ reportId, timestamp, category, code }`; focused suite green. |
+| Removed the production recipient guard | Production missing-recipient config case no longer threw. | Restored recipient guard; focused suite green. |
+
+## S3 Verification and delivery
+
+- Safety net before edits: existing controller/config tests passed (14 tests); bootstrap commands `pnpm install --frozen-lockfile`, `pnpm --filter @viewpro/contracts build`, and `pnpm db:generate` passed.
+- With `NODE_ENV=test`, `DATABASE_URL`, `DIRECT_URL`, and `VIEWPRO_TEST_BASE_DATABASE_URL` set to clearly marked `viewpro_test_s3`, the mandated focused command passed: 3 files / 24 tests. The supplied `src/config/__tests__/app.config.spec.ts` path does not exist; its actual repository path `src/config/app.config.spec.ts` separately passed (4 tests).
+- `pnpm --filter @viewpro/api typecheck`, `pnpm --filter @viewpro/api test` (135 files / 1,368 tests), and `git diff --check` passed. No design deviations.
+- PR boundary: S3 only, ordinary/unmanaged delivery; no commit, push, PR, RDD, or lifecycle operation was performed. Consumed authoritative status `applyState: ready`, `nextRecommended: apply`, root `/Users/emimontanari/Work/Apps/Viewpro-worktrees/in-app-feedback-s3-notifications`, strict TDD active, and supplied native token `sha256:cff105c05b7aea1ce7973d8281f5ce7a13673a2b303cf2e6b3136e55ebd4b61a`; no attempt action was taken.
+- The delegated S3 contract prohibited `tasks.md` changes, so no task checkbox was persisted. Exact unchecked implementation row remains: `- [ ] Implement and verify the dedicated sanitized notifier and fail-safe environment selection. <!-- sdd-owner: implementation -->`.
+
+## Post-apply CI correction
+
+- Independent verification reproduced a full API-suite cleanup failure in the S2 feedback e2e fixture: existing `property_assets` rows could reference users before the suite deleted users. The fixture now deletes property-asset owners, agents, engagements, and assets before users, matching the repository's established e2e cleanup order; this is test isolation only and does not change product behavior.
+- `feedback.controller.spec.ts` is updated only as the existing S2 use-case constructor fixture required by the S3 notifier dependency; it remains within the feedback test surface.

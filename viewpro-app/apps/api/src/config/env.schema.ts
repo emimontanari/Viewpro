@@ -1,6 +1,7 @@
 import { plainToInstance, Transform, Type } from "class-transformer";
 import {
 	IsBoolean,
+	IsEmail,
 	IsIn,
 	IsInt,
 	IsNumber,
@@ -171,6 +172,11 @@ class EnvironmentVariables {
 	EMAIL_FROM_ADDRESS?: string;
 
 	@IsOptional()
+	@IsEmail()
+	@Transform(({ value }) => typeof value === "string" ? value.trim() : value)
+	FEEDBACK_RECIPIENT_EMAIL?: string;
+
+	@IsOptional()
 	@IsString()
 	SENTRY_DSN?: string;
 
@@ -252,6 +258,9 @@ function assertProductionSecurity(config: EnvironmentVariables) {
 			"DOCUMENT_STORAGE_DRIVER: must be 's3' in production (local/fake storage is not allowed)",
 		);
 	}
+
+	if (!config.FEEDBACK_RECIPIENT_EMAIL) violations.push("FEEDBACK_RECIPIENT_EMAIL: must be one valid recipient in production");
+	if (!config.RESEND_API_KEY?.trim()) violations.push("RESEND_API_KEY: is required for feedback notification in production");
 
 	if (violations.length > 0) {
 		throw new Error(violations.join("; "));

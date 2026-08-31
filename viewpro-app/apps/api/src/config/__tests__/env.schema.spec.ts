@@ -25,6 +25,8 @@ const productionHardened = {
   ACCESS_TOKEN_SECRET: STRONG_SECRET,
   COOKIE_SECURE: 'true',
   DOCUMENT_STORAGE_DRIVER: 's3',
+  FEEDBACK_RECIPIENT_EMAIL: 'recipient@example.com',
+  RESEND_API_KEY: 're_test',
 }
 
 describe('validateEnv — non-production', () => {
@@ -66,6 +68,23 @@ describe('validateEnv — non-production', () => {
 describe('validateEnv — production hardening', () => {
   it('accepts a fully hardened production config', () => {
     expect(() => validateEnv(productionHardened)).not.toThrow()
+  })
+
+  it.each([
+    [{ FEEDBACK_RECIPIENT_EMAIL: undefined }, /FEEDBACK_RECIPIENT_EMAIL/],
+    [{ FEEDBACK_RECIPIENT_EMAIL: 'invalid' }, /FEEDBACK_RECIPIENT_EMAIL/],
+    [{ FEEDBACK_RECIPIENT_EMAIL: 'one@example.com,two@example.com' }, /FEEDBACK_RECIPIENT_EMAIL/],
+    [{ RESEND_API_KEY: undefined }, /RESEND_API_KEY/],
+  ])('rejects incomplete feedback notification production configuration', (feedbackEnv, error) => {
+    expect(() => validateEnv({ ...productionHardened, ...feedbackEnv })).toThrow(error)
+  })
+
+  it('accepts one trimmed feedback recipient and a Resend key in production', () => {
+    expect(validateEnv({
+      ...productionHardened,
+      FEEDBACK_RECIPIENT_EMAIL: ' recipient@example.com ',
+      RESEND_API_KEY: 're_test',
+    }).FEEDBACK_RECIPIENT_EMAIL).toBe('recipient@example.com')
   })
 
   it('rejects the placeholder ACCESS_TOKEN_SECRET in production', () => {
