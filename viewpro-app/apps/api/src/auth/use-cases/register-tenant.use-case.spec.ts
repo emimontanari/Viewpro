@@ -44,9 +44,14 @@ function buildTokenService() {
   }
 }
 
-function buildDeps(overrides: { emailSender?: unknown } = {}) {
+function buildDeps(overrides: { emailSender?: unknown; hasOwnerAccess?: boolean } = {}) {
   const usersRepository = { findByEmail: vi.fn().mockResolvedValue(null) }
   const tenantsRepository = { findBySlug: vi.fn().mockResolvedValue(null) }
+  // Registering a tenant does not erase owner access this identity may already
+  // hold; the default here is the ordinary case of a brand-new user (#326).
+  const ownerPortalRepository = {
+    hasActiveOwnerAccess: vi.fn().mockResolvedValue(overrides.hasOwnerAccess ?? false),
+  }
   const passwordHasher = { hash: vi.fn().mockResolvedValue('hashed') }
   const refreshTokenRepository = { create: vi.fn().mockResolvedValue(undefined) }
   const registrationRepository = {
@@ -67,6 +72,7 @@ function buildDeps(overrides: { emailSender?: unknown } = {}) {
     emailSender as never,
     buildTokenService() as never,
     configService as never,
+    ownerPortalRepository as never,
   )
   return { useCase, emailVerificationTokenRepository, emailSender }
 }

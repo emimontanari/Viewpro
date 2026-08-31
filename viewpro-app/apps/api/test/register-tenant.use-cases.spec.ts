@@ -75,6 +75,9 @@ function buildUseCase() {
     emailSender as never,
     buildTokenService() as never,
     configService as never,
+    // #326: the session now reports owner access. A brand-new tenant
+    // registration is the ordinary case here.
+    { hasActiveOwnerAccess: vi.fn().mockResolvedValue(false) } as never,
   )
 
   return { useCase, usersRepository, registrationRepository }

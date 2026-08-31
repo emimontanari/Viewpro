@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import type { Prisma } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
+import { activeOwnerAccess } from '../owner-access/active-owner-access'
 import type {
   OwnerEngagementRecord,
   OwnerMovementContactContext,
@@ -9,9 +10,7 @@ import type {
   OwnerPropertyRecord,
 } from './owner-portal.repository'
 
-const activeOwnerAccess = (userId: string) => ({
-  owners: { some: { userId, accessStatus: 'ACTIVE' } },
-}) satisfies Prisma.PropertyAssetWhereInput
+
 
 const ownerPropertyInclude = {
   images: true,
@@ -45,6 +44,7 @@ const ownerMovementInclude = {
 
 @Injectable()
 export class PrismaOwnerPortalRepository implements OwnerPortalRepository {
+
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   findPropertiesByOwnerUserId(userId: string): Promise<OwnerPropertyRecord[]> {

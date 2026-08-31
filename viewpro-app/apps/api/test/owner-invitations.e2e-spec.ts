@@ -276,6 +276,29 @@ describe("Owner invitations (e2e)", () => {
 		expect(response.body.message).toBe("Owner invitation was already accepted");
 	});
 
+	it("keeps a seller's memberships when they accept an owner invitation", async () => {
+		// #326 criterion 9: one identity may legitimately hold both contexts. The
+		// session built on acceptance used to hardcode `memberships: []`, so a
+		// seller who accepted an owner invitation came back looking owner-only and
+		// the frontend would route them as one.
+		const token = makeRawToken();
+		const { manager } = await createPendingInvitation(token);
+		const sellerEmail = "invited-owner@example.com";
+
+		// Give the invited email a real tenant membership first.
+		const seller = await registerTenantSession(sellerEmail, "Seller Also Owner");
+
+		const response = await seller.agent
+			.post(`/api/owner-invitations/${token}/accept`)
+			.send({ mode: "login", password: managerPassword })
+			.expect(201);
+
+		expect(response.body.memberships).toHaveLength(1);
+		expect(response.body.memberships[0].tenant.id).toBe(seller.tenantId);
+		expect(response.body.hasOwnerAccess).toBe(true);
+		expect(manager.tenantId).not.toBe(seller.tenantId);
+	});
+
 	it("lets an existing owner accept an invitation with their password", async () => {
 		const token = makeRawToken();
 		const { invitation, ownerLink, engagement } =

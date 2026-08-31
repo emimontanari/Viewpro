@@ -111,14 +111,38 @@ function SignInForm() {
   );
 }
 
+export const DUAL_CONTEXT_CHOOSER_PATH = '/portal';
+
 export function getPostSignInRedirect(
-  session: Pick<Session, 'memberships'>,
+  session: Pick<Session, 'memberships'> & { hasOwnerAccess?: boolean },
   redirectUrl: string | null
 ) {
   const safeRedirect = getSafeSignInRedirect(redirectUrl);
 
   if (session.memberships.length === 0 && isDashboardRedirect(safeRedirect)) {
     return '/owner';
+  }
+
+  // One identity can legitimately be both a seller and a property owner. Routing
+  // used to consider memberships first, so any membership kept the /dashboard
+  // default and the owner portal was never offered — and the dashboard sidebar
+  // carries no link to it either (#326).
+  //
+  // Only when no explicit destination survived: someone who followed a link to a
+  // specific property already answered this question by clicking. An unsafe
+  // redirect collapses to the default here, so it cannot skip the choice either.
+  //
+  // The membership check is redundant today — an identity with none and a
+  // default redirect already returned above — and is kept so a change to that
+  // branch cannot silently start routing owner-only identities into a chooser
+  // with one option. It is deliberately not claimed as tested: no input reaches
+  // this line with it false.
+  if (
+    session.memberships.length > 0 &&
+    session.hasOwnerAccess === true &&
+    safeRedirect === DEFAULT_SIGN_IN_REDIRECT
+  ) {
+    return DUAL_CONTEXT_CHOOSER_PATH;
   }
 
   return safeRedirect;

@@ -15,6 +15,8 @@ import { REFRESH_TOKEN_REPOSITORY } from '../tokens/refresh-token.repository'
 import { TokenService } from '../tokens/token.service'
 import { normalizeEmail } from '../utils/slugify'
 import type { AuthSessionResult } from './register-tenant.use-case'
+import type { OwnerAccessRepository } from '../../owner-access/owner-access.repository'
+import { OWNER_ACCESS_REPOSITORY } from '../../owner-access/owner-access.repository'
 
 @Injectable()
 export class LoginUseCase {
@@ -25,6 +27,9 @@ export class LoginUseCase {
     @Inject(REFRESH_TOKEN_REPOSITORY) private readonly refreshTokenRepository: RefreshTokenRepository,
     @Inject(TokenService) private readonly tokenService: TokenService,
     @Inject(AnalyticsService) private readonly analyticsService: AnalyticsService,
+    // Appended last on purpose: the specs construct these positionally, so
+    // inserting in the middle silently shifts every argument after it.
+    @Inject(OWNER_ACCESS_REPOSITORY) private readonly ownerAccessRepository: OwnerAccessRepository,
   ) {}
 
   async execute(dto: LoginDto): Promise<AuthSessionResult> {
@@ -44,7 +49,10 @@ export class LoginUseCase {
       expiresAt: this.tokenService.getRefreshTokenExpiresAt(),
     })
 
-    const memberships = await this.membershipsRepository.findActiveManyByUserId(user.id)
+    const [memberships, hasOwnerAccess] = await Promise.all([
+      this.membershipsRepository.findActiveManyByUserId(user.id),
+      this.ownerAccessRepository.hasActiveOwnerAccess(user.id),
+    ])
 
     const unambiguousMembership = memberships.length === 1 ? memberships[0] : null
     if (unambiguousMembership) {
@@ -59,7 +67,7 @@ export class LoginUseCase {
     return {
       accessToken,
       refreshToken,
-      body: { user: mapAuthUser(user), memberships: memberships.map(mapMembership) },
+      body: { user: mapAuthUser(user), memberships: memberships.map(mapMembership), hasOwnerAccess },
     }
   }
 

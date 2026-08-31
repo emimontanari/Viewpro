@@ -31,9 +31,11 @@ import { RequestPasswordResetUseCase } from './use-cases/request-password-reset.
 import { ResendEmailVerificationUseCase } from './use-cases/resend-email-verification.use-case'
 import { ResetPasswordUseCase } from './use-cases/reset-password.use-case'
 import { VerifyEmailUseCase } from './use-cases/verify-email.use-case'
+import { OwnerAccessModule } from '../owner-access/owner-access.module'
 
 @Module({
   imports: [
+    OwnerAccessModule,
     ConfigModule,
     AnalyticsCoreModule,
     DatabaseModule,

@@ -25,6 +25,8 @@ import type { AuthSessionResult } from '../../auth/use-cases/register-tenant.use
 import { normalizeEmail } from '../../auth/utils/slugify'
 import type { AcceptTeamInvitationDto } from '../dto/accept-team-invitation.dto'
 import { hashTeamInvitationToken } from '../team-invitation-token'
+import type { OwnerAccessRepository } from '../../owner-access/owner-access.repository'
+import { OWNER_ACCESS_REPOSITORY } from '../../owner-access/owner-access.repository'
 import {
   TEAM_INVITATIONS_REPOSITORY,
   type AcceptTeamInvitationResult,
@@ -42,6 +44,9 @@ export class AcceptTeamInvitationUseCase {
     @Inject(PASSWORD_HASHER) private readonly passwordHasher: PasswordHasher,
     @Inject(REFRESH_TOKEN_REPOSITORY) private readonly refreshTokenRepository: RefreshTokenRepository,
     @Inject(TokenService) private readonly tokenService: TokenService,
+    // Appended last on purpose: the specs construct these positionally, so
+    // inserting in the middle silently shifts every argument after it.
+    @Inject(OWNER_ACCESS_REPOSITORY) private readonly ownerAccessRepository: OwnerAccessRepository,
   ) {}
 
   async execute(
@@ -158,8 +163,16 @@ export class AcceptTeamInvitationUseCase {
       throw new UnauthorizedException({ errorCode: 'SESSION_EXPIRED', message: 'Authentication required' })
     }
 
-    const memberships = await this.membershipsRepository.findActiveManyByUserId(user.id)
-    const body: MeResponse = { user: mapAuthUser(user), memberships: memberships.map(mapMembership) }
+    const [memberships, hasOwnerAccess] = await Promise.all([
+      this.membershipsRepository.findActiveManyByUserId(user.id),
+      // Joining a team does not erase owner access this identity already holds.
+      this.ownerAccessRepository.hasActiveOwnerAccess(user.id),
+    ])
+    const body: MeResponse = {
+      user: mapAuthUser(user),
+      memberships: memberships.map(mapMembership),
+      hasOwnerAccess,
+    }
 
     return { accessToken, refreshToken, body }
   }

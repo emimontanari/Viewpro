@@ -37,6 +37,12 @@ export type TenantMembership = {
 export type Session = {
   user: AuthUser;
   memberships: TenantMembership[];
+  /**
+   * Whether this identity can also enter the owner portal. Post-login routing
+   * used to consider memberships alone, so a user who is both a seller and a
+   * property owner was never offered the owner portal (#326).
+   */
+  hasOwnerAccess: boolean;
 };
 
 export type LoginInput = {

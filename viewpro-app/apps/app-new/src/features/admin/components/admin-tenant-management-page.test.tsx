@@ -47,7 +47,8 @@ const adminSession: Session = {
     globalRole: 'VIEWPRO_ADMIN',
     emailVerifiedAt: null
   },
-  memberships: []
+  memberships: [],
+  hasOwnerAccess: false
 };
 
 const userSession: Session = {

@@ -827,6 +827,8 @@ function createAcceptUseCaseDeps(
 		passwordHasher as never,
 		refreshTokenRepository as never,
 		tokenService as never,
+		// #326: joining a team does not erase owner access this identity holds.
+		{ hasActiveOwnerAccess: vi.fn().mockResolvedValue(false) } as never,
 	);
 
 	return {
