@@ -156,6 +156,12 @@ export type CreateOwnerInvitationLinkResult =
         token: string;
         expiresAt: Date;
       };
+      /**
+       * Read from the engagement this invitation was just recorded against, so
+       * the email names the same agency the acceptance surface will (#303,
+       * criterion 6). Not derived from a list of candidates.
+       */
+      agencyName: string;
     }
   | { status: "ownerNotFound" }
   | {
@@ -227,10 +233,22 @@ export type PropertyEngagementsRepository = {
     ownerEmail: string;
     ownerFirstName: string;
     ownerLastName: string;
+    /**
+     * Linking an owner who has no account yet creates their invitation, so this
+     * path records the engagement for the same reason the explicit
+     * link-generation one does (#303).
+     */
+    propertyEngagementId: string;
   }): Promise<LinkPropertyOwnerResult>;
   createOwnerInvitationLink(input: {
     propertyAssetId: string;
     ownerId: string;
+    /**
+     * Recorded on the invitation so the agency that sent it is authoritative.
+     * A property may carry engagements under more than one tenant, so deriving
+     * it afterwards from a list would name the wrong agency (#303).
+     */
+    propertyEngagementId: string;
   }): Promise<CreateOwnerInvitationLinkResult>;
   revokeOwnerInvitationLink(input: {
     propertyAssetId: string;

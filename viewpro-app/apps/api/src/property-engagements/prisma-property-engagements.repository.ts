@@ -436,6 +436,7 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
     ownerEmail: string
     ownerFirstName: string
     ownerLastName: string
+    propertyEngagementId: string
   }): Promise<LinkPropertyOwnerResult> {
     return this.prisma.$transaction(async (tx) => {
       const activePrimaryOwners = await tx.propertyAssetOwner.count({
@@ -480,6 +481,7 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
         await tx.ownerInvitation.create({
           data: {
             propertyAssetOwnerId: owner.id,
+            propertyEngagementId: input.propertyEngagementId,
             email: input.ownerEmail,
             tokenHash,
             expiresAt,
@@ -494,6 +496,7 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
   createOwnerInvitationLink(input: {
     propertyAssetId: string
     ownerId: string
+    propertyEngagementId: string
   }): Promise<CreateOwnerInvitationLinkResult> {
     return this.prisma.$transaction(async (tx) => {
       const owner = await tx.propertyAssetOwner.findFirst({
@@ -533,9 +536,19 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
         },
       })
 
+      const engagement = await tx.propertyEngagement.findUnique({
+        where: { id: input.propertyEngagementId },
+        select: { tenant: { select: { name: true } } },
+      })
+
+      if (!engagement) {
+        return { status: 'ownerNotFound' }
+      }
+
       const invitation = await tx.ownerInvitation.create({
         data: {
           propertyAssetOwnerId: owner.id,
+          propertyEngagementId: input.propertyEngagementId,
           email: owner.ownerEmail,
           tokenHash,
           expiresAt,
@@ -554,6 +567,7 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
           ...invitation,
           token,
         },
+        agencyName: engagement.tenant.name,
       }
     })
   }

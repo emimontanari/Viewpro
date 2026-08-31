@@ -61,6 +61,7 @@ export class CreateOwnerInvitationLinkUseCase {
       await this.propertyEngagementsRepository.createOwnerInvitationLink({
         propertyAssetId: engagement.propertyAssetId,
         ownerId,
+        propertyEngagementId: engagement.id,
       });
 
     if (result.status === "ownerNotFound") {
@@ -84,6 +85,7 @@ export class CreateOwnerInvitationLinkUseCase {
         to: result.invitation.email,
         invitationUrl,
         expiresAt: result.invitation.expiresAt,
+        agencyName: result.agencyName,
       });
     } catch (error) {
       this.logger.error(

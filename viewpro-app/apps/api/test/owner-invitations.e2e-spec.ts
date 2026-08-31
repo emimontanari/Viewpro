@@ -61,7 +61,7 @@ describe("Owner invitations (e2e)", () => {
 	});
 
 	it("returns safe metadata for a pending owner invitation token", async () => {
-		const { invitation, ownerLink, engagement } =
+		const { invitation, ownerLink, engagement, manager } =
 			await createPendingInvitation(rawToken);
 
 		const response = await request(app.getHttpServer())
@@ -75,6 +75,9 @@ describe("Owner invitations (e2e)", () => {
 			ownerFirstName: "Invited",
 			ownerLastName: "Owner",
 			propertyAssetOwnerId: ownerLink.id,
+			// #303 criterion 1: the owner can tell which agency invited them. Read
+			// from the engagement the invitation records, not chosen from a list.
+			agencyName: manager.tenantName,
 			property: {
 				id: engagement.body.property.id,
 				title: "Invitation property",
@@ -540,6 +543,7 @@ describe("Owner invitations (e2e)", () => {
 			agent,
 			userId: response.body.user.id as string,
 			tenantId: response.body.memberships[0].tenant.id as string,
+			tenantName: response.body.memberships[0].tenant.name as string,
 		};
 	}
 

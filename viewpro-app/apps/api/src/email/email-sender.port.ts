@@ -15,6 +15,12 @@ export type SendOwnerInvitationInput = {
   to: string
   invitationUrl: string
   expiresAt: Date | string
+  /**
+   * The agency that sent the invitation, when the invitation records which
+   * engagement it came from. Optional because invitations created before that
+   * was captured have no authoritative answer (#303).
+   */
+  agencyName?: string | null
 }
 
 export type SendPasswordResetInput = {

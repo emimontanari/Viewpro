@@ -18,6 +18,13 @@ const ownerInvitationSelect = {
 	expiresAt: true,
 	acceptedAt: true,
 	revokedAt: true,
+	// Only the agency's name: the acceptance surface identifies who invited you,
+	// it does not hand over the tenant record (#303, criterion 6).
+	propertyEngagement: {
+		select: {
+			tenant: { select: { name: true } },
+		},
+	},
 	propertyAssetOwner: {
 		select: {
 			id: true,

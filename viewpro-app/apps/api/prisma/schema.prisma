@@ -179,38 +179,38 @@ enum AnalyticsEventName {
 }
 
 model User {
-  id              String             @id @default(uuid())
-  email           String             @unique
+  id              String     @id @default(uuid())
+  email           String     @unique
   passwordHash    String
   firstName       String
   lastName        String?
   whatsappPhone   String?
-  status          UserStatus         @default(ACTIVE)
-  globalRole      GlobalRole         @default(USER)
+  status          UserStatus @default(ACTIVE)
+  globalRole      GlobalRole @default(USER)
   emailVerifiedAt DateTime?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
-  memberships              TenantMembership[]
-  refreshTokens            RefreshToken[]
-  passwordResetTokens      PasswordResetToken[]
-  emailVerificationTokens  EmailVerificationToken[]
+  memberships             TenantMembership[]
+  refreshTokens           RefreshToken[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 
   createdPropertyAssets        PropertyAsset[]
   createdPropertyEngagements   PropertyEngagement[]
-  archivedPropertyEngagements  PropertyEngagement[] @relation("PropertyEngagementArchivedBy")
-  assignedPropertyEngagements  PropertyAgent[]      @relation("PropertyAgentUser")
-  propertyAgentAssignments    PropertyAgent[]      @relation("PropertyAgentAssignedBy")
-  movements                   Movement[]
-  ownedPropertyAssets         PropertyAssetOwner[]
-  requestedDocumentRequests   DocumentRequest[]  @relation("DocumentRequestRequester")
-  ownedDocumentRequests       DocumentRequest[]  @relation("DocumentRequestOwner")
-  reviewedDocumentRequests    DocumentRequest[]  @relation("DocumentRequestReviewer")
-  uploadedDocumentVersions    DocumentVersion[]
-  uploadedPropertyImages      PropertyAssetImage[]
-  sentTeamInvitations              TeamInvitation[]
-  notifications                    Notification[]
-  createdMovementOutcomeLabels     TenantMovementOutcomeLabel[]
+  archivedPropertyEngagements  PropertyEngagement[]         @relation("PropertyEngagementArchivedBy")
+  assignedPropertyEngagements  PropertyAgent[]              @relation("PropertyAgentUser")
+  propertyAgentAssignments     PropertyAgent[]              @relation("PropertyAgentAssignedBy")
+  movements                    Movement[]
+  ownedPropertyAssets          PropertyAssetOwner[]
+  requestedDocumentRequests    DocumentRequest[]            @relation("DocumentRequestRequester")
+  ownedDocumentRequests        DocumentRequest[]            @relation("DocumentRequestOwner")
+  reviewedDocumentRequests     DocumentRequest[]            @relation("DocumentRequestReviewer")
+  uploadedDocumentVersions     DocumentVersion[]
+  uploadedPropertyImages       PropertyAssetImage[]
+  sentTeamInvitations          TeamInvitation[]
+  notifications                Notification[]
+  createdMovementOutcomeLabels TenantMovementOutcomeLabel[]
 
   statusChangeRequestsRequested StatusChangeRequest[] @relation("StatusChangeRequestRequestedBy")
   statusChangeRequestsResolved  StatusChangeRequest[] @relation("StatusChangeRequestResolvedBy")
@@ -233,12 +233,12 @@ model Tenant {
 
   memberships TenantMembership[]
 
-  propertyEngagements  PropertyEngagement[]
-  propertyAgents       PropertyAgent[]
-  movements            Movement[]
-  documentRequests     DocumentRequest[]
-  teamInvitations      TeamInvitation[]
-  notifications        Notification[]
+  propertyEngagements   PropertyEngagement[]
+  propertyAgents        PropertyAgent[]
+  movements             Movement[]
+  documentRequests      DocumentRequest[]
+  teamInvitations       TeamInvitation[]
+  notifications         Notification[]
   movementOutcomeLabels TenantMovementOutcomeLabel[]
   statusChangeRequests  StatusChangeRequest[]
 
@@ -333,9 +333,9 @@ model PropertyAsset {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  createdBy   User                 @relation(fields: [createdByUserId], references: [id])
-  engagements PropertyEngagement[]
-  owners      PropertyAssetOwner[]
+  createdBy     User                 @relation(fields: [createdByUserId], references: [id])
+  engagements   PropertyEngagement[]
+  owners        PropertyAssetOwner[]
   images        PropertyAssetImage[]
   notifications Notification[]
 
@@ -356,8 +356,8 @@ model PropertyAssetOwner {
   createdAt       DateTime                       @default(now())
   updatedAt       DateTime                       @updatedAt
 
-  propertyAsset    PropertyAsset      @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
-  user             User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyAsset    PropertyAsset     @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
   documentRequests DocumentRequest[]
   invitations      OwnerInvitation[]
 
@@ -371,6 +371,14 @@ model PropertyAssetOwner {
 model OwnerInvitation {
   id                   String                @id @default(uuid())
   propertyAssetOwnerId String
+  /// The engagement this invitation was created from, captured at creation so
+  /// the agency that sent it is authoritative rather than derived. A property
+  /// may carry engagements under more than one tenant — PropertyEngagement has
+  /// no unique on propertyAssetId — so choosing one afterwards from a list
+  /// would name the wrong agency the day that happens.
+  /// Nullable because invitations created before this column existed have no
+  /// authoritative answer; those keep the generic copy instead of a guess.
+  propertyEngagementId String?
   email                String
   tokenHash            String                @unique
   status               OwnerInvitationStatus @default(PENDING)
@@ -380,11 +388,15 @@ model OwnerInvitation {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 
-  propertyAssetOwner PropertyAssetOwner @relation(fields: [propertyAssetOwnerId], references: [id], onDelete: Cascade)
+  propertyAssetOwner PropertyAssetOwner  @relation(fields: [propertyAssetOwnerId], references: [id], onDelete: Cascade)
+  // SetNull, not Cascade: an archived engagement must not delete the record
+  // that an owner was invited. The invitation degrades to the generic copy.
+  propertyEngagement PropertyEngagement? @relation(fields: [propertyEngagementId], references: [id], onDelete: SetNull)
 
   @@index([propertyAssetOwnerId, status])
   @@index([email, status])
   @@index([expiresAt])
+  @@index([propertyEngagementId])
   @@map("owner_invitations")
 }
 
@@ -414,8 +426,8 @@ model TeamInvitation {
 model TenantMovementOutcomeLabel {
   id              String    @id @default(uuid())
   tenantId        String
-  label           String    // trimmed, max 40 chars (app-level), unique per tenant via partial index
-  color           String?   // CSS hex #RRGGBB, validated at application layer
+  label           String // trimmed, max 40 chars (app-level), unique per tenant via partial index
+  color           String? // CSS hex #RRGGBB, validated at application layer
   createdByUserId String
   createdAt       DateTime  @default(now())
   deletedAt       DateTime?
@@ -433,16 +445,16 @@ model TenantMovementOutcomeLabel {
 }
 
 model PropertyAssetImage {
-  id                 String   @id @default(uuid())
-  propertyAssetId    String
-  uploadedByUserId   String
-  storageKey         String   @unique
-  originalFilename   String
-  mimeType           String
-  sizeBytes          Int
-  isPrimary          Boolean  @default(false)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id               String   @id @default(uuid())
+  propertyAssetId  String
+  uploadedByUserId String
+  storageKey       String   @unique
+  originalFilename String
+  mimeType         String
+  sizeBytes        Int
+  isPrimary        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   propertyAsset PropertyAsset @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
   uploadedBy    User          @relation(fields: [uploadedByUserId], references: [id])
@@ -467,10 +479,11 @@ model PropertyEngagement {
   createdAt           DateTime                 @default(now())
   updatedAt           DateTime                 @updatedAt
 
-  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  propertyAsset    PropertyAsset     @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
-  createdBy        User              @relation(fields: [createdByUserId], references: [id])
-  archivedBy       User?             @relation("PropertyEngagementArchivedBy", fields: [archivedByUserId], references: [id])
+  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyAsset        PropertyAsset         @relation(fields: [propertyAssetId], references: [id], onDelete: Cascade)
+  ownerInvitations     OwnerInvitation[]
+  createdBy            User                  @relation(fields: [createdByUserId], references: [id])
+  archivedBy           User?                 @relation("PropertyEngagementArchivedBy", fields: [archivedByUserId], references: [id])
   agents               PropertyAgent[]
   movements            Movement[]
   documentRequests     DocumentRequest[]
@@ -522,11 +535,11 @@ model Movement {
   customOutcomeLabelId String?
   createdAt            DateTime                  @default(now())
 
-  tenant              Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  propertyEngagement  PropertyEngagement          @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)
-  createdBy           User                        @relation(fields: [createdByUserId], references: [id])
-  customOutcomeLabel  TenantMovementOutcomeLabel? @relation("MovementCustomOutcomeLabel", fields: [customOutcomeLabelId], references: [id], onDelete: Restrict)
-  notifications       Notification[]
+  tenant             Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyEngagement PropertyEngagement          @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)
+  createdBy          User                        @relation(fields: [createdByUserId], references: [id])
+  customOutcomeLabel TenantMovementOutcomeLabel? @relation("MovementCustomOutcomeLabel", fields: [customOutcomeLabelId], references: [id], onDelete: Restrict)
+  notifications      Notification[]
 
   @@index([tenantId, propertyEngagementId, createdAt])
   @@index([createdByUserId])
@@ -550,13 +563,13 @@ model DocumentRequest {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 
-  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  propertyEngagement PropertyEngagement @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyEngagement PropertyEngagement  @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)
   propertyAssetOwner PropertyAssetOwner? @relation(fields: [propertyAssetOwnerId], references: [id], onDelete: SetNull)
-  ownerUser          User?              @relation("DocumentRequestOwner", fields: [ownerUserId], references: [id])
-  requestedByUser    User               @relation("DocumentRequestRequester", fields: [requestedByUserId], references: [id])
-  reviewedByUser     User?              @relation("DocumentRequestReviewer", fields: [reviewedByUserId], references: [id])
-  document           Document?          @relation("DocumentRequestDocument")
+  ownerUser          User?               @relation("DocumentRequestOwner", fields: [ownerUserId], references: [id])
+  requestedByUser    User                @relation("DocumentRequestRequester", fields: [requestedByUserId], references: [id])
+  reviewedByUser     User?               @relation("DocumentRequestReviewer", fields: [reviewedByUserId], references: [id])
+  document           Document?           @relation("DocumentRequestDocument")
   notifications      Notification[]
 
   @@index([tenantId, status, createdAt])
@@ -575,7 +588,7 @@ model Document {
   updatedAt         DateTime @updatedAt
 
   documentRequest DocumentRequest   @relation("DocumentRequestDocument", fields: [documentRequestId], references: [id], onDelete: Cascade)
-  currentVersion  DocumentVersion? @relation("CurrentDocumentVersion", fields: [currentVersionId], references: [id])
+  currentVersion  DocumentVersion?  @relation("CurrentDocumentVersion", fields: [currentVersionId], references: [id])
   versions        DocumentVersion[]
 
   @@map("documents")
@@ -671,7 +684,7 @@ model PlatformCommandLog {
 
 model PlatformOutboxEvent {
   id         String   @id @default(uuid())
-  seqNo      BigInt   @default(autoincrement()) @unique
+  seqNo      BigInt   @unique @default(autoincrement())
   eventType  String
   tenantId   String
   payload    Json
@@ -688,11 +701,11 @@ model StatusChangeRequest {
   requestedByUserId     String
   targetStatus          PropertyEngagementStatus
   currentStatusSnapshot PropertyEngagementStatus
-  requestNote           String?                   // app-validated max 1000
+  requestNote           String? // app-validated max 1000
   status                StatusChangeRequestStatus @default(PENDING)
   resolvedByUserId      String?
   resolvedAt            DateTime?
-  resolutionComment     String?                   // app-validated max 1000
+  resolutionComment     String? // app-validated max 1000
   createdAt             DateTime                  @default(now())
   updatedAt             DateTime                  @updatedAt
 

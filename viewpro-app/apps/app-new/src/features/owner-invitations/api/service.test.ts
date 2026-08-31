@@ -9,6 +9,7 @@ const invitation: OwnerInvitationResponse = {
   emailRegistered: false,
   ownerFirstName: 'Ana',
   ownerLastName: 'García',
+  agencyName: 'Inmobiliaria Sur',
   property: {
     id: 'property-1',
     title: 'Casa Palermo',
