@@ -30,7 +30,7 @@ The chain strategy label above is overridden by the repository authority: `devel
 
 ### P1 — Deliver the approved proposal
 
-- [ ] Deliver the existing approved proposal as a planning-only PR before the spec PR. <!-- sdd-owner: implementation -->
+- [x] Deliver the existing approved proposal as a planning-only PR before the spec PR. <!-- sdd-owner: implementation -->
 - Objective: publish `openspec/changes/in-app-feedback/proposal.md` unchanged as the intent and non-goal boundary.
 - Dependencies: none; base the worktree on refreshed `origin/develop`.
 - Allowed paths: `openspec/changes/in-app-feedback/proposal.md` only; no source, tests, spec, design, config, or planning-evidence edits.
@@ -41,7 +41,7 @@ The chain strategy label above is overridden by the repository authority: `devel
 
 ### P2 — Deliver the approved specification
 
-- [ ] Deliver the existing approved specification as a second planning-only PR after P1 merges. <!-- sdd-owner: implementation -->
+- [x] Deliver the existing approved specification as a second planning-only PR after P1 merges. <!-- sdd-owner: implementation -->
 - Objective: publish `openspec/changes/in-app-feedback/specs/authenticated-feedback-submission/spec.md` as the testable capability contract.
 - Dependencies: P1 merged; refresh from `origin/develop` and target `develop`.
 - Allowed paths: `openspec/changes/in-app-feedback/specs/authenticated-feedback-submission/spec.md` only; do not edit proposal, design, tasks, source, tests, config, or planning evidence.
@@ -52,7 +52,7 @@ The chain strategy label above is overridden by the repository authority: `devel
 
 ### P3 — Deliver the approved design
 
-- [ ] Deliver the existing approved design as a third planning-only PR after P2 merges. <!-- sdd-owner: implementation -->
+- [x] Deliver the existing approved design as a third planning-only PR after P2 merges. <!-- sdd-owner: implementation -->
 - Objective: publish `openspec/changes/in-app-feedback/design.md` as the implementation boundary and slice plan.
 - Dependencies: P2 merged; refresh from `origin/develop`; target `develop`.
 - Allowed paths: `openspec/changes/in-app-feedback/design.md` only; no product, test, config, or planning-evidence edits.
@@ -63,7 +63,7 @@ The chain strategy label above is overridden by the repository authority: `devel
 
 ### P4 — Deliver this task plan
 
-- [ ] Deliver `openspec/changes/in-app-feedback/tasks.md` as the fourth and final planning PR before source apply. <!-- sdd-owner: implementation -->
+- [x] Deliver `openspec/changes/in-app-feedback/tasks.md` as the fourth and final planning PR before source apply. <!-- sdd-owner: implementation -->
 - Objective: make planning and behavior slices independently executable, reviewable, and revertible.
 - Dependencies: P3 merged; refresh from `origin/develop`; target `develop`.
 - Allowed paths: `openspec/changes/in-app-feedback/tasks.md` only; do not edit proposal, spec, design, source, tests, config, or planning evidence.
@@ -76,7 +76,7 @@ The chain strategy label above is overridden by the repository authority: `devel
 
 ### S1 — Atomic tenant-pair quota foundation
 
-- [ ] Implement and verify atomic five-per-ten-minute tenant-pair reservation with PostgreSQL evidence. <!-- sdd-owner: implementation -->
+- [x] Implement and verify atomic five-per-ten-minute tenant-pair reservation with PostgreSQL evidence. <!-- sdd-owner: implementation -->
 - Objective: add `FeedbackType`, `FeedbackReport`, `FeedbackSubmissionAttempt`, visible migration/indexes, registry entries, repository token, and advisory-lock reservation; no HTTP exposure yet.
 - Dependencies: P1–P4 merged; fresh worktree from refreshed `origin/develop`.
 - Allowed paths: `apps/api/prisma/schema.prisma`; new `apps/api/prisma/migrations/<timestamp>_add_feedback/migration.sql`; `apps/api/src/database/tenant-isolation.extension.ts`; new `apps/api/src/feedback/feedback.repository.ts`, `prisma-feedback.repository.ts`, `feedback-rate-limit.guard.ts`; explicit focused guard unit spec `apps/api/src/feedback/__tests__/feedback-rate-limit.guard.spec.ts`; focused tests under `apps/api/src/feedback/__tests__/` and `apps/api/test/feedback-rate-limit.e2e-spec.ts`; `openspec/changes/in-app-feedback/apply-progress.md` evidence only.
@@ -91,7 +91,7 @@ The chain strategy label above is overridden by the repository authority: `devel
 
 ### S2 — Authenticated durable submission boundary
 
-- [ ] Implement and verify authenticated tenant-member validation and durable report creation. <!-- sdd-owner: implementation -->
+- [x] Implement and verify authenticated tenant-member validation and durable report creation. <!-- sdd-owner: implementation -->
 - Objective: add DTO, server-derived controller boundary, membership/rate-guard wiring, report repository create, use case, module/import, and API tests.
 - Dependencies: S1 merged to `develop`; refresh the next worktree from refreshed `origin/develop`.
 - Allowed paths: new `apps/api/src/feedback/dto/submit-feedback.dto.ts`, `feedback.controller.ts`, `feedback.module.ts`, `use-cases/submit-feedback.use-case.ts`; S1 feedback repository/guard files only as needed; `apps/api/src/app.module.ts`; focused `apps/api/src/feedback/__tests__/` and `apps/api/test/feedback.e2e-spec.ts`; `apply-progress.md` evidence.
@@ -104,7 +104,7 @@ The chain strategy label above is overridden by the repository authority: `devel
 
 ### S3 — Durable-before-email notification and production configuration
 
-- [ ] Implement and verify the dedicated sanitized notifier and fail-safe environment selection. <!-- sdd-owner: implementation -->
+- [x] Implement and verify the dedicated sanitized notifier and fail-safe environment selection. <!-- sdd-owner: implementation -->
 - Objective: add approved-field text/escaped HTML template, narrow notifier port/adapters, production recipient validation, deterministic non-production no-op, and post-create notification handling.
 - Dependencies: S2 merged; refresh from `origin/develop` and target `develop`.
 - Allowed paths: new `apps/api/src/feedback/notification/feedback-notifier.port.ts`, `feedback-notifier.adapters.ts`, `feedback-email.template.ts` and their tests; `apps/api/src/feedback/use-cases/submit-feedback.use-case.ts`, `feedback.module.ts`; `apps/api/src/config/env.schema.ts`, `app.config.ts`, `.env.example`; config tests; `apply-progress.md` evidence.
@@ -117,7 +117,7 @@ The chain strategy label above is overridden by the repository authority: `devel
 
 ### S4 — Provenance-preserving BFF submission
 
-- [ ] Implement and verify pathname derivation and browser-only canonical request-ID propagation. <!-- sdd-owner: implementation -->
+- [x] Implement and verify pathname derivation and browser-only canonical request-ID propagation. <!-- sdd-owner: implementation -->
 - Objective: add the BFF route and typed feedback service; forward only canonical backend IDs; keep private latest-ID memory SSR-safe and clear-only.
 - Dependencies: S3 merged; refresh from `origin/develop`.
 - Allowed paths: new `apps/app-new/src/app/api/feedback/route.ts` and test; `apps/app-new/src/lib/bff-api.ts` and test; `apps/app-new/src/lib/bff-client.ts` and existing BFF tests; new `apps/app-new/src/features/feedback/api/types.ts`, `service.ts`, `service.test.ts`; `apply-progress.md` evidence.
@@ -130,7 +130,7 @@ The chain strategy label above is overridden by the repository authority: `devel
 
 ### S5 — Authenticated floating feedback flow
 
-- [ ] Implement and verify the complete floating widget with safe success, retry, rate-limit, and accessibility states. <!-- sdd-owner: implementation -->
+- [x] Implement and verify the complete floating widget with safe success, retry, rate-limit, and accessibility states. <!-- sdd-owner: implementation -->
 - Objective: add client-only `FeedbackWidget`, mount it as a dashboard-layout sibling, preserve retry content, use registry icons, and branch only on status/errorCode.
 - Dependencies: S4 merged; refresh from `origin/develop`.
 - Allowed paths: new `apps/app-new/src/features/feedback/components/feedback-widget.tsx` and test; `apps/app-new/src/app/dashboard/layout.tsx` and optional focused layout test; no icon-file edit; `apply-progress.md` evidence.
@@ -158,4 +158,4 @@ The chain strategy label above is overridden by the repository authority: `devel
 ## Parent-owned post-apply lifecycle gates
 
 - [ ] Start or reuse the bounded RDD review only after apply, using native `status --next-transition`; keep it separate from SDD verification. <!-- sdd-owner: parent -->
-- [ ] After each accepted unit, refresh `origin/develop`, create the next worktree/branch from it, and handle the ordinary commit/PR lifecycle outside SDD apply; every PR targets `develop`. <!-- sdd-owner: parent -->
+- [x] After each accepted unit, refresh `origin/develop`, create the next worktree/branch from it, and handle the ordinary commit/PR lifecycle outside SDD apply; every PR targets `develop`. <!-- sdd-owner: parent -->
