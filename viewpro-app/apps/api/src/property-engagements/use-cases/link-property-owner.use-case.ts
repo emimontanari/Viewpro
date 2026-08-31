@@ -57,6 +57,7 @@ export class LinkPropertyOwnerUseCase {
       ownerEmail,
       ownerFirstName,
       ownerLastName,
+      propertyEngagementId: engagement.id,
     })
 
     if (result.status === 'alreadyLinked') {

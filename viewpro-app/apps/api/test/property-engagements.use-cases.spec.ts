@@ -875,6 +875,9 @@ describe("Property engagement use cases", () => {
 			ownerEmail: "owner@example.com",
 			ownerFirstName: "Staff",
 			ownerLastName: "Snapshot",
+			// The engagement is recorded on the invitation this creates, so the
+			// agency that sent it is authoritative rather than derived (#303).
+			propertyEngagementId: "engagement-1",
 		});
 	});
 
@@ -925,6 +928,7 @@ describe("Property engagement use cases", () => {
 			ownerEmail: "missing@example.com",
 			ownerFirstName: "Missing",
 			ownerLastName: "Owner",
+			propertyEngagementId: "engagement-1",
 		});
 	});
 

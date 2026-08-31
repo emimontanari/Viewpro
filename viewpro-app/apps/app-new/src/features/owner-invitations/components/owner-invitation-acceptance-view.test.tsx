@@ -37,6 +37,7 @@ const invitation: OwnerInvitationResponse = {
   emailRegistered: false,
   ownerFirstName: 'Ana',
   ownerLastName: 'García',
+  agencyName: 'Inmobiliaria Sur',
   property: {
     id: 'property-1',
     title: 'Casa Palermo',
@@ -278,3 +279,42 @@ describe('OwnerInvitationAcceptanceView', () => {
 function apiErrorFrom(status: number, body: unknown): ApiError {
   return toApiError({ status } as Response, body);
 }
+
+describe('OwnerInvitationAcceptanceView agency identity', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getOwnerInvitationMock.mockResolvedValue(invitation);
+    getSessionWithRefreshMock.mockRejectedValue(apiErrorFrom(401, {}));
+    acceptOwnerInvitationMock.mockResolvedValue(acceptedSession);
+  });
+
+  it('names the agency that invited the owner', async () => {
+    // #303 criterion 1. Without it the owner sees a property title and an email
+    // field and has no way to tell who is asking, or whether it is genuine.
+    render(<OwnerInvitationAcceptanceView token='token-1' />);
+
+    expect(await screen.findByText(/Inmobiliaria Sur/)).toBeInTheDocument();
+  });
+
+  it('says nothing about the agency when the invitation does not know it', async () => {
+    // Invitations created before the engagement was recorded have no
+    // authoritative agency. A blank label, or the word "null", is worse than
+    // showing nothing at all.
+    getOwnerInvitationMock.mockResolvedValue({ ...invitation, agencyName: null });
+
+    render(<OwnerInvitationAcceptanceView token='token-1' />);
+
+    expect(await screen.findByText('Casa Palermo')).toBeInTheDocument();
+    expect(screen.queryByText(/te invitó/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('null')).not.toBeInTheDocument();
+  });
+
+  it('still does not print the street address', async () => {
+    // Re-pinned here because this change adds a field to the same surface: the
+    // holder of the link is not necessarily the invited owner until they accept.
+    render(<OwnerInvitationAcceptanceView token='token-1' />);
+
+    await screen.findByText('Casa Palermo');
+    expect(screen.queryByText(/Av\. Col/i)).not.toBeInTheDocument();
+  });
+});

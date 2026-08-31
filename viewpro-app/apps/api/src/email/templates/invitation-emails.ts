@@ -91,12 +91,30 @@ export function renderTeamInvitationEmail(input: {
   return { subject, html, text }
 }
 
-export function renderOwnerInvitationEmail(input: { invitationUrl: string }): RenderedEmail {
-  const subject = `Te invitaron a seguir tu propiedad en ${BRAND}`
+export function renderOwnerInvitationEmail(input: {
+  invitationUrl: string
+  /**
+   * The agency that sent the invitation, when the invitation records which
+   * engagement it came from. Absent for invitations created before that was
+   * captured: those keep the generic copy rather than naming an agency derived
+   * from a list, which would be a guess (#303).
+   */
+  agencyName?: string | null
+}): RenderedEmail {
+  const agency = input.agencyName?.trim() || null
+
+  const subject = agency
+    ? `${agency} te invitó a seguir tu propiedad en ${BRAND}`
+    : `Te invitaron a seguir tu propiedad en ${BRAND}`
   const heading = `Seguí tu propiedad en ${BRAND}`
+  const invitedBy = agency
+    ? `${agency} te invitó a seguir el estado de tu propiedad en ${BRAND}.`
+    : `Fuiste invitado a seguir el estado de tu propiedad en ${BRAND}.`
 
   const paragraphs = [
-    `Fuiste invitado a seguir el estado de tu propiedad en ${BRAND}.`,
+    // layout() interpolates paragraphs raw, so this escapes here — an agency
+    // name is operator-supplied text.
+    escapeHtml(invitedBy),
     'Aceptá la invitación para ver las novedades de tu propiedad.',
   ]
 
@@ -110,7 +128,7 @@ export function renderOwnerInvitationEmail(input: { invitationUrl: string }): Re
   const text = [
     `${BRAND}`,
     '',
-    `Fuiste invitado a seguir el estado de tu propiedad en ${BRAND}.`,
+    invitedBy,
     'Aceptá la invitación para ver las novedades de tu propiedad.',
     '',
     `Ver mi propiedad: ${input.invitationUrl}`,

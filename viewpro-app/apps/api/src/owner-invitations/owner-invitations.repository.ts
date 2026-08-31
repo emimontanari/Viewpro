@@ -17,6 +17,12 @@ export type OwnerInvitationDetails = {
 	expiresAt: Date;
 	acceptedAt: Date | null;
 	revokedAt: Date | null;
+	/**
+	 * The engagement this invitation was created from. Null for invitations
+	 * created before that was recorded, and for one whose engagement was
+	 * archived — both keep the generic copy rather than a derived guess (#303).
+	 */
+	propertyEngagement: { tenant: { name: string } } | null;
 	propertyAssetOwner: {
 		id: string;
 		ownerEmail: string;

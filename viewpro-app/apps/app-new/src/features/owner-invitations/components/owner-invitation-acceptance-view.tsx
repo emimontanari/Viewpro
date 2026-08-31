@@ -293,6 +293,12 @@ function InvitationSummary({ invitation }: { invitation: OwnerInvitationResponse
       <p className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>
         Propiedad invitada
       </p>
+      {invitation.agencyName ? (
+        <p className='mt-2 text-sm'>
+          <span className='font-medium'>{invitation.agencyName}</span> te invitó a seguir esta
+          propiedad.
+        </p>
+      ) : null}
       <h2 className='mt-2 text-lg font-semibold'>{invitation.property.title}</h2>
       <p className='text-muted-foreground text-sm'>{formatPropertyLocality(invitation)}</p>
       <div className='mt-4 space-y-1'>

@@ -47,7 +47,10 @@ export class ResendEmailSender implements EmailSender {
   }
 
   async sendOwnerInvitation(input: SendOwnerInvitationInput): Promise<void> {
-    const email = renderOwnerInvitationEmail({ invitationUrl: input.invitationUrl })
+    const email = renderOwnerInvitationEmail({
+      invitationUrl: input.invitationUrl,
+      agencyName: input.agencyName,
+    })
     await this.send(input.to, email)
   }
 
