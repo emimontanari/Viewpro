@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { JwtService } from '@nestjs/jwt'
-import { ChangeFeedClient } from '../change-feed.client'
+import { ChangeFeedClient, DocumentReadUrlFetchError } from '../change-feed.client'
 
 /**
  * T-15 — RED: ChangeFeedClient unit tests.
@@ -627,4 +627,66 @@ describe('ChangeFeedClient', () => {
 
     await expect(client.fetchDocumentReadUrl('tenant-1', 'version-1')).rejects.toThrow('Document-read-url request to InmoView')
   })
+
+  describe('fetchDocumentReadUrl response shape', () => {
+    const valid = {
+      url: 'https://storage.test/signed',
+      expiresInSeconds: 300,
+      originalFilename: 'escritura.pdf',
+      mimeType: 'application/pdf',
+    }
+
+    const buildClient = (body: unknown) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status: 200 })),
+      )
+      return new ChangeFeedClient({
+        inmoviewApiInternalUrl: INMOVIEW_API_INTERNAL_URL,
+        platformControlSecret: PLATFORM_CONTROL_SECRET,
+      })
+    }
+
+    it('returns the response when the wire shape is what the contract says', async () => {
+      const client = buildClient(valid)
+
+      await expect(client.fetchDocumentReadUrl('tenant-1', 'version-1')).resolves.toEqual(valid)
+    })
+
+    it.each([
+      ['originalFilename missing', { ...valid, originalFilename: undefined }],
+      ['originalFilename not a string', { ...valid, originalFilename: 42 }],
+      ['url missing', { ...valid, url: undefined }],
+      ['expiresInSeconds not a number', { ...valid, expiresInSeconds: '300' }],
+      ['mimeType missing', { ...valid, mimeType: undefined }],
+      ['not an object at all', 'a string'],
+      ['null', null],
+    ])('refuses a response whose %s', async (_label, body) => {
+      // The caller writes result.originalFilename into the TENANT_DOCUMENT_VIEWED
+      // audit row. Parsing with `as Promise<T>` let a wire drift put
+      // `filename: undefined` in there with no error anywhere — an audit entry
+      // that says nothing, which reads as a record rather than as a gap.
+      const client = buildClient(body)
+
+      await expect(client.fetchDocumentReadUrl('tenant-1', 'version-1')).rejects.toBeInstanceOf(
+        DocumentReadUrlFetchError,
+      )
+    })
+
+    it('fails the same way an upstream error does, so no URL is minted', async () => {
+      // Same typed error as a non-2xx: the caller maps it to 502 and writes no
+      // audit row. Failing closed is the only safe direction here — a signed URL
+      // handed out without a usable audit trail is the thing this endpoint
+      // exists to prevent.
+      const client = buildClient({ ...valid, originalFilename: null })
+
+      const error = await client
+        .fetchDocumentReadUrl('tenant-1', 'version-1')
+        .catch((thrown: unknown) => thrown)
+
+      expect(error).toBeInstanceOf(DocumentReadUrlFetchError)
+      expect((error as Error).message).not.toContain('escritura.pdf')
+    })
+  })
 })
+

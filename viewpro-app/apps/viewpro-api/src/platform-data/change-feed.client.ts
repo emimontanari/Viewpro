@@ -49,6 +49,32 @@ export type PlatformDocumentReadUrlResponse = {
   mimeType: string
 }
 
+/**
+ * Runtime check for the D6 wire contract.
+ *
+ * Every field is required because every one is used: the URL is handed to the
+ * operator, the expiry drives the UI, and the filename and mime type are what
+ * make the audit row readable afterwards.
+ */
+function isPlatformDocumentReadUrlResponse(
+  body: unknown,
+): body is PlatformDocumentReadUrlResponse {
+  if (!body || typeof body !== 'object') {
+    return false
+  }
+
+  const candidate = body as Record<string, unknown>
+
+  return (
+    typeof candidate.url === 'string' &&
+    candidate.url.length > 0 &&
+    typeof candidate.expiresInSeconds === 'number' &&
+    Number.isFinite(candidate.expiresInSeconds) &&
+    typeof candidate.originalFilename === 'string' &&
+    typeof candidate.mimeType === 'string'
+  )
+}
+
 // Request timeout for the operator document-read hop. Bounds a hung InmoView so
 // the operator request fails over to 502 (URL withheld) instead of hanging.
 const DOCUMENT_READ_URL_FETCH_TIMEOUT_MS = 10_000
@@ -373,7 +399,24 @@ export class ChangeFeedClient {
       )
     }
 
-    return response.json() as Promise<PlatformDocumentReadUrlResponse>
+    const body: unknown = await response.json().catch(() => undefined)
+
+    // Validated rather than asserted. `as Promise<T>` let a wire drift on the
+    // loose D6 contract put `filename: undefined` into the TENANT_DOCUMENT_VIEWED
+    // audit row with no error anywhere — an entry that says nothing, which reads
+    // as a record rather than as a gap.
+    //
+    // Failing here throws the same typed error a non-2xx does, so the caller maps
+    // it to a 502 and mints no URL and writes no audit row. That is the only safe
+    // direction: a signed URL handed out without a usable trail is exactly what
+    // this endpoint exists to prevent.
+    if (!isPlatformDocumentReadUrlResponse(body)) {
+      throw new DocumentReadUrlFetchError(
+        'Document-read-url endpoint returned a response that does not match the D6 contract',
+      )
+    }
+
+    return body
   }
 
   private trimTrailingSlash(url: string): string {
