@@ -93,9 +93,10 @@ async function restoreCandidateSchema(sql: string) {
 		try {
 			await restoreExpectedCandidateSchema();
 		} catch (expectedSchemaRestoreFailure) {
-			throw new AggregateError(
+			throw new AggregateError( // oxlint-disable-line preserve-caught-error
 				[candidateReplayFailure, expectedSchemaRestoreFailure],
 				"Candidate migration replay and independent schema restoration both failed",
+				{ cause: candidateReplayFailure },
 			);
 		}
 		throw candidateReplayFailure;
