@@ -126,7 +126,7 @@ no del aviso) se obtiene:
 contactName:  "SORIANO PROPIEDADES"
 phone:        "+5493513696205"
 whatsApp:     "+5493516338594"        ← distinto del teléfono
-agencyEmail:  "mdutto@sorianopropiedades.com.ar"
+agencyEmail:  "<empleado>@sorianopropiedades.com.ar"
 ```
 
 Dos cosas que definen cómo comparar:
@@ -134,7 +134,7 @@ Dos cosas que definen cómo comparar:
 - **Teléfono y WhatsApp son números distintos.** Comparar contra uno solo hace
   fallar verificaciones legítimas.
 - **Comparar el dominio del mail, no el mail.** ZonaProp publica el de una
-  persona (`mdutto@`) y quien registra la cuenta puede ser otra de la misma
+  persona (`<empleado>@`) y quien registra la cuenta puede ser otra de la misma
   oficina. El dominio coincide igual.
 
 **Que no coincida no debe bloquear.** Una inmobiliaria que se registró con un
