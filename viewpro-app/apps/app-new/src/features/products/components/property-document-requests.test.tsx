@@ -36,8 +36,8 @@ vi.mock('./create-document-request-dialog', () => ({
     open,
     onSubmit
   }: {
-    open: boolean
-    onSubmit: (payload: { propertyAssetOwnerId: string; title: string }) => void
+    open: boolean;
+    onSubmit: (payload: { propertyAssetOwnerId: string; title: string }) => void;
   }) =>
     open ? (
       <button
@@ -85,9 +85,7 @@ vi.mock('nuqs', async () => {
       }
       if (key === 'documentos') {
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        const [value, setState] = React.useState(
-          mockDocumentosInitial ?? parser.defaultValue
-        );
+        const [value, setState] = React.useState(mockDocumentosInitial ?? parser.defaultValue);
         // Wrap the setter so tests can spy on documentos changes.
         const wrappedSet = (...args: Parameters<typeof setState>) => {
           mockSetDocumentFilter(...args);
@@ -176,7 +174,8 @@ describe('PropertyDocumentRequests', () => {
     );
     createProductDocumentReadUrlMock.mockResolvedValueOnce(readResponse);
 
-    renderPropertyDocumentRequests();
+    const { queryClient } = renderPropertyDocumentRequests();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     await user.click(await screen.findByRole('button', { name: 'Abrir documento' }));
 
@@ -184,6 +183,7 @@ describe('PropertyDocumentRequests', () => {
       expect(createProductDocumentReadUrlMock).toHaveBeenCalledWith('version-1');
     });
     expect(openSpy).toHaveBeenCalledWith(readResponse.readUrl.url, '_blank', 'noopener,noreferrer');
+    expect(invalidateSpy).not.toHaveBeenCalled();
     expect(screen.queryByText(readResponse.readUrl.url)).not.toBeInTheDocument();
   });
 
@@ -215,6 +215,79 @@ describe('PropertyDocumentRequests', () => {
     expect(openSpy).toHaveBeenCalledWith(readResponse.readUrl.url, '_blank', 'noopener,noreferrer');
   });
 
+  it('renders loading, error, and empty query states at the public boundary', async () => {
+    let resolveQuery!: (response: ProductDocumentRequestsResponse) => void;
+    getProductDocumentRequestsMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveQuery = resolve;
+      })
+    );
+
+    const { rerender } = renderPropertyDocumentRequests();
+    expect(screen.getByLabelText('Cargando documentos')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveQuery(documentRequestsResponse([]));
+    });
+    expect(
+      await screen.findByText('Todavía no hay solicitudes de documentos para esta propiedad.')
+    ).toBeInTheDocument();
+
+    getProductDocumentRequestsMock.mockRejectedValueOnce(new Error('document-query-failed'));
+    rerender(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <PropertyDocumentRequests
+          isArchived={false}
+          owners={[linkedOwner]}
+          productId='engagement-error'
+          tenantId={tenantId}
+        />
+      </QueryClientProvider>
+    );
+    expect(
+      await screen.findByText('No se pudieron cargar las solicitudes documentales.')
+    ).toBeInTheDocument();
+  });
+
+  it('creates a request with the dialog payload, closes the dialog, invalidates only its list, and confirms success', async () => {
+    const user = userEvent.setup();
+    const { queryClient } = renderPropertyDocumentRequests();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+    createProductDocumentRequestMock.mockResolvedValueOnce(documentRequest());
+
+    await user.click(await screen.findByRole('button', { name: 'Solicitar documento' }));
+    await user.click(screen.getByRole('button', { name: 'Stub Submit' }));
+
+    await waitFor(() => {
+      expect(createProductDocumentRequestMock).toHaveBeenCalledWith(productId, {
+        propertyAssetOwnerId: 'owner-link-1',
+        title: 'Escritura'
+      });
+    });
+    expect(invalidateSpy.mock.calls).toEqual([[{ queryKey: documentRequestsQueryKey }]]);
+    expect(toast.success).toHaveBeenCalledWith('Solicitud de documento creada');
+    expect(screen.queryByRole('button', { name: 'Stub Submit' })).not.toBeInTheDocument();
+  });
+
+  it.each<[string, PropertyLinkedOwner[], string]>([
+    ['no linked owners', [], 'Vinculá un propietario para solicitar documentación.'],
+    [
+      'only revoked owners',
+      [{ ...linkedOwner, accessStatus: 'REVOKED' }],
+      'Vinculá un propietario activo o invitado para solicitar documentación.'
+    ],
+    [
+      'an invited owner',
+      [{ ...linkedOwner, accessStatus: 'INVITED' }],
+      'Las solicitudes a propietarios invitados quedarán asociadas y podrán verlas cuando activen su acceso.'
+    ]
+  ])('shows the document eligibility hint for %s', async (_scenario, owners, hint) => {
+    renderPropertyDocumentRequests({ owners });
+    expect(await screen.findByText(hint)).toBeInTheDocument();
+  });
+
   it('approves a submitted request and refreshes the document request list', async () => {
     const user = userEvent.setup();
     const request = documentRequest({ status: 'SUBMITTED' });
@@ -228,7 +301,8 @@ describe('PropertyDocumentRequests', () => {
     await waitFor(() => {
       expect(approveProductDocumentRequestMock).toHaveBeenCalledWith('request-1');
     });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: documentRequestsQueryKey });
+    expect(invalidateSpy.mock.calls).toEqual([[{ queryKey: documentRequestsQueryKey }]]);
+    expect(toast.success).toHaveBeenCalledWith('Documento aprobado');
   });
 
   it('requires a non-empty rejection reason before rejecting a request', async () => {
@@ -270,7 +344,42 @@ describe('PropertyDocumentRequests', () => {
         reason: 'El archivo no corresponde al documento solicitado.'
       });
     });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: documentRequestsQueryKey });
+    expect(invalidateSpy.mock.calls).toEqual([[{ queryKey: documentRequestsQueryKey }]]);
+    expect(toast.success).toHaveBeenCalledWith('Documento rechazado');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('shows failure feedback and retains the rejection dialog for recovery', async () => {
+    const user = userEvent.setup();
+    getProductDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([documentRequest({ status: 'SUBMITTED' })])
+    );
+    rejectProductDocumentRequestMock.mockRejectedValueOnce(new Error('reject-failed'));
+
+    renderPropertyDocumentRequests();
+    await user.click(await screen.findByRole('button', { name: 'Rechazar' }));
+    await user.type(screen.getByLabelText('Motivo de rechazo'), 'El archivo no corresponde');
+    await user.click(screen.getByRole('button', { name: 'Rechazar documento' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('reject-failed'));
+    expect(screen.getByRole('dialog', { name: 'Rechazar documento' })).toBeInTheDocument();
+  });
+
+  it('shows read and approval failure feedback without invalidating the document list', async () => {
+    const user = userEvent.setup();
+    getProductDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([documentRequest({ status: 'SUBMITTED' })])
+    );
+    createProductDocumentReadUrlMock.mockRejectedValueOnce(new Error('read-failed'));
+    approveProductDocumentRequestMock.mockRejectedValueOnce(new Error('approve-failed'));
+    const { queryClient } = renderPropertyDocumentRequests();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    await user.click(await screen.findByRole('button', { name: 'Abrir documento' }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('read-failed'));
+    await user.click(screen.getByRole('button', { name: 'Aprobar' }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('approve-failed'));
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 
   it('does not show review actions for pending requests', async () => {
@@ -510,6 +619,46 @@ describe('PropertyDocumentRequests', () => {
     );
   });
 
+  it('falls back to the file icon when an image preview cannot get a signed URL', async () => {
+    const imageVersion = documentVersion({ mimeType: 'image/png' });
+    getProductDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([
+        documentRequest({ currentVersion: imageVersion, versions: [imageVersion] })
+      ])
+    );
+    createProductDocumentReadUrlMock.mockRejectedValueOnce(new Error('preview-failed'));
+
+    renderPropertyDocumentRequests();
+
+    const summary = await screen.findByTestId('document-version-summary');
+    await waitFor(() =>
+      expect(createProductDocumentReadUrlMock).toHaveBeenCalledWith(imageVersion.id)
+    );
+    expect(within(summary).queryByRole('img')).not.toBeInTheDocument();
+    expect(summary.querySelector('svg')).toBeInTheDocument();
+  });
+
+  it('keeps resolved history collapsed after the user closes a deep-link auto-open', async () => {
+    const user = userEvent.setup();
+    mockDocParam = 'request-resolved-collapse';
+    getProductDocumentRequestsMock.mockResolvedValueOnce(
+      documentRequestsResponse([
+        documentRequest({ id: 'request-resolved-collapse', status: 'APPROVED' })
+      ])
+    );
+
+    renderPropertyDocumentRequests();
+
+    const history = await screen.findByRole('button', { name: /Historial/i });
+    await waitFor(() => expect(history).toHaveAttribute('aria-expanded', 'true'));
+    await user.click(history);
+    expect(history).toHaveAttribute('aria-expanded', 'false');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(history).toHaveAttribute('aria-expanded', 'false');
+  });
+
   it('keeps archived properties blocked from creating new document requests', async () => {
     const user = userEvent.setup();
     getProductDocumentRequestsMock.mockResolvedValueOnce(documentRequestsResponse([]));
@@ -556,9 +705,7 @@ describe('PropertyDocumentRequests', () => {
   it('S-F7: every rendered <li> has data-request-id matching request.id', async () => {
     const req1 = documentRequest({ id: 'req-pending-1', status: 'PENDING' });
     const req2 = documentRequest({ id: 'req-review-1', status: 'SUBMITTED' });
-    getProductDocumentRequestsMock.mockResolvedValueOnce(
-      documentRequestsResponse([req1, req2])
-    );
+    getProductDocumentRequestsMock.mockResolvedValueOnce(documentRequestsResponse([req1, req2]));
 
     renderPropertyDocumentRequests();
 
@@ -567,8 +714,12 @@ describe('PropertyDocumentRequests', () => {
     const items = screen.getAllByRole('listitem');
     const withDataId = items.filter((li) => li.hasAttribute('data-request-id'));
     expect(withDataId.length).toBeGreaterThanOrEqual(2);
-    expect(withDataId.some((li) => li.getAttribute('data-request-id') === 'req-pending-1')).toBe(true);
-    expect(withDataId.some((li) => li.getAttribute('data-request-id') === 'req-review-1')).toBe(true);
+    expect(withDataId.some((li) => li.getAttribute('data-request-id') === 'req-pending-1')).toBe(
+      true
+    );
+    expect(withDataId.some((li) => li.getAttribute('data-request-id') === 'req-review-1')).toBe(
+      true
+    );
   });
 
   // S-F1: pending target — scroll + highlight
@@ -620,7 +771,9 @@ describe('PropertyDocumentRequests', () => {
     await screen.findByTestId('document-request-results');
 
     // Give effects time to settle
-    await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
 
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
     expect(mockSetDocumentFilter).not.toHaveBeenCalledWith(null);
@@ -640,7 +793,9 @@ describe('PropertyDocumentRequests', () => {
 
     await screen.findByTestId('document-request-results');
 
-    await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
 
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
   });
@@ -657,7 +812,9 @@ describe('PropertyDocumentRequests', () => {
 
     await screen.findByTestId('document-request-results');
 
-    await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
 
     // Filter reset fires because doc is non-null (D5 one-shot)
     expect(mockSetDocumentFilter).toHaveBeenCalledWith(null);
@@ -688,8 +845,12 @@ describe('PropertyDocumentRequests', () => {
     mockDocParam = 'req-123';
     // Delay the response to simulate loading state
     let resolveQuery!: (v: unknown) => void;
-    const queryPromise = new Promise((r) => { resolveQuery = r; });
-    getProductDocumentRequestsMock.mockReturnValueOnce(queryPromise as ReturnType<typeof getProductDocumentRequestsMock>);
+    const queryPromise = new Promise((r) => {
+      resolveQuery = r;
+    });
+    getProductDocumentRequestsMock.mockReturnValueOnce(
+      queryPromise as ReturnType<typeof getProductDocumentRequestsMock>
+    );
 
     renderPropertyDocumentRequests();
 
@@ -698,7 +859,9 @@ describe('PropertyDocumentRequests', () => {
 
     // Now resolve the query
     await act(async () => {
-      resolveQuery(documentRequestsResponse([documentRequest({ id: 'req-123', status: 'PENDING' })]));
+      resolveQuery(
+        documentRequestsResponse([documentRequest({ id: 'req-123', status: 'PENDING' })])
+      );
       await new Promise((r) => setTimeout(r, 50));
     });
 
@@ -788,7 +951,7 @@ describe('PropertyDocumentRequests', () => {
 
     // The mutation rejects with the 409 error; onError calls toast.error with the message.
     await waitFor(() => {
-      expect((toast.error as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith(
+      expect(toast.error as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(
         'An approved document of this type already exists for this property.'
       );
     });
@@ -805,7 +968,7 @@ function renderPropertyDocumentRequests(
     }
   });
 
-  render(
+  const { rerender } = render(
     <QueryClientProvider client={queryClient}>
       <PropertyDocumentRequests
         isArchived={false}
@@ -817,7 +980,7 @@ function renderPropertyDocumentRequests(
     </QueryClientProvider>
   );
 
-  return { queryClient };
+  return { queryClient, rerender };
 }
 
 function documentRequestsResponse(

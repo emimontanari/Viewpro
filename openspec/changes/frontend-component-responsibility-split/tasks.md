@@ -77,25 +77,25 @@ Record the before-change result, characterization versus genuine RED, after-chan
 
 **Boundary/dependency:** Publish P0a (~374 lines), then P0b (~258), then P0c (~246), then compact P0d (<400), each from a fresh worktree after the previous SHA lands on `develop`. These are documentation-only; no source, #304 behavior, or recreated #458 diff.
 
-- [ ] Land P0a `explore.md` and `proposal.md` as a documentation-only PR, record `git diff --stat`, `git diff --check`, SHA, and next fresh `develop` base. <!-- sdd-owner: parent -->
-- [ ] Land P0b `specs/frontend-component-responsibility-split/spec.md` after P0a, record its focused documentation evidence and SHA, then create fresh P0c. <!-- sdd-owner: parent -->
-- [ ] Land P0c `design.md` after P0b, record its focused documentation evidence and SHA, then create fresh P0d. <!-- sdd-owner: parent -->
-- [ ] Land compact P0d `tasks.md` below 400 lines after P0c; confirm no product source changed before O1 or D1 worktree creation. <!-- sdd-owner: parent -->
+- [x] Land P0a `explore.md` and `proposal.md` as a documentation-only PR, record `git diff --stat`, `git diff --check`, SHA, and next fresh `develop` base. <!-- sdd-owner: parent -->
+- [x] Land P0b `specs/frontend-component-responsibility-split/spec.md` after P0a, record its focused documentation evidence and SHA, then create fresh P0c. <!-- sdd-owner: parent -->
+- [x] Land P0c `design.md` after P0b, record its focused documentation evidence and SHA, then create fresh P0d. <!-- sdd-owner: parent -->
+- [x] Land compact P0d `tasks.md` below 400 lines after P0c; confirm no product source changed before O1 or D1 worktree creation. <!-- sdd-owner: parent -->
 
 ### O1 — Adopt PR #458 once (parent lifecycle gate)
 
 **Target:** existing PR #458 branch at `8caf9153bedef4228c2c26c560f5ee12dbc986f9`, with `viewpro-app/apps/app-new/src/features/dashboard/components/operational-homepage.tsx` and its existing `operational-homepage/` modules/tests only if baseline drift requires rebase correction. **Dependency:** P0d landed. **Stop:** duplicate homepage files/imports, behavior/query/range ownership drift, unresolved rebase, or dashboard behavior changes. **Rollback:** revert the existing #458 unit, never a counter-extraction. **Publish:** record merge/already-landed SHA before D1.
 
-- [ ] Adopt or rebase PR #458 without duplicating it; verify `/dashboard` (read-only) and record its SHA using `HOME`, `TYPE`, `LINT`, package-local `pnpm format:check`, and `git diff --check`. <!-- sdd-owner: parent -->
+- [x] Adopt or rebase PR #458 without duplicating it; verify `/dashboard` (read-only) and record its SHA using `HOME`, `TYPE`, `LINT`, package-local `pnpm format:check`, and `git diff --check`. <!-- sdd-owner: parent -->
 
 ### D1 — Document public-boundary baselines (required)
 
 **Target:** `viewpro-app/apps/app-new/src/features/products/components/property-document-requests.test.tsx`; no production extraction. **Dependency:** P0d and O1 landed; confirm unchanged `product-form.tsx` prop flow. **Cover:** loading/error/empty; create payload/closure/exact write invalidation/success feedback; no-owner, revoked-only, and invited-owner hints; read/approve/reject failures and dialog retention; preview file-icon fallback; deep-link user collapse. **Stop:** failing baseline, internal-name assertions, or a product decision. **Rollback/publish:** revert test-only additions; land before D2.
 
-- [ ] RED: In `property-document-requests.test.tsx`, add only missing black-box characterizations and record passing baseline or genuine defect RED; do not manufacture failure. <!-- sdd-owner: implementation -->
-- [ ] GREEN: In `property-document-requests.test.tsx`, resolve a genuine baseline defect only in a separate correction unit, or record that none exists; keep production extraction out of D1. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: Run `DOC` against `property-document-requests.test.tsx` for all required states, hints, mutation feedback/retention, exact write invalidation versus read non-invalidation, preview fallback, and collapse persistence. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Keep `property-document-requests.test.tsx` public-boundary, focused, under budget, and verify `TYPE`, `LINT`, formatter, `git diff --check`, and `git diff --numstat` before landing. <!-- sdd-owner: implementation -->
+- [x] RED: In `property-document-requests.test.tsx`, add only missing black-box characterizations and record passing baseline or genuine defect RED; do not manufacture failure. <!-- sdd-owner: implementation -->
+- [x] GREEN: In `property-document-requests.test.tsx`, resolve a genuine baseline defect only in a separate correction unit, or record that none exists; keep production extraction out of D1. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: Run `DOC` against `property-document-requests.test.tsx` for all required states, hints, mutation feedback/retention, exact write invalidation versus read non-invalidation, preview fallback, and collapse persistence. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: Keep `property-document-requests.test.tsx` public-boundary, focused, under budget, and verify `TYPE`, `LINT`, formatter, `git diff --check`, and `git diff --numstat` before landing. <!-- sdd-owner: implementation -->
 
 ### D2 — Document model/constants (required)
 
