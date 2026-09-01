@@ -116,3 +116,35 @@ The parent decision is to split required D2 into sequential, under-budget work u
 - `model.ts` contains only filter options/types, owner eligibility, active-filter normalization, grouping/filtering, and counts. Root retains chronology, descriptions, labels, versions, MIME/date formatting, icons/status presentation, UI, queries, URL state, and mutations.
 - No design deviation, product behavior change, API/config/package change, commit, push, or D2b work occurred.
 - Remaining work begins with the four unchecked D2b lines; parent-owned lifecycle actions remain deferred unchanged.
+
+## D2b — Document metadata model
+
+**Status:** complete for `d2b-document-metadata-model`; the four D2b implementation checkboxes are visibly checked.
+
+### Structured status and boundary
+
+- Consumed native authority: apply-ready, parent D2b attempt `proceed`, `auto-chain` stacked-to-main, 13/74 complete at acquisition.
+- Action context: repo-local; edits stayed within the five supplied surfaces. The untracked `viewpro-app/node_modules` symlink was not touched.
+- PR boundary: metadata helpers, diagnostic pure tests, and root wiring only; D3, UI/query/URL/services/permissions/presentation configuration, API/config/package changes, commit, and push remain out of scope.
+
+### TDD Cycle Evidence
+
+| Step | Evidence | Result |
+|---|---|---|
+| Safety net | Pre-change `MODEL` and `DOC` | PASS — 4/4 and 34/34 characterization tests. |
+| RED | Metadata model exports were absent | Expected structural RED — 2 new pure tests failed because helpers were not exported; no behavioral RED was manufactured. |
+| GREEN / TRIANGULATE | Exported existing metadata behavior and tested chronology/description and labels/version/MIME/date edges | PASS — `MODEL` 6/6. |
+| REFACTOR | Removed only root metadata duplicates, formatted, and reran focused suites | PASS — `MODEL` 6/6; `DOC` 34/34. |
+
+### Files and verification
+
+- Changed: `property-document-requests.tsx`, `property-document-requests/model.ts`, `property-document-requests/model.test.ts`, `tasks.md`, and this file.
+- `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests/model.test.ts` PASS — 6/6; `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests.test.tsx` PASS — 34/34; typecheck PASS; strict lint PASS; scoped `oxfmt --write`/`--check` PASS; model import audit PASS (only `date-fns`, `date-fns/locale`, and feature API types); `git diff --check` PASS.
+- Package `pnpm format:check` remains blocked by the known 88 unrelated package-wide files; the three D2b files pass their scoped formatter check.
+- D2b is independently rollbackable by reverting its root wiring, model metadata helpers, and diagnostic model tests together; no design deviation or behavior change was found.
+
+### Workload and remaining work
+
+- Exact artifact-inclusive `git diff --numstat` count: **379** additions plus deletions (260 additions, 119 deletions), below the 400-line hard maximum.
+- Remaining implementation begins with: `- [ ] RED: Re-run \`DOC\` in \`property-document-requests.test.tsx\` for loading/error/empty, owner hints, filter counts, and transitions before moving presentation. <!-- sdd-owner: implementation -->`
+- Deferred lifecycle actions: all parent-owned final verification, landing, synchronization, archive, and issue-update rows remain byte-for-byte unchanged. D3 may start only after this independently runnable D2b unit lands.
