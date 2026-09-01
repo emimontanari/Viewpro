@@ -67,3 +67,19 @@ The native D1 attempt settled complete against evidence revision `sha256:b1c0089
 - Deviations from design: none.
 - Remaining implementation tasks: all non-D1 implementation-owned work remains unchecked; the immediate successor is D2 after this D1 unit is landed through parent lifecycle.
 - Parent planning and O1 prerequisite checkboxes are recorded complete; final verification and archival checkboxes remain unchanged.
+
+## D2 — Document model/constants budget stop and replan
+
+**Status:** blocked before delivery. This target worktree contains only the appended planning/evidence update; no D2 source or test candidate was applied, and no D2 checkbox is complete.
+
+### Truthful failed-attempt evidence
+
+- Read-only source evidence: `/Users/emimontanari/Work/Apps/Viewpro-worktrees/frontend-component-document-model/openspec/changes/frontend-component-responsibility-split/apply-progress.md`.
+- Native failed attempt settled with state `proceed` for the D2 work unit.
+- The complete D2 candidate was behaviorally green: `MODEL` 2/2, `DOC` 34/34, App New typecheck, strict lint, formatter checks, `git diff --check`, and the model forbidden-import audit all passed.
+- Exact candidate changed lines were **468**: root `property-document-requests.tsx` had 20 additions and 208 deletions; `model.ts` had 153 additions; `model.test.ts` had 87 additions.
+- The 468-line candidate exceeded the hard 400-line budget, so the candidate was fully restored. No D2 production change, incomplete test, or completed D2 checkbox remains.
+
+### Parent replan decision
+
+The parent decision is to split required D2 into sequential, under-budget work units: **D2a** lands the core list model (filters, eligibility, normalization, grouping/filtering, and counts), then **D2b** lands the metadata model (chronology, descriptions, labels, versions, MIME, and dates) on the landed D2a base. D3 remains blocked until D2b lands. D1 history above is preserved unchanged.

@@ -6,10 +6,10 @@ These are execution tasks, not completion claims. Leave every checkbox unchecked
 
 | Field | Value |
 |-------|-------|
-| Estimated changed lines | Planning chain: P0a explore + proposal ~374 lines; P0b spec ~258; P0c design ~246; P0d tasks <400. Implementation chain: ~3,100–4,500 required, or ~3,740–5,075 with both optional controllers. |
+| Estimated changed lines | Planning chain: P0a explore + proposal ~374 lines; P0b spec ~258; P0c design ~246; P0d tasks <400. Implementation chain: ~3,100–4,500 required, or ~3,740–5,075 with both optional controllers; D2a ~270–320 and D2b ~190–250 based on the measured 468-line D2 candidate. |
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
-| Suggested split | P0a → P0b → P0c → P0d → O1 → D1 → D2 → D3 → D4a → D4b → D5 → D6 → optional D7 → #304 gate → T1 → T2 → T3a → T3b → T4 → T5 → optional T6 → final lifecycle |
+| Suggested split | P0a → P0b → P0c → P0d → O1 → D1 → D2a → D2b → D3 → D4a → D4b → D5 → D6 → optional D7 → #304 gate → T1 → T2 → T3a → T3b → T4 → T5 → optional T6 → final lifecycle |
 | Delivery strategy | auto-chain |
 | Chain strategy | stacked-to-main, implemented as sequential fresh worktrees/branches landing to `develop` |
 
@@ -59,14 +59,16 @@ Record the before-change result, characterization versus genuine RED, after-chan
 | Contract/scenario | Units protecting it |
 |---|---|
 | Existing `/dashboard` (read-only), `/dashboard/product` (read-only), and `/dashboard/product/[id]` (read-only) entries and singular homepage ownership | O1, final |
-| Visible contract: copy, accessibility, permissions, responsive output, query inputs, URL transitions | D2–D6, optional D7, T2–T5, optional T6, final |
-| Document loading/error/empty, hints, filters, mutations, failures, preview fallback | D1–D5, optional D7 |
+| Visible contract: copy, accessibility, permissions, responsive output, query inputs, URL transitions | D2a–D6, optional D7, T2–T5, optional T6, final |
+| Document loading/error/empty, hints, filters, mutations, failures, preview fallback | D1, D2a, D2b, D3–D5, optional D7 |
+| Core grouping, filtering, active-filter normalization, eligibility, and counts | D1, D2a, D3–D4a |
+| Chronology, compact descriptions, file/version labels, MIME, and compact dates | D1, D2b, D4b–D5 |
 | Read has no list invalidation; create/approve/reject have exact write invalidation | D1, D5, optional D7 |
 | Deep-link reset, one-shot open, post-paint scroll/highlight, cleanup, and user collapse | D1, D6 |
 | Preview query ownership and file-icon failure fallback | D1, D5 |
 | Product tenant/query/URL/pagination/responsive/permission/fetching behavior | #304 gate, T1–T5, optional T6, final |
 | First-assignment seller ordering; no primary-seller inference | #304 gate, T1, T3a–T4 |
-| Baseline-first extraction and genuine RED/GREEN correction handling | D1–D6, T1–T5 |
+| Baseline-first extraction and genuine RED/GREEN correction handling | D1, D2a, D2b, D3–D6, T1–T5 |
 | Independently runnable, rollbackable, under-budget units with recorded evidence | every implementation unit |
 
 ## Ordered work units
@@ -90,25 +92,34 @@ Record the before-change result, characterization versus genuine RED, after-chan
 
 ### D1 — Document public-boundary baselines (required)
 
-**Target:** `viewpro-app/apps/app-new/src/features/products/components/property-document-requests.test.tsx`; no production extraction. **Dependency:** P0d and O1 landed; confirm unchanged `product-form.tsx` prop flow. **Cover:** loading/error/empty; create payload/closure/exact write invalidation/success feedback; no-owner, revoked-only, and invited-owner hints; read/approve/reject failures and dialog retention; preview file-icon fallback; deep-link user collapse. **Stop:** failing baseline, internal-name assertions, or a product decision. **Rollback/publish:** revert test-only additions; land before D2.
+**Target:** `viewpro-app/apps/app-new/src/features/products/components/property-document-requests.test.tsx`; no production extraction. **Dependency:** P0d and O1 landed; confirm unchanged `product-form.tsx` prop flow. **Cover:** loading/error/empty; create payload/closure/exact write invalidation/success feedback; no-owner, revoked-only, and invited-owner hints; read/approve/reject failures and dialog retention; preview file-icon fallback; deep-link user collapse. **Stop:** failing baseline, internal-name assertions, or a product decision. **Rollback/publish:** revert test-only additions; land before D2a.
 
 - [x] RED: In `property-document-requests.test.tsx`, add only missing black-box characterizations and record passing baseline or genuine defect RED; do not manufacture failure. <!-- sdd-owner: implementation -->
 - [x] GREEN: In `property-document-requests.test.tsx`, resolve a genuine baseline defect only in a separate correction unit, or record that none exists; keep production extraction out of D1. <!-- sdd-owner: implementation -->
 - [x] TRIANGULATE: Run `DOC` against `property-document-requests.test.tsx` for all required states, hints, mutation feedback/retention, exact write invalidation versus read non-invalidation, preview fallback, and collapse persistence. <!-- sdd-owner: implementation -->
 - [x] REFACTOR: Keep `property-document-requests.test.tsx` public-boundary, focused, under budget, and verify `TYPE`, `LINT`, formatter, `git diff --check`, and `git diff --numstat` before landing. <!-- sdd-owner: implementation -->
 
-### D2 — Document model/constants (required)
+### D2a — Document core list model (required)
 
-**Targets:** `property-document-requests.tsx`; new `property-document-requests/model.ts` and `model.test.ts`. **Dependency:** landed D1 and passing `DOC`. **Boundary:** move filter types/options, eligibility, normalization, grouping/filtering/counts, chronology, descriptions, file labels, version/MIME/date helpers; model imports only feature API types and existing date formatter. **Stop:** UI/service/query/React/URL imports, ordering or Spanish-output drift, or 400-line risk. **Rollback/publish:** revert model and test together; land before D3.
+**Targets:** `viewpro-app/apps/app-new/src/features/products/components/property-document-requests.tsx`; new `viewpro-app/apps/app-new/src/features/products/components/property-document-requests/model.ts` and `model.test.ts`. **Dependency:** landed D1, passing `DOC`, and a fresh worktree from the then-current `origin/develop`; D2a must land before D2b starts. **Boundary:** move only filter types/options, owner eligibility, active-filter normalization, grouping/filtering, and counts; add focused pure tests for this slice and wire the root to the core helpers. Leave chronology and metadata helpers for D2b. **Forecast:** approximately 270–320 changed lines, based on the measured candidate allocation, and below 400. **Stop:** failing D1 baseline, UI/service/query/React/URL imports in the model, ordering/copy drift, a non-runnable root, or forecast/actual count of 400 or more. **Rollback/publish:** revert the D2a model/test/root wiring as one unit; confirm the pre-D2a root remains runnable; publish only after all D2a checks pass, then create fresh D2b from landed D2a.
 
-- [ ] RED: Re-run D1 public evidence and add only diagnostic pure edge cases in `model.test.ts` where DOM tests are insufficient. <!-- sdd-owner: implementation -->
-- [ ] GREEN: Extract and wire the dependency-free model/constants in `property-document-requests/model.ts` without changing public output or ownership. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: Run `MODEL` and `DOC` for `property-document-requests/model.test.ts` and `property-document-requests.test.tsx`, audit forbidden imports and ordering/copy, then verify `TYPE`, `LINT`, formatter, diff check, and numstat below 400. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Remove only duplicated definitions from `property-document-requests.tsx`, retain direct imports, and land the runnable model unit. <!-- sdd-owner: implementation -->
+- [ ] RED: From `viewpro-app/`, run `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests.test.tsx`; record the passing D1 characterization, then add only core edge cases to `model.test.ts`, run `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests/model.test.ts`, and record the expected missing-module structural RED without manufacturing a behavioral failure. <!-- sdd-owner: implementation -->
+- [ ] GREEN: In `model.ts`, implement and export only the core list model; update `property-document-requests.tsx` to import and use those helpers while preserving the existing public output, URL owner, query owner, and permissions. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE: Run `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests/model.test.ts` and `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests.test.tsx`; audit `model.ts` for imports limited to feature API types/date formatter and verify `pnpm --filter next-shadcn-dashboard-starter typecheck`, `pnpm --filter next-shadcn-dashboard-starter lint:strict`, `cd apps/app-new && pnpm exec oxfmt --check src/features/products/components/property-document-requests.tsx src/features/products/components/property-document-requests/model.ts src/features/products/components/property-document-requests/model.test.ts`, `cd apps/app-new && pnpm format:check`, `git diff --check`, and `git diff --numstat` below 400. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR: Remove only the duplicated core definitions from `property-document-requests.tsx`, retain direct relative imports, rerun the focused suites and checks, and leave a runnable rollback boundary for D2b. <!-- sdd-owner: implementation -->
+
+### D2b — Document metadata model (required)
+
+**Targets:** `viewpro-app/apps/app-new/src/features/products/components/property-document-requests.tsx`; existing `viewpro-app/apps/app-new/src/features/products/components/property-document-requests/model.ts` and `model.test.ts`. **Dependency:** D2a is landed, its focused suites/checks pass, and the worktree is refreshed from the landed D2a base; D3 must wait for D2b. **Boundary:** add and wire only chronology selection, compact descriptions, filename/file-format labels, version numbering, MIME classification, and compact date formatting; extend model tests for these helpers and keep the D2a core slice intact. **Forecast:** approximately 190–250 changed lines, based on the measured candidate allocation, and below 400. **Stop:** starting before landed D2a, duplicate state/query/URL ownership, model imports outside the approved dependency boundary, metadata/order/copy drift, a non-runnable root, or forecast/actual count of 400 or more. **Rollback/publish:** revert D2b metadata additions, tests, and root wiring together to the landed D2a state; publish only after its unit checks pass, then allow D3 to start.
+
+- [ ] RED: From the landed D2a worktree, rerun `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests.test.tsx` and `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests/model.test.ts`; add only diagnostic metadata edge cases and record characterization or a legitimate missing-contract RED. <!-- sdd-owner: implementation -->
+- [ ] GREEN: Extend `model.ts` with the metadata helpers, extend `model.test.ts`, and wire their imports into `property-document-requests.tsx` without changing chronology, descriptions, labels, versions, MIME/date output, or ownership. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE: Run `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests/model.test.ts` and `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests.test.tsx`; audit the model dependency boundary and verify `pnpm --filter next-shadcn-dashboard-starter typecheck`, `pnpm --filter next-shadcn-dashboard-starter lint:strict`, `cd apps/app-new && pnpm exec oxfmt --check src/features/products/components/property-document-requests.tsx src/features/products/components/property-document-requests/model.ts src/features/products/components/property-document-requests/model.test.ts`, `cd apps/app-new && pnpm format:check`, `git diff --check`, and `git diff --numstat` below 400. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR: Remove only the remaining duplicated metadata definitions from `property-document-requests.tsx`, preserve the landed D2a core imports and tests, rerun all D2b checks, and publish the independently rollbackable metadata unit before D3. <!-- sdd-owner: implementation -->
 
 ### D3 — Document states, hints, filters (required)
 
-**Targets:** `property-document-requests.tsx`; new `property-document-requests/states-and-filters.tsx`. **Dependency:** D2. **Boundary:** controlled presentation receives counts, archive/permission booleans, active filter, counts, pending/error, and `onFilterChange`; no owners, URL names, query objects, setters, tenant, or services. **Stop:** child URL/query/fetch ownership, copy/loading/error/empty drift, or budget risk. **Rollback/publish:** revert module/root wiring; land before D4a.
+**Targets:** `property-document-requests.tsx`; new `property-document-requests/states-and-filters.tsx`. **Dependency:** D2b landed. **Boundary:** controlled presentation receives counts, archive/permission booleans, active filter, counts, pending/error, and `onFilterChange`; no owners, URL names, query objects, setters, tenant, or services. **Stop:** child URL/query/fetch ownership, copy/loading/error/empty drift, or budget risk. **Rollback/publish:** revert module/root wiring; land before D4a.
 
 - [ ] RED: Re-run `DOC` in `property-document-requests.test.tsx` for loading/error/empty, owner hints, filter counts, and transitions before moving presentation. <!-- sdd-owner: implementation -->
 - [ ] GREEN: Extract `states-and-filters.tsx` and wire explicit root-owned values/callbacks without changing behavior. <!-- sdd-owner: implementation -->
