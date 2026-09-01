@@ -941,16 +941,21 @@ describe("primary seller repository mutations", () => {
 	function primaryTransaction({
 		engagement = [{ id: "engagement-1" }],
 		primary = null as { id: string } | null,
-		candidate = { id: "assignment-2" },
+		lockResults = [
+			engagement,
+			[{ agentUserId: "agent-user-2" }],
+			[{ id: "agent-user-2" }],
+			[{ id: "membership-2" }],
+		],
 		result = { id: "engagement-1" },
 	}: Partial<{
 		engagement: { id: string }[];
 		primary: { id: string } | null;
-		candidate: { id: string } | null;
+		lockResults: object[][];
 		result: { id: string };
 	}> = {}) {
-		const $queryRaw = vi.fn().mockResolvedValue(engagement);
-		const findFirst = vi.fn().mockResolvedValueOnce(primary).mockResolvedValueOnce(candidate);
+		const $queryRaw = vi.fn(() => Promise.resolve(lockResults.shift()));
+		const findFirst = vi.fn().mockResolvedValue(primary);
 		const updateMany = vi.fn().mockResolvedValue({ count: 1 });
 		const update = vi.fn().mockResolvedValue({ id: "assignment-2", isPrimary: true });
 		const findFirstOrThrow = vi.fn().mockResolvedValue(result);
@@ -972,17 +977,11 @@ describe("primary seller repository mutations", () => {
 			status: "updated",
 			engagement: { id: "engagement-1" },
 		});
-		expect(tx.$queryRaw).toHaveBeenCalledOnce();
-		expect(tx.findFirst).toHaveBeenNthCalledWith(1, {
+		expect(tx.$queryRaw).toHaveBeenCalledTimes(4);
+		expect(tx.findFirst).toHaveBeenCalledWith({
 			where: { tenantId: "tenant-1", propertyEngagementId: "engagement-1", isPrimary: true },
 			select: { id: true },
 		});
-		expect(tx.findFirst).toHaveBeenNthCalledWith(2, expect.objectContaining({
-			where: expect.objectContaining({
-				id: "assignment-2", tenantId: "tenant-1", propertyEngagementId: "engagement-1",
-				agentUser: { status: "ACTIVE", memberships: { some: { tenantId: "tenant-1", status: "ACTIVE", role: "AGENT" } } },
-			}),
-		}));
 		expect(tx.updateMany).toHaveBeenCalledWith({
 			where: { tenantId: "tenant-1", propertyEngagementId: "engagement-1", isPrimary: true },
 			data: { isPrimary: false },
@@ -991,12 +990,16 @@ describe("primary seller repository mutations", () => {
 	});
 
 	it.each([
-		["an inactive user"], ["an inactive membership"], ["a non-AGENT membership"], ["a stale assignment"], ["a cross-tenant assignment"],
-	])("returns candidateInvalid without writes for %s", async () => {
-		const tx = primaryTransaction({ candidate: null });
+		["missing assignment", [[], [], []], 2], ["stale assignment", [[], [], []], 2], ["cross-tenant assignment", [[], [], []], 2],
+		["inactive user", [[{ agentUserId: "agent-user-2" }], [], []], 3],
+		["inactive membership", [[{ agentUserId: "agent-user-2" }], [{ id: "agent-user-2" }], []], 4],
+		["non-AGENT membership", [[{ agentUserId: "agent-user-2" }], [{ id: "agent-user-2" }], []], 4],
+	])("stops %s at its eligibility lock without primary writes", async (_label, results, calls) => {
+		const tx = primaryTransaction({ lockResults: [[{ id: "engagement-1" }], ...results] });
 		const repository = new PrismaPropertyEngagementsRepository({ $transaction: tx.$transaction } as never);
 
 		await expect(repository.setPrimaryAgent(input)).resolves.toEqual({ status: "candidateInvalid" });
+		expect(tx.$queryRaw).toHaveBeenCalledTimes(calls);
 		expect(tx.updateMany).not.toHaveBeenCalled();
 		expect(tx.update).not.toHaveBeenCalled();
 	});
@@ -1036,7 +1039,7 @@ describe("primary seller repository mutations", () => {
 		await expect(repository.setPrimaryAgent({ ...input, expectedPrimaryAgentId: "assignment-2" })).resolves.toEqual({
 			status: "updated", engagement: { id: "engagement-1" },
 		});
-		expect(tx.findFirst).toHaveBeenCalledTimes(2);
+		expect(tx.findFirst).toHaveBeenCalledOnce();
 		expect(tx.updateMany).not.toHaveBeenCalled();
 		expect(tx.update).not.toHaveBeenCalled();
 	});
@@ -1108,5 +1111,44 @@ describe("primary seller repository mutations", () => {
 		const repository = new PrismaPropertyEngagementsRepository({ $transaction } as never);
 		await expect(repository.removeAgent({ tenantId: "tenant-1", engagementId: "engagement-1", agentId: "missing" })).resolves.toBe(false);
 		expect(deleteMany).not.toHaveBeenCalled();
+	});
+
+	it("locks the exact eligible candidate rows in a fixed order and maps only the named uniqueness backstop", async () => {
+		const queryResults = [
+			[{ id: "engagement-1" }],
+			[{ agentUserId: "agent-user-2" }],
+			[{ id: "agent-user-2" }],
+			[{ id: "membership-2" }],
+		];
+		const $queryRaw = vi.fn(() => Promise.resolve(queryResults.shift()));
+		const update = vi.fn().mockRejectedValue({
+			code: "P2002",
+			meta: { target: "property_agents_one_primary_per_engagement" },
+		});
+		const $transaction = vi.fn((callback) => callback({
+			$queryRaw,
+			propertyAgent: {
+				findFirst: vi.fn().mockResolvedValue(null),
+				updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+				update,
+			},
+			propertyEngagement: { findFirstOrThrow: vi.fn() },
+		}));
+		const repository = new PrismaPropertyEngagementsRepository({ $transaction } as never);
+
+		await expect(repository.setPrimaryAgent(input)).resolves.toEqual({ status: "stateConflict" });
+		expect($queryRaw.mock.calls.map(([query]) => Array.from(query as TemplateStringsArray).join("?"))).toEqual([
+			expect.stringContaining("property_engagements\n        WHERE id = ? AND \"tenantId\" = ?\n        FOR UPDATE"),
+			expect.stringContaining("property_agents\n        WHERE id = ? AND \"propertyEngagementId\" = ? AND \"tenantId\" = ?\n        FOR NO KEY UPDATE"),
+			expect.stringContaining("users\n        WHERE id = ? AND status = ?::\"UserStatus\"\n        FOR NO KEY UPDATE"),
+			expect.stringContaining("tenant_memberships\n        WHERE \"userId\" = ? AND \"tenantId\" = ? AND status = ?::\"TenantMembershipStatus\" AND role = ?::\"TenantRole\"\n        FOR NO KEY UPDATE"),
+		]);
+	});
+
+	it("does not translate unrelated Prisma failures into a state conflict", async () => {
+		const $transaction = vi.fn().mockRejectedValue({ code: "P2025" });
+		const repository = new PrismaPropertyEngagementsRepository({ $transaction } as never);
+
+		await expect(repository.setPrimaryAgent(input)).rejects.toMatchObject({ code: "P2025" });
 	});
 });

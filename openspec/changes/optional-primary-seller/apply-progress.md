@@ -58,3 +58,18 @@
 - RED: temporarily reversed `removeAgent` to delete before `lockTenantEngagement`; focused suite failed 4/45 (both ordering cases, unresolved-lock barrier, and missing-engagement no-delete). The original production file was restored byte-for-byte before GREEN.
 - GREEN: focused repository suite passed 45/45; API typecheck and lint passed; `git diff --no-ext-diff --check` passed.
 - Full candidate from `d6504ea` is 368 additions + 17 deletions = 385 changed lines (<=400); final production file equals `HEAD` and no production change is staged.
+
+## S3 PostgreSQL concurrency (PR3) — final verification remediation
+- Status consumed: authoritative OpenSpec `applyState: ready`, `nextRecommended: apply`, repo-local allowed root, no action-context warnings; parent-owned `proceed`, `auto-chain` PR3 boundary.
+- RED: independent verification failed at `sha256:a2766c0acefe741e5cf61c14ed89cd3d7abde3223b14b92a4638bc278d62ad5f`; the invalidation-first selection was not settled after a wait assertion failure and eligibility labels did not prove lock steps.
+- Remediation is test-only: invalidation-first now settles selection, a lock-sequence table proves six invalid-category outcomes/no writes, and held user invalidation rollback proves actual `Lock` wait then durable eligible update without transfer/fallback.
+### TDD Cycle Evidence
+| Task | Safety net | RED | GREEN / TRIANGULATE / REFACTOR |
+|---|---|---|---|
+| S3 remediation | real DB 11/11 | failed independent evidence above | lock-step table has seven variants; rollback and commit orders pass, then harness compacted without production edits. |
+- GREEN: repository suite 48/48; combined unit + real PostgreSQL 60/60; API typecheck, strict lint, and `git diff --no-ext-diff --check HEAD` pass.
+- Production lock SQL/barrier/P2002 hash is unchanged: worktree and index `0b44f3626c3e5aca91d380e8cc98ecd7ef75c938e4bec7f9f831c54a775e6c69`.
+- DB evidence: observer saw `pg_stat_activity.wait_event_type = 'Lock'`; rollback rejects deliberately, selection updates B, both assignments remain, and post-run `s3-primary-*` active connections are zero.
+- Cleanup: all releases/promises/connections/fixtures settle in `finally`; the temporary API-only donor symlink was removed and worker harness remains four derived databases.
+- S3 rows 114–117 and 121–124 remain checked; parent rows untouched. Remaining exact unchecked line: `- [ ] **RED** — Add failing runtime-contract and use-case tests in \`viewpro-app/packages/contracts/test/runtime-contract.spec.ts\` and \`viewpro-app/apps/api/test/property-engagements.use-cases.spec.ts\` for \`PRIMARY_AGENT_CANDIDATE_INVALID\` (400), \`PRIMARY_AGENT_STATE_CONFLICT\` (409), required-but-nullable expected fields, complete response shape, and generic operator-safe messages. <!-- sdd-owner: implementation -->`.
+- Workload: PR3-only candidate stays within 400 lines; PR5 owner-contact implementation remains untouched and filtered lookup remains the S3 proof seam.
