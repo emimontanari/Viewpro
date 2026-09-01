@@ -283,3 +283,34 @@ The four D4a1 task rows in `tasks.md` are visibly `- [x]`. D4a2, D4b, D5, and pa
   - `- [ ] TRIANGULATE: Run `DOC`, `TYPE`, `LINT`, `cd apps/app-new && pnpm exec oxfmt --check src/features/products/components/property-document-requests.tsx src/features/products/components/property-document-requests/request-list.tsx`, `cd apps/app-new && pnpm format:check`, and `git diff --check && git diff --numstat`; audit no root/query/URL/service/mutation imports and verify the D4a2 count is below 400. <!-- sdd-owner: implementation -->`
   - `- [ ] REFACTOR: Remove only the moved list/mapping/anchor duplicate, rerun focused checks, record the measured under-budget diff and rollback boundary, and publish D4a2 before D4b. <!-- sdd-owner: implementation -->`
 - Deferred lifecycle actions: all parent-owned landing, final verification, sync, archive, and issue-update rows remain byte-for-byte unchanged. Parent settlement must remediate failed evidence `sha256:f03cb6364541ab28e647d8300f816ae3b758a48ccd040404fe2da806c2336474`.
+
+## D4a2 — Document request list/anchor shell
+
+**Status:** complete for `d4a2-document-list-anchor-shell`; the four D4a2 implementation rows are persisted as checked.
+
+### Structured status and boundary
+
+- Consumed authoritative parent status: `schemaName=spec-driven`, `artifactStore=openspec`, `changeName=frontend-component-responsibility-split`, `applyState=ready`, `nextRecommended=apply`, `25/78 complete`; the D4a2 attempt was `proceed` under `auto-chain`.
+- `actionContext.mode=repo-local`; authoritative workspace and allowed edit root were `/Users/emimontanari/Work/Apps/Viewpro-worktrees/frontend-component-document-list-anchor-shell`. Only the two source files and OpenSpec artifacts changed; the existing untracked `viewpro-app/node_modules` symlink was untouched.
+- PR boundary: list composition, mapping, `<li data-request-id>`, and highlight class only. The root retains item/status/rejection/action/version/preview detail, queries, URL state, mutations, permissions, callbacks, and deep-link state.
+
+### TDD Cycle Evidence
+
+| Step | Evidence | Result |
+|---|---|---|
+| RED / characterization | Pre-change `DOC` and `MODEL` | PASS — 34/34 and 6/6; behavior-preserving extraction, no artificial RED. |
+| GREEN | Added prop-driven `DocumentRequestList` with root `renderItem` | `DOC` PASS — 34/34; `MODEL` PASS — 6/6. |
+| TRIANGULATE / REFACTOR | Scoped formatting, typecheck, lint, ownership/anchor audit, and diff count | PASS; package-wide formatting remains an unrelated baseline. |
+
+### Completed tasks, files, and verification
+
+- [x] RED, GREEN, TRIANGULATE, and REFACTOR D4a2 rows are visibly checked in `tasks.md`.
+- Changed: `property-document-requests.tsx`, `property-document-requests/request-list.tsx`, `tasks.md`, and this cumulative progress file; no test, API, config, package, or node_modules change.
+- `DOC`: PASS — 34/34 before and after; `MODEL`: PASS — 6/6 before and after; strict lint: PASS; scoped `oxfmt --write` then `--check`: PASS; `git diff --no-ext-diff --check`: PASS; ownership/anchor audit: PASS.
+- App New typecheck initially failed because the temporary cross-worktree `node_modules` symlink resolved a stale `@viewpro/contracts` build without the landed `PRIMARY_AGENT_*` codes. The parent replaced that environment-only symlink with a local frozen install, built `@viewpro/contracts`, and reran typecheck: PASS. Package `pnpm format:check` is BLOCKED by 92 unrelated package-wide files; both D4a2 source files pass scoped formatting.
+- Source diff is **306** additions plus deletions (108 additions/160 deletions root; 38 additions list); exact artifact-inclusive worktree total is **345** (181 additions, 164 deletions), below 350 reassessment and 400 maximum. D4a2 is rollbackable by reverting the root/list wiring together; no design deviation occurred.
+
+### Remaining work and delivery
+
+- Next unchecked D4b rows: `- [ ] RED: Re-run `DOC` in `property-document-requests.test.tsx` for submitted/pending/resolved actions, status/rejection copy, pending flags, and permissions. <!-- sdd-owner: implementation -->`; `- [ ] GREEN: Extract request item/status/review/read presentation into `request-list.tsx` while preserving markup, feedback, commands, and preview boundary. <!-- sdd-owner: implementation -->`; `- [ ] TRIANGULATE: Audit `request-list.tsx` for no child mutation/service ownership and run `DOC`, `MODEL`, `TYPE`, `LINT`, formatter, diff check, import audit, and numstat. <!-- sdd-owner: implementation -->`; `- [ ] REFACTOR: Remove only duplicated item definitions and land the focused under-budget `request-list.tsx` unit. <!-- sdd-owner: implementation -->`
+- D4b remains untouched. Parent-owned landing, verification, sync, archive, and issue-update rows remain deferred unchanged; next recommended action is `parent-lifecycle`.

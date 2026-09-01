@@ -41,7 +41,10 @@ import {
   isEligibleDocumentOwner,
   type DocumentFilter
 } from './property-document-requests/model';
-import { DocumentRequestSection } from './property-document-requests/request-list';
+import {
+  DocumentRequestList,
+  DocumentRequestSection
+} from './property-document-requests/request-list';
 import { RejectDocumentRequestDialog } from './reject-document-request-dialog';
 import {
   DocumentRequestFilters,
@@ -363,16 +366,21 @@ export function PropertyDocumentRequests({
                   onResolvedOpenChange={setResolvedOpen}
                 >
                   <DocumentRequestList
-                    canReviewDocuments={canReviewDocuments}
                     emptyCopy={group.emptyCopy}
                     highlightedId={highlightedId}
-                    isApproving={approveDocumentMutation.isPending}
-                    isReading={readDocumentMutation.isPending}
-                    isRejecting={rejectDocumentMutation.isPending}
                     items={group.items}
-                    onApprove={(requestId) => approveDocumentMutation.mutate(requestId)}
-                    onRead={(versionId) => readDocumentMutation.mutate(versionId)}
-                    onReject={setRequestToReject}
+                    renderItem={(request) => (
+                      <DocumentRequestItem
+                        canReviewDocuments={canReviewDocuments}
+                        request={request}
+                        isApproving={approveDocumentMutation.isPending}
+                        isReading={readDocumentMutation.isPending}
+                        isRejecting={rejectDocumentMutation.isPending}
+                        onApprove={(requestId) => approveDocumentMutation.mutate(requestId)}
+                        onRead={(versionId) => readDocumentMutation.mutate(versionId)}
+                        onReject={setRequestToReject}
+                      />
+                    )}
                   />
                 </DocumentRequestSection>
               ))}
@@ -403,61 +411,9 @@ export function PropertyDocumentRequests({
   );
 }
 
-function DocumentRequestList({
-  canReviewDocuments,
-  emptyCopy,
-  highlightedId,
-  isApproving,
-  isReading,
-  isRejecting,
-  items,
-  onApprove,
-  onRead,
-  onReject
-}: {
-  canReviewDocuments: boolean;
-  emptyCopy: string;
-  highlightedId?: string | null;
-  isApproving: boolean;
-  isReading: boolean;
-  isRejecting: boolean;
-  items: ProductDocumentRequest[];
-  onApprove: (requestId: string) => void;
-  onRead: (versionId: string) => void;
-  onReject: (request: ProductDocumentRequest) => void;
-}) {
-  if (items.length === 0) {
-    return (
-      <p className='rounded-lg border border-dashed p-3 text-sm text-muted-foreground'>
-        {emptyCopy}
-      </p>
-    );
-  }
-
-  return (
-    <ul className='space-y-3 p-0 sm:p-0'>
-      {items.map((request) => (
-        <DocumentRequestItem
-          key={request.id}
-          canReviewDocuments={canReviewDocuments}
-          isHighlighted={highlightedId === request.id}
-          request={request}
-          isApproving={isApproving}
-          isReading={isReading}
-          isRejecting={isRejecting}
-          onApprove={onApprove}
-          onRead={onRead}
-          onReject={onReject}
-        />
-      ))}
-    </ul>
-  );
-}
-
 function DocumentRequestItem({
   canReviewDocuments,
   isApproving,
-  isHighlighted,
   isReading,
   isRejecting,
   onApprove,
@@ -467,7 +423,6 @@ function DocumentRequestItem({
 }: {
   canReviewDocuments: boolean;
   isApproving: boolean;
-  isHighlighted?: boolean;
   isReading: boolean;
   isRejecting: boolean;
   onApprove: (requestId: string) => void;
@@ -483,111 +438,104 @@ function DocumentRequestItem({
   const reviewActionsDisabled = isApproving || isReading || isRejecting;
 
   return (
-    // D6: data-request-id is the DOM selector anchor for scroll/highlight.
-    // isHighlighted adds a transient ring to make the deep-linked item stand out.
-    <li
-      data-request-id={request.id}
-      className={cn(isHighlighted && 'ring-2 ring-primary rounded-xl')}
+    <Card
+      className={cn(
+        'gap-0 overflow-hidden py-0 shadow-xs',
+        isPassivePending ? 'bg-background/70' : null
+      )}
     >
-      <Card
-        className={cn(
-          'gap-0 overflow-hidden py-0 shadow-xs',
-          isPassivePending ? 'bg-background/70' : null
-        )}
-      >
-        <CardHeader className={cn('bg-transparent px-5 pb-2', isPassivePending ? 'pt-4' : 'pt-5')}>
-          <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
-            <div className='min-w-0 space-y-1'>
-              <div className='flex flex-wrap items-center gap-2'>
-                <h5 className='break-words text-sm font-semibold'>{request.title}</h5>
-                <DocumentStatusBadge status={request.status} />
-              </div>
+      <CardHeader className={cn('bg-transparent px-5 pb-2', isPassivePending ? 'pt-4' : 'pt-5')}>
+        <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
+          <div className='min-w-0 space-y-1'>
+            <div className='flex flex-wrap items-center gap-2'>
+              <h5 className='break-words text-sm font-semibold'>{request.title}</h5>
+              <DocumentStatusBadge status={request.status} />
             </div>
-            <p className='shrink-0 text-xs text-foreground/70'>
-              Actualizado {formatCompactDateTime(getRequestChronologyTimestamp(request))}
-            </p>
           </div>
-        </CardHeader>
+          <p className='shrink-0 text-xs text-foreground/70'>
+            Actualizado {formatCompactDateTime(getRequestChronologyTimestamp(request))}
+          </p>
+        </div>
+      </CardHeader>
 
-        <CardContent
-          className={cn('px-5 pt-2', isPassivePending ? 'space-y-3 pb-4' : 'space-y-5 pb-5')}
-        >
-          {isPassivePending ? (
-            <p
-              data-testid='document-passive-summary'
-              className='truncate text-sm text-foreground/70'
-              title={getPendingDocumentSummary(compactDescription)}
-            >
-              {getPendingDocumentSummary(compactDescription)}
-            </p>
-          ) : compactDescription ? (
-            <p className='truncate text-sm text-foreground/70' title={compactDescription}>
-              {compactDescription}
-            </p>
-          ) : null}
+      <CardContent
+        className={cn('px-5 pt-2', isPassivePending ? 'space-y-3 pb-4' : 'space-y-5 pb-5')}
+      >
+        {isPassivePending ? (
+          <p
+            data-testid='document-passive-summary'
+            className='truncate text-sm text-foreground/70'
+            title={getPendingDocumentSummary(compactDescription)}
+          >
+            {getPendingDocumentSummary(compactDescription)}
+          </p>
+        ) : compactDescription ? (
+          <p className='truncate text-sm text-foreground/70' title={compactDescription}>
+            {compactDescription}
+          </p>
+        ) : null}
 
-          {request.rejectionReason ? <RejectionReason reason={request.rejectionReason} /> : null}
+        {request.rejectionReason ? <RejectionReason reason={request.rejectionReason} /> : null}
 
-          {request.currentVersion ? (
-            <DocumentVersionSummary
-              request={request}
-              version={request.currentVersion}
-              isReading={isReading}
-              onRead={onRead}
-            />
-          ) : null}
+        {request.currentVersion ? (
+          <DocumentVersionSummary
+            request={request}
+            version={request.currentVersion}
+            isReading={isReading}
+            onRead={onRead}
+          />
+        ) : null}
 
-          {canOpenDocument || canReview ? (
-            <div
-              data-testid={canReview ? 'document-review-action-row' : undefined}
-              className='flex flex-wrap items-center gap-2 border-t border-border/40 pt-3'
-            >
-              {canOpenDocument ? (
-                <Button
-                  type='button'
-                  variant='ghost'
-                  className='min-h-11 px-2 text-foreground/70 hover:bg-muted/40 hover:text-foreground'
-                  disabled={isReading}
-                  onClick={() => onRead(request.currentVersion!.id)}
+        {canOpenDocument || canReview ? (
+          <div
+            data-testid={canReview ? 'document-review-action-row' : undefined}
+            className='flex flex-wrap items-center gap-2 border-t border-border/40 pt-3'
+          >
+            {canOpenDocument ? (
+              <Button
+                type='button'
+                variant='ghost'
+                className='min-h-11 px-2 text-foreground/70 hover:bg-muted/40 hover:text-foreground'
+                disabled={isReading}
+                onClick={() => onRead(request.currentVersion!.id)}
+              >
+                <Icons.externalLink className='size-4' />
+                Abrir documento
+              </Button>
+            ) : null}
+            {canReview ? (
+              <>
+                <div className='hidden flex-1 sm:block' />
+                <div
+                  data-testid='document-review-decision-actions'
+                  className='flex flex-1 flex-wrap justify-end gap-2 sm:flex-none'
                 >
-                  <Icons.externalLink className='size-4' />
-                  Abrir documento
-                </Button>
-              ) : null}
-              {canReview ? (
-                <>
-                  <div className='hidden flex-1 sm:block' />
-                  <div
-                    data-testid='document-review-decision-actions'
-                    className='flex flex-1 flex-wrap justify-end gap-2 sm:flex-none'
+                  <Button
+                    type='button'
+                    variant='outline'
+                    className='min-h-11 flex-1 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive sm:flex-none'
+                    disabled={reviewActionsDisabled}
+                    onClick={() => onReject(request)}
                   >
-                    <Button
-                      type='button'
-                      variant='outline'
-                      className='min-h-11 flex-1 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive sm:flex-none'
-                      disabled={reviewActionsDisabled}
-                      onClick={() => onReject(request)}
-                    >
-                      <Icons.close className='size-4' />
-                      Rechazar
-                    </Button>
-                    <Button
-                      type='button'
-                      className='min-h-11 flex-1 border border-emerald-300 bg-emerald-200 text-emerald-950 hover:bg-emerald-300 dark:border-emerald-300 dark:bg-emerald-300 dark:text-emerald-950 dark:hover:bg-emerald-200 sm:flex-none'
-                      disabled={reviewActionsDisabled}
-                      onClick={() => onApprove(request.id)}
-                    >
-                      <Icons.check className='size-4' />
-                      Aprobar
-                    </Button>
-                  </div>
-                </>
-              ) : null}
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-    </li>
+                    <Icons.close className='size-4' />
+                    Rechazar
+                  </Button>
+                  <Button
+                    type='button'
+                    className='min-h-11 flex-1 border border-emerald-300 bg-emerald-200 text-emerald-950 hover:bg-emerald-300 dark:border-emerald-300 dark:bg-emerald-300 dark:text-emerald-950 dark:hover:bg-emerald-200 sm:flex-none'
+                    disabled={reviewActionsDisabled}
+                    onClick={() => onApprove(request.id)}
+                  >
+                    <Icons.check className='size-4' />
+                    Aprobar
+                  </Button>
+                </div>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
 
