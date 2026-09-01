@@ -5,6 +5,7 @@ import {
 	PropertyEngagementStatus,
 	PropertyOperationType,
 	PropertyType,
+	Prisma,
 } from "@prisma/client";
 import { validate } from "class-validator";
 import { describe, expect, it, vi } from "vitest";
@@ -931,12 +932,14 @@ describe("Property engagements foundation", () => {
 });
 
 describe("primary seller repository mutations", () => {
+	const constraint = "property_agents_one_primary_per_engagement";
 	const input = {
 		tenantId: "tenant-1",
 		engagementId: "engagement-1",
 		agentId: "assignment-2",
 		expectedPrimaryAgentId: null as string | null,
 	};
+	const p2002 = (meta: Record<string, unknown>) => new Prisma.PrismaClientKnownRequestError("Unique constraint failed", { code: "P2002", clientVersion: "6.19.2", meta });
 
 	function primaryTransaction({
 		engagement = [{ id: "engagement-1" }],
@@ -1113,7 +1116,7 @@ describe("primary seller repository mutations", () => {
 		expect(deleteMany).not.toHaveBeenCalled();
 	});
 
-	it("locks the exact eligible candidate rows in a fixed order and maps only the named uniqueness backstop", async () => {
+	it.each([["constraint", { constraint }], ["target", { target: [constraint] }]])("locks the exact eligible candidate rows in a fixed order and maps the named P2002 %s", async (_shape, meta) => {
 		const queryResults = [
 			[{ id: "engagement-1" }],
 			[{ agentUserId: "agent-user-2" }],
@@ -1121,10 +1124,7 @@ describe("primary seller repository mutations", () => {
 			[{ id: "membership-2" }],
 		];
 		const $queryRaw = vi.fn(() => Promise.resolve(queryResults.shift()));
-		const update = vi.fn().mockRejectedValue({
-			code: "P2002",
-			meta: { target: "property_agents_one_primary_per_engagement" },
-		});
+		const update = vi.fn().mockRejectedValue(p2002(meta));
 		const $transaction = vi.fn((callback) => callback({
 			$queryRaw,
 			propertyAgent: {
@@ -1145,10 +1145,10 @@ describe("primary seller repository mutations", () => {
 		]);
 	});
 
-	it("does not translate unrelated Prisma failures into a state conflict", async () => {
-		const $transaction = vi.fn().mockRejectedValue({ code: "P2025" });
+	it.each([["P2025", { code: "P2025" }], ["another P2002 constraint", p2002({ constraint: "another_constraint" })], ["missing P2002 constraint", p2002({})]])("does not translate %s into a state conflict", async (_label, error) => {
+		const $transaction = vi.fn().mockRejectedValue(error);
 		const repository = new PrismaPropertyEngagementsRepository({ $transaction } as never);
 
-		await expect(repository.setPrimaryAgent(input)).rejects.toMatchObject({ code: "P2025" });
+		await expect(repository.setPrimaryAgent(input)).rejects.toMatchObject(error);
 	});
 });

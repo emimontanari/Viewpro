@@ -3,13 +3,14 @@ import {
   MovementSource,
   MovementType,
   OwnerInvitationStatus,
+  Prisma,
   PropertyAssetOwnerAccessStatus,
   PropertyEngagementStatus,
   TenantMembershipStatus,
   TenantRole,
   UserStatus,
 } from '@prisma/client'
-import type { Prisma, PropertyAssetImage } from '@prisma/client'
+import type { PropertyAssetImage } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import { TENANT_ACTIVE_PROPERTY_ENGAGEMENT_LIMIT_EXCEEDED_MESSAGE } from '../tenant-limits/tenant-limit-enforcement.constants'
 import { createOwnerInvitationToken } from './owner-invitation-token'
@@ -161,12 +162,10 @@ async function lockEligibleCandidate(
 }
 
 function isPrimaryAssignmentUniquenessError(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false
-  const prismaError = error as { code?: unknown; meta?: { target?: unknown } }
-  if (prismaError.code !== 'P2002') return false
-  const target = prismaError.meta?.target
-  return target === 'property_agents_one_primary_per_engagement' ||
-    (Array.isArray(target) && target.includes('property_agents_one_primary_per_engagement'))
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') return false
+  const meta = error.meta as Record<string, unknown> | undefined
+  return meta?.constraint === 'property_agents_one_primary_per_engagement' ||
+    (Array.isArray(meta?.target) && meta.target.includes('property_agents_one_primary_per_engagement'))
 }
 
 function isActiveEngagementStatus(status: PropertyEngagementStatus): boolean {
