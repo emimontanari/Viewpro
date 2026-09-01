@@ -142,6 +142,25 @@ export type AssignPropertyAgentResult =
   | { status: "assigned"; assignment: PropertyAgent }
   | { status: "alreadyAssigned" };
 
+export type SetPrimaryPropertyAgentInput = {
+  tenantId: string;
+  engagementId: string;
+  agentId: string;
+  /** Required compare-and-set precondition; null explicitly observes no primary. */
+  expectedPrimaryAgentId: string | null;
+};
+
+export type ClearPrimaryPropertyAgentInput = Omit<
+  SetPrimaryPropertyAgentInput,
+  "agentId"
+>;
+
+export type PrimaryPropertyAgentResult =
+  | { status: "updated"; engagement: PropertyEngagementWithDetails }
+  | { status: "engagementNotFound" }
+  | { status: "candidateInvalid" }
+  | { status: "stateConflict" };
+
 export type LinkPropertyOwnerResult =
   | { status: "linked"; owner: PropertyOwnerRecord }
   | { status: "alreadyLinked" };
@@ -222,6 +241,12 @@ export type PropertyEngagementsRepository = {
     agentUserId: string;
     assignedByUserId: string;
   }): Promise<AssignPropertyAgentResult>;
+  setPrimaryAgent(
+    input: SetPrimaryPropertyAgentInput,
+  ): Promise<PrimaryPropertyAgentResult>;
+  clearPrimaryAgent(
+    input: ClearPrimaryPropertyAgentInput,
+  ): Promise<PrimaryPropertyAgentResult>;
   removeAgent(input: {
     tenantId: string;
     engagementId: string;

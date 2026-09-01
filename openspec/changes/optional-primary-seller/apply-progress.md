@@ -28,3 +28,33 @@
 - The 398-line candidate includes progress 30, migration 8, cleanup spec 57, cleanup helper 22, schema spec 262, and docs/tasks; no generated dependency artifacts remain.
 - Residual risk: Prisma cannot declare the partial unique index; the named raw migration and automated live PostgreSQL replay remain its contract.
 - `auto-chain` boundary is S1 only; PR2 owns transaction/eligibility/error mapping and begins only from refreshed landed `develop`; next action is `parent-lifecycle`.
+
+## S2 repository mutations (PR2)
+
+### Scope and status
+- Native authority consumed: `applyState: ready`, clean base `d6504ea23ff6e88233dbf7e5f5f973b3cf66f1b2`, `auto-chain` delivery path, and allowed S2 rows only (`tasks.md:93-96,100-103`); action-context warning: none supplied, and all edits stayed in the authoritative worktree; parent retains the attempt token.
+- Completed and visibly checked all eight S2 implementation rows. Parent-owned lifecycle rows and every PR3+ row remain unchanged.
+- Added typed set/clear inputs and stable `updated | engagementNotFound | candidateInvalid | stateConflict` results. The required `expectedPrimaryAgentId: string | null` compares null explicitly.
+- Set/change, clear, and removal use one interactive transaction with a tenant-scoped `property_engagements FOR UPDATE` serialization seam. Candidate eligibility and full engagement read stay in that transaction; replacement clears before it sets, rejected candidates make no flag writes, and removal deletes the primary naturally without promotion.
+- Deviation intentionally retained for PR3: only the minimal engagement serialization seam is present. Separate assignment/user/membership `FOR NO KEY UPDATE` helpers, named P2002 hardening, real-Postgres races, and final lock-order proof are not implemented here.
+
+### TDD Cycle Evidence
+| Tasks | Test file / layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| 2A (93–96) | `property-engagements.repository.spec.ts` / mock repository | 29/29 passed | 14 new behavior cases failed (missing methods) | 44/44 passed | Eligible replace, idempotent set/clear, null/stale state, and five invalid categories exercised | Extracted engagement lock, current-primary, and locked-read helpers; 44/44 remained green |
+| 2B (100–103) | `property-engagements.repository.spec.ts` / mock repository | included above | Primary/non-primary removal mocks failed because deletion was not transactional | 44/44 passed | Primary/non-primary and missing engagement/assignment paths require `$queryRaw` transaction mocks | Reused the engagement lock helper without touching authorization or response behavior |
+
+### Verification and boundary
+- PASS: `pnpm --filter @viewpro/api exec vitest run test/property-engagements.repository.spec.ts` (44 tests).
+- PASS: `pnpm --filter @viewpro/api typecheck` after a temporary `pnpm --filter @viewpro/contracts build` prerequisite.
+- PASS: `pnpm --filter @viewpro/api lint` and `git diff --no-ext-diff --check`.
+- No database command was needed; no Neon, development, production, or non-local database was accessed.
+- Temporary frozen-lock dependencies, Prisma client generation, contracts build output, and the temporary pnpm store are removed before handoff. No unchecked S2 task remains; remaining implementation tasks are PR3–PR7 and apply-owned broader gates.
+
+### S2 P2 review remediation — removal proof
+- Native continuation authenticated as `proceed` for `s2-review-remediation`; `auto-chain` S2 boundary remains in effect, action context is repo-local with the repository as its allowed root, and no task checkbox changed.
+- Replaced equivalent parameter mocks with stateful assignment rows: primary deletion leaves the non-primary row false with no primary, while non-primary deletion preserves the primary; both retain the exact id/tenant/engagement delete filter.
+- The stateful mock fails if delete starts before the engagement lock, and a deferred-lock barrier keeps delete uncalled until `$queryRaw` resolves; this is mocked ordering evidence only, not PR3's real-PostgreSQL race/row-lock proof.
+- RED: temporarily reversed `removeAgent` to delete before `lockTenantEngagement`; focused suite failed 4/45 (both ordering cases, unresolved-lock barrier, and missing-engagement no-delete). The original production file was restored byte-for-byte before GREEN.
+- GREEN: focused repository suite passed 45/45; API typecheck and lint passed; `git diff --no-ext-diff --check` passed.
+- Full candidate from `d6504ea` is 368 additions + 17 deletions = 385 changed lines (<=400); final production file equals `HEAD` and no production change is staged.
