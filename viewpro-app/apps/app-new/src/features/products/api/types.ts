@@ -42,6 +42,19 @@ export type ProductAgent = {
   firstName: string | null;
 };
 
+export type PropertyAssignedAgent = ProductAgent & {
+  isPrimary: boolean;
+};
+
+export type SetPrimaryProductAgentPayload = {
+  agentId: string;
+  expectedPrimaryAgentId: string | null;
+};
+
+export type ClearPrimaryProductAgentPayload = {
+  expectedPrimaryAgentId: string | null;
+};
+
 export type AssignableProductAgent = {
   userId: string;
   email: string;
@@ -215,7 +228,7 @@ export type PropertyEngagement = {
     images: PropertyImage[];
     primaryImage: PropertyImage | null;
   };
-  agents: ProductAgent[];
+  agents: PropertyAssignedAgent[];
   createdAt: string;
   updatedAt: string;
 };
@@ -241,8 +254,12 @@ export type ProductFilters = {
   tenantId?: string | null;
 };
 
+export type ProductListItem = Omit<PropertyEngagement, 'agents'> & {
+  agents: ProductAgent[];
+};
+
 export type ProductsResponse = {
-  items: PropertyEngagement[];
+  items: ProductListItem[];
   total: number;
   page: number;
   pageSize: number;

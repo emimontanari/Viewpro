@@ -174,17 +174,17 @@ Each PR must contain only its listed boundary, its RED/GREEN/TRIANGULATE/REFACTO
 
 #### Slice 6A — Scoped types and service methods
 
-- [ ] **RED** — Add failing App New service/type tests under `viewpro-app/apps/app-new/src/features/products/` for required `expectedPrimaryAgentId: string | null`, set/change and clear payloads, `PropertyAssignedAgent`, `PropertyEngagement.agents`, and unchanged dashboard/activity `ProductAgent` producers. <!-- sdd-owner: implementation -->
-- [ ] **GREEN** — Update `features/products/api/types.ts` with the scoped `PropertyAssignedAgent` and payload types and `features/products/api/service.ts` with `setPrimaryProductAgent` and `clearPrimaryProductAgent`, both returning `PropertyEngagement` and preserving existing query key/tenant conventions. <!-- sdd-owner: implementation -->
-- [ ] **TRIANGULATE** — Run the focused App New type/service tests plus the package typecheck to prove property responses require primary state while dashboard/activity contracts remain compatible without fabricated fields. <!-- sdd-owner: implementation -->
-- [ ] **REFACTOR** — Keep `ProductAgent` broadly unchanged, avoid a parallel management service, and centralize only safe code-based primary mutation messages in `features/products/error-messages.ts`. <!-- sdd-owner: implementation -->
+- [x] **RED** — Add failing App New service/type tests under `viewpro-app/apps/app-new/src/features/products/` for required `expectedPrimaryAgentId: string | null`, set/change and clear payloads, `PropertyAssignedAgent`, `PropertyEngagement.agents`, and unchanged dashboard/activity `ProductAgent` producers. <!-- sdd-owner: implementation -->
+- [x] **GREEN** — Update `features/products/api/types.ts` with the scoped `PropertyAssignedAgent` and payload types and `features/products/api/service.ts` with `setPrimaryProductAgent` and `clearPrimaryProductAgent`, both returning `PropertyEngagement` and preserving existing query key/tenant conventions. <!-- sdd-owner: implementation -->
+- [x] **TRIANGULATE** — Run the focused App New type/service tests plus the package typecheck to prove property responses require primary state while dashboard/activity contracts remain compatible without fabricated fields. <!-- sdd-owner: implementation -->
+- [x] **REFACTOR** — Keep `ProductAgent` broadly unchanged, avoid a parallel management service, and centralize only safe code-based primary mutation messages in `features/products/error-messages.ts`. <!-- sdd-owner: implementation -->
 
 #### Slice 6B — BFF set/clear proxies
 
-- [ ] **RED** — Add failing adjacent route tests for `src/app/api/products/[id]/agents/primary/route.ts` and `.../clear/route.ts` covering method/path/body forwarding, selected tenant header, 400/409 body and `x-request-id` passthrough, timeout, and transport failure. <!-- sdd-owner: implementation -->
-- [ ] **GREEN** — Implement the PUT and POST product BFF routes using existing `bffFetch`, `proxyJsonResponse`, and `proxyBffErrorResponse` conventions; forward auth cookies/selected tenant and backend error bodies unchanged. <!-- sdd-owner: implementation -->
-- [ ] **TRIANGULATE** — Run the two focused route test paths and inspect that no optimistic/UI state is introduced in the adapter, request ids survive error responses, and unknown transport failures use the established safe proxy response. <!-- sdd-owner: implementation -->
-- [ ] **REFACTOR** — Match neighboring product route structure and keep route code limited to proxy adaptation, with no duplicated authorization or candidate validation. <!-- sdd-owner: implementation -->
+- [x] **RED** — Add failing adjacent route tests for `src/app/api/products/[id]/agents/primary/route.ts` and `.../clear/route.ts` covering method/path/body forwarding, selected tenant header, 400/409 body and `x-request-id` passthrough, timeout, and transport failure. <!-- sdd-owner: implementation -->
+- [x] **GREEN** — Implement the PUT and POST product BFF routes using existing `bffFetch`, `proxyJsonResponse`, and `proxyBffErrorResponse` conventions; forward auth cookies/selected tenant and backend error bodies unchanged. <!-- sdd-owner: implementation -->
+- [x] **TRIANGULATE** — Run the two focused route test paths and inspect that no optimistic/UI state is introduced in the adapter, request ids survive error responses, and unknown transport failures use the established safe proxy response. <!-- sdd-owner: implementation -->
+- [x] **REFACTOR** — Match neighboring product route structure and keep route code limited to proxy adaptation, with no duplicated authorization or candidate validation. <!-- sdd-owner: implementation -->
 
 ### PR 7 — Integrate explicit primary controls into the existing seller UI
 

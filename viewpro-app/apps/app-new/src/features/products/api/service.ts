@@ -9,6 +9,7 @@ import { toBffError } from '@/lib/bff-client';
 
 import type {
   AssignableProductAgentsResponse,
+  ClearPrimaryProductAgentPayload,
   CreateLabelPayload,
   CreateProductDocumentRequestPayload,
   LinkProductOwnerPayload,
@@ -30,9 +31,11 @@ import type {
   ProductOwnerInvitationRevokeResponse,
   ProductStatusMutationPayload,
   ProductsResponse,
+  PropertyEngagement,
   PropertyImage,
   RejectProductDocumentRequestPayload,
-  RemoveProductAgentResponse
+  RemoveProductAgentResponse,
+  SetPrimaryProductAgentPayload
 } from './types';
 
 const DEFAULT_APP_URL = 'http://localhost:3000';
@@ -146,6 +149,32 @@ export async function removeProductAgent(
   });
 
   return parseJsonResponse<RemoveProductAgentResponse>(response);
+}
+
+export async function setPrimaryProductAgent(
+  productId: string,
+  data: SetPrimaryProductAgentPayload
+): Promise<PropertyEngagement> {
+  const response = await apiFetch(`${PRODUCTS_API_PATH}/${productId}/agents/primary`, {
+    body: JSON.stringify(data),
+    headers: { 'content-type': 'application/json' },
+    method: 'PUT'
+  });
+
+  return parseJsonResponse<PropertyEngagement>(response);
+}
+
+export async function clearPrimaryProductAgent(
+  productId: string,
+  data: ClearPrimaryProductAgentPayload
+): Promise<PropertyEngagement> {
+  const response = await apiFetch(`${PRODUCTS_API_PATH}/${productId}/agents/primary/clear`, {
+    body: JSON.stringify(data),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST'
+  });
+
+  return parseJsonResponse<PropertyEngagement>(response);
 }
 
 export async function linkProductOwner(

@@ -1,6 +1,6 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import type {
-  Product,
+  ProductListItem,
   PropertyEngagementStatus,
   PropertyOperationType,
   PropertyType
@@ -12,7 +12,7 @@ import {
 } from '../status-tones';
 import { OPERATION_TYPE_OPTIONS, PROPERTY_STATUS_OPTIONS, PROPERTY_TYPE_OPTIONS } from './options';
 
-export const columns: ColumnDef<Product>[] = [
+export const columns: ColumnDef<ProductListItem>[] = [
   {
     id: 'property',
     accessorFn: (row) => row.property.title
@@ -62,13 +62,13 @@ export function getStatusLabel(value: PropertyEngagementStatus) {
   return statusLabels[value] ?? value;
 }
 
-export function getAddress(product: Product) {
+export function getAddress(product: ProductListItem) {
   return [product.property.addressLine, product.property.city, product.property.province]
     .filter(Boolean)
     .join(', ');
 }
 
-export function getPropertyFacts(product: Product) {
+export function getPropertyFacts(product: ProductListItem) {
   const { bathrooms, bedrooms, coveredAreaSqm, garages, rooms, totalAreaSqm } = product.property;
   const facts: string[] = [];
 
@@ -99,7 +99,7 @@ export function getPropertyFacts(product: Product) {
   return facts.join(' · ');
 }
 
-export function getAgentSummary(product: Product) {
+export function getAgentSummary(product: ProductListItem) {
   const [firstAgent] = product.agents;
 
   if (!firstAgent) {
@@ -136,7 +136,7 @@ export function getOperationTone(value: PropertyOperationType) {
   return getProductStatusBadgeTone(propertyOperationToneByType[value]);
 }
 
-export function isArchivedProduct(product: Product) {
+export function isArchivedProduct(product: ProductListItem) {
   return Boolean(product.archivedAt);
 }
 

@@ -141,3 +141,18 @@
 ### Verification
 - API typecheck and lint pass; localhost worker configuration has one prepared database per worker.
 - `git diff --check` passes; this corrective PR5 boundary remains within the 400-line budget.
+
+## S6 App New BFF — resolved
+- Native status: authoritative `ready/apply`; repo-local root/allowed edit root, `auto-chain` PR6 boundary, parent continuation token, and no action-context warning.
+- Completed and checked S6 rows 175–178 and 183–186. `PropertyEngagement` is detail-strict, `ProductListItem` safely narrows list agents, and exactly five list-consumer annotations/imports changed.
+- PUT/POST BFF adapters forward JSON through default `bffFetch` cookie/tenant context and preserve backend 400/409 bodies/request IDs; shared errors yield 504 abort or 502 transport responses.
+- Files: product types/service/error messages and focused tests; two routes/tests; five authorized list-only consumer surfaces. No runtime/render/action/cache or S7 change.
+- PASS: focused service/error/two-route/helper/operational-homepage/product-table tests, 29/29; composed BFF helper 3/3; App New typecheck, strict lint, and full test 116 files/722 tests.
+- RED: missing service/error exports and route modules failed; GREEN and triangulation cover change/null CAS payloads, detail/list compile boundaries, 400/409, request IDs, abort, and transport.
+- No design deviation. Remaining unchecked implementation rows are PR7 plus apply-owned gates in `tasks.md`; parent lifecycle rows remain deferred.
+
+### TDD Cycle Evidence
+| Tasks | Safety net | RED | GREEN / TRIANGULATE / REFACTOR |
+|---|---|---|---|
+| 175–178 | 16 focused baseline | missing exports | 20/20; CAS/type/error cases; clean |
+| 183–186 | new routes; helper 3/3 | absent modules | 20/20; proxy/error cases; clean |
