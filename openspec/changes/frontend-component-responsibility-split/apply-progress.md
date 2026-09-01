@@ -83,3 +83,36 @@ The native D1 attempt settled complete against evidence revision `sha256:b1c0089
 ### Parent replan decision
 
 The parent decision is to split required D2 into sequential, under-budget work units: **D2a** lands the core list model (filters, eligibility, normalization, grouping/filtering, and counts), then **D2b** lands the metadata model (chronology, descriptions, labels, versions, MIME, and dates) on the landed D2a base. D3 remains blocked until D2b lands. D1 history above is preserved unchanged.
+
+## D2a — Document core list model
+
+**Status:** complete for `d2a-document-core-list-model`; all four D2a implementation checkboxes are visibly checked.
+
+### Structured status and scope
+
+- Consumed native authority: `frontend-component-responsibility-split` was apply-ready with 9/74 complete; the parent-held D2a attempt was `proceed` under `auto-chain` sequential-to-develop.
+- Action context reconstructed as `repo-local` at `/Users/emimontanari/Work/Apps/Viewpro-worktrees/frontend-component-document-core-model`; edits stayed within the parent-supplied five file surfaces. The untracked `viewpro-app/node_modules` symlink was not edited.
+- PR boundary: D2a core list model only; rollback is the root wiring, `model.ts`, and `model.test.ts` as one unit. D2b remains the next implementation unit.
+
+### TDD Cycle Evidence
+
+| Step | Evidence | Result |
+|---|---|---|
+| Safety net | `DOC` before D2a | PASS — 34/34 characterization tests. |
+| RED | New pure-model test imported missing `./model` | Expected structural RED: Vite could not resolve the missing module; no behavioral RED was manufactured. |
+| GREEN | Implemented the pure core model and wired the root | `MODEL` PASS — 4/4; `DOC` PASS — 34/34. |
+| TRIANGULATE / REFACTOR | Tested valid/unknown filters, owner states, non-empty grouping/order/counts, and filter copy/order; formatted and reran focused suites | PASS — `MODEL` 4/4 and `DOC` 34/34. |
+
+### Files and verification
+
+- Changed: `property-document-requests.tsx`, `property-document-requests/model.ts`, `property-document-requests/model.test.ts`, `tasks.md`, and this cumulative progress file.
+- `MODEL`: PASS — 4/4; `DOC`: PASS — 34/34; App New typecheck: PASS; strict lint: PASS.
+- Scoped `oxfmt --write` then `--check` for all three changed source/test files: PASS. `git diff --check`: PASS. Model forbidden-import audit: PASS (only feature API type import).
+- Package `pnpm format:check`: D1 recorded the known 89-file package-wide blocker; this run reported 88 remaining files, all outside D2a. The D2a scoped formatter check is green.
+- Exact tracked and untracked D2a changed-line count: **333** additions plus deletions, below 400.
+
+### Boundary and remaining work
+
+- `model.ts` contains only filter options/types, owner eligibility, active-filter normalization, grouping/filtering, and counts. Root retains chronology, descriptions, labels, versions, MIME/date formatting, icons/status presentation, UI, queries, URL state, and mutations.
+- No design deviation, product behavior change, API/config/package change, commit, push, or D2b work occurred.
+- Remaining work begins with the four unchecked D2b lines; parent-owned lifecycle actions remain deferred unchanged.
