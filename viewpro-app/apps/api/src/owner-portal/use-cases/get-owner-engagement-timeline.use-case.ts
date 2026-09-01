@@ -33,7 +33,7 @@ export class GetOwnerEngagementTimelineUseCase {
 
     return {
       engagement: mapOwnerEngagement(result.engagement),
-      items: result.items.map(mapOwnerMovement),
+      items: result.items.map((movement) => mapOwnerMovement(movement, result.primarySellerContact)),
       total: result.total,
       page: input.page,
       pageSize: input.pageSize,

@@ -288,9 +288,11 @@ describe("Owner portal repository", () => {
 			.mockResolvedValueOnce(null);
 		const findMany = vi.fn().mockResolvedValue([movement]);
 		const count = vi.fn().mockResolvedValue(1);
+		const primaryFindFirst = vi.fn().mockResolvedValue(null);
 		const repository = new PrismaOwnerPortalRepository({
 			propertyEngagement: { findFirst },
 			movement: { findMany, count },
+			propertyAgent: { findFirst: primaryFindFirst },
 		} as never);
 
 		const visible = await repository.findEngagementTimelineForOwner({
@@ -308,8 +310,8 @@ describe("Owner portal repository", () => {
 			order: "desc",
 		});
 
-		expect(visible).toEqual({ engagement, items: [movement], total: 1 });
-		expect(hidden).toEqual({ engagement: null, items: [], total: 0 });
+		expect(visible).toEqual({ engagement, items: [movement], total: 1, primarySellerContact: null });
+		expect(hidden).toEqual({ engagement: null, items: [], total: 0, primarySellerContact: null });
 		expect(findFirst).toHaveBeenCalledWith(
 			expect.objectContaining({
 				where: {
@@ -331,7 +333,8 @@ describe("Owner portal repository", () => {
 		expect(count).toHaveBeenCalledWith({
 			where: { propertyEngagementId: "engagement-1" },
 		});
-		expect(mapOwnerMovement(visible.items[0])).toEqual({
+		expect(primaryFindFirst).toHaveBeenCalledTimes(1);
+		expect(mapOwnerMovement(visible.items[0], null)).toEqual({
 			id: "movement-1",
 			propertyEngagementId: "engagement-1",
 			type: "GENERAL_UPDATE",
@@ -354,62 +357,67 @@ describe("Owner portal repository", () => {
 		});
 	});
 
-	// T-3.2: mapper resolves assigned seller phone from agents[0] (S-7 at mapper level)
-	it("mapOwnerMovement resolves assigned seller contact from agents[0]", () => {
-		const movement = makeMovement({
-			propertyEngagement: {
-				agents: [
-					{
-						agentUserId: "seller-1",
-						assignedAt: new Date("2024-01-01T00:00:00.000Z"),
-						agentUser: { whatsappPhone: "+5493512222222" },
-					},
-				],
+
+	it("loads one valid primary candidate for the owner-authorized page and reuses it for every movement", async () => {
+		const engagement = makeEngagement({ id: "engagement-1", tenantId: "tenant-1" });
+		const movements = [makeMovement({ id: "movement-1" }), makeMovement({ id: "movement-2" })];
+		const candidate = {
+			id: "assignment-primary",
+			agentUserId: "seller-primary",
+			agentUser: { whatsappPhone: "+5493512222222" },
+		};
+		const engagementFindFirst = vi.fn().mockResolvedValueOnce(engagement).mockResolvedValueOnce(null);
+		const findMany = vi.fn().mockResolvedValue(movements);
+		const count = vi.fn().mockResolvedValue(2);
+		const primaryFindFirst = vi.fn().mockResolvedValue(candidate);
+		const repository = new PrismaOwnerPortalRepository({
+			propertyEngagement: { findFirst: engagementFindFirst },
+			movement: { findMany, count },
+			propertyAgent: { findFirst: primaryFindFirst },
+		} as never);
+
+		const visible = await repository.findEngagementTimelineForOwner({
+			userId: "owner-1", engagementId: "engagement-1", page: 1, pageSize: 20, order: "desc",
+		});
+		const hidden = await repository.findEngagementTimelineForOwner({
+			userId: "owner-2", engagementId: "engagement-1", page: 1, pageSize: 20, order: "desc",
+		});
+
+		expect(visible).toEqual({ engagement, items: movements, total: 2, primarySellerContact: candidate });
+		expect(primaryFindFirst).toHaveBeenCalledTimes(1);
+		expect(primaryFindFirst).toHaveBeenCalledWith({
+			where: {
+				tenantId: "tenant-1",
+				propertyEngagementId: "engagement-1",
+				isPrimary: true,
+				agentUser: {
+					status: "ACTIVE",
+					memberships: { some: { tenantId: "tenant-1", status: "ACTIVE", role: "AGENT" } },
+				},
 			},
+			select: { id: true, agentUserId: true, agentUser: { select: { whatsappPhone: true } } },
 		});
-
-		const result = mapOwnerMovement(movement as never);
-
-		expect(result.contact).toEqual({
-			available: true,
-			targetType: "assigned_seller",
-			displayLabel: "Consultar responsable",
-			whatsappPhone: "+5493512222222",
-		});
+		expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+			include: { createdBy: { select: { id: true, email: true, firstName: true } } },
+		}));
+		expect(hidden).toEqual({ engagement: null, items: [], total: 0, primarySellerContact: null });
+		expect(primaryFindFirst).toHaveBeenCalledTimes(1);
+		expect(findMany).toHaveBeenCalledTimes(1);
+		expect(count).toHaveBeenCalledTimes(1);
 	});
 
-	// T-3.2: S-4 tie-break at mapper level — identical assignedAt, lower agentUserId wins
-	it("mapOwnerMovement picks lower agentUserId when assignedAt is identical", () => {
-		const sharedDate = new Date("2024-03-15T00:00:00.000Z");
-		const movement = makeMovement({
-			propertyEngagement: {
-				agents: [
-					// SQL-sorted: 'user-aaa' before 'user-bbb'
-					{
-						agentUserId: "user-aaa",
-						assignedAt: sharedDate,
-						agentUser: { whatsappPhone: "+5493512222222" },
-					},
-					{
-						agentUserId: "user-bbb",
-						assignedAt: sharedDate,
-						agentUser: { whatsappPhone: "+5493511111111" },
-					},
-				],
-			},
-		});
-
-		const result = mapOwnerMovement(movement as never);
-
-		expect(result.contact).toEqual({
-			available: true,
-			targetType: "assigned_seller",
-			displayLabel: "Consultar responsable",
-			whatsappPhone: "+5493512222222",
-		});
+	it("maps a candidate phone but fails closed for null or unusable primary phones", () => {
+		const movement = makeMovement();
+		expect(mapOwnerMovement(movement as never, {
+			id: "assignment-primary", agentUserId: "seller-primary", agentUser: { whatsappPhone: "+5493512222222" },
+		})).toMatchObject({ contact: { available: true, targetType: "assigned_seller", displayLabel: "Consultar responsable", whatsappPhone: "+5493512222222" } });
+		expect(mapOwnerMovement(movement as never, {
+			id: "assignment-primary", agentUserId: "seller-primary", agentUser: { whatsappPhone: "1234567" },
+		})).toEqual(expect.objectContaining({
+			contact: { available: false, targetType: "assigned_seller", displayLabel: "Contacto no configurado" },
+		}));
 	});
-});
-
+	});
 function makeProperty(overrides: Partial<Record<string, unknown>> = {}) {
 	return {
 		id: "property-1",

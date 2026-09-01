@@ -293,25 +293,25 @@ describe("Owner portal use cases", () => {
 		});
 	});
 
-	it("maps assigned seller WhatsApp contact in owner engagement timeline", async () => {
+	it("maps valid primary WhatsApp contact in owner engagement timeline", async () => {
 		const engagement = makeEngagement({ id: "engagement-1" });
 		const movement = makeMovement({
 			id: "movement-1",
 			propertyEngagementId: "engagement-1",
-			propertyEngagement: {
-				agents: [
-					{
-						agentUserId: "agent-1",
-						assignedAt: new Date("2024-01-01T00:00:00.000Z"),
-						agentUser: { whatsappPhone: "+5493510000000" },
-					},
-				],
-			},
 		});
 		const repository = makeRepository({
 			findEngagementTimelineForOwner: vi
 				.fn()
-				.mockResolvedValue({ engagement, items: [movement], total: 1 }),
+				.mockResolvedValue({
+					engagement,
+					items: [movement],
+					total: 1,
+					primarySellerContact: {
+						id: "assignment-primary",
+						agentUserId: "agent-1",
+						agentUser: { whatsappPhone: "+5493510000000" },
+					},
+				}),
 		});
 		const useCase = new GetOwnerEngagementTimelineUseCase(repository);
 
@@ -551,6 +551,26 @@ describe("Owner portal use cases", () => {
 		).resolves.toBeUndefined();
 	});
 
+
+	it("reuses one primary candidate for every movement in a page", async () => {
+		const engagement = makeEngagement({ id: "engagement-1" });
+		const repository = makeRepository({
+			findEngagementTimelineForOwner: vi.fn().mockResolvedValue({
+				engagement,
+				items: [makeMovement({ id: "movement-1" }), makeMovement({ id: "movement-2" })],
+				total: 2,
+				primarySellerContact: { id: "assignment-primary", agentUserId: "seller-primary", agentUser: { whatsappPhone: "+5493512222222" } },
+			}),
+		});
+		const result = await new GetOwnerEngagementTimelineUseCase(repository).execute({
+			userId: "owner-1", engagementId: "engagement-1", page: 1, pageSize: 20, order: "desc",
+		});
+		expect(result.items.map((item) => item.contact)).toEqual([
+			{ available: true, targetType: "assigned_seller", displayLabel: "Consultar responsable", whatsappPhone: "+5493512222222" },
+			{ available: true, targetType: "assigned_seller", displayLabel: "Consultar responsable", whatsappPhone: "+5493512222222" },
+		]);
+	});
+
 	it("throws 404 when an owner engagement timeline is missing", async () => {
 		const repository = makeRepository({
 			findEngagementTimelineForOwner: vi
@@ -571,7 +591,7 @@ describe("Owner portal use cases", () => {
 	});
 
 	// S-1: assigned seller has phone; movement creator does not
-	it("S-1: resolves contact from assigned seller when creator has no phone", async () => {
+	it("S-1: resolves contact from the returned valid primary when creator has no phone", async () => {
 		const engagement = makeEngagement({ id: "engagement-1" });
 		const movement = makeMovement({
 			id: "movement-1",
@@ -595,7 +615,7 @@ describe("Owner portal use cases", () => {
 		const repository = makeRepository({
 			findEngagementTimelineForOwner: vi
 				.fn()
-				.mockResolvedValue({ engagement, items: [movement], total: 1 }),
+				.mockResolvedValue({ engagement, items: [movement], total: 1, primarySellerContact: { id: "assignment-primary", agentUserId: "seller-1", agentUser: { whatsappPhone: "+5493512222222" } } }),
 		});
 		const useCase = new GetOwnerEngagementTimelineUseCase(repository);
 
@@ -616,7 +636,7 @@ describe("Owner portal use cases", () => {
 	});
 
 	// S-2: assigned seller has no phone; creator's phone is NOT used
-	it("S-2: does not use creator phone when assigned seller has no phone", async () => {
+	it("S-2: fails closed when the returned primary has no phone", async () => {
 		const engagement = makeEngagement({ id: "engagement-1" });
 		const movement = makeMovement({
 			id: "movement-1",
@@ -634,13 +654,18 @@ describe("Owner portal use cases", () => {
 						assignedAt: new Date("2024-01-01T00:00:00.000Z"),
 						agentUser: { whatsappPhone: null },
 					},
+					{
+						agentUserId: "seller-2",
+						assignedAt: new Date("2024-01-02T00:00:00.000Z"),
+						agentUser: { whatsappPhone: "+5493512222222" },
+					},
 				],
 			},
 		});
 		const repository = makeRepository({
 			findEngagementTimelineForOwner: vi
 				.fn()
-				.mockResolvedValue({ engagement, items: [movement], total: 1 }),
+				.mockResolvedValue({ engagement, items: [movement], total: 1, primarySellerContact: { id: "assignment-primary", agentUserId: "seller-1", agentUser: { whatsappPhone: null } } }),
 		});
 		const useCase = new GetOwnerEngagementTimelineUseCase(repository);
 
@@ -661,7 +686,7 @@ describe("Owner portal use cases", () => {
 	});
 
 	// S-3: two sellers; earliest assignedAt wins and has a phone
-	it("S-3: picks the seller with the earliest assignedAt when two sellers exist", async () => {
+	it("S-3: uses the returned primary rather than assignment order", async () => {
 		const engagement = makeEngagement({ id: "engagement-1" });
 		const movement = makeMovement({
 			id: "movement-1",
@@ -685,7 +710,7 @@ describe("Owner portal use cases", () => {
 		const repository = makeRepository({
 			findEngagementTimelineForOwner: vi
 				.fn()
-				.mockResolvedValue({ engagement, items: [movement], total: 1 }),
+				.mockResolvedValue({ engagement, items: [movement], total: 1, primarySellerContact: { id: "assignment-primary", agentUserId: "seller-b", agentUser: { whatsappPhone: "+5493511111111" } } }),
 		});
 		const useCase = new GetOwnerEngagementTimelineUseCase(repository);
 
@@ -701,12 +726,12 @@ describe("Owner portal use cases", () => {
 			available: true,
 			targetType: "assigned_seller",
 			displayLabel: "Consultar responsable",
-			whatsappPhone: "+5493512222222",
+			whatsappPhone: "+5493511111111",
 		});
 	});
 
-	// S-4: identical assignedAt; agentUserId ascending tie-break
-	it("S-4: breaks assignedAt tie by agentUserId ascending", async () => {
+	// S-4: explicit primary ignores agent assignment ties
+	it("S-4: ignores assignment ties when the returned primary is explicit", async () => {
 		const sharedAssignedAt = new Date("2024-03-15T00:00:00.000Z");
 		const engagement = makeEngagement({ id: "engagement-1" });
 		const movement = makeMovement({
@@ -731,7 +756,7 @@ describe("Owner portal use cases", () => {
 		const repository = makeRepository({
 			findEngagementTimelineForOwner: vi
 				.fn()
-				.mockResolvedValue({ engagement, items: [movement], total: 1 }),
+				.mockResolvedValue({ engagement, items: [movement], total: 1, primarySellerContact: { id: "assignment-primary", agentUserId: "user-bbb", agentUser: { whatsappPhone: "+5493511111111" } } }),
 		});
 		const useCase = new GetOwnerEngagementTimelineUseCase(repository);
 
@@ -747,12 +772,12 @@ describe("Owner portal use cases", () => {
 			available: true,
 			targetType: "assigned_seller",
 			displayLabel: "Consultar responsable",
-			whatsappPhone: "+5493512222222",
+			whatsappPhone: "+5493511111111",
 		});
 	});
 
-	// S-5: zero assigned sellers → unavailable
-	it("S-5: returns unavailable contact when no sellers are assigned", async () => {
+	// S-5: no primary → unavailable
+	it("S-5: returns unavailable contact when no primary is returned", async () => {
 		const engagement = makeEngagement({ id: "engagement-1" });
 		const movement = makeMovement({
 			id: "movement-1",
@@ -762,7 +787,7 @@ describe("Owner portal use cases", () => {
 		const repository = makeRepository({
 			findEngagementTimelineForOwner: vi
 				.fn()
-				.mockResolvedValue({ engagement, items: [movement], total: 1 }),
+				.mockResolvedValue({ engagement, items: [movement], total: 1, primarySellerContact: null }),
 		});
 		const useCase = new GetOwnerEngagementTimelineUseCase(repository);
 
@@ -782,7 +807,7 @@ describe("Owner portal use cases", () => {
 	});
 
 	// S-6: assigned seller has 7-digit phone (below MIN_WHATSAPP_DIGITS threshold of 8)
-	it("S-6: returns unavailable contact when assigned seller phone has fewer than 8 digits", async () => {
+	it("S-6: returns unavailable contact when primary phone has fewer than 8 digits", async () => {
 		const engagement = makeEngagement({ id: "engagement-1" });
 		const movement = makeMovement({
 			id: "movement-1",
@@ -801,7 +826,7 @@ describe("Owner portal use cases", () => {
 		const repository = makeRepository({
 			findEngagementTimelineForOwner: vi
 				.fn()
-				.mockResolvedValue({ engagement, items: [movement], total: 1 }),
+				.mockResolvedValue({ engagement, items: [movement], total: 1, primarySellerContact: { id: "assignment-primary", agentUserId: "seller-1", agentUser: { whatsappPhone: "1234567" } } }),
 		});
 		const useCase = new GetOwnerEngagementTimelineUseCase(repository);
 
@@ -821,7 +846,7 @@ describe("Owner portal use cases", () => {
 	});
 
 	// S-7: valid phone produces correct targetType, displayLabel and whatsappPhone
-	it("S-7: resolves correct targetType and displayLabel for valid assigned seller phone", async () => {
+	it("S-7: preserves contact shape for a valid primary phone", async () => {
 		const engagement = makeEngagement({ id: "engagement-1" });
 		const movement = makeMovement({
 			id: "movement-1",
@@ -839,7 +864,7 @@ describe("Owner portal use cases", () => {
 		const repository = makeRepository({
 			findEngagementTimelineForOwner: vi
 				.fn()
-				.mockResolvedValue({ engagement, items: [movement], total: 1 }),
+				.mockResolvedValue({ engagement, items: [movement], total: 1, primarySellerContact: { id: "assignment-primary", agentUserId: "seller-1", agentUser: { whatsappPhone: "+5493512222222" } } }),
 		});
 		const useCase = new GetOwnerEngagementTimelineUseCase(repository);
 

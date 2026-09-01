@@ -1,9 +1,15 @@
-import type { OwnerMovementRecord } from "../owner-portal.repository";
+import type {
+	OwnerMovementRecord,
+	OwnerPrimarySellerContactCandidate,
+} from "../owner-portal.repository";
 import { mapAssignedSellerWhatsappContact } from "../owner-whatsapp-contact";
 
 export type OwnerMovementResponse = ReturnType<typeof mapOwnerMovement>;
 
-export function mapOwnerMovement(movement: OwnerMovementRecord) {
+export function mapOwnerMovement(
+	movement: OwnerMovementRecord,
+	primarySellerContact: OwnerPrimarySellerContactCandidate | null,
+) {
 	return {
 		id: movement.id,
 		propertyEngagementId: movement.propertyEngagementId,
@@ -22,7 +28,7 @@ export function mapOwnerMovement(movement: OwnerMovementRecord) {
 			email: movement.createdBy.email,
 			firstName: movement.createdBy.firstName,
 		},
-		contact: mapAssignedSellerWhatsappContact(movement.propertyEngagement.agents),
+		contact: mapAssignedSellerWhatsappContact(primarySellerContact),
 		createdAt: movement.createdAt.toISOString(),
 	};
 }
