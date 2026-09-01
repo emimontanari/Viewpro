@@ -14,6 +14,7 @@ import type {
   ArchivePropertyEngagementInput,
   ArchivePropertyEngagementResult,
   AssignPropertyAgentResult,
+  ClearPrimaryPropertyAgentInput,
   CreatePropertyEngagementInput,
   CreatePropertyAssetImageInput,
   CreateOwnerInvitationLinkResult,
@@ -21,10 +22,12 @@ import type {
   LinkPropertyOwnerResult,
   ListPropertyEngagementsInput,
   PropertyEngagementsRepository,
+  PrimaryPropertyAgentResult,
   PropertyEngagementWithDetails,
   RevokeOwnerInvitationLinkResult,
   RestorePropertyEngagementInput,
   RestorePropertyEngagementResult,
+  SetPrimaryPropertyAgentInput,
   UpdatePropertyEngagementInput,
 } from './property-engagements.repository'
 
@@ -98,6 +101,20 @@ async function lockTenantRow(tx: Prisma.TransactionClient, tenantId: string): Pr
   }
 
   await tx.$queryRaw`SELECT id FROM tenants WHERE id = ${tenantId} FOR UPDATE`
+}
+
+/** PR2 serialization seam; PR3 adds the separate candidate-row lock protocol. */
+async function lockTenantEngagement(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  engagementId: string,
+): Promise<boolean> {
+  const engagements = await tx.$queryRaw<{ id: string }[]>`
+    SELECT id FROM property_engagements
+    WHERE id = ${engagementId} AND "tenantId" = ${tenantId}
+    FOR UPDATE
+  `
+  return engagements.length > 0
 }
 
 function isActiveEngagementStatus(status: PropertyEngagementStatus): boolean {
@@ -414,20 +431,116 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
     })
   }
 
+  setPrimaryAgent(input: SetPrimaryPropertyAgentInput): Promise<PrimaryPropertyAgentResult> {
+    return this.prisma.$transaction(async (tx) => {
+      if (!(await lockTenantEngagement(tx, input.tenantId, input.engagementId))) {
+        return { status: 'engagementNotFound' }
+      }
+
+      const currentPrimary = await this.findCurrentPrimary(tx, input)
+      if ((currentPrimary?.id ?? null) !== input.expectedPrimaryAgentId) {
+        return { status: 'stateConflict' }
+      }
+
+      const candidate = await tx.propertyAgent.findFirst({
+        where: {
+          id: input.agentId,
+          tenantId: input.tenantId,
+          propertyEngagementId: input.engagementId,
+          agentUser: {
+            status: 'ACTIVE',
+            memberships: {
+              some: { tenantId: input.tenantId, status: 'ACTIVE', role: 'AGENT' },
+            },
+          },
+        },
+        select: { id: true },
+      })
+      if (!candidate) {
+        return { status: 'candidateInvalid' }
+      }
+
+      if (candidate.id !== currentPrimary?.id) {
+        await tx.propertyAgent.updateMany({
+          where: {
+            tenantId: input.tenantId,
+            propertyEngagementId: input.engagementId,
+            isPrimary: true,
+          },
+          data: { isPrimary: false },
+        })
+        await tx.propertyAgent.update({ where: { id: candidate.id }, data: { isPrimary: true } })
+      }
+
+      return { status: 'updated', engagement: await this.readLockedEngagement(tx, input) }
+    })
+  }
+
+  clearPrimaryAgent(input: ClearPrimaryPropertyAgentInput): Promise<PrimaryPropertyAgentResult> {
+    return this.prisma.$transaction(async (tx) => {
+      if (!(await lockTenantEngagement(tx, input.tenantId, input.engagementId))) {
+        return { status: 'engagementNotFound' }
+      }
+
+      const currentPrimary = await this.findCurrentPrimary(tx, input)
+      if ((currentPrimary?.id ?? null) !== input.expectedPrimaryAgentId) {
+        return { status: 'stateConflict' }
+      }
+
+      await tx.propertyAgent.updateMany({
+        where: {
+          tenantId: input.tenantId,
+          propertyEngagementId: input.engagementId,
+          isPrimary: true,
+        },
+        data: { isPrimary: false },
+      })
+      return { status: 'updated', engagement: await this.readLockedEngagement(tx, input) }
+    })
+  }
+
   async removeAgent(input: {
     tenantId: string
     engagementId: string
     agentId: string
   }): Promise<boolean> {
-    const removed = await this.prisma.propertyAgent.deleteMany({
+    return this.prisma.$transaction(async (tx) => {
+      if (!(await lockTenantEngagement(tx, input.tenantId, input.engagementId))) {
+        return false
+      }
+      const removed = await tx.propertyAgent.deleteMany({
+        where: {
+          id: input.agentId,
+          tenantId: input.tenantId,
+          propertyEngagementId: input.engagementId,
+        },
+      })
+      return removed.count > 0
+    })
+  }
+
+  private findCurrentPrimary(
+    tx: Prisma.TransactionClient,
+    input: Pick<SetPrimaryPropertyAgentInput, 'tenantId' | 'engagementId'>,
+  ): Promise<{ id: string } | null> {
+    return tx.propertyAgent.findFirst({
       where: {
-        id: input.agentId,
         tenantId: input.tenantId,
         propertyEngagementId: input.engagementId,
+        isPrimary: true,
       },
+      select: { id: true },
     })
+  }
 
-    return removed.count > 0
+  private readLockedEngagement(
+    tx: Prisma.TransactionClient,
+    input: Pick<SetPrimaryPropertyAgentInput, 'tenantId' | 'engagementId'>,
+  ): Promise<PropertyEngagementWithDetails> {
+    return tx.propertyEngagement.findFirstOrThrow({
+      where: { id: input.engagementId, tenantId: input.tenantId },
+      include: propertyEngagementInclude,
+    })
   }
 
   linkOwner(input: {

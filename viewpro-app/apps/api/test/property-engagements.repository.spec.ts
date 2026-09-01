@@ -742,9 +742,10 @@ describe("Property engagements foundation", () => {
 
 	it("removes an agent assignment within the engagement tenant boundary", async () => {
 		const deleteMany = vi.fn().mockResolvedValue({ count: 1 });
-		const repository = new PrismaPropertyEngagementsRepository({
-			propertyAgent: { deleteMany },
-		} as never);
+		const $transaction = vi.fn((callback) =>
+			callback({ $queryRaw: vi.fn().mockResolvedValue([{ id: "engagement-1" }]), propertyAgent: { deleteMany } }),
+		);
+		const repository = new PrismaPropertyEngagementsRepository({ $transaction } as never);
 
 		await expect(
 			repository.removeAgent({
@@ -764,9 +765,10 @@ describe("Property engagements foundation", () => {
 
 	it("returns false when removing an unrelated agent assignment", async () => {
 		const deleteMany = vi.fn().mockResolvedValue({ count: 0 });
-		const repository = new PrismaPropertyEngagementsRepository({
-			propertyAgent: { deleteMany },
-		} as never);
+		const $transaction = vi.fn((callback) =>
+			callback({ $queryRaw: vi.fn().mockResolvedValue([{ id: "engagement-1" }]), propertyAgent: { deleteMany } }),
+		);
+		const repository = new PrismaPropertyEngagementsRepository({ $transaction } as never);
 
 		await expect(
 			repository.removeAgent({
@@ -925,5 +927,160 @@ describe("Property engagements foundation", () => {
 			}),
 		).resolves.toEqual({ status: "alreadyLinked" });
 		expect(findFirstOrThrow).not.toHaveBeenCalled();
+	});
+});
+
+describe("primary seller repository mutations", () => {
+	const input = {
+		tenantId: "tenant-1",
+		engagementId: "engagement-1",
+		agentId: "assignment-2",
+		expectedPrimaryAgentId: null as string | null,
+	};
+
+	function primaryTransaction({
+		engagement = [{ id: "engagement-1" }],
+		primary = null as { id: string } | null,
+		candidate = { id: "assignment-2" },
+		result = { id: "engagement-1" },
+	}: Partial<{
+		engagement: { id: string }[];
+		primary: { id: string } | null;
+		candidate: { id: string } | null;
+		result: { id: string };
+	}> = {}) {
+		const $queryRaw = vi.fn().mockResolvedValue(engagement);
+		const findFirst = vi.fn().mockResolvedValueOnce(primary).mockResolvedValueOnce(candidate);
+		const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+		const update = vi.fn().mockResolvedValue({ id: "assignment-2", isPrimary: true });
+		const findFirstOrThrow = vi.fn().mockResolvedValue(result);
+		const $transaction = vi.fn((callback) =>
+			callback({
+				$queryRaw,
+				propertyAgent: { findFirst, updateMany, update },
+				propertyEngagement: { findFirstOrThrow },
+			}),
+		);
+		return { $transaction, $queryRaw, findFirst, updateMany, update, findFirstOrThrow };
+	}
+
+	it("sets an eligible candidate from the observed no-primary state inside an engagement transaction", async () => {
+		const tx = primaryTransaction();
+		const repository = new PrismaPropertyEngagementsRepository({ $transaction: tx.$transaction } as never);
+
+		await expect(repository.setPrimaryAgent(input)).resolves.toEqual({
+			status: "updated",
+			engagement: { id: "engagement-1" },
+		});
+		expect(tx.$queryRaw).toHaveBeenCalledOnce();
+		expect(tx.findFirst).toHaveBeenNthCalledWith(1, {
+			where: { tenantId: "tenant-1", propertyEngagementId: "engagement-1", isPrimary: true },
+			select: { id: true },
+		});
+		expect(tx.findFirst).toHaveBeenNthCalledWith(2, expect.objectContaining({
+			where: expect.objectContaining({
+				id: "assignment-2", tenantId: "tenant-1", propertyEngagementId: "engagement-1",
+				agentUser: { status: "ACTIVE", memberships: { some: { tenantId: "tenant-1", status: "ACTIVE", role: "AGENT" } } },
+			}),
+		}));
+		expect(tx.updateMany).toHaveBeenCalledWith({
+			where: { tenantId: "tenant-1", propertyEngagementId: "engagement-1", isPrimary: true },
+			data: { isPrimary: false },
+		});
+		expect(tx.update).toHaveBeenCalledWith({ where: { id: "assignment-2" }, data: { isPrimary: true } });
+	});
+
+	it.each([
+		["an inactive user"], ["an inactive membership"], ["a non-AGENT membership"], ["a stale assignment"], ["a cross-tenant assignment"],
+	])("returns candidateInvalid without writes for %s", async () => {
+		const tx = primaryTransaction({ candidate: null });
+		const repository = new PrismaPropertyEngagementsRepository({ $transaction: tx.$transaction } as never);
+
+		await expect(repository.setPrimaryAgent(input)).resolves.toEqual({ status: "candidateInvalid" });
+		expect(tx.updateMany).not.toHaveBeenCalled();
+		expect(tx.update).not.toHaveBeenCalled();
+	});
+
+	it("returns stateConflict without candidate or flag writes for a stale observed primary", async () => {
+		const tx = primaryTransaction({ primary: { id: "assignment-1" } });
+		const repository = new PrismaPropertyEngagementsRepository({ $transaction: tx.$transaction } as never);
+
+		await expect(repository.setPrimaryAgent(input)).resolves.toEqual({ status: "stateConflict" });
+		expect(tx.findFirst).toHaveBeenCalledOnce();
+		expect(tx.updateMany).not.toHaveBeenCalled();
+	});
+
+	it("returns engagementNotFound when the tenant-scoped serialization seam finds no engagement", async () => {
+		const tx = primaryTransaction({ engagement: [] });
+		const repository = new PrismaPropertyEngagementsRepository({ $transaction: tx.$transaction } as never);
+
+		await expect(repository.setPrimaryAgent(input)).resolves.toEqual({ status: "engagementNotFound" });
+		expect(tx.findFirst).not.toHaveBeenCalled();
+		expect(tx.updateMany).not.toHaveBeenCalled();
+	});
+
+	it("replaces an observed primary with an eligible candidate by clearing before setting", async () => {
+		const tx = primaryTransaction({ primary: { id: "assignment-1" } });
+		const repository = new PrismaPropertyEngagementsRepository({ $transaction: tx.$transaction } as never);
+
+		await expect(repository.setPrimaryAgent({ ...input, expectedPrimaryAgentId: "assignment-1" })).resolves.toEqual({
+			status: "updated", engagement: { id: "engagement-1" },
+		});
+		expect(tx.updateMany).toHaveBeenCalledBefore(tx.update);
+	});
+
+	it("accepts an eligible idempotent set only after validating the current primary", async () => {
+		const tx = primaryTransaction({ primary: { id: "assignment-2" } });
+		const repository = new PrismaPropertyEngagementsRepository({ $transaction: tx.$transaction } as never);
+
+		await expect(repository.setPrimaryAgent({ ...input, expectedPrimaryAgentId: "assignment-2" })).resolves.toEqual({
+			status: "updated", engagement: { id: "engagement-1" },
+		});
+		expect(tx.findFirst).toHaveBeenCalledTimes(2);
+		expect(tx.updateMany).not.toHaveBeenCalled();
+		expect(tx.update).not.toHaveBeenCalled();
+	});
+
+	it("clears an observed primary and returns the transaction-confirmed engagement", async () => {
+		const tx = primaryTransaction({ primary: { id: "assignment-1" } });
+		const repository = new PrismaPropertyEngagementsRepository({ $transaction: tx.$transaction } as never);
+
+		await expect(repository.clearPrimaryAgent({ ...input, expectedPrimaryAgentId: "assignment-1" })).resolves.toEqual({
+			status: "updated", engagement: { id: "engagement-1" },
+		});
+		expect(tx.updateMany).toHaveBeenCalledWith({
+			where: { tenantId: "tenant-1", propertyEngagementId: "engagement-1", isPrimary: true }, data: { isPrimary: false },
+		});
+	});
+
+	it("treats a null clear as idempotent and rejects a stale clear without writes", async () => {
+		const idempotent = primaryTransaction();
+		const repository = new PrismaPropertyEngagementsRepository({ $transaction: idempotent.$transaction } as never);
+		await expect(repository.clearPrimaryAgent(input)).resolves.toEqual({ status: "updated", engagement: { id: "engagement-1" } });
+
+		const stale = primaryTransaction({ primary: { id: "assignment-1" } });
+		const staleRepository = new PrismaPropertyEngagementsRepository({ $transaction: stale.$transaction } as never);
+		await expect(staleRepository.clearPrimaryAgent(input)).resolves.toEqual({ status: "stateConflict" });
+		expect(stale.updateMany).not.toHaveBeenCalled();
+	});
+
+	it.each(["primary", "non-primary"])('serializes removal of a %s assignment before its scoped delete without promotion', async () => {
+		const $queryRaw = vi.fn().mockResolvedValue([{ id: "engagement-1" }]);
+		const deleteMany = vi.fn().mockResolvedValue({ count: 1 });
+		const $transaction = vi.fn((callback) => callback({ $queryRaw, propertyAgent: { deleteMany } }));
+		const repository = new PrismaPropertyEngagementsRepository({ $transaction } as never);
+
+		await expect(repository.removeAgent({ tenantId: "tenant-1", engagementId: "engagement-1", agentId: "assignment-1" })).resolves.toBe(true);
+		expect($queryRaw).toHaveBeenCalledOnce();
+		expect(deleteMany).toHaveBeenCalledWith({ where: { id: "assignment-1", tenantId: "tenant-1", propertyEngagementId: "engagement-1" } });
+	});
+
+	it("returns false without deleting when serialized removal cannot find the engagement or assignment", async () => {
+		const missingEngagement = vi.fn().mockResolvedValue([]);
+		const deleteMany = vi.fn();
+		const $transaction = vi.fn((callback) => callback({ $queryRaw: missingEngagement, propertyAgent: { deleteMany } }));
+		const repository = new PrismaPropertyEngagementsRepository({ $transaction } as never);
+		await expect(repository.removeAgent({ tenantId: "tenant-1", engagementId: "engagement-1", agentId: "missing" })).resolves.toBe(false);
+		expect(deleteMany).not.toHaveBeenCalled();
 	});
 });
