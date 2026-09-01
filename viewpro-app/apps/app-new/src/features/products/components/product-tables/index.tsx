@@ -26,7 +26,7 @@ import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs';
-import type { Product, PropertyArchiveFilter } from '../../api/types';
+import type { ProductListItem, PropertyArchiveFilter } from '../../api/types';
 import { productsQueryOptions } from '../../api/queries';
 import { archiveFilterOptions } from '../../constants/product-options';
 import { QuickStatusSelect } from '../quick-status-select';
@@ -482,7 +482,7 @@ function PropertyTableRow({
   propertyEngagement
 }: {
   canManageProperties: boolean;
-  propertyEngagement: Product;
+  propertyEngagement: ProductListItem;
 }) {
   const agent = getAgentSummary(propertyEngagement);
 
@@ -537,7 +537,7 @@ function PropertyMobileCard({
   propertyEngagement
 }: {
   canManageProperties: boolean;
-  propertyEngagement: Product;
+  propertyEngagement: ProductListItem;
 }) {
   const agent = getAgentSummary(propertyEngagement);
 
@@ -592,7 +592,7 @@ function PropertyIdentity({
   propertyEngagement
 }: {
   compact?: boolean;
-  propertyEngagement: Product;
+  propertyEngagement: ProductListItem;
 }) {
   const propertyFacts = getPropertyFacts(propertyEngagement);
 
@@ -628,7 +628,7 @@ function PropertyThumbnail({
   propertyEngagement
 }: {
   compact?: boolean;
-  propertyEngagement: Product;
+  propertyEngagement: ProductListItem;
 }) {
   const imageUrl = propertyEngagement.property.primaryImage?.url;
   const sizeClass = compact ? 'h-16 w-20' : 'h-16 w-24';
@@ -656,7 +656,7 @@ function PropertyThumbnail({
   );
 }
 
-function OwnerSummary({ propertyEngagement }: { propertyEngagement: Product }) {
+function OwnerSummary({ propertyEngagement }: { propertyEngagement: ProductListItem }) {
   return (
     <div className='max-w-48'>
       <p className='truncate text-sm font-medium'>

@@ -12,7 +12,7 @@ import type {
   DashboardSummaryTopProperty,
   DashboardSummaryTopSeller
 } from '@/features/dashboard/api/types';
-import type { Product } from '@/features/products/api/types';
+import type { ProductListItem } from '@/features/products/api/types';
 import {
   getAddress,
   getStatusLabel,
@@ -83,7 +83,7 @@ export function PropertyPreviewList({
   emptyDescription?: string;
   emptyTitle?: string;
   isLoading: boolean;
-  products: Product[];
+  products: ProductListItem[];
 }) {
   if (isLoading) {
     return <ListSkeleton rows={4} />;

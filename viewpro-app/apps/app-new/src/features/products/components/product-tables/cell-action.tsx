@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { productKeys } from '../../api/queries';
 import { archiveProduct, restoreProduct } from '../../api/service';
-import type { Product } from '../../api/types';
+import type { ProductListItem } from '../../api/types';
 import { Icons } from '@/components/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 
 interface CellActionProps {
   canManageProperties?: boolean;
-  data: Product;
+  data: ProductListItem;
 }
 
 export function CellAction({ canManageProperties = true, data }: CellActionProps) {

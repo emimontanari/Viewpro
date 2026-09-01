@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select';
 import { productKeys } from '../api/queries';
 import { updateProductStatus } from '../api/service';
-import type { Product, PropertyEngagementStatus } from '../api/types';
+import type { ProductListItem, PropertyEngagementStatus } from '../api/types';
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -26,7 +26,7 @@ export function QuickStatusSelect({
 }: {
   canUpdateStatus?: boolean;
   className?: string;
-  propertyEngagement: Product;
+  propertyEngagement: ProductListItem;
   size?: 'default' | 'compact';
 }) {
   const queryClient = useQueryClient();

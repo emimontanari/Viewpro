@@ -1,4 +1,4 @@
-import { isBffError, messageFor } from '@/lib/bff-client';
+import { hasErrorCode, isBffError, messageFor } from '@/lib/bff-client';
 
 /**
  * Copy this app owns for the three conflicts the property screens can hit.
@@ -30,6 +30,18 @@ export function agentAssignmentErrorMessage(error: unknown, fallback: string): s
   }
 
   return messageFor(error, fallback);
+}
+
+export function primaryAgentMutationErrorMessage(error: unknown): string {
+  if (hasErrorCode(error, 'PRIMARY_AGENT_CANDIDATE_INVALID')) {
+    return 'El vendedor ya no puede ser principal para esta propiedad.';
+  }
+
+  if (hasErrorCode(error, 'PRIMARY_AGENT_STATE_CONFLICT')) {
+    return 'La selección principal cambió. Actualizá la propiedad e intentá de nuevo.';
+  }
+
+  return 'No se pudo actualizar el vendedor principal.';
 }
 
 export const PROPERTY_LIMIT_REACHED_MESSAGE =
