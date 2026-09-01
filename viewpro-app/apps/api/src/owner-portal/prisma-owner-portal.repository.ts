@@ -7,10 +7,9 @@ import type {
   OwnerMovementContactContext,
   OwnerMovementRecord,
   OwnerPortalRepository,
+  OwnerPrimarySellerContactCandidate,
   OwnerPropertyRecord,
 } from './owner-portal.repository'
-
-
 
 const ownerPropertyInclude = {
   images: true,
@@ -28,23 +27,10 @@ const ownerEngagementInclude = {
 
 const ownerMovementInclude = {
   createdBy: { select: { id: true, email: true, firstName: true } },
-  propertyEngagement: {
-    select: {
-      agents: {
-        orderBy: [{ assignedAt: 'asc' }, { agentUserId: 'asc' }],
-        select: {
-          agentUserId: true,
-          assignedAt: true,
-          agentUser: { select: { whatsappPhone: true } },
-        },
-      },
-    },
-  },
 } satisfies Prisma.MovementInclude
 
 @Injectable()
 export class PrismaOwnerPortalRepository implements OwnerPortalRepository {
-
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   findPropertiesByOwnerUserId(userId: string): Promise<OwnerPropertyRecord[]> {
@@ -88,7 +74,12 @@ export class PrismaOwnerPortalRepository implements OwnerPortalRepository {
     page: number
     pageSize: number
     order: 'asc' | 'desc'
-  }): Promise<{ engagement: OwnerEngagementRecord | null; items: OwnerMovementRecord[]; total: number }> {
+  }): Promise<{
+    engagement: OwnerEngagementRecord | null
+    items: OwnerMovementRecord[]
+    total: number
+    primarySellerContact: OwnerPrimarySellerContactCandidate | null
+  }> {
     const engagement = await this.prisma.propertyEngagement.findFirst({
       where: {
         id: input.engagementId,
@@ -98,11 +89,11 @@ export class PrismaOwnerPortalRepository implements OwnerPortalRepository {
     })
 
     if (!engagement) {
-      return { engagement: null, items: [], total: 0 }
+      return { engagement: null, items: [], total: 0, primarySellerContact: null }
     }
 
     const where = { propertyEngagementId: input.engagementId } satisfies Prisma.MovementWhereInput
-    const [items, total] = await Promise.all([
+    const [items, total, primarySellerContact] = await Promise.all([
       this.prisma.movement.findMany({
         where,
         include: ownerMovementInclude,
@@ -111,9 +102,31 @@ export class PrismaOwnerPortalRepository implements OwnerPortalRepository {
         take: input.pageSize,
       }),
       this.prisma.movement.count({ where }),
+      this.prisma.propertyAgent.findFirst({
+        where: {
+          tenantId: engagement.tenantId,
+          propertyEngagementId: engagement.id,
+          isPrimary: true,
+          agentUser: {
+            status: 'ACTIVE',
+            memberships: {
+              some: {
+                tenantId: engagement.tenantId,
+                status: 'ACTIVE',
+                role: 'AGENT',
+              },
+            },
+          },
+        },
+        select: {
+          id: true,
+          agentUserId: true,
+          agentUser: { select: { whatsappPhone: true } },
+        },
+      }),
     ])
 
-    return { engagement, items, total }
+    return { engagement, items, total, primarySellerContact }
   }
 
   findEngagementContactContextForOwner(input: { userId: string; engagementId: string }) {

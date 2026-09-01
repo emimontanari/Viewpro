@@ -1,4 +1,5 @@
 import { isValidWhatsappPhone } from "../common/whatsapp/whatsapp-phone.utils";
+import type { OwnerPrimarySellerContactCandidate } from "./owner-portal.repository";
 
 export type OwnerPropertyContactResponse = {
 	available: boolean;
@@ -12,12 +13,6 @@ export type OwnerMovementContactResponse = {
 	targetType: "assigned_seller";
 	displayLabel: string;
 	whatsappPhone?: string;
-};
-
-export type AssignedSellerAgent = {
-	agentUserId: string;
-	assignedAt: Date;
-	agentUser: { whatsappPhone: string | null };
 };
 
 export function mapTenantWhatsappContact(
@@ -39,25 +34,14 @@ export function mapTenantWhatsappContact(
 }
 
 export function mapAssignedSellerWhatsappContact(
-	agents: AssignedSellerAgent[],
+	candidate: OwnerPrimarySellerContactCandidate | null,
 ): OwnerMovementContactResponse {
-	if (!agents || agents.length === 0) {
-		return unavailableAssignedSellerContact();
-	}
-
-	// SQL-side orderBy [assignedAt asc, agentUserId asc] ensures agents[0] is the winner.
-	const seller = agents[0];
-
-	if (!seller) {
-		return unavailableAssignedSellerContact();
-	}
-
-	const phone = seller.agentUser.whatsappPhone;
+	const phone = candidate?.agentUser.whatsappPhone;
 
 	// Same null-explicit guard as mapTenantWhatsappContact: isValidWhatsappPhone(null)
 	// returns true by design, but the assigned-seller read path treats null as
 	// "no contact configured". Rule check itself comes from the shared util.
-	if (phone === null || !isValidWhatsappPhone(phone)) {
+	if (phone === null || phone === undefined || !isValidWhatsappPhone(phone)) {
 		return unavailableAssignedSellerContact();
 	}
 

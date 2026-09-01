@@ -480,12 +480,8 @@ describe("Owner portal (e2e)", () => {
 		expect(hiddenResponse.body.message).toBe("Owner engagement not found");
 	});
 
-	// F-1: real Prisma `orderBy` integration gate. If someone flips
-	// `orderBy: [{ assignedAt: 'asc' }, { agentUserId: 'asc' }]` to 'desc',
-	// the mapper-level unit specs would still pass because they receive a
-	// pre-sorted list, so we need a real-DB test that proves the SQL clause
-	// itself selects the earliest-assigned agent.
-	it("timeline contact resolves to the earliest-assigned agent regardless of insert order", async () => {
+	// Real-DB integration gate: the primary flag, not assignment insertion or age, chooses contact.
+	it("timeline contact resolves to the explicit primary regardless of assignment age", async () => {
 		const manager = await registerTenantSession(
 			"owner-orderby-manager@example.com",
 			"Owner OrderBy Homes",
@@ -518,9 +514,7 @@ describe("Owner portal (e2e)", () => {
 		}).expect(201);
 		await grantOwnerAccess(owner.userId, owned.body.property.id);
 
-		// Insert agent B FIRST (later assignedAt) and agent A SECOND (earlier
-		// assignedAt). JS-side `agents[0]` after a naive fetch would pick B;
-		// only the SQL `orderBy: [{ assignedAt: 'asc' }, ...]` puts A at index 0.
+		// Agent B is newer but explicitly primary, proving assignment age is irrelevant.
 		await prisma.propertyAgent.create({
 			data: {
 				tenantId: manager.tenantId,
@@ -528,6 +522,7 @@ describe("Owner portal (e2e)", () => {
 				agentUserId: agentB.userId,
 				assignedByUserId: manager.userId,
 				assignedAt: new Date("2026-06-02T10:00:00.000Z"),
+				isPrimary: true,
 			},
 		});
 		await prisma.propertyAgent.create({
@@ -552,13 +547,11 @@ describe("Owner portal (e2e)", () => {
 			available: true,
 			targetType: "assigned_seller",
 			displayLabel: "Consultar responsable",
-			whatsappPhone: "+5493510000111",
+			whatsappPhone: "+5493510000222",
 		});
 	});
 
-	// F-1 tie-break sub-case: identical assignedAt forces the secondary
-	// `agentUserId asc` clause to be the deciding factor.
-	it("timeline contact tie-breaks to the lower agentUserId when assignedAt is identical", async () => {
+	it("returns unavailable timeline contact when two usable assigned sellers have no primary", async () => {
 		const manager = await registerTenantSession(
 			"owner-orderby-tie-manager@example.com",
 			"Owner OrderBy Tie Homes",
@@ -596,7 +589,6 @@ describe("Owner portal (e2e)", () => {
 		await grantOwnerAccess(owner.userId, owned.body.property.id);
 
 		const sharedAssignedAt = new Date("2026-06-05T10:00:00.000Z");
-		// Insert the HIGHER agentUserId first so DB insert order != orderBy.
 		await prisma.propertyAgent.create({
 			data: {
 				tenantId: manager.tenantId,
@@ -625,11 +617,11 @@ describe("Owner portal (e2e)", () => {
 
 		expect(visible.body.items).toHaveLength(1);
 		expect(visible.body.items[0].contact).toEqual({
-			available: true,
+			available: false,
 			targetType: "assigned_seller",
-			displayLabel: "Consultar responsable",
-			whatsappPhone: "+5493510000001",
+			displayLabel: "Contacto no configurado",
 		});
+		expect(visible.body.items[0].contact).not.toHaveProperty("whatsappPhone");
 	});
 
 	it("rejects unauthenticated owner requests", async () => {

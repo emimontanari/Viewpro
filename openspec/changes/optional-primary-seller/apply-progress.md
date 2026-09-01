@@ -90,3 +90,54 @@
 ### Workload and cleanup
 - PR boundary: PR4/API exposure only; exact S4 candidate accounting including untracked files is 320 additions + 11 deletions = 331 changed lines (<=400).
 - Files added to Slice 4B: controller, module, and property-engagement e2e test only; temporary node_modules, contract dist, Prisma output, build info, clients, and uploads are absent.
+
+## S5 owner contact (PR5)
+- Native status consumed: authoritative OpenSpec `ready/apply`; repo-local allowed root was this S5 worktree, `auto-chain` resolved the High-risk workload, and no action-context warnings/blockers were supplied. S5 rows 156–159 and 163–166 are now visibly checked.
+- One owner-authorized engagement lookup precedes a fixed `Promise.all` of movement page, count, and exactly one `propertyAgent.findFirst`; the candidate requires matching tenant/engagement, `isPrimary`, active user, active same-tenant exact `AGENT` membership, and selects only assignment/user identity plus phone.
+- Movement records no longer carry assignment arrays. The shared candidate is passed to every movement mapper; null, missing, or unusable phone preserves the existing unavailable assigned-seller response without agency/other-seller fallback. Owner click analytics and property-level tenant contact were unchanged.
+
+### TDD Cycle Evidence
+| Slice | Safety net | RED | GREEN | TRIANGULATE / REFACTOR |
+|---|---|---|---|---|
+| 5A/5B | 39 focused tests passed | 3/34 failed: missing candidate result/query and candidate mapper flow | 34/34 passed after minimal repository/mapper/use-case changes | 40/40 validates fixed query count, hidden-owner no-query path, all conjunctive filters, explicit primary/no-primary, bad/null phone, labels, and shared mapping; removed order/fallback branches. |
+
+### Verification and boundary
+- PASS: focused API owner repository/use-case suite, 40/40; owner portal e2e suite, 10/10; API typecheck and strict lint; App New unchanged suite, 112 files/703 tests; `git diff --no-ext-diff --check`.
+- All API test commands used only `postgresql://viewpro:viewpro@localhost:5432/viewpro_test?schema=public`; no non-local database was accessed. PR5 remains the `auto-chain` boundary; no design deviation, mutation/API/BFF/UI, auth, or click-flow change.
+- Remaining implementation rows are PR6/PR7 and apply-owned verification gates; parent-owned lifecycle actions remain deferred and byte-for-byte untouched in `tasks.md`.
+
+### Exact remaining implementation rows
+- [ ] **RED** — Add failing App New service/type tests under `viewpro-app/apps/app-new/src/features/products/` for required `expectedPrimaryAgentId: string | null`, set/change and clear payloads, `PropertyAssignedAgent`, `PropertyEngagement.agents`, and unchanged dashboard/activity `ProductAgent` producers. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** — Update `features/products/api/types.ts` with the scoped `PropertyAssignedAgent` and payload types and `features/products/api/service.ts` with `setPrimaryProductAgent` and `clearPrimaryProductAgent`, both returning `PropertyEngagement` and preserving existing query key/tenant conventions. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** — Run the focused App New type/service tests plus the package typecheck to prove property responses require primary state while dashboard/activity contracts remain compatible without fabricated fields. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** — Keep `ProductAgent` broadly unchanged, avoid a parallel management service, and centralize only safe code-based primary mutation messages in `features/products/error-messages.ts`. <!-- sdd-owner: implementation -->
+- [ ] **RED** — Add failing adjacent route tests for `src/app/api/products/[id]/agents/primary/route.ts` and `.../clear/route.ts` covering method/path/body forwarding, selected tenant header, 400/409 body and `x-request-id` passthrough, timeout, and transport failure. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** — Implement the PUT and POST product BFF routes using existing `bffFetch`, `proxyJsonResponse`, and `proxyBffErrorResponse` conventions; forward auth cookies/selected tenant and backend error bodies unchanged. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** — Run the two focused route test paths and inspect that no optimistic/UI state is introduced in the adapter, request ids survive error responses, and unknown transport failures use the established safe proxy response. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** — Match neighboring product route structure and keep route code limited to proxy adaptation, with no duplicated authorization or candidate validation. <!-- sdd-owner: implementation -->
+- [ ] **RED** — Extend `viewpro-app/apps/app-new/src/features/products/components/property-agents-section.test.tsx` with failing cases for required `Principal` badges, `Sin vendedor principal`, exact-`AGENT` action gating from loaded assignable members, persisted-but-ineligible primary supporting copy, non-primary access, archived state, and unauthorized state. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** — Update `property-agents-section.tsx` and `manage-property-agents-dialog.tsx` to derive `primaryAgentId` from `isPrimary`, render selected/no-primary/ineligible states, expose `Marcar como principal` only for assigned exact-`AGENT` users, expose separate `Quitar principal`, and retain existing assignment removal as a separate action. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** — Run the focused component test and inspect accessible labels/action visibility for no-primary, selected, stale/ineligible, archived, and unauthorized states; confirm primary status grants no additional assignment access. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** — Keep changes inside the existing seller-management surface, avoid automatic selection or optimistic badge changes, and preserve `product-form.tsx` prop flow and unrelated assignment controls. <!-- sdd-owner: implementation -->
+- [ ] **RED** — Add failing component tests for set/change/clear payload preconditions, no `onMutate` primary edit, successful returned-engagement cache replacement, product invalidation, conflict-triggered detail refetch, candidate-invalid refetch, safe error copy, and primary removal yielding no primary without promotion. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** — Wire the UI mutations to the PR 6 service methods, capture the derived current `expectedPrimaryAgentId` including explicit null, install only the returned `PropertyEngagement` into `productKeys.detail(productId, tenantId)`, invalidate product queries, refetch before conflict/invalid feedback, and disable assign/set/change/clear/remove while any seller mutation is pending. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** — Run the focused component tests plus the App New typecheck and strict lint; verify the requested losing seller is never painted before a successful server response and the refreshed durable winner/no-primary state is rendered after conflict. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** — Consolidate mutation error handling through code-based safe local copy, preserve last server state on generic failures, and do not alter WhatsApp/contact behavior or add a second query/cache authority. <!-- sdd-owner: implementation -->
+- [ ] Run API schema validation with `pnpm --filter @viewpro/api db:validate` after PR 1 and after any Prisma change; record output and test-database safety. <!-- sdd-owner: implementation -->
+- [ ] Run focused API tests with `pnpm --filter @viewpro/api exec vitest run test/property-engagements.repository.spec.ts`, `pnpm --filter @viewpro/api exec vitest run test/property-engagements.e2e-spec.ts`, `pnpm --filter @viewpro/api exec vitest run test/owner-portal.repository.spec.ts`, and `pnpm --filter @viewpro/api exec vitest run test/owner-portal.use-cases.spec.ts` as each seam lands; include the barrier-controlled real-Postgres tests in the applicable e2e path. <!-- sdd-owner: implementation -->
+- [ ] Run focused App New tests with `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-agents-section.test.tsx` and the two new product-agent primary route test paths after PR 6/7. <!-- sdd-owner: implementation -->
+- [ ] Run the broader configured checks before delivery: `pnpm --filter @viewpro/api db:validate`, `pnpm --filter @viewpro/api typecheck`, `pnpm --filter @viewpro/api test`, `pnpm --filter next-shadcn-dashboard-starter test`, `pnpm --filter next-shadcn-dashboard-starter lint:strict`, `pnpm --filter next-shadcn-dashboard-starter test:seeded`, and `pnpm --filter @viewpro/contracts test`; use the API test database required by `openspec/config.yaml`. <!-- sdd-owner: implementation -->
+- [ ] Run repository documentation-only checks `git status --short` and `git diff --check` from the configured `viewpro-app` cwd, and confirm only the intended work-unit files are present before each PR. <!-- sdd-owner: implementation -->
+
+## S5 proof-gap correction
+- Native OpenSpec status: `ready/apply`, repo-local authorized root, `auto-chain` PR5; the parent supplied the same-token `proceed` continuation.
+- Replaced the tied-primary e2e case with two usable, non-primary assigned sellers that return unavailable contact with no phone.
+- S-2 retains a usable alternate seller while the returned primary phone is null; the mapper signature now requires an explicit candidate and its repository test passes `null`.
+- No task checkbox changed; completed S5 rows and the prior PR6/PR7 and gate backlog remain unchanged.
+### TDD Cycle Evidence
+| Scope | RED | GREEN / TRIANGULATE / REFACTOR |
+| --- | --- | --- |
+| S5 proof | Signature guard failed while the default was present; corrected behavior cases passed immediately because production semantics were already correct. | Repository 12/12, use cases 28/28, E2E 10/10; no refactor. |
+### Verification
+- API typecheck and lint pass; localhost worker configuration has one prepared database per worker.
+- `git diff --check` passes; this corrective PR5 boundary remains within the 400-line budget.
