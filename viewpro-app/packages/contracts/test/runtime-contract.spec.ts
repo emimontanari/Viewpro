@@ -44,9 +44,15 @@ const phoneContactPublicErrorCodes = [
   'phone.country_unsupported',
 ] as const
 
+const primaryAgentPublicErrorCodes = [
+  'PRIMARY_AGENT_CANDIDATE_INVALID',
+  'PRIMARY_AGENT_STATE_CONFLICT',
+] as const
+
 const expectedPublicErrorCodes = [
   ...frozenPublicErrorCodes,
   ...phoneContactPublicErrorCodes,
+  ...primaryAgentPublicErrorCodes,
 ] as const
 
 function runNode(args: string[]) {
@@ -96,7 +102,7 @@ describe('@viewpro/contracts runtime contract', () => {
     }
 
     expect(contract.codes).toEqual(expectedPublicErrorCodes)
-    expect(contract.codes).toHaveLength(28)
+    expect(contract.codes).toHaveLength(30)
     expect(contract.codes.slice(0, frozenPublicErrorCodes.length)).toEqual(
       frozenPublicErrorCodes,
     )

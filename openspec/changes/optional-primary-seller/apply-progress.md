@@ -70,3 +70,23 @@
 - Production lock SQL/barrier hash before P2: `0b44f3626c3e5aca91d380e8cc98ecd7ef75c938e4bec7f9f831c54a775e6c69`; temporary dependencies/build artifacts are removed.
 - S3 rows 114–117 and 121–124 remain checked; parent rows untouched. Remaining exact unchecked line: `- [ ] **RED** — Add failing runtime-contract and use-case tests in `viewpro-app/packages/contracts/test/runtime-contract.spec.ts` and `viewpro-app/apps/api/test/property-engagements.use-cases.spec.ts` for `PRIMARY_AGENT_CANDIDATE_INVALID` (400), `PRIMARY_AGENT_STATE_CONFLICT` (409), required-but-nullable expected fields, complete response shape, and generic operator-safe messages. <!-- sdd-owner: implementation -->`.
 - Workload: PR3-only candidate remains <=400; PR5 owner-contact remains untouched.
+
+## S4 API exposure (PR4)
+
+- Native authority: `ready/apply`, `proceed`, `auto-chain`, `s4-api-routes-localhost`; all edits are in the authorized worktree with no action-context warning.
+- Completed and checked Slice 4B tasks 142–145. Added only guarded API wiring and compact existing-harness e2e coverage; no schema, owner, BFF, UI, or permission change.
+- Routes: `PUT /property-engagements/:id/agents/primary` and `POST /property-engagements/:id/agents/primary/clear`, both `ENGAGEMENTS_CREATE`, existing auth/tenant/permission guards, `CurrentTenant`, normal response, HTTP 200.
+
+### TDD Cycle Evidence
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| 4B routes | e2e | 35/35 | both routes absent: 404 instead of 200/403 | 37/37 | set/clear flags, 403-before-write, tenant 404, cross-tenant 400, non-primary list access | table-driven rejection cases; focused suite and lint green |
+
+### Verification and safety
+- PASS: endpoint e2e 37/37; use cases 40/40; contracts 5/5; contracts build/typecheck; API typecheck and strict lint.
+- Local preflight used only `postgresql://viewpro:viewpro@localhost:5432/viewpro_test`; the existing harness alone created test-only local worker databases. No external, development, staging, or production database was accessed.
+- No design deviations. Remaining unchecked implementation work is PR5–PR7 and the existing apply-owned gates; parent-owned lifecycle rows are unchanged.
+
+### Workload and cleanup
+- PR boundary: PR4/API exposure only; exact S4 candidate accounting including untracked files is 320 additions + 11 deletions = 331 changed lines (<=400).
+- Files added to Slice 4B: controller, module, and property-engagement e2e test only; temporary node_modules, contract dist, Prisma output, build info, clients, and uploads are absent.

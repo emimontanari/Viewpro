@@ -14,9 +14,14 @@ import {
 	TenantStatus,
 	UserStatus,
 } from "@prisma/client";
+import { validate } from "class-validator";
 import { describe, expect, it, vi } from "vitest";
 import { PERMISSIONS } from "../src/permissions/permissions.constants";
 import { AssignPropertyAgentUseCase } from "../src/property-engagements/use-cases/assign-property-agent.use-case";
+import { ClearPrimaryPropertyAgentDto } from "../src/property-engagements/dto/clear-primary-property-agent.dto";
+import { SetPrimaryPropertyAgentDto } from "../src/property-engagements/dto/set-primary-property-agent.dto";
+import { ClearPrimaryPropertyAgentUseCase } from "../src/property-engagements/use-cases/clear-primary-property-agent.use-case";
+import { SetPrimaryPropertyAgentUseCase } from "../src/property-engagements/use-cases/set-primary-property-agent.use-case";
 import { ArchivePropertyEngagementUseCase } from "../src/property-engagements/use-cases/archive-property-engagement.use-case";
 import { CreatePropertyEngagementUseCase } from "../src/property-engagements/use-cases/create-property-engagement.use-case";
 import { GetPropertyEngagementUseCase } from "../src/property-engagements/use-cases/get-property-engagement.use-case";
@@ -174,6 +179,7 @@ describe("Property engagement response mapper", () => {
 					userId: "agent-1",
 					email: "agent@example.com",
 					firstName: "Agent",
+					isPrimary: false,
 				},
 			],
 			createdAt: "2026-01-01T00:00:00.000Z",
@@ -1027,7 +1033,78 @@ describe("Property engagement use cases", () => {
 		);
 	});
 
-	it("lists assignable property agents for a tenant", async () => {
+		it("maps complete server-confirmed primary state and passes the exact compare-and-set input", async () => {
+			const primaryEngagement = {
+				...engagement,
+				agents: [{ ...engagement.agents[0], isPrimary: true }],
+			};
+			const repository = {
+				setPrimaryAgent: vi.fn().mockResolvedValue({ status: "updated", engagement: primaryEngagement }),
+			};
+			const useCase = new SetPrimaryPropertyAgentUseCase(repository as never);
+
+			await expect(
+				useCase.execute(tenant, "engagement-1", {
+					agentId: "agent-assignment-1",
+					expectedPrimaryAgentId: null,
+				}),
+			).resolves.toMatchObject({ agents: [{ id: "agent-assignment-1", isPrimary: true }] });
+			expect(repository.setPrimaryAgent).toHaveBeenCalledWith({
+				tenantId: "tenant-1",
+				engagementId: "engagement-1",
+				agentId: "agent-assignment-1",
+				expectedPrimaryAgentId: null,
+			});
+		});
+
+		it("maps missing engagements, invalid candidates, and stale state to stable safe errors", async () => {
+			for (const { status, expected } of [
+				{ status: "engagementNotFound", expected: { status: 404, response: { message: "Property engagement not found" } } },
+				{ status: "candidateInvalid", expected: { status: 400, response: { errorCode: "PRIMARY_AGENT_CANDIDATE_INVALID", message: "Primary agent candidate is invalid" } } },
+				{ status: "stateConflict", expected: { status: 409, response: { errorCode: "PRIMARY_AGENT_STATE_CONFLICT", message: "Primary agent state has changed" } } },
+			] as const) {
+				const repository = { setPrimaryAgent: vi.fn().mockResolvedValue({ status }) };
+				const useCase = new SetPrimaryPropertyAgentUseCase(repository as never);
+
+				await expect(
+					useCase.execute(tenant, "engagement-1", {
+						agentId: "agent-assignment-1",
+						expectedPrimaryAgentId: null,
+					}),
+				).rejects.toMatchObject(expected);
+			}
+		});
+
+		it("clears with an explicit null precondition and rejects omitted or malformed expected fields", async () => {
+			const repository = {
+				clearPrimaryAgent: vi.fn().mockResolvedValue({ status: "updated", engagement }),
+			};
+			const useCase = new ClearPrimaryPropertyAgentUseCase(repository as never);
+			await expect(useCase.execute(tenant, "engagement-1", { expectedPrimaryAgentId: null })).resolves.toMatchObject({
+				agents: [{ id: "agent-assignment-1", isPrimary: false }],
+			});
+			expect(repository.clearPrimaryAgent).toHaveBeenCalledWith({
+				tenantId: "tenant-1",
+				engagementId: "engagement-1",
+				expectedPrimaryAgentId: null,
+			});
+
+			const omittedClear = new ClearPrimaryPropertyAgentDto();
+			const malformedSet = Object.assign(new SetPrimaryPropertyAgentDto(), {
+				agentId: "not-a-uuid",
+				expectedPrimaryAgentId: "not-a-uuid",
+			});
+			const explicitNullSet = Object.assign(new SetPrimaryPropertyAgentDto(), {
+				agentId: "4a977f64-5c54-4a29-bd75-b121c0b27cd7",
+				expectedPrimaryAgentId: null,
+			});
+
+			expect(await validate(omittedClear)).not.toHaveLength(0);
+			expect(await validate(malformedSet)).not.toHaveLength(0);
+			expect(await validate(explicitNullSet)).toHaveLength(0);
+		});
+
+    it("lists assignable property agents for a tenant", async () => {
 		const membershipsRepository = {
 			findManyByTenantId: vi.fn().mockResolvedValue([
 				{

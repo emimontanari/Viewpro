@@ -31,6 +31,8 @@ export const PUBLIC_ERROR_CODES = [
   'phone.required',
   'phone.invalid',
   'phone.country_unsupported',
+  'PRIMARY_AGENT_CANDIDATE_INVALID',
+  'PRIMARY_AGENT_STATE_CONFLICT',
 ] as const
 
 export type PublicErrorCode = (typeof PUBLIC_ERROR_CODES)[number]
