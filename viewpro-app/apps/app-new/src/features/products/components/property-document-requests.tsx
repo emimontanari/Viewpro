@@ -5,7 +5,6 @@ import { Icons, type Icon } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { IconFilePlus } from '@tabler/icons-react';
@@ -40,9 +39,9 @@ import {
   groupDocumentRequests,
   isImageMimeType,
   isEligibleDocumentOwner,
-  type DocumentFilter,
-  type DocumentRequestGroup
+  type DocumentFilter
 } from './property-document-requests/model';
+import { DocumentRequestSection } from './property-document-requests/request-list';
 import { RejectDocumentRequestDialog } from './reject-document-request-dialog';
 import {
   DocumentRequestFilters,
@@ -360,17 +359,22 @@ export function PropertyDocumentRequests({
                 <DocumentRequestSection
                   key={group.key}
                   group={group}
-                  canReviewDocuments={canReviewDocuments}
-                  highlightedId={highlightedId}
-                  isApproving={approveDocumentMutation.isPending}
-                  isReading={readDocumentMutation.isPending}
-                  isRejecting={rejectDocumentMutation.isPending}
-                  onApprove={(requestId) => approveDocumentMutation.mutate(requestId)}
-                  onRead={(versionId) => readDocumentMutation.mutate(versionId)}
-                  onReject={setRequestToReject}
                   resolvedOpen={resolvedOpen}
                   onResolvedOpenChange={setResolvedOpen}
-                />
+                >
+                  <DocumentRequestList
+                    canReviewDocuments={canReviewDocuments}
+                    emptyCopy={group.emptyCopy}
+                    highlightedId={highlightedId}
+                    isApproving={approveDocumentMutation.isPending}
+                    isReading={readDocumentMutation.isPending}
+                    isRejecting={rejectDocumentMutation.isPending}
+                    items={group.items}
+                    onApprove={(requestId) => approveDocumentMutation.mutate(requestId)}
+                    onRead={(versionId) => readDocumentMutation.mutate(versionId)}
+                    onReject={setRequestToReject}
+                  />
+                </DocumentRequestSection>
               ))}
             </div>
           </div>
@@ -394,93 +398,6 @@ export function PropertyDocumentRequests({
           }
         }}
         onSubmit={handleRejectSubmit}
-      />
-    </section>
-  );
-}
-
-function DocumentRequestSection({
-  canReviewDocuments,
-  group,
-  highlightedId,
-  isApproving,
-  isReading,
-  isRejecting,
-  onApprove,
-  onRead,
-  onReject,
-  onResolvedOpenChange,
-  resolvedOpen
-}: {
-  canReviewDocuments: boolean;
-  group: DocumentRequestGroup;
-  highlightedId?: string | null;
-  isApproving: boolean;
-  isReading: boolean;
-  isRejecting: boolean;
-  onApprove: (requestId: string) => void;
-  onRead: (versionId: string) => void;
-  onReject: (request: ProductDocumentRequest) => void;
-  onResolvedOpenChange?: (open: boolean) => void;
-  resolvedOpen?: boolean;
-}) {
-  if (group.key === 'resolved') {
-    return (
-      // D4: controlled Collapsible — open/onOpenChange driven by PropertyDocumentRequests.
-      <Collapsible open={resolvedOpen} onOpenChange={onResolvedOpenChange}>
-        <div className='rounded-xl border bg-background/50'>
-          <CollapsibleTrigger asChild>
-            <Button
-              type='button'
-              variant='ghost'
-              className='h-auto w-full justify-between gap-3 rounded-xl px-4 py-3 text-left hover:no-underline'
-            >
-              <span className='flex min-w-0 flex-col items-start gap-0.5'>
-                <span className='font-medium'>{group.title}</span>
-                <span className='text-xs text-muted-foreground'>
-                  {group.items.length} resueltas
-                </span>
-              </span>
-              <Icons.chevronDown className='size-4 text-muted-foreground' />
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <DocumentRequestList
-              canReviewDocuments={canReviewDocuments}
-              emptyCopy={group.emptyCopy}
-              highlightedId={highlightedId}
-              isApproving={isApproving}
-              isReading={isReading}
-              isRejecting={isRejecting}
-              items={group.items}
-              onApprove={onApprove}
-              onRead={onRead}
-              onReject={onReject}
-            />
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
-    );
-  }
-
-  return (
-    <section className='space-y-2' aria-labelledby={`document-section-${group.key}`}>
-      <div data-testid={`document-section-heading-${group.key}`}>
-        <h4 id={`document-section-${group.key}`} className='text-sm font-semibold'>
-          {group.title}
-        </h4>
-      </div>
-      <DocumentRequestList
-        canReviewDocuments={canReviewDocuments}
-        emptyCopy={group.emptyCopy}
-        highlightedId={highlightedId}
-        isApproving={isApproving}
-        isReading={isReading}
-        isRejecting={isRejecting}
-        items={group.items}
-        onApprove={onApprove}
-        onRead={onRead}
-        onReject={onReject}
       />
     </section>
   );

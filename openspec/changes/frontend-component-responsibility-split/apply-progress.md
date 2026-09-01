@@ -210,10 +210,10 @@ The parent decision is to split required D2 into sequential, under-budget work u
 
 ### Remaining tasks and deferred lifecycle actions
 
-- `- [ ] RED: Re-run \`DOC\` in \`property-document-requests.test.tsx\` for grouping, resolved disclosure, highlight anchor, and permissions before moving the shell. <!-- sdd-owner: implementation -->`
-- `- [ ] GREEN: Extract the controlled section/list shell in \`request-list.tsx\` with unchanged commands and DOM anchors. <!-- sdd-owner: implementation -->`
-- `- [ ] TRIANGULATE: Verify \`request-list.tsx\` resolved-history state, highlighting, action availability, and root-only orchestration with \`DOC\`, \`TYPE\`, \`LINT\`, formatter, diff check, and import audit. <!-- sdd-owner: implementation -->`
-- `- [ ] REFACTOR: Keep item/status/version detail for D4b/D5 if needed, remove only \`request-list.tsx\` shell duplicates, and land below budget. <!-- sdd-owner: implementation -->`
+- `- [ ] RED: Re-run `DOC` in `property-document-requests.test.tsx` for grouping, resolved disclosure, highlight anchor, and permissions before moving the shell. <!-- sdd-owner: implementation -->`
+- `- [ ] GREEN: Extract the controlled section/list shell in `request-list.tsx` with unchanged commands and DOM anchors. <!-- sdd-owner: implementation -->`
+- `- [ ] TRIANGULATE: Verify `request-list.tsx` resolved-history state, highlighting, action availability, and root-only orchestration with `DOC`, `TYPE`, `LINT`, formatter, diff check, and import audit. <!-- sdd-owner: implementation -->`
+- `- [ ] REFACTOR: Keep item/status/version detail for D4b/D5 if needed, remove only `request-list.tsx` shell duplicates, and land below budget. <!-- sdd-owner: implementation -->`
 - Deferred lifecycle actions remain parent-owned and unchanged. The required parent decision is a smaller D4a scope that fits the 400-line cap, or explicit maintainer `size:exception`; D4b must remain blocked.
 
 ### Parent replan decision
@@ -223,3 +223,63 @@ The parent authorized a sequential split with no size exception: **D4a1** moves 
 After D4a1 lands, **D4a2** moves `DocumentRequestList`, item mapping, the `<li data-request-id>` anchor, and highlight wrapper/class into `request-list.tsx`. It keeps all item detail in the root through a narrow explicit `renderItem` seam and forbids root, service, query/URL, mutation, and independent-state ownership in the list module. D4b is blocked until landed D4a2.
 
 The split is derived from the failed **470 source additions plus deletions** D4a candidate: D4a1 forecasts approximately 190–260 changed lines and D4a2 approximately 230–320, each below the hard 400-line limit. The candidate was already fully restored, no D4a work is complete, and no new source or test code was changed. Native status after replanning is **21/78 complete**; prior D4a evidence and all earlier history remain preserved.
+
+## D4a1 — Document controlled request section/disclosure shell
+
+**Status:** complete for `d4a1-document-disclosure-shell`; all four D4a1 implementation-owned rows are persisted as checked.
+
+### Structured status and action context
+
+- Consumed parent native authority: `apply=ready`, `21/78 complete`, attempt `proceed`, work unit `d4a1-document-disclosure-shell`, delivery path `auto-chain` / sequential stack, and hard 400-line limit.
+- Produced OpenSpec status: `schemaName=spec-driven`, `changeName=frontend-component-responsibility-split`, `artifactStore=openspec`, `applyState=ready`, `nextRecommended=apply`; proposal, design, tasks, and cumulative apply-progress were present. The canonical spec artifact was not found at the configured `openspec/specs` path, but the parent-provided native authority explicitly confirmed apply readiness and the landed proposal/design/tasks governed this structural slice.
+- `actionContext.mode=repo-local`; the authoritative workspace was `/Users/emimontanari/Work/Apps/Viewpro-worktrees/frontend-component-document-disclosure-shell`. Edits stayed inside the four parent-approved source/artifact surfaces. The pre-existing untracked `viewpro-app/node_modules` symlink was not edited.
+
+### TDD Cycle Evidence
+
+| Step | Evidence | Result |
+|---|---|---|
+| RED / characterization | Pre-change `DOC` and `MODEL` | PASS — 34/34 and 6/6; this behavior-preserving extraction did not manufacture a behavioral RED. |
+| GREEN | Added controlled `DocumentRequestSection` shell and passed root-owned list markup as `children` | Public `DOC` PASS — 34/34; `MODEL` PASS — 6/6. |
+| TRIANGULATE | Typecheck, strict lint, scoped formatter, diff check, and ownership audit | PASS; the new module has no root, React Query, nuqs, query-key, tenant/product context, service, or mutation import. |
+| REFACTOR | Removed only the root section/disclosure duplicate and reran focused suites | PASS — 34/34 and 6/6. |
+
+### Completed scope and persisted tasks
+
+- [x] RED — Recorded the 34/34 public and 6/6 model characterization baselines.
+- [x] GREEN — Created `property-document-requests/request-list.tsx` with only the group-heading and controlled resolved-disclosure shell; the root provides explicit list `children`.
+- [x] TRIANGULATE — Verified direct inward imports and an under-budget source diff.
+- [x] REFACTOR — Removed only the moved shell from the root; `DocumentRequestList`, mapping, list anchors/highlight wrapper, and all item/status/rejection/action/version/preview detail remain in the root.
+
+The four D4a1 task rows in `tasks.md` are visibly `- [x]`. D4a2, D4b, D5, and parent-owned lifecycle rows were not modified.
+
+### Files changed
+
+- `viewpro-app/apps/app-new/src/features/products/components/property-document-requests.tsx`
+- `viewpro-app/apps/app-new/src/features/products/components/property-document-requests/request-list.tsx`
+- `openspec/changes/frontend-component-responsibility-split/tasks.md`
+- `openspec/changes/frontend-component-responsibility-split/apply-progress.md`
+
+### Verification
+
+| Command | Result |
+|---|---|
+| `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests.test.tsx` | PASS — 34/34 before and after extraction. |
+| `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests/model.test.ts` | PASS — 6/6 before and after extraction. |
+| `pnpm --filter next-shadcn-dashboard-starter typecheck` | PASS. |
+| `pnpm --filter next-shadcn-dashboard-starter lint:strict` | PASS. |
+| `pnpm exec oxfmt --write` and `--check` for root plus `request-list.tsx` | PASS. |
+| `pnpm format:check` | BLOCKED by the established 88 unrelated package-wide formatting violations; both D4a1 files pass scoped formatting. |
+| `git diff --no-ext-diff --check` | PASS. |
+| Forbidden-import ownership audit | PASS. |
+
+### Workload, deviations, and remaining work
+
+- Source diff: root **16 additions + 99 deletions**, new module **55 additions**, for **170 additions plus deletions**; the artifact-inclusive D4a1 worktree diff is **246 additions plus deletions**. Both are below the reassessment threshold and the 400-line cap.
+- PR boundary: independently rollbackable D4a1 controlled disclosure shell only; no commit, push, PR, tests edits, API/config/package change, or node_modules edit occurred.
+- Deviations from design: none. Root remains the public/query/URL/mutation/deep-link/list/item owner and retains `resolvedOpen` plus `setResolvedOpen`; the child owns no independent state.
+- Immediate unchecked successor rows are:
+  - `- [ ] RED: From `viewpro-app/`, run `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests.test.tsx` and `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests/model.test.ts`; record the landed D4a1 characterization for list grouping, resolved disclosure, highlight anchors, permissions, item output, and the 6/6 model suite; do not manufacture a behavioral RED. <!-- sdd-owner: implementation -->`
+  - `- [ ] GREEN: In `request-list.tsx` and `property-document-requests.tsx`, move only list composition/mapping and the `<li data-request-id>` highlight wrapper, passing root-owned item detail through an explicit `renderItem` seam. <!-- sdd-owner: implementation -->`
+  - `- [ ] TRIANGULATE: Run `DOC`, `TYPE`, `LINT`, `cd apps/app-new && pnpm exec oxfmt --check src/features/products/components/property-document-requests.tsx src/features/products/components/property-document-requests/request-list.tsx`, `cd apps/app-new && pnpm format:check`, and `git diff --check && git diff --numstat`; audit no root/query/URL/service/mutation imports and verify the D4a2 count is below 400. <!-- sdd-owner: implementation -->`
+  - `- [ ] REFACTOR: Remove only the moved list/mapping/anchor duplicate, rerun focused checks, record the measured under-budget diff and rollback boundary, and publish D4a2 before D4b. <!-- sdd-owner: implementation -->`
+- Deferred lifecycle actions: all parent-owned landing, final verification, sync, archive, and issue-update rows remain byte-for-byte unchanged. Parent settlement must remediate failed evidence `sha256:f03cb6364541ab28e647d8300f816ae3b758a48ccd040404fe2da806c2336474`.
