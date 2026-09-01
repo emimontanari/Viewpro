@@ -184,3 +184,42 @@ The parent decision is to split required D2 into sequential, under-budget work u
 
 - Added public assertions for exact tab order, Todos URL reset/selection, the exact archive hint, and permission-gated hint suppression; formatted `DOC` remains PASS at 34/34.
 - Revised exact artifact-inclusive changed-line total: **380** additions plus deletions, below 400.
+
+## D4a — Document request section/list shell
+
+**Status:** blocked before delivery for `d4a-document-request-list-shell`; D4a source edits were fully restored and all four D4a implementation checkboxes remain unchecked.
+
+### Structured status and action context
+
+- Consumed native authority: `frontend-component-responsibility-split` was apply-ready with 21/74 complete; the parent-held D4a attempt was `proceed` under `auto-chain` stacked-to-main from `06420a90`.
+- Action context: the parent supplied the D4a worktree and four allowed edit surfaces. The attempted source edits stayed inside the two source surfaces; the environment-only untracked `viewpro-app/node_modules` symlink was not edited.
+- PR boundary was D4a only: controlled section/list shell, with root-owned item/status/rejection/review/read/version detail; D4b and D5 were not started.
+
+### TDD Cycle Evidence
+
+| Task | Test file | Layer | Safety net / RED | GREEN / TRIANGULATE / REFACTOR |
+|---|---|---|---|---|
+| D4a section/list shell | `property-document-requests.test.tsx` and `model.test.ts` | Public component + pure model | Passing characterization baseline, not a manufactured behavioral RED: `DOC` 34/34 and `MODEL` 6/6. | Not reached: the first minimal shell candidate reached 470 source additions plus deletions, so it was restored before GREEN to honor the 400-line hard maximum. |
+
+### Budget stop and verification
+
+- The attempted root-to-shell seam moved `DocumentRequestSection`, controlled `Collapsible`, list composition, and the `<li data-request-id>` highlight wrapper while leaving card/item detail in the root render callback.
+- The candidate measured **470 source additions plus deletions** before artifacts: root 107 additions and 250 deletions, plus the new shell module. This exceeded the hard 400-line limit, so no source candidate remains.
+- `DOC` passed 34/34 and `MODEL` passed 6/6 before edits. No post-extraction typecheck, strict lint, package formatter, or full import audit was run because the candidate was restored at the mandatory budget stop.
+- No design or product decision was required, but the current D4a allocation cannot satisfy both the requested DOM-anchor extraction and the 400-line budget without a parent-approved scope split.
+
+### Remaining tasks and deferred lifecycle actions
+
+- `- [ ] RED: Re-run \`DOC\` in \`property-document-requests.test.tsx\` for grouping, resolved disclosure, highlight anchor, and permissions before moving the shell. <!-- sdd-owner: implementation -->`
+- `- [ ] GREEN: Extract the controlled section/list shell in \`request-list.tsx\` with unchanged commands and DOM anchors. <!-- sdd-owner: implementation -->`
+- `- [ ] TRIANGULATE: Verify \`request-list.tsx\` resolved-history state, highlighting, action availability, and root-only orchestration with \`DOC\`, \`TYPE\`, \`LINT\`, formatter, diff check, and import audit. <!-- sdd-owner: implementation -->`
+- `- [ ] REFACTOR: Keep item/status/version detail for D4b/D5 if needed, remove only \`request-list.tsx\` shell duplicates, and land below budget. <!-- sdd-owner: implementation -->`
+- Deferred lifecycle actions remain parent-owned and unchanged. The required parent decision is a smaller D4a scope that fits the 400-line cap, or explicit maintainer `size:exception`; D4b must remain blocked.
+
+### Parent replan decision
+
+The parent authorized a sequential split with no size exception: **D4a1** moves only `DocumentRequestSection`, its group heading, and the controlled resolved `Collapsible`/disclosure shell, while root `property-document-requests.tsx` keeps `DocumentRequestList`, item mapping, `<li data-request-id>`, highlight wrapper/class, and all item/status/rejection/actions/version/preview detail. Root-owned resolved-open and change values remain authoritative; explicit children or render-list input may cross the seam.
+
+After D4a1 lands, **D4a2** moves `DocumentRequestList`, item mapping, the `<li data-request-id>` anchor, and highlight wrapper/class into `request-list.tsx`. It keeps all item detail in the root through a narrow explicit `renderItem` seam and forbids root, service, query/URL, mutation, and independent-state ownership in the list module. D4b is blocked until landed D4a2.
+
+The split is derived from the failed **470 source additions plus deletions** D4a candidate: D4a1 forecasts approximately 190–260 changed lines and D4a2 approximately 230–320, each below the hard 400-line limit. The candidate was already fully restored, no D4a work is complete, and no new source or test code was changed. Native status after replanning is **21/78 complete**; prior D4a evidence and all earlier history remain preserved.
