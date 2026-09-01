@@ -29,6 +29,16 @@ import type {
   PropertyLinkedOwner
 } from '../api/types';
 import { CreateDocumentRequestDialog } from './create-document-request-dialog';
+import {
+  DOCUMENT_FILTER_OPTIONS,
+  getDocumentFilter,
+  getFilterCounts,
+  getVisibleGroups,
+  groupDocumentRequests,
+  isEligibleDocumentOwner,
+  type DocumentFilter,
+  type DocumentRequestGroup
+} from './property-document-requests/model';
 import { RejectDocumentRequestDialog } from './reject-document-request-dialog';
 
 type PropertyDocumentRequestsProps = {
@@ -40,29 +50,13 @@ type PropertyDocumentRequestsProps = {
   tenantId: string;
 };
 
-type DocumentFilter = 'all' | 'pending' | 'resolved' | 'review';
-
 type DocumentStatusConfig = {
   badgeClassName: string;
   icon: Icon;
   label: string;
 };
 
-type DocumentRequestGroup = {
-  emptyCopy: string;
-  items: ProductDocumentRequest[];
-  key: Exclude<DocumentFilter, 'all'>;
-  title: string;
-};
-
 const EMPTY_DOCUMENT_REQUESTS: ProductDocumentRequest[] = [];
-
-const DOCUMENT_FILTER_OPTIONS = [
-  { key: 'all', label: 'Todos' },
-  { key: 'review', label: 'Por revisar' },
-  { key: 'pending', label: 'Pendientes' },
-  { key: 'resolved', label: 'Resueltos' }
-] satisfies Array<{ key: DocumentFilter; label: string }>;
 
 const documentStatusConfig: Record<ProductDocumentRequestStatus, DocumentStatusConfig> = {
   APPROVED: {
@@ -136,7 +130,7 @@ export function PropertyDocumentRequests({
   const documentRequestsQuery = useQuery(productDocumentRequestsOptions(productId, tenantId));
   const documentRequests = documentRequestsQuery.data?.items ?? EMPTY_DOCUMENT_REQUESTS;
   const groupedRequests = useMemo(
-    () => groupDocumentRequests(documentRequests),
+    () => groupDocumentRequests(documentRequests, getRequestChronologyTimestamp),
     [documentRequests]
   );
   const filterCounts = useMemo(() => getFilterCounts(groupedRequests), [groupedRequests]);
@@ -221,10 +215,7 @@ export function PropertyDocumentRequests({
     }
 
     // Open the resolved Collapsible if the target is APPROVED or REJECTED (D4).
-    if (
-      (item.status === 'APPROVED' || item.status === 'REJECTED') &&
-      !didOpenResolvedRef.current
-    ) {
+    if ((item.status === 'APPROVED' || item.status === 'REJECTED') && !didOpenResolvedRef.current) {
       didOpenResolvedRef.current = true;
       setResolvedOpen(true);
     }
@@ -268,12 +259,7 @@ export function PropertyDocumentRequests({
       setHighlightedId(null);
       highlightTimerRef.current = null;
     }, 2000);
-  }, [
-    highlightDocId,
-    documentRequestsQuery.isSuccess,
-    documentRequestsQuery.data,
-    resolvedOpen
-  ]);
+  }, [highlightDocId, documentRequestsQuery.isSuccess, documentRequestsQuery.data, resolvedOpen]);
 
   function handleOpenDialog() {
     if (
@@ -942,69 +928,6 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function groupDocumentRequests(requests: ProductDocumentRequest[]) {
-  const sortedRequests = requests.toSorted(
-    (left, right) =>
-      Date.parse(getRequestChronologyTimestamp(right)) -
-      Date.parse(getRequestChronologyTimestamp(left))
-  );
-
-  return {
-    pending: sortedRequests.filter((request) => request.status === 'PENDING'),
-    resolved: sortedRequests.filter(
-      (request) => request.status === 'APPROVED' || request.status === 'REJECTED'
-    ),
-    review: sortedRequests.filter((request) => request.status === 'SUBMITTED')
-  } satisfies Record<Exclude<DocumentFilter, 'all'>, ProductDocumentRequest[]>;
-}
-
-function getFilterCounts(groups: Record<Exclude<DocumentFilter, 'all'>, ProductDocumentRequest[]>) {
-  return {
-    all: groups.pending.length + groups.resolved.length + groups.review.length,
-    pending: groups.pending.length,
-    resolved: groups.resolved.length,
-    review: groups.review.length
-  } satisfies Record<DocumentFilter, number>;
-}
-
-function getVisibleGroups(
-  groups: Record<Exclude<DocumentFilter, 'all'>, ProductDocumentRequest[]>,
-  activeFilter: DocumentFilter
-): DocumentRequestGroup[] {
-  const allGroups: DocumentRequestGroup[] = [
-    {
-      emptyCopy: 'No hay documentos subidos para revisar.',
-      items: groups.review,
-      key: 'review',
-      title: 'Requiere tu revisión'
-    },
-    {
-      emptyCopy: 'No hay solicitudes pendientes del propietario.',
-      items: groups.pending,
-      key: 'pending',
-      title: 'Pendientes del propietario'
-    },
-    {
-      emptyCopy: 'Todavía no hay documentos aprobados o rechazados.',
-      items: groups.resolved,
-      key: 'resolved',
-      title: 'Historial'
-    }
-  ];
-
-  return activeFilter === 'all'
-    ? allGroups
-    : allGroups.filter((group) => group.key === activeFilter);
-}
-
-function getDocumentFilter(value: string | null): DocumentFilter {
-  if (value === 'all' || value === 'pending' || value === 'resolved' || value === 'review') {
-    return value;
-  }
-
-  return 'all';
-}
-
 function getRequestChronologyTimestamp(request: ProductDocumentRequest) {
   return (
     request.reviewedAt ??
@@ -1098,8 +1021,4 @@ function getFileFormatLabel(mimeType: string) {
 
 function formatCompactDateTime(value: string) {
   return format(new Date(value), 'd MMM · HH:mm', { locale: es });
-}
-
-function isEligibleDocumentOwner(owner: PropertyLinkedOwner) {
-  return owner.accessStatus === 'INVITED' || owner.accessStatus === 'ACTIVE';
 }
