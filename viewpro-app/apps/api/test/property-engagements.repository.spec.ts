@@ -1064,15 +1064,41 @@ describe("primary seller repository mutations", () => {
 		expect(stale.updateMany).not.toHaveBeenCalled();
 	});
 
-	it.each(["primary", "non-primary"])('serializes removal of a %s assignment before its scoped delete without promotion', async () => {
-		const $queryRaw = vi.fn().mockResolvedValue([{ id: "engagement-1" }]);
-		const deleteMany = vi.fn().mockResolvedValue({ count: 1 });
+	it.each([
+		["primary", "assignment-1", [{ id: "assignment-2", isPrimary: false }]],
+		["non-primary", "assignment-2", [{ id: "assignment-1", isPrimary: true }]],
+	])("locks before deleting a %s assignment and preserves the durable remaining state", async (_kind, agentId, expectedRows) => {
+		const rows = [{ id: "assignment-1", isPrimary: true }, { id: "assignment-2", isPrimary: false }];
+		const calls: string[] = [];
+		const $queryRaw = vi.fn(() => { calls.push("lock"); return [{ id: "engagement-1" }]; });
+		const deleteMany = vi.fn(({ where }) => {
+			calls.push("delete");
+			expect(calls).toEqual(["lock", "delete"]);
+			const index = rows.findIndex((row) => row.id === where.id);
+			return Promise.resolve({ count: index < 0 ? 0 : (rows.splice(index, 1), 1) });
+		});
 		const $transaction = vi.fn((callback) => callback({ $queryRaw, propertyAgent: { deleteMany } }));
 		const repository = new PrismaPropertyEngagementsRepository({ $transaction } as never);
 
-		await expect(repository.removeAgent({ tenantId: "tenant-1", engagementId: "engagement-1", agentId: "assignment-1" })).resolves.toBe(true);
+		await expect(repository.removeAgent({ tenantId: "tenant-1", engagementId: "engagement-1", agentId })).resolves.toBe(true);
+		expect(rows).toEqual(expectedRows);
+		expect(deleteMany).toHaveBeenCalledWith({ where: { id: agentId, tenantId: "tenant-1", propertyEngagementId: "engagement-1" } });
+	});
+
+	it("cannot start its scoped delete while the engagement lock is unresolved", async () => {
+		let releaseLock!: () => void;
+		const lock = new Promise<void>((resolve) => { releaseLock = resolve; });
+		const $queryRaw = vi.fn(async () => { await lock; return [{ id: "engagement-1" }]; });
+		const deleteMany = vi.fn().mockResolvedValue({ count: 1 });
+		const $transaction = vi.fn((callback) => callback({ $queryRaw, propertyAgent: { deleteMany } }));
+		const repository = new PrismaPropertyEngagementsRepository({ $transaction } as never);
+		const removal = repository.removeAgent({ tenantId: "tenant-1", engagementId: "engagement-1", agentId: "assignment-1" });
+
+		await Promise.resolve();
 		expect($queryRaw).toHaveBeenCalledOnce();
-		expect(deleteMany).toHaveBeenCalledWith({ where: { id: "assignment-1", tenantId: "tenant-1", propertyEngagementId: "engagement-1" } });
+		expect(deleteMany).not.toHaveBeenCalled();
+		releaseLock();
+		await expect(removal).resolves.toBe(true);
 	});
 
 	it("returns false without deleting when serialized removal cannot find the engagement or assignment", async () => {

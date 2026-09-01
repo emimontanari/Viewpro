@@ -50,3 +50,11 @@
 - PASS: `pnpm --filter @viewpro/api lint` and `git diff --no-ext-diff --check`.
 - No database command was needed; no Neon, development, production, or non-local database was accessed.
 - Temporary frozen-lock dependencies, Prisma client generation, contracts build output, and the temporary pnpm store are removed before handoff. No unchecked S2 task remains; remaining implementation tasks are PR3–PR7 and apply-owned broader gates.
+
+### S2 P2 review remediation — removal proof
+- Native continuation authenticated as `proceed` for `s2-review-remediation`; `auto-chain` S2 boundary remains in effect, action context is repo-local with the repository as its allowed root, and no task checkbox changed.
+- Replaced equivalent parameter mocks with stateful assignment rows: primary deletion leaves the non-primary row false with no primary, while non-primary deletion preserves the primary; both retain the exact id/tenant/engagement delete filter.
+- The stateful mock fails if delete starts before the engagement lock, and a deferred-lock barrier keeps delete uncalled until `$queryRaw` resolves; this is mocked ordering evidence only, not PR3's real-PostgreSQL race/row-lock proof.
+- RED: temporarily reversed `removeAgent` to delete before `lockTenantEngagement`; focused suite failed 4/45 (both ordering cases, unresolved-lock barrier, and missing-engagement no-delete). The original production file was restored byte-for-byte before GREEN.
+- GREEN: focused repository suite passed 45/45; API typecheck and lint passed; `git diff --no-ext-diff --check` passed.
+- Full candidate from `d6504ea` is 368 additions + 17 deletions = 385 changed lines (<=400); final production file equals `HEAD` and no production change is staged.
