@@ -121,10 +121,10 @@ Record the before-change result, characterization versus genuine RED, after-chan
 
 **Targets:** `property-document-requests.tsx`; new `property-document-requests/states-and-filters.tsx`. **Dependency:** D2b landed. **Boundary:** controlled presentation receives counts, archive/permission booleans, active filter, counts, pending/error, and `onFilterChange`; no owners, URL names, query objects, setters, tenant, or services. **Stop:** child URL/query/fetch ownership, copy/loading/error/empty drift, or budget risk. **Rollback/publish:** revert module/root wiring; land before D4a.
 
-- [ ] RED: Re-run `DOC` in `property-document-requests.test.tsx` for loading/error/empty, owner hints, filter counts, and transitions before moving presentation. <!-- sdd-owner: implementation -->
-- [ ] GREEN: Extract `states-and-filters.tsx` and wire explicit root-owned values/callbacks without changing behavior. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: Verify `states-and-filters.tsx` preserves Spanish copy, accessibility, permissions, archive behavior, and no child fetch/URL ownership with `DOC`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Remove only moved presentation from `property-document-requests.tsx`, retain direct imports, and land below budget. <!-- sdd-owner: implementation -->
+- [x] RED: Re-run `DOC` in `property-document-requests.test.tsx` for loading/error/empty, owner hints, filter counts, and transitions before moving presentation. <!-- sdd-owner: implementation -->
+- [x] GREEN: Extract `states-and-filters.tsx` and wire explicit root-owned values/callbacks without changing behavior. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: Verify `states-and-filters.tsx` preserves Spanish copy, accessibility, permissions, archive behavior, and no child fetch/URL ownership with `DOC`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: Remove only moved presentation from `property-document-requests.tsx`, retain direct imports, and land below budget. <!-- sdd-owner: implementation -->
 
 ### D4a — Document request section/list shell (required)
 

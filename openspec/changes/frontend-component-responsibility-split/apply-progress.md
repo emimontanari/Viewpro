@@ -146,5 +146,41 @@ The parent decision is to split required D2 into sequential, under-budget work u
 ### Workload and remaining work
 
 - Exact artifact-inclusive `git diff --numstat` count: **379** additions plus deletions (260 additions, 119 deletions), below the 400-line hard maximum.
-- Remaining implementation begins with: `- [ ] RED: Re-run \`DOC\` in \`property-document-requests.test.tsx\` for loading/error/empty, owner hints, filter counts, and transitions before moving presentation. <!-- sdd-owner: implementation -->`
+- Remaining implementation begins with: `- [ ] RED: Re-run `DOC` in `property-document-requests.test.tsx` for loading/error/empty, owner hints, filter counts, and transitions before moving presentation. <!-- sdd-owner: implementation -->`
 - Deferred lifecycle actions: all parent-owned final verification, landing, synchronization, archive, and issue-update rows remain byte-for-byte unchanged. D3 may start only after this independently runnable D2b unit lands.
+
+## D3 — Document states, hints, filters
+
+**Status:** complete for `d3-document-states-hints-filters`; all four D3 implementation-owned checkboxes are visibly checked.
+
+### Structured status and boundary
+
+- Consumed parent native authority: apply-ready, D3 attempt `proceed`, `auto-chain` sequential-to-develop, and 17/74 complete at acquisition.
+- Action context: `repo-local` in `/Users/emimontanari/Work/Apps/Viewpro-worktrees/frontend-component-document-states-filters`; edits were limited to the supplied root, new presentation module, and OpenSpec artifacts. The existing untracked `viewpro-app/node_modules` symlink was not touched.
+- PR boundary: D3 state/hint/filter presentation only; D4a list/section extraction, services, queries, URL ownership, mutations, API/config/package changes, commits, pushes, and PR actions remain out of scope.
+
+### TDD Cycle Evidence
+
+| Task | Test file | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|---|
+| D3 states/hints/filters | `property-document-requests.test.tsx` | Public component | `DOC` 34/34; `MODEL` 6/6 | Passing characterization; no behavioral RED was manufactured for this preserving extraction. | A first post-extraction `DOC` run exposed a missing retained `Badge` root import; restoring it returned `DOC` to 34/34. | Existing public cases cover loading/error/empty, three owner-hint cases, filter counts/order/transitions, archive, and permissions. | Scoped formatting passed and final `DOC`/`MODEL` remained green. |
+
+### Verification and ownership
+
+- `DOC`: PASS — 34/34; `MODEL`: PASS — 6/6; App New typecheck: PASS; strict lint: PASS.
+- Scoped `oxfmt --write` and `--check` for the root and `states-and-filters.tsx`: PASS. `pnpm format:check` remains BLOCKED by the unchanged known 88 unrelated package formatting violations; both D3 source files pass scoped formatting.
+- `git diff --no-ext-diff --check`: PASS. The repository has `diff.external=/bin/false`, so `--no-ext-diff` was required for the native diff check.
+- Forbidden-import and ownership audits: PASS. The new module imports only UI primitives, `cn`, and direct model filter data/types; it has no query, URL, tenant/product, owner collection, service, mutation, or root import.
+- Source changed-line count: **314** additions plus deletions (10 additions, 143 deletions, 161 new-module additions); artifact-inclusive total: **355**. The near-350 reassessment confirmed this remains below the 400 hard maximum. No design deviation or user-visible behavior drift was found.
+
+### Files and persisted tasks
+
+- Changed: `property-document-requests.tsx`, new `property-document-requests/states-and-filters.tsx`, `tasks.md`, and this cumulative progress file.
+- The D3 RED, GREEN, TRIANGULATE, and REFACTOR rows are visibly `- [x]` in `tasks.md`.
+- Remaining implementation starts with `- [ ] RED: Re-run `DOC` in `property-document-requests.test.tsx` for grouping, resolved disclosure, highlight anchor, and permissions before moving the shell. <!-- sdd-owner: implementation -->`
+- Deferred lifecycle actions remain parent-owned and byte-for-byte unchanged; next implementation boundary is D4a after parent lifecycle lands D3.
+
+### Independent-review follow-up
+
+- Added public assertions for exact tab order, Todos URL reset/selection, the exact archive hint, and permission-gated hint suppression; formatted `DOC` remains PASS at 34/34.
+- Revised exact artifact-inclusive changed-line total: **380** additions plus deletions, below 400.
