@@ -438,6 +438,12 @@ describe('PropertyDocumentRequests', () => {
     const reviewTab = within(tablist).getByRole('tab', { name: /Por revisar · 2/i });
     const pendingTab = within(tablist).getByRole('tab', { name: /Pendientes · 1/i });
     const resolvedTab = within(tablist).getByRole('tab', { name: /Resueltos · 1/i });
+    expect(within(tablist).getAllByRole('tab')).toEqual([
+      allTab,
+      reviewTab,
+      pendingTab,
+      resolvedTab
+    ]);
     expect(allTab).toHaveAttribute('aria-selected', 'true');
     expect(reviewTab).toHaveAttribute('aria-selected', 'false');
     expect(pendingTab).toHaveAttribute('aria-selected', 'false');
@@ -482,6 +488,11 @@ describe('PropertyDocumentRequests', () => {
     expect(screen.queryByText('Requiere tu revisión')).not.toBeInTheDocument();
     expect(screen.getByText('Pendientes del propietario')).toBeInTheDocument();
     expect(screen.getByText('Escritura pendiente')).toBeInTheDocument();
+
+    await userEvent.click(allTab);
+
+    expect(mockSetDocumentFilter).toHaveBeenLastCalledWith(null);
+    expect(allTab).toHaveAttribute('aria-selected', 'true');
   });
 
   it('opens approved and rejected documents while keeping decision actions only for submitted requests', async () => {
@@ -666,6 +677,7 @@ describe('PropertyDocumentRequests', () => {
     renderPropertyDocumentRequests({ isArchived: true });
 
     const createButton = await screen.findByRole('button', { name: 'Solicitar documento' });
+    expect(screen.getByText('Restaurá la propiedad para solicitar documentación.')).toBeVisible();
     expect(createButton).toBeDisabled();
     expect(createButton).toHaveClass('border-border/70', 'bg-transparent');
     expect(createButton).not.toHaveClass('bg-primary');
@@ -678,10 +690,16 @@ describe('PropertyDocumentRequests', () => {
   it('hides document request creation controls when creation is not permitted', async () => {
     getProductDocumentRequestsMock.mockResolvedValueOnce(documentRequestsResponse([]));
 
-    renderPropertyDocumentRequests({ canRequestDocuments: false });
+    renderPropertyDocumentRequests({ canRequestDocuments: false, isArchived: true, owners: [] });
 
     expect(await screen.findByRole('heading', { name: 'Documentos' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Solicitar documento' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Vinculá un propietario para solicitar documentación.')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Restaurá la propiedad para solicitar documentación.')
+    ).not.toBeInTheDocument();
     expect(createProductDocumentRequestMock).not.toHaveBeenCalled();
   });
 
