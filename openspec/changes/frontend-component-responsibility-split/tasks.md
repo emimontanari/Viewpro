@@ -6,10 +6,10 @@ These are execution tasks, not completion claims. Leave every checkbox unchecked
 
 | Field | Value |
 |-------|-------|
-| Estimated changed lines | Planning chain: P0a explore + proposal ~374 lines; P0b spec ~258; P0c design ~246; P0d tasks <400. Implementation chain: ~3,100–4,500 required, or ~3,740–5,075 with both optional controllers; D2a ~270–320 and D2b ~190–250 based on the measured 468-line D2 candidate. |
+| Estimated changed lines | Planning chain: P0a explore + proposal ~374 lines; P0b spec ~258; P0c design ~246; P0d tasks <400. Implementation chain: ~3,100–4,600 required, or ~3,740–5,075 with both optional controllers; D2a ~270–320 and D2b ~190–250 from the measured 468-line D2 candidate; D4a1 ~190–260 and D4a2 ~230–320 from the measured 470 source-additions-plus-deletions D4a candidate. |
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
-| Suggested split | P0a → P0b → P0c → P0d → O1 → D1 → D2a → D2b → D3 → D4a → D4b → D5 → D6 → optional D7 → #304 gate → T1 → T2 → T3a → T3b → T4 → T5 → optional T6 → final lifecycle |
+| Suggested split | P0a → P0b → P0c → P0d → O1 → D1 → D2a → D2b → D3 → D4a1 → D4a2 → D4b → D5 → D6 → optional D7 → #304 gate → T1 → T2 → T3a → T3b → T4 → T5 → optional T6 → final lifecycle |
 | Delivery strategy | auto-chain |
 | Chain strategy | stacked-to-main, implemented as sequential fresh worktrees/branches landing to `develop` |
 
@@ -61,14 +61,14 @@ Record the before-change result, characterization versus genuine RED, after-chan
 | Existing `/dashboard` (read-only), `/dashboard/product` (read-only), and `/dashboard/product/[id]` (read-only) entries and singular homepage ownership | O1, final |
 | Visible contract: copy, accessibility, permissions, responsive output, query inputs, URL transitions | D2a–D6, optional D7, T2–T5, optional T6, final |
 | Document loading/error/empty, hints, filters, mutations, failures, preview fallback | D1, D2a, D2b, D3–D5, optional D7 |
-| Core grouping, filtering, active-filter normalization, eligibility, and counts | D1, D2a, D3–D4a |
+| Core grouping, filtering, active-filter normalization, eligibility, and counts | D1, D2a, D3, D4a1–D4a2 |
 | Chronology, compact descriptions, file/version labels, MIME, and compact dates | D1, D2b, D4b–D5 |
 | Read has no list invalidation; create/approve/reject have exact write invalidation | D1, D5, optional D7 |
 | Deep-link reset, one-shot open, post-paint scroll/highlight, cleanup, and user collapse | D1, D6 |
 | Preview query ownership and file-icon failure fallback | D1, D5 |
 | Product tenant/query/URL/pagination/responsive/permission/fetching behavior | #304 gate, T1–T5, optional T6, final |
 | First-assignment seller ordering; no primary-seller inference | #304 gate, T1, T3a–T4 |
-| Baseline-first extraction and genuine RED/GREEN correction handling | D1, D2a, D2b, D3–D6, T1–T5 |
+| Baseline-first extraction and genuine RED/GREEN correction handling | D1, D2a, D2b, D3, D4a1–D6, T1–T5 |
 | Independently runnable, rollbackable, under-budget units with recorded evidence | every implementation unit |
 
 ## Ordered work units
@@ -119,25 +119,34 @@ Record the before-change result, characterization versus genuine RED, after-chan
 
 ### D3 — Document states, hints, filters (required)
 
-**Targets:** `property-document-requests.tsx`; new `property-document-requests/states-and-filters.tsx`. **Dependency:** D2b landed. **Boundary:** controlled presentation receives counts, archive/permission booleans, active filter, counts, pending/error, and `onFilterChange`; no owners, URL names, query objects, setters, tenant, or services. **Stop:** child URL/query/fetch ownership, copy/loading/error/empty drift, or budget risk. **Rollback/publish:** revert module/root wiring; land before D4a.
+**Targets:** `property-document-requests.tsx`; new `property-document-requests/states-and-filters.tsx`. **Dependency:** D2b landed. **Boundary:** controlled presentation receives counts, archive/permission booleans, active filter, counts, pending/error, and `onFilterChange`; no owners, URL names, query objects, setters, tenant, or services. **Stop:** child URL/query/fetch ownership, copy/loading/error/empty drift, or budget risk. **Rollback/publish:** revert module/root wiring; land before D4a1.
 
-- [ ] RED: Re-run `DOC` in `property-document-requests.test.tsx` for loading/error/empty, owner hints, filter counts, and transitions before moving presentation. <!-- sdd-owner: implementation -->
-- [ ] GREEN: Extract `states-and-filters.tsx` and wire explicit root-owned values/callbacks without changing behavior. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: Verify `states-and-filters.tsx` preserves Spanish copy, accessibility, permissions, archive behavior, and no child fetch/URL ownership with `DOC`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Remove only moved presentation from `property-document-requests.tsx`, retain direct imports, and land below budget. <!-- sdd-owner: implementation -->
+- [x] RED: Re-run `DOC` in `property-document-requests.test.tsx` for loading/error/empty, owner hints, filter counts, and transitions before moving presentation. <!-- sdd-owner: implementation -->
+- [x] GREEN: Extract `states-and-filters.tsx` and wire explicit root-owned values/callbacks without changing behavior. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: Verify `states-and-filters.tsx` preserves Spanish copy, accessibility, permissions, archive behavior, and no child fetch/URL ownership with `DOC`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: Remove only moved presentation from `property-document-requests.tsx`, retain direct imports, and land below budget. <!-- sdd-owner: implementation -->
 
-### D4a — Document request section/list shell (required)
+### D4a1 — Document controlled request section/disclosure shell (required)
 
-**Targets:** `property-document-requests.tsx`; new/updated `property-document-requests/request-list.tsx`. **Dependency:** D3 and all landed document tests. **Boundary:** move `DocumentRequestSection`, controlled resolved `Collapsible`, list composition; pass groups, permissions, pending flags, highlighted id, resolved-open state, commands; preserve `data-request-id` and highlight anchor. **Stop:** independent resolved state, root import, mutation creation, deep-link ordering drift, or 400-line risk. **Rollback/publish:** revert shell wiring; land before D4b; root runnable after this unit.
+**Targets:** `viewpro-app/apps/app-new/src/features/products/components/property-document-requests.tsx`; `viewpro-app/apps/app-new/src/features/products/components/property-document-requests/request-list.tsx`; existing `property-document-requests.test.tsx`. **Dependency:** D3 is landed, all document tests pass, and this unit starts from a fresh worktree at the then-current `origin/develop`. **Boundary:** move only `DocumentRequestSection`, its group heading, and the controlled resolved `Collapsible`/disclosure shell. Accept explicit children or a render-list input as needed. Keep `DocumentRequestList`, item mapping, `<li data-request-id>`, highlight wrapper/class, and all item/status/rejection/actions/version/preview detail in `property-document-requests.tsx`; the root retains resolved-open value/change ownership. **Forecast:** approximately 190–260 changed lines, allocated from the measured 470-line D4a candidate, below 400. **Stop:** list/anchor detail moves early, child-owned open state, root import, deep-link ordering drift, non-runnable root, or forecast/actual count of 400 or more. **Rollback/publish:** revert this module/root wiring as one shell unit; confirm the root is runnable, run the listed checks, and publish before creating D4a2.
 
-- [ ] RED: Re-run `DOC` in `property-document-requests.test.tsx` for grouping, resolved disclosure, highlight anchor, and permissions before moving the shell. <!-- sdd-owner: implementation -->
-- [ ] GREEN: Extract the controlled section/list shell in `request-list.tsx` with unchanged commands and DOM anchors. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: Verify `request-list.tsx` resolved-history state, highlighting, action availability, and root-only orchestration with `DOC`, `TYPE`, `LINT`, formatter, diff check, and import audit. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Keep item/status/version detail for D4b/D5 if needed, remove only `request-list.tsx` shell duplicates, and land below budget. <!-- sdd-owner: implementation -->
+- [ ] RED: From `viewpro-app/`, run `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests.test.tsx` and `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests/model.test.ts`; record the 34/34 and 6/6 characterization baselines for disclosure, grouping, permissions, and unchanged anchors; do not manufacture a behavioral RED. <!-- sdd-owner: implementation -->
+- [ ] GREEN: In `request-list.tsx` and `property-document-requests.tsx`, move only the controlled section/group-heading/`Collapsible` shell with explicit children or render-list input; leave list, mapping, anchors, and detail in the root. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE: Run `DOC`, `TYPE`, `LINT`, `cd apps/app-new && pnpm exec oxfmt --check src/features/products/components/property-document-requests.tsx src/features/products/components/property-document-requests/request-list.tsx`, `cd apps/app-new && pnpm format:check`, and `git diff --check && git diff --numstat`; audit that `request-list.tsx` has no root, query, URL, service, or mutation import and that the count is below 400. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR: Remove only the moved section/disclosure duplicate from `property-document-requests.tsx`, rerun the focused checks, record the measured under-budget diff, and publish the independently rollbackable D4a1 before D4a2. <!-- sdd-owner: implementation -->
+
+### D4a2 — Document request list/anchor shell (required)
+
+**Targets:** `viewpro-app/apps/app-new/src/features/products/components/property-document-requests.tsx`; `viewpro-app/apps/app-new/src/features/products/components/property-document-requests/request-list.tsx`; existing `property-document-requests.test.tsx`. **Dependency:** landed D4a1, passing D4a1 focused checks, and a fresh worktree from the D4a1 landing. **Boundary:** move `DocumentRequestList`, item mapping, the `<li data-request-id>` anchor, and the highlight wrapper/class to `request-list.tsx`. Keep item/status/rejection/actions/version/preview detail in the root through a narrow explicit `renderItem` seam. The list module has no root import, services, query/URL ownership, mutations, or independent state. **Forecast:** approximately 230–320 changed lines, allocated from the measured 470-line D4a candidate including the explicit render-item seam, below 400. **Stop:** detail or orchestration leaks into the list module, anchor/highlight drift, root import, independent state, non-runnable root, or forecast/actual count of 400 or more. **Rollback/publish:** revert the list/anchor wiring as one unit, confirm D4a1 remains runnable, and publish D4a2 before D4b.
+
+- [ ] RED: From `viewpro-app/`, run `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests.test.tsx` and `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-document-requests/model.test.ts`; record the landed D4a1 characterization for list grouping, resolved disclosure, highlight anchors, permissions, item output, and the 6/6 model suite; do not manufacture a behavioral RED. <!-- sdd-owner: implementation -->
+- [ ] GREEN: In `request-list.tsx` and `property-document-requests.tsx`, move only list composition/mapping and the `<li data-request-id>` highlight wrapper, passing root-owned item detail through an explicit `renderItem` seam. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE: Run `DOC`, `TYPE`, `LINT`, `cd apps/app-new && pnpm exec oxfmt --check src/features/products/components/property-document-requests.tsx src/features/products/components/property-document-requests/request-list.tsx`, `cd apps/app-new && pnpm format:check`, and `git diff --check && git diff --numstat`; audit no root/query/URL/service/mutation imports and verify the D4a2 count is below 400. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR: Remove only the moved list/mapping/anchor duplicate, rerun focused checks, record the measured under-budget diff and rollback boundary, and publish D4a2 before D4b. <!-- sdd-owner: implementation -->
 
 ### D4b — Document request items/status (required)
 
-**Targets:** `property-document-requests.tsx`, `property-document-requests/request-list.tsx`, and existing `property-document-requests.test.tsx`. **Dependency:** D4a. **Boundary:** move item/status/rejection/review/read/version-list presentation; children receive explicit data, permissions, pending flags, controlled state, and callbacks, never mutations/services/URL parsing/root imports. **Stop:** action, feedback, pending, permission, anchor/highlight, or budget drift. **Rollback/publish:** revert item move atomically; land before D5.
+**Targets:** `property-document-requests.tsx`, `property-document-requests/request-list.tsx`, and existing `property-document-requests.test.tsx`. **Dependency:** D4a2 is landed and its focused suites/checks pass. **Boundary:** move item/status/rejection/review/read/version-list presentation; children receive explicit data, permissions, pending flags, controlled state, and callbacks, never mutations/services/URL parsing/root imports. **Stop:** action, feedback, pending, permission, anchor/highlight, or budget drift. **Rollback/publish:** revert item move atomically; land before D5.
 
 - [ ] RED: Re-run `DOC` in `property-document-requests.test.tsx` for submitted/pending/resolved actions, status/rejection copy, pending flags, and permissions. <!-- sdd-owner: implementation -->
 - [ ] GREEN: Extract request item/status/review/read presentation into `request-list.tsx` while preserving markup, feedback, commands, and preview boundary. <!-- sdd-owner: implementation -->
