@@ -1,11 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import type { ProductDocumentRequest, PropertyLinkedOwner } from '../../api/types';
+import type {
+  ProductDocumentRequest,
+  ProductDocumentVersion,
+  PropertyLinkedOwner
+} from '../../api/types';
 import {
   DOCUMENT_FILTER_OPTIONS,
+  formatCompactDateTime,
+  getCompactDocumentDescription,
+  getDocumentDisplayName,
   getDocumentFilter,
+  getFileFormatLabel,
   getFilterCounts,
+  getPendingDocumentSummary,
+  getRequestChronologyTimestamp,
+  getVersionMetadata,
   getVisibleGroups,
   groupDocumentRequests,
+  isImageMimeType,
   isEligibleDocumentOwner
 } from './model';
 
@@ -72,7 +84,87 @@ describe('property document request core list model', () => {
     expect(getVisibleGroups(groups, 'pending')).toHaveLength(1);
     expect(getVisibleGroups(groups, 'pending')[0]?.key).toBe('pending');
   });
+
+  it('selects the established chronology timestamp and compacts redundant descriptions', () => {
+    const currentVersion = version({ createdAt: '2026-05-28T08:00:00.000Z' });
+
+    expect(
+      getRequestChronologyTimestamp(
+        request({
+          createdAt: '2026-05-26T08:00:00.000Z',
+          currentVersion,
+          reviewedAt: '2026-05-29T08:00:00.000Z',
+          updatedAt: '2026-05-27T08:00:00.000Z'
+        })
+      )
+    ).toBe('2026-05-29T08:00:00.000Z');
+    expect(
+      getRequestChronologyTimestamp(
+        request({ currentVersion, reviewedAt: null, updatedAt: '2026-05-27T08:00:00.000Z' })
+      )
+    ).toBe('2026-05-27T08:00:00.000Z');
+    expect(
+      getCompactDocumentDescription(
+        request({ description: '  Referencia: DNI (frente)  ', title: 'DNI (frente)' })
+      )
+    ).toBe('Referencia');
+    expect(getCompactDocumentDescription(request({ description: '   ' }))).toBeNull();
+    expect(getPendingDocumentSummary('Referencia')).toBe(
+      'Esperando que el propietario suba el documento · Referencia'
+    );
+  });
+
+  it('preserves document labels, version order, MIME classification, and compact dates', () => {
+    const firstVersion = version({
+      createdAt: '2026-05-26T10:00:00.000Z',
+      id: 'first',
+      mimeType: 'image/jpeg',
+      originalFilename: 'dni_frente.JPG'
+    });
+    const secondVersion = version({
+      createdAt: '2026-05-28T10:00:00.000Z',
+      id: 'second',
+      mimeType: 'application/pdf',
+      originalFilename: 'seeded-document.pdf'
+    });
+    const pendingUpload = version({
+      createdAt: '2026-05-25T10:00:00.000Z',
+      id: 'pending',
+      status: 'PENDING_UPLOAD'
+    });
+    const documentRequest = request({
+      currentVersion: secondVersion,
+      title: '   ',
+      versions: [secondVersion, pendingUpload, firstVersion]
+    });
+
+    expect(getDocumentDisplayName(documentRequest, firstVersion)).toBe('dni frente');
+    expect(getDocumentDisplayName(documentRequest, secondVersion)).toBe('Documento');
+    expect(getVersionMetadata(documentRequest, secondVersion)).toBe('v2 · PDF');
+    expect(getFileFormatLabel('image/webp')).toBe('WebP');
+    expect(getFileFormatLabel('application/octet-stream')).toBe('Archivo');
+    expect(isImageMimeType('image/svg+xml')).toBe(true);
+    expect(isImageMimeType('application/pdf')).toBe(false);
+    expect(formatCompactDateTime('2026-05-28T10:05:00')).toBe('28 may · 10:05');
+  });
 });
+
+function version(overrides: Partial<ProductDocumentVersion>): ProductDocumentVersion {
+  return {
+    id: 'version',
+    documentId: 'document',
+    uploadedByUserId: 'agent',
+    storageKey: 'documents/version',
+    originalFilename: 'document.pdf',
+    mimeType: 'application/pdf',
+    sizeBytes: 100,
+    checksum: null,
+    status: 'UPLOADED',
+    createdAt: '2026-05-26T10:00:00.000Z',
+    updatedAt: '2026-05-26T10:00:00.000Z',
+    ...overrides
+  };
+}
 
 function request(overrides: Partial<ProductDocumentRequest>): ProductDocumentRequest {
   return {

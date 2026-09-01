@@ -8,8 +8,6 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { IconFilePlus } from '@tabler/icons-react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -31,10 +29,17 @@ import type {
 import { CreateDocumentRequestDialog } from './create-document-request-dialog';
 import {
   DOCUMENT_FILTER_OPTIONS,
+  formatCompactDateTime,
+  getCompactDocumentDescription,
+  getDocumentDisplayName,
   getDocumentFilter,
   getFilterCounts,
+  getPendingDocumentSummary,
+  getRequestChronologyTimestamp,
+  getVersionMetadata,
   getVisibleGroups,
   groupDocumentRequests,
+  isImageMimeType,
   isEligibleDocumentOwner,
   type DocumentFilter,
   type DocumentRequestGroup
@@ -899,93 +904,6 @@ function DocumentVersionPreviewMedia({
   );
 }
 
-function getCompactDocumentDescription(request: ProductDocumentRequest) {
-  const description = request.description?.trim();
-
-  if (!description) {
-    return null;
-  }
-
-  const escapedTitle = escapeRegExp(request.title.trim());
-
-  if (!escapedTitle) {
-    return description;
-  }
-
-  const redundantSuffix = new RegExp(`\\s*:?\\s*${escapedTitle}\\s*$`, 'i');
-  const compactDescription = description.replace(redundantSuffix, '').trim();
-
-  return compactDescription || null;
-}
-
-function getPendingDocumentSummary(description: string | null) {
-  const statusCopy = 'Esperando que el propietario suba el documento';
-
-  return description ? `${statusCopy} · ${description}` : statusCopy;
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function getRequestChronologyTimestamp(request: ProductDocumentRequest) {
-  return (
-    request.reviewedAt ??
-    request.updatedAt ??
-    request.currentVersion?.createdAt ??
-    request.createdAt
-  );
-}
-
-function getDocumentDisplayName(request: ProductDocumentRequest, version: ProductDocumentVersion) {
-  const title = request.title.trim();
-
-  if (title) {
-    return title;
-  }
-
-  return getReadableFileName(version.originalFilename);
-}
-
-function getReadableFileName(fileName: string) {
-  if (isTechnicalFileName(fileName)) {
-    return 'Documento';
-  }
-
-  const nameWithoutExtension = fileName
-    .replace(/\.[^/.]+$/, '')
-    .replace(/[-_]+/g, ' ')
-    .trim();
-
-  return nameWithoutExtension || 'Documento';
-}
-
-function isTechnicalFileName(fileName: string) {
-  const normalizedName = fileName.toLowerCase();
-
-  return normalizedName.includes('seeded') || normalizedName.includes('smoke-document');
-}
-
-function getVersionMetadata(request: ProductDocumentRequest, version: ProductDocumentVersion) {
-  const versionNumber = getVersionNumber(request, version);
-  const fileFormat = getFileFormatLabel(version.mimeType);
-
-  return versionNumber ? `v${versionNumber} · ${fileFormat}` : fileFormat;
-}
-
-function getVersionNumber(request: ProductDocumentRequest, version: ProductDocumentVersion) {
-  const completedVersions = request.versions
-    .filter((item) => item.status !== 'PENDING_UPLOAD')
-    .toSorted((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt));
-  const index = completedVersions.findIndex((item) => item.id === version.id);
-
-  return index >= 0 ? index + 1 : null;
-}
-
-function isImageMimeType(mimeType: string) {
-  return mimeType.startsWith('image/');
-}
-
 function getDocumentFileIcon(mimeType: string): Icon {
   if (mimeType === 'application/pdf') {
     // TODO: replace this fallback with a real first-page PDF thumbnail when preview generation exists.
@@ -997,28 +915,4 @@ function getDocumentFileIcon(mimeType: string): Icon {
   }
 
   return Icons.page;
-}
-
-function getFileFormatLabel(mimeType: string) {
-  if (mimeType === 'application/pdf') {
-    return 'PDF';
-  }
-
-  if (mimeType === 'image/jpeg') {
-    return 'JPG';
-  }
-
-  if (mimeType === 'image/png') {
-    return 'PNG';
-  }
-
-  if (mimeType === 'image/webp') {
-    return 'WebP';
-  }
-
-  return 'Archivo';
-}
-
-function formatCompactDateTime(value: string) {
-  return format(new Date(value), 'd MMM · HH:mm', { locale: es });
 }
