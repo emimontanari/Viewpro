@@ -9,35 +9,42 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { activityFeedOptions } from '@/features/activity/api/queries';
 import { dashboardSummaryOptions } from '@/features/dashboard/api/queries';
-import type { DashboardSummaryRange
-} from '@/features/dashboard/api/types';
+import type { DashboardSummaryRange } from '@/features/dashboard/api/types';
 import { productsQueryOptions } from '@/features/products/api/queries';
 import type { TenantMembership } from '@/lib/session';
 import { useActiveTenant } from '@/lib/session-context';
-import { KpiCard
-} from './operational-homepage/primitives';
+import { KpiCard } from './operational-homepage/primitives';
 import { PriorityCard, PriorityLink } from './operational-homepage/priority-panel';
-import { PropertyPreviewList,
+import {
+  PropertyPreviewList,
   RecentActivityList,
   SellerActivityCard,
   TopPropertiesCard
 } from './operational-homepage/lists';
 import { RangeSelector } from './operational-homepage/range-selector';
-import { MissingInmobiliariaState,
+import {
+  MissingInmobiliariaState,
   OperationalHomepageSkeleton
 } from './operational-homepage/states';
 import { getRangeOption } from './operational-homepage/helpers';
-import { PROPERTY_PREVIEW_SIZE, SELLER_ACTIVITY_PREVIEW_SIZE } from './operational-homepage/constants';
+import {
+  PROPERTY_PREVIEW_SIZE,
+  SELLER_ACTIVITY_PREVIEW_SIZE
+} from './operational-homepage/constants';
 
-export function OperationalHomepage() { const { activeMembership, activeTenantId, isTenantLoading } = useActiveTenant();
+export function OperationalHomepage() {
+  const { activeMembership, activeTenantId, isTenantLoading } = useActiveTenant();
 
-  if (isTenantLoading) { return <OperationalHomepageSkeleton />;
+  if (isTenantLoading) {
+    return <OperationalHomepageSkeleton />;
   }
 
-  if (!activeTenantId || !activeMembership) { return <MissingInmobiliariaState />;
+  if (!activeTenantId || !activeMembership) {
+    return <MissingInmobiliariaState />;
   }
 
-  if (isSellerMembership(activeMembership)) { return (
+  if (isSellerMembership(activeMembership)) {
+    return (
       <SellerOperationalHomepage
         activeMembership={activeMembership}
         activeTenantId={activeTenantId}
@@ -53,22 +60,24 @@ export function OperationalHomepage() { const { activeMembership, activeTenantId
   );
 }
 
-function ManagerOperationalHomepage({ activeMembership,
+function ManagerOperationalHomepage({
+  activeMembership,
   activeTenantId
-}: { activeMembership: TenantMembership;
+}: {
+  activeMembership: TenantMembership;
   activeTenantId: string;
-}) { const [selectedRange, setSelectedRange] = React.useState<DashboardSummaryRange>('7d');
+}) {
+  const [selectedRange, setSelectedRange] = React.useState<DashboardSummaryRange>('7d');
   const selectedRangeOption = getRangeOption(selectedRange);
   const summaryQuery = useQuery({
-    ...dashboardSummaryOptions({ range: selectedRange,
-      tenantId: activeTenantId
-    }),
+    ...dashboardSummaryOptions({ range: selectedRange, tenantId: activeTenantId }),
     enabled: Boolean(activeTenantId),
     refetchOnReconnect: false,
     refetchOnWindowFocus: false
   });
   const productsQuery = useQuery({
-    ...productsQueryOptions({ archived: 'active',
+    ...productsQueryOptions({
+      archived: 'active',
       limit: PROPERTY_PREVIEW_SIZE,
       page: 1,
       tenantId: activeTenantId
@@ -231,12 +240,16 @@ function ManagerOperationalHomepage({ activeMembership,
   );
 }
 
-function SellerOperationalHomepage({ activeMembership,
+function SellerOperationalHomepage({
+  activeMembership,
   activeTenantId
-}: { activeMembership: TenantMembership;
+}: {
+  activeMembership: TenantMembership;
   activeTenantId: string;
-}) { const productsQuery = useQuery({
-    ...productsQueryOptions({ archived: 'active',
+}) {
+  const productsQuery = useQuery({
+    ...productsQueryOptions({
+      archived: 'active',
       limit: PROPERTY_PREVIEW_SIZE,
       page: 1,
       tenantId: activeTenantId
@@ -246,7 +259,8 @@ function SellerOperationalHomepage({ activeMembership,
     refetchOnWindowFocus: false
   });
   const activityQuery = useQuery({
-    ...activityFeedOptions({ kind: 'all',
+    ...activityFeedOptions({
+      kind: 'all',
       page: 1,
       pageSize: SELLER_ACTIVITY_PREVIEW_SIZE,
       tenantId: activeTenantId
@@ -420,5 +434,6 @@ function SellerOperationalHomepage({ activeMembership,
   );
 }
 
-function isSellerMembership(membership: TenantMembership) { return membership.role === 'AGENT';
+function isSellerMembership(membership: TenantMembership) {
+  return membership.role === 'AGENT';
 }

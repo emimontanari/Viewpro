@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * The priority panel and the rows inside it.
  */

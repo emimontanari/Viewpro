@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * The three preview lists the dashboard renders.
  */
@@ -10,13 +8,25 @@ import { BRAND } from '@/lib/brand/brand';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ActivityFeedItem } from '@/features/activity/api/types';
-import type { DashboardSummaryTopProperty, DashboardSummaryTopSeller } from '@/features/dashboard/api/types';
+import type {
+  DashboardSummaryTopProperty,
+  DashboardSummaryTopSeller
+} from '@/features/dashboard/api/types';
 import type { Product } from '@/features/products/api/types';
-import { getAddress, getStatusLabel, getStatusTone } from '@/features/products/components/product-tables/columns';
+import {
+  getAddress,
+  getStatusLabel,
+  getStatusTone
+} from '@/features/products/components/product-tables/columns';
 import { DashboardRowActionLink } from './primitives';
 import { EmptyPanel } from './primitives';
 import { ListSkeleton } from './primitives';
-import { formatCount, getActivityDescription, getActivityTitle, getDashboardPropertyTitle } from './helpers';
+import {
+  formatCount,
+  getActivityDescription,
+  getActivityTitle,
+  getDashboardPropertyTitle
+} from './helpers';
 
 export function RecentActivityList({
   isLoading,

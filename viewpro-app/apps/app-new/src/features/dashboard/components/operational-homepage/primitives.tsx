@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Shared presentational primitives. No data fetching: every value arrives
  * as a prop, so a change to how the dashboard loads cannot reach them.

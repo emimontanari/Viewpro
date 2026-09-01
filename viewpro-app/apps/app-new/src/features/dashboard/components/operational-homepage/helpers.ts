@@ -1,5 +1,8 @@
 import type { ActivityFeedItem } from '@/features/activity/api/types';
-import type { DashboardSummaryRange, DashboardSummaryTopProperty } from '@/features/dashboard/api/types';
+import type {
+  DashboardSummaryRange,
+  DashboardSummaryTopProperty
+} from '@/features/dashboard/api/types';
 import { RANGE_OPTIONS } from './constants';
 
 /**

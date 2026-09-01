@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Range picker for the manager summary.
  */
