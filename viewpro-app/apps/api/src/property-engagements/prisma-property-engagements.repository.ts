@@ -3,10 +3,14 @@ import {
   MovementSource,
   MovementType,
   OwnerInvitationStatus,
+  Prisma,
   PropertyAssetOwnerAccessStatus,
   PropertyEngagementStatus,
+  TenantMembershipStatus,
+  TenantRole,
+  UserStatus,
 } from '@prisma/client'
-import type { Prisma, PropertyAssetImage } from '@prisma/client'
+import type { PropertyAssetImage } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import { TENANT_ACTIVE_PROPERTY_ENGAGEMENT_LIMIT_EXCEEDED_MESSAGE } from '../tenant-limits/tenant-limit-enforcement.constants'
 import { createOwnerInvitationToken } from './owner-invitation-token'
@@ -103,18 +107,65 @@ async function lockTenantRow(tx: Prisma.TransactionClient, tenantId: string): Pr
   await tx.$queryRaw`SELECT id FROM tenants WHERE id = ${tenantId} FOR UPDATE`
 }
 
-/** PR2 serialization seam; PR3 adds the separate candidate-row lock protocol. */
+type PrimaryMutationOperation = 'set' | 'clear' | 'remove'
+let primaryAgentLockBarrierForTest: ((operation: PrimaryMutationOperation) => Promise<void>) | null = null
+
+/** Test-only deterministic pause after the real engagement row lock is held. */
+export function setPrimaryAgentLockBarrierForTest(
+  barrier: ((operation: PrimaryMutationOperation) => Promise<void>) | null,
+): void {
+  primaryAgentLockBarrierForTest = barrier
+}
+
 async function lockTenantEngagement(
   tx: Prisma.TransactionClient,
   tenantId: string,
   engagementId: string,
+  operation?: PrimaryMutationOperation,
 ): Promise<boolean> {
   const engagements = await tx.$queryRaw<{ id: string }[]>`
-    SELECT id FROM property_engagements
-    WHERE id = ${engagementId} AND "tenantId" = ${tenantId}
-    FOR UPDATE
-  `
+        SELECT id FROM property_engagements
+        WHERE id = ${engagementId} AND "tenantId" = ${tenantId}
+        FOR UPDATE
+      `
+  if (engagements.length > 0 && operation && operation !== 'set') {
+    await primaryAgentLockBarrierForTest?.(operation)
+  }
   return engagements.length > 0
+}
+
+async function lockEligibleCandidate(
+  tx: Prisma.TransactionClient,
+  input: SetPrimaryPropertyAgentInput,
+): Promise<boolean> {
+  const assignments = await tx.$queryRaw<{ agentUserId: string }[]>`
+        SELECT "agentUserId" FROM property_agents
+        WHERE id = ${input.agentId} AND "propertyEngagementId" = ${input.engagementId} AND "tenantId" = ${input.tenantId}
+        FOR NO KEY UPDATE
+      `
+  const agentUserId = assignments[0]?.agentUserId
+  if (!agentUserId) return false
+
+  const users = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM users
+        WHERE id = ${agentUserId} AND status = ${UserStatus.ACTIVE}::"UserStatus"
+        FOR NO KEY UPDATE
+      `
+  if (users.length === 0) return false
+
+  const memberships = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM tenant_memberships
+        WHERE "userId" = ${agentUserId} AND "tenantId" = ${input.tenantId} AND status = ${TenantMembershipStatus.ACTIVE}::"TenantMembershipStatus" AND role = ${TenantRole.AGENT}::"TenantRole"
+        FOR NO KEY UPDATE
+      `
+  return memberships.length > 0
+}
+
+function isPrimaryAssignmentUniquenessError(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') return false
+  const meta = error.meta as Record<string, unknown> | undefined
+  return meta?.constraint === 'property_agents_one_primary_per_engagement' ||
+    (Array.isArray(meta?.target) && meta.target.includes('property_agents_one_primary_per_engagement'))
 }
 
 function isActiveEngagementStatus(status: PropertyEngagementStatus): boolean {
@@ -431,54 +482,46 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
     })
   }
 
-  setPrimaryAgent(input: SetPrimaryPropertyAgentInput): Promise<PrimaryPropertyAgentResult> {
-    return this.prisma.$transaction(async (tx) => {
-      if (!(await lockTenantEngagement(tx, input.tenantId, input.engagementId))) {
-        return { status: 'engagementNotFound' }
-      }
+  async setPrimaryAgent(input: SetPrimaryPropertyAgentInput): Promise<PrimaryPropertyAgentResult> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        if (!(await lockTenantEngagement(tx, input.tenantId, input.engagementId, 'set'))) {
+          return { status: 'engagementNotFound' }
+        }
 
-      const currentPrimary = await this.findCurrentPrimary(tx, input)
-      if ((currentPrimary?.id ?? null) !== input.expectedPrimaryAgentId) {
-        return { status: 'stateConflict' }
-      }
+        const currentPrimary = await this.findCurrentPrimary(tx, input)
+        if ((currentPrimary?.id ?? null) !== input.expectedPrimaryAgentId) {
+          return { status: 'stateConflict' }
+        }
 
-      const candidate = await tx.propertyAgent.findFirst({
-        where: {
-          id: input.agentId,
-          tenantId: input.tenantId,
-          propertyEngagementId: input.engagementId,
-          agentUser: {
-            status: 'ACTIVE',
-            memberships: {
-              some: { tenantId: input.tenantId, status: 'ACTIVE', role: 'AGENT' },
+        if (!(await lockEligibleCandidate(tx, input))) {
+          return { status: 'candidateInvalid' }
+        }
+        await primaryAgentLockBarrierForTest?.('set')
+
+        if (input.agentId !== currentPrimary?.id) {
+          await tx.propertyAgent.updateMany({
+            where: {
+              tenantId: input.tenantId,
+              propertyEngagementId: input.engagementId,
+              isPrimary: true,
             },
-          },
-        },
-        select: { id: true },
+            data: { isPrimary: false },
+          })
+          await tx.propertyAgent.update({ where: { id: input.agentId }, data: { isPrimary: true } })
+        }
+
+        return { status: 'updated', engagement: await this.readLockedEngagement(tx, input) }
       })
-      if (!candidate) {
-        return { status: 'candidateInvalid' }
-      }
-
-      if (candidate.id !== currentPrimary?.id) {
-        await tx.propertyAgent.updateMany({
-          where: {
-            tenantId: input.tenantId,
-            propertyEngagementId: input.engagementId,
-            isPrimary: true,
-          },
-          data: { isPrimary: false },
-        })
-        await tx.propertyAgent.update({ where: { id: candidate.id }, data: { isPrimary: true } })
-      }
-
-      return { status: 'updated', engagement: await this.readLockedEngagement(tx, input) }
-    })
+    } catch (error) {
+      if (isPrimaryAssignmentUniquenessError(error)) return { status: 'stateConflict' }
+      throw error
+    }
   }
 
   clearPrimaryAgent(input: ClearPrimaryPropertyAgentInput): Promise<PrimaryPropertyAgentResult> {
     return this.prisma.$transaction(async (tx) => {
-      if (!(await lockTenantEngagement(tx, input.tenantId, input.engagementId))) {
+      if (!(await lockTenantEngagement(tx, input.tenantId, input.engagementId, 'clear'))) {
         return { status: 'engagementNotFound' }
       }
 
@@ -505,7 +548,7 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
     agentId: string
   }): Promise<boolean> {
     return this.prisma.$transaction(async (tx) => {
-      if (!(await lockTenantEngagement(tx, input.tenantId, input.engagementId))) {
+      if (!(await lockTenantEngagement(tx, input.tenantId, input.engagementId, 'remove'))) {
         return false
       }
       const removed = await tx.propertyAgent.deleteMany({
