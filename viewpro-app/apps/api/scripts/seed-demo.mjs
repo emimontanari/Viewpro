@@ -86,7 +86,7 @@ const DEMO_USERS = [
 		email: "sofia.demo@viewpro.local",
 		firstName: "Sofía",
 		lastName: "Demo",
-		role: TenantRole.MANAGER,
+		role: TenantRole.AGENT,
 		whatsappPhone: "+5493512222222",
 	},
 	{
@@ -1049,6 +1049,7 @@ async function createDemoProperties(client, tenant, users) {
 						agentUserId: seller.id,
 						assignedByUserId: manager.id,
 						assignedAt: daysAgo(34 - (index % 8)),
+						isPrimary: true,
 					},
 				},
 			},
