@@ -544,6 +544,8 @@ model PropertyAgent {
   agentUserId          String
   assignedByUserId     String
   assignedAt           DateTime @default(now())
+  // Raw-SQL partial-index invariant: property_agents_one_primary_per_engagement permits at most one true row per engagement.
+  isPrimary            Boolean  @default(false)
 
   tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   propertyEngagement PropertyEngagement @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)

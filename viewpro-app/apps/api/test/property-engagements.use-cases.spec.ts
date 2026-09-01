@@ -106,6 +106,7 @@ const engagement = {
 			agentUserId: "agent-1",
 			assignedByUserId: "user-1",
 			assignedAt: new Date("2026-01-03T00:00:00.000Z"),
+			isPrimary: false,
 			agentUser: {
 				id: "agent-1",
 				email: "agent@example.com",
