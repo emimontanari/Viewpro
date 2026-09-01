@@ -449,6 +449,59 @@ describe("Property engagements (e2e)", () => {
     expect(response.body.message).toBe("Insufficient permissions");
   });
 
+  it("sets and clears a primary without changing non-primary seller access", async () => {
+    const manager = await registerTenantSession("manager-primary@example.com", "Primary Homes");
+    const primary = await registerTenantSession("primary-agent@example.com", "Primary Agent Homes");
+    const secondary = await registerTenantSession("secondary-agent@example.com", "Secondary Agent Homes");
+    await Promise.all([
+      addTenantAgent(primary.userId, manager.tenantId),
+      addTenantAgent(secondary.userId, manager.tenantId),
+    ]);
+    const engagement = await createEngagement(manager.agent, manager.tenantId).expect(201);
+    const assignments = await Promise.all([primary, secondary].map(({ userId }) =>
+      manager.agent.post(`/api/property-engagements/${engagement.body.id}/agents`)
+        .set("x-tenant-id", manager.tenantId).send({ agentUserId: userId }).expect(201),
+    ));
+
+    const set = await manager.agent.put(`/api/property-engagements/${engagement.body.id}/agents/primary`)
+      .set("x-tenant-id", manager.tenantId)
+      .send({ agentId: assignments[0].body.id, expectedPrimaryAgentId: null }).expect(200);
+    expect(set.body.agents.map((agent: { id: string; isPrimary: boolean }) => [agent.id, agent.isPrimary]))
+      .toEqual(expect.arrayContaining([[assignments[0].body.id, true], [assignments[1].body.id, false]]));
+    await secondary.agent.get("/api/property-engagements").set("x-tenant-id", manager.tenantId)
+      .expect(200).expect(({ body }) => expect(body.items.map((item: { id: string }) => item.id)).toContain(engagement.body.id));
+
+    const cleared = await manager.agent.post(`/api/property-engagements/${engagement.body.id}/agents/primary/clear`)
+      .set("x-tenant-id", manager.tenantId)
+      .send({ expectedPrimaryAgentId: assignments[0].body.id }).expect(200);
+    expect(cleared.body.agents.every((agent: { isPrimary: boolean }) => !agent.isPrimary)).toBe(true);
+  });
+
+  it("rejects primary mutations before writing and does not disclose tenant data", async () => {
+    const manager = await registerTenantSession("manager-primary-guards@example.com", "Primary Guard Homes");
+    const seller = await registerTenantSession("seller-primary-guards@example.com", "Seller Guard Homes");
+    const otherTenant = await registerTenantSession("other-primary-guards@example.com", "Other Primary Guard Homes");
+    await addTenantAgent(seller.userId, manager.tenantId);
+    const engagement = await createEngagement(manager.agent, manager.tenantId).expect(201);
+    const assignment = await manager.agent.post(`/api/property-engagements/${engagement.body.id}/agents`)
+      .set("x-tenant-id", manager.tenantId).send({ agentUserId: seller.userId }).expect(201);
+    const otherEngagement = await createEngagement(otherTenant.agent, otherTenant.tenantId).expect(201);
+    const otherAssignment = await otherTenant.agent.post(`/api/property-engagements/${otherEngagement.body.id}/agents`)
+      .set("x-tenant-id", otherTenant.tenantId).send({ agentUserId: otherTenant.userId }).expect(201);
+    const rejected = [
+      [seller.agent, manager.tenantId, engagement.body.id, assignment.body.id, 403, undefined],
+      [manager.agent, manager.tenantId, otherEngagement.body.id, assignment.body.id, 404, undefined],
+      [manager.agent, manager.tenantId, engagement.body.id, otherAssignment.body.id, 400, "PRIMARY_AGENT_CANDIDATE_INVALID"],
+    ] as const;
+    for (const [agent, tenantId, engagementId, agentId, status, errorCode] of rejected) {
+      const response = await agent.put(`/api/property-engagements/${engagementId}/agents/primary`)
+        .set("x-tenant-id", tenantId).send({ agentId, expectedPrimaryAgentId: null }).expect(status);
+      expect(response.body.errorCode).toBe(errorCode);
+    }
+    await expect(prisma.propertyAgent.findMany({ where: { propertyEngagementId: engagement.body.id }, select: { isPrimary: true } }))
+      .resolves.toEqual([{ isPrimary: false }]);
+  });
+
   it("allows a manager to assign an agent who belongs to the tenant", async () => {
     const manager = await registerTenantSession(
       "manager-assign@example.com",

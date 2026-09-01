@@ -53,6 +53,7 @@ export function mapPropertyEngagement(
 			userId: agent.agentUserId,
 			email: agent.agentUser.email,
 			firstName: agent.agentUser.firstName,
+			isPrimary: agent.isPrimary,
 		})),
 		createdAt: engagement.createdAt.toISOString(),
 		updatedAt: engagement.updatedAt.toISOString(),

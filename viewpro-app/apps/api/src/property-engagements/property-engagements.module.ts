@@ -16,6 +16,7 @@ import {
 } from "./property-images.storage";
 import { AssignPropertyAgentUseCase } from "./use-cases/assign-property-agent.use-case";
 import { ArchivePropertyEngagementUseCase } from "./use-cases/archive-property-engagement.use-case";
+import { ClearPrimaryPropertyAgentUseCase } from "./use-cases/clear-primary-property-agent.use-case";
 import { CreateOwnerInvitationLinkUseCase } from "./use-cases/create-owner-invitation-link.use-case";
 import { CreatePropertyEngagementUseCase } from "./use-cases/create-property-engagement.use-case";
 import { DeletePropertyImageUseCase } from "./use-cases/delete-property-image.use-case";
@@ -26,6 +27,7 @@ import { ListPropertyEngagementsUseCase } from "./use-cases/list-property-engage
 import { RemovePropertyAgentUseCase } from "./use-cases/remove-property-agent.use-case";
 import { RestorePropertyEngagementUseCase } from "./use-cases/restore-property-engagement.use-case";
 import { RevokeOwnerInvitationLinkUseCase } from "./use-cases/revoke-owner-invitation-link.use-case";
+import { SetPrimaryPropertyAgentUseCase } from "./use-cases/set-primary-property-agent.use-case";
 import { SetPropertyImagePrimaryUseCase } from "./use-cases/set-property-image-primary.use-case";
 import { UpdatePropertyEngagementUseCase } from "./use-cases/update-property-engagement.use-case";
 import { UploadPropertyImageUseCase } from "./use-cases/upload-property-image.use-case";
@@ -39,6 +41,8 @@ const propertyEngagementUseCases = [
 	RestorePropertyEngagementUseCase,
 	AssignPropertyAgentUseCase,
 	RemovePropertyAgentUseCase,
+	SetPrimaryPropertyAgentUseCase,
+	ClearPrimaryPropertyAgentUseCase,
 	ListAssignablePropertyAgentsUseCase,
 	LinkPropertyOwnerUseCase,
 	CreateOwnerInvitationLinkUseCase,

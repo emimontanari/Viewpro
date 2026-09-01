@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Inject, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Inject, Param, Patch, Post, Put, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { ApiExtraModels } from '@nestjs/swagger'
 import { CurrentUser } from '../auth/decorators/current-user.decorator'
@@ -13,12 +13,15 @@ import { TenantMembershipGuard } from '../tenant-context/tenant-membership.guard
 import type { TenantContext } from '../tenant-context/tenant-context.types'
 import { ArchivePropertyEngagementDto } from './dto/archive-property-engagement.dto'
 import { AssignPropertyAgentDto } from './dto/assign-property-agent.dto'
+import { ClearPrimaryPropertyAgentDto } from './dto/clear-primary-property-agent.dto'
 import { CreatePropertyEngagementDto } from './dto/create-property-engagement.dto'
 import { LinkPropertyOwnerDto } from './dto/link-property-owner.dto'
+import { SetPrimaryPropertyAgentDto } from './dto/set-primary-property-agent.dto'
 import { ListPropertyEngagementsQuery } from './dto/list-property-engagements.query'
 import { UpdatePropertyEngagementDto } from './dto/update-property-engagement.dto'
 import { AssignPropertyAgentUseCase } from './use-cases/assign-property-agent.use-case'
 import { ArchivePropertyEngagementUseCase } from './use-cases/archive-property-engagement.use-case'
+import { ClearPrimaryPropertyAgentUseCase } from './use-cases/clear-primary-property-agent.use-case'
 import { CreateOwnerInvitationLinkUseCase } from './use-cases/create-owner-invitation-link.use-case'
 import { CreatePropertyEngagementUseCase } from './use-cases/create-property-engagement.use-case'
 import { DeletePropertyImageUseCase } from './use-cases/delete-property-image.use-case'
@@ -29,6 +32,7 @@ import { ListPropertyEngagementsUseCase } from './use-cases/list-property-engage
 import { RemovePropertyAgentUseCase } from './use-cases/remove-property-agent.use-case'
 import { RestorePropertyEngagementUseCase } from './use-cases/restore-property-engagement.use-case'
 import { RevokeOwnerInvitationLinkUseCase } from './use-cases/revoke-owner-invitation-link.use-case'
+import { SetPrimaryPropertyAgentUseCase } from './use-cases/set-primary-property-agent.use-case'
 import { SetPropertyImagePrimaryUseCase } from './use-cases/set-property-image-primary.use-case'
 import { UpdatePropertyEngagementUseCase } from './use-cases/update-property-engagement.use-case'
 import {
@@ -42,9 +46,11 @@ import {
 @ApiExtraModels(
   ArchivePropertyEngagementDto,
   AssignPropertyAgentDto,
+  ClearPrimaryPropertyAgentDto,
   CreatePropertyEngagementDto,
   LinkPropertyOwnerDto,
   ListPropertyEngagementsQuery,
+  SetPrimaryPropertyAgentDto,
   UpdatePropertyEngagementDto,
 )
 @UseGuards(AuthGuard, TenantMembershipGuard, PermissionGuard)
@@ -66,6 +72,10 @@ export class PropertyEngagementsController {
     private readonly assignPropertyAgentUseCase: AssignPropertyAgentUseCase,
     @Inject(RemovePropertyAgentUseCase)
     private readonly removePropertyAgentUseCase: RemovePropertyAgentUseCase,
+    @Inject(SetPrimaryPropertyAgentUseCase)
+    private readonly setPrimaryPropertyAgentUseCase: SetPrimaryPropertyAgentUseCase,
+    @Inject(ClearPrimaryPropertyAgentUseCase)
+    private readonly clearPrimaryPropertyAgentUseCase: ClearPrimaryPropertyAgentUseCase,
     @Inject(ListAssignablePropertyAgentsUseCase)
     private readonly listAssignablePropertyAgentsUseCase: ListAssignablePropertyAgentsUseCase,
     @Inject(LinkPropertyOwnerUseCase)
@@ -226,6 +236,27 @@ export class PropertyEngagementsController {
     @Body() body: AssignPropertyAgentDto,
   ) {
     return this.assignPropertyAgentUseCase.execute(tenant, currentUser, id, body)
+  }
+
+  @Put(':id/agents/primary')
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_CREATE)
+  setPrimaryAgent(
+    @CurrentTenant() tenant: TenantContext,
+    @Param('id') id: string,
+    @Body() body: SetPrimaryPropertyAgentDto,
+  ) {
+    return this.setPrimaryPropertyAgentUseCase.execute(tenant, id, body)
+  }
+
+  @Post(':id/agents/primary/clear')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions(PERMISSIONS.ENGAGEMENTS_CREATE)
+  clearPrimaryAgent(
+    @CurrentTenant() tenant: TenantContext,
+    @Param('id') id: string,
+    @Body() body: ClearPrimaryPropertyAgentDto,
+  ) {
+    return this.clearPrimaryPropertyAgentUseCase.execute(tenant, id, body)
   }
 
   @Delete(':id/agents/:agentId')
