@@ -1,7 +1,9 @@
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 import type { ReactNode } from 'react';
+import type { ProductDocumentRequest } from '../../api/types';
 import type { DocumentRequestGroup } from './model';
 
 type DocumentRequestSectionProps = {
@@ -10,6 +12,42 @@ type DocumentRequestSectionProps = {
   onResolvedOpenChange: (open: boolean) => void;
   resolvedOpen: boolean;
 };
+
+type DocumentRequestListProps = {
+  emptyCopy: string;
+  highlightedId?: string | null;
+  items: ProductDocumentRequest[];
+  renderItem: (request: ProductDocumentRequest) => ReactNode;
+};
+
+export function DocumentRequestList({
+  emptyCopy,
+  highlightedId,
+  items,
+  renderItem
+}: DocumentRequestListProps) {
+  if (items.length === 0) {
+    return (
+      <p className='rounded-lg border border-dashed p-3 text-sm text-muted-foreground'>
+        {emptyCopy}
+      </p>
+    );
+  }
+
+  return (
+    <ul className='space-y-3 p-0 sm:p-0'>
+      {items.map((request) => (
+        <li
+          key={request.id}
+          data-request-id={request.id}
+          className={cn(highlightedId === request.id && 'ring-2 ring-primary rounded-xl')}
+        >
+          {renderItem(request)}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function DocumentRequestSection({
   children,
