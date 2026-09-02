@@ -3,8 +3,6 @@
 import { messageFor } from '@/lib/bff-client';
 import { Icons, type Icon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { IconFilePlus } from '@tabler/icons-react';
 import { parseAsString, useQueryState } from 'nuqs';
@@ -25,12 +23,9 @@ import type {
 } from '../api/types';
 import { CreateDocumentRequestDialog } from './create-document-request-dialog';
 import {
-  formatCompactDateTime,
-  getCompactDocumentDescription,
   getDocumentDisplayName,
   getDocumentFilter,
   getFilterCounts,
-  getPendingDocumentSummary,
   getRequestChronologyTimestamp,
   getVersionMetadata,
   getVisibleGroups,
@@ -40,10 +35,9 @@ import {
   type DocumentFilter
 } from './property-document-requests/model';
 import {
+  DocumentRequestItem,
   DocumentRequestList,
-  DocumentRequestSection,
-  DocumentStatusBadge,
-  RejectionReason
+  DocumentRequestSection
 } from './property-document-requests/request-list';
 import { RejectDocumentRequestDialog } from './reject-document-request-dialog';
 import {
@@ -340,6 +334,16 @@ export function PropertyDocumentRequests({
                         onApprove={(requestId) => approveDocumentMutation.mutate(requestId)}
                         onRead={(versionId) => readDocumentMutation.mutate(versionId)}
                         onReject={setRequestToReject}
+                        versionSummary={
+                          request.currentVersion ? (
+                            <DocumentVersionSummary
+                              request={request}
+                              version={request.currentVersion}
+                              isReading={readDocumentMutation.isPending}
+                              onRead={(versionId) => readDocumentMutation.mutate(versionId)}
+                            />
+                          ) : null
+                        }
                       />
                     )}
                   />
@@ -369,134 +373,6 @@ export function PropertyDocumentRequests({
         onSubmit={handleRejectSubmit}
       />
     </section>
-  );
-}
-
-function DocumentRequestItem({
-  canReviewDocuments,
-  isApproving,
-  isReading,
-  isRejecting,
-  onApprove,
-  onRead,
-  onReject,
-  request
-}: {
-  canReviewDocuments: boolean;
-  isApproving: boolean;
-  isReading: boolean;
-  isRejecting: boolean;
-  onApprove: (requestId: string) => void;
-  onRead: (versionId: string) => void;
-  onReject: (request: ProductDocumentRequest) => void;
-  request: ProductDocumentRequest;
-}) {
-  const canReview =
-    canReviewDocuments && request.status === 'SUBMITTED' && request.currentVersion !== null;
-  const canOpenDocument = request.currentVersion !== null;
-  const isPassivePending = request.status === 'PENDING';
-  const compactDescription = getCompactDocumentDescription(request);
-  const reviewActionsDisabled = isApproving || isReading || isRejecting;
-
-  return (
-    <Card
-      className={cn(
-        'gap-0 overflow-hidden py-0 shadow-xs',
-        isPassivePending ? 'bg-background/70' : null
-      )}
-    >
-      <CardHeader className={cn('bg-transparent px-5 pb-2', isPassivePending ? 'pt-4' : 'pt-5')}>
-        <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
-          <div className='min-w-0 space-y-1'>
-            <div className='flex flex-wrap items-center gap-2'>
-              <h5 className='break-words text-sm font-semibold'>{request.title}</h5>
-              <DocumentStatusBadge status={request.status} />
-            </div>
-          </div>
-          <p className='shrink-0 text-xs text-foreground/70'>
-            Actualizado {formatCompactDateTime(getRequestChronologyTimestamp(request))}
-          </p>
-        </div>
-      </CardHeader>
-
-      <CardContent
-        className={cn('px-5 pt-2', isPassivePending ? 'space-y-3 pb-4' : 'space-y-5 pb-5')}
-      >
-        {isPassivePending ? (
-          <p
-            data-testid='document-passive-summary'
-            className='truncate text-sm text-foreground/70'
-            title={getPendingDocumentSummary(compactDescription)}
-          >
-            {getPendingDocumentSummary(compactDescription)}
-          </p>
-        ) : compactDescription ? (
-          <p className='truncate text-sm text-foreground/70' title={compactDescription}>
-            {compactDescription}
-          </p>
-        ) : null}
-
-        {request.rejectionReason ? <RejectionReason reason={request.rejectionReason} /> : null}
-
-        {request.currentVersion ? (
-          <DocumentVersionSummary
-            request={request}
-            version={request.currentVersion}
-            isReading={isReading}
-            onRead={onRead}
-          />
-        ) : null}
-
-        {canOpenDocument || canReview ? (
-          <div
-            data-testid={canReview ? 'document-review-action-row' : undefined}
-            className='flex flex-wrap items-center gap-2 border-t border-border/40 pt-3'
-          >
-            {canOpenDocument ? (
-              <Button
-                type='button'
-                variant='ghost'
-                className='min-h-11 px-2 text-foreground/70 hover:bg-muted/40 hover:text-foreground'
-                disabled={isReading}
-                onClick={() => onRead(request.currentVersion!.id)}
-              >
-                <Icons.externalLink className='size-4' />
-                Abrir documento
-              </Button>
-            ) : null}
-            {canReview ? (
-              <>
-                <div className='hidden flex-1 sm:block' />
-                <div
-                  data-testid='document-review-decision-actions'
-                  className='flex flex-1 flex-wrap justify-end gap-2 sm:flex-none'
-                >
-                  <Button
-                    type='button'
-                    variant='outline'
-                    className='min-h-11 flex-1 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive sm:flex-none'
-                    disabled={reviewActionsDisabled}
-                    onClick={() => onReject(request)}
-                  >
-                    <Icons.close className='size-4' />
-                    Rechazar
-                  </Button>
-                  <Button
-                    type='button'
-                    className='min-h-11 flex-1 border border-emerald-300 bg-emerald-200 text-emerald-950 hover:bg-emerald-300 dark:border-emerald-300 dark:bg-emerald-300 dark:text-emerald-950 dark:hover:bg-emerald-200 sm:flex-none'
-                    disabled={reviewActionsDisabled}
-                    onClick={() => onApprove(request.id)}
-                  >
-                    <Icons.check className='size-4' />
-                    Aprobar
-                  </Button>
-                </div>
-              </>
-            ) : null}
-          </div>
-        ) : null}
-      </CardContent>
-    </Card>
   );
 }
 
