@@ -226,10 +226,10 @@ Record the before-change result, characterization versus genuine RED, after-chan
 
 **Targets:** `product-tables/index.tsx`, new `product-tables/product-summary.tsx`, existing `columns.tsx` and table test. **Dependency:** T2 and seller-order tests. **Boundary:** shared identity/thumbnail/archive/owner/metric presentation receives `Product` and flags; use pure helpers directly; never inspect `isPrimary`, sort/select sellers, fetch, parse URL, or authorize. **Stop/rollback/publish:** seller-order or viewport divergence, forbidden inference, or budget risk; revert module/wiring; land before T3b/T4.
 
-- [ ] RED: Re-run desktop/mobile identity, owner, seller, archive, metric, action, and first-assignment characterization in `product-table.test.tsx`. <!-- sdd-owner: implementation -->
-- [ ] GREEN: Extract `product-summary.tsx` without changing `getAgentSummary` or adding primary-seller selection. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: In `product-summary.tsx` and `product-table.test.tsx`, test two ordered assignments where the first is not primary, verify both paths consume the same `Product`, and run `TABLE`, `TYPE`, `LINT`, formatter, diff check, and import audit. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Remove only duplicated summary markup from `product-tables/index.tsx` and land the shared primitive below budget. <!-- sdd-owner: implementation -->
+- [x] RED: Re-run desktop/mobile identity, owner, seller, archive, metric, action, and first-assignment characterization in `product-table.test.tsx`. <!-- sdd-owner: implementation -->
+- [x] GREEN: Extract `product-summary.tsx` without changing `getAgentSummary` or adding primary-seller selection. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: In `product-summary.tsx` and `product-table.test.tsx`, use two ordered valid `ProductAgent` assignments without primary metadata, verify the first API element is rendered in both paths, and audit that no `isPrimary` lookup or inference occurs; run `TABLE`, `TYPE`, `LINT`, formatter, diff check, and import audit. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: Remove only duplicated summary markup from `product-tables/index.tsx` and land the shared primitive below budget. <!-- sdd-owner: implementation -->
 
 ### T3b — Desktop table/rows (required)
 
