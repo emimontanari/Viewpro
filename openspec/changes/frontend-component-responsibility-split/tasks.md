@@ -166,10 +166,10 @@ Record the before-change result, characterization versus genuine RED, after-chan
 
 **Targets:** `property-document-requests.tsx`; new `property-document-requests/document-version.tsx`; existing public test. **Dependency:** D4b2. **Boundary:** prop-driven `DocumentVersionSummary` raises read; only `DocumentVersionPreviewMedia` owns `[..., 'document-version-preview', version.id]`, `retry:false`, `staleTime:60_000`, and `createProductDocumentReadUrl`; absent/error URL keeps file icon. **Stop:** duplicate preview query, read/list invalidation, unsafe read, or request failure on preview error. **Rollback/publish:** atomically revert module/root wiring; land before D6.
 
-- [ ] RED: Re-run `DOC` in `property-document-requests.test.tsx` for preview fallback, version metadata, safe read, exact write invalidation, and read/no-list-invalidation behavior. <!-- sdd-owner: implementation -->
-- [ ] GREEN: Extract `document-version.tsx` while preserving sole preview query ownership, settings, file icon, read command, and failure recovery. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: In `document-version.tsx` and its public test, prove failed previews leave requests usable and reads do not invalidate the list; run `DOC`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Remove only moved version code from `property-document-requests.tsx`, keep direct relative imports, and land below budget. <!-- sdd-owner: implementation -->
+- [x] RED: Re-run `DOC` in `property-document-requests.test.tsx` for preview fallback, version metadata, safe read, exact write invalidation, and read/no-list-invalidation behavior. <!-- sdd-owner: implementation -->
+- [x] GREEN: Extract `document-version.tsx` while preserving sole preview query ownership, settings, file icon, read command, and failure recovery. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: In `document-version.tsx` and its public test, prove failed previews leave requests usable and reads do not invalidate the list; run `DOC`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: Remove only moved version code from `property-document-requests.tsx`, keep direct relative imports, and land below budget. <!-- sdd-owner: implementation -->
 
 ### D6 — Atomic document deep-link hook (required)
 
