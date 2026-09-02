@@ -543,6 +543,47 @@ describe('PropertyDocumentRequests', () => {
     expect(openSpy).toHaveBeenCalledWith(readResponse.readUrl.url, '_blank', 'noopener,noreferrer');
   });
 
+  it('renders the rejection heading and reason in resolved history', async () => {
+    const rejected = documentRequest({
+      status: 'REJECTED',
+      rejectionReason: 'La imagen está borrosa.'
+    });
+    getProductDocumentRequestsMock.mockResolvedValueOnce(documentRequestsResponse([rejected]));
+
+    renderPropertyDocumentRequests();
+
+    await userEvent.click(await screen.findByRole('button', { name: /Historial/i }));
+
+    expect(screen.getByText('Motivo de rechazo')).toBeInTheDocument();
+    expect(screen.getByText('La imagen está borrosa.')).toBeInTheDocument();
+  });
+
+  it('disables both review decisions while approval is pending', async () => {
+    const user = userEvent.setup();
+    const request = documentRequest({ status: 'SUBMITTED' });
+    let resolveApproval!: (value: ProductDocumentRequest) => void;
+    const approvalPending = new Promise<ProductDocumentRequest>((resolve) => {
+      resolveApproval = resolve;
+    });
+    getProductDocumentRequestsMock.mockResolvedValueOnce(documentRequestsResponse([request]));
+    approveProductDocumentRequestMock.mockReturnValueOnce(approvalPending);
+
+    renderPropertyDocumentRequests();
+
+    await user.click(await screen.findByRole('button', { name: 'Aprobar' }));
+
+    await waitFor(() => {
+      expect(approveProductDocumentRequestMock).toHaveBeenCalledWith(request.id);
+    });
+    expect(screen.getByRole('button', { name: 'Aprobar' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Rechazar' })).toBeDisabled();
+
+    await act(async () => {
+      resolveApproval({ ...request, status: 'APPROVED' });
+      await approvalPending;
+    });
+  });
+
   it('shows pending requests without review or placeholder reminder controls', async () => {
     getProductDocumentRequestsMock.mockResolvedValueOnce(
       documentRequestsResponse([

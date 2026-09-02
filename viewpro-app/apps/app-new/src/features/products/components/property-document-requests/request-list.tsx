@@ -1,10 +1,50 @@
-import { Icons } from '@/components/icons';
+import { Icons, type Icon } from '@/components/icons';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import type { ReactNode } from 'react';
-import type { ProductDocumentRequest } from '../../api/types';
+import type { ProductDocumentRequest, ProductDocumentRequestStatus } from '../../api/types';
 import type { DocumentRequestGroup } from './model';
+
+type DocumentStatusConfig = {
+  badgeClassName: string;
+  icon: Icon;
+  label: string;
+};
+
+const documentStatusConfig: Record<ProductDocumentRequestStatus, DocumentStatusConfig> = {
+  APPROVED: {
+    badgeClassName:
+      'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300',
+    icon: Icons.circleCheck,
+    label: 'Aprobado'
+  },
+  CANCELLED: {
+    badgeClassName:
+      'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300',
+    icon: Icons.circleX,
+    label: 'Cancelado'
+  },
+  PENDING: {
+    badgeClassName:
+      'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300',
+    icon: Icons.clock,
+    label: 'Pendiente'
+  },
+  REJECTED: {
+    badgeClassName:
+      'border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/15 dark:text-destructive',
+    icon: Icons.circleX,
+    label: 'Rechazado'
+  },
+  SUBMITTED: {
+    badgeClassName:
+      'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300',
+    icon: Icons.upload,
+    label: 'Subido'
+  }
+};
 
 type DocumentRequestSectionProps = {
   children: ReactNode;
@@ -46,6 +86,32 @@ export function DocumentRequestList({
         </li>
       ))}
     </ul>
+  );
+}
+
+export function DocumentStatusBadge({ status }: { status: ProductDocumentRequestStatus }) {
+  const config = documentStatusConfig[status];
+  const StatusIcon = config.icon;
+
+  return (
+    <Badge
+      variant='outline'
+      role='status'
+      aria-label={`Estado del documento: ${config.label.toLowerCase()}`}
+      className={cn('w-fit shrink-0 rounded-md', config.badgeClassName)}
+    >
+      <StatusIcon aria-hidden='true' className='size-3' />
+      {config.label}
+    </Badge>
+  );
+}
+
+export function RejectionReason({ reason }: { reason: string }) {
+  return (
+    <div className='rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm'>
+      <p className='font-medium text-destructive'>Motivo de rechazo</p>
+      <p className='mt-1 break-words text-foreground'>{reason}</p>
+    </div>
   );
 }
 
