@@ -454,29 +454,40 @@ describe('PropertyAgentsSection', () => {
   });
 
   it.each([
-    [
-      'PRIMARY_AGENT_STATE_CONFLICT',
-      'La selección principal cambió. Actualizá la propiedad e intentá de nuevo.'
-    ],
-    [
-      'PRIMARY_AGENT_CANDIDATE_INVALID',
-      'El vendedor ya no puede ser principal para esta propiedad.'
-    ]
+    {
+      errorCode: 'PRIMARY_AGENT_STATE_CONFLICT',
+      message: 'La selección principal cambió. Actualizá la propiedad e intentá de nuevo.',
+      refreshAssignableAgents: false
+    },
+    {
+      errorCode: 'PRIMARY_AGENT_CANDIDATE_INVALID',
+      message: 'El vendedor ya no puede ser principal para esta propiedad.',
+      refreshAssignableAgents: true
+    }
   ] as const)(
-    'forces an exact durable detail request before safe feedback for fresh-cache %s',
-    async (errorCode, message) => {
+    'forces exact reconciliation before safe feedback for fresh-cache $errorCode',
+    async ({ errorCode, message, refreshAssignableAgents }) => {
       const user = userEvent.setup();
       const staleDetail = { id: 'product-1', agents: [assignedAgent] };
       const durableDetail = { id: 'product-1', agents: [] };
       let resolveDetail!: () => void;
+      let resolveReconciledAssignableAgents!: () => void;
       const detail = new Promise<Response>((resolve) => {
         resolveDetail = () => resolve(jsonResponse(durableDetail));
       });
+      const reconciledAssignableAgents = new Promise<Response>((resolve) => {
+        resolveReconciledAssignableAgents = () => resolve(jsonResponse({ items: [] }));
+      });
+      let assignableAgentsRequests = 0;
       const fetchMock = vi.fn((path: string) => {
-        if (path === '/api/products/assignable-agents')
-          return Promise.resolve(
-            jsonResponse({ items: [{ ...availableAgent, userId: assignedAgent.userId }] })
-          );
+        if (path === '/api/products/assignable-agents') {
+          assignableAgentsRequests += 1;
+          return refreshAssignableAgents && assignableAgentsRequests === 2
+            ? reconciledAssignableAgents
+            : Promise.resolve(
+                jsonResponse({ items: [{ ...availableAgent, userId: assignedAgent.userId }] })
+              );
+        }
         if (path.endsWith('/agents/primary'))
           return Promise.resolve(
             jsonResponse({ errorCode }, { status: errorCode.includes('CONFLICT') ? 409 : 400 })
@@ -499,12 +510,22 @@ describe('PropertyAgentsSection', () => {
       expect(queryClient.getQueryData(productKeys.detail('product-1', 'tenant-1'))).toEqual(staleDetail);
       expect(toast.error).not.toHaveBeenCalled();
       resolveDetail();
-      await waitFor(() => {
-        expect(queryClient.getQueryData(productKeys.detail('product-1', 'tenant-1'))).toEqual(
-          durableDetail
-        );
-        expect(toast.error).toHaveBeenCalledWith(message);
-      });
+
+      if (refreshAssignableAgents) {
+        await waitFor(() => expect(assignableAgentsRequests).toBe(2));
+        expect(toast.error).not.toHaveBeenCalled();
+        expect(screen.getByRole('button', { name: /marcar como principal/i })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /^quitar/i })).toBeDisabled();
+        resolveReconciledAssignableAgents();
+        await waitFor(() => {
+          expect(toast.error).toHaveBeenCalledWith(message);
+          expect(screen.queryByRole('button', { name: /marcar como principal/i })).toBeNull();
+        });
+        return;
+      }
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith(message));
+      expect(assignableAgentsRequests).toBe(1);
     }
   );
 

@@ -79,7 +79,7 @@ export function PropertyAgentsSection({
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
       toast.success('Vendedor principal actualizado');
     },
-    onError: (error) => void handlePrimaryAgentError(error)
+    onError: handlePrimaryAgentError
   });
   const clearPrimaryAgentMutation = useMutation({
     mutationFn: () =>
@@ -89,7 +89,7 @@ export function PropertyAgentsSection({
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
       toast.success('Vendedor principal quitado');
     },
-    onError: (error) => void handlePrimaryAgentError(error)
+    onError: handlePrimaryAgentError
   });
   const assignAllAgentsMutation = useMutation({
     mutationFn: async (agentUserIds: string[]) => {
@@ -134,10 +134,8 @@ export function PropertyAgentsSection({
     assignAllAgentsMutation.isPending;
 
   async function handlePrimaryAgentError(error: unknown) {
-    if (
-      hasErrorCode(error, 'PRIMARY_AGENT_STATE_CONFLICT') ||
-      hasErrorCode(error, 'PRIMARY_AGENT_CANDIDATE_INVALID')
-    ) {
+    const isCandidateInvalid = hasErrorCode(error, 'PRIMARY_AGENT_CANDIDATE_INVALID');
+    if (isCandidateInvalid || hasErrorCode(error, 'PRIMARY_AGENT_STATE_CONFLICT')) {
       try {
         await queryClient.invalidateQueries({
           exact: true,
@@ -145,6 +143,14 @@ export function PropertyAgentsSection({
           refetchType: 'none'
         });
         await queryClient.fetchQuery(productByIdOptions(productId, tenantId));
+
+        if (isCandidateInvalid) {
+          await queryClient.refetchQueries({
+            exact: true,
+            queryKey: productKeys.assignableAgents(tenantId),
+            type: 'active'
+          });
+        }
       } catch {
         // Keep the last server state if the required refresh cannot complete.
       }

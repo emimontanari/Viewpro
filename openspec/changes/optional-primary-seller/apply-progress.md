@@ -189,18 +189,18 @@
 - Parent-supplied authoritative OpenSpec status consumed: `optional-primary-seller`, `ready/apply`, repo-local five-file allowed root, and parent-retained same-token `proceed`; no action-context warnings.
 - Maintainer authorized this one-time cohesive S7B size exception at 650 changed lines; the five-file candidate stays within that boundary, with no split, compression, network, database, commit, or lifecycle action.
 - S7B rows 205–208 and focused App New gate 216 were unchecked during correction and are now visibly checked after GREEN; parent-owned rows and API/broader/final gates remain untouched.
-- Conflict and candidate-invalid now invalidate only the exact product detail without refetching broadly, then await `fetchQuery(productByIdOptions(...))` before safe feedback; a fresh 60-second cache cannot suppress the request.
+- Both primary `onError` callbacks return the shared handler promise, so pending spans reconciliation; conflict awaits only exact detail refresh, while candidate-invalid then force-refetches the active exact assignable-members query before safe feedback.
 - Role negatives observe loaded non-`AGENT` and rendered error states before action absence, loading remains distinct, and a pending change disables every remove, clear, set, assign, and assign-all control without painting the requested winner.
 - Primary-assignment removal proof remains DELETE-only with no primary endpoint request; this component harness has no active parent detail query, so it makes no post-refetch promotion claim.
 
 ### TDD Cycle Evidence
 | Tasks | Safety net | RED | GREEN / TRIANGULATE / REFACTOR |
 |---|---|---|---|
-| 205–208 | focused component baseline: 24/24 | Fresh exact detail under `staleTime: 60_000` made conflict and candidate-invalid fail 2/24 because old `fetchQuery` reused cache and toasted before any GET. | Exact stale-only invalidation plus fetch made 24/24; both codes prove the forced request, deferred toast, and durable cache response; focused role/pending/removal coverage remained green. |
+| 205–208 | focused component baseline: 24/24 | New fresh-cache parameterized candidate-invalid regression failed 1/24: detail reconciled and toasted without a second assignable request. | GREEN 24/24: detail resolves first while toast is absent and seller controls remain disabled; deferred empty eligibility then removes `Marcar como principal` and permits toast, while conflict makes exactly one assignable request. |
 
 ### Verification and boundary
-- PASS: focused component 24/24; primary and clear route tests 2 files/6; App New typecheck; strict lint; `git diff --no-ext-diff --check`.
-- Workload: one-time maintainer-authorized cohesive exception, five files only, final candidate: 535 additions + 88 deletions = 623 changed lines; no design deviation or generated artifact retained.
+- PASS: focused component 24/24; service/error and primary/clear route tests 4 files/15; App New typecheck; strict lint; `git diff --no-ext-diff --check`.
+- Workload: one-time maintainer-authorized cohesive exception, five-file PR boundary preserved, final candidate: 562 additions + 88 deletions = 650 changed lines; no design deviation or generated artifact retained.
 
 ### Remaining implementation work
 - Pending unchanged: API schema validation; focused API tests; broader configured delivery checks; documentation-only cleanliness confirmation.
