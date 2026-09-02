@@ -2,7 +2,6 @@
 
 import { messageFor } from '@/lib/bff-client';
 import { Icons, type Icon } from '@/components/icons';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -21,7 +20,6 @@ import {
 import type {
   CreateProductDocumentRequestPayload,
   ProductDocumentRequest,
-  ProductDocumentRequestStatus,
   ProductDocumentVersion,
   PropertyLinkedOwner
 } from '../api/types';
@@ -43,7 +41,9 @@ import {
 } from './property-document-requests/model';
 import {
   DocumentRequestList,
-  DocumentRequestSection
+  DocumentRequestSection,
+  DocumentStatusBadge,
+  RejectionReason
 } from './property-document-requests/request-list';
 import { RejectDocumentRequestDialog } from './reject-document-request-dialog';
 import {
@@ -61,46 +61,7 @@ type PropertyDocumentRequestsProps = {
   tenantId: string;
 };
 
-type DocumentStatusConfig = {
-  badgeClassName: string;
-  icon: Icon;
-  label: string;
-};
-
 const EMPTY_DOCUMENT_REQUESTS: ProductDocumentRequest[] = [];
-
-const documentStatusConfig: Record<ProductDocumentRequestStatus, DocumentStatusConfig> = {
-  APPROVED: {
-    badgeClassName:
-      'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300',
-    icon: Icons.circleCheck,
-    label: 'Aprobado'
-  },
-  CANCELLED: {
-    badgeClassName:
-      'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300',
-    icon: Icons.circleX,
-    label: 'Cancelado'
-  },
-  PENDING: {
-    badgeClassName:
-      'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300',
-    icon: Icons.clock,
-    label: 'Pendiente'
-  },
-  REJECTED: {
-    badgeClassName:
-      'border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/15 dark:text-destructive',
-    icon: Icons.circleX,
-    label: 'Rechazado'
-  },
-  SUBMITTED: {
-    badgeClassName:
-      'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300',
-    icon: Icons.upload,
-    label: 'Subido'
-  }
-};
 
 export function PropertyDocumentRequests({
   canRequestDocuments = true,
@@ -536,32 +497,6 @@ function DocumentRequestItem({
         ) : null}
       </CardContent>
     </Card>
-  );
-}
-
-function DocumentStatusBadge({ status }: { status: ProductDocumentRequestStatus }) {
-  const config = documentStatusConfig[status];
-  const StatusIcon = config.icon;
-
-  return (
-    <Badge
-      variant='outline'
-      role='status'
-      aria-label={`Estado del documento: ${config.label.toLowerCase()}`}
-      className={cn('w-fit shrink-0 rounded-md', config.badgeClassName)}
-    >
-      <StatusIcon aria-hidden='true' className='size-3' />
-      {config.label}
-    </Badge>
-  );
-}
-
-function RejectionReason({ reason }: { reason: string }) {
-  return (
-    <div className='rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm'>
-      <p className='font-medium text-destructive'>Motivo de rechazo</p>
-      <p className='mt-1 break-words text-foreground'>{reason}</p>
-    </div>
   );
 }
 
