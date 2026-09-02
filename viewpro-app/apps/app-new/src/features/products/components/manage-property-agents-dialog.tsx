@@ -11,11 +11,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Icons } from '@/components/icons';
-import type {
-  AssignableProductAgent,
-  PropertyAssignedAgent,
-  TenantMemberRole
-} from '../api/types';
+import type { AssignableProductAgent, PropertyAssignedAgent, TenantMemberRole } from '../api/types';
 import { useMemo } from 'react';
 import { EntityCard, getEntityInitials, getLinkedEntityCountCopy } from './entity-card';
 import { SectionHeader } from './section-header';
@@ -27,10 +23,13 @@ type ManagePropertyAgentsDialogProps = {
   isAssignableAgentsError: boolean;
   isAssignableAgentsLoading: boolean;
   isAssigningAllAgents: boolean;
+  isPrimaryMutationPending: boolean;
   onAssign: (agentUserId: string) => void;
   onAssignAll: (agentUserIds: string[]) => void;
+  onClearPrimary: () => void;
   onOpenChange: (open: boolean) => void;
   onRemove: (agentId: string) => void;
+  onSetPrimary: (agentId: string) => void;
   open: boolean;
   removingAgentId: string | null;
 };
@@ -123,10 +122,13 @@ export function ManagePropertyAgentsDialog({
   isAssignableAgentsError,
   isAssignableAgentsLoading,
   isAssigningAllAgents,
+  isPrimaryMutationPending,
   onAssign,
   onAssignAll,
+  onClearPrimary,
   onOpenChange,
   onRemove,
+  onSetPrimary,
   open,
   removingAgentId
 }: ManagePropertyAgentsDialogProps) {
@@ -147,7 +149,24 @@ export function ManagePropertyAgentsDialog({
     !assignableAgents.some(
       (agent) => agent.userId === primaryAgent.userId && agent.role === 'AGENT'
     );
-  const isMutating = Boolean(assigningUserId || removingAgentId || isAssigningAllAgents);
+  const eligiblePrimaryAgentIds = useMemo(
+    () =>
+      new Set(
+        isAssignableAgentsLoading || isAssignableAgentsError
+          ? []
+          : assignedAgents
+              .filter((agent) =>
+                assignableAgents.some(
+                  (member) => member.userId === agent.userId && member.role === 'AGENT'
+                )
+              )
+              .map((agent) => agent.id)
+      ),
+    [assignedAgents, assignableAgents, isAssignableAgentsError, isAssignableAgentsLoading]
+  );
+  const isMutating = Boolean(
+    assigningUserId || removingAgentId || isAssigningAllAgents || isPrimaryMutationPending
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -187,17 +206,40 @@ export function ManagePropertyAgentsDialog({
                       className='flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between'
                     >
                       <AgentIdentity agent={agent} isPrimary={agent.id === primaryAgentId} />
-                      <Button
-                        type='button'
-                        size='sm'
-                        variant='outline'
-                        disabled={isMutating}
-                        isLoading={isRemoving}
-                        onClick={() => onRemove(agent.id)}
-                      >
-                        <Icons.trash className='size-4' />
-                        Quitar
-                      </Button>
+                      <div className='flex flex-wrap gap-2'>
+                        {agent.id === primaryAgentId ? (
+                          <Button
+                            type='button'
+                            size='sm'
+                            variant='outline'
+                            disabled={isMutating}
+                            onClick={onClearPrimary}
+                          >
+                            Quitar principal
+                          </Button>
+                        ) : eligiblePrimaryAgentIds.has(agent.id) ? (
+                          <Button
+                            type='button'
+                            size='sm'
+                            variant='outline'
+                            disabled={isMutating}
+                            onClick={() => onSetPrimary(agent.id)}
+                          >
+                            Marcar como principal
+                          </Button>
+                        ) : null}
+                        <Button
+                          type='button'
+                          size='sm'
+                          variant='outline'
+                          disabled={isMutating}
+                          isLoading={isRemoving}
+                          onClick={() => onRemove(agent.id)}
+                        >
+                          <Icons.trash className='size-4' />
+                          Quitar
+                        </Button>
+                      </div>
                     </li>
                   );
                 })}
@@ -338,13 +380,7 @@ function renderAssignableAgentsState({
   );
 }
 
-function AgentIdentity({
-  agent,
-  isPrimary
-}: {
-  agent: PropertyAssignedAgent;
-  isPrimary: boolean;
-}) {
+function AgentIdentity({ agent, isPrimary }: { agent: PropertyAssignedAgent; isPrimary: boolean }) {
   const displayName = getAgentDisplayName(agent);
 
   return (
