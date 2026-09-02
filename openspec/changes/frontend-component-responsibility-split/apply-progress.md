@@ -624,3 +624,36 @@ The matching D6 rows in `tasks.md` are persisted as `- [x]`; D7 and all parent-o
 - Changed surfaces: `index.tsx`, untracked `mobile-cards.tsx`, `tasks.md`, and this progress file; T4 tasks are 4/4 checked and parent-owned rows are unchanged.
 - Exact tracked-plus-untracked numstat: **189** additions plus deletions, below 400; rollback is the root-to-mobile Product[] wiring and mobile module.
 - No design deviation, commit, push, review, receipt, or lifecycle gate occurred. Parent lifecycle lands T4 before T5 begins.
+
+## T5a — Product-table pagination
+
+**Status:** complete for the assigned T5a source-bearing work unit. The original four T5 rows were replaced with ordered required T5a/T5b rows: T5a is **4/4** checked, T5b remains **0/4** unchecked, and aggregate task progress is **74/90**.
+
+### Structured status and action context
+
+- Consumed native authoritative OpenSpec status: `schemaName=gentle-ai.sdd-status`, `artifactStore=openspec`, `changeName=frontend-component-responsibility-split`, `applyState=ready`, `nextRecommended=apply`, and `70/86` complete before the T5 split.
+- `actionContext.mode=repo-local`; workspace and allowed edit root were `/Users/emimontanari/Work/Apps/Viewpro-worktrees/frontend-component-product-table-pagination`. Edits stayed in the two authorized source paths and the two OpenSpec artifacts; no action-context warning occurred.
+- Delivery path: parent-authorized `proceed` with task-declared `auto-chain` / `stacked-to-main`. This PR boundary is T5a pagination only; T5b state extraction requires a fresh landed T5a prerequisite.
+
+### TDD Cycle Evidence
+
+| Step | Evidence | Result |
+|---|---|---|
+| RED / approval characterization | Pre-change `TABLE` | PASS — 9/9; this behavior-preserving extraction uses the existing public characterization and did not manufacture a behavioral RED. |
+| GREEN | Added direct-import controlled `PropertyTablePagination` and wired it from the root | `TABLE` PASS — 9/9. |
+| TRIANGULATE | Existing public range, label, disabled-control, and adjacent-page cases plus root/child authority audit | PASS — child requests only `page - 1` or `page + 1`; root retains derived count and clamped URL command. |
+| REFACTOR | Removed only the root pagination duplicate and scoped formatting | Final `TABLE` PASS — 9/9. |
+
+### Implementation, verification, and workload
+
+- Added direct-import `product-tables/pagination.tsx`, exporting controlled `PropertyTablePagination({ page, pageCount, pageSize, total, onPageChange })`. It preserves the range calculation, exact markup/classes, Spanish labels, disabled conditions, and ±1 callback requests.
+- Root retains `pageCount`, `total > 0` render gate, `useQueryStates`/`setParams`, and exact `Math.min(Math.max(page, 1), pageCount)` command. The child imports only `Button` and `Icons`; it has no root, hook, React Query, `nuqs`, tenant, URL, or state import.
+- `TABLE`: PASS — 9/9 before, after GREEN, and after formatting. App New typecheck: PASS. Strict lint: PASS. Scoped `oxfmt --write` then `--check` for `index.tsx` and `pagination.tsx`: PASS. Tracked and untracked diff checks: PASS.
+- Package `pnpm format:check` is BASELINE BLOCKED by 91 unrelated formatting violations; both T5a source files pass the scoped candidate formatter.
+- Exact final artifact-inclusive tracked-plus-untracked numstat is **99 additions + 52 deletions = 151** changed lines: progress 33/0, tasks 15/6, root 1/46, and new pagination module 50/0. This is below the under-200 T5a forecast and the 400-line hard cap.
+- No design deviation, test/API/config/package change, commit, push, PR, review, receipt, or lifecycle gate occurred. Rollback is the root-to-pagination wiring and `pagination.tsx` as one runnable unit.
+
+### Remaining tasks and deferred lifecycle actions
+
+- T5b remains exactly four unchecked implementation rows, beginning: `- [ ] RED: From fresh landed T5a, rerun \`TABLE\` for tenant/loading/error/retry/empty/clear/skeleton and background-fetch characterization before moving T5b presentation; do not manufacture a behavioral RED. <!-- sdd-owner: implementation -->`
+- T5b must preserve the root `PropertyTableSkeleton` export via re-export while extracting only states; T6 and all parent-owned lifecycle rows remain deferred and byte-for-byte unchanged.
