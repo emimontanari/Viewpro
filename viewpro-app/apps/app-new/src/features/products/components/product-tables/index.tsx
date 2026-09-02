@@ -5,13 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
-import {
   Table,
   TableBody,
   TableCell,
@@ -44,6 +37,13 @@ import {
 } from './columns';
 import { OPERATION_TYPE_OPTIONS, PROPERTY_STATUS_OPTIONS } from './options';
 import { CellAction } from './cell-action';
+import {
+  ActiveFilterSummary,
+  ArchiveFilterSelect,
+  FilterSelect,
+  PageSizeSelect,
+  PropertyTableSummary
+} from './toolbar';
 
 const ALL_FILTERS_VALUE = 'all';
 const DEFAULT_ARCHIVE_FILTER: PropertyArchiveFilter = 'active';
@@ -165,9 +165,9 @@ export function ProductTable() {
         activeFilterCount={activeFilterCount}
         archivedFilter={archivedFilter}
         hasFilters={hasFilters}
-        operationType={params.operationType}
+        operationType={params.operationType ?? ALL_FILTERS_VALUE}
         pageSize={params.perPage}
-        status={params.status}
+        status={params.status ?? ALL_FILTERS_VALUE}
         total={total}
         visibleCount={products.length}
         isFetching={productsQuery.isFetching}
@@ -269,9 +269,9 @@ function PropertyTableToolbar({
   canManageProperties: boolean;
   hasFilters: boolean;
   isFetching: boolean;
-  operationType: string | null;
+  operationType: string;
   pageSize: number;
-  status: string | null;
+  status: string;
   total: number;
   visibleCount: number;
   onArchiveFilterChange: (value: string) => void;
@@ -305,9 +305,11 @@ function PropertyTableToolbar({
                 </Badge>
               ) : null}
             </div>
-            <p className='text-sm text-muted-foreground'>
-              {getPropertyTableSummary({ hasFilters, total, visibleCount })}
-            </p>
+            <PropertyTableSummary
+              hasFilters={hasFilters}
+              total={total}
+              visibleCount={visibleCount}
+            />
           </div>
 
           <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
@@ -320,6 +322,7 @@ function PropertyTableToolbar({
             ) : null}
             <FilterSelect
               allLabel='Todas las operaciones'
+              allValue={ALL_FILTERS_VALUE}
               label='Operación'
               value={operationType}
               options={OPERATION_TYPE_OPTIONS}
@@ -327,24 +330,22 @@ function PropertyTableToolbar({
             />
             <FilterSelect
               allLabel='Todos los estados'
+              allValue={ALL_FILTERS_VALUE}
               label='Estado comercial'
               value={status}
               options={PROPERTY_STATUS_OPTIONS}
               onValueChange={(value) => onFilterChange('status', value)}
             />
-            <ArchiveFilterSelect value={archivedFilter} onValueChange={onArchiveFilterChange} />
-            <Select value={String(pageSize)} onValueChange={onPageSizeChange}>
-              <SelectTrigger size='sm' className='w-full sm:w-[112px]'>
-                <SelectValue aria-label={`${pageSize} por página`} />
-              </SelectTrigger>
-              <SelectContent align='end'>
-                {PAGE_SIZE_OPTIONS.map((option) => (
-                  <SelectItem key={option} value={String(option)}>
-                    {option} / pág.
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ArchiveFilterSelect
+              value={archivedFilter}
+              options={archiveFilterOptions}
+              onValueChange={onArchiveFilterChange}
+            />
+            <PageSizeSelect
+              pageSize={pageSize}
+              options={PAGE_SIZE_OPTIONS}
+              onValueChange={onPageSizeChange}
+            />
             {hasFilters ? (
               <Button variant='outline' size='sm' onClick={onClearFilters}>
                 <Icons.close className='size-4' /> Limpiar filtros
@@ -363,113 +364,6 @@ function PropertyTableToolbar({
         ) : null}
       </div>
     </div>
-  );
-}
-
-function getPropertyTableSummary({
-  hasFilters,
-  total,
-  visibleCount
-}: {
-  hasFilters: boolean;
-  total: number;
-  visibleCount: number;
-}) {
-  if (total === 0) {
-    return hasFilters
-      ? 'No encontramos propiedades con esos filtros.'
-      : 'Todavía no hay propiedades cargadas.';
-  }
-
-  const resultLabel = total === 1 ? 'gestión inmobiliaria' : 'gestiones inmobiliarias';
-  const filterContext = hasFilters ? 'con filtros' : 'en total';
-  return `${total} ${resultLabel} ${filterContext} · ${visibleCount} en esta vista`;
-}
-
-function ActiveFilterSummary({
-  archiveLabel,
-  operationLabel,
-  statusLabel,
-  onClearFilters
-}: {
-  archiveLabel?: string;
-  operationLabel?: string;
-  statusLabel?: string;
-  onClearFilters: () => void;
-}) {
-  return (
-    <div className='flex flex-col gap-2 rounded-xl border bg-background/70 p-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between'>
-      <div className='flex flex-wrap items-center gap-2'>
-        <span className='font-medium text-foreground'>Vista filtrada</span>
-        {operationLabel ? <FilterBadge label='Operación' value={operationLabel} /> : null}
-        {statusLabel ? <FilterBadge label='Estado' value={statusLabel} /> : null}
-        {archiveLabel ? <FilterBadge label='Archivo' value={archiveLabel} /> : null}
-      </div>
-      <Button variant='ghost' size='sm' onClick={onClearFilters} className='h-7 w-fit px-2 text-xs'>
-        Ver todo el inventario
-      </Button>
-    </div>
-  );
-}
-
-function FilterBadge({ label, value }: { label: string; value: string }) {
-  return (
-    <Badge variant='outline' className='rounded-full bg-background text-foreground'>
-      {label}: {value}
-    </Badge>
-  );
-}
-
-function FilterSelect({
-  allLabel,
-  label,
-  value,
-  options,
-  onValueChange
-}: {
-  allLabel: string;
-  label: string;
-  value: string | null;
-  options: Array<{ value: string; label: string }>;
-  onValueChange: (value: string) => void;
-}) {
-  return (
-    <Select value={value ?? ALL_FILTERS_VALUE} onValueChange={onValueChange}>
-      <SelectTrigger size='sm' aria-label={label} className='w-full sm:w-[176px]'>
-        <SelectValue placeholder={label} />
-      </SelectTrigger>
-      <SelectContent align='end'>
-        <SelectItem value={ALL_FILTERS_VALUE}>{allLabel}</SelectItem>
-        {options.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function ArchiveFilterSelect({
-  value,
-  onValueChange
-}: {
-  value: PropertyArchiveFilter;
-  onValueChange: (value: string) => void;
-}) {
-  return (
-    <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger size='sm' aria-label='Archivo' className='w-full sm:w-[150px]'>
-        <SelectValue placeholder='Archivo' />
-      </SelectTrigger>
-      <SelectContent align='end'>
-        {archiveFilterOptions.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
   );
 }
 

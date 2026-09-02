@@ -484,3 +484,26 @@ The matching D6 rows in `tasks.md` are persisted as `- [x]`; D7 and all parent-o
 - Files/workload: test, tasks, and progress only; T1 rollback is 397 lines, below 400.
 - Remaining: `- [ ] RED: Re-run \`product-table.test.tsx\` toolbar values, labels/counts, archive default, clear, and page-reset payload characterization. <!-- sdd-owner: implementation -->`
 - Deferred parent lifecycle: GATE-T is complete; T2+ remains untouched and next route is `parent-lifecycle`.
+
+## T2a — Product-table toolbar leaf primitives
+
+**Status:** complete for the assigned T2a slice; its four implementation rows are visibly checked. Parent authority was `proceed`; consumed authoritative file-backed status was `schemaName=spec-driven`, `apply=ready`, `nextRecommended=apply`, `auto-chain`, and `repo-local`. Action context allowed only the four supplied paths with no warnings. The T2 split replaces four T2 rows with ordered T2a/T2b rows: aggregate progress is **54/86** (T2a **4/4**, T2b **0/4**); T2b requires landed T2a from fresh `develop`.
+
+### TDD Cycle Evidence
+
+| Step | Evidence | Result |
+|---|---|---|
+| RED / characterization | Pre-change `TABLE` | PASS — 9/9; preserving extraction, no artificial RED or new test. |
+| GREEN | Moved only leaf primitives | `TABLE` PASS — 9/9. |
+| TRIANGULATE / REFACTOR | Typecheck, strict lint, scoped formatter, diff, and ownership audit; review correction | PASS; root shell and all authority, including `all` protocol normalization, remain in `index.tsx`. |
+
+- **Moved exports:** `PropertyTableSummary`, `ActiveFilterSummary` (private `FilterBadge`), `FilterSelect`, `ArchiveFilterSelect`, and `PageSizeSelect` into untracked direct-import `product-tables/toolbar.tsx`.
+- **Verification:** `TABLE` 9/9 before/after review correction; typecheck PASS; strict lint PASS; scoped `oxfmt --write/--check` PASS; tracked and untracked `git diff --no-ext-diff --check` PASS. Package `format:check` remains baseline-blocked by 91 unrelated files; both changed source files pass scoped formatting.
+- **Ownership audit:** PASS — `toolbar.tsx` imports only UI primitives and has no root, `nuqs`, tenant/session, React Query, query/options, hooks, state, permissions, or `setParams`. It defines no `all` sentinel and performs no nullable normalization: `FilterSelect` receives required controlled `value` and `allValue` strings directly. The root solely passes `operationType ?? ALL_FILTERS_VALUE` and `status ?? ALL_FILTERS_VALUE`, retains exact setter/page-reset normalization, archive default, count, permissions, fetching, create shell, and layout.
+- **Boundary/workload:** review correction preserves callback payloads and visible/accessibility behavior; exact final tracked-plus-untracked numstat is **222 additions + 140 deletions = 362** changed lines, below 400. No design deviation, test/API/config/package change, commit, push, or lifecycle action occurred.
+- **Remaining exact T2b rows:**
+  - [ ] RED: From fresh landed T2a, re-run `product-table.test.tsx` toolbar values, labels/counts, archive default, clear affordances, `Actualizando`, create permission, and exact page-reset payload characterization; do not manufacture a behavioral RED. <!-- sdd-owner: implementation -->
+  - [ ] GREEN: Move only `PropertyTableToolbar` shell to `toolbar.tsx`, pass root-derived primitives/callbacks, and keep all URL/query/tenant/state/permission normalization authority in `index.tsx`. <!-- sdd-owner: implementation -->
+  - [ ] TRIANGULATE: Run `TABLE`, `TYPE`, `LINT`, scoped formatter, package formatter baseline, diff check/numstat, and ownership audit for no child URL/query/tenant/state ownership, preserved accessibility/copy/classes/markup, and under-budget count. <!-- sdd-owner: implementation -->
+  - [ ] REFACTOR: Make T2a leaf exports private where useful, remove only moved root shell code, rerun T2b checks, and record the independently rollbackable T2b boundary before T3a. <!-- sdd-owner: implementation -->
+- **Deferred:** T3+ and parent-owned lifecycle rows remain unchanged.
