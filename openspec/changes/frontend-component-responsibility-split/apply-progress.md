@@ -542,3 +542,26 @@ The matching D6 rows in `tasks.md` are persisted as `- [x]`; D7 and all parent-o
 - Workload boundary: T2b shell plus this characterization is targeted at no more than 360 additions plus deletions; T3a and parent lifecycle actions remain deferred. No task artifact changed because the four completed T2b rows were already visibly checked.
 - Final verification: `TABLE` 9/9, typecheck, strict lint, scoped test `oxfmt --write/--check`, and `git diff --no-ext-diff --check` PASS. `oxfmt` is package-scoped, so the OpenSpec Markdown artifact was not a formatter target.
 - Final `git diff --numstat`: **212 additions + 139 deletions = 351** changed lines, below the 360 target and 400 hard cap. Remaining: `- [ ] RED: Re-run desktop/mobile identity, owner, seller, archive, metric, action, and first-assignment characterization in product-table.test.tsx. <!-- sdd-owner: implementation -->` (T3a).
+
+
+## T3a — Shared product summaries
+
+**Status:** complete for the assigned T3a work unit; the four T3a implementation-owned rows are visibly checked, bringing aggregate task progress to **62/86**.
+
+- **Status/context:** consumed parent `proceed` authority; reconstructed authoritative OpenSpec status is `schemaName=spec-driven`, `artifactStore=openspec`, `applyState=ready`, `nextRecommended=apply`, `actionContext.mode=repo-local`, and `auto-chain`/stacked-to-main. Edits remained in the four allowed T3a source/artifact paths; no action-context warnings.
+- **TDD characterization:** `TABLE` passed **9/9** before extraction and **9/9** after it. This is a behavior-preserving extraction, so no RED was manufactured and the existing black-box test remained unedited.
+- **Moved API:** new direct-import `product-summary.tsx` exports `PropertyIdentity`, `OwnerSummary`, `SellerSummary`, and `PropertyMetric`; each receives the original `ProductListItem` as `propertyEngagement`, never a DTO. It privately owns the thumbnail and archived badge.
+- **Seller-order evidence:** `SellerSummary` calls `getAgentSummary(propertyEngagement)` directly; that unchanged helper destructures `const [firstAgent] = product.agents`. The 9/9 public test renders API-ordered `Lucía API +1` twice (desktop and mobile) from two ordered valid `ProductAgent` entries without primary metadata, proving both paths render the first API element. The source and import audit confirms no `isPrimary` field, lookup, or inference. The new module has no `sort`, `find`, query, URL, tenant, hook, state, permission, action, status-mutation, or root import.
+- **Responsive preservation:** desktop retains `max-w-36` seller markup and desktop owner `Sin email`; mobile retains `PropertyMetric` seller/owner markup, mobile email omission, image/price metrics, compact `h-16 w-20` thumbnail, image aria-label, and archive tone/copy. Table row/cells, card/article shells, operation/property/status, `QuickStatusSelect`, `CellAction`, permissions, and all actions remain in `index.tsx` for T3b/T4.
+- **Verification:** `TABLE` 9/9; typecheck PASS; strict lint PASS; scoped `oxfmt --write/--check` PASS; package `format:check` BASELINE BLOCKED by 91 unrelated files; `git diff --no-ext-diff --check` PASS.
+- **Workload:** exact artifact-inclusive numstat is **177 additions + 126 deletions = 303 changed lines**, below the 350 reassessment threshold and 400 hard stop; this is the T3a shared-summary PR boundary. No design deviation, test/API/config/package change, commit, push, PR, review, receipt, or lifecycle action occurred.
+- **Remaining:** T3b's four unchecked implementation rows and all parent-owned lifecycle rows remain unchanged and deferred.
+
+### TDD Cycle Evidence
+
+| Step | Evidence | Result |
+|---|---|---|
+| RED / characterization | Pre-change `TABLE` | PASS — 9/9; preserving extraction with no manufactured RED. |
+| GREEN | Extracted summary presentation and wired both paths to original products | `TABLE` PASS — 9/9. |
+| TRIANGULATE | Existing public dual responsive rendering and two ordered valid `ProductAgent` entries without primary metadata | `Lucía API +1` appears twice from the first API element, with no `isPrimary` lookup or inference. |
+| REFACTOR | Removed only duplicated summary markup, scoped formatting, and ownership audit | PASS. |
