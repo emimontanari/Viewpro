@@ -598,3 +598,29 @@ The matching D6 rows in `tasks.md` are persisted as `- [x]`; D7 and all parent-o
 - `- [ ] TRIANGULATE: Verify \`mobile-cards.tsx\` parity, accessible controls, permission propagation, no child URL/query ownership, and run \`TABLE\`, \`TYPE\`, \`LINT\`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->`
 - `- [ ] REFACTOR: Remove only moved mobile markup from \`product-tables/index.tsx\` and land the rollbackable responsive unit. <!-- sdd-owner: implementation -->`
 - Deferred lifecycle actions: all parent-owned rows remain byte-for-byte unchanged; next route is `parent-lifecycle`.
+
+## T4 — Mobile cards
+
+**Status:** complete for T4; all four T4 implementation rows remain visibly checked (aggregate **70/86**).
+
+### Boundary and strict-TDD evidence
+
+- Parent authority was `proceed` under `auto-chain`; the approved T4 work-unit boundary remains under the 400-line cap.
+- This preserving extraction uses the required same root-provided `ProductListItem[]` boundary: root passes `products`; mobile maps each original product with `key={product.id}` and passes it directly. React Table and `rows` remain root-owned solely for desktop.
+
+| Step | Evidence | Result |
+|---|---|---|
+| RED / approval baseline | `TABLE` before API correction | PASS — 9/9; preserving structural correction, so no artificial RED. |
+| GREEN / TRIANGULATE / REFACTOR | Product[] API correction and fresh public parity suite | PASS — 9/9; markup, classes, copy, permissions, status/actions, and seller behavior preserved. |
+
+### Fresh verification and ownership
+
+- `TABLE` 9/9, typecheck, strict lint, scoped `oxfmt --write`/`--check`, and `git diff --no-ext-diff --check`: PASS.
+- Package `pnpm format:check`: baseline-blocked by **91** unrelated files; both candidate source files pass scoped formatting.
+- Mobile audit: no TanStack `Row`, root, query/URL/tenant/hooks/state/permission-derivation import, primary/seller selection, or `find`/`sort`; desktop and other source remain unchanged.
+
+### Workload and lifecycle
+
+- Changed surfaces: `index.tsx`, untracked `mobile-cards.tsx`, `tasks.md`, and this progress file; T4 tasks are 4/4 checked and parent-owned rows are unchanged.
+- Exact tracked-plus-untracked numstat: **189** additions plus deletions, below 400; rollback is the root-to-mobile Product[] wiring and mobile module.
+- No design deviation, commit, push, review, receipt, or lifecycle gate occurred. Parent lifecycle lands T4 before T5 begins.

@@ -247,10 +247,10 @@ Record the before-change result, characterization versus genuine RED, after-chan
 
 **Targets:** `product-tables/index.tsx`, new `product-tables/mobile-cards.tsx`, `product-summary.tsx`, `cell-action.tsx`, and table test. **Dependency:** T3b. **Boundary:** same `Product[]`, shared summaries, and `canManageProperties`; no inferred values, query, URL, or child authorization. **Stop/rollback/publish:** responsive/action/permission/primary-seller drift or budget risk; revert mobile wiring; land before T5.
 
-- [ ] RED: Re-run mobile-versus-desktop identity, status, price, owner, first-assignment seller, archive, action, and permission characterization in `product-table.test.tsx`. <!-- sdd-owner: implementation -->
-- [ ] GREEN: Extract `mobile-cards.tsx` using shared summaries and unchanged commands. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: Verify `mobile-cards.tsx` parity, accessible controls, permission propagation, no child URL/query ownership, and run `TABLE`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Remove only moved mobile markup from `product-tables/index.tsx` and land the rollbackable responsive unit. <!-- sdd-owner: implementation -->
+- [x] RED: Re-run mobile-versus-desktop identity, status, price, owner, first-assignment seller, archive, action, and permission characterization in `product-table.test.tsx`. <!-- sdd-owner: implementation -->
+- [x] GREEN: Extract `mobile-cards.tsx` using shared summaries and unchanged commands. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: Verify `mobile-cards.tsx` parity, accessible controls, permission propagation, no child URL/query ownership, and run `TABLE`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: Remove only moved mobile markup from `product-tables/index.tsx` and land the rollbackable responsive unit. <!-- sdd-owner: implementation -->
 
 ### T5 — Pagination and table states (required)
 
