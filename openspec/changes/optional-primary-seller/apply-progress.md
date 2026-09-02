@@ -204,3 +204,26 @@
 
 ### Remaining implementation work
 - Pending unchanged: API schema validation; focused API tests; broader configured delivery checks; documentation-only cleanliness confirmation.
+
+## Final verification gates (tasks 214, 215, 217, 218)
+- Native authoritative OpenSpec status consumed before execution: `optional-primary-seller`, `applyState: ready`, `nextRecommended: apply`, repo-local workspace `/Users/emimontanari/Work/Apps/Viewpro-worktrees/optional-primary-seller-final-verify`, allowed root confirmed; parent retained the native `proceed` token. Delivery path is the already-approved `auto-chain` / `stacked-to-main`; this final verification documentation slice remains within the normal 400-line budget.
+- Exact head was `1499d1c071bdc4c71520d6725ff3776c8621ace8`, matching merged PR #485. Read-only `gh pr view` corroborated PR #485 as merged at that SHA, with first-party CI Build/Typecheck/Lint, Production cutover contracts, Dependency audit, Test, and Seeded E2E all `SUCCESS`; no GitHub mutation occurred.
+- Offline prerequisite passed exactly: `COREPACK_ENABLE_NETWORK=0 /opt/homebrew/bin/pnpm install --offline --frozen-lockfile --ignore-scripts` (959 packages, `downloaded 0`). Local-only prerequisites also passed: contracts build and `pnpm --filter @viewpro/api db:generate`.
+- Task 214 PASS: `pnpm --filter @viewpro/api db:validate` reported a valid Prisma schema.
+- Task 215 PASS with explicit local `DATABASE_URL`, `DIRECT_URL`, and `VIEWPRO_TEST_BASE_DATABASE_URL` set to `postgresql://viewpro:viewpro@localhost:5432/viewpro_test?schema=public`: property-engagement repository 51/51, property-engagement e2e 37/37, real-Postgres barrier suite 12/12, owner repository 12/12, and owner use-cases 28/28.
+- Task 217 PASS: API typecheck; full API 140 files/1,426 tests; contracts runtime contract 1 file/5 tests; focused App New S7B plus S6 service/error/primary-route safety 5 files/39 tests; full App New 116 files/742 tests; App New typecheck and strict lint; seeded local E2E 32 passed (2.5m).
+- Seeded E2E ran through the existing harness with `CI=1`, `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`, and the pre-existing local Playwright browser cache; no browser installation or download was invoked. Its API seed/server inherited only the explicit local test DSNs and local document-storage root.
+- Database safety held before and after every database-bearing command: only `viewpro_test` plus worker databases `viewpro_test_w1`–`viewpro_test_w4` existed (worker inventory 4→4), and active connections were 0 after each command and cleanup. No Neon, development, staging, production, or unrecognized DSN was accessed; intentional worker databases were preserved.
+- Task 218 PASS before OpenSpec updates: `git status --short` was clean and `git diff --no-ext-diff --check` passed. After this documentation update, the only worktree changes are the intended `openspec/changes/optional-primary-seller/tasks.md` and `openspec/changes/optional-primary-seller/apply-progress.md`; no secrets, dumps, or document bytes were created.
+- Cleanup removed verification-only `node_modules`, contracts `dist`, Prisma dependency output, API/App builds, `.document-storage-seeded`, Playwright reports/results, `next-env.d.ts`, and `*.tsbuildinfo`; ports 3001/3100 have no listeners and no verification process remains. No design deviation and no product/source/test change.
+
+### TDD Cycle Evidence
+| Tasks | Scope | Evidence | RED/GREEN/TRIANGULATE/REFACTOR |
+|---|---|---|---|
+| 214, 215, 217, 218 | Verification/documentation only; no source or test edits | All configured checks passed with the counts above. | Not applicable: no production or test code was written; final cleanup and documentation-only diff checks passed. |
+
+### Persisted completion and remaining work
+- Marked and re-read as checked: tasks 214, 215, 217, and 218. All 61 implementation-owned rows are now `[x]`.
+- Parent confirmed the first six lifecycle actions complete: each implementation PR used a fresh current-develop worktree, remained sequential and issue-linked, carried review/rollback evidence, landed before its successor, and passed bounded review with no secret, dump, or document-byte drift. S7B alone used the explicit maintainer-approved `size:exception`; all other units remained within 400 lines.
+- Final parent confirmation PASS: after every implementation unit landed, authoritative verification reported 61/61 implementation-owned tasks, 9/9 requirements, and 21/21 scenarios complete. No implementation checkbox was pre-completed during planning.
+- Workload / PR boundary: final verification documentation only, three authorized OpenSpec files, no product/source/test changes. Next action is spec synchronization.
