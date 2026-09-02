@@ -211,23 +211,23 @@ Each PR must contain only its listed boundary, its RED/GREEN/TRIANGULATE/REFACTO
 
 These are implementation-owned checks performed after each relevant work unit; they are not a substitute for the RED/GREEN evidence in that unit.
 
-- [ ] Run API schema validation with `pnpm --filter @viewpro/api db:validate` after PR 1 and after any Prisma change; record output and test-database safety. <!-- sdd-owner: implementation -->
-- [ ] Run focused API tests with `pnpm --filter @viewpro/api exec vitest run test/property-engagements.repository.spec.ts`, `pnpm --filter @viewpro/api exec vitest run test/property-engagements.e2e-spec.ts`, `pnpm --filter @viewpro/api exec vitest run test/owner-portal.repository.spec.ts`, and `pnpm --filter @viewpro/api exec vitest run test/owner-portal.use-cases.spec.ts` as each seam lands; include the barrier-controlled real-Postgres tests in the applicable e2e path. <!-- sdd-owner: implementation -->
+- [x] Run API schema validation with `pnpm --filter @viewpro/api db:validate` after PR 1 and after any Prisma change; record output and test-database safety. <!-- sdd-owner: implementation -->
+- [x] Run focused API tests with `pnpm --filter @viewpro/api exec vitest run test/property-engagements.repository.spec.ts`, `pnpm --filter @viewpro/api exec vitest run test/property-engagements.e2e-spec.ts`, `pnpm --filter @viewpro/api exec vitest run test/owner-portal.repository.spec.ts`, and `pnpm --filter @viewpro/api exec vitest run test/owner-portal.use-cases.spec.ts` as each seam lands; include the barrier-controlled real-Postgres tests in the applicable e2e path. <!-- sdd-owner: implementation -->
 - [x] Run focused App New tests with `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-agents-section.test.tsx` and the two new product-agent primary route test paths after PR 6/7. <!-- sdd-owner: implementation -->
-- [ ] Run the broader configured checks before delivery: `pnpm --filter @viewpro/api db:validate`, `pnpm --filter @viewpro/api typecheck`, `pnpm --filter @viewpro/api test`, `pnpm --filter next-shadcn-dashboard-starter test`, `pnpm --filter next-shadcn-dashboard-starter lint:strict`, `pnpm --filter next-shadcn-dashboard-starter test:seeded`, and `pnpm --filter @viewpro/contracts test`; use the API test database required by `openspec/config.yaml`. <!-- sdd-owner: implementation -->
-- [ ] Run repository documentation-only checks `git status --short` and `git diff --check` from the configured `viewpro-app` cwd, and confirm only the intended work-unit files are present before each PR. <!-- sdd-owner: implementation -->
+- [x] Run the broader configured checks before delivery: `pnpm --filter @viewpro/api db:validate`, `pnpm --filter @viewpro/api typecheck`, `pnpm --filter @viewpro/api test`, `pnpm --filter next-shadcn-dashboard-starter test`, `pnpm --filter next-shadcn-dashboard-starter lint:strict`, `pnpm --filter next-shadcn-dashboard-starter test:seeded`, and `pnpm --filter @viewpro/contracts test`; use the API test database required by `openspec/config.yaml`. <!-- sdd-owner: implementation -->
+- [x] Run repository documentation-only checks `git status --short` and `git diff --check` from the configured `viewpro-app` cwd, and confirm only the intended work-unit files are present before each PR. <!-- sdd-owner: implementation -->
 
 ## Parent-Owned Delivery and Review Actions
 
 The parent/orchestrator owns lifecycle actions below. Implementation must not mark them complete in advance.
 
-- [ ] Create one fresh worktree and branch per PR from the then-current `origin/develop`, enforce one active writer, and keep each branch limited to its stated work-unit boundary. <!-- sdd-owner: parent -->
-- [ ] Track issue #304 and the optional-primary-seller change in the parent delivery record, linking each bounded PR and its dependency/rollback boundary without mutating product scope. <!-- sdd-owner: parent -->
-- [ ] Open or update each PR in order against `develop`, include the work-unit start state, finish state, dependency diagram with the current PR marked `📍`, verification evidence, rollback scope, and explicit out-of-scope follow-up. <!-- sdd-owner: parent -->
-- [ ] Before moving to the next unit, merge or otherwise land the current reviewed PR on `develop`, refresh `origin/develop`, and create the next fresh worktree/branch; do not stack unmerged local work or reuse a polluted diff. <!-- sdd-owner: parent -->
-- [ ] Keep every PR at or below the 400 changed-line budget; if a unit cannot fit without hiding tests/docs, stop and obtain the approved size-exception or split the unit before apply. <!-- sdd-owner: parent -->
-- [ ] Run the bounded review/lifecycle gate for each landed unit, confirm no secrets/database dumps/document bytes were changed, and record residual risks including the intentional fail-closed owner-contact rollout. <!-- sdd-owner: parent -->
-- [ ] After all units land, confirm the final status authority reports tasks applied/complete only after implementation and verification evidence exists; do not mark any implementation checkbox complete during planning. <!-- sdd-owner: parent -->
+- [x] Create one fresh worktree and branch per PR from the then-current `origin/develop`, enforce one active writer, and keep each branch limited to its stated work-unit boundary. <!-- sdd-owner: parent -->
+- [x] Track issue #304 and the optional-primary-seller change in the parent delivery record, linking each bounded PR and its dependency/rollback boundary without mutating product scope. <!-- sdd-owner: parent -->
+- [x] Open or update each PR in order against `develop`, include the work-unit start state, finish state, dependency diagram with the current PR marked `📍`, verification evidence, rollback scope, and explicit out-of-scope follow-up. <!-- sdd-owner: parent -->
+- [x] Before moving to the next unit, merge or otherwise land the current reviewed PR on `develop`, refresh `origin/develop`, and create the next fresh worktree/branch; do not stack unmerged local work or reuse a polluted diff. <!-- sdd-owner: parent -->
+- [x] Keep every PR at or below the 400 changed-line budget; if a unit cannot fit without hiding tests/docs, stop and obtain the approved size-exception or split the unit before apply. <!-- sdd-owner: parent -->
+- [x] Run the bounded review/lifecycle gate for each landed unit, confirm no secrets/database dumps/document bytes were changed, and record residual risks including the intentional fail-closed owner-contact rollout. <!-- sdd-owner: parent -->
+- [x] After all units land, confirm the final status authority reports tasks applied/complete only after implementation and verification evidence exists; do not mark any implementation checkbox complete during planning. <!-- sdd-owner: parent -->
 
 ## Verification Command Reference
 
