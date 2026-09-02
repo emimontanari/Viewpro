@@ -377,3 +377,33 @@ The matching D4b1 checkboxes in `tasks.md` are visibly `- [x]`; D4b2 remains 0/4
   - `- [ ] TRIANGULATE: Run \`DOC\`, \`MODEL\`, \`TYPE\`, \`LINT\`, and \`cd apps/app-new && pnpm exec oxfmt --check src/features/products/components/property-document-requests.tsx src/features/products/components/property-document-requests/request-list.tsx src/features/products/components/property-document-requests.test.tsx\`; run \`cd apps/app-new && pnpm format:check\` and classify any package-wide failure against the known unrelated formatting baseline; run \`git diff --check && git diff --numstat\`, record exact additions plus deletions and reassess at 350, and audit child imports/state plus root ownership of mutations, feedback, rejection dialog, version summary, preview, URL/deep-link lifecycle, anchors/highlight, and disclosure. <!-- sdd-owner: implementation -->`
   - `- [ ] REFACTOR: Remove only the duplicated root \`DocumentRequestItem\` definition and rerun \`DOC\`, \`MODEL\`, \`TYPE\`, \`LINT\`, scoped formatting, package-format baseline classification, diff check, import/ownership audit, and exact numstat; record the 310–345 artifact-inclusive result, rollback boundary, and pre-D5 landing. <!-- sdd-owner: implementation -->`
 - Deferred lifecycle actions: all ten parent-owned rows remain byte-for-byte unchanged; no commit, push, PR, receipt, review, or lifecycle gate was performed.
+
+## D4b2 — Document request item/read/review shell
+
+**Status:** complete for the assigned D4b2 work unit; the four D4b2 implementation-owned rows are persisted as checked.
+
+### Structured status and boundary
+
+- Consumed parent runtime authority: `proceed` for D4b2 under `auto-chain` / stacked-to-main. Authoritative OpenSpec artifacts (proposal, specs, design, tasks, and cumulative progress) were present; reconstructed status is `applyState=ready`, `nextRecommended=apply`, `actionContext.mode=repo-local`, with edits confined to the four supplied source/artifact paths in `/Users/emimontanari/Work/Apps/Viewpro-worktrees/frontend-component-document-item-shell`.
+- Expected native aggregate task status after the persisted updates: **37/82**; implementation-owned progress is 32/72, with 5/10 parent-owned rows already complete. No ownership marker was malformed, and all parent rows were preserved byte-for-byte.
+- PR boundary: only the `DocumentRequestItem` presentation shell and root seam wiring. Rollback is the two source files plus D4b2 artifact evidence as one unit; D5/D6/D7 source and tests remain untouched.
+
+### TDD Cycle Evidence
+
+| Step | Evidence | Result |
+|---|---|---|
+| RED / characterization | Pre-edit `DOC` and `MODEL` | PASS — 36/36 and 6/6; preserving extraction, so no artificial failing test was added. |
+| GREEN | Moved only the item shell and passed root-built `versionSummary` | `DOC` PASS — 36/36; `MODEL` PASS — 6/6. |
+| TRIANGULATE / REFACTOR | Typecheck, strict lint, scoped formatting, diff, and ownership audit | PASS; no behavior, test, API, config, or package change. |
+
+### Verification and ownership
+
+- `DOC`: PASS — 36/36 before and after. `MODEL`: PASS — 6/6 before and after. App New typecheck and strict lint: PASS. Scoped `oxfmt --write` then `--check` for the two source files: PASS. `git diff --no-ext-diff --check`: PASS.
+- `pnpm format:check`: BASELINE BLOCKED — 94 package-wide violations, all outside the two D4b2 source files; scoped formatting is green. This is an environment/repository baseline classification, not a D4b2 failure.
+- `request-list.tsx` imports only UI primitives, `cn`, React type, feature API types, and model helpers/types; it has no root, service, query, URL, mutation, context, or independent-state import. Root retains mutations, feedback, safe read, rejection state/dialog, version summary, preview/query/media/file-icon, URL/deep-link lifecycle, list anchors/highlight, and disclosure ownership.
+
+### Files, workload, and remaining work
+
+- Changed: `property-document-requests.tsx`, `property-document-requests/request-list.tsx`, `tasks.md`, and this cumulative progress file. No tests were added because the landed 36/36 public characterization already covers the preserved contract.
+- The four D4b2 rows are visibly `- [x]`; source diff is 12 additions + 136 deletions in the root and 130 additions in `request-list.tsx`. Final artifact-inclusive numstat is **316** additions plus deletions (176 additions, 140 deletions), below the 350 reassessment threshold and 400 hard stop.
+- Remaining immediate implementation rows are `- [ ] RED: Re-run \`DOC\` in \`property-document-requests.test.tsx\` for preview fallback, version metadata, safe read, exact write invalidation, and read/no-list-invalidation behavior. <!-- sdd-owner: implementation -->` and `- [ ] GREEN: Extract \`document-version.tsx\` while preserving sole preview query ownership, settings, file icon, read command, and failure recovery. <!-- sdd-owner: implementation -->`; D5/D6/D7 and all parent lifecycle actions remain unchanged.
