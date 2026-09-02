@@ -1,6 +1,5 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,22 +10,14 @@ import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs';
-import type { ProductListItem, PropertyArchiveFilter } from '../../api/types';
+import type { PropertyArchiveFilter } from '../../api/types';
 import { productsQueryOptions } from '../../api/queries';
 import { archiveFilterOptions } from '../../constants/product-options';
-import { QuickStatusSelect } from '../quick-status-select';
-import {
-  columns,
-  formatPrice,
-  getOperationTone,
-  getOperationTypeLabel,
-  getPropertyTypeLabel
-} from './columns';
-import { CellAction } from './cell-action';
+import { columns } from './columns';
 import { PropertyDesktopTable } from './desktop-table';
+import { PropertyMobileCards } from './mobile-cards';
 import { OPERATION_TYPE_OPTIONS, PROPERTY_STATUS_OPTIONS } from './options';
 import { PropertyTableToolbar } from './toolbar';
-import { OwnerSummary, PropertyIdentity, PropertyMetric, SellerSummary } from './product-summary';
 
 const ALL_FILTERS_VALUE = 'all';
 const DEFAULT_ARCHIVE_FILTER: PropertyArchiveFilter = 'active';
@@ -189,15 +180,7 @@ export function ProductTable() {
         <>
           <PropertyDesktopTable rows={rows} canManageProperties={canManageProperties} />
 
-          <div className='grid gap-3 md:hidden'>
-            {rows.map((row) => (
-              <PropertyMobileCard
-                key={row.id}
-                canManageProperties={canManageProperties}
-                propertyEngagement={row.original}
-              />
-            ))}
-          </div>
+          <PropertyMobileCards products={products} canManageProperties={canManageProperties} />
         </>
       )}
 
@@ -216,55 +199,6 @@ export function ProductTable() {
 
 function getOptionLabel(options: Array<{ value: string; label: string }>, value: string | null) {
   return value ? options.find((option) => option.value === value)?.label : undefined;
-}
-
-function PropertyMobileCard({
-  canManageProperties,
-  propertyEngagement
-}: {
-  canManageProperties: boolean;
-  propertyEngagement: ProductListItem;
-}) {
-  return (
-    <article className='overflow-hidden rounded-2xl border bg-background shadow-xs'>
-      <div className='p-4'>
-        <div className='flex items-start justify-between gap-3'>
-          <PropertyIdentity propertyEngagement={propertyEngagement} compact />
-          <CellAction canManageProperties={canManageProperties} data={propertyEngagement} />
-        </div>
-
-        <div className='mt-4 flex flex-wrap gap-2'>
-          <Badge
-            variant='outline'
-            className={cn('border', getOperationTone(propertyEngagement.operationType))}
-          >
-            {getOperationTypeLabel(propertyEngagement.operationType)}
-          </Badge>
-          <Badge variant='outline'>
-            {getPropertyTypeLabel(propertyEngagement.property.propertyType)}
-          </Badge>
-          <QuickStatusSelect
-            canUpdateStatus={canManageProperties}
-            propertyEngagement={propertyEngagement}
-            size='compact'
-          />
-        </div>
-
-        <div className='mt-4 grid grid-cols-2 gap-3 text-sm'>
-          <PropertyMetric
-            label='Precio'
-            value={formatPrice(propertyEngagement.publishedPriceCents, propertyEngagement.currency)}
-          />
-          <SellerSummary propertyEngagement={propertyEngagement} mobile />
-          <OwnerSummary propertyEngagement={propertyEngagement} mobile />
-          <PropertyMetric
-            label='Imágenes'
-            value={String(propertyEngagement.property.images.length)}
-          />
-        </div>
-      </div>
-    </article>
-  );
 }
 
 function PropertyTablePagination({
