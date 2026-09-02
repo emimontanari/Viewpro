@@ -1,11 +1,17 @@
 'use client';
 
-import { agentAssignmentErrorMessage } from '../error-messages';
+import { hasErrorCode } from '@/lib/bff-client';
+import { agentAssignmentErrorMessage, primaryAgentMutationErrorMessage } from '../error-messages';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { assignableProductAgentsOptions, productKeys } from '../api/queries';
-import { assignProductAgent, removeProductAgent } from '../api/service';
+import { assignableProductAgentsOptions, productByIdOptions, productKeys } from '../api/queries';
+import {
+  assignProductAgent,
+  clearPrimaryProductAgent,
+  removeProductAgent,
+  setPrimaryProductAgent
+} from '../api/service';
 import type { PropertyAssignedAgent } from '../api/types';
 import { ManagePropertyAgentsDialog, PropertyAgentsPanel } from './manage-property-agents-dialog';
 
@@ -32,6 +38,7 @@ export function PropertyAgentsSection({
     ...assignableProductAgentsOptions(tenantId),
     enabled: agentsDialogOpen && canManageAgents && !isArchived
   });
+  const primaryAgentId = agents.find((agent) => agent.isPrimary)?.id ?? null;
   const assignAgentMutation = useMutation({
     mutationFn: (agentUserId: string) => assignProductAgent(productId, { agentUserId }),
     onMutate: (agentUserId) => {
@@ -63,6 +70,26 @@ export function PropertyAgentsSection({
     onSettled: () => {
       setRemovingAgentId(null);
     }
+  });
+  const setPrimaryAgentMutation = useMutation({
+    mutationFn: (agentId: string) =>
+      setPrimaryProductAgent(productId, { agentId, expectedPrimaryAgentId: primaryAgentId }),
+    onSuccess: async (engagement) => {
+      queryClient.setQueryData(productKeys.detail(productId, tenantId), engagement);
+      await queryClient.invalidateQueries({ queryKey: productKeys.all });
+      toast.success('Vendedor principal actualizado');
+    },
+    onError: handlePrimaryAgentError
+  });
+  const clearPrimaryAgentMutation = useMutation({
+    mutationFn: () =>
+      clearPrimaryProductAgent(productId, { expectedPrimaryAgentId: primaryAgentId }),
+    onSuccess: async (engagement) => {
+      queryClient.setQueryData(productKeys.detail(productId, tenantId), engagement);
+      await queryClient.invalidateQueries({ queryKey: productKeys.all });
+      toast.success('Vendedor principal quitado');
+    },
+    onError: handlePrimaryAgentError
   });
   const assignAllAgentsMutation = useMutation({
     mutationFn: async (agentUserIds: string[]) => {
@@ -99,6 +126,38 @@ export function PropertyAgentsSection({
     }
   });
 
+  const isSellerMutationPending =
+    assignAgentMutation.isPending ||
+    removeAgentMutation.isPending ||
+    setPrimaryAgentMutation.isPending ||
+    clearPrimaryAgentMutation.isPending ||
+    assignAllAgentsMutation.isPending;
+
+  async function handlePrimaryAgentError(error: unknown) {
+    const isCandidateInvalid = hasErrorCode(error, 'PRIMARY_AGENT_CANDIDATE_INVALID');
+    if (isCandidateInvalid || hasErrorCode(error, 'PRIMARY_AGENT_STATE_CONFLICT')) {
+      try {
+        await queryClient.invalidateQueries({
+          exact: true,
+          queryKey: productKeys.detail(productId, tenantId),
+          refetchType: 'none'
+        });
+        await queryClient.fetchQuery(productByIdOptions(productId, tenantId));
+
+        if (isCandidateInvalid) {
+          await queryClient.refetchQueries({
+            exact: true,
+            queryKey: productKeys.assignableAgents(tenantId),
+            type: 'active'
+          });
+        }
+      } catch {
+        // Keep the last server state if the required refresh cannot complete.
+      }
+    }
+    toast.error(primaryAgentMutationErrorMessage(error));
+  }
+
   function handleOpenAgentsDialog() {
     if (isArchived || !canManageAgents) {
       return;
@@ -108,13 +167,7 @@ export function PropertyAgentsSection({
   }
 
   function handleAssignAgent(agentUserId: string) {
-    if (
-      isArchived ||
-      !canManageAgents ||
-      assignAgentMutation.isPending ||
-      removeAgentMutation.isPending ||
-      assignAllAgentsMutation.isPending
-    ) {
+    if (isArchived || !canManageAgents || isSellerMutationPending) {
       return;
     }
 
@@ -122,14 +175,7 @@ export function PropertyAgentsSection({
   }
 
   function handleAssignAllAgents(agentUserIds: string[]) {
-    if (
-      isArchived ||
-      !canManageAgents ||
-      agentUserIds.length === 0 ||
-      assignAgentMutation.isPending ||
-      removeAgentMutation.isPending ||
-      assignAllAgentsMutation.isPending
-    ) {
+    if (isArchived || !canManageAgents || agentUserIds.length === 0 || isSellerMutationPending) {
       return;
     }
 
@@ -137,17 +183,27 @@ export function PropertyAgentsSection({
   }
 
   function handleRemoveAgent(agentId: string) {
-    if (
-      isArchived ||
-      !canManageAgents ||
-      assignAgentMutation.isPending ||
-      removeAgentMutation.isPending ||
-      assignAllAgentsMutation.isPending
-    ) {
+    if (isArchived || !canManageAgents || isSellerMutationPending) {
       return;
     }
 
     removeAgentMutation.mutate(agentId);
+  }
+
+  function handleSetPrimaryAgent(agentId: string) {
+    if (isArchived || !canManageAgents || isSellerMutationPending) {
+      return;
+    }
+
+    setPrimaryAgentMutation.mutate(agentId);
+  }
+
+  function handleClearPrimaryAgent() {
+    if (primaryAgentId === null || isArchived || !canManageAgents || isSellerMutationPending) {
+      return;
+    }
+
+    clearPrimaryAgentMutation.mutate();
   }
 
   return (
@@ -156,11 +212,7 @@ export function PropertyAgentsSection({
         agents={agents}
         canManageAgents={canManageAgents}
         isArchived={isArchived}
-        isManageDisabled={
-          assignAgentMutation.isPending ||
-          removeAgentMutation.isPending ||
-          assignAllAgentsMutation.isPending
-        }
+        isManageDisabled={isSellerMutationPending}
         onManage={handleOpenAgentsDialog}
       />
       <ManagePropertyAgentsDialog
@@ -171,11 +223,16 @@ export function PropertyAgentsSection({
         isAssignableAgentsError={assignableAgentsQuery.isError}
         isAssignableAgentsLoading={assignableAgentsQuery.isLoading}
         isAssigningAllAgents={assignAllAgentsMutation.isPending}
+        isPrimaryMutationPending={
+          setPrimaryAgentMutation.isPending || clearPrimaryAgentMutation.isPending
+        }
         removingAgentId={removingAgentId}
         onAssign={handleAssignAgent}
         onAssignAll={handleAssignAllAgents}
+        onClearPrimary={handleClearPrimaryAgent}
         onOpenChange={setAgentsDialogOpen}
         onRemove={handleRemoveAgent}
+        onSetPrimary={handleSetPrimaryAgent}
       />
     </>
   );
@@ -188,4 +245,3 @@ function getAssignAllAgentsSuccessMessage(count: number) {
 
   return `${count} vendedores asignados`;
 }
-

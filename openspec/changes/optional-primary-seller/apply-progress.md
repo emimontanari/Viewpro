@@ -184,3 +184,23 @@
 - [ ] **GREEN** — Wire explicit set/change/clear UI actions to the PR 6 service methods, capture the derived current `expectedPrimaryAgentId` including explicit null, install only the returned `PropertyEngagement` into `productKeys.detail(productId, tenantId)`, invalidate product queries, refetch before conflict/invalid feedback, and disable assign/set/change/clear/remove while any seller mutation is pending. <!-- sdd-owner: implementation -->
 - [ ] **TRIANGULATE** — Run the focused component tests plus the App New typecheck and strict lint; verify exact-`AGENT` action visibility, no action for an ineligible persisted primary, no pre-success paint, and refreshed durable winner/no-primary rendering after conflict. <!-- sdd-owner: implementation -->
 - [ ] **REFACTOR** — Consolidate mutation error handling through code-based safe local copy, preserve last server state on generic failures, and do not alter WhatsApp/contact behavior or add a second query/cache authority. <!-- sdd-owner: implementation -->
+
+## S7B UI primary actions and cache reconciliation — corrected
+- Parent-supplied authoritative OpenSpec status consumed: `optional-primary-seller`, `ready/apply`, repo-local five-file allowed root, and parent-retained same-token `proceed`; no action-context warnings.
+- Maintainer authorized this one-time cohesive S7B size exception at 650 changed lines; the five-file candidate stays within that boundary, with no split, compression, network, database, commit, or lifecycle action.
+- S7B rows 205–208 and focused App New gate 216 were unchecked during correction and are now visibly checked after GREEN; parent-owned rows and API/broader/final gates remain untouched.
+- Both primary `onError` callbacks return the shared handler promise, so pending spans reconciliation; conflict awaits only exact detail refresh, while candidate-invalid then force-refetches the active exact assignable-members query before safe feedback.
+- Role negatives observe loaded non-`AGENT` and rendered error states before action absence, loading remains distinct, and a pending change disables every remove, clear, set, assign, and assign-all control without painting the requested winner.
+- Primary-assignment removal proof remains DELETE-only with no primary endpoint request; this component harness has no active parent detail query, so it makes no post-refetch promotion claim.
+
+### TDD Cycle Evidence
+| Tasks | Safety net | RED | GREEN / TRIANGULATE / REFACTOR |
+|---|---|---|---|
+| 205–208 | focused component baseline: 24/24 | New fresh-cache parameterized candidate-invalid regression failed 1/24: detail reconciled and toasted without a second assignable request. | GREEN 24/24: detail resolves first while toast is absent and seller controls remain disabled; deferred empty eligibility then removes `Marcar como principal` and permits toast, while conflict makes exactly one assignable request. |
+
+### Verification and boundary
+- PASS: focused component 24/24; service/error and primary/clear route tests 4 files/15; App New typecheck; strict lint; `git diff --no-ext-diff --check`.
+- Workload: one-time maintainer-authorized cohesive exception, five-file PR boundary preserved, final candidate: 562 additions + 88 deletions = 650 changed lines; no design deviation or generated artifact retained.
+
+### Remaining implementation work
+- Pending unchanged: API schema validation; focused API tests; broader configured delivery checks; documentation-only cleanliness confirmation.
