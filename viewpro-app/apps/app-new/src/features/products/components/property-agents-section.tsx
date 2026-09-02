@@ -6,11 +6,11 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { assignableProductAgentsOptions, productKeys } from '../api/queries';
 import { assignProductAgent, removeProductAgent } from '../api/service';
-import type { ProductAgent } from '../api/types';
+import type { PropertyAssignedAgent } from '../api/types';
 import { ManagePropertyAgentsDialog, PropertyAgentsPanel } from './manage-property-agents-dialog';
 
 type PropertyAgentsSectionProps = {
-  agents: ProductAgent[];
+  agents: PropertyAssignedAgent[];
   canManageAgents?: boolean;
   isArchived: boolean;
   productId: string;

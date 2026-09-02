@@ -11,13 +11,17 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Icons } from '@/components/icons';
-import type { AssignableProductAgent, ProductAgent, TenantMemberRole } from '../api/types';
+import type {
+  AssignableProductAgent,
+  PropertyAssignedAgent,
+  TenantMemberRole
+} from '../api/types';
 import { useMemo } from 'react';
 import { EntityCard, getEntityInitials, getLinkedEntityCountCopy } from './entity-card';
 import { SectionHeader } from './section-header';
 
 type ManagePropertyAgentsDialogProps = {
-  assignedAgents: ProductAgent[];
+  assignedAgents: PropertyAssignedAgent[];
   assignableAgents: AssignableProductAgent[];
   assigningUserId: string | null;
   isAssignableAgentsError: boolean;
@@ -32,7 +36,7 @@ type ManagePropertyAgentsDialogProps = {
 };
 
 type PropertyAgentsPanelProps = {
-  agents: ProductAgent[];
+  agents: PropertyAssignedAgent[];
   canManageAgents?: boolean;
   isArchived: boolean;
   isManageDisabled: boolean;
@@ -52,6 +56,8 @@ export function PropertyAgentsPanel({
   isManageDisabled,
   onManage
 }: PropertyAgentsPanelProps) {
+  const primaryAgentId = agents.find((agent) => agent.isPrimary)?.id ?? null;
+
   return (
     <section className='space-y-3 rounded-xl border bg-muted/20 p-3 sm:p-4'>
       <SectionHeader
@@ -69,6 +75,7 @@ export function PropertyAgentsPanel({
               <li key={agent.id}>
                 <EntityCard
                   ariaLabel={`Ver detalle de ${displayName}`}
+                  badges={agent.id === primaryAgentId ? [{ label: 'Principal' }] : []}
                   email={agent.email}
                   name={displayName}
                   // TODO: connect to team/contact detail navigation when a person route exists.
@@ -83,6 +90,10 @@ export function PropertyAgentsPanel({
           Todavía no hay vendedores asignados.
         </div>
       )}
+
+      {primaryAgentId === null ? (
+        <p className='text-sm text-muted-foreground'>Sin vendedor principal</p>
+      ) : null}
 
       {isArchived ? (
         <p className='text-xs leading-5 text-foreground/70'>
@@ -127,6 +138,15 @@ export function ManagePropertyAgentsDialog({
     () => assignableAgents.filter((agent) => !assignedUserIds.has(agent.userId)),
     [assignableAgents, assignedUserIds]
   );
+  const primaryAgentId = assignedAgents.find((agent) => agent.isPrimary)?.id ?? null;
+  const primaryAgent = assignedAgents.find((agent) => agent.id === primaryAgentId);
+  const isPersistedPrimaryIneligible =
+    primaryAgent !== undefined &&
+    !isAssignableAgentsLoading &&
+    !isAssignableAgentsError &&
+    !assignableAgents.some(
+      (agent) => agent.userId === primaryAgent.userId && agent.role === 'AGENT'
+    );
   const isMutating = Boolean(assigningUserId || removingAgentId || isAssigningAllAgents);
 
   return (
@@ -146,6 +166,15 @@ export function ManagePropertyAgentsDialog({
               <p className='text-sm text-muted-foreground'>
                 Estos vendedores pueden operar la gestión según sus permisos.
               </p>
+              {primaryAgentId === null ? (
+                <p className='mt-2 text-sm text-muted-foreground'>Sin vendedor principal</p>
+              ) : null}
+              {isPersistedPrimaryIneligible ? (
+                <div className='mt-2 text-sm text-muted-foreground'>
+                  <p>Este vendedor principal ya no está disponible.</p>
+                  <p>Verificá los integrantes antes de cambiarlo.</p>
+                </div>
+              ) : null}
             </div>
             {assignedAgents.length > 0 ? (
               <ul className='space-y-2'>
@@ -157,7 +186,7 @@ export function ManagePropertyAgentsDialog({
                       key={agent.id}
                       className='flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between'
                     >
-                      <AgentIdentity agent={agent} />
+                      <AgentIdentity agent={agent} isPrimary={agent.id === primaryAgentId} />
                       <Button
                         type='button'
                         size='sm'
@@ -309,7 +338,13 @@ function renderAssignableAgentsState({
   );
 }
 
-function AgentIdentity({ agent }: { agent: ProductAgent }) {
+function AgentIdentity({
+  agent,
+  isPrimary
+}: {
+  agent: PropertyAssignedAgent;
+  isPrimary: boolean;
+}) {
   const displayName = getAgentDisplayName(agent);
 
   return (
@@ -318,9 +353,16 @@ function AgentIdentity({ agent }: { agent: ProductAgent }) {
         <AvatarFallback className='text-xs font-semibold'>{getAgentInitials(agent)}</AvatarFallback>
       </Avatar>
       <div className='min-w-0 flex-1 space-y-0.5'>
-        <p className='truncate text-sm font-medium' title={displayName}>
-          {displayName}
-        </p>
+        <div className='flex flex-wrap items-center gap-2'>
+          <p className='truncate text-sm font-medium' title={displayName}>
+            {displayName}
+          </p>
+          {isPrimary ? (
+            <Badge variant='outline' className='rounded-full bg-muted/40'>
+              Principal
+            </Badge>
+          ) : null}
+        </div>
         <p className='truncate text-sm text-foreground/70' title={agent.email}>
           {agent.email}
         </p>

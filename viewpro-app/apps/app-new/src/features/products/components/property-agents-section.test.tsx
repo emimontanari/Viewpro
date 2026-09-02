@@ -3,14 +3,20 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AssignableProductAgent, ProductAgent } from '../api/types';
+import type { AssignableProductAgent, PropertyAssignedAgent } from '../api/types';
 import { PropertyAgentsSection } from './property-agents-section';
 
-const assignedAgent: ProductAgent = {
+const assignedAgent: PropertyAssignedAgent = {
   email: 'assigned@example.com',
   firstName: 'Ana',
   id: 'agent-assignment-1',
+  isPrimary: false,
   userId: 'user-assigned-1'
+};
+
+const primaryAssignedAgent: PropertyAssignedAgent = {
+  ...assignedAgent,
+  isPrimary: true
 };
 
 const availableAgent: AssignableProductAgent = {
@@ -62,9 +68,10 @@ describe('PropertyAgentsSection', () => {
   it('does not open or load assignable agents when archived', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    renderPropertyAgentsSection({ isArchived: true });
+    renderPropertyAgentsSection({ agents: [primaryAssignedAgent], isArchived: true });
 
-    expect(screen.getByText('0 vendedores asignados')).toBeInTheDocument();
+    expect(screen.getByText('1 vendedor asignado')).toBeInTheDocument();
+    expect(screen.getByText('Principal')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /gestionar vendedores/i })).not.toBeInTheDocument();
     expect(
       screen.getByText('Restaurá la propiedad para gestionar vendedores.')
@@ -75,11 +82,50 @@ describe('PropertyAgentsSection', () => {
   it('hides management controls when seller management is not permitted', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    renderPropertyAgentsSection({ agents: [assignedAgent], canManageAgents: false });
+    renderPropertyAgentsSection({ agents: [primaryAssignedAgent], canManageAgents: false });
 
     expect(screen.getByText('1 vendedor asignado')).toBeInTheDocument();
+    expect(screen.getByText('Principal')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /gestionar vendedores/i })).not.toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('renders the persisted primary badge in the section and dialog', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal('fetch', mockAssignableAgentsResponse([availableAgent]));
+    renderPropertyAgentsSection({ agents: [primaryAssignedAgent] });
+
+    expect(screen.getByText('Principal')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /gestionar vendedores/i }));
+
+    expect(await screen.findAllByText('Principal')).toHaveLength(2);
+    expect(screen.getByText('Este vendedor principal ya no está disponible.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /marcar como principal/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /quitar principal/i })).not.toBeInTheDocument();
+  });
+
+  it('renders the intentional no-primary state without selecting an assigned seller', () => {
+    renderPropertyAgentsSection({ agents: [assignedAgent] });
+
+    expect(screen.getByText('Sin vendedor principal')).toBeInTheDocument();
+    expect(screen.queryByText('Principal')).not.toBeInTheDocument();
+  });
+
+  it('keeps a persisted ineligible primary visible with safe support copy after members load', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      'fetch',
+      mockAssignableAgentsResponse([{ ...availableAgent, userId: primaryAssignedAgent.userId, role: 'MANAGER' }])
+    );
+    renderPropertyAgentsSection({ agents: [primaryAssignedAgent] });
+
+    await user.click(screen.getByRole('button', { name: /gestionar vendedores/i }));
+
+    expect(await screen.findByText('Este vendedor principal ya no está disponible.')).toBeInTheDocument();
+    expect(screen.getByText('Verificá los integrantes antes de cambiarlo.')).toBeInTheDocument();
+    expect(screen.getAllByText('Principal')).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: /marcar como principal/i })).not.toBeInTheDocument();
   });
 
   it('assigns one available agent through the BFF', async () => {
@@ -155,7 +201,7 @@ function renderPropertyAgentsSection({
   isArchived = false,
   tenantId = 'tenant-1'
 }: {
-  agents?: ProductAgent[];
+  agents?: PropertyAssignedAgent[];
   canManageAgents?: boolean;
   isArchived?: boolean;
   tenantId?: string | null;
