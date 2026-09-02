@@ -156,3 +156,31 @@
 |---|---|---|---|
 | 175–178 | 16 focused baseline | missing exports | 20/20; CAS/type/error cases; clean |
 | 183–186 | new routes; helper 3/3 | absent modules | 20/20; proxy/error cases; clean |
+
+## S7A UI primary server-state rendering — resolved
+- Authoritative OpenSpec status consumed: `ready/apply`; the parent supplied same-token `proceed`, `auto-chain`, the S7A allowed roots, and no action-context warnings.
+- The requested target-local frozen offline install passed with no network: `COREPACK_ENABLE_NETWORK=0 /opt/homebrew/bin/pnpm install --offline --frozen-lockfile --ignore-scripts`.
+- The first focused run was infrastructure-blocked by unbuilt `@viewpro/contracts`; a local contracts build enabled the runner without changing candidate sources.
+- RED then found one candidate-test defect: its single `Principal` query was ambiguous because the panel and dialog correctly render two badges.
+- GREEN changed that assertion to require both badges; the focused component suite passed 9/9, and App New typecheck plus strict lint passed.
+- Commands: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/products/components/property-agents-section.test.tsx`, `pnpm --filter next-shadcn-dashboard-starter typecheck`, and `pnpm --filter next-shadcn-dashboard-starter lint:strict`.
+- Files changed: `property-agents-section.test.tsx`, `property-agents-section.tsx`, `manage-property-agents-dialog.tsx`, `tasks.md`, and this progress record; no design deviation.
+- Checked only S7A rows 198–201 after the rendering-only split; all S7B action/gating/CAS/cache rows remain unchecked.
+- `primaryAgentId` is derived only from `agents[].isPrimary`; selected, no-primary, persisted-ineligible, archived, and unauthorized states are covered.
+- Diff inspection found no primary mutation service import/call, action control, primary-specific `onMutate`, cache edit, or changed assignment access behavior.
+
+### TDD Cycle Evidence
+| Slice | RED | GREEN / TRIANGULATE / REFACTOR |
+|---|---|---|
+| S7A rendering | Existing focused suite ran after offline dependencies; one behavioral assertion failed 8/9. | Corrected test expectation; 9/9, typecheck, and strict lint pass; no production refactor required. |
+
+### Verification and cleanup
+- PASS: focused Vitest, App New typecheck, strict lint, and `git diff --check`.
+- Candidate boundary: five allowed files only; under the 400-line S7A budget; no files staged.
+- Removed target `node_modules`, contracts `dist`, builds, reports, `next-env.d.ts`, and `*.tsbuildinfo`; restored generated tsconfig paths.
+
+### Remaining implementation rows
+- [ ] **RED** — Add failing component tests for exact-`AGENT` set/change action gating from loaded assignable members, separate clear action, set/change/clear payload preconditions, no `onMutate` primary edit, successful returned-engagement cache replacement, product invalidation, conflict-triggered detail refetch, candidate-invalid refetch, safe error copy, and primary removal yielding no primary without promotion. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** — Wire explicit set/change/clear UI actions to the PR 6 service methods, capture the derived current `expectedPrimaryAgentId` including explicit null, install only the returned `PropertyEngagement` into `productKeys.detail(productId, tenantId)`, invalidate product queries, refetch before conflict/invalid feedback, and disable assign/set/change/clear/remove while any seller mutation is pending. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** — Run the focused component tests plus the App New typecheck and strict lint; verify exact-`AGENT` action visibility, no action for an ineligible persisted primary, no pre-success paint, and refreshed durable winner/no-primary rendering after conflict. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** — Consolidate mutation error handling through code-based safe local copy, preserve last server state on generic failures, and do not alter WhatsApp/contact behavior or add a second query/cache authority. <!-- sdd-owner: implementation -->
