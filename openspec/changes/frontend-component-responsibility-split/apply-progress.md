@@ -314,3 +314,11 @@ The four D4a1 task rows in `tasks.md` are visibly `- [x]`. D4a2, D4b, D5, and pa
 
 - Next unchecked D4b rows: `- [ ] RED: Re-run `DOC` in `property-document-requests.test.tsx` for submitted/pending/resolved actions, status/rejection copy, pending flags, and permissions. <!-- sdd-owner: implementation -->`; `- [ ] GREEN: Extract request item/status/review/read presentation into `request-list.tsx` while preserving markup, feedback, commands, and preview boundary. <!-- sdd-owner: implementation -->`; `- [ ] TRIANGULATE: Audit `request-list.tsx` for no child mutation/service ownership and run `DOC`, `MODEL`, `TYPE`, `LINT`, formatter, diff check, import audit, and numstat. <!-- sdd-owner: implementation -->`; `- [ ] REFACTOR: Remove only duplicated item definitions and land the focused under-budget `request-list.tsx` unit. <!-- sdd-owner: implementation -->`
 - D4b remains untouched. Parent-owned landing, verification, sync, archive, and issue-update rows remain deferred unchanged; next recommended action is `parent-lifecycle`.
+
+## D4b budget replan
+
+- D4a2 merged as PR #480 at `c668d109`.
+- Read-only forecast: D4b1 is approximately 225–280 artifact-inclusive changed lines; D4b2 is approximately 310–345 artifact-inclusive changed lines. D4b2 must be reassessed immediately at 350 and both units hard-stop at 400 or more.
+- No D4b source/test work or runtime attempt started; this entry records planning only and does not claim any D4b command was run.
+- D4b1 is next, starting from a fresh `origin/develop` after landed D4a2; D4b2 starts only after D4b1 lands.
+- D5 remains untouched.
