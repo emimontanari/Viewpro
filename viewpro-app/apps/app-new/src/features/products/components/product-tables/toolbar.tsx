@@ -1,5 +1,7 @@
+import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import {
   Select,
   SelectContent,
@@ -10,7 +12,7 @@ import {
 
 type SelectOption = { value: string; label: string };
 
-export function PropertyTableSummary({
+function PropertyTableSummary({
   hasFilters,
   total,
   visibleCount
@@ -39,7 +41,7 @@ export function PropertyTableSummary({
   );
 }
 
-export function ActiveFilterSummary({
+function ActiveFilterSummary({
   archiveLabel,
   operationLabel,
   statusLabel,
@@ -73,7 +75,7 @@ function FilterBadge({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function FilterSelect({
+function FilterSelect({
   allLabel,
   allValue,
   label,
@@ -105,7 +107,7 @@ export function FilterSelect({
   );
 }
 
-export function ArchiveFilterSelect({
+function ArchiveFilterSelect({
   value,
   options,
   onValueChange
@@ -130,7 +132,7 @@ export function ArchiveFilterSelect({
   );
 }
 
-export function PageSizeSelect({
+function PageSizeSelect({
   pageSize,
   options,
   onValueChange
@@ -152,5 +154,135 @@ export function PageSizeSelect({
         ))}
       </SelectContent>
     </Select>
+  );
+}
+
+export function PropertyTableToolbar({
+  activeFilterCount,
+  archiveLabel,
+  archiveOptions,
+  archivedFilter,
+  allValue,
+  canManageProperties,
+  hasFilters,
+  isFetching,
+  operationLabel,
+  operationOptions,
+  operationType,
+  pageSize,
+  pageSizeOptions,
+  status,
+  statusLabel,
+  statusOptions,
+  total,
+  visibleCount,
+  onArchiveFilterChange,
+  onClearFilters,
+  onOperationTypeChange,
+  onPageSizeChange,
+  onStatusChange
+}: {
+  activeFilterCount: number;
+  archiveLabel?: string;
+  archiveOptions: SelectOption[];
+  archivedFilter: string;
+  allValue: string;
+  canManageProperties: boolean;
+  hasFilters: boolean;
+  isFetching: boolean;
+  operationLabel?: string;
+  operationOptions: SelectOption[];
+  operationType: string;
+  pageSize: number;
+  pageSizeOptions: number[];
+  status: string;
+  statusLabel?: string;
+  statusOptions: SelectOption[];
+  total: number;
+  visibleCount: number;
+  onArchiveFilterChange: (value: string) => void;
+  onClearFilters: () => void;
+  onOperationTypeChange: (value: string) => void;
+  onPageSizeChange: (pageSize: string) => void;
+  onStatusChange: (value: string) => void;
+}) {
+  return (
+    <div className='overflow-hidden rounded-2xl border bg-background shadow-xs'>
+      <div className='space-y-4 border-b bg-muted/20 p-4'>
+        <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
+          <div className='space-y-1'>
+            <div className='flex flex-wrap items-center gap-2'>
+              <h2 className='text-base font-semibold tracking-tight'>Inventario de propiedades</h2>
+              {hasFilters ? (
+                <Badge variant='outline' className='bg-background text-muted-foreground'>
+                  {activeFilterCount}{' '}
+                  {activeFilterCount === 1 ? 'filtro activo' : 'filtros activos'}
+                </Badge>
+              ) : null}
+              {isFetching ? (
+                <Badge variant='outline' className='text-muted-foreground'>
+                  Actualizando
+                </Badge>
+              ) : null}
+            </div>
+            <PropertyTableSummary
+              hasFilters={hasFilters}
+              total={total}
+              visibleCount={visibleCount}
+            />
+          </div>
+
+          <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+            {canManageProperties ? (
+              <Button asChild size='sm' className='sm:hidden'>
+                <Link href='/dashboard/product/new'>
+                  <Icons.add className='size-4' /> Nueva propiedad
+                </Link>
+              </Button>
+            ) : null}
+            <FilterSelect
+              allLabel='Todas las operaciones'
+              allValue={allValue}
+              label='Operación'
+              value={operationType}
+              options={operationOptions}
+              onValueChange={onOperationTypeChange}
+            />
+            <FilterSelect
+              allLabel='Todos los estados'
+              allValue={allValue}
+              label='Estado comercial'
+              value={status}
+              options={statusOptions}
+              onValueChange={onStatusChange}
+            />
+            <ArchiveFilterSelect
+              value={archivedFilter}
+              options={archiveOptions}
+              onValueChange={onArchiveFilterChange}
+            />
+            <PageSizeSelect
+              pageSize={pageSize}
+              options={pageSizeOptions}
+              onValueChange={onPageSizeChange}
+            />
+            {hasFilters ? (
+              <Button variant='outline' size='sm' onClick={onClearFilters}>
+                <Icons.close className='size-4' /> Limpiar filtros
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        {hasFilters ? (
+          <ActiveFilterSummary
+            archiveLabel={archiveLabel}
+            operationLabel={operationLabel}
+            statusLabel={statusLabel}
+            onClearFilters={onClearFilters}
+          />
+        ) : null}
+      </div>
+    </div>
   );
 }

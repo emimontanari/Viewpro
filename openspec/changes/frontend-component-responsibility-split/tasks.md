@@ -217,10 +217,10 @@ Record the before-change result, characterization versus genuine RED, after-chan
 
 **Targets:** `product-tables/index.tsx`, `product-tables/toolbar.tsx`, existing table test (read/run only). **Dependency:** landed T2a from fresh `develop`. **Boundary:** move the root `PropertyTableToolbar` shell into `toolbar.tsx`, pass root-derived primitives/callbacks, and make leaf exports private where useful. Neither shell nor leaves may own URL/query/tenant/session/state authority. **Forecast:** 260–320 additions plus deletions; reassess at 350 and hard-stop at 400. **Rollback/publish:** revert only the shell/root wiring as a runnable T2b unit; land before T3a.
 
-- [ ] RED: From fresh landed T2a, re-run `product-table.test.tsx` toolbar values, labels/counts, archive default, clear affordances, `Actualizando`, create permission, and exact page-reset payload characterization; do not manufacture a behavioral RED. <!-- sdd-owner: implementation -->
-- [ ] GREEN: Move only `PropertyTableToolbar` shell to `toolbar.tsx`, pass root-derived primitives/callbacks, and keep all URL/query/tenant/state/permission normalization authority in `index.tsx`. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: Run `TABLE`, `TYPE`, `LINT`, scoped formatter, package formatter baseline, diff check/numstat, and ownership audit for no child URL/query/tenant/state ownership, preserved accessibility/copy/classes/markup, and under-budget count. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Make T2a leaf exports private where useful, remove only moved root shell code, rerun T2b checks, and record the independently rollbackable T2b boundary before T3a. <!-- sdd-owner: implementation -->
+- [x] RED: From fresh landed T2a, re-run `product-table.test.tsx` toolbar values, labels/counts, archive default, clear affordances, `Actualizando`, create permission, and exact page-reset payload characterization; do not manufacture a behavioral RED. <!-- sdd-owner: implementation -->
+- [x] GREEN: Move only `PropertyTableToolbar` shell to `toolbar.tsx`, pass root-derived primitives/callbacks, and keep all URL/query/tenant/state/permission normalization authority in `index.tsx`. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: Run `TABLE`, `TYPE`, `LINT`, scoped formatter, package formatter baseline, diff check/numstat, and ownership audit for no child URL/query/tenant/state ownership, preserved accessibility/copy/classes/markup, and under-budget count. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: Make T2a leaf exports private where useful, remove only moved root shell code, rerun T2b checks, and record the independently rollbackable T2b boundary before T3a. <!-- sdd-owner: implementation -->
 
 ### T3a — Shared product summaries (required)
 

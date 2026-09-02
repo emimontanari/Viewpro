@@ -35,15 +35,9 @@ import {
   getPropertyTypeLabel,
   isArchivedProduct
 } from './columns';
-import { OPERATION_TYPE_OPTIONS, PROPERTY_STATUS_OPTIONS } from './options';
 import { CellAction } from './cell-action';
-import {
-  ActiveFilterSummary,
-  ArchiveFilterSelect,
-  FilterSelect,
-  PageSizeSelect,
-  PropertyTableSummary
-} from './toolbar';
+import { OPERATION_TYPE_OPTIONS, PROPERTY_STATUS_OPTIONS } from './options';
+import { PropertyTableToolbar } from './toolbar';
 
 const ALL_FILTERS_VALUE = 'all';
 const DEFAULT_ARCHIVE_FILTER: PropertyArchiveFilter = 'active';
@@ -99,6 +93,12 @@ export function ProductTable() {
     Number(Boolean(params.operationType)) +
     Number(hasArchiveFilter);
   const canManageProperties = canManagePropertyEngagements(activeMembership);
+  const operationLabel = getOptionLabel(OPERATION_TYPE_OPTIONS, params.operationType);
+  const statusLabel = getOptionLabel(PROPERTY_STATUS_OPTIONS, params.status);
+  const archiveLabel =
+    archivedFilter === DEFAULT_ARCHIVE_FILTER
+      ? undefined
+      : getOptionLabel(archiveFilterOptions, archivedFilter);
 
   const setFilter = (key: 'operationType' | 'status', value: string) => {
     void setParams({
@@ -113,6 +113,9 @@ export function ProductTable() {
       page: 1
     });
   };
+
+  const setOperationType = (value: string) => setFilter('operationType', value);
+  const setStatus = (value: string) => setFilter('status', value);
 
   const clearFilters = () => {
     void setParams({ archived: null, operationType: null, page: 1, status: null });
@@ -163,19 +166,28 @@ export function ProductTable() {
     <section className='min-w-0 space-y-4'>
       <PropertyTableToolbar
         activeFilterCount={activeFilterCount}
+        archiveLabel={archiveLabel}
+        archiveOptions={archiveFilterOptions}
         archivedFilter={archivedFilter}
+        allValue={ALL_FILTERS_VALUE}
+        canManageProperties={canManageProperties}
         hasFilters={hasFilters}
+        isFetching={productsQuery.isFetching}
+        operationLabel={operationLabel}
+        operationOptions={OPERATION_TYPE_OPTIONS}
         operationType={params.operationType ?? ALL_FILTERS_VALUE}
         pageSize={params.perPage}
+        pageSizeOptions={PAGE_SIZE_OPTIONS}
         status={params.status ?? ALL_FILTERS_VALUE}
+        statusLabel={statusLabel}
+        statusOptions={PROPERTY_STATUS_OPTIONS}
         total={total}
         visibleCount={products.length}
-        isFetching={productsQuery.isFetching}
         onArchiveFilterChange={setArchiveFilter}
         onClearFilters={clearFilters}
-        onFilterChange={setFilter}
-        canManageProperties={canManageProperties}
+        onOperationTypeChange={setOperationType}
         onPageSizeChange={setPageSize}
+        onStatusChange={setStatus}
       />
 
       {rows.length === 0 ? (
@@ -245,125 +257,6 @@ export function ProductTable() {
         />
       ) : null}
     </section>
-  );
-}
-
-function PropertyTableToolbar({
-  activeFilterCount,
-  archivedFilter,
-  canManageProperties,
-  hasFilters,
-  isFetching,
-  operationType,
-  pageSize,
-  status,
-  total,
-  visibleCount,
-  onArchiveFilterChange,
-  onClearFilters,
-  onFilterChange,
-  onPageSizeChange
-}: {
-  activeFilterCount: number;
-  archivedFilter: PropertyArchiveFilter;
-  canManageProperties: boolean;
-  hasFilters: boolean;
-  isFetching: boolean;
-  operationType: string;
-  pageSize: number;
-  status: string;
-  total: number;
-  visibleCount: number;
-  onArchiveFilterChange: (value: string) => void;
-  onClearFilters: () => void;
-  onFilterChange: (key: 'operationType' | 'status', value: string) => void;
-  onPageSizeChange: (pageSize: string) => void;
-}) {
-  const operationLabel = getOptionLabel(OPERATION_TYPE_OPTIONS, operationType);
-  const statusLabel = getOptionLabel(PROPERTY_STATUS_OPTIONS, status);
-  const archiveLabel =
-    archivedFilter === DEFAULT_ARCHIVE_FILTER
-      ? undefined
-      : getOptionLabel(archiveFilterOptions, archivedFilter);
-
-  return (
-    <div className='overflow-hidden rounded-2xl border bg-background shadow-xs'>
-      <div className='space-y-4 border-b bg-muted/20 p-4'>
-        <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
-          <div className='space-y-1'>
-            <div className='flex flex-wrap items-center gap-2'>
-              <h2 className='text-base font-semibold tracking-tight'>Inventario de propiedades</h2>
-              {hasFilters ? (
-                <Badge variant='outline' className='bg-background text-muted-foreground'>
-                  {activeFilterCount}{' '}
-                  {activeFilterCount === 1 ? 'filtro activo' : 'filtros activos'}
-                </Badge>
-              ) : null}
-              {isFetching ? (
-                <Badge variant='outline' className='text-muted-foreground'>
-                  Actualizando
-                </Badge>
-              ) : null}
-            </div>
-            <PropertyTableSummary
-              hasFilters={hasFilters}
-              total={total}
-              visibleCount={visibleCount}
-            />
-          </div>
-
-          <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
-            {canManageProperties ? (
-              <Button asChild size='sm' className='sm:hidden'>
-                <Link href='/dashboard/product/new'>
-                  <Icons.add className='size-4' /> Nueva propiedad
-                </Link>
-              </Button>
-            ) : null}
-            <FilterSelect
-              allLabel='Todas las operaciones'
-              allValue={ALL_FILTERS_VALUE}
-              label='Operación'
-              value={operationType}
-              options={OPERATION_TYPE_OPTIONS}
-              onValueChange={(value) => onFilterChange('operationType', value)}
-            />
-            <FilterSelect
-              allLabel='Todos los estados'
-              allValue={ALL_FILTERS_VALUE}
-              label='Estado comercial'
-              value={status}
-              options={PROPERTY_STATUS_OPTIONS}
-              onValueChange={(value) => onFilterChange('status', value)}
-            />
-            <ArchiveFilterSelect
-              value={archivedFilter}
-              options={archiveFilterOptions}
-              onValueChange={onArchiveFilterChange}
-            />
-            <PageSizeSelect
-              pageSize={pageSize}
-              options={PAGE_SIZE_OPTIONS}
-              onValueChange={onPageSizeChange}
-            />
-            {hasFilters ? (
-              <Button variant='outline' size='sm' onClick={onClearFilters}>
-                <Icons.close className='size-4' /> Limpiar filtros
-              </Button>
-            ) : null}
-          </div>
-        </div>
-
-        {hasFilters ? (
-          <ActiveFilterSummary
-            archiveLabel={archiveLabel}
-            operationLabel={operationLabel}
-            statusLabel={statusLabel}
-            onClearFilters={onClearFilters}
-          />
-        ) : null}
-      </div>
-    </div>
   );
 }
 
