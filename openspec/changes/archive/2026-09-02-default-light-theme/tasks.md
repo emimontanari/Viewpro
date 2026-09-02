@@ -99,8 +99,8 @@ Commit, push, PR creation, merge, and issue closure are later parent/user-author
 
 ### Parent-owned post-apply gates
 
-- [ ] Start or reuse one bounded review only after implementation verification is complete, and ask before chaining only if collision, validation availability, or the 400-line forecast changes under `ask-on-risk`. <!-- sdd-owner: parent -->
+- [x] Start or reuse one bounded review only after implementation verification is complete, and ask before chaining only if collision, validation availability, or the 400-line forecast changes under `ask-on-risk`. <!-- sdd-owner: parent -->
 
-- [ ] Assemble issue #282 closure evidence from the verified diff and command results: absent preference is light on both OS states, saved `light`/`dark` remain authoritative, saved `system` remains media-responsive, provider/meta agree, controls regressions pass, and all scope guards are clean; do not close the issue or mutate GitHub from the tasks/apply phase. <!-- sdd-owner: parent -->
+- [x] Assemble issue #282 closure evidence from the verified diff and command results: absent preference is light on both OS states, saved `light`/`dark` remain authoritative, saved `system` remains media-responsive, provider/meta agree, controls regressions pass, and all scope guards are clean; do not close the issue or mutate GitHub from the tasks/apply phase. <!-- sdd-owner: parent -->
 
-- [ ] At explicit user authorization and only under repository delivery policy, handle any later commit, push, PR, merge, and issue-closure actions as separate lifecycle work; none is executed automatically by these implementation tasks. <!-- sdd-owner: parent -->
+- [x] At explicit user authorization and only under repository delivery policy, handle any later commit, push, PR, merge, and issue-closure actions as separate lifecycle work; none is executed automatically by these implementation tasks. <!-- sdd-owner: parent -->
