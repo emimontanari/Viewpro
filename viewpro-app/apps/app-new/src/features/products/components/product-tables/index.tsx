@@ -26,18 +26,14 @@ import { QuickStatusSelect } from '../quick-status-select';
 import {
   columns,
   formatPrice,
-  getAddress,
-  getAgentSummary,
-  getArchivedTone,
   getOperationTone,
   getOperationTypeLabel,
-  getPropertyFacts,
-  getPropertyTypeLabel,
-  isArchivedProduct
+  getPropertyTypeLabel
 } from './columns';
 import { CellAction } from './cell-action';
 import { OPERATION_TYPE_OPTIONS, PROPERTY_STATUS_OPTIONS } from './options';
 import { PropertyTableToolbar } from './toolbar';
+import { OwnerSummary, PropertyIdentity, PropertyMetric, SellerSummary } from './product-summary';
 
 const ALL_FILTERS_VALUE = 'all';
 const DEFAULT_ARCHIVE_FILTER: PropertyArchiveFilter = 'active';
@@ -271,8 +267,6 @@ function PropertyTableRow({
   canManageProperties: boolean;
   propertyEngagement: ProductListItem;
 }) {
-  const agent = getAgentSummary(propertyEngagement);
-
   return (
     <TableRow className='group hover:bg-muted/30'>
       <TableCell className='whitespace-normal px-3 py-3'>
@@ -307,10 +301,7 @@ function PropertyTableRow({
         <OwnerSummary propertyEngagement={propertyEngagement} />
       </TableCell>
       <TableCell className='hidden whitespace-normal px-3 py-3 2xl:table-cell'>
-        <div className='max-w-36'>
-          <p className='truncate text-sm font-medium'>{agent.label}</p>
-          <p className='truncate text-xs text-muted-foreground'>{agent.detail}</p>
-        </div>
+        <SellerSummary propertyEngagement={propertyEngagement} />
       </TableCell>
       <TableCell className='px-3 py-3 text-right'>
         <CellAction canManageProperties={canManageProperties} data={propertyEngagement} />
@@ -326,8 +317,6 @@ function PropertyMobileCard({
   canManageProperties: boolean;
   propertyEngagement: ProductListItem;
 }) {
-  const agent = getAgentSummary(propertyEngagement);
-
   return (
     <article className='overflow-hidden rounded-2xl border bg-background shadow-xs'>
       <div className='p-4'>
@@ -358,12 +347,8 @@ function PropertyMobileCard({
             label='Precio'
             value={formatPrice(propertyEngagement.publishedPriceCents, propertyEngagement.currency)}
           />
-          <PropertyMetric label='Vendedor' value={agent.label} mutedValue={agent.detail} />
-          <PropertyMetric
-            label='Propietario'
-            value={propertyEngagement.property.ownerName ?? 'Sin nombre'}
-            mutedValue={propertyEngagement.property.ownerEmail ?? undefined}
-          />
+          <SellerSummary propertyEngagement={propertyEngagement} mobile />
+          <OwnerSummary propertyEngagement={propertyEngagement} mobile />
           <PropertyMetric
             label='Imágenes'
             value={String(propertyEngagement.property.images.length)}
@@ -371,108 +356,6 @@ function PropertyMobileCard({
         </div>
       </div>
     </article>
-  );
-}
-
-function PropertyIdentity({
-  compact = false,
-  propertyEngagement
-}: {
-  compact?: boolean;
-  propertyEngagement: ProductListItem;
-}) {
-  const propertyFacts = getPropertyFacts(propertyEngagement);
-
-  return (
-    <div className='flex min-w-0 items-center gap-3'>
-      <PropertyThumbnail propertyEngagement={propertyEngagement} compact={compact} />
-      <div className='min-w-0'>
-        <div className='flex min-w-0 items-center gap-2'>
-          <p className='min-w-0 truncate font-medium'>{propertyEngagement.property.title}</p>
-          {isArchivedProduct(propertyEngagement) ? <ArchivedBadge /> : null}
-        </div>
-        <p className='mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground'>
-          {getAddress(propertyEngagement)}
-        </p>
-        {propertyFacts ? (
-          <p className='mt-1 truncate text-xs font-medium text-muted-foreground'>{propertyFacts}</p>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function ArchivedBadge() {
-  return (
-    <Badge variant='outline' className={cn('shrink-0 border text-[11px]', getArchivedTone())}>
-      Archivada
-    </Badge>
-  );
-}
-
-function PropertyThumbnail({
-  compact = false,
-  propertyEngagement
-}: {
-  compact?: boolean;
-  propertyEngagement: ProductListItem;
-}) {
-  const imageUrl = propertyEngagement.property.primaryImage?.url;
-  const sizeClass = compact ? 'h-16 w-20' : 'h-16 w-24';
-
-  if (imageUrl) {
-    return (
-      <div
-        role='img'
-        aria-label={`Imagen de ${propertyEngagement.property.title}`}
-        className={cn('shrink-0 rounded-xl border bg-cover bg-center shadow-xs', sizeClass)}
-        style={{ backgroundImage: `url(${imageUrl})` }}
-      />
-    );
-  }
-
-  return (
-    <div
-      className={cn(
-        'flex shrink-0 items-center justify-center rounded-xl border border-dashed bg-muted/50 text-muted-foreground',
-        sizeClass
-      )}
-    >
-      <Icons.media className='size-5' />
-    </div>
-  );
-}
-
-function OwnerSummary({ propertyEngagement }: { propertyEngagement: ProductListItem }) {
-  return (
-    <div className='max-w-48'>
-      <p className='truncate text-sm font-medium'>
-        {propertyEngagement.property.ownerName ?? 'Sin nombre'}
-      </p>
-      <p className='truncate text-xs text-muted-foreground'>
-        {propertyEngagement.property.ownerEmail ?? 'Sin email'}
-      </p>
-    </div>
-  );
-}
-
-function PropertyMetric({
-  label,
-  mutedValue,
-  value
-}: {
-  label: string;
-  mutedValue?: string;
-  value: string;
-}) {
-  return (
-    <div className='rounded-xl border bg-muted/20 p-3'>
-      <p className='text-[11px] font-medium uppercase tracking-wide text-muted-foreground'>
-        {label}
-      </p>
-      <p className='mt-1 truncate font-medium'>{value}</p>
-      {mutedValue ? <p className='truncate text-xs text-muted-foreground'>{mutedValue}</p> : null}
-    </div>
   );
 }
 
