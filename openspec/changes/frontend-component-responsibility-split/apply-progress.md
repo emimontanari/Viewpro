@@ -565,3 +565,36 @@ The matching D6 rows in `tasks.md` are persisted as `- [x]`; D7 and all parent-o
 | GREEN | Extracted summary presentation and wired both paths to original products | `TABLE` PASS — 9/9. |
 | TRIANGULATE | Existing public dual responsive rendering and two ordered valid `ProductAgent` entries without primary metadata | `Lucía API +1` appears twice from the first API element, with no `isPrimary` lookup or inference. |
 | REFACTOR | Removed only duplicated summary markup, scoped formatting, and ownership audit | PASS. |
+
+## T3b — Desktop table/rows
+
+**Status:** complete for the assigned T3b slice; the four T3b implementation rows are persisted as checked, bringing aggregate task progress to **66/86**.
+
+- **Status/context:** consumed parent `proceed` authority. Produced/consumed file-backed status: `schemaName=spec-driven`, `changeName=frontend-component-responsibility-split`, `artifactStore=openspec`, `applyState=ready`, `nextRecommended=apply`, `actionContext.mode=repo-local`; allowed edits were limited to the two product-table source files plus `tasks.md` and this progress file. No action-context warnings.
+- **Boundary/API:** new direct-import `desktop-table.tsx` exports only `PropertyDesktopTable({ rows, canManageProperties })`; `rows` is `Row<ProductListItem>[]`. It owns the unchanged desktop wrapper, table/header/body, header labels/widths/classes, row map/key, and private `PropertyTableRow`. The root retains `columns`, `useReactTable`, `rows` derivation, query/URL/tenant/permission/action orchestration, empty/responsive composition, and the mobile card byte-for-byte for T4.
+- **Permissions/seller:** the exact root-derived `canManageProperties` reaches both `QuickStatusSelect.canUpdateStatus` and `CellAction.canManageProperties`. Desktop imports `PropertyIdentity`, `OwnerSummary`, and `SellerSummary`; it does not call `getAgentSummary`. `SellerSummary` retains the shared first-API-assignment helper, with no `isPrimary`, `find`, or `sort` inference.
+
+### TDD Cycle Evidence
+
+| Step | Evidence | Result |
+|---|---|---|
+| RED / characterization | Pre-change `TABLE` | PASS — 9/9; preservation extraction, so no manufactured RED. |
+| GREEN | Extracted desktop presentation with original React Table rows | `TABLE` PASS — 9/9. |
+| TRIANGULATE | Existing public desktop/mobile and manager/seller permission cases plus import/ownership audit | PASS — identity, status, price, owner, first API seller, archive, actions, and permissions remain covered. |
+| REFACTOR | Removed only desktop markup from the root and scoped formatting | PASS; root/table authority and mobile source are unchanged. |
+
+### Verification and workload
+
+- `TABLE`: PASS — 9/9 before and after extraction; App New typecheck: PASS; strict lint: PASS.
+- Scoped candidate formatter `pnpm exec oxfmt --check src/features/products/components/product-tables/index.tsx src/features/products/components/product-tables/desktop-table.tsx`: PASS. Package `pnpm format:check` was classified under the shared rule at 91 unrelated package-wide files; it is a recorded non-blocking baseline audit.
+- `git diff --no-ext-diff --check`: PASS. Audit: desktop has one public export, no query/URL/tenant/permission/table derivation/root import or state, permission props are unchanged, shared summaries are reused, seller helper is not called directly, and mobile extraction text matches `HEAD` byte-for-byte.
+- Exact artifact-inclusive numstat: **162 additions + 100 deletions = 262 changed lines** (root 2/94, new desktop module 118/0, tasks 9/6, progress 33/0), below the 350 reassessment threshold and 400 hard cap. Rollback is the root-to-desktop wiring and `desktop-table.tsx` as one runnable unit.
+- No design deviation, test/API/config/package change, commit, push, PR, review, receipt, or lifecycle action occurred.
+
+### Remaining work
+
+- `- [ ] RED: Re-run mobile-versus-desktop identity, status, price, owner, first-assignment seller, archive, action, and permission characterization in \`product-table.test.tsx\`. <!-- sdd-owner: implementation -->`
+- `- [ ] GREEN: Extract \`mobile-cards.tsx\` using shared summaries and unchanged commands. <!-- sdd-owner: implementation -->`
+- `- [ ] TRIANGULATE: Verify \`mobile-cards.tsx\` parity, accessible controls, permission propagation, no child URL/query ownership, and run \`TABLE\`, \`TYPE\`, \`LINT\`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->`
+- `- [ ] REFACTOR: Remove only moved mobile markup from \`product-tables/index.tsx\` and land the rollbackable responsive unit. <!-- sdd-owner: implementation -->`
+- Deferred lifecycle actions: all parent-owned rows remain byte-for-byte unchanged; next route is `parent-lifecycle`.

@@ -37,7 +37,7 @@ Each implementation PR stays below 400 additions plus deletions; stop scope at 3
 - Document writes (create/approve/reject) retain payloads, feedback, dialog behavior, and exactly `productKeys.documentRequests(productId, tenantId)` invalidation. A successful user read obtains the safe URL and calls `window.open(url, '_blank', 'noopener,noreferrer')` without invalidating that list; preview reads also do not invalidate it.
 - The document deep-link reset/open/scroll/highlight lifecycle remains atomic; the preview query remains solely in `DocumentVersionPreviewMedia` with its existing key, `retry: false`, and `staleTime: 60_000`.
 - Product-table work cannot start until the #304 App New gate is landed or definitively rebased away. Afterward fetch and branch from fresh `origin/develop`, confirm types, and pass typecheck. Never add primary-seller behavior; `getAgentSummary` remains first API-ordered assignment.
-- A failed focused test, typecheck, strict lint, formatter, ownership audit, diff check, or budget count blocks the next unit. Use a clearly marked test database for any command that could touch API data.
+- A failed focused test, typecheck, strict lint, scoped candidate formatter, ownership audit, diff check, or budget count blocks the next unit. The blocking formatter is `cd apps/app-new && pnpm exec oxfmt --check <changed source/test paths>` over every changed source/test file. `cd apps/app-new && pnpm format:check` is a package baseline audit: count and record unchanged unrelated failures, but they do not block the candidate. Use a clearly marked test database for any command that could touch API data.
 
 ### Focused commands (run from `viewpro-app/`)
 
@@ -48,11 +48,14 @@ TABLE="pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/
 HOME="pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/dashboard/components/operational-homepage.test.tsx"
 TYPE="pnpm --filter next-shadcn-dashboard-starter typecheck"
 LINT="pnpm --filter next-shadcn-dashboard-starter lint:strict"
+# Candidate gate: provide every changed source/test path.
+cd apps/app-new && pnpm exec oxfmt --check <changed source/test paths>
+# Baseline audit: count and record unchanged unrelated failures; it is non-blocking.
 cd apps/app-new && pnpm format:check
 cd ../.. && git diff --check && git diff --numstat
 ```
 
-Record the before-change result, characterization versus genuine RED, after-change result, typecheck, lint, formatter, diff check, and exact changed-line count in every unit. Final checks are listed below.
+Record the before-change result, characterization versus genuine RED, after-change result, typecheck, lint, scoped candidate formatter, package-baseline classification/count, diff check, and exact changed-line count in every unit. Final checks are listed below.
 
 ## Scenario traceability
 
@@ -235,10 +238,10 @@ Record the before-change result, characterization versus genuine RED, after-chan
 
 **Targets:** `product-tables/index.tsx`, new `product-tables/desktop-table.tsx`, existing `columns.tsx`, `cell-action.tsx`, and table test. **Dependency:** T3a. **Boundary:** desktop shell/header/rows receive original products and `canManageProperties`; pass permission unchanged to quick status and row actions; no query/table ownership. **Stop/rollback/publish:** row/action/permission/seller/accessibility drift or budget risk; revert desktop move; land before T4.
 
-- [ ] RED: Re-run desktop identity/status/price/owner/first-assignment seller/archive/action and permission characterization in `product-table.test.tsx`. <!-- sdd-owner: implementation -->
-- [ ] GREEN: Extract `desktop-table.tsx` with unchanged inputs, shared summaries, and permission callbacks. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: Verify `desktop-table.tsx` actions, quick status, seller order, accessibility, and no child query ownership with `TABLE`, `TYPE`, `LINT`, formatter, diff check, import audit, and numstat. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Remove only moved desktop markup from `product-tables/index.tsx` and land a focused under-budget unit. <!-- sdd-owner: implementation -->
+- [x] RED: Re-run desktop identity/status/price/owner/first-assignment seller/archive/action and permission characterization in `product-table.test.tsx`. <!-- sdd-owner: implementation -->
+- [x] GREEN: Extract `desktop-table.tsx` with unchanged inputs, shared summaries, and permission callbacks. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: Verify `desktop-table.tsx` actions, quick status, seller order, accessibility, and no child query ownership with `TABLE`, `TYPE`, `LINT`, formatter, diff check, import audit, and numstat. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: Remove only moved desktop markup from `product-tables/index.tsx` and land a focused under-budget unit. <!-- sdd-owner: implementation -->
 
 ### T4 — Mobile cards (required)
 
