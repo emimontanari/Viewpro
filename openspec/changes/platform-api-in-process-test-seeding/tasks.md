@@ -2,38 +2,21 @@
 
 ## Review Workload Forecast
 
-| Slice | Lines | State / scope |
-|---|---:|---|
-| PR0 | 352 measured | Merged planning baseline; retain history |
-| PR1 | 192 measured | Merged fixture/foundation |
-| PR2 | 279 refined | Consumers + retry only |
-| PR3 | 160–230 forecast | Readable AST ratchet, regressions, final acceptance |
-| Implementation total | **631–701** | PR1+PR2+PR3; each PR <400 |
-| Including PR0 | **983–1,053** | Honest total review cost |
-
-delivery_strategy: auto-chain (user-approved sequential slices)
-chain_strategy: stacked-to-main (integration branch: develop)
-Decision needed before apply: No
-Chained PRs recommended: Yes
-Chain strategy: stacked-to-main
-400-line budget risk: High
-size:exception: not approved or required
+The complete five-artifact planning amendment must remain at or below the repository-normal 400 changed lines against `HEAD`. PR3 implementation is one focused test spec; no exception or unrelated cleanup is approved.
 
 ### Delivery Topology
 
-- **PR0:** #313 merged planning baseline; retain history.
-- **PR1:** #314 merged fixture/foundation.
-- **PR2:** `fix/platform-api-test-consumers` owns 14 consumer specs, removal of 15 historical production-seed subprocess source sites, 34 direct fixture invocations in their app-owning setup contexts, eight helper/seven direct-site removals, and command-scoped retry control. It excludes `operator-fixture-boundary.spec.ts`, final uncached acceptance, and #311 reconciliation.
-- **PR3:** `test/platform-api-seed-boundary` starts from refreshed `develop` only after PR2 merges. It owns the complete readable Node16 AST dependency/ownership ratchet, fail-closed regressions, and first corrected-byte uncached zero-retry acceptance with `PLATFORM_CONTROL_SETUP_MS <20,000`. Its final acceptance and merge trigger explicit #311 reconciliation.
-- No tracker or exception. Rollback is PR3→PR2→PR1; retain PR0. Historical failed, contaminated, pre-correction, or invalid PR2 receipts are non-acceptance evidence.
-
-Branch graph: merged PR0 → merged PR1 → PR2 → refreshed `develop` → PR3 → explicit #311 reconciliation.
+- **PR0 #313:** merged planning baseline.
+- **PR1 #314:** merged Nest-owned fixture and behavioral coverage.
+- **PR2 #315:** merged migration of 15 subprocess sites/34 launches across 14 specs to 34 direct fixture calls, plus command-scoped retry control.
+- **PR3:** current `test/platform-api-seed-boundary-focused` branch at approved base `a25dbf2ae8e0cb48a530069e9a9b26e631f71dbd`; one self-contained boundary spec and final evidence only.
+- Revert PR3 alone to remove the guard; full capability rollback is PR3→PR2→PR1 while retaining PR0, matching revised issue #311.
 
 ## Completed Baseline
 
 - [x] 1.1 PR0 merged as #313 into `develop`.
 - [x] 1.2 PR1 fixture/foundation merged as #314 into `develop` with behavioral fixture coverage.
-- [x] 1.3 Inventory fixed at 14 consumer specs, 15 historical production-seed subprocess source sites, 34 direct fixture invocations, and eight helpers/seven direct sites; production seed contract retained.
+- [x] 1.3 Fix inventory established: 14 consumer specs, 15 historical subprocess source sites/34 launches, and a retained production seed contract.
 
 ## PR2: Consumers and Retry
 
@@ -41,13 +24,25 @@ Branch graph: merged PR0 → merged PR1 → PR2 → refreshed `develop` → PR3 
 - [x] 2.2 Remove production-seed subprocess helpers/direct sites while preserving roles/statuses/passwords and named assertions.
 - [x] 2.3 Add only command-scoped retry control; default remains 2 and timeout/Turbo/schema/API/runtime/seed remain unchanged.
 - [x] 2.4 Prepare and approve the PR3 split contract without changing implementation source, test, or acceptance-task completion.
-- [ ] 2.5 Deliver and merge the PR2 consumers/retry slice; #311 remains open.
+- [x] 2.5 Merge PR2 as #315 (`8ba9fc37`); issue #311 remains open.
 
 ## PR3: Boundary and Final Acceptance
 
-- [ ] 3.1 Refresh `develop` after PR2 merge and create `test/platform-api-seed-boundary`.
-- [ ] 3.2 RED: with the migrated 14-spec/34-direct-invocation inventory as GREEN baseline input, add source-only regressions for `Deno.Command` new expressions, `ImportEquals`, unresolved/escaping local edges, wrong-context/before-init/after-request calls, alias/type-only/unused/shadowed/wrapper-only bindings, and colocated-spec exclusion.
-- [ ] 3.3 GREEN: implement the complete readable `operator-fixture-boundary.spec.ts` to lock the migrated inventory and its per-app/context ownership, and fail closed for every PR3 RED regression; no opaque compression and no weakened AST contract.
-- [ ] 3.4 Run focused boundary, unchanged seed contract, platform-control 37, validation/typecheck, and full platform-api serially; report baseline plus `Δnew`.
-- [ ] 3.5 Run the first corrected-byte uncached zero-retry root acceptance once; require baseline plus `Δnew`, zero retries, and setup <20 seconds. Rerun-until-green is forbidden.
-- [ ] 3.6 Fresh review, merge, then explicitly reconcile #311. Only afterward advance dependent delivery.
+- [x] 3.1 Start `test/platform-api-seed-boundary-focused` at approved base `a25dbf2ae8e0cb48a530069e9a9b26e631f71dbd`, which contains merged PR2.
+- [ ] 3.2 **RED:** first create `src/test-support/__tests__/operator-fixture-boundary.spec.ts` with an executable contract calling a deliberately missing local `checkOrdinarySpecBoundary`; run the focused Vitest and capture its expected missing-symbol/compile failure without claiming mutation diagnostics. <!-- sdd-owner: implementation -->
+- [ ] 3.3 **GREEN:** define the minimum helper in that same self-contained spec and pass the focused Vitest on clean source bytes; implement configured roots, root-only seed exemption, effective Node16 closure/cycles, external terminals, forbidden/fail-closed edges, and chain diagnostics only. <!-- sdd-owner: implementation -->
+- [ ] 3.4 **TRIANGULATE:** only after GREEN, separately add reachable `node:child_process` and `prisma/seed.ts` edges, capture each chain-bearing focused failure, and restore each mutation byte-for-byte before continuing. <!-- sdd-owner: implementation -->
+- [ ] 3.5 **Verification:** from `viewpro-app/`, with guarded local `_test` worker databases, run the following once on restored bytes in order; the root acceptance cannot be replaced by a rerun. <!-- sdd-owner: implementation -->
+```sh
+pnpm --filter @viewpro/platform-api exec vitest run src/test-support/__tests__/operator-fixture-boundary.spec.ts
+pnpm --filter @viewpro/platform-api exec vitest run src/database/__tests__/seed.spec.ts
+/usr/bin/time -p pnpm --filter @viewpro/platform-api exec vitest run src/platform-control/__tests__/platform-control.controller.spec.ts
+pnpm --filter @viewpro/platform-api db:validate
+pnpm --filter @viewpro/platform-api typecheck
+pnpm --filter @viewpro/platform-api lint
+/usr/bin/time -p env TURBO_FORCE=true TURBO_ENV_MODE=loose VIEWPRO_PLATFORM_TEST_RETRY=0 pnpm test
+```
+- [ ] 3.6 **Final evidence:** require platform-control 37/37 and setup below 20 seconds; record every test command's clean-base total, `Δnew`, resulting total and timing, then verify byte restoration, status, focused diff/check, and exact five-artifact/implementation changed-line accounting at `<=400` per unit. <!-- sdd-owner: implementation -->
+- [ ] 3.7 **Parent-owned review:** freshly review planning, implementation, ordered TDD evidence, one-run acceptance, ownership parsing, and accounting; request fixes if needed. <!-- sdd-owner: parent -->
+- [ ] 3.8 **Parent-owned delivery:** after approval, commit, push, and open/update the PR using repository policy. <!-- sdd-owner: parent -->
+- [ ] 3.9 **Parent-owned completion:** merge the approved PR, explicitly close/reconcile issue #311, then advance dependent delivery. <!-- sdd-owner: parent -->

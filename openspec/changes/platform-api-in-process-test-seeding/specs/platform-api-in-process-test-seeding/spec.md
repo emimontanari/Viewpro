@@ -4,21 +4,14 @@
 
 ### Requirement: Normal integration tests use no production seed subprocess
 
-Normal platform-api integration specs MUST NOT invoke `pnpm db:seed`, the production seed CLI, `execSync`, or any process-per-operator equivalent. Only `src/database/__tests__/seed.spec.ts`, the dedicated production seed contract test, MAY invoke CLI seeding. Migration is complete only when all 15 historical production-seed subprocess source sites are removed from these 14 consumer specs: auth controller, auth-me, auth idle-timeout, isolation, step-up controller, operators controller, payments controller, revenue controller, judgment-fixes, platform-control controller, audit controller, metrics controller, tenant-registry controller, and tenant-detail.
+Ordinary platform-api integration specs that need operator data MUST use the test-only in-process fixture and MUST NOT invoke the production seed CLI or another seed process. The dedicated `src/database/__tests__/seed.spec.ts` contract is the only root allowed to exercise that CLI.
 
-#### Scenario: Boundary and consumer inventory are clean
+#### Scenario: Migrated consumers retain the PR2 boundary
 
-- GIVEN the platform-api test sources and the explicit production-contract allow-list
-- WHEN the PR3 source-boundary regression runs
-- THEN it rejects every normal consumer still containing a forbidden seed path and accepts CLI use only in `seed.spec.ts`
-- AND partial migration is a failure
-
-#### Scenario: PR3 RED exercises incomplete analyzer behavior
-
-- GIVEN PR2's migrated inventory of 14 consumer specs and 34 direct fixture invocations as the GREEN baseline input
-- WHEN PR3 adds boundary regressions before completing the analyzer
-- THEN `Deno.Command` new expressions, `ImportEquals`, unresolved or escaping local edges, wrong-context/before-init/after-request calls, alias/type-only/unused/shadowed/wrapper-only bindings, and colocated specs produce failures
-- AND the RED phase does not claim that the already-migrated consumers are missing
+- GIVEN any of the 14 migrated integration specs needs operator data
+- WHEN its setup creates that data
+- THEN it uses the delivered in-process fixture rather than a production-seed process
+- AND the 34 direct fixture calls and dedicated seed contract remain intact
 
 ### Requirement: A shared fixture uses active Nest-owned dependencies
 
@@ -55,26 +48,79 @@ The existing safe `_test` database guard MUST remain mandatory; the fixture MUST
 
 ### Requirement: Production and execution contracts remain unchanged
 
-The production `prisma/seed.ts`, schemas, APIs, runtime behavior, timeout values, and Turbo global concurrency MUST remain unchanged. PR2 MAY add only command-scoped retry control to platform-api `vitest.config.ts`. The existing production seed contract MUST continue to cover its CLI behavior.
+The production `prisma/seed.ts`, schemas, APIs, runtime behavior, timeout values, global setup, and per-worker database topology MUST remain unchanged. Default retries MUST remain in place; zero retries MAY be command-scoped to acceptance. The production seed contract MUST continue covering CLI behavior.
 
-#### Scenario: Named verification proves bounded behavior
+#### Scenario: Delivered contracts remain bounded
 
-- GIVEN the #311 implementation and its focused regression tests
-- WHEN PR2 verification runs focused/package/serial consumer evidence and PR3 verification runs the source-boundary regression, unchanged seed contract, platform-control, platform-api, and one first corrected-byte uncached zero-retry root run
-- THEN all named evidence passes at recorded baseline-plus-`Δnew` totals, with setup below 20 seconds and no timeout increase
-- AND no acceptance criterion is satisfied merely by rerunning a flaky suite until green
+- GIVEN the delivered fixture migration and focused PR3 boundary
+- WHEN platform-api verification runs
+- THEN production seeding, `_test` safety, Nest cleanup, default retries, and worker topology remain unchanged
+- AND no source file other than the focused boundary spec is added or modified by PR3
 
-### Requirement: Delivery order and rollback are explicit
+### Requirement: Every configured ordinary spec has a local static dependency closure
 
-#311 delivery MUST be PR0→PR1→PR2→PR3. PR0 #313 and PR1 #314 are merged. PR2 #315 owns 14 consumer specs, removal of 15 historical production-seed subprocess source sites, 34 direct fixture invocations in their required app-owning contexts, eight helper/seven direct-site removals, and command-scoped retry control; it MUST NOT add or activate `operator-fixture-boundary.spec.ts`, claim final uncached acceptance, or reconcile #311. PR3 `test/platform-api-seed-boundary` MUST start from refreshed `develop` after PR2 merges and own the complete readable Node16 AST dependency/ownership ratchet, fail-closed regressions, and first corrected-byte uncached zero-retry acceptance with setup below 20 seconds. Every slice MUST remain below 400 changed lines without a size exception. Rollback MUST be PR3→PR2→PR1 while retaining PR0.
+The boundary MUST be one self-contained spec at `src/test-support/__tests__/operator-fixture-boundary.spec.ts`. It MUST discover each spec selected by configured roots under `src/` and `test/` and evaluate it independently, except exact path `src/database/__tests__/seed.spec.ts` MUST be exempt only when it is the root.
 
-#### Scenario: Delivery remains sequenced and reconciled
+For each ordinary root, the boundary MUST traverse repository-local imports, reexports, literal `import()`, and literal `require()` using the package's effective TypeScript Node16 configuration. It MUST follow cycles safely, preserve root-specific chains while caching resolved files, and stop at resolved external dependencies.
 
-- GIVEN PR2 has not merged, PR3 is incomplete, or PR3 final verification evidence is insufficient
-- WHEN delivery is reviewed
-- THEN later implementation slices do not advance early and #311 remains open
-- AND only after PR3 final acceptance and merge is #311 explicitly reconciled
+#### Scenario: Root discovery and root-only exception are enforced
 
-### Requirement: Review cost and acceptance receipts remain bounded
+- GIVEN configured specs plus the dedicated seed-contract spec and global-setup infrastructure
+- WHEN roots are selected
+- THEN every ordinary spec is checked, global setup is not a root, and only the exact seed-contract root is skipped
+- AND another root reaching that spec or production seed receives no exemption
 
-PR0 is 352 measured lines, PR1 is 192 measured lines, PR2 is 279 refined lines, and PR3 is forecast at 160–230 lines. Implementation review cost is 631–701 lines and total review cost including PR0 is 983–1,053 lines. Historical failed, contaminated, pre-correction, or invalid PR2 receipts MUST be retained only as non-acceptance evidence.
+#### Scenario: Node16 closure follows supported static edges
+
+- GIVEN a local dependency reached by a relative, index, alias, reexport, or `.js`-to-TypeScript edge
+- WHEN the ordinary root is traversed
+- THEN effective Node16 resolution follows that file, including cycles
+- AND a resolved external dependency terminates traversal without inspecting package internals
+
+### Requirement: Unknown and forbidden reachability fails with a chain
+
+An ordinary root MUST fail if its closure reaches `prisma/seed.ts`, `test/global-setup.ts`, or `node:child_process`, `child_process`, `execa`, `cross-spawn`, `tinyexec`, `shelljs`, or `zx`. It MUST also fail closed on nonliteral `import()`/`require()`, an unresolved local edge, or a resolved local edge escaping the package. Every failure MUST identify the root, ordered local chain, source edge, and offending target or condition.
+
+#### Scenario: Transitive forbidden target is actionable
+
+- GIVEN an ordinary spec reaches a forbidden target through a local helper
+- WHEN the boundary checks its closure
+- THEN it fails even when the target is seed-contract or global-setup infrastructure
+- AND the diagnostic shows the root-to-offense chain
+
+#### Scenario: Indeterminate local edge is not treated as external
+
+- GIVEN a traversed nonliteral loader or unresolved/escaping local edge
+- WHEN resolution cannot prove a safe local closure
+- THEN the root fails closed with the edge and condition
+- AND only an actually resolved external package is accepted as a terminal
+
+### Requirement: PR3 evidence is ordered, restored, and executable
+
+RED MUST first add the new spec with an executable contract calling a deliberately missing local boundary helper and capture the expected missing-symbol/compile failure. GREEN MUST define the minimum helper in that same spec and pass on the clean source tree. Only after GREEN, TRIANGULATE MUST separately add reachable `node:child_process` and `prisma/seed.ts` edges, capture a chain-bearing failure for each, and restore exact bytes after each run.
+From `viewpro-app/`, final verification MUST execute the exact commands in design/tasks: focused boundary Vitest, seed-contract Vitest, timed platform-control Vitest, platform-api `db:validate`, typecheck, lint, and exactly one `/usr/bin/time -p env TURBO_FORCE=true TURBO_ENV_MODE=loose VIEWPRO_PLATFORM_TEST_RETRY=0 pnpm test`. Database-backed runs MUST use the guarded local `_test` worker databases. Evidence MUST report each test baseline, `Δnew`, resulting total, platform-control's 37 passing tests and setup below 20 seconds, and command timing; a rerun MUST NOT substitute for the one root acceptance.
+
+#### Scenario: Honest RED precedes mutation diagnostics
+
+- GIVEN the boundary helper does not yet exist
+- WHEN the executable spec calls it
+- THEN the focused run fails for the missing symbol before implementation
+- AND no transitive mutation result is claimed until the helper passes GREEN
+
+#### Scenario: Post-GREEN mutations prove the guard
+
+- GIVEN the minimum helper passes on clean source bytes
+- WHEN each forbidden edge is added and checked separately
+- THEN each run fails with its root-to-offense chain
+- AND both mutations are byte-restored and absent from final diffs
+
+#### Scenario: Corrected bytes pass once without masking
+
+- GIVEN restored bytes and the mandatory local `_test` guard
+- WHEN the exact final checks run from `viewpro-app/`
+- THEN platform-control reports 37 tests with setup below 20 seconds and the root run passes once at baseline plus `Δnew`
+- AND no retry, rerun, production change, or stale serial-worker assumption supplies acceptance
+
+### Rollback
+
+PR3's guard is independently revertible. Full capability rollback proceeds PR3→PR2→PR1 while retaining PR0 history, matching revised issue #311.
