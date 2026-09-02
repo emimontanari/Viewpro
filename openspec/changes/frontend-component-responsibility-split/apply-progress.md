@@ -470,3 +470,17 @@ The matching D6 rows in `tasks.md` are persisted as `- [x]`; D7 and all parent-o
   - `- [ ] TRIANGULATE: In \`use-document-request-controller.ts\` or \`property-document-requests.tsx\`, verify create/approve/reject exact \`productKeys.documentRequests(productId, tenantId)\` invalidation and read non-invalidation, feedback, safe URL, and dialog retention with \`DOC\`, \`TYPE\`, \`LINT\`, formatter, and numstat. <!-- sdd-owner: implementation -->`
   - `- [ ] REFACTOR: Land only a clearer independently rollbackable \`use-document-request-controller.ts\`, or land the documented omission decision without source changes. <!-- sdd-owner: implementation -->`
 - Deferred lifecycle actions: all ten parent-owned rows remain byte-for-byte unchanged. Next recommended action is `parent-lifecycle`; no commit, push, PR, receipt, review, or delivery gate was performed.
+
+## T1 — Product-table public baselines
+- Status: authoritative OpenSpec `apply=ready`, aggregate `50/82`, parent `proceed`; `repo-local` edits stayed in the three allowed paths with no warnings.
+### TDD Cycle Evidence
+| Task | Safety net | RED / GREEN / TRIANGULATE / REFACTOR |
+|---|---|---|
+| T1 | `TABLE` 9/9 | Characterization-only: corrected public contracts pass without production changes. |
+- [x] T1 RED/GREEN/TRIANGULATE/REFACTOR and parent GATE-T remain visibly checked in `tasks.md`.
+- Coverage proves disabled tenant/missing-tenant query functions, exact default/non-default filters, clamped pages, page size, filtered empty, responsive permission/actions, and pending `Actualizando` rows.
+- Two valid API-ordered `ProductAgent` fixtures prove first assignment output; no list primary field or lookup exists.
+- Verification: `TABLE` 9/9, `TYPE`, strict `LINT`, scoped `oxfmt --write/--check`, `git diff --no-ext-diff --check`, and no-production audit all PASS.
+- Files/workload: test, tasks, and progress only; T1 rollback is 397 lines, below 400.
+- Remaining: `- [ ] RED: Re-run \`product-table.test.tsx\` toolbar values, labels/counts, archive default, clear, and page-reset payload characterization. <!-- sdd-owner: implementation -->`
+- Deferred parent lifecycle: GATE-T is complete; T2+ remains untouched and next route is `parent-lifecycle`.

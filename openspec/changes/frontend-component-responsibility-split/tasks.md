@@ -193,16 +193,16 @@ Record the before-change result, characterization versus genuine RED, after-chan
 
 **Targets/discovery:** issue #304 status and landed/rebased App New files, especially `features/products/api/types.ts`, `property-agents-section.tsx`, `manage-property-agents-dialog.tsx`, and related tests. **Dependency:** required D1–D6 and D7 decision landed. **Gate:** #304 must land or be definitively rebased away; then `git fetch origin`, fresh `origin/develop` worktree, expected `Product`/agent shape, and pre-change App New typecheck. **Stop:** any pending/unresolved drift; never change seller selection or #304 files in T units. **Rollback:** abandon/rebase unstarted table branch.
 
-- [ ] Confirm the #304 App New gate and SHA/rebase decision, create fresh post-gate `origin/develop`, verify expected types, and record passing pre-change `TYPE` before T1. <!-- sdd-owner: parent -->
+- [x] Confirm the #304 App New gate and SHA/rebase decision, create fresh post-gate `origin/develop`, verify expected types, and record passing pre-change `TYPE` before T1. <!-- sdd-owner: parent -->
 
 ### T1 — Product-table public baselines (required)
 
 **Target:** `viewpro-app/apps/app-new/src/features/products/components/product-tables/product-table.test.tsx`; no production extraction. **Dependency:** clear GATE-T and fresh base/typecheck. **Cover:** tenant/no-tenant and query loading/error/retry/empty; URL filters including `archived:'active'`; filter/clear labels/count and page resets; clamping, disabled controls, page-size reset; desktop/mobile identity/status/price/owner/first-assignment seller/archive/actions; permissions; background fetching; filtered-empty clear. Assert behavior and `nuqs` payloads, not names. **Stop/rollback/publish:** failing baseline, #304 type drift, primary-seller inference, or product decision; test-only revert; land before T2.
 
-- [ ] RED: Add/run only missing black-box cases in `product-table.test.tsx`, recording passing characterization or genuine RED from the post-#304 base. <!-- sdd-owner: implementation -->
-- [ ] GREEN: In `product-table.test.tsx`, resolve a genuine baseline defect separately, or record none; do not extract production code in T1. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: In `product-table.test.tsx`, verify URL filters/setters, active archive, page behavior, responsive parity, permissions, background fetch, filtered-empty clear, and first-assignment ordering with `TABLE`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Keep `product-table.test.tsx` black-box, under budget, and free of primary-seller behavior, then land T1. <!-- sdd-owner: implementation -->
+- [x] RED: Add/run only missing black-box cases in `product-table.test.tsx`, recording passing characterization or genuine RED from the post-#304 base. <!-- sdd-owner: implementation -->
+- [x] GREEN: In `product-table.test.tsx`, resolve a genuine baseline defect separately, or record none; do not extract production code in T1. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: In `product-table.test.tsx`, verify URL filters/setters, active archive, page behavior, responsive parity, permissions, background fetch, filtered-empty clear, and first-assignment ordering with `TABLE`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: Keep `product-table.test.tsx` black-box, under budget, and free of primary-seller behavior, then land T1. <!-- sdd-owner: implementation -->
 
 ### T2 — Product-table toolbar/filters (required)
 
