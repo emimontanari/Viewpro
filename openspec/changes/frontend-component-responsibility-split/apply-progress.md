@@ -322,3 +322,58 @@ The four D4a1 task rows in `tasks.md` are visibly `- [x]`. D4a2, D4b, D5, and pa
 - No D4b source/test work or runtime attempt started; this entry records planning only and does not claim any D4b command was run.
 - D4b1 is next, starting from a fresh `origin/develop` after landed D4a2; D4b2 starts only after D4b1 lands.
 - D5 remains untouched.
+
+## D4b1 — Document status/rejection primitives
+
+**Status:** complete for the assigned D4b1 work unit; the four D4b1 implementation rows are persisted as checked.
+
+### Structured status and action context
+
+- Consumed parent runtime authority: `proceed` for D4b1; delivery path is `auto-chain` / stacked-to-main.
+- Produced status: `schemaName=spec-driven`, `changeName=frontend-component-responsibility-split`, `artifactStore=openspec`, proposal/spec/design/tasks/apply-progress present, `applyState=ready`, `taskProgress=28/72`, `deferredParentActions=5/10`, and `nextRecommended=apply`.
+- `actionContext.mode=repo-local`; edits stayed within the five supplied source/OpenSpec surfaces under `/Users/emimontanari/Work/Apps/Viewpro-worktrees/frontend-component-document-status-primitives`. No authority token, dependency, config, generated output, D4b2/D5/D6 source, or ignored artifact was changed.
+
+### TDD Cycle Evidence
+
+| Step | Evidence | Result |
+|---|---|---|
+| RED / characterization | Landed D4a2 `DOC` and `MODEL` before additions | PASS — 34/34 and 6/6; accepted passing characterization, with no manufactured RED. |
+| Characterization additions | Public rejection heading/reason and pending-approval decision-disable assertions | PASS — `DOC` 36/36 before extraction. |
+| GREEN / TRIANGULATE | Moved only status/rejection primitives and reran focused suites | PASS — `DOC` 36/36 and `MODEL` 6/6. |
+| REFACTOR | Scoped formatting, typecheck, strict lint, and ownership audit | PASS; root item remains intact and authoritative. |
+
+### Completed tasks and boundary
+
+- [x] RED — Added only black-box rejection heading/reason and pending-review-action disabled-state coverage.
+- [x] GREEN — Moved only `DocumentStatusConfig`, `documentStatusConfig`, `DocumentStatusBadge`, and `RejectionReason` to `request-list.tsx`; the root imports the two exported presentation components.
+- [x] TRIANGULATE — Verified focused suites, App New typecheck, strict lint, scoped formatter, package formatter baseline, diff, numstat, and ownership boundary.
+- [x] REFACTOR — Removed only the duplicated root primitives; rollback is the root/list/test wiring as one D4b1 unit.
+
+The matching D4b1 checkboxes in `tasks.md` are visibly `- [x]`; D4b2 remains 0/4 and later task states are unchanged.
+
+### Verification and ownership
+
+| Command | Result |
+|---|---|
+| `DOC` before test additions | PASS — 34/34. |
+| `MODEL` before test additions | PASS — 6/6. |
+| `DOC` after characterization and after extraction/formatting | PASS — 36/36. |
+| `MODEL` after extraction/formatting | PASS — 6/6. |
+| `pnpm --filter next-shadcn-dashboard-starter typecheck` | PASS. |
+| `pnpm --filter next-shadcn-dashboard-starter lint:strict` | PASS. |
+| Scoped `oxfmt --write` then `--check` for root, list, and test | PASS. |
+| `pnpm format:check` | BASELINE BLOCKED — the known 92 unrelated package files fail; all three D4b1 files pass scoped formatting. |
+| `git diff --no-ext-diff --check` | PASS. |
+| Import/ownership audit | PASS — `request-list.tsx` imports only UI, `cn`, React type, feature API types, and model type; no root/service/query/URL/mutation/context/independent-state import. |
+
+### Files, workload, and remaining work
+
+- Changed: `viewpro-app/apps/app-new/src/features/products/components/property-document-requests.tsx`, `viewpro-app/apps/app-new/src/features/products/components/property-document-requests/request-list.tsx`, `viewpro-app/apps/app-new/src/features/products/components/property-document-requests.test.tsx`, `tasks.md`, and this cumulative progress file.
+- Exact artifact-inclusive `git diff --numstat` total: **245** additions plus deletions; below the 350 reassessment threshold and 400 hard stop.
+- Deviations: none. The root retains item markup, mutations/services/React Query/URL state/feedback/rejection controlled state/dialog/version/preview/deep-link/list anchors/highlight/disclosure ownership.
+- Immediate remaining D4b2 lines are unchanged:
+  - `- [ ] RED: From \`viewpro-app/\`, run \`DOC\` and \`MODEL\` against the landed D4b1 baseline and record submitted, pending, resolved, status, permission, review/read, feedback, and item-output characterization; preserve passing behavior as the baseline and do not manufacture a failing RED. <!-- sdd-owner: implementation -->`
+  - `- [ ] GREEN: Move \`DocumentRequestItem\` into \`request-list.tsx\` behind the D4a2 \`renderItem\` seam; pass explicit request, permission, pending flags, callbacks, and root-built \`versionSummary: ReactNode\`, preserving exact markup, button order, copy, feedback commands, review/read behavior, and preview boundary while rejection state/dialog ownership remains in the root. <!-- sdd-owner: implementation -->`
+  - `- [ ] TRIANGULATE: Run \`DOC\`, \`MODEL\`, \`TYPE\`, \`LINT\`, and \`cd apps/app-new && pnpm exec oxfmt --check src/features/products/components/property-document-requests.tsx src/features/products/components/property-document-requests/request-list.tsx src/features/products/components/property-document-requests.test.tsx\`; run \`cd apps/app-new && pnpm format:check\` and classify any package-wide failure against the known unrelated formatting baseline; run \`git diff --check && git diff --numstat\`, record exact additions plus deletions and reassess at 350, and audit child imports/state plus root ownership of mutations, feedback, rejection dialog, version summary, preview, URL/deep-link lifecycle, anchors/highlight, and disclosure. <!-- sdd-owner: implementation -->`
+  - `- [ ] REFACTOR: Remove only the duplicated root \`DocumentRequestItem\` definition and rerun \`DOC\`, \`MODEL\`, \`TYPE\`, \`LINT\`, scoped formatting, package-format baseline classification, diff check, import/ownership audit, and exact numstat; record the 310–345 artifact-inclusive result, rollback boundary, and pre-D5 landing. <!-- sdd-owner: implementation -->`
+- Deferred lifecycle actions: all ten parent-owned rows remain byte-for-byte unchanged; no commit, push, PR, receipt, review, or lifecycle gate was performed.
