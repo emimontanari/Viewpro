@@ -657,3 +657,37 @@ The matching D6 rows in `tasks.md` are persisted as `- [x]`; D7 and all parent-o
 
 - T5b remains exactly four unchecked implementation rows, beginning: `- [ ] RED: From fresh landed T5a, rerun \`TABLE\` for tenant/loading/error/retry/empty/clear/skeleton and background-fetch characterization before moving T5b presentation; do not manufacture a behavioral RED. <!-- sdd-owner: implementation -->`
 - T5b must preserve the root `PropertyTableSkeleton` export via re-export while extracting only states; T6 and all parent-owned lifecycle rows remain deferred and byte-for-byte unchanged.
+
+## T5b — Product-table states
+
+**Status:** complete for the assigned T5b work unit; its four implementation-owned rows are persisted as checked (aggregate **78/90**).
+
+- **Structured status:** consumed authoritative `gentle-ai.sdd-status@2`: `artifactStore=openspec`, `applyState=ready`, `nextRecommended=apply`, no blockers. Parent authority was `proceed`; delivery is `auto-chain` / stacked-to-main.
+- **Action context:** `repo-local`, workspace `/Users/emimontanari/Work/Apps/Viewpro-worktrees/frontend-component-product-table-states`; edits stayed within the four supplied surfaces. No warnings, token, lifecycle, or `product-listing.tsx` edit occurred.
+
+### TDD Cycle Evidence
+
+| Step | Evidence | Result |
+|---|---|---|
+| RED / characterization | Pre-change `TABLE` | PASS — 9/9; preserving extraction, so no RED was manufactured. |
+| GREEN | Extracted prop-driven states and wired root callbacks | `TABLE` PASS — 9/9. |
+| TRIANGULATE | Focused suite, typecheck, strict lint, formatter, package baseline, diff, and ownership audits | PASS except known unrelated package-format baseline. |
+| REFACTOR | Removed only root presentation and re-ran `TABLE` | PASS — 9/9. |
+
+### Boundary and verification
+
+- Added direct-import `states.tsx`: public `PropertyTableMissingTenantState`, `PropertyTableErrorState({ onRetry })`, `PropertyTableEmptyState({ canManageProperties, hasFilters, onClearFilters })`, and `PropertyTableSkeleton`; `PropertyTableMessage` is private.
+- Root retains tenant/query/loading/error/rows-empty selection, `productsQuery.refetch`, `clearFilters`, and permission derivation; it imports local states and re-exports `PropertyTableSkeleton`, preserving the unchanged `product-listing.tsx` import contract.
+- `TABLE` 9/9 before, after GREEN, and after refactor; App New typecheck PASS; strict lint PASS; scoped `oxfmt --write/--check` PASS; `git diff --no-ext-diff --check` PASS.
+- `pnpm format:check` is BASELINE BLOCKED by 91 unrelated files; both candidate sources pass scoped formatting. Copy, callbacks, public export/import, and no-child query/tenant/URL/hooks/state/permission-derivation audits PASS.
+- Changed: `product-tables/index.tsx`, new `product-tables/states.tsx`, `tasks.md`, and this progress file. No design deviation, test/API/config/package change, commit, push, review, receipt, or lifecycle action occurred.
+- Workload: exact artifact-inclusive numstat is **351** additions plus deletions, above the 350 reassessment threshold but below the 400 hard cap. Completed persisted rows: T5b RED, GREEN, TRIANGULATE, and REFACTOR.
+
+### Remaining implementation work
+
+- D7's four exact unchecked rows remain retained in the prior D6 progress entry and unchanged in `tasks.md`.
+- `- [ ] RED: In \`product-table.test.tsx\` and the T6 decision record, re-run T5 baselines and record justification, or record T6 omission. <!-- sdd-owner: implementation -->`
+- `- [ ] GREEN: If justified, extract one complete controller; otherwise leave \`index.tsx\` unchanged and record omission. <!-- sdd-owner: implementation -->`
+- `- [ ] TRIANGULATE: In \`use-product-table-controller.ts\` or \`product-tables/index.tsx\`, verify filters/setter payloads, clamping, React Table derivation, permissions, seller order, and no mirrored state with \`TABLE\`, \`TYPE\`, \`LINT\`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->`
+- `- [ ] REFACTOR: Land \`use-product-table-controller.ts\` only if ownership is clearer and rollbackable; otherwise land the documented omission decision without source changes. <!-- sdd-owner: implementation -->`
+- Parent-owned final verification, landing, sync, archive, and issue-update rows remain byte-for-byte unchanged; next route is `parent-lifecycle`.
