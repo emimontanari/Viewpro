@@ -121,6 +121,7 @@ describe('PropertyDocumentRequests', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     // Restore scrollIntoView after each test
     // @ts-expect-error - restoring mock
     Element.prototype.scrollIntoView = undefined;
@@ -798,6 +799,44 @@ describe('PropertyDocumentRequests', () => {
     const targetLi = document.querySelector('[data-request-id="req-123"]');
     expect(targetLi).not.toBeNull();
     expect(targetLi).toHaveClass('ring-2');
+  });
+
+  it('keeps a superseding deep-link target highlighted until its own timeout expires', async () => {
+    vi.useFakeTimers();
+    const first = documentRequest({ id: 'req-first', status: 'PENDING' });
+    const second = documentRequest({ id: 'req-second', status: 'PENDING' });
+    mockDocParam = first.id;
+    getProductDocumentRequestsMock.mockResolvedValueOnce(documentRequestsResponse([first, second]));
+
+    const { queryClient, rerender } = renderPropertyDocumentRequests();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(document.querySelector(`[data-request-id="${first.id}"]`)).toHaveClass('ring-2');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    mockDocParam = second.id;
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <PropertyDocumentRequests
+          isArchived={false}
+          owners={[linkedOwner]}
+          productId={productId}
+          tenantId={tenantId}
+        />
+      </QueryClientProvider>
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(document.querySelector(`[data-request-id="${second.id}"]`)).toHaveClass('ring-2');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(document.querySelector(`[data-request-id="${second.id}"]`)).toHaveClass('ring-2');
   });
 
   // S-F2: resolved target — Collapsible opens + scroll fires

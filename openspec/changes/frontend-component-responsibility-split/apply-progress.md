@@ -419,3 +419,54 @@ The matching D4b1 checkboxes in `tasks.md` are visibly `- [x]`; D4b2 remains 0/4
 - **Verification:** scoped formatter PASS; `git diff --no-ext-diff --check` PASS. Package `pnpm format:check` is BASELINE BLOCKED by 94 unrelated files (the two D5 files pass scoped formatting). Source numstat is root **1 add / 89 delete** plus untracked module **94 add** = **184** changed lines; final artifact-inclusive aggregate is **204**, below 350 reassessment and the 400 hard cap. Untracked module: `viewpro-app/apps/app-new/src/features/products/components/property-document-requests/document-version.tsx`.
 - **Files:** `property-document-requests.tsx`, new `property-document-requests/document-version.tsx`, `tasks.md`, and this cumulative progress file. No tests were added because existing public cases cover preview success/fallback, version metadata, safe read, exact write invalidation, and read/no-list-invalidation.
 - **Remaining implementation:** `- [ ] RED: Re-run \`DOC\` in \`property-document-requests.test.tsx\` for deep-link reset/open/scroll/highlight, loading-to-success timing, supersession/unmount cleanup, and user-collapse cases. <!-- sdd-owner: implementation -->`; D6 is next. Deferred parent lifecycle rows are unchanged.
+
+## D6 — Atomic document deep-link hook
+
+**Status:** complete for the active D6 work unit; all four D6 implementation-owned task rows are visibly checked (aggregate **45/82**; implementation **40/72**, parent **5/10**).
+
+### Structured status, scope, and workload
+
+- Consumed parent status: `schemaName=spec-driven`, `changeName=frontend-component-responsibility-split`, `artifactStore=openspec`, `applyState=ready`, `nextRecommended=apply`; parent-held D6 authority was `proceed` under `auto-chain` / stacked-to-main.
+- `actionContext.mode=repo-local`; allowed edits stayed within the supplied root, public test, new hook, `tasks.md`, and this progress artifact under `/Users/emimontanari/Work/Apps/Viewpro-worktrees/frontend-component-document-deep-link-hook`. No token, D7, dependency, config, package, or node_modules file changed.
+- The 400-line forecast gate was approved by `auto-chain`; final artifact-inclusive count is **296** additions plus deletions (198 additions, 98 deletions), below the 350 reassessment threshold and hard cap.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net / characterization | GREEN | TRIANGULATE / REFACTOR |
+|---|---|---|---|---|
+| D6 atomic deep-link lifecycle | Public component | Pre-change `DOC` **36/36** and `MODEL` **6/6** passed. Added a public supersession characterization first; it passed against the unchanged root at `DOC` **37/37**, so no artificial RED or behavior correction was needed. | Moved the complete lifecycle into the hook; final `DOC` **37/37** and `MODEL` **6/6** passed. | Existing public reset/open/loading/user-collapse cases plus the new pending-timer supersession case remain green; scoped formatting, typecheck, lint, ownership audit, and diff check passed. |
+
+### Completed implementation tasks and lifecycle audit
+
+- [x] RED — Added the smallest public black-box case: after `req-first` has been highlighted for 1000 ms, a rerendered `req-second` stays visibly highlighted through the first timer's 2000 ms boundary. This proves the superseded pending timer cannot clear the current target, without importing or asserting hook internals.
+- [x] GREEN — Added `use-document-request-deep-link.ts`, which owns cleanup, one-shot `documentos` reset, one-shot resolved opening, post-paint selector lookup, smooth/start scroll, highlight, 2000 ms timeout, and the controlled collapse callback.
+- [x] TRIANGULATE — Preserved the two-effect measurement ordering: target/open precedes post-paint scroll/highlight; the hook clears a prior timer before arming another and clears it on unmount. The selector remains `[data-request-id="${CSS.escape(highlightDocId)}"]` and the one-shot open ref is never reset by collapse.
+- [x] REFACTOR — Removed only the duplicate root lifecycle effects and refs; root retains read-only `doc`, `nuqs` `documentos`, query/grouping, mutations, dialogs, feedback, read behavior, and presentation.
+
+The matching D6 rows in `tasks.md` are persisted as `- [x]`; D7 and all parent-owned rows are unchanged.
+
+### Verification and ownership
+
+| Command | Result |
+|---|---|
+| `DOC` before test change | PASS — 36/36. |
+| `MODEL` before test change | PASS — 6/6. |
+| `DOC` after new characterization against unchanged root | PASS — 37/37. |
+| Final `DOC` / `MODEL` | PASS — 37/37 / 6/6. |
+| App New typecheck / strict lint | PASS / PASS. |
+| Scoped `oxfmt --write` then `--check` for root, hook, and public test | PASS. |
+| `pnpm format:check` | BASELINE BLOCKED — 92 unrelated package-wide formatting files; all D6 files pass scoped formatting. |
+| `git diff --no-ext-diff --check` | PASS. |
+| Hook import/ownership audit | PASS — imports only React and feature API types; no nuqs, service, query, root, or grouping import. |
+
+### Files, boundary, and remaining work
+
+- Changed: `property-document-requests.tsx`, `property-document-requests.test.tsx`, new untracked `property-document-requests/use-document-request-deep-link.ts`, `tasks.md`, and this progress artifact.
+- D6 rollback boundary is the root-to-hook lifecycle wiring plus its public characterization. No design deviation or user-visible behavior change was found.
+- D7 remains untouched and is currently unnecessary: after deep-link ownership moved, the root's query, mutations, dialogs, feedback, read, and presentation remain one coherent authoritative container rather than a partially split controller.
+- Immediate unchecked D7 rows remain exactly:
+  - `- [ ] RED: In \`property-document-requests.test.tsx\` and the D7 decision record, re-run mutation characterization and record justification, or record D7 omission. <!-- sdd-owner: implementation -->`
+  - `- [ ] GREEN: If justified, extract one complete controller; otherwise leave \`property-document-requests.tsx\` unchanged and record omission. <!-- sdd-owner: implementation -->`
+  - `- [ ] TRIANGULATE: In \`use-document-request-controller.ts\` or \`property-document-requests.tsx\`, verify create/approve/reject exact \`productKeys.documentRequests(productId, tenantId)\` invalidation and read non-invalidation, feedback, safe URL, and dialog retention with \`DOC\`, \`TYPE\`, \`LINT\`, formatter, and numstat. <!-- sdd-owner: implementation -->`
+  - `- [ ] REFACTOR: Land only a clearer independently rollbackable \`use-document-request-controller.ts\`, or land the documented omission decision without source changes. <!-- sdd-owner: implementation -->`
+- Deferred lifecycle actions: all ten parent-owned rows remain byte-for-byte unchanged. Next recommended action is `parent-lifecycle`; no commit, push, PR, receipt, review, or delivery gate was performed.
