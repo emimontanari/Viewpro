@@ -79,7 +79,7 @@ For each ordinary root, the boundary MUST traverse repository-local imports, ree
 
 ### Requirement: Unknown and forbidden reachability fails with a chain
 
-An ordinary root MUST fail if its closure reaches `prisma/seed.ts`, `test/global-setup.ts`, or `node:child_process`, `child_process`, `execa`, `cross-spawn`, `tinyexec`, `shelljs`, or `zx`. It MUST also fail closed on nonliteral `import()`/`require()`, an unresolved local edge, or a resolved local edge escaping the package. Every failure MUST identify the root, ordered local chain, source edge, and offending target or condition.
+An ordinary root MUST fail if its closure reaches `prisma/seed.ts`, `test/global-setup.ts`, or `node:child_process`, `child_process`, `execa`, `cross-spawn`, `tinyexec`, `shelljs`, or `zx`. It MUST also fail closed on nonliteral `import()`/`require()`, an unresolved local edge, or a resolved local edge escaping the Git repository. Every failure MUST identify the root, ordered local chain, source edge, and offending target or condition.
 
 #### Scenario: Transitive forbidden target is actionable
 

@@ -1,7 +1,7 @@
 ## Exploration: Platform API in-process test seeding
 
 ### Current State
-Issue #311 remains open after PR0 planning (#313), PR1 fixture/foundation (#314), and PR2 consumer migration (#315) merged. PR3 starts at maintainer-approved base `a25dbf2ae8e0cb48a530069e9a9b26e631f71dbd` and is now narrowed to one self-contained dependency-closure spec; this supersedes the earlier general AST/ownership ratchet.
+Issue #311 remains open after PR0 planning (#313), PR1 fixture/foundation (#314), PR2 consumer migration (#315), and the focused amendment (#499) merged. PR3 starts on `test/platform-api-seed-boundary-pr3` at `4116621c583b7a51f4be16a078fd63ae0a7b8953` with one self-contained dependency-closure spec; this supersedes the earlier general AST/ownership ratchet.
 
 `beforeAll` → local `seedOperator`/direct `execSync` → `pnpm db:seed` → `ts-node prisma/seed.ts` → new `PrismaClient` → `argon2.hash` → `operator.upsert` → `$disconnect`.
 
@@ -27,7 +27,7 @@ High confidence: repeated synchronous seed subprocess startup is unnecessary int
 ### Focused PR3 Boundary
 For every ordinary spec selected by the configured roots, traverse repository-local static dependencies from imports, reexports, literal `import()`, and literal `require()`. Resolve with TypeScript's effective Node16 settings, follow cycles safely, cache resolved files, and stop at external packages.
 
-`src/database/__tests__/seed.spec.ts` is exempt only as a root. Any ordinary root that reaches it, `prisma/seed.ts`, `test/global-setup.ts`, or a known process-launch module must fail. Unresolved or package-escaping local edges and nonliteral loaders also fail closed. Diagnostics must show the root-to-offense chain.
+`src/database/__tests__/seed.spec.ts` is exempt only as a root. Any ordinary root that reaches it, `prisma/seed.ts`, `test/global-setup.ts`, or a known process-launch module must fail. Unresolved or repository-escaping local edges and nonliteral loaders also fail closed. Diagnostics must show the root-to-offense chain.
 
 Known process-launch entrypoints are `node:child_process`, `child_process`, `execa`, `cross-spawn`, `tinyexec`, `shelljs`, and `zx`. PR3 does not own fixture call counting or placement, binding/shadowing analysis, `Bun`/`Deno` syntax, reverse production boundaries, or a reusable analyzer.
 

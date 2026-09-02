@@ -27,7 +27,7 @@ The spec parses `tsconfig.json` with TypeScript APIs and uses the effective Node
 
 Resolve each edge with TypeScript module resolution from its containing file. Repository-local results remain in the graph, including aliases, barrels/indexes, cycles, and `.js` specifiers resolving to TypeScript. Cache parsed/resolved files, but retain each root's ordered predecessor chain for diagnostics. Resolved external package dependencies terminate traversal and their internals are not scanned.
 
-An ordinary closure fails when it reaches `prisma/seed.ts`, `test/global-setup.ts`, or exact process-launch entrypoints `node:child_process`, `child_process`, `execa`, `cross-spawn`, `tinyexec`, `shelljs`, or `zx`. It also fails when a dynamic loader is nonliteral or a local edge is unresolved or escapes the package. Diagnostics name the root, each local edge in order, and the forbidden target or resolution condition.
+An ordinary closure fails when it reaches `prisma/seed.ts`, `test/global-setup.ts`, or exact process-launch entrypoints `node:child_process`, `child_process`, `execa`, `cross-spawn`, `tinyexec`, `shelljs`, or `zx`. It also fails when a dynamic loader is nonliteral or a local edge is unresolved or escapes the Git repository. Diagnostics name the root, each local edge in order, and the forbidden target or resolution condition.
 
 ## Explicitly Superseded Machinery
 
@@ -54,7 +54,7 @@ Before database-backed runs, require the local platform Postgres test base and i
 
 ## Delivery and Rollback
 
-PR0 #313, PR1 #314, and PR2 #315 are merged. Current PR3 branch `test/platform-api-seed-boundary-focused` starts at approved base `a25dbf2ae8e0cb48a530069e9a9b26e631f71dbd`. Implementation owns the focused spec/evidence; the parent owns review and delivery. Revert PR3 alone to remove the guard; full capability rollback is PR3→PR2→PR1, retaining PR0, as revised issue #311 requires.
+PR0 #313, PR1 #314, PR2 #315, and focused amendment #499 are merged. Current PR3 branch `test/platform-api-seed-boundary-pr3` starts at `4116621c583b7a51f4be16a078fd63ae0a7b8953`. Implementation owns the focused spec/evidence; the parent owns review and delivery. Revert PR3 alone to remove the guard; full capability rollback is PR3→PR2→PR1, retaining PR0, as revised issue #311 requires.
 
 ## Open Questions
 
