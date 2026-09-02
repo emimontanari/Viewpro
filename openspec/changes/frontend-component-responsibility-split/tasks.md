@@ -252,14 +252,23 @@ Record the before-change result, characterization versus genuine RED, after-chan
 - [x] TRIANGULATE: Verify `mobile-cards.tsx` parity, accessible controls, permission propagation, no child URL/query ownership, and run `TABLE`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
 - [x] REFACTOR: Remove only moved mobile markup from `product-tables/index.tsx` and land the rollbackable responsive unit. <!-- sdd-owner: implementation -->
 
-### T5 — Pagination and table states (required)
+### T5a — Product-table pagination (required)
 
-**Targets:** `product-tables/index.tsx`, new `product-tables/pagination.tsx` and `states.tsx`, existing table test. **Dependency:** T4. **Boundary:** pagination receives page/count/size/total and `onPageChange`; root retains clamping. States receive retry/clear/create callbacks and no query, tenant, or URL state. **Stop/rollback/publish:** changed clamping, reset, disabled controls, copy, skeleton, retry/clear, or budget risk; revert modules/root wiring; land before T6 decision.
+**Targets:** `product-tables/index.tsx`, new `product-tables/pagination.tsx`, existing table test (read/run only). **Dependency:** T4. **Boundary:** direct-import controlled `PropertyTablePagination` receives `page`, `pageCount`, `pageSize`, `total`, and `onPageChange`; it owns the existing range text, markup/classes, labels, disabled controls, and adjacent-page requests. Root retains page-count derivation, the `total > 0` render gate, URL state/`setParams`, and the exact clamped page command. The child imports no root, hooks, query, URL, tenant, or state code. **Forecast:** under 200 additions plus deletions. **Rollback/publish:** revert the root-to-pagination wiring and `pagination.tsx` as one runnable T5a unit; T5b starts only from landed T5a.
 
-- [ ] RED: Re-run pagination, loading/error/empty/retry/clear, skeleton, and background-fetch characterization in `product-table.test.tsx`. <!-- sdd-owner: implementation -->
-- [ ] GREEN: Extract `pagination.tsx` and `states.tsx` with root-owned query/URL/clamping commands. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: Verify `pagination.tsx`/`states.tsx` boundaries, disabled controls, page-size reset, filtered-empty clear, permissions, no child query ownership, and run `TABLE`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Remove only moved state/pagination markup from `product-tables/index.tsx` and land the stable public container unit. <!-- sdd-owner: implementation -->
+- [x] RED: Re-run `TABLE` for pagination ranges, labels, disabled controls, and adjacent page requests before moving T5a markup; record the passing characterization without manufacturing a behavioral RED. <!-- sdd-owner: implementation -->
+- [x] GREEN: Add direct-import `pagination.tsx` exporting controlled `PropertyTablePagination` with `page`, `pageCount`, `pageSize`, `total`, and `onPageChange`; move existing markup/classes/range calculation/labels/disabled controls and ±1 callback requests unchanged. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: Verify pagination preserves the `total > 0` root gate, root page-count derivation, exact URL `setPage` command and `1..pageCount` clamp, range text, disabled controls, and direct one-way imports with `TABLE`, `TYPE`, `LINT`, scoped formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: Remove only the moved pagination duplicate from `product-tables/index.tsx`, retain root URL/query/tenant/state authority, and record the under-200 T5a rollback boundary before T5b. <!-- sdd-owner: implementation -->
+
+### T5b — Product-table states (required)
+
+**Targets:** `product-tables/index.tsx`, new `product-tables/states.tsx`, existing table test (read/run only). **Dependency:** fresh landed T5a. **Boundary:** extract missing-tenant, error/retry presentation, empty, skeleton, and private message states; states receive callbacks and booleans. Root retains tenant/query/error/empty selection, refetch/clear commands, and permission derivation. Preserve the public `PropertyTableSkeleton` export from `index.tsx` via re-export because `product-listing` imports the index. **Forecast:** 315–340 additions plus deletions; land before the T6 decision.
+
+- [ ] RED: From fresh landed T5a, rerun `TABLE` for tenant/loading/error/retry/empty/clear/skeleton and background-fetch characterization before moving T5b presentation; do not manufacture a behavioral RED. <!-- sdd-owner: implementation -->
+- [ ] GREEN: Extract `states.tsx` with prop-driven missing-tenant, error/retry, empty, skeleton, and private message presentation while root keeps tenant/query/error/empty selection, refetch/clear commands, and permission derivation. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE: Verify states preserve retry/clear/create behavior, copy, skeleton output, permissions, and no child query/tenant/URL ownership with `TABLE`, `TYPE`, `LINT`, scoped formatter, package baseline, diff check, and numstat. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR: Remove only moved state markup from the root, preserve its `PropertyTableSkeleton` re-export for `product-listing`, and record the independently rollbackable T5b boundary before T6. <!-- sdd-owner: implementation -->
 
 ### T6 — Optional product-table controller
 
