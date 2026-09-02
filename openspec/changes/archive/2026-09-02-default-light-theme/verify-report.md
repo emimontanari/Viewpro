@@ -1,3 +1,19 @@
+```yaml
+schema: gentle-ai.verify-result/v1
+evidence_revision: sha256:b8232cefdf4e2b922d5936787aeda843823919aebe570e19225253409fb1b123
+verdict: pass
+blockers: 0
+critical_findings: 0
+requirements: 8/8
+scenarios: 16/16
+test_command: "pnpm --filter next-shadcn-dashboard-starter exec vitest run src/components/themes/__tests__/color-mode.spec.ts src/components/themes/__tests__/theme-provider.spec.tsx src/components/themes/__tests__/theme-mode-toggle.spec.tsx src/components/kbar/use-theme-switching.test.tsx && pnpm --filter next-shadcn-dashboard-starter test"
+test_exit_code: 0
+test_output_hash: sha256:ed8791fb5941d5a27f34f4b24752247d83c946dcfc6750f3d0c416ffbf14a49e
+build_command: "pnpm --filter @viewpro/contracts build && pnpm --filter next-shadcn-dashboard-starter lint:strict && pnpm --filter next-shadcn-dashboard-starter typecheck && pnpm --filter next-shadcn-dashboard-starter build && pnpm --filter next-shadcn-dashboard-starter exec oxfmt --check src/app/layout.tsx src/components/themes/theme-provider.tsx src/components/themes/color-mode.ts src/components/themes/__tests__/color-mode.spec.ts src/components/themes/__tests__/theme-provider.spec.tsx src/components/themes/__tests__/theme-mode-toggle.spec.tsx src/components/kbar/use-theme-switching.test.tsx"
+build_exit_code: 0
+build_output_hash: sha256:3af2daff1e4e11cec90e05e49a0fbe34da8275b8f5b1e438f37147394a2a76ce
+```
+
 # Verification Report: Default InmoView Light Color Mode
 
 ## Status
@@ -9,12 +25,13 @@ This report remediates failed verification revision `sha256:86be48fdd067eb40b8a8
 ## Structured status and action context
 
 - Change selection is explicit and unambiguous: `default-light-theme`.
-- Artifact store is OpenSpec plus matching Engram topics; proposal, nested spec, design, tasks, apply-progress, previous verify report, source, and tests were read.
-- Authoritative workspace: `/Users/emimontanari/Work/Apps/Viewpro-worktrees/default-light-theme`; source CWD: `/Users/emimontanari/Work/Apps/Viewpro-worktrees/default-light-theme/viewpro-app`.
-- `actionContext.mode` is `repo-local`; allowed edit root is the authoritative worktree. The candidate edit and artifact edits are inside that root.
-- Native status mechanically reports 16/19 rows and `verify: blocked` because it counts three explicitly parent-owned lifecycle rows. Ownership-aware reconciliation confirms all 16 implementation-owned rows are complete, and the parent/user explicitly authorized this bounded correction and final rerun.
-- Branch is `fix/default-light-theme`; HEAD and merge-base with `origin/develop` are `c78740b914aa0a2eebac56d286fdd10106cf9b7d`. The worktree mapping proves implementation ownership in the authorized workspace.
-- No commit, push, PR, merge, issue closure, GitHub mutation, or other-worktree mutation occurred.
+- Artifact store is repo-local OpenSpec; proposal, nested spec, design, tasks, apply-progress, previous verify report, source, and tests were read.
+- Authoritative workspace: `/Users/emimontanari/Work/Apps/Viewpro-worktrees/default-light-theme-lifecycle`; source CWD: `/Users/emimontanari/Work/Apps/Viewpro-worktrees/default-light-theme-lifecycle/viewpro-app`.
+- `actionContext.mode` is `repo-local`; the only authorized edit is this report inside the authoritative worktree.
+- Before repair, native `blockedReasons` contained only the missing-envelope admission error. Post-repair validation accepts `verdict: pass` and clears `blockedReasons`; native routing remains mechanically at 16/19 and `next: apply` because the three explicitly parent-owned lifecycle rows are unchecked. Ownership-aware reconciliation confirms all 16 implementation-owned rows are complete.
+- Branch is `docs/default-light-theme-lifecycle`; HEAD is exact `origin/develop@f7d023ae40198a9b8f888fc3cd93dc8e20f92d5b`.
+- Product PR #359 merged at `b91d7db1fbe7a07d70a7cf2f3919600d82cbc8d4`; final evidence PR #362 merged at `e83da286786e89072ae64ede80d22f639f19ac2b`; both are ancestors of the verified develop HEAD.
+- This admission repair performs no commit, push, PR, merge, issue closure, GitHub mutation, or other-worktree mutation.
 
 ## Task completion
 
@@ -110,8 +127,8 @@ The remaining provider test renders production code before asserting policy valu
 
 - Repository-wide formatting retains the authorized pre-existing 67-file baseline; all 67 are tracked and unchanged from `origin/develop`, and none is a candidate file.
 - Candidate formatting passed exactly; no unrelated formatting edit occurred.
-- Final implementation scope is the planned seven app-new files only.
-- Final size is **287 changed lines**, below both the 350-line re-estimation threshold and 400-line hard budget.
+- Merged implementation scope is the planned seven app-new files only.
+- The merged implementation delta is **259 additions + 28 deletions = 287 changed lines**, below both the 350-line re-estimation threshold and 400-line hard budget.
 - Chained PRs were not recommended; the candidate remains one atomic provider/preload slice with its four focused tests.
 - No `size:exception` was used or needed. The pending chain strategy does not conflict with the explicit single-PR work boundary.
 - Production candidates contain no storage writes. No `apps/viewpro-web`, backend/API/schema/database/migration/seed/deployment, preset CSS, or cross-app abstraction changed.
@@ -132,4 +149,4 @@ No `typescript-language-server`, other language-server executable, or package-lo
 
 ## Verification decision
 
-**PASS.** Functional gates, candidate formatting, strict-TDD evidence and assertion quality, scope, rollback, collision, and 400-line budget all pass. The authorized formatting baseline exception is independently confirmed. The change is ready for the parent lifecycle/review decision; this executor makes no archive, commit, PR, merge, or issue-closure claim.
+**PASS.** Functional gates, candidate formatting, strict-TDD evidence and assertion quality, scope, rollback, collision, and 400-line budget all pass. The authorized formatting baseline exception is independently confirmed. Product PR #359 and evidence PR #362 are merged; after admission validation, the next lifecycle action is parent-owned archive/issue-closure reconciliation. This executor makes no archive or issue-closure claim.
