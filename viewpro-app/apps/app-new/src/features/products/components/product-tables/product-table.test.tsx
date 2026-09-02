@@ -136,6 +136,19 @@ describe('ProductTable', () => {
     expect(screen.getByText('Operación: Venta')).toBeInTheDocument();
     expect(screen.getByText('Estado: Captación')).toBeInTheDocument();
     expect(screen.getByText('Archivo: Archivadas')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Operación' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Todas las operaciones' }));
+    expect(state.setParams).toHaveBeenLastCalledWith({ operationType: null, page: 1 });
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Estado comercial' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Todos los estados' }));
+    expect(state.setParams).toHaveBeenLastCalledWith({ page: 1, status: null });
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Archivo' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Activas' }));
+    expect(state.setParams).toHaveBeenLastCalledWith({ archived: null, page: 1 });
+
     fireEvent.click(screen.getByRole('button', { name: 'Ver todo el inventario' }));
     expect(state.setParams).toHaveBeenLastCalledWith({
       archived: null,

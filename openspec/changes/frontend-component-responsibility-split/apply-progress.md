@@ -507,3 +507,38 @@ The matching D6 rows in `tasks.md` are persisted as `- [x]`; D7 and all parent-o
   - [ ] TRIANGULATE: Run `TABLE`, `TYPE`, `LINT`, scoped formatter, package formatter baseline, diff check/numstat, and ownership audit for no child URL/query/tenant/state ownership, preserved accessibility/copy/classes/markup, and under-budget count. <!-- sdd-owner: implementation -->
   - [ ] REFACTOR: Make T2a leaf exports private where useful, remove only moved root shell code, rerun T2b checks, and record the independently rollbackable T2b boundary before T3a. <!-- sdd-owner: implementation -->
 - **Deferred:** T3+ and parent-owned lifecycle rows remain unchanged.
+
+## T2b — Product-table toolbar shell
+
+**Status:** complete; the four T2b implementation rows are persisted as checked, bringing aggregate task progress to **58/86**.
+
+- **Boundary:** exported `PropertyTableToolbar` now owns the unchanged shell, create link, fetch badge, layout, and leaf composition in `toolbar.tsx`; its five T2a leaves are private. The root retains `nuqs`, tenant/session, React Query/options, `all` and default-archive normalization, all label/count/permission derivation, exact setter payloads/page resets, clamping, and option lists. The shell receives primitives plus explicit operation, status, archive, clear, and page-size callbacks.
+- **Verification:** baseline and final `TABLE` PASS (9/9); `TYPE` PASS; strict `LINT` PASS; scoped `oxfmt --write/--check` PASS; `git diff --no-ext-diff --check` PASS. Package `format:check` remains baseline-blocked by 91 unrelated files; both changed files pass scoped formatting.
+- **Audit:** no toolbar root, `nuqs`, tenant/session, React Query/options, hooks, state, permission, normalization, or `setParams` ownership; root authority and accessible labels/copy including both clear actions, create permission, default archive, and `Actualizando` were confirmed.
+- **Workload:** source diff was 295 additions plus deletions before artifacts; final artifact-inclusive numstat is **321** additions plus deletions, below the 350 reassessment threshold and 400 hard stop. Rollback is the root-to-toolbar shell wiring only.
+- **Scope:** changed only `product-tables/index.tsx`, `product-tables/toolbar.tsx`, `tasks.md`, and this cumulative progress file. No test, API, config, dependency, commit, push, PR, review, receipt, or lifecycle action occurred. T3a and parent-owned lifecycle rows remain deferred.
+
+### TDD Cycle Evidence
+
+| Step | Evidence | Result |
+|---|---|---|
+| RED / characterization | Fresh landed T2a `TABLE` before source edits | PASS — 9/9; preserving extraction, so no artificial behavioral RED was made. |
+| GREEN | Move shell with root-derived props and explicit callbacks | `TABLE` PASS — 9/9. |
+| TRIANGULATE / REFACTOR | Re-run focused test after formatting, typecheck, lint, scoped formatting, and ownership audit | PASS; leaf exports are private and root authority remains singular. |
+
+## T2b — Toolbar callback characterization follow-up
+
+**Status:** complete; T2b remains **4/4** and aggregate progress **58/86**. Parent authority was `proceed`; the reconstructed OpenSpec status is `apply=ready`, `nextRecommended=apply`, `auto-chain`, and `repo-local`, with edits limited to the allowed public test and this artifact.
+
+### TDD Cycle Evidence
+
+| Step | Evidence | Result |
+|---|---|---|
+| Safety net / characterization | Pre-edit `TABLE` | PASS — 9/9. |
+| Approval coverage | Existing non-default filter case uses public Radix controls to select all/default values | PASS — operation `{ operationType: null, page: 1 }`, status `{ status: null, page: 1 }`, and archive `{ archived: null, page: 1 }`; the existing full-clear payload assertion remains. |
+| GREEN / TRIANGULATE | Source callback wiring exercised through three distinct public select paths | PASS — 9/9; no source defect or production edit. |
+
+- Scoped test `oxfmt --write/--check`, `TABLE`, typecheck, strict lint, `git diff --check`, and exact numstat are recorded below; the OpenSpec Markdown artifact is outside the package formatter scope.
+- Workload boundary: T2b shell plus this characterization is targeted at no more than 360 additions plus deletions; T3a and parent lifecycle actions remain deferred. No task artifact changed because the four completed T2b rows were already visibly checked.
+- Final verification: `TABLE` 9/9, typecheck, strict lint, scoped test `oxfmt --write/--check`, and `git diff --no-ext-diff --check` PASS. `oxfmt` is package-scoped, so the OpenSpec Markdown artifact was not a formatter target.
+- Final `git diff --numstat`: **212 additions + 139 deletions = 351** changed lines, below the 360 target and 400 hard cap. Remaining: `- [ ] RED: Re-run desktop/mobile identity, owner, seller, archive, metric, action, and first-assignment characterization in product-table.test.tsx. <!-- sdd-owner: implementation -->` (T3a).
