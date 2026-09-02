@@ -175,10 +175,10 @@ Record the before-change result, characterization versus genuine RED, after-chan
 
 **Targets:** `property-document-requests.tsx`; new `property-document-requests/use-document-request-deep-link.ts`; existing public test. **Dependency:** D5. **Boundary:** hook inputs `highlightDocId`, successful data, authoritative `setDocumentFilter`; returns `{containerRef, highlightedId, resolvedOpen, onResolvedOpenChange}` and keeps reset, one-shot open, post-paint lookup/scroll, highlight timer/cleanup, and user collapse together. Root retains read-only `doc` and `nuqs` `documentos`. **Stop:** distributed effects, reset open-ref on collapse, pre-measure scroll, stale timer, URL parsing/fetching/grouping in hook. **Rollback/publish:** revert hook atomically; land before D7 decision and table chain.
 
-- [ ] RED: Re-run `DOC` in `property-document-requests.test.tsx` for deep-link reset/open/scroll/highlight, loading-to-success timing, supersession/unmount cleanup, and user-collapse cases. <!-- sdd-owner: implementation -->
-- [ ] GREEN: Move the complete ordered lifecycle to `use-document-request-deep-link.ts` without a second filter value or URL owner. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: In `use-document-request-deep-link.ts`, exercise Radix measurement timing and cleanup, audit effect/ref ordering and ownership, and run `DOC`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Remove only root effect duplicates from `property-document-requests.tsx`, keep ordered effects together, and land the atomic under-budget hook. <!-- sdd-owner: implementation -->
+- [x] RED: Re-run `DOC` in `property-document-requests.test.tsx` for deep-link reset/open/scroll/highlight, loading-to-success timing, supersession/unmount cleanup, and user-collapse cases. <!-- sdd-owner: implementation -->
+- [x] GREEN: Move the complete ordered lifecycle to `use-document-request-deep-link.ts` without a second filter value or URL owner. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: In `use-document-request-deep-link.ts`, exercise Radix measurement timing and cleanup, audit effect/ref ordering and ownership, and run `DOC`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: Remove only root effect duplicates from `property-document-requests.tsx`, keep ordered effects together, and land the atomic under-budget hook. <!-- sdd-owner: implementation -->
 
 ### D7 — Optional document controller
 
