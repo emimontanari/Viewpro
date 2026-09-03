@@ -15,7 +15,7 @@ Complete issue #311 by preventing ordinary platform-api specs from regaining sta
 - Add only `src/test-support/__tests__/operator-fixture-boundary.spec.ts`, a self-contained static dependency-closure spec.
 - Treat configured ordinary specs under `src/` and `test/` as roots; exempt only `src/database/__tests__/seed.spec.ts`, and only as a root.
 - Traverse repository-local imports, reexports, literal `import()`, and literal `require()` with the effective TypeScript Node16 configuration; handle cycles/cache resolved files and stop at external dependencies.
-- Reject closure reachability to `prisma/seed.ts`, `test/global-setup.ts`, or known process-launch module entrypoints. Fail closed on nonliteral loaders and unresolved or package-escaping local edges, with root-to-offense chain diagnostics.
+- Reject closure reachability to `prisma/seed.ts`, `test/global-setup.ts`, or known process-launch module entrypoints. Fail closed on nonliteral loaders and unresolved or repository-escaping local edges, with root-to-offense chain diagnostics.
 
 ### Superseded / Out of Scope
 Fixture ownership/call counting, binding or shadowing analysis, a reusable AST analyzer, `Bun`/`Deno` or general command interpretation, reverse production boundaries, and serial/shared-database assumptions are superseded. No source change beyond the one focused spec, no production change, and no timeout/topology refactor belongs in PR3.
@@ -46,7 +46,7 @@ Strict TDD starts by adding the new spec with an executable contract that calls 
 
 ## Dependencies
 
-PR0 #313, PR1 #314, and PR2 #315 are merged. PR3 is based at approved commit `a25dbf2ae8e0cb48a530069e9a9b26e631f71dbd`; implementation may begin without another product decision.
+PR0 #313, PR1 #314, PR2 #315, and focused amendment #499 are merged. PR3 is based at `4116621c583b7a51f4be16a078fd63ae0a7b8953`; implementation may proceed without another product decision.
 
 ## Rollback Plan
 
