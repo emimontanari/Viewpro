@@ -2,7 +2,7 @@
 
 ## Execution contract
 
-Planning publication is authorized only for the selected controlled four-PR chain—exploration+proposal → all specs → design+interface → all task artifacts—and is limited to commits, pushes, and PR creation; no merge or source/apply is authorized. After planning-chain acceptance and any separately authorized merges, source/apply requires fresh explicit authorization and a fresh implementation worktree based on `origin/develop` containing `6885e867` or a later descendant. Strict TDD applies to every production-bearing unit: RED, smallest GREEN, TRIANGULATE, REFACTOR, focused verification, and `finally` cleanup. U12 and U22A/U22B are verification-only and own no first RED or production fix. Use only local PostgreSQL `viewpro_test` (or another clearly marked local `*_test` URL), named worker connections, bounded timeouts, and the repository's offline frozen install. No Neon, providers, or external services are authorized. Exact paths, ranges, group arithmetic, and commands are in the companions.
+The controlled four-PR planning chain—exploration+proposal → all specs → design+interface → all task artifacts—is merged. The user explicitly authorized source/apply from a fresh implementation worktree based on `origin/develop`; commit, push, PR, and merge remain separately gated. Strict TDD applies to every production-bearing unit: RED, smallest GREEN, TRIANGULATE, REFACTOR, focused verification, and `finally` cleanup. U12 and U22A/U22B are verification-only and own no first RED or production fix. Use only local PostgreSQL `viewpro_test` (or another clearly marked local `*_test` URL), named worker connections, bounded timeouts, and the repository's offline frozen install. No Neon, providers, or external services are authorized. Exact paths, ranges, group arithmetic, and commands are in the companions.
 
 ## Review Workload Forecast
 
@@ -13,14 +13,14 @@ Planning publication is authorized only for the selected controlled four-PR chai
 | Chained PRs recommended | Yes |
 | Suggested split | Selected controlled source chain C1 → C20, each group max ≤650; selected controlled four-PR planning chain. |
 | Delivery strategy | auto-chain |
-| Chain strategy | feature-branch-chain |
+| Chain strategy | stacked-to-develop |
 
 Decision needed before apply: No
 Chained PRs recommended: Yes
-Chain strategy: feature-branch-chain
+Chain strategy: stacked-to-develop
 400-line budget risk: High
 
-Unit counts: 30 production-bearing; verification-only units are U12/U22A/U22B (3); and 1 parent/verify gate with no source-unit estimate. The selected source topology is the controlled C1 → C20 chain with exactly 20 dependency-ordered groups, each max ≤650; no blanket exception applies. Strict400 remains rejected forecast/history only, not an active plan.
+Unit counts: 30 production-bearing; verification-only units are U12/U22A/U22B (3); and 1 parent/verify gate with no source-unit estimate. The selected source topology is the controlled C1 → C20 chain with exactly 20 dependency-ordered groups, each max ≤650; C1 is U1, C2 atomically contains U2A/U2B/U2C, and C3 contains U3/U4A. Schema, migration, tenant registry, and cleanup land together in C2 because generated-client and migrated-database paths must agree. No blanket exception applies. Strict400 remains rejected forecast/history only, not an active plan.
 
 ## Scenario linkage
 
@@ -32,8 +32,8 @@ The evidence matrix preserves exactly 49 rows. Task coverage links them as follo
 
 Manifest: `packages/contracts/src/index.ts`, `packages/contracts/test/runtime-contract.spec.ts`, `apps/api/src/common/filters/global-exception.filter.spec.ts`, `apps/api/src/permissions/permissions.constants.ts`, `apps/api/src/permissions/role-permissions.ts`, `apps/api/src/permissions/property-proposals-role-permissions.spec.ts`.
 
-- [ ] Run RED for the exact catalog, role mapping, forged-capability, seller canonical-create denial, unchanged manager `engagements.create`, and `GlobalExceptionFilter` tests for enabled known-code passthrough, unknown/missing fallback, and the exact three-key envelope; then add the smallest GREEN and TRIANGULATE before REFACTOR. <!-- sdd-owner: implementation -->
-- [ ] Verify the listed contract/permission tests and API typecheck; remove temporary fixtures. <!-- sdd-owner: implementation -->
+- [x] Run RED for the exact catalog, role mapping, forged-capability, seller canonical-create denial, unchanged manager `engagements.create`, and `GlobalExceptionFilter` tests for enabled known-code passthrough, unknown/missing fallback, and the exact three-key envelope; then add the smallest GREEN and TRIANGULATE before REFACTOR. <!-- sdd-owner: implementation -->
+- [x] Verify the listed contract/permission tests and API typecheck; remove temporary fixtures. <!-- sdd-owner: implementation -->
 
 ### U2A — Prisma schema contract
 
@@ -262,7 +262,7 @@ Manifest: `apps/app-new/tests/seeded/property-proposals.spec.ts`, `property-prop
 ## Parent review and lifecycle gates
 
 - [ ] Start or reuse one bounded review after apply, checking unit boundaries, TDD order, cleanup/rollback, isolation, race evidence, exact manifests, and budgets. <!-- sdd-owner: parent -->
-- [ ] After planning-chain acceptance and any separately authorized merges, require fresh explicit source/apply authorization and a fresh `origin/develop` implementation worktree before beginning the controlled C1–C20 source chain. <!-- sdd-owner: parent -->
+- [x] After planning-chain acceptance and any separately authorized merges, require fresh explicit source/apply authorization and a fresh `origin/develop` implementation worktree before beginning the controlled C1–C20 source chain. <!-- sdd-owner: parent -->
 - [ ] Run the final read-only `git diff --check` gate and reconcile all 49 matrix rows, commands, skips, blockers, and residual risks; Git mutation, delivery, push, merge, and archive remain forbidden here. <!-- sdd-owner: parent -->
 
 ## Arithmetic check

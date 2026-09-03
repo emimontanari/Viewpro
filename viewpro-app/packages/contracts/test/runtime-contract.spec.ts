@@ -49,10 +49,21 @@ const primaryAgentPublicErrorCodes = [
   'PRIMARY_AGENT_STATE_CONFLICT',
 ] as const
 
+const propertyProposalPublicErrorCodes = [
+  'PROPERTY_PROPOSAL_NOT_FOUND',
+  'PROPERTY_PROPOSAL_STATE_CONFLICT',
+  'PROPERTY_PROPOSAL_SELF_REVIEW_FORBIDDEN',
+  'PROPERTY_PROPOSAL_SUBMISSION_INCOMPLETE',
+  'PROPERTY_PROPOSAL_REJECTION_REASON_INVALID',
+  'PROPERTY_PROPOSAL_PROPOSER_INELIGIBLE',
+  'TENANT_ACTIVE_PROPERTY_ENGAGEMENT_LIMIT_EXCEEDED',
+] as const
+
 const expectedPublicErrorCodes = [
   ...frozenPublicErrorCodes,
   ...phoneContactPublicErrorCodes,
   ...primaryAgentPublicErrorCodes,
+  ...propertyProposalPublicErrorCodes,
 ] as const
 
 function runNode(args: string[]) {
@@ -102,7 +113,7 @@ describe('@viewpro/contracts runtime contract', () => {
     }
 
     expect(contract.codes).toEqual(expectedPublicErrorCodes)
-    expect(contract.codes).toHaveLength(30)
+    expect(contract.codes).toHaveLength(37)
     expect(contract.codes.slice(0, frozenPublicErrorCodes.length)).toEqual(
       frozenPublicErrorCodes,
     )

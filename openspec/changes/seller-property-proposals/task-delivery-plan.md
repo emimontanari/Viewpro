@@ -112,9 +112,9 @@ The corrected strict units mechanically group into **20** dependency-ordered opt
 
 | Group | Units | Maximum arithmetic | Group range |
 |---|---|---:|---:|
-| C1 | U1 + U2A + U2C | 288+230+67=585 | 463–585 |
-| C2 | U2B + U3 | 295+275=570 | 465–570 |
-| C3 | U4A | 328 | 262–328 |
+| C1 | U1 | 288 | 230–288 |
+| C2 | U2A + U2B + U2C | 230+295+67=592 | 483–592 |
+| C3 | U3 + U4A | 275+328=603 | 477–603 |
 | C4 | U4B + U5A | 325+325=650 | 525–650 |
 | C5 | U5B + U6 | 210+275=485 | 390–485 |
 | C6 | U7 | 305 | 255–305 |
@@ -133,7 +133,7 @@ The corrected strict units mechanically group into **20** dependency-ordered opt
 | C19 | U20B + U21A | 218+352=570 | 473–570 |
 | C20 | U22A + U22B | 325+250=575 | 485–575 |
 
-This selected controlled source topology has no blanket exception: execute C1–C20 in dependency order, including U5A before U5B, U20A before U20B, and U20B before U21A. Strict400 is retained only as rejected forecast/history.
+This selected controlled source topology has no blanket exception: execute C1–C20 in dependency order, including U1 before C2's atomic U2A/U2B/U2C, U5A before U5B, U20A before U20B, and U20B before U21A. Schema, migration, tenant registry, and cleanup land together in C2 because generated-client and migrated-database paths must agree. Strict400 is retained only as rejected forecast/history.
 
 ## Planning delivery arithmetic
 

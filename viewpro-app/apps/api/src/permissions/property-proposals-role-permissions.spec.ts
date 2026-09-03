@@ -1,7 +1,11 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { TenantRole } from '@prisma/client'
-import { PERMISSIONS, type Permission } from './permissions.constants'
+import { describe, expect, it } from 'vitest'
+import { PERMISSIONS } from './permissions.constants'
+import { getPermissionsForRole } from './role-permissions'
 
-export const ROLE_PERMISSIONS: Record<TenantRole, Permission[]> = {
+const EXPECTED_PERMISSIONS: Record<TenantRole, readonly string[]> = {
   [TenantRole.PRINCIPAL_MANAGER]: [
     PERMISSIONS.TENANT_VIEW,
     PERMISSIONS.TENANT_MANAGE_SETTINGS,
@@ -38,6 +42,18 @@ export const ROLE_PERMISSIONS: Record<TenantRole, Permission[]> = {
   ],
 }
 
-export function getPermissionsForRole(role: TenantRole): Permission[] {
-  return ROLE_PERMISSIONS[role] ?? []
-}
+describe('property-proposal role permissions', () => {
+  it.each([
+    TenantRole.PRINCIPAL_MANAGER,
+    TenantRole.MANAGER,
+    TenantRole.AGENT,
+  ])('gives %s its exact ordered permission array', (role) => {
+    expect(getPermissionsForRole(role)).toEqual(EXPECTED_PERMISSIONS[role])
+  })
+
+  it('does not derive principal-manager permissions from the permission catalog', () => {
+    const source = readFileSync(join(__dirname, 'role-permissions.ts'), 'utf8')
+
+    expect(source).not.toContain('Object.values(PERMISSIONS)')
+  })
+})
