@@ -1,5 +1,5 @@
 /**
- * Seeded smoke suite — audit-row trace (Stage 26.3)
+ * Seeded smoke suite — audit-row trace (existing coverage across seeded stages)
  *
  * | Block                       | Tests                                           | Audit row                                         |
  * |-----------------------------|-------------------------------------------------|---------------------------------------------------|
@@ -11,12 +11,18 @@
  * | Engagement management       | T14 (assign), T15 (unassign)                    | Manager assigns / unassigns seller                 |
  * | WhatsApp + tracking         | T19b                                            | WhatsApp click tracking                            |
  * | Tenant limits               | T20                                             | Limit exceeded UI error                            |
+ * | Notification persistence    | T-NEW-1, T-NEW-2                                | Stage 24.5 S-B1, S-B2                              |
+ * | Seguimiento filters + docs  | S-8, T-28, T-29                                 | Stages 20.11 S-8; 20.9 S-15, S-16                 |
+ * | Contact configuration       | S-12                                            | Stage 23.3 tenant WhatsApp persistence             |
+ * | Owner movement contact      | S-10, S-9                                       | Stage 23.5 seller contact + click tracking          |
+ * | Isolation                   | U-1, U-2                                        | Stage 26.4 S-5, S-7                                |
  *
  * ORDERING: Tests run serially (fullyParallel: false, workers: 1).
  * T13 (engagement creation) MUST run after T01 which asserts '20 gestiones'.
  * T14 (assign) MUST run after T13. T15 (unassign) MUST run after T14.
  * T18a (reject) MUST run after seed fixture exists (Stage 26.3 Commit B).
- * T20 (limit) MUST be last — it has an afterEach that restores the tenant limit.
+ * T20 (limit) has a title-guarded afterEach restore, so later tests are allowed;
+ * pnpm demo:seed remains the hard-kill fallback if that hook cannot run.
  */
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
@@ -627,7 +633,8 @@ type AdminTenantsResponse = {
 // Stage 26.3 — New tests (T13..T20) covering audit gaps G-1..G-7
 // ORDERING: T13 MUST run after Test 1 (asserts '20 gestiones en total').
 //           T14 depends on T13 (new engagement). T15 depends on T14 (martin assigned).
-//           T20 MUST be last — has afterEach that restores maxActivePropertyEngagements.
+//           T20 has a title-guarded afterEach restore; later tests are allowed, and
+//           pnpm demo:seed remains the hard-kill fallback if that hook cannot run.
 // ---------------------------------------------------------------------------
 
 // Track the title of the engagement created in T13 so T14 and T15 can reference it.
@@ -1148,8 +1155,8 @@ test('manager mark-all-read yields unread-count zero after re-fetch', async ({ p
 });
 
 // T20 — G-7 (FR-20..FR-22): Tenant engagement limit blocks creation with a clear UI error.
-// MUST BE LAST — has afterEach that restores maxActivePropertyEngagements to 25.
-// NEXT-RESEED FALLBACK: if afterEach fails (e.g. hard kill), run 'pnpm demo:seed' to restore.
+// Its title-guarded afterEach restores maxActivePropertyEngagements to 25, so later tests
+// are allowed. If the hook cannot run (e.g. hard kill), use 'pnpm demo:seed' as the fallback.
 // The afterEach is scoped so it only runs for this test (guard on test title).
 // Allowed duration: 12–15s (exceeds 10s soft budget — R4: admin PATCH + sign-in switch required).
 const KNOWN_LIMITS = { maxActivePropertyEngagements: 25 };
