@@ -67,11 +67,11 @@ After final workspace-traversal hardening, the exact root command ran once with 
 
 ## Completion, scope, cleanup, and boundary
 
-- [x] The five implementation-owned PR3 task rows 3.2–3.6 are visibly checked. The 3.1 branch/base row is corrected separately; parent-owned 3.7–3.9 remain byte-for-byte unchecked.
+- [x] The five implementation-owned PR3 task rows 3.2–3.6 are visibly checked. The 3.1 branch/base row is corrected separately, parent review 3.7 is checked, and delivery/completion rows 3.8–3.9 remain unchecked.
 - Changed only the focused boundary spec, branch/base evidence in `exploration.md`, `proposal.md`, `design.md`, and `tasks.md`, plus this progress artifact. The health controller SHA-256 is still `16fcdabb5a65d68131d5779bed73873e5a10375c89ceee01c53e1df2342cf45e`; all TRIANGULATE mutations remain absent.
 - No design deviation: this remains one self-contained static guard with no production, fixture, consumer, timeout, retry, or topology change.
 - Status is `artifactStore: openspec`, repository-local at `/Users/emimontanari/Work/Apps/Viewpro-worktrees/platform-api-seed-boundary-implementation`, with implementation `applyState: all_done` and route `parent-lifecycle`; there is no missing-spec apply blocker.
-- PR boundary remains one self-contained PR3 spec and evidence: seven files, 267 additions + 15 deletions = 282 changed lines. Temporary dependencies, generated clients, contract build output, upload/cache/report artifacts, and `tsconfig.tsbuildinfo` were removed; both four-worker database inventories remain with zero active connections.
+- PR boundary remains one self-contained PR3 spec and evidence: seven files, 268 additions + 16 deletions = 284 changed lines. Temporary dependencies, generated clients, contract build output, upload/cache/report artifacts, and `tsconfig.tsbuildinfo` were removed; both four-worker database inventories remain with zero active connections.
 
 ## Deferred parent lifecycle actions
 
