@@ -51,16 +51,23 @@ recurring; if you add an env var the API requires, add it here too.
 | `owner sees rejection reason and re-upload action`           | Manager approves/rejects document (owner side)      | FR-16         | demo-smoke.spec.ts     |
 | `owner WhatsApp click POSTs a tracking event`                | WhatsApp contact link priority + tracking           | FR-17..FR-19  | demo-smoke.spec.ts     |
 | `tenant engagement limit blocks creation with a clear UI error` | Tenant suspended/limit behavior                 | FR-20..FR-22  | demo-smoke.spec.ts     |
-
-| `isolation: seller direct deep-link to unassigned property is denied` | Seller unassigned (UI denial) | S-5, B-2 | FB-1 / Coverage matrix — Seller unassigned | FR-3 (UI) | demo-smoke.spec.ts |
-| `isolation: owner direct deep-link to unowned property is denied`      | Owner unauthorised (UI denial) | S-7, B-3 | JD-2 / Coverage matrix — Owner unauthorised | FR-6 (UI) | demo-smoke.spec.ts |
+| `owner mark-one-read persists after re-fetch`                   | Owner notification mark-one-read persistence        | Stage 24.5 S-B1; FR-B1, FR-B3, FR-B4 | demo-smoke.spec.ts |
+| `manager mark-all-read yields unread-count zero after re-fetch` | Manager notification mark-all-read persistence       | Stage 24.5 S-B2; FR-B2, FR-B3, FR-B4 | demo-smoke.spec.ts |
+| `Seguimiento filter smoke: date=seed-clock-day + Responsable=Martín` | Seguimiento seed-clock date and assigned-agent filter | Stage 20.11 S-8 | demo-smoke.spec.ts |
+| `seeded smoke: doc card renders with stable structure (S-15)`   | Seguimiento document card stable structure           | Stage 20.9 S-15; FR-12 | demo-smoke.spec.ts |
+| `seeded smoke: Documentos filter shows only doc cards (S-16)`   | Seguimiento Documentos filter scopes to document cards | Stage 20.9 S-16; FR-13 | demo-smoke.spec.ts |
+| `S-12: PRINCIPAL_MANAGER can edit the tenant WhatsApp phone and the change persists across reload` | Tenant WhatsApp phone edit persistence | Stage 23.3 S-12 | demo-smoke.spec.ts |
+| `S-10: owner sees assigned seller phone on a movement card`     | Owner movement contact resolves to assigned seller   | Stage 23.5 S-10 | demo-smoke.spec.ts |
+| `S-9: clicking Consultar responsable on a movement card POSTs to the tracking endpoint` | Movement contact click tracking | Stage 23.5 S-9 | demo-smoke.spec.ts |
+| `isolation: seller direct deep-link to unassigned property is denied` | Seller unassigned (UI denial); FB-1 / Coverage matrix — Seller unassigned | Stage 26.4 S-5, B-2; FR-3 (UI) | demo-smoke.spec.ts |
+| `isolation: owner direct deep-link to unowned property is denied`      | Owner unauthorised (UI denial); JD-2 / Coverage matrix — Owner unauthorised | Stage 26.4 S-7, B-3; FR-6 (UI) | demo-smoke.spec.ts |
 
 ## Notes
 
 - Baseline tests (rows marked `(baseline)`) existed before Stage 26.3.
 - Test 8 (`demo owner sees seeded notifications...`) was extended in Stage 26.3 to also assert the WhatsApp anchor href (FR-17, FR-18).
 - T13 (engagement creation) runs after Test 1's `'20 gestiones'` assertion — serial order is required.
-- T20 (tenant limit) must be last — it has an `afterEach` that restores `maxActivePropertyEngagements = 25`.
-- If T20's `afterEach` fails (e.g. hard process kill), run `pnpm demo:seed` to restore the tenant limit.
+- T20 (tenant limit) has a title-guarded `afterEach` that restores `maxActivePropertyEngagements = 25`; later tests are allowed.
+- If T20's `afterEach` cannot run (for example, after a hard process kill), `pnpm demo:seed` remains the fallback for restoring the tenant limit.
 - Stage 26.4 (isolation block): U-1 must use `signInSellerWithTenantContext` (not the plain `signIn`) to ensure the active tenant context is established before navigating to a deep link — otherwise `MissingTenantState` renders instead of the denial surface.
 - U-2 requires the isolation tenant seed fixture (slug: `viewpro-isolation-tenant`). Run `pnpm demo:seed` to ensure both tenants are seeded before running the isolation block.
