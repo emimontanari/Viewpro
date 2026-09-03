@@ -265,10 +265,10 @@ Record the before-change result, characterization versus genuine RED, after-chan
 
 **Targets:** `product-tables/index.tsx`, new `product-tables/states.tsx`, existing table test (read/run only). **Dependency:** fresh landed T5a. **Boundary:** extract missing-tenant, error/retry presentation, empty, skeleton, and private message states; states receive callbacks and booleans. Root retains tenant/query/error/empty selection, refetch/clear commands, and permission derivation. Preserve the public `PropertyTableSkeleton` export from `index.tsx` via re-export because `product-listing` imports the index. **Forecast:** 315–340 additions plus deletions; land before the T6 decision.
 
-- [ ] RED: From fresh landed T5a, rerun `TABLE` for tenant/loading/error/retry/empty/clear/skeleton and background-fetch characterization before moving T5b presentation; do not manufacture a behavioral RED. <!-- sdd-owner: implementation -->
-- [ ] GREEN: Extract `states.tsx` with prop-driven missing-tenant, error/retry, empty, skeleton, and private message presentation while root keeps tenant/query/error/empty selection, refetch/clear commands, and permission derivation. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: Verify states preserve retry/clear/create behavior, copy, skeleton output, permissions, and no child query/tenant/URL ownership with `TABLE`, `TYPE`, `LINT`, scoped formatter, package baseline, diff check, and numstat. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Remove only moved state markup from the root, preserve its `PropertyTableSkeleton` re-export for `product-listing`, and record the independently rollbackable T5b boundary before T6. <!-- sdd-owner: implementation -->
+- [x] RED: From fresh landed T5a, rerun `TABLE` for tenant/loading/error/retry/empty/clear/skeleton and background-fetch characterization before moving T5b presentation; do not manufacture a behavioral RED. <!-- sdd-owner: implementation -->
+- [x] GREEN: Extract `states.tsx` with prop-driven missing-tenant, error/retry, empty, skeleton, and private message presentation while root keeps tenant/query/error/empty selection, refetch/clear commands, and permission derivation. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: Verify states preserve retry/clear/create behavior, copy, skeleton output, permissions, and no child query/tenant/URL ownership with `TABLE`, `TYPE`, `LINT`, scoped formatter, package baseline, diff check, and numstat. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: Remove only moved state markup from the root, preserve its `PropertyTableSkeleton` re-export for `product-listing`, and record the independently rollbackable T5b boundary before T6. <!-- sdd-owner: implementation -->
 
 ### T6 — Optional product-table controller
 
