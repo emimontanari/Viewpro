@@ -187,10 +187,10 @@ Record the before-change result, characterization versus genuine RED, after-chan
 
 **Optional, not completion-required.** **Targets:** `property-document-requests.tsx`; optional `property-document-requests/use-document-request-controller.ts`; public test. **Dependency:** D6 and written proof that root orchestration remains materially mixed. One controller may own all four mutations, dialogs, pending/feedback, safe read, and exact write invalidation; it must not own `nuqs`, list query, or deep-link effects. **Omit** if root is coherent. **Stop/rollback:** stop on split mutation ownership, changed payload/dialog retention, read invalidation, broad cache invalidation, or budget risk; revert controller independently.
 
-- [ ] RED: In `property-document-requests.test.tsx` and the D7 decision record, re-run mutation characterization and record justification, or record D7 omission. <!-- sdd-owner: implementation -->
-- [ ] GREEN: If justified, extract one complete controller; otherwise leave `property-document-requests.tsx` unchanged and record omission. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: In `use-document-request-controller.ts` or `property-document-requests.tsx`, verify create/approve/reject exact `productKeys.documentRequests(productId, tenantId)` invalidation and read non-invalidation, feedback, safe URL, and dialog retention with `DOC`, `TYPE`, `LINT`, formatter, and numstat. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Land only a clearer independently rollbackable `use-document-request-controller.ts`, or land the documented omission decision without source changes. <!-- sdd-owner: implementation -->
+- [x] RED: In `property-document-requests.test.tsx` and the D7 decision record, re-run mutation characterization and record justification, or record D7 omission. <!-- sdd-owner: implementation -->
+- [x] GREEN: If justified, extract one complete controller; otherwise leave `property-document-requests.tsx` unchanged and record omission. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: In `use-document-request-controller.ts` or `property-document-requests.tsx`, verify create/approve/reject exact `productKeys.documentRequests(productId, tenantId)` invalidation and read non-invalidation, feedback, safe URL, and dialog retention with `DOC`, `TYPE`, `LINT`, formatter, and numstat. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: Land only a clearer independently rollbackable `use-document-request-controller.ts`, or land the documented omission decision without source changes. <!-- sdd-owner: implementation -->
 
 ### GATE-T — Clear issue #304 before tables (parent lifecycle gate)
 
@@ -274,10 +274,10 @@ Record the before-change result, characterization versus genuine RED, after-chan
 
 **Optional, not completion-required.** **Targets:** `product-tables/index.tsx`; optional `product-tables/use-product-table-controller.ts`; table test. **Dependency:** T5, #304 still landed/rebased, and written proof that the root remains materially mixed. One controller may own tenant, `useQueryStates`, normalized filters, products query, page count/clamping, `useReactTable`, permissions, and setters; never split orchestration or mirror server data. **Omit** if root is coherent. **Stop/rollback:** seller/#304 drift, less-clear ownership, mirrored state, or budget risk; revert independently.
 
-- [ ] RED: In `product-table.test.tsx` and the T6 decision record, re-run T5 baselines and record justification, or record T6 omission. <!-- sdd-owner: implementation -->
-- [ ] GREEN: If justified, extract one complete controller; otherwise leave `index.tsx` unchanged and record omission. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: In `use-product-table-controller.ts` or `product-tables/index.tsx`, verify filters/setter payloads, clamping, React Table derivation, permissions, seller order, and no mirrored state with `TABLE`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: Land `use-product-table-controller.ts` only if ownership is clearer and rollbackable; otherwise land the documented omission decision without source changes. <!-- sdd-owner: implementation -->
+- [x] RED: In `product-table.test.tsx` and the T6 decision record, re-run T5 baselines and record justification, or record T6 omission. <!-- sdd-owner: implementation -->
+- [x] GREEN: If justified, extract one complete controller; otherwise leave `index.tsx` unchanged and record omission. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: In `use-product-table-controller.ts` or `product-tables/index.tsx`, verify filters/setter payloads, clamping, React Table derivation, permissions, seller order, and no mirrored state with `TABLE`, `TYPE`, `LINT`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: Land `use-product-table-controller.ts` only if ownership is clearer and rollbackable; otherwise land the documented omission decision without source changes. <!-- sdd-owner: implementation -->
 
 ## Parent-owned post-implementation lifecycle
 
@@ -295,7 +295,9 @@ cd ../.. && git diff --check && git status --short
 
 A skipped or blocked command is not a pass. Record focused DOC/MODEL/TABLE/HOME results, every full-command result, blockers, residual risks, final changed-line totals, and landed SHA sequence. Stop delivery on any unresolved gate, source-policy diff, failed check, or missing evidence.
 
-- [ ] Run final focused tests for `property-document-requests.test.tsx`, `model.test.ts`, `product-table.test.tsx`, and `operational-homepage.test.tsx`, plus all listed App New test, typecheck, lint, seeded E2E, build, formatter, diff, and status checks; record exact results and blockers. <!-- sdd-owner: parent -->
-- [ ] Confirm required units landed sequentially to `develop`, optional D7/T6 decisions are recorded, no PR reached 400 changed lines, and no API/database/route/product-policy change entered the `viewpro-app/` final diff. <!-- sdd-owner: parent -->
-- [ ] Synchronize and archive `openspec/changes/frontend-component-responsibility-split/` according to repository policy, retaining verification evidence and residual risks. <!-- sdd-owner: parent -->
-- [ ] Close or update issue #297 only after archive evidence exists, referencing unit PRs, PR #458 SHA, and #304 gate evidence. <!-- sdd-owner: parent -->
+Pending parent workflow actions (complete in order outside the implementation task count):
+
+1. Run final focused tests for `property-document-requests.test.tsx`, `model.test.ts`, `product-table.test.tsx`, and `operational-homepage.test.tsx`, plus all listed App New test, typecheck, lint, seeded E2E, build, formatter, diff, and status checks; record exact results and blockers.
+2. Confirm required units landed sequentially to `develop`, optional D7/T6 decisions are recorded, no PR reached 400 changed lines, and no API/database/route/product-policy change entered the `viewpro-app/` final diff.
+3. Synchronize and archive `openspec/changes/frontend-component-responsibility-split/` according to repository policy, retaining verification evidence and residual risks.
+4. Close or update issue #297 only after archive evidence exists, referencing unit PRs, PR #458 SHA, and #304 gate evidence.

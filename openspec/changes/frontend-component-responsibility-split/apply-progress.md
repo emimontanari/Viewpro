@@ -685,9 +685,19 @@ The matching D6 rows in `tasks.md` are persisted as `- [x]`; D7 and all parent-o
 
 ### Remaining implementation work
 
-- D7's four exact unchecked rows remain retained in the prior D6 progress entry and unchanged in `tasks.md`.
-- `- [ ] RED: In \`product-table.test.tsx\` and the T6 decision record, re-run T5 baselines and record justification, or record T6 omission. <!-- sdd-owner: implementation -->`
-- `- [ ] GREEN: If justified, extract one complete controller; otherwise leave \`index.tsx\` unchanged and record omission. <!-- sdd-owner: implementation -->`
-- `- [ ] TRIANGULATE: In \`use-product-table-controller.ts\` or \`product-tables/index.tsx\`, verify filters/setter payloads, clamping, React Table derivation, permissions, seller order, and no mirrored state with \`TABLE\`, \`TYPE\`, \`LINT\`, formatter, diff check, and numstat. <!-- sdd-owner: implementation -->`
-- `- [ ] REFACTOR: Land \`use-product-table-controller.ts\` only if ownership is clearer and rollbackable; otherwise land the documented omission decision without source changes. <!-- sdd-owner: implementation -->`
-- Parent-owned final verification, landing, sync, archive, and issue-update rows remain byte-for-byte unchanged; next route is `parent-lifecycle`.
+- The prior D6/T5b unchecked D7/T6 rows are superseded by their documented omission decisions and are now visibly checked in `tasks.md`.
+- Final verification, landing, sync/archive, and issue-update remain four pending parent workflow actions outside implementation task checkboxes; next route is `parent-lifecycle`.
+
+## D7/T6 optional controller decisions
+- **Status/scope:** authoritative OpenSpec bookkeeping is `apply=all_done`, `86/86`; parent `proceed`, `auto-chain`, and repo-local approved only `tasks.md` and this progress file. Four pending parent workflow actions are tracked outside implementation checkboxes and must be completed in order.
+- **D7 — omit:** the retained prior D7 decision evidence shows the document root remains coherent; no controller source or test change is warranted.
+- **T6 — omit:** `product-tables/index.tsx` is 189 lines of one tenant → URL → query → table → permission/label → command chain, with no local/mirrored state, effects, mutations, or substantial leaf markup; a controller would widen the view-model interface and hide useful coupling.
+### TDD Cycle Evidence
+| Decision | Safety net | RED/GREEN/TRIANGULATE/REFACTOR |
+|---|---|---|
+| D7 omission | Retained passing public characterization | No production behavior or source changed; existing evidence remains authoritative. |
+| T6 omission | Fresh `TABLE` 9/9 | No production behavior or source changed; fresh checks and ownership audit confirm the preserving decision. |
+- **Fresh checks:** `TABLE` 9/9, typecheck, strict lint, and scoped `oxfmt --check index.tsx` all PASS; package formatter remains the recorded non-blocking shared baseline.
+- **Fresh audit:** first API assignment remains `const [firstAgent] = product.agents`; no primary inference or presentation query/URL/tenant/state imports; `git diff --no-ext-diff --check` PASS.
+- **Workload:** docs-only numstat is 30 additions + 18 deletions = 48; no source or test path is in the diff.
+- **Action context:** no warnings; no token, receipt, review, lifecycle gate, commit, push, or source/test edit occurred.
