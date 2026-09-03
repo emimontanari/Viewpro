@@ -89,3 +89,22 @@ Read-only Dokploy observation 2026-08-19T19:33:27Z, app `viewpro-platform-api` (
 - Scope: D.4 (merge/deploy gate) and D.5 (≥24h CU-hour evidence) untouched — both explicitly deferred to deploy time / post-deploy observation window.
 ## Candidate Evidence
 - Changed lines: 291 (source + `tasks.md`, `git diff --numstat e2d4c27`) + 22 (this file's own diff) = 313 total, within the 220–340 budget (hard max 340).
+
+# Apply Progress: AC6 render closure and D.5 evidence — complete
+## Scope and status
+- Focused `ac6-render-and-d5` work unit only; native status consumed as `changeName=neon-idle-platform-sync`, `artifactStore=openspec`, `dependencies.apply=ready`, with repo-local allowed root `/Users/emimontanari/Work/Apps/Viewpro-worktrees/neon-sync-matching-projection`. No action-context warnings; no production source, provider, credential, deployment, or archive access occurred.
+- The persisted task correction closes the prior AC6 evidence gap. D.5 is now checked once, after recording already-adjudicated evidence; all 14 implementation tasks are visibly checked.
+## TDD Cycle Evidence
+| Task | Test file/layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| AC6 correction | `platform-sync-projection-render.spec.tsx` / component integration | existing provider test: 2/2 passed | Initial real-hook harness failed to observe `new projection` at t0+9s when its delayed query promise was scheduled after the fake-clock advance; after that was corrected, the output's implicit `status` role collided with the badge role. Both were genuine test-harness/assertion failures; no product defect was inferred or fabricated. | The final real-hook/real-QueryClient active-consumer test passes: old projection → durable non-empty `updating` batch at t0+8s → invalidation/refetch → new projection rendered by t0+9s. | The scenario exercises distinct unfinished (`lastBatchCount=null`) and durable non-empty (`lastBatchCount=1`, cursor 42) status branches; the focused directory suite retains hidden-demand and 404 compatibility coverage. | Scoped `oxfmt` applied; focused test rerun after formatting. No production refactor was needed because this is characterization of existing behavior. |
+## D.5 provider evidence (already independently adjudicated; no new provider calls)
+- Window: `2026-09-01T00:00:00Z` → `2026-09-03T15:23:33.159Z`, elapsed `63.392544h`; label **PROJECTED** because it is under 30 days, with PASS threshold ≤10 projected CUh/project.
+- Product: `compute_time_seconds=158`, raw `0.043888889 CUh`, active `620s`, projected 720h `0.4984813356 CUh`, active fraction `0.2716758%`. Platform: `compute_time_seconds=157`, raw `0.043611111 CUh`, active `616s`, projected 720h `0.4953263904 CUh`, active fraction `0.2699231%`.
+- Both endpoints were idle at capture with one endpoint each, fixed 0.25 CU, and plan-default five-minute autosuspend. Sep2/Sep3 start→suspend pairs correlate exactly to scheduled backup runs `33618365559` and `33744195725`, which uploaded both DBs; Sep1 run `33499351324` failed.
+- Counters may lag, but capture was >4h after activity and stayed stable 45m. User manually confirmed desired=1/running=1 healthy, deployed main/v1.2.0 `eaa2b279` or later no-poll image, and no intentional operator-console opening since Sep1. Public Query Performance is unavailable on Free/public API and declared complementary/non-gating.
+- Historical D.4 deviation is preserved: singleton reconfirmation happened after, not before, v1.2.0 merge/deploy; it is not represented as compliant at the intended gate time.
+## Verification and work-unit boundary
+- PASS: focused new test 1/1; relevant `platform-sync/components/__tests__` directory 12/12; full `pnpm --filter viewpro-web test` 630/630 across 58 files; `pnpm --filter viewpro-web typecheck`; scoped `oxfmt --write` on the changed TSX; and `git diff --check`.
+- Files changed: new focused component-integration test, `tasks.md`, and this cumulative progress file. Delivery boundary is this below-390-line `ac6-render-and-d5` work unit; no commit, PR, publication, merge, receipt, or review was performed.
+- Remaining implementation tasks: none.
