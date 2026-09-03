@@ -5,7 +5,7 @@
 
 ## Purpose
 
-ViewPro (viewpro-api) data-lane consumer side. Polls InmoView's change-feed,
+ViewPro (viewpro-api) data-lane consumer side. Consumes InmoView's change-feed on authenticated demand,
 ingests events idempotently into a `viewpro_platform` mirror table, persists
 the poll cursor durably, and exposes an operator-only metrics endpoint served
 exclusively from the mirror — never from InmoView's database.
@@ -36,59 +36,35 @@ A re-delivered event MUST be silently discarded (no error, no duplicate row).
 
 ---
 
-### Requirement: Durable Cursor Advance
+### Requirement: Durable Cursor Advance [AC5, AC7]
+`viewpro-api` MUST replay retained events ascending with existing idempotent writes. `IngestService.ingestBatch` MUST return a discriminated projection/cursor-advance outcome or propagate typed failures; swallowed/logged failures MUST NOT produce success. It MUST advance the cursor only after all returned writes are durable. `lastObservedCursor` MUST equal the durable cursor read at run start and change only after successful cursor advance; projection or cursor-advance failure MUST preserve it. Cursor-read, projection, cursor-advance, feed-timeout, and feed-failure outcomes MUST remain retryable and distinguishable. Payload hardening and DB cancellation remain #329.
+(Previously: startup polling retried on a later interval.)
 
-`viewpro-api` MUST persist the poll cursor to `viewpro_platform` after events
-are durably ingested. The cursor MUST only advance once the ingest write is
-confirmed. On restart the poller MUST resume from the last persisted cursor
-with no gaps and no skips.
+#### Scenario: Failure preserves durable position
+- GIVEN cursor 5 and events 6–7 are requested
+- WHEN cursor read, feed, projection, or cursor advance fails
+- THEN the status identifies that stage, reports no success, preserves `lastObservedCursor`, and later demand resumes from it
 
-#### Scenario: Cursor advances after successful ingest
-
-- GIVEN the persisted cursor is 5 and a batch containing events with seqNo 6 and 7 is ingested
-- WHEN ingest completes successfully
-- THEN the persisted cursor is 7
-
-#### Scenario: Cursor does not advance if ingest fails
-
-- GIVEN the persisted cursor is 5 and a batch fetch succeeds but the ingest write fails
-- WHEN the poller retries on the next interval
-- THEN the poll request uses `since=5` (the previous cursor) — no events are skipped
-
-#### Scenario: Restart resumes from persisted cursor
-
-- GIVEN the persisted cursor is 10 when `viewpro-api` is restarted
-- WHEN the poller starts after restart
-- THEN the first poll request is `GET /internal/platform/changes?since=10`
+#### Scenario: Restart resumes only on demand
+- GIVEN cursor 10 when the process restarts
+- WHEN later authenticated demand runs
+- THEN the feed starts at `since=10` and replay remains ordered/idempotent
 
 ---
 
-### Requirement: Interval Poll Job
+### Requirement: Interval Poll Job [AC1–AC4]
+The subsystem MUST replace perpetual polling with authenticated demand through `viewpro-api`; the browser MUST NOT call the product API. Production MUST have one manually verified synchronization replica. One demand MUST start at most one producer-bounded batch. Demand received during an active run MUST join that run's promise and MUST NOT queue a follow-up; after completion, the next visible four-second cadence MAY start the next batch. Hidden/unmounted consoles MUST create no demand.
+(Previously: a configurable timer polled continuously.)
 
-`viewpro-api` MUST run a lightweight interval-based poller that calls
-`GET /internal/platform/changes?since=<cursor>` using the existing
-`INMOVIEW_API_INTERNAL_URL` and `PLATFORM_CONTROL_SECRET`. The poll interval
-MUST be configurable via an environment variable with a safe default. The
-poller MUST NOT start a new poll while a previous one is still in flight
-(overlap guard).
+#### Scenario: Idle is quiet and active demand coalesces
+- GIVEN no authenticated visible-console demand, or one run is active
+- WHEN time passes or another demand arrives
+- THEN idle performs no feed/cursor/projection/database work, and active demand joins without overlap or queue
 
-#### Scenario: Poller uses persisted cursor on each tick
-
-- GIVEN the persisted cursor is 20
-- WHEN the poller ticks
-- THEN it calls `GET /internal/platform/changes?since=20`
-
-#### Scenario: Overlapping poll is skipped
-
-- GIVEN a poll tick is already in flight
-- WHEN the next tick fires
-- THEN the new tick is skipped until the in-flight poll completes
-
-#### Scenario: Poll interval is configurable
-
-- GIVEN `PLATFORM_POLL_INTERVAL_MS=5000` is set in the environment
-- WHEN the poller runs
-- THEN it fires approximately every 5000 ms
+#### Scenario: Repeated demand drains backlog
+- GIVEN more than one producer-bounded batch is retained
+- WHEN visible cadences continue after each run completes
+- THEN at most one batch starts per cadence and the backlog eventually drains
 
 ---
 
@@ -143,19 +119,44 @@ an error.
 
 ---
 
-### Requirement: Data-Lane Environment Configuration
+### Requirement: Data-Lane Environment Configuration [AC2]
+The `apps/api` producer MUST own its safe `PLATFORM_DATA_BATCH_LIMIT`. `viewpro-api` MUST retain required `INMOVIEW_API_INTERNAL_URL` and `PLATFORM_CONTROL_SECRET`, process the returned bounded batch, and MUST NOT require a polling interval or consumer batch-limit setting.
+(Previously: consumer configuration included recurring poll and batch settings.)
 
-`viewpro-api` MUST reuse `INMOVIEW_API_INTERNAL_URL` and
-`PLATFORM_CONTROL_SECRET` (already required by Phase 5). It MUST additionally
-accept `PLATFORM_POLL_INTERVAL_MS` and `PLATFORM_DATA_BATCH_LIMIT` with safe
-defaults. The app MUST fail to start if either of the shared required variables
-is absent.
-
-#### Scenario: Missing shared secret prevents startup
-
-- GIVEN `PLATFORM_CONTROL_SECRET` is not set
+#### Scenario: Required secret is absent
+- GIVEN `PLATFORM_CONTROL_SECRET` is absent
 - WHEN `viewpro-api` starts
-- THEN the process fails with a configuration error before accepting requests
+- THEN startup fails before requests are accepted
+
+---
+
+### Requirement: Bounded Feed and Truthful Process Status [AC5–AC6]
+Feed HTTP MUST time out within two seconds without cancelling admitted DB work. After restart, process state MUST be `stale` with null observation fields; demand start/join MUST transition it to `updating`. Backend demand MUST race admitted work and return status by four seconds without cancellation. A new run MUST increment `attemptCount`; mapped failure MUST increment `consecutiveFailureCount`, set `failed`, release single-flight, and preserve unfinished cursor. Complete pipeline success MUST reset `consecutiveFailureCount` to zero and update `lastSuccessAt`. A successful non-empty event-bearing batch MUST durably write its projections and advance its cursor within that budget to be normal-path SLO eligible, but MUST remain `updating` until feed head is confirmed; its response MAY be `updating` with successful batch metadata. A later empty feed batch MUST succeed as a no-op confirmation: set `current`, set `lastBatchCount` to `0`, leave the cursor unchanged without requiring cursor advance, reset or maintain the failure count at zero, and update `lastSuccessAt`. Status MUST map `CURSOR_READ_FAILED`, `FEED_TIMEOUT`, `FEED_FAILED`, `PROJECTION_FAILED`, and `CURSOR_ADVANCE_FAILED` without sensitive detail.
+
+#### Scenario: Timeout and later retry
+- GIVEN feed HTTP exceeds two seconds
+- WHEN it aborts
+- THEN status is failed with `FEED_TIMEOUT`, cursor is unchanged, and later demand may retry
+
+#### Scenario: Empty batch is successful no-op
+- GIVEN consecutive failures and durable cursor 10
+- WHEN the next demand receives an empty feed batch
+- THEN status is current with batch count 0, cursor 10 without advance, failure count 0, and an updated success timestamp
+
+---
+
+### Requirement: Compatibility, Rollback, and Provider Evidence [AC8–AC11]
+Before timer/config deletion, merge, or deployment, read-only actual state MUST prove desired and healthy running replica counts equal one, and focused old/new API-web plus rollback evidence MUST pass. Rollback MUST preserve singleton topology, cursor, and outbox. After deployment, each project MUST have ≥24h read-only evidence recording exact start/end, raw CU-hour delta, scheduled activity, no intentional authenticated demand, provider delay, and idle autosuspension. It MUST calculate `projected CU-hours = observed CU-hours × (720 / observation-window hours)` and PASS only at ≤10 CU-hours/project; sub-30-day evidence MUST be labeled projected. #327 MUST remain open until retained implementation and provider evidence pass. Automated gates and full harness remain #329.
+
+#### Scenario: Ordered gate blocks unsafe retirement
+- GIVEN timer retirement is proposed
+- WHEN topology is unknown/non-singleton or compatibility evidence fails
+- THEN timer/config deletion, merge, and deployment are blocked or rolled back
+
+#### Scenario: Closure evidence passes
+- GIVEN the implementation is deployed for at least 24 hours
+- WHEN normalized provider and retained behavior evidence are reviewed
+- THEN each project shows idle autosuspension and projected CU-hours ≤10 before #327 closes
 
 ---
 
@@ -164,5 +165,5 @@ is absent.
 - `GET /operators/metrics/summary` MUST query only `viewpro_platform` — never InmoView's database.
 - The ingest mirror table MUST enforce `UNIQUE` on source event id at the database level.
 - The poll cursor MUST only advance after the ingest write is durably committed.
-- The poller MUST NOT issue parallel concurrent poll requests (overlap guard).
+- Concurrent demand MUST join the active synchronization run without overlap or a queued follow-up.
 - `PLATFORM_CONTROL_SECRET` MUST NOT appear in any response body or server log.
