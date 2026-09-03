@@ -11,6 +11,8 @@ export const PERMISSIONS = {
   DOCUMENTS_VIEW_ALL: 'documents.view_all',
   DOCUMENTS_REQUEST: 'documents.request',
   DOCUMENTS_REVIEW_OWN: 'documents.review_own',
+  PROPERTY_PROPOSALS_SELLER: 'property_proposals.seller',
+  PROPERTY_PROPOSALS_REVIEW: 'property_proposals.review',
 } as const
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]
