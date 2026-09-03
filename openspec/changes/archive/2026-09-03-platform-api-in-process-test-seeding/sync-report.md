@@ -4,17 +4,16 @@
 
 **synced**
 
-The verified delta was normalized into a new consolidated canonical capability spec. Delta-only headings and operation markers were removed, while the complete requirement-and-scenario body remains semantically and byte-for-byte equivalent. The active change remains in `openspec/changes/`; it was not archived.
+The historical delta and verification cover **8 requirements and 12 scenarios**. The canonical capability retains the seven durable requirements and nine ongoing scenarios after semantic normalization. The eighth requirement and its three scenarios describe one-off delivery evidence, so they remain in the archived delta, verification, and apply artifacts rather than the ongoing contract.
 
 ## Domains and canonical files
 
 - Domain synced: `platform-api-in-process-test-seeding`
-- Canonical file created: `openspec/specs/platform-api-in-process-test-seeding/spec.md`
-- Canonical totals: **8 requirements, 12 scenarios**
+- Canonical file: `openspec/specs/platform-api-in-process-test-seeding/spec.md`
+- Historical delta/verification totals: **8 requirements, 12 scenarios**
+- Durable canonical totals: **7 requirements, 9 scenarios**
 
-## Requirement changes
-
-### ADDED
+## Durable canonical requirements
 
 1. Normal integration tests use no production seed subprocess
 2. A shared fixture uses active Nest-owned dependencies
@@ -23,24 +22,15 @@ The verified delta was normalized into a new consolidated canonical capability s
 5. Production and execution contracts remain unchanged
 6. Every configured ordinary spec has a local static dependency closure
 7. Unknown and forbidden reachability fails with a chain
-8. PR3 evidence is ordered, restored, and executable
 
-### MODIFIED
-
-None.
-
-### REMOVED
-
-None.
-
-The normalized canonical requirements preserve all verified SHALL/MUST language, all 12 scenarios, the root-only seed-contract exception, repository-local workspace traversal, and evidence requirements.
+The historical eighth requirement, `PR3 evidence is ordered, restored, and executable`, and its RED/GREEN/one-run scenarios remain archive-only delivery evidence. Frozen PR labels and the `14`/`34` migration counts likewise remain in archived evidence but are not durable canonical constraints. Canonical scenario wording was semantically normalized to ongoing behavior while preserving the dedicated seed-contract exception, production boundaries, repository-local Node16 closure, and forbidden/fail-closed behavior.
 
 ## Guardrails
 
-- Active same-domain collisions: none; only this active change contains the domain delta.
+- Same-domain active collision: none.
 - Legacy flat spec: none.
 - Unsupported `RENAMED Requirements`: none.
-- Destructive sync: none; the delta contains no MODIFIED or REMOVED requirements, so destructive approval was not required.
+- Historical delta operations: eight ADDED requirements; no MODIFIED or REMOVED requirements, so destructive approval was not required.
 
 ## Lifecycle reconciliation
 
@@ -50,24 +40,19 @@ The normalized canonical requirements preserve all verified SHALL/MUST language,
 
 ## Status and action context
 
-- Active change: unambiguous (`platform-api-in-process-test-seeding`).
+- Archived change: `platform-api-in-process-test-seeding`.
 - Artifact store: `openspec`.
-- Native authoritative status: tasks 17/17, `applyState=all_done`, `dependencies.verify=all_done`, `dependencies.archive=ready`, and `nextRecommended=archive`; the verification report remains PASS with 8/8 requirements and 12/12 scenarios.
+- Native completion at archive: tasks 17/17, `applyState=all_done`, `dependencies.verify=all_done`, and verification PASS at 8/8 requirements and 12/12 scenarios.
 - Action context: `repo-local` in `/Users/emimontanari/Work/Apps/Viewpro-worktrees/platform-api-seed-boundary-lifecycle`.
-- Allowed edit root: `/Users/emimontanari/Work/Apps/Viewpro-worktrees/platform-api-seed-boundary-lifecycle`; both corrected files are within it.
-- Canonical normalization required this sync correction before archive despite the otherwise archive-ready status.
 
 ## Validation
 
-- Confirmed the canonical document uses the consolidated title, a concise `## Purpose`, and `## Requirements`, with no delta title or ADDED/MODIFIED/REMOVED/RENAMED operation headings.
-- Compared the complete canonical requirement-and-scenario segment with the verified delta and confirmed exact byte equality for that segment after normalization.
-- Counted 8 `### Requirement:` headings and 12 `#### Scenario:` headings in the canonical spec.
-- Confirmed no RENAMED, MODIFIED, or REMOVED sections exist in the delta.
-- Scanned active changes for the same domain and found no collision.
-- Counted 6 checked and 0 unchecked success criteria in `proposal.md`.
-- Ran `git diff --no-index --check /dev/null <file>` for each untracked allowed file; no whitespace errors were reported.
-- No dependency, source/test, or database command was run; verification evidence remains the authoritative runtime result.
+- Confirmed the canonical document uses a consolidated title, concise `## Purpose`, and `## Requirements`, without delta operation headings.
+- Counted 7 `### Requirement:` headings and 9 `#### Scenario:` headings in the canonical spec.
+- Reconciled those durable totals against the archived delta and verification totals of 8 requirements and 12 scenarios.
+- Confirmed requirement 8 and frozen delivery wording remain archived rather than canonical.
+- No dependency, source/test, or database command was run; archived verification remains the authoritative runtime result.
 
 ## Next recommended phase
 
-`sdd-archive`
+Archive complete; no further lifecycle phase is required.

@@ -10,12 +10,12 @@ This capability keeps ordinary platform-api integration tests on deterministic, 
 
 Ordinary platform-api integration specs that need operator data MUST use the test-only in-process fixture and MUST NOT invoke the production seed CLI or another seed process. The dedicated `src/database/__tests__/seed.spec.ts` contract is the only root allowed to exercise that CLI.
 
-#### Scenario: Migrated consumers retain the PR2 boundary
+#### Scenario: Ordinary consumers retain the in-process boundary
 
-- GIVEN any of the 14 migrated integration specs needs operator data
+- GIVEN an ordinary integration spec needs operator data
 - WHEN its setup creates that data
-- THEN it uses the delivered in-process fixture rather than a production-seed process
-- AND the 34 direct fixture calls and dedicated seed contract remain intact
+- THEN it uses the shared in-process fixture rather than a production-seed process
+- AND only the dedicated seed contract may exercise the production seed CLI
 
 ### Requirement: A shared fixture uses active Nest-owned dependencies
 
@@ -24,7 +24,7 @@ The test-only operator fixture MUST obtain the active testing module/app’s Nes
 #### Scenario: Fixture follows the active application lifecycle
 
 - GIVEN a bootstrapped Nest testing application
-- WHEN the PR1 behavioral fixture test creates an operator fixture
+- WHEN the fixture creates an operator
 - THEN the fixture uses that application’s dependencies and creates no independent Prisma client or disconnect path
 - AND `app.close()` remains responsible for Prisma cleanup
 
@@ -54,12 +54,12 @@ The existing safe `_test` database guard MUST remain mandatory; the fixture MUST
 
 The production `prisma/seed.ts`, schemas, APIs, runtime behavior, timeout values, global setup, and per-worker database topology MUST remain unchanged. Default retries MUST remain in place; zero retries MAY be command-scoped to acceptance. The production seed contract MUST continue covering CLI behavior.
 
-#### Scenario: Delivered contracts remain bounded
+#### Scenario: Production contracts remain bounded
 
-- GIVEN the delivered fixture migration and focused PR3 boundary
+- GIVEN the in-process fixture and static boundary are in place
 - WHEN platform-api verification runs
 - THEN production seeding, `_test` safety, Nest cleanup, default retries, and worker topology remain unchanged
-- AND no source file other than the focused boundary spec is added or modified by PR3
+- AND boundary maintenance does not require production source changes
 
 ### Requirement: Every configured ordinary spec has a local static dependency closure
 
@@ -98,29 +98,3 @@ An ordinary root MUST fail if its closure reaches `prisma/seed.ts`, `test/global
 - WHEN resolution cannot prove a safe local closure
 - THEN the root fails closed with the edge and condition
 - AND only an actually resolved external package is accepted as a terminal
-
-### Requirement: PR3 evidence is ordered, restored, and executable
-
-RED MUST first add the new spec with an executable contract calling a deliberately missing local boundary helper and capture the expected missing-symbol/compile failure. GREEN MUST define the minimum helper in that same spec and pass on the clean source tree. Only after GREEN, TRIANGULATE MUST separately add reachable `node:child_process` and `prisma/seed.ts` edges, capture a chain-bearing failure for each, and restore exact bytes after each run.
-From `viewpro-app/`, final verification MUST execute the exact commands in design/tasks: focused boundary Vitest, seed-contract Vitest, timed platform-control Vitest, platform-api `db:validate`, typecheck, lint, and exactly one `/usr/bin/time -p env TURBO_FORCE=true TURBO_ENV_MODE=loose VIEWPRO_PLATFORM_TEST_RETRY=0 pnpm test`. Database-backed runs MUST use the guarded local `_test` worker databases. Evidence MUST report each test baseline, `Δnew`, resulting total, platform-control's 37 passing tests and setup below 20 seconds, and command timing; a rerun MUST NOT substitute for the one root acceptance.
-
-#### Scenario: Honest RED precedes mutation diagnostics
-
-- GIVEN the boundary helper does not yet exist
-- WHEN the executable spec calls it
-- THEN the focused run fails for the missing symbol before implementation
-- AND no transitive mutation result is claimed until the helper passes GREEN
-
-#### Scenario: Post-GREEN mutations prove the guard
-
-- GIVEN the minimum helper passes on clean source bytes
-- WHEN each forbidden edge is added and checked separately
-- THEN each run fails with its root-to-offense chain
-- AND both mutations are byte-restored and absent from final diffs
-
-#### Scenario: Corrected bytes pass once without masking
-
-- GIVEN restored bytes and the mandatory local `_test` guard
-- WHEN the exact final checks run from `viewpro-app/`
-- THEN platform-control reports 37 tests with setup below 20 seconds and the root run passes once at baseline plus `Δnew`
-- AND no retry, rerun, production change, or stale serial-worker assumption supplies acceptance
