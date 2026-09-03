@@ -46,7 +46,7 @@ Strict TDD starts by adding the new spec with an executable contract that calls 
 
 ## Dependencies
 
-PR0 #313, PR1 #314, PR2 #315, and focused amendment #499 are merged. PR3 is based at `4116621c583b7a51f4be16a078fd63ae0a7b8953`; implementation may proceed without another product decision.
+PR0 #313, PR1 #314, PR2 #315, and focused amendment #499 are merged. PR3 #502 is merged at `c5caa7e9124ce665a66912cdd5a00de3fc9ec097`. Issue #311 is CLOSED/COMPLETED; closure evidence is https://github.com/emimontanari/Viewpro/issues/311#issuecomment-5524325047.
 
 ## Rollback Plan
 
@@ -54,9 +54,9 @@ Revert PR3 alone to remove only the guard. To roll back the full capability, rev
 
 ## Success Criteria
 
-- [ ] The self-contained spec checks every configured ordinary root and enforces the root-only seed exception through effective Node16 local closure.
-- [ ] Forbidden targets, nonliteral loaders, and unresolved/escaping local edges fail with actionable dependency chains; external packages terminate traversal.
-- [ ] Missing-helper RED precedes minimum-helper GREEN; only post-GREEN, byte-restored mutations prove chain diagnostics for `node:child_process` and `prisma/seed.ts`.
-- [ ] From `viewpro-app/`, run the focused boundary, seed contract, timed 37-test platform-control suite, platform-api `db:validate`, typecheck, lint, and the exact one-run root acceptance defined in design/tasks.
-- [ ] Record baseline totals, `Δnew`, resulting totals, setup and real timing; accept no rerun substitution.
-- [ ] Local `_test` database safety, PR1/PR2 behavior, per-worker topology, and production bytes remain unchanged.
+- [x] The self-contained spec checks every configured ordinary root and enforces the root-only seed exception through effective Node16 local closure.
+- [x] Forbidden targets, nonliteral loaders, and unresolved/escaping local edges fail with actionable dependency chains; external packages terminate traversal.
+- [x] Missing-helper RED precedes minimum-helper GREEN; only post-GREEN, byte-restored mutations prove chain diagnostics for `node:child_process` and `prisma/seed.ts`.
+- [x] From `viewpro-app/`, run the focused boundary, seed contract, timed 37-test platform-control suite, platform-api `db:validate`, typecheck, lint, and the exact one-run root acceptance defined in design/tasks.
+- [x] Record baseline totals, `Δnew`, resulting totals, setup and real timing; accept no rerun substitution.
+- [x] Local `_test` database safety, PR1/PR2 behavior, per-worker topology, and production bytes remain unchanged.

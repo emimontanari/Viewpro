@@ -67,7 +67,7 @@ After final workspace-traversal hardening, the exact root command ran once with 
 
 ## Completion, scope, cleanup, and boundary
 
-- [x] The five implementation-owned PR3 task rows 3.2–3.6 are visibly checked. The 3.1 branch/base row is corrected separately, parent review 3.7 is checked, and delivery/completion rows 3.8–3.9 remain unchecked.
+- [x] All PR3 implementation and parent lifecycle rows are complete; PR #502 merged as `c5caa7e9124ce665a66912cdd5a00de3fc9ec097`, and issue #311 closed `COMPLETED`.
 - Changed only the focused boundary spec, branch/base evidence in `exploration.md`, `proposal.md`, `design.md`, and `tasks.md`, plus this progress artifact. The health controller SHA-256 is still `16fcdabb5a65d68131d5779bed73873e5a10375c89ceee01c53e1df2342cf45e`; all TRIANGULATE mutations remain absent.
 - No design deviation: this remains one self-contained static guard with no production, fixture, consumer, timeout, retry, or topology change.
 - Status is `artifactStore: openspec`, repository-local at `/Users/emimontanari/Work/Apps/Viewpro-worktrees/platform-api-seed-boundary-implementation`, with implementation `applyState: all_done` and route `parent-lifecycle`; there is no missing-spec apply blocker.
@@ -76,8 +76,8 @@ After final workspace-traversal hardening, the exact root command ran once with 
 ## Deferred parent lifecycle actions
 
 - [x] 3.7 **Parent-owned review:** APPROVED after final workspace-package, transitive seed-contract, corrected-byte acceptance, cleanup, and accounting review. <!-- sdd-owner: parent -->
-- [ ] 3.8 **Parent-owned delivery:** after approval, commit, push, and open/update the PR using repository policy. <!-- sdd-owner: parent -->
-- [ ] 3.9 **Parent-owned completion:** merge the approved PR, explicitly close/reconcile issue #311, then advance dependent delivery. <!-- sdd-owner: parent -->
+- [x] 3.8 **Parent-owned delivery:** PR #502 passed CI/review and merged into `develop` as `c5caa7e9124ce665a66912cdd5a00de3fc9ec097`. <!-- sdd-owner: parent -->
+- [x] 3.9 **Parent-owned completion:** PR #502 merged and issue #311 closed `COMPLETED`; closure comment: https://github.com/emimontanari/Viewpro/issues/311#issuecomment-5524325047. <!-- sdd-owner: parent -->
 
 ## Key Learnings
 

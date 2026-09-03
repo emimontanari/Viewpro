@@ -9,7 +9,7 @@ The complete five-artifact planning amendment must remain at or below the reposi
 - **PR0 #313:** merged planning baseline.
 - **PR1 #314:** merged Nest-owned fixture and behavioral coverage.
 - **PR2 #315:** merged migration of 15 subprocess sites/34 launches across 14 specs to 34 direct fixture calls, plus command-scoped retry control.
-- **PR3:** current `test/platform-api-seed-boundary-pr3` branch at base `4116621c583b7a51f4be16a078fd63ae0a7b8953`; one self-contained boundary spec and final evidence only.
+- **PR3 #502:** merged focused boundary as `c5caa7e9124ce665a66912cdd5a00de3fc9ec097`; one self-contained boundary spec and final evidence only.
 - Revert PR3 alone to remove the guard; full capability rollback is PR3→PR2→PR1 while retaining PR0, matching revised issue #311.
 
 ## Completed Baseline
@@ -44,5 +44,5 @@ pnpm --filter @viewpro/platform-api lint
 ```
 - [x] 3.6 **Final evidence:** require platform-control 37/37 and setup below 20 seconds; record every test command's clean-base total, `Δnew`, resulting total and timing, then verify byte restoration, status, focused diff/check, and exact five-artifact/implementation changed-line accounting at `<=400` per unit. <!-- sdd-owner: implementation -->
 - [x] 3.7 **Parent-owned review:** freshly review planning, implementation, ordered TDD evidence, one-run acceptance, ownership parsing, and accounting; request fixes if needed. <!-- sdd-owner: parent -->
-- [ ] 3.8 **Parent-owned delivery:** after approval, commit, push, and open/update the PR using repository policy. <!-- sdd-owner: parent -->
-- [ ] 3.9 **Parent-owned completion:** merge the approved PR, explicitly close/reconcile issue #311, then advance dependent delivery. <!-- sdd-owner: parent -->
+- [x] 3.8 **Parent-owned delivery:** after approval, commit, push, and open/update the PR using repository policy. <!-- sdd-owner: parent -->
+- [x] 3.9 **Parent-owned completion:** merge the approved PR, explicitly close/reconcile issue #311, then advance dependent delivery. <!-- sdd-owner: parent -->
