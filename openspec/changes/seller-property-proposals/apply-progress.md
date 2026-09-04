@@ -57,7 +57,7 @@ No action-context warning was raised: every source edit is within the supplied U
 
 ## Remaining tasks and delivery boundary
 
-C1 is complete within its selected `auto-chain` sequential stacked-to-`develop` C1 → C20 boundary: U1 is forecast at 230–288 changed lines and is the current C1 slice targeting `develop`. The current candidate is cohesive and within the 650-line limit. No commit, push, PR, merge, review, or receipt action was performed.
+C1 is complete within its selected `auto-chain` sequential stacked-to-`develop` C1 → C2A → C2B → C3 … C20 boundary: U1 is forecast at 230–288 changed lines and is the current C1 slice targeting `develop`. The current candidate is cohesive and within the 650-line limit. No commit, push, PR, merge, review, or receipt action was performed.
 
 The remaining units are out of scope for C1. The next exact unchecked implementation rows begin:
 
@@ -111,7 +111,7 @@ The required proposal, specification companion, design, tasks, and prior progres
 
 ### Corrected delivery boundary and remaining work
 
-The selected strategy is **sequential stacked-to-`develop` C1 → C20**, not feature-branch-chain. This corrective rerun is C1 only and remains within the 650-line C1 boundary. Current candidate accounting after the parent metadata correction is 49 tracked additions, 15 tracked deletions, and 233 untracked lines: 297 changed lines total. Remaining implementation work is unchanged and begins with these exact unchecked U2A lines:
+The selected strategy is **sequential stacked-to-`develop` C1 → C2A → C2B → C3 … C20**, not feature-branch-chain. This corrective rerun is C1 only and remains within the 650-line C1 boundary. Current candidate accounting after the parent metadata correction is 49 tracked additions, 15 tracked deletions, and 233 untracked lines: 297 changed lines total. Remaining implementation work is unchanged and begins with these exact unchecked U2A lines:
 
 - [ ] RED → GREEN → TRIANGULATE → REFACTOR proposal, round, decision, source-link, enum, index, and check definitions against the tenant and deletion invariants. <!-- sdd-owner: implementation -->
 - [ ] Run the manifest-scoped schema test, `db:validate`, and API typecheck without leaving database state. <!-- sdd-owner: implementation -->
@@ -122,3 +122,12 @@ Deferred lifecycle actions are the three parent-owned task rows, which were pres
 
 - The exact-array test intentionally includes a narrow source-level non-derivation guard because current catalog values alone cannot demonstrate that a future seller-only permission would not be inherited; the three public role arrays remain exact behavioral assertions.
 - Parent-owned lifecycle and review handling remain deferred; this executor did not start or approve review work.
+
+## C2A Atomic Persistence Contract (corrective pass)
+- **Status/tasks/TDD:** authoritative repo-local OpenSpec is `ready`; C1 → C2A → C2B → C3 is `auto-chain`, C2B precedes C3, no action-context warning occurred, U2A/U2B-core/U2C C2A rows remain `- [x]`, C2B rows remain `- [ ]`, and parent rows are unchanged. Retained truthful earlier U2 RED evidence; restore-schema parity was RED (2 failed/24 passed), GREEN (26/26), then TRIANGULATE failed when `property_proposals` was omitted and passed after restoration; no production behavior or refactor was needed.
+### TDD Cycle Evidence
+| Task | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|
+| C2A restore-schema parity | 2 failed/24 passed | 26/26 passed | Omitting `property_proposals` failed; restored 26/26 | None needed |
+- **Verification/cleanup/paths:** clean-output offline install; `pnpm exec turbo run typecheck --filter=@viewpro/api --force` ran 6 tasks with 0 cached and generated Prisma; guarded `db:validate` and 4-file/32-test Vitest passed; pristine `viewpro_test_worker_c2a_pristine` applied all 32 migrations then dropped. Migrated-client `finally` removes source/direct engagements, asset, proposal, tenants, and user before disconnecting; fixture counts, non-idle `viewpro_test*` connections, and the dropped worker database were all zero. C2A paths are schema, additive migration, schema/migration/restore-schema-parity/registry specs, tenant registry, and five topology artifacts; no design deviation or C2B implementation occurred.
+- **C2B/workload/risk:** pending exact rows are `- [ ] C2B: Extend the earlier U2B evidence with broad decision/check, planner/index, deletion/update, duplicate title/address, and production-shaped actual-DDL lock coverage.` and `- [ ] C2B: Add reusable dependency-ordered cleanup support, prove failure cleanup, and rerun the hardened migration/registry commands.` C2B owns S39/reusable cleanup and its actual-DDL lock risk; C2A is 611 additions + 38 deletions = 649 changed lines (649 target; 650 hard cap), with no commit, push, PR, merge, review, receipt, C2B, or C3 action.

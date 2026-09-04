@@ -4,7 +4,7 @@ This normative manifest uses exact future paths only. `P/T/F/D` means production
 
 ## Audit correction
 
-The unsplit corrected sums are U2 **433–532**, U5 **440–550**, and U22 **485–575**; U4, U11, and U16 also exceed the strict upper bound when all constituent ranges are summed. They are split below into cohesive RED+GREEN units rather than having ranges asserted downward. The five direct page-boundary tests are colocated with their page-owning units and budgeted incrementally.
+The historical unsplit forecasts are U2 **433–532**, U5 **440–550**, and U22 **485–575**; the reconstituted C2A candidate is measured separately at 611 additions + 38 deletions = 649 changed lines and C2B is hard-capped at 635; U4, U11, and U16 also exceed the strict upper bound when all constituent ranges are summed. They are split below into cohesive RED+GREEN units rather than having ranges asserted downward. The five direct page-boundary tests are colocated with their page-owning units and budgeted incrementally.
 
 ## Local verification contract
 
@@ -22,16 +22,18 @@ if (!/^[A-Za-z0-9][A-Za-z0-9_-]*_test(?:_w[1-9][0-9]*|_worker_[A-Za-z0-9_-]+)?$/
 NODE
 ```
 
-The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0.0.1`, and requires the decoded final pathname component to be a base name ending `_test`, a retained worker name such as `viewpro_test_w1`–`viewpro_test_w4`, or an explicit `_test_worker_<suffix>` database; every failure exits nonzero. Use only `pnpm install --offline --frozen-lockfile` if installation is required. Restore limits and delete rows/assets, clients, transactions, barriers, and worker state in `finally`. The selected source topology is controlled C1→C20, each ≤650, with no blanket exception; strict400 is rejected forecast/history only. Planning publication is authorized only for the controlled four-PR chain (exploration+proposal → all specs → design+interface → all task artifacts) and only for commits, pushes, and PR creation, with no PR numbers yet; merge and source/apply are not authorized. After planning-chain acceptance and any separately authorized merges, source/apply requires fresh explicit authorization and a fresh `origin/develop` worktree. No provider or external service is allowed.
+The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0.0.1`, and requires the decoded final pathname component to be a base name ending `_test`, a retained worker name such as `viewpro_test_w1`–`viewpro_test_w4`, or an explicit `_test_worker_<suffix>` database; every failure exits nonzero. Use only `pnpm install --offline --frozen-lockfile` if installation is required. Restore limits and delete rows/assets, clients, transactions, barriers, and worker state in `finally`. The selected source topology is controlled C1→C2A→C2B→C3…C20 (21 groups total), each ≤650, with no blanket exception; strict400 is rejected forecast/history only. Planning publication is authorized only for the controlled four-PR chain (exploration+proposal → all specs → design+interface → all task artifacts) and only for commits, pushes, and PR creation, with no PR numbers yet; merge and source/apply are not authorized. After planning-chain acceptance and any separately authorized merges, source/apply requires fresh explicit authorization and a fresh `origin/develop` worktree. No provider or external service is allowed.
 
 ## Corrected strict-unit manifest
 
 | Unit | Exact manifest paths and ranges | Total; class |
 |---|---|---|
 | U1 | `packages/contracts/src/index.ts` P35–45; `packages/contracts/test/runtime-contract.spec.ts` T80–95; `apps/api/src/common/filters/global-exception.filter.spec.ts` T30–40; `apps/api/src/permissions/permissions.constants.ts` P12–18; `apps/api/src/permissions/role-permissions.ts` P18–25; `apps/api/src/permissions/property-proposals-role-permissions.spec.ts` T55–65 | **230–288**; production-bearing |
-| U2A | `apps/api/prisma/schema.prisma` P115–145; `apps/api/test/property-proposal-schema.spec.ts` T70–85 | **185–230**; production-bearing |
-| U2B | `apps/api/prisma/migrations/20260902120000_add_property_proposals/migration.sql` P180–210; `apps/api/test/property-proposal-migration.spec.ts` T70–85 | **250–295**; production-bearing |
-| U2C | `apps/api/src/database/tenant-isolation.extension.ts` P8–12; `apps/api/src/database/tenant-isolation.registry.spec.ts` T25–35; `apps/api/test/property-proposal-cleanup.ts` F15–20 | **48–67**; production-bearing |
+| U2A / C2A | `apps/api/prisma/schema.prisma` P115–145; `apps/api/test/property-proposal-schema.spec.ts` T55–65 | **170–210**; production-bearing |
+| U2B core / C2A | `apps/api/prisma/migrations/20260902120000_add_property_proposals/migration.sql` P110–130; `apps/api/test/property-proposal-migration.spec.ts` T120–145; `apps/api/test/restore-schema-parity.spec.ts` | **230–275**; production-bearing |
+| U2B S39 hardening / C2B | same migration/test paths, later focused expansion for decision/check, planner/index, deletion/update, duplicate, and actual-DDL lock evidence | **110–140**; production-bearing |
+| U2C registry / C2A | `apps/api/src/database/tenant-isolation.extension.ts` P8–12; `apps/api/src/database/tenant-isolation.registry.spec.ts` T25–35 | **33–47**; production-bearing |
+| U2C reusable cleanup / C2B | `apps/api/test/property-proposal-cleanup.ts` F15–20 plus focused failure evidence | **15–20**; production-bearing |
 | U3 | `apps/api/src/property-proposals/domain/normalization.ts` P35–45; `apps/api/src/property-proposals/domain/state-machine.ts` P35–45; `apps/api/src/property-proposals/domain/replay-identity.ts` P25–35; `apps/api/src/property-proposals/domain/normalization.spec.ts` T45–55; `apps/api/src/property-proposals/domain/state-machine.spec.ts` T45–55; `apps/api/src/property-proposals/domain/replay-identity.spec.ts` T30–40 | **215–275**; production-bearing |
 | U4A | `apps/api/src/property-engagements/active-property-engagement-capacity.ts` P65–80; `apps/api/src/property-engagements/prisma-property-engagements.repository.ts` P35–45; `apps/api/src/property-engagements/property-engagements.module.ts` P12–18; `apps/api/src/property-engagements/active-property-engagement-capacity.spec.ts` T85–100 F20–25; `apps/api/test/property-engagements.e2e-spec.ts` T35–45 F10–15 | **262–328**; production-bearing |
 | U4B | `apps/api/src/property-engagements/canonical-property-materializer.ts` P75–90; `apps/api/src/property-engagements/canonical-property-materializer.spec.ts` T85–100 F10–15; `apps/api/src/property-engagements/use-cases/set-primary-property-agent.use-case.spec.ts` T70–85; `apps/api/test/property-agent-primary-concurrency.e2e-spec.ts` T25–35 | **265–325**; production-bearing |
@@ -70,9 +72,11 @@ Mechanical checks (lower and upper bounds use the same addition):
 
 ```text
 U1 35+80+30+12+18+55 = 230; 45+95+40+18+25+65 = 288
-U2A 115+70 = 185; 145+85 = 230
-U2B 180+70 = 250; 210+85 = 295
-U2C 8+25+15 = 48; 12+35+20 = 67
+U2A / C2A 115+55 = 170; 145+65 = 210
+U2B core / C2A 110+120 = 230; 130+145 = 275
+U2B S39 hardening / C2B = 110; 140
+U2C registry / C2A 8+25 = 33; 12+35 = 47
+U2C reusable cleanup / C2B = 15; 20
 U3 35+35+25+45+45+30 = 215; 45+45+35+55+55+40 = 275
 U4A 65+35+12+85+20+35+10 = 262; 80+45+18+100+25+45+15 = 328
 U4B 75+85+70+25+10 = 265; 90+100+85+35+15 = 325
@@ -104,16 +108,17 @@ U22A 100+45+45+55+25 = 270; 115+55+55+65+35 = 325
 U22B 120+45+50 = 215; 135+55+60 = 250
 ```
 
-Summing all 30 production-bearing units gives **6,887–8,513**. Summing U12, U22A, and U22B gives **795–945** verification-only. Therefore the strict implementation/test forecast is **7,682–9,458**, with parent gate **0**. Every strict unit maximum is ≤400.
+Summing all 30 production-bearing units gives **6,962–8,613**. Summing U12, U22A, and U22B gives **795–945** verification-only. Therefore the strict implementation/test forecast is **7,757–9,558**, with parent gate **0**. Every strict unit maximum is ≤400.
 
 ## Selected controlled ≤650 source grouping
 
-The corrected strict units mechanically group into **20** dependency-ordered options. Execute C1→C20 and execute units left-to-right within each group; each displayed maximum is ≤650:
+The corrected strict units mechanically group into **21** dependency-ordered options. Execute C1→C2A→C2B→C3…C20 and execute units left-to-right within each group; C2B is mandatory before C3, no route or producer exists between them, and each displayed maximum is ≤650:
 
 | Group | Units | Maximum arithmetic | Group range |
 |---|---|---:|---:|
 | C1 | U1 | 288 | 230–288 |
-| C2 | U2A + U2B + U2C | 230+295+67=592 | 483–592 |
+| C2A | U2A + U2B core + U2C registry + restore-schema parity | 649 current ≤650 | 649 current |
+| C2B | U2B S39 hardening + U2C reusable cleanup | hard max ≤635 | 125–160 |
 | C3 | U3 + U4A | 275+328=603 | 477–603 |
 | C4 | U4B + U5A | 325+325=650 | 525–650 |
 | C5 | U5B + U6 | 210+275=485 | 390–485 |
@@ -133,7 +138,7 @@ The corrected strict units mechanically group into **20** dependency-ordered opt
 | C19 | U20B + U21A | 218+352=570 | 473–570 |
 | C20 | U22A + U22B | 325+250=575 | 485–575 |
 
-This selected controlled source topology has no blanket exception: execute C1–C20 in dependency order, including U1 before C2's atomic U2A/U2B/U2C, U5A before U5B, U20A before U20B, and U20B before U21A. Schema, migration, tenant registry, and cleanup land together in C2 because generated-client and migrated-database paths must agree. Strict400 is retained only as rejected forecast/history.
+This selected controlled source topology has no blanket exception: execute C1→C2A→C2B→C3…C20 in dependency order, including U1 before C2A, mandatory C2B before C3, U5A before U5B, U20A before U20B, and U20B before U21A. Schema, migration, and tenant registry land atomically in C2A because generated-client, migrated-database, and isolation paths must agree; C2B then supplies mandatory hardening and reusable cleanup. Strict400 is retained only as rejected forecast/history.
 
 ## Planning delivery arithmetic
 

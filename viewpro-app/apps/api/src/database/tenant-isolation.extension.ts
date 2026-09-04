@@ -31,6 +31,9 @@ export const TENANT_OWNED_MODELS: ReadonlySet<string> = new Set([
 	"StatusChangeRequest",
 	"FeedbackReport",
 	"FeedbackSubmissionAttempt",
+	"PropertyProposal",
+	"PropertyProposalReviewRound",
+	"PropertyProposalReviewDecision",
 ]);
 
 /**

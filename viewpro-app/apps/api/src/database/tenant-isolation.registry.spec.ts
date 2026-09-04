@@ -35,4 +35,16 @@ describe("tenant isolation registry vs schema", () => {
 
 		expect([...modelsWithTenantId].sort()).toEqual([...TENANT_OWNED_MODELS].sort());
 	});
+
+	it("registers every direct-tenant proposal model", () => {
+		expect(TENANT_OWNED_MODELS).toEqual(expect.objectContaining({ has: expect.any(Function) }));
+		expect(
+		[
+			"PropertyProposal",
+			"PropertyProposalReviewRound",
+			"PropertyProposalReviewDecision",
+		].every((model) => TENANT_OWNED_MODELS.has(model)),
+		).toBe(true);
+	});
+
 });
