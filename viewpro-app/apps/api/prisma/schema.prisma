@@ -57,6 +57,18 @@ enum PropertyOperationType {
   RENT
 }
 
+enum PropertyProposalStatus {
+  BORRADOR
+  EN_REVISION
+  APROBADA
+  RECHAZADA
+}
+
+enum PropertyProposalReviewOutcome {
+  APPROVED
+  REJECTED
+}
+
 enum PropertyEngagementStatus {
   CAPTURE
   DOCUMENTATION_PENDING
@@ -216,8 +228,11 @@ model User {
   sentTeamInvitations          TeamInvitation[]
   notifications                Notification[]
   createdMovementOutcomeLabels TenantMovementOutcomeLabel[]
-  feedbackReports              FeedbackReport[]
-  feedbackSubmissionAttempts   FeedbackSubmissionAttempt[]
+  feedbackReports                       FeedbackReport[]
+  feedbackSubmissionAttempts            FeedbackSubmissionAttempt[]
+  proposedPropertyProposals              PropertyProposal[]
+  submittedPropertyProposalReviewRounds  PropertyProposalReviewRound[] @relation("PropertyProposalReviewRoundSubmittedBy")
+  reviewedPropertyProposalReviewDecisions PropertyProposalReviewDecision[] @relation("PropertyProposalReviewDecisionReviewer")
 
   statusChangeRequestsRequested StatusChangeRequest[] @relation("StatusChangeRequestRequestedBy")
   statusChangeRequestsResolved  StatusChangeRequest[] @relation("StatusChangeRequestResolvedBy")
@@ -248,8 +263,11 @@ model Tenant {
   notifications              Notification[]
   movementOutcomeLabels      TenantMovementOutcomeLabel[]
   statusChangeRequests       StatusChangeRequest[]
-  feedbackReports            FeedbackReport[]
-  feedbackSubmissionAttempts FeedbackSubmissionAttempt[]
+  feedbackReports                    FeedbackReport[]
+  feedbackSubmissionAttempts         FeedbackSubmissionAttempt[]
+  propertyProposals                  PropertyProposal[]
+  propertyProposalReviewRounds       PropertyProposalReviewRound[]
+  propertyProposalReviewDecisions    PropertyProposalReviewDecision[]
 
   @@map("tenants")
 }
@@ -508,6 +526,7 @@ model PropertyEngagement {
   id                  String                   @id @default(uuid())
   tenantId            String
   propertyAssetId     String
+  sourceProposalId    String?                  @unique
   operationType       PropertyOperationType
   status              PropertyEngagementStatus @default(CAPTURE)
   publishedPriceCents Int?
@@ -529,12 +548,110 @@ model PropertyEngagement {
   documentRequests     DocumentRequest[]
   notifications        Notification[]
   statusChangeRequests StatusChangeRequest[]
+  sourceProposal       PropertyProposal? @relation(fields: [sourceProposalId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
 
+  @@unique([sourceProposalId, tenantId])
   @@index([tenantId, status, createdAt])
   @@index([tenantId, archivedAt, createdAt])
   @@index([propertyAssetId])
   @@index([createdByUserId])
   @@map("property_engagements")
+}
+
+model PropertyProposal {
+  id                  String                 @id @default(uuid())
+  tenantId            String
+  proposedByUserId    String
+  state               PropertyProposalStatus @default(BORRADOR)
+  version             Int                    @default(1)
+  title               String
+  addressLine         String?
+  city                String?
+  province            String?
+  propertyType        PropertyType?
+  operationType       PropertyOperationType?
+  totalAreaSqm        Int?
+  coveredAreaSqm      Int?
+  rooms               Int?
+  bedrooms            Int?
+  bathrooms           Int?
+  garages             Int?
+  ageYears            Int?
+  orientation         String?
+  ownerName           String?
+  ownerEmail          String?
+  publishedPriceCents Int?
+  currency            String?
+  latestSubmittedAt   DateTime?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  tenant           Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  proposedBy       User                           @relation(fields: [proposedByUserId], references: [id])
+  reviewRounds     PropertyProposalReviewRound[]
+  sourceEngagement PropertyEngagement?
+
+  @@unique([id, tenantId])
+  @@index([tenantId, proposedByUserId, updatedAt(sort: Desc), id(sort: Desc)], map: "property_proposals_seller_list_idx")
+  // The manager inbox COALESCE(latestSubmittedAt, createdAt) DESC, id DESC index
+  // is raw SQL in the migration because Prisma cannot model expression indexes.
+  @@map("property_proposals")
+}
+
+model PropertyProposalReviewRound {
+  id                  String                 @id @default(uuid())
+  tenantId            String
+  proposalId          String
+  roundNumber         Int
+  submittedByUserId   String
+  title               String
+  addressLine         String?
+  city                String?
+  province            String?
+  propertyType        PropertyType?
+  operationType       PropertyOperationType?
+  totalAreaSqm        Int?
+  coveredAreaSqm      Int?
+  rooms               Int?
+  bedrooms            Int?
+  bathrooms           Int?
+  garages             Int?
+  ageYears            Int?
+  orientation         String?
+  ownerName           String?
+  ownerEmail          String?
+  publishedPriceCents Int?
+  currency            String?
+  submittedAt         DateTime               @default(now())
+
+  tenant      Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  proposal    PropertyProposal               @relation(fields: [proposalId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  submittedBy User                           @relation("PropertyProposalReviewRoundSubmittedBy", fields: [submittedByUserId], references: [id])
+  decision    PropertyProposalReviewDecision?
+
+  @@unique([id, tenantId])
+  @@unique([proposalId, roundNumber])
+  @@index([tenantId, submittedAt])
+  @@map("property_proposal_review_rounds")
+}
+
+model PropertyProposalReviewDecision {
+  id            String                         @id @default(uuid())
+  tenantId      String
+  reviewRoundId String                         @unique
+  reviewerUserId String
+  outcome       PropertyProposalReviewOutcome
+  rejectionReason String?
+  decidedAt     DateTime                       @default(now())
+
+  tenant      Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reviewRound PropertyProposalReviewRound @relation(fields: [reviewRoundId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  reviewer    User                        @relation("PropertyProposalReviewDecisionReviewer", fields: [reviewerUserId], references: [id])
+
+  @@unique([reviewRoundId, tenantId])
+  @@index([tenantId, decidedAt])
+  @@index([reviewerUserId])
+  @@map("property_proposal_review_decisions")
 }
 
 model PropertyAgent {

@@ -8,7 +8,7 @@ The controlled four-PR planning chain—exploration+proposal → all specs → d
 
 | Field | Value |
 |-------|-------|
-| Estimated changed lines | 7,682–9,458 strict implementation/test lines: 6,887–8,513 production-bearing and 795–945 verification-only; parent gate 0. |
+| Estimated changed lines | 7,757–9,558 strict implementation/test lines: 6,962–8,613 production-bearing and 795–945 verification-only; parent gate 0. |
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
 | Suggested split | Selected controlled source chain C1 → C20, each group max ≤650; selected controlled four-PR planning chain. |
@@ -20,7 +20,7 @@ Chained PRs recommended: Yes
 Chain strategy: stacked-to-develop
 400-line budget risk: High
 
-Unit counts: 30 production-bearing; verification-only units are U12/U22A/U22B (3); and 1 parent/verify gate with no source-unit estimate. The selected source topology is the controlled C1 → C20 chain with exactly 20 dependency-ordered groups, each max ≤650; C1 is U1, C2 atomically contains U2A/U2B/U2C, and C3 contains U3/U4A. Schema, migration, tenant registry, and cleanup land together in C2 because generated-client and migrated-database paths must agree. No blanket exception applies. Strict400 remains rejected forecast/history only, not an active plan.
+Unit counts: 30 production-bearing; verification-only units are U12/U22A/U22B (3); and 1 parent/verify gate with no source-unit estimate. The selected source topology is the controlled C1 → C2A → C2B → C3 … C20 chain with exactly 21 dependency-ordered groups, each max ≤650; C1 is U1, C2A atomically contains U2A, the U2B core migration contract, and U2C tenant registry, while mandatory C2B contains U2B S39 migration/index/lock/integrity hardening and U2C reusable cleanup support. C2B must merge before C3; no route or producer exists between them. Schema, migration, and tenant registry remain atomic in C2A so generated-client, database, and isolation consistency are never broken. No blanket exception applies. Strict400 remains rejected forecast/history only, not an active plan.
 
 ## Scenario linkage
 
@@ -39,22 +39,27 @@ Manifest: `packages/contracts/src/index.ts`, `packages/contracts/test/runtime-co
 
 Manifest: `apps/api/prisma/schema.prisma`, `apps/api/test/property-proposal-schema.spec.ts`.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR proposal, round, decision, source-link, enum, index, and check definitions against the tenant and deletion invariants. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest-scoped schema test, `db:validate`, and API typecheck without leaving database state. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR proposal, round, decision, source-link, enum, index, and check definitions against the tenant and deletion invariants. <!-- sdd-owner: implementation -->
+- [x] Run the manifest-scoped schema test, `db:validate`, and API typecheck without leaving database state. <!-- sdd-owner: implementation -->
 
 ### U2B — Additive migration and migration evidence (S39)
 
-Manifest: `apps/api/prisma/migrations/20260902120000_add_property_proposals/migration.sql`, `apps/api/test/property-proposal-migration.spec.ts`.
+C2A manifest: `apps/api/prisma/migrations/20260902120000_add_property_proposals/migration.sql`, `apps/api/test/property-proposal-migration.spec.ts`.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR the additive migration, composite FK/index checks, production-shaped index-lock evidence, and direct-created `NULL` source behavior. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest migration test, `db:validate`, and API typecheck; clean all captured rows/assets in `finally`. <!-- sdd-owner: implementation -->
+- [x] C2A: Retain the earlier U2 RED → GREEN → TRIANGULATE → REFACTOR chronology for the additive migration, nullable direct source, same-tenant source success, and cross-tenant/duplicate source rejection. <!-- sdd-owner: implementation -->
+- [x] C2A: Run the readable core migration contract and migrated-client smoke with safe fixture cleanup, `db:validate`, pristine deploy, and API Turbo typecheck. <!-- sdd-owner: implementation -->
 
-### U2C — Tenant registry and cleanup support
+C2B manifest: the same migration test expanded for S39 hardening plus reusable cleanup support.
 
-Manifest: `apps/api/src/database/tenant-isolation.extension.ts`, `apps/api/src/database/tenant-isolation.registry.spec.ts`, `apps/api/test/property-proposal-cleanup.ts`.
+- [ ] C2B: Extend the earlier U2B evidence with broad decision/check, planner/index, deletion/update, duplicate title/address, and production-shaped actual-DDL lock coverage. <!-- sdd-owner: implementation -->
+- [ ] C2B: Add reusable dependency-ordered cleanup support, prove failure cleanup, and rerun the hardened migration/registry commands. <!-- sdd-owner: implementation -->
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR tenant registry parity and dependency-ordered cleanup helpers, including orphan asset removal. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest registry test and API typecheck; prove cleanup runs after failures and closes transactions. <!-- sdd-owner: implementation -->
+### U2C — Tenant registry
+
+Manifest: `apps/api/src/database/tenant-isolation.extension.ts`, `apps/api/src/database/tenant-isolation.registry.spec.ts`.
+
+- [x] C2A: Retain the earlier U2C RED → GREEN → TRIANGULATE → REFACTOR registry parity and register all three direct-tenant proposal models. <!-- sdd-owner: implementation -->
+- [x] C2A: Run the registry parity test and API Turbo typecheck without reusable cleanup support. <!-- sdd-owner: implementation -->
 
 ### U3 — Pure lifecycle and replay primitives
 
@@ -262,9 +267,9 @@ Manifest: `apps/app-new/tests/seeded/property-proposals.spec.ts`, `property-prop
 ## Parent review and lifecycle gates
 
 - [ ] Start or reuse one bounded review after apply, checking unit boundaries, TDD order, cleanup/rollback, isolation, race evidence, exact manifests, and budgets. <!-- sdd-owner: parent -->
-- [x] After planning-chain acceptance and any separately authorized merges, require fresh explicit source/apply authorization and a fresh `origin/develop` implementation worktree before beginning the controlled C1–C20 source chain. <!-- sdd-owner: parent -->
+- [x] After planning-chain acceptance and any separately authorized merges, require fresh explicit source/apply authorization and a fresh `origin/develop` implementation worktree before beginning the controlled C1→C2A→C2B→C3…C20 source chain. <!-- sdd-owner: parent -->
 - [ ] Run the final read-only `git diff --check` gate and reconcile all 49 matrix rows, commands, skips, blockers, and residual risks; Git mutation, delivery, push, merge, and archive remain forbidden here. <!-- sdd-owner: parent -->
 
 ## Arithmetic check
 
-The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `6,887–8,513`, verification-only `795–945`, parent gate `0`, strict implementation/test total `7,682–9,458`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650.
+The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `6,962–8,613`, verification-only `795–945`, parent gate `0`, strict implementation/test total `7,757–9,558`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650; C2A current candidate is capped at ≤640 and C2B at ≤635.
