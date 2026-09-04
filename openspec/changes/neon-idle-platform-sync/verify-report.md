@@ -1,6 +1,6 @@
 ```yaml
 schema: gentle-ai.verify-result/v1
-evidence_revision: sha256:1b9553e5852566d62d1f2726cd30b7434c32671631a3e2be4ca720d44e5ca7e6
+evidence_revision: sha256:0b02e634b930a0b0810dc8291f02fb91ed1a8c7ab046d5500059588e65a79670
 verdict: pass_with_warnings
 blockers: 0
 critical_findings: 0
@@ -9,14 +9,16 @@ scenarios: 14/14
 test_command: "pnpm --filter viewpro-web test src/features/platform-sync/components/__tests__/platform-sync-projection-render.spec.tsx && pnpm --filter viewpro-web test src/features/platform-sync/components/__tests__ && pnpm --filter viewpro-web test"
 test_exit_code: 0
 test_output_hash: sha256:b740dfb8fce9b3b9785d0777516909aedbb498968d5e8b3d4496c0e0e8b1a73b
-build_command: "pnpm --filter viewpro-web typecheck && pnpm exec oxfmt --check src/features/platform-sync/components/__tests__/platform-sync-projection-render.spec.tsx && tracked/untracked git diff whitespace check && exact changed-line/source-scope checks"
+build_command: "post-sync canonical delta/preservation/heading/GIVEN-WHEN-THEN audit && tracked/untracked git diff whitespace/scope/candidate-size checks"
 build_exit_code: 0
-build_output_hash: sha256:3816ed63337f00031beeb2340b5e515b47a04e7c99ceb4b216b84b82243dc93b
+build_output_hash: sha256:ca3dfbaba32370889601cac42fc81593c3815034b850d927d24f93bfd7e05127
 ```
 
 # Verification Report: Demand-Triggered Platform Synchronization
 
 ## Result
+
+**Post-sync successor note:** the canonical-only sync was reverified after this original report. The bounded `Post-sync canonical verification` section below is current and supersedes earlier worktree/lifecycle-state wording; original implementation and test evidence remains preserved.
 
 **PASS WITH WARNINGS.** The retained implementation and current AC6/D.5 work unit satisfy **8/8 requirements and 14/14 scenarios**. There are no current closure or archive blockers. The historical D.4 gate-order deviation remains a real, non-repairable process deviation and is not rewritten as timely compliance. Fresh API verification could not execute because this worktree lacks `apps/viewpro-api/node_modules` and its generated Prisma client; retained apply evidence remains GREEN, and the current 113-line work unit changes no API or production source.
 
@@ -131,6 +133,51 @@ Successful combined web test output hash: `sha256:b740dfb8fce9b3b9785d0777516909
 - No `size:exception` was used or needed. No commit, PR, merge, publication, deployment, receipt, or archive action occurred during verification.
 - **D.4 decision:** the late singleton reconfirmation does not block current closure or archive because it cannot now be repaired, current singleton/no-poll state is affirmatively confirmed, compatibility/rollback evidence passed, and ≥24h D.5 evidence shows safe idle behavior. It remains a permanent process warning and must not be described as timely gate compliance.
 - Lifecycle disposition: ready for archive after the parent accepts this warning-bearing verification; no publication or merge is implied or authorized.
+
+## Post-sync canonical verification
+
+**PASS WITH WARNINGS.** The canonical-only successor preserves the original **8/8 requirement and 14/14 delta-scenario** coverage, has zero blockers and zero critical findings, and changes no implementation or test file. Verdict remains warning-bearing solely for the already-disclosed D.4 gate-order deviation and the historical API-local dependency limitation.
+
+### Status, task completion, and ownership
+
+- Consumed `gentle-ai.sdd-status` v2 for unambiguous change `neon-idle-platform-sync`, `artifactStore=openspec`, repo-local workspace `/Users/emimontanari/Work/Apps/Viewpro-worktrees/neon-idle-platform-sync-canonical`, and the same path as the allowed edit root.
+- Verification ownership is proven inside that workspace. This phase edited only `openspec/changes/neon-idle-platform-sync/verify-report.md`; canonical specs, sync report, implementation, tests, tasks, and apply-progress were not edited.
+- `tasks.md` remains **14/14 checked** with no line matching `^\s*- \[ \]`; archive completeness is satisfied.
+- `sync-report.md` is the intended untracked sync artifact. The current successor contains Markdown only; `git diff 3b7342cf -- viewpro-app/apps ':!**/*.md'` is empty.
+
+### Canonical delta and preservation audit
+
+| Check | Result |
+|---|---|
+| ADDED/MODIFIED blocks | PASS — exact normalized block equality for operator-console 3/3 and platform-data lane 5/5, total 8/8. |
+| Delta scenarios | PASS — all 14/14 are retained inside those exact blocks. |
+| Canonical heading integrity | PASS — operator console has 10 unique requirements and 19 unique scenarios; platform data lane has 8 unique requirements and 16 unique scenarios. |
+| GIVEN/WHEN/THEN structure | PASS — 19/19 and 16/16 canonical scenarios contain all three clauses. |
+| Unrelated requirements | PASS — 7/7 operator-console and 3/3 platform-data-lane pre-existing unrelated blocks are byte-equivalent after normalized block extraction. |
+| Purpose/invariants/provenance | PASS — operator-console invariants are unchanged; both provenance comments and all unrelated lane purpose/invariant text are preserved. Only the directly superseded polling purpose sentence and parallel-poller invariant changed to demand/single-flight semantics. |
+| Obsolete contracts | PASS — `PLATFORM_POLL_INTERVAL_MS`, tick cadence, configurable recurring poll, and affirmative perpetual-poller contracts are absent. Parenthetical `Previously:` text and “replace perpetual polling” are historical/negative context, not live contracts. |
+| Same-domain collision | PASS — active #306 `seller-property-proposals` deltas are only `property-primary-seller`, `property-proposals`, `safe-public-error-boundary`, and `seller-navigation-scope`. |
+
+Canonical SHA-256 remains `c743e2955d39ebad93f4674458b1e412e5da82c182646cacc6f120d6cf29a6d1` for operator-console and `cc814b3061f97855b6af977f177536f65feb2e89536df5538ce32a7102f25ec6` for platform-data-lane-ingest-metrics. Sync-report SHA-256 is `952442b7bf7eae1dff93f2c0b5c167b81d56057dfd96cf7d4d986d0c275428dc`.
+
+### Strict TDD and retained execution evidence
+
+- Strict TDD remains active. `apply-progress.md` still contains TDD Cycle Evidence tables for A, B, C, D, and AC6 closure; referenced retained tests exist. The former `platform-data-poll-job.spec.ts` is intentionally absent because D.3 deleted the timer and its test under recorded RED/GREEN evidence.
+- Test and implementation files are unchanged from merged commit `3b7342cf58637d235da21e6ef85607cea793d362` (PR #513). The prior focused/component/full web execution remains exactly 1/1, 12/12, and 630/630 with output hash `sha256:b740dfb8fce9b3b9785d0777516909aedbb498968d5e8b3d4496c0e0e8b1a73b`; the supplied merge context records all 10 CI checks passed.
+- The prior assertion-quality audit remains applicable because no test changed: zero tautologies, ghost loops, type-only-only assertions, smoke-only tests, CSS-detail assertions, or assertion-without-production-execution findings. AC6 still executes the real hook, real `QueryClient`, and active projection consumer.
+- No production/provider/database retest was invented for a Markdown-only sync. The API-local `node_modules`, Vitest binary, and generated Prisma client are still absent, so the original fresh-API warning remains accurate; retained API GREEN evidence is unchanged.
+
+### Post-sync command results
+
+- Corrected inline Python canonical audit: PASS, exact delta 8/8; unrelated blocks 10/10; canonical heading uniqueness and GIVEN/WHEN/THEN 35/35; output SHA-256 `f48fd7b8b29659a171ec2b7ae93ad9f4e47039e5b836d811278106b9ea93c9b4`.
+- `env -u GIT_EXTERNAL_DIFF git diff --no-ext-diff --check` plus no-index whitespace validation for `openspec/changes/neon-idle-platform-sync/sync-report.md`: PASS.
+- Exact changed-path/source-scope and candidate-size script including the intended untracked sync report: PASS — 149 tracked additions + 61 tracked deletions + 67 untracked additions = **277 changed lines**, below both the 390 authority and 400 review budget. The build-output hash is the SHA-256 manifest of semantic output `f48fd7…c9b4` and scope output `48e25f…abb9`; the final artifact hash is returned in the phase envelope.
+- `gentle-ai sdd-verify-validate --input openspec/changes/neon-idle-platform-sync/verify-report.md --requirements 8 --scenarios 14`: PASS — `{"valid":true,"verdict":"pass_with_warnings","evidence_revision":"sha256:0b02e634b930a0b0810dc8291f02fb91ed1a8c7ab046d5500059588e65a79670"}`.
+- Diagnostic failures were resolved without protected-artifact mutation: plain `git diff -- ...` exited 128 and the first binary no-index candidate-hash attempt exited 1 because inherited `GIT_EXTERNAL_DIFF=/bin/false`; two initial inline audit parsers exited 1 and 3 due operation-boundary and AC-suffix handling. Reruns with `env -u GIT_EXTERNAL_DIFF` and the corrected parser passed.
+
+### Review workload and current risks
+
+The current canonical sync unit remains below the 400-line review budget and changes no code. It is one coherent Markdown-only successor to the already-merged sequential PR chain; no `size:exception` was used, and no slice boundary was crossed. D.4 remains a permanent historical warning because singleton reconfirmation occurred after deployment. Provider-counter lag and the historical API-local dependency warning remain disclosed but do not create a new post-sync blocker.
 
 ## Exact blockers and residual risks
 
