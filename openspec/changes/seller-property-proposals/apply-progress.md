@@ -141,3 +141,43 @@ Deferred lifecycle actions are the three parent-owned task rows, which were pres
 - **Verification:** offline frozen install; forced Turbo API typecheck 6/6 uncached; `db:validate`; exact two-file tests 4/4; API lint; hardening repeat 2/2, using only guarded localhost `viewpro_test`.
 - **Postconditions:** scratch tables, `c2b-*` fixtures, `_test_worker_*` databases, and retained non-idle test connections were all zero. Dependencies, generated/build/test outputs, `.turbo`, and `*.tsbuildinfo` were removed.
 - **Workload/risk:** 34 tracked additions + 17 deletions + 529 new test lines = 580 changed lines, within the 635 cap. The synthetic snapshot is bounded local evidence, not a production-cardinality or writer-continuity guarantee. No commit, push, PR, merge, C2B2, or C3 action occurred.
+
+## C2B2 reusable cleanup helper and migration-smoke retrofit
+
+### Status consumed
+
+```yaml
+schemaName: spec-driven
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+nextRecommended: apply
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-c2b2-cleanup
+  allowedEditRoots: the eight user-supplied C2B2 paths
+warnings: []
+```
+
+C2B2 was the selected `auto-chain` / `stacked-to-develop` work-unit after C2B1. Its implementation checkbox is now visibly `[x]`; C3 remains unchecked and blocked until C2B2 merges. Parent-owned lifecycle rows were not edited.
+
+### Completed work and strict TDD evidence
+
+- Added `test/property-proposal-cleanup.ts`, which creates its client inside the protected boundary, uses `runCleanupSteps`, deletes source engagements → captured orphan assets → proposals → tenants → users, and makes one final 5s-deadline disconnect.
+- Added the direct 3-bit matrix in `test/property-proposal-cleanup.spec.ts`: all 8 work/cleanup/disconnect outcomes assert result or recursively flattened original error identities, exact call order, and one call per cleanup/disconnect; a 20ms never-settling-disconnect test passed in 22ms.
+- Retrofitted the unchanged retained migration smoke to construct a URL with `connect_timeout=3`, `connection_limit=1`, and `options=-c statement_timeout=8000 -c lock_timeout=5000` before Prisma construction, then pass exact fixture IDs to the helper.
+
+| Cycle | Evidence |
+|---|---|
+| RED | Authored the direct spec and migration import before the helper existed; after offline install and Prisma generation, both suites failed to import `./property-proposal-cleanup` with 0 tests collected. |
+| GREEN | Forced Turbo API typecheck/generation passed 6/6 uncached; `db:validate` passed; cleanup direct + migration smoke + C2B1 hardening passed 3 files / 13 tests; API lint and the repeated direct spec passed 9/9. |
+| TRIANGULATE | Temporarily reversed captured-orphan-asset and proposal cleanup; the matrix failed 8/9, all on exact call order, then passed again after restoration. |
+| REFACTOR | Replaced conditional assertions with result/error-array comparisons for lint-readable matrix coverage; final focused suite and lint passed. |
+
+### Verification, postchecks, and residue
+
+- Used only guarded `postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro_test?schema=public` with matching `DIRECT_URL`, and only `pnpm install --offline --frozen-lockfile`.
+- Exact C2B2 command set passed: forced uncached typecheck/generation; `db:validate`; three-file cleanup/migration/hardening suite; API lint; repeated cleanup spec.
+- Postchecks returned `c2b_rows=0`, `proposal_fixture_rows=0`, `scratch_tables=0`, `worker_databases=0`, and `non_idle_test_connections=0`.
+- Candidate arithmetic: 269 additions + 49 deletions = 318 changed lines, within the C2B2 hard cap of 635. Removed root/package `node_modules`, generated clients/dist, `.turbo`, caches, reports, uploads/test outputs, and `*.tsbuildinfo`; tracked `packages/contracts/src/generated/.gitkeep` remains.
+- Residual risk: the helper's deadline bounds JavaScript settlement only; server-side cleanup statement bounds depend on each caller's URL options, which the migrated smoke now supplies before client construction. No commit, push, PR, merge, review, receipt, C3, runtime source, schema, migration, registry, or route action occurred.
