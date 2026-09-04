@@ -203,3 +203,6 @@ C2B2 was the selected `auto-chain` / `stacked-to-develop` work-unit after C2B1. 
 - **Budget:** the full candidate is **288 additions + 72 deletions = 360 changed lines**, within the C3B **≤400** cap; readability uses recovered documentation budget, not code golf.
 - **Blocker:** C4/U4B cannot begin until C3B merges; its next unchecked rows remain unchanged.
 - **Risk:** movement-schema drift can break cleanup if movements stop referencing engagements compatibly; no C4, commit, push, PR, merge, review, or receipt action occurred.
+- **CI fixture TDD:** exact repository RED was 2 failed/49 passed (`undefined.acquire`); typed resettable lease GREEN is 51/51, and temporary lease rejection triangulated direct create/active restore at 2 failed/49 passed before restoration.
+- **Correction verification:** guarded matching localhost `DATABASE_URL`/`DIRECT_URL` passed U4A 2 files/43 tests, C3A+C3B 5/70, forced API Turbo typecheck 6/6 uncached, and API lint; only the repository fixture changed, with no design deviation.
+- **Correction arithmetic:** this delta is 22 additions + 7 deletions = 29 changed lines (≤40); against `909ba5c7`, candidate total is 310 + 79 = 389 (≤400), C4 stays blocked, and C3B's `[x]` tasks remain unchanged.
