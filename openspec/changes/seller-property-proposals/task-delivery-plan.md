@@ -22,7 +22,7 @@ if (!/^[A-Za-z0-9][A-Za-z0-9_-]*_test(?:_w[1-9][0-9]*|_worker_[A-Za-z0-9_-]+)?$/
 NODE
 ```
 
-The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0.0.1`, and requires the decoded final pathname component to be a base name ending `_test`, a retained worker name such as `viewpro_test_w1`–`viewpro_test_w4`, or an explicit `_test_worker_<suffix>` database; every failure exits nonzero. Use only `pnpm install --offline --frozen-lockfile` if installation is required. Restore limits and delete rows/assets, clients, transactions, barriers, and worker state in `finally`. The selected source topology is controlled C1→C2A→C2B1→C2B2→C3…C20 (22 groups total), with C2B1 and C2B2 each ≤635 and every other group ≤650, with no blanket exception; strict400 is rejected forecast/history only. Planning publication is authorized only for the controlled four-PR chain (exploration+proposal → all specs → design+interface → all task artifacts) and only for commits, pushes, and PR creation, with no PR numbers yet; merge and source/apply are not authorized. After planning-chain acceptance and any separately authorized merges, source/apply requires fresh explicit authorization and a fresh `origin/develop` worktree. No provider or external service is allowed.
+The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0.0.1`, and requires the decoded final pathname component to be a base name ending `_test`, a retained worker name such as `viewpro_test_w1`–`viewpro_test_w4`, or an explicit `_test_worker_<suffix>` database; every failure exits nonzero. Use only `pnpm install --offline --frozen-lockfile` if installation is required. Restore limits and delete rows/assets, clients, transactions, barriers, and worker state in `finally`. The selected source topology is controlled C1→C2A→C2B1→C2B2→C3A→C3B→C4…C20 (23 groups total), with C2B1 and C2B2 each ≤635 and every other group ≤650, with no blanket exception; strict400 is rejected forecast/history only. Planning publication is authorized only for the controlled four-PR chain (exploration+proposal → all specs → design+interface → all task artifacts) and only for commits, pushes, and PR creation, with no PR numbers yet; merge and source/apply are not authorized. After planning-chain acceptance and any separately authorized merges, source/apply requires fresh explicit authorization and a fresh `origin/develop` worktree. No provider or external service is allowed.
 
 ## Corrected strict-unit manifest
 
@@ -112,7 +112,7 @@ Summing all 30 production-bearing units gives **6,962–8,613**. Summing U12, U2
 
 ## Selected controlled ≤650 source grouping
 
-The corrected strict units mechanically group into **22** dependency-ordered options. Execute C1→C2A→C2B1→C2B2→C3…C20 and execute units left-to-right within each group; C2B1 contains only the new S39 hardening spec, while C2B2 owns the reusable cleanup helper/direct matrix and retained C2A migration-smoke teardown retrofit. C2B2 is mandatory before C3, no route or producer exists between them, C2B1/C2B2 are each ≤635, and every other displayed maximum is ≤650:
+The corrected strict units mechanically group into **23** dependency-ordered options. Execute C1→C2A→C2B1→C2B2→C3A→C3B→C4…C20 and execute units left-to-right within each group; C2B1 contains only the new S39 hardening spec, while C2B2 owns the reusable cleanup helper/direct matrix and retained C2A migration-smoke teardown retrofit. C2B2 is mandatory before C3A, C3B is mandatory before C4/U4B, C2B1/C2B2 are each ≤635, and every other displayed maximum is ≤650:
 
 | Group | Units | Maximum arithmetic | Group range |
 |---|---|---:|---:|
@@ -120,7 +120,8 @@ The corrected strict units mechanically group into **22** dependency-ordered opt
 | C2A | U2A + U2B core + U2C registry + restore-schema parity | 649 current ≤650 | 649 current |
 | C2B1 | U2B S39 migration/index/lock hardening only | hard max ≤635 | hard max ≤635 |
 | C2B2 | U2C reusable cleanup helper plus exhaustive direct matrix | hard max ≤635 | hard max ≤635 |
-| C3 | U3 + U4A | 275+328=603 | 477–603 |
+| C3A | U3 | 275 | 215–275 |
+| C3B | U4A | 328 | 262–328 |
 | C4 | U4B + U5A | 325+325=650 | 525–650 |
 | C5 | U5B + U6 | 210+275=485 | 390–485 |
 | C6 | U7 | 305 | 255–305 |
@@ -139,7 +140,7 @@ The corrected strict units mechanically group into **22** dependency-ordered opt
 | C19 | U20B + U21A | 218+352=570 | 473–570 |
 | C20 | U22A + U22B | 325+250=575 | 485–575 |
 
-This selected controlled source topology has no blanket exception: execute C1→C2A→C2B1→C2B2→C3…C20 in dependency order, including U1 before C2A, C2B1 before C2B2, and mandatory C2B2 before C3, U5A before U5B, U20A before U20B, and U20B before U21A. Schema, migration, and tenant registry land atomically in C2A because generated-client, migrated-database, and isolation paths must agree; C2B1 supplies only S39 hardening, and C2B2 supplies the mandatory reusable cleanup/direct matrix plus retained C2A migration-smoke teardown retrofit before C3. Strict400 is retained only as rejected forecast/history.
+This selected controlled source topology has no blanket exception: execute C1→C2A→C2B1→C2B2→C3A→C3B→C4…C20 in dependency order, including U1 before C2A, C2B1 before C2B2, mandatory C2B2 before C3A, mandatory C3B/U4A before C4/U4B, U5A before U5B, U20A before U20B, and U20B before U21A. Schema, migration, and tenant registry land atomically in C2A because generated-client, migrated-database, and isolation paths must agree; C2B1 supplies only S39 hardening, C2B2 supplies the mandatory reusable cleanup/direct matrix plus retained C2A migration-smoke teardown retrofit before C3A, C3A supplies only U3, and C3B supplies only U4A. Strict400 is retained only as rejected forecast/history.
 
 ## Planning delivery arithmetic
 
