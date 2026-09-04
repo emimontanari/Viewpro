@@ -86,15 +86,15 @@ Manifest: `apps/api/src/property-engagements/active-property-engagement-capacity
 
 Manifest: `apps/api/src/property-engagements/canonical-property-materializer.ts`, `apps/api/src/property-engagements/canonical-property-materializer.spec.ts`, `apps/api/src/property-engagements/use-cases/set-primary-property-agent.use-case.spec.ts`, `apps/api/test/property-agent-primary-concurrency.e2e-spec.ts`.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR materialization, null-currency defaulting, explicit `isPrimary=false`, and separate explicit primary set/change/clear behavior; the primary tests are first added here, not in U12. <!-- sdd-owner: implementation -->
-- [ ] Run all manifest materializer/primary tests and API typecheck; capture source engagements before orphan assets and close clients in `finally`. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR materialization, null-currency defaulting, explicit `isPrimary=false`, and separate explicit primary set/change/clear behavior; the primary tests are first added here, not in U12. <!-- sdd-owner: implementation -->
+- [x] Run all manifest materializer/primary tests and API typecheck; capture source engagements before orphan assets and close clients in `finally`. <!-- sdd-owner: implementation -->
 
 ### U5A — Seller repository and scoped reads (S02)
 
 Manifest: `property-proposals.repository.ts`, `prisma-property-proposals.repository.ts`, list/get use cases, and `prisma-property-proposals.repository.spec.ts` at the exact paths in the delivery manifest.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR tenant-plus-proposer predicates, safe identical absence, own list/detail reads. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest repository/read specs and API typecheck; delete proposal/history fixtures without touching canonical rows. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR tenant-plus-proposer predicates, safe identical absence, own list/detail reads. <!-- sdd-owner: implementation -->
+- [x] Run the manifest repository/read specs and API typecheck; delete proposal/history fixtures without touching canonical rows. <!-- sdd-owner: implementation -->
 
 ### U5B — Seller draft creation and identity (S01, S03)
 
