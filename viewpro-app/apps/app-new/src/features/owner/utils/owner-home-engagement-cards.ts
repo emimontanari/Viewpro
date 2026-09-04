@@ -1,5 +1,7 @@
 import type { OwnerEngagement, OwnerMovement, OwnerProperty } from '../api/types';
 
+export const OWNER_HOME_RECENT_MOVEMENT_LIMIT = 5;
+
 export type OwnerHomeEngagementCard = {
   id: string;
   agency: { id: string; name: string };
@@ -8,34 +10,27 @@ export type OwnerHomeEngagementCard = {
   latestMovementAt: number | null;
   nextAction: string | null;
   property: OwnerProperty;
+  recentMovements: OwnerMovement[];
 };
 
 /**
- * Builds one card per owner-visible agency/property engagement.
- *
- * Every card reads its stage, activity and next action exclusively from its own
- * engagement: a property worked by two agencies produces two independent cards and
- * neither one borrows activity from the other.
- *
- * Cards are ordered by the date of the engagement's latest owner-visible movement,
- * descending; engagements without a movement are placed last; ties are resolved by
- * the stable engagement id, ascending. The order is derived from the card data, so
- * it never depends on the order in which properties, engagements or movements arrive.
+ * Builds one card per owner-visible agency/property engagement. Every card reads its
+ * stage, activity, and next action exclusively from its own normalized movement rows.
  */
 export function buildOwnerHomeEngagementCards({
   properties,
   engagementsByProperty,
-  latestMovementByEngagementId
+  recentMovementsByEngagementId
 }: {
   properties: OwnerProperty[];
   engagementsByProperty: Array<OwnerEngagement[] | undefined>;
-  latestMovementByEngagementId: Record<string, OwnerMovement | null | undefined>;
+  recentMovementsByEngagementId: Record<string, OwnerMovement[] | null | undefined>;
 }): OwnerHomeEngagementCard[] {
   const cards = properties.flatMap((property, index) =>
     (engagementsByProperty[index] ?? []).map((engagement) =>
       buildCard({
         engagement,
-        latestMovement: latestMovementByEngagementId[engagement.id],
+        movements: recentMovementsByEngagementId[engagement.id],
         property
       })
     )
@@ -46,27 +41,44 @@ export function buildOwnerHomeEngagementCards({
 
 function buildCard({
   engagement,
-  latestMovement,
+  movements,
   property
 }: {
   engagement: OwnerEngagement;
-  latestMovement: OwnerMovement | null | undefined;
+  movements: OwnerMovement[] | null | undefined;
   property: OwnerProperty;
 }): OwnerHomeEngagementCard {
-  const latestMovementAt = latestMovement ? parseMovementDate(latestMovement.createdAt) : null;
-  // A movement we cannot place in time cannot be presented as recent activity, so the
-  // card falls back to its explicit no-activity state instead of rendering an invalid date.
-  const visibleMovement = latestMovementAt === null ? null : (latestMovement ?? null);
+  const recentMovements = normalizeRecentMovements(engagement.id, movements);
+  const latestMovement = recentMovements[0] ?? null;
 
   return {
     id: engagement.id,
     agency: engagement.tenant,
     engagement,
-    latestMovement: visibleMovement,
-    latestMovementAt,
-    nextAction: getNextAction(visibleMovement),
-    property
+    latestMovement,
+    latestMovementAt: latestMovement ? parseMovementDate(latestMovement.createdAt) : null,
+    nextAction: getNextAction(latestMovement),
+    property,
+    recentMovements
   };
+}
+
+function normalizeRecentMovements(
+  engagementId: string,
+  movements: OwnerMovement[] | null | undefined
+) {
+  return (movements ?? [])
+    .slice(0, OWNER_HOME_RECENT_MOVEMENT_LIMIT)
+    .map((movement) => ({ movement, timestamp: parseMovementDate(movement.createdAt) }))
+    .filter(
+      (candidate): candidate is { movement: OwnerMovement; timestamp: number } =>
+        candidate.movement.propertyEngagementId === engagementId && candidate.timestamp !== null
+    )
+    .toSorted(
+      (first, second) =>
+        second.timestamp - first.timestamp || first.movement.id.localeCompare(second.movement.id)
+    )
+    .map(({ movement }) => movement);
 }
 
 function compareOwnerHomeEngagementCards(
@@ -91,10 +103,7 @@ function compareOwnerHomeEngagementCards(
   return compareEngagementId(firstCard, secondCard);
 }
 
-function compareEngagementId(
-  firstCard: OwnerHomeEngagementCard,
-  secondCard: OwnerHomeEngagementCard
-) {
+function compareEngagementId(firstCard: OwnerHomeEngagementCard, secondCard: OwnerHomeEngagementCard) {
   return firstCard.id < secondCard.id ? -1 : firstCard.id > secondCard.id ? 1 : 0;
 }
 

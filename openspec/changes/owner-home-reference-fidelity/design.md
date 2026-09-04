@@ -129,11 +129,11 @@ Forecast **550–750 changed lines total**; use three sequential, independently 
 
 | Slice | Boundary and estimate | Rollback |
 | --- | --- | --- |
-| 1. Bounded data | Query/helper tests + mapper/tests; home consumes arrays while retaining compact UI. **180–260** lines. | Revert its query, mapper, home adapter, and tests together; restore page-size-one behavior, no migration/repair. |
+| 1. Bounded data | Query/helper tests + mapper/tests; home consumes arrays while retaining compact UI. **180–260** lines. | Revert its six Slice 1 files together—query, query test, mapper, mapper test, home adapter, and home fixture test—to restore page-size-one behavior, no migration/repair. |
 | 2. Action hierarchy | Three tiles, scoped `Ver más`, contact semantics, responsive actions, component/seeded selectors. **180–280** lines. | Revert its presentation/test files together; retain Slice 1 bounded data. |
 | 3. Activity fidelity | Panel, date/type helpers, local states, responsive timeline, component/helper/seeded tests. **220–340** lines. | Revert its presentation/helper/test files together; retain Slice 2 actions and bounded query. |
 
-Slice 1 is limited to `api/queries.ts`, `api/queries.test.ts`, `components/owner-home.tsx`, `utils/owner-home-engagement-cards.ts`, and `utils/owner-home-engagement-cards.test.ts` under `viewpro-app/apps/app-new/src/features/owner/`.
+Slice 1 is limited to `api/queries.ts`, `api/queries.test.ts`, `components/owner-home.tsx`, `components/owner-home.test.tsx`, `utils/owner-home-engagement-cards.ts`, and `utils/owner-home-engagement-cards.test.ts` under `viewpro-app/apps/app-new/src/features/owner/`.
 Slice 2 is limited to `viewpro-app/apps/app-new/src/features/owner/components/owner-home.tsx`, its `.test.tsx`, and `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`.
 Slice 3 is limited to those same home/seeded files plus `viewpro-app/apps/app-new/src/features/owner/utils/owner-movement-labels.ts` and its `.test.ts`.
 

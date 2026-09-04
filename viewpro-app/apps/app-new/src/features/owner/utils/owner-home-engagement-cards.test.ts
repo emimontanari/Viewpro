@@ -1,9 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import type { OwnerEngagement, OwnerMovement, OwnerProperty } from '../api/types';
 import {
-  buildOwnerHomeEngagementCards,
-  filterOwnerHomeEngagementCardsByAgency
+  buildOwnerHomeEngagementCards as buildOwnerHomeEngagementCardsFromRecentMovements,
+  filterOwnerHomeEngagementCardsByAgency,
+  OWNER_HOME_RECENT_MOVEMENT_LIMIT
 } from './owner-home-engagement-cards';
+
+function buildOwnerHomeEngagementCards(input: {
+  properties: OwnerProperty[];
+  engagementsByProperty: Array<OwnerEngagement[] | undefined>;
+  latestMovementByEngagementId?: Record<string, OwnerMovement | null | undefined>;
+  recentMovementsByEngagementId?: Record<string, OwnerMovement[] | null | undefined>;
+}) {
+  const recentMovementsByEngagementId =
+    input.recentMovementsByEngagementId ??
+    Object.fromEntries(
+      Object.entries(input.latestMovementByEngagementId ?? {}).map(([engagementId, movement]) => [
+        engagementId,
+        movement ? [{ ...movement, propertyEngagementId: engagementId }] : []
+      ])
+    );
+
+  return buildOwnerHomeEngagementCardsFromRecentMovements({
+    ...input,
+    recentMovementsByEngagementId
+  });
+}
 
 describe('buildOwnerHomeEngagementCards', () => {
   it('renders one card per engagement when a property is worked by multiple agencies', () => {
@@ -176,6 +198,78 @@ describe('buildOwnerHomeEngagementCards', () => {
     expect(cards[0]?.nextAction).toBeNull();
   });
 
+  it('normalizes the bounded rows before deriving each compact activity summary', () => {
+    const cards = buildOwnerHomeEngagementCards({
+      properties: [buildProperty({ id: 'property-1' })],
+      engagementsByProperty: [[buildEngagement({ id: 'engagement-a', tenantId: 'tenant-a' })]],
+      recentMovementsByEngagementId: {
+        'engagement-a': [
+          buildMovement({ id: 'movement-four', createdAt: '2026-08-20T10:00:00.000Z' }),
+          buildMovement({
+            id: 'movement-mismatch',
+            propertyEngagementId: 'engagement-sibling',
+            createdAt: '2026-08-20T13:00:00.000Z'
+          }),
+          buildMovement({ id: 'movement-invalid', createdAt: 'not-a-date' }),
+          buildMovement({ id: 'movement-tie-z', createdAt: '2026-08-20T11:00:00.000Z' }),
+          buildMovement({
+            id: 'movement-tie-a',
+            createdAt: '2026-08-20T11:00:00.000Z',
+            nextStep: '  Llamar al propietario  '
+          }),
+          buildMovement({ id: 'movement-out-of-bound', createdAt: '2026-08-20T15:00:00.000Z' })
+        ]
+      }
+    } as never);
+
+    expect(OWNER_HOME_RECENT_MOVEMENT_LIMIT).toBe(5);
+    expect(cards[0]?.recentMovements.map((movement) => movement.id)).toEqual([
+      'movement-tie-a',
+      'movement-tie-z',
+      'movement-four'
+    ]);
+    expect(cards[0]?.latestMovement?.id).toBe('movement-tie-a');
+    expect(cards[0]?.nextAction).toBe('Llamar al propietario');
+  });
+
+  it('keeps mixed-validity movement arrays isolated and card order independent of input order', () => {
+    const property = buildProperty({ id: 'property-shared' });
+    const engagementA = buildEngagement({ id: 'engagement-a', tenantId: 'tenant-a' });
+    const engagementB = buildEngagement({ id: 'engagement-b', tenantId: 'tenant-b' });
+    const recentMovementsByEngagementId = {
+      'engagement-a': [
+        buildMovement({
+          id: 'movement-unknown',
+          type: 'FUTURE_OWNER_MOVEMENT',
+          createdAt: '2026-08-22T10:00:00.000Z'
+        })
+      ],
+      'engagement-b': [
+        buildMovement({
+          id: 'movement-borrowed',
+          propertyEngagementId: 'engagement-a',
+          createdAt: '2026-08-23T10:00:00.000Z'
+        })
+      ]
+    };
+
+    const forwardCards = buildOwnerHomeEngagementCards({
+      properties: [property],
+      engagementsByProperty: [[engagementB, engagementA]],
+      recentMovementsByEngagementId
+    } as never);
+    const reversedCards = buildOwnerHomeEngagementCards({
+      properties: [property],
+      engagementsByProperty: [[engagementA, engagementB]],
+      recentMovementsByEngagementId
+    } as never);
+
+    expect(forwardCards.map((card) => card.id)).toEqual(['engagement-a', 'engagement-b']);
+    expect(reversedCards.map((card) => card.id)).toEqual(['engagement-a', 'engagement-b']);
+    expect(forwardCards[0]?.recentMovements[0]?.type).toBe('FUTURE_OWNER_MOVEMENT');
+    expect(forwardCards[1]?.recentMovements).toEqual([]);
+  });
+
   it('skips properties whose engagements have not resolved yet', () => {
     const cards = buildOwnerHomeEngagementCards({
       properties: [buildProperty({ id: 'property-1' }), buildProperty({ id: 'property-2' })],
@@ -260,13 +354,16 @@ function buildEngagement(input: {
 
 function buildMovement(input: {
   createdAt: string;
+  id?: string;
   nextStep?: string | null;
   observation?: string;
+  propertyEngagementId?: string;
+  type?: string;
 }): OwnerMovement {
   return {
-    id: `movement-${input.createdAt}`,
-    propertyEngagementId: 'engagement-a',
-    type: 'STATUS_CHANGE',
+    id: input.id ?? `movement-${input.createdAt}`,
+    propertyEngagementId: input.propertyEngagementId ?? 'engagement-a',
+    type: input.type ?? 'STATUS_CHANGE',
     observation: input.observation ?? 'Movimiento visible para el propietario',
     nextStep: input.nextStep ?? null,
     previousStatus: null,

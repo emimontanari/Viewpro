@@ -9,6 +9,7 @@ import {
   getOwnerPropertyEngagements
 } from './service';
 import type { OwnerNotificationFilters } from './notifications';
+import { OWNER_HOME_RECENT_MOVEMENT_LIMIT } from '../utils/owner-home-engagement-cards';
 import type { OwnerDocumentRequestsFilters, OwnerTimelineFilters } from './types';
 
 export const ownerKeys = {
@@ -52,18 +53,15 @@ export const ownerEngagementTimelineOptions = (
     queryFn: () => getOwnerEngagementTimeline(engagementId, filters)
   });
 
-const OWNER_LATEST_MOVEMENT_FILTERS: OwnerTimelineFilters = {
+const OWNER_HOME_RECENT_MOVEMENT_FILTERS: OwnerTimelineFilters = {
   order: 'desc',
   page: 1,
-  pageSize: 1
+  pageSize: OWNER_HOME_RECENT_MOVEMENT_LIMIT
 };
 
-/**
- * Latest owner-visible movement for a single engagement, used by the owner home screen
- * to describe recent activity and the next action without loading a full timeline page.
- */
-export const ownerEngagementLatestMovementOptions = (engagementId: string) =>
-  ownerEngagementTimelineOptions(engagementId, OWNER_LATEST_MOVEMENT_FILTERS);
+/** Bounded owner-home activity, intentionally distinct from the 25-row detail query. */
+export const ownerEngagementRecentMovementsOptions = (engagementId: string) =>
+  ownerEngagementTimelineOptions(engagementId, OWNER_HOME_RECENT_MOVEMENT_FILTERS);
 
 export const ownerDocumentRequestsOptions = (
   propertyEngagementId: string,

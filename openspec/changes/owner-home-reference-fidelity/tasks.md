@@ -33,7 +33,7 @@ Chain strategy: stacked-to-main
 
 **Objective:** replace the page-size-one lookup with an engagement-scoped, defensively bounded five-row view-model while retaining the compact presentation.
 **Depends on:** P2 merged and Slice 1 branched from fresh `develop`. **Estimate:** 180–260 changed lines.
-**Rollback boundary:** revert this slice's five listed files together to restore the page-size-one query and previous card mapper; no API cache migration or data repair is required.
+**Rollback boundary:** revert this slice's six listed files together—including the corrected component ordering fixture—to restore the page-size-one query and previous card mapper; no API cache migration or data repair is required.
 
 ### Allowed edit manifest (repository-relative)
 
@@ -41,14 +41,15 @@ Chain strategy: stacked-to-main
 viewpro-app/apps/app-new/src/features/owner/api/queries.ts
 viewpro-app/apps/app-new/src/features/owner/api/queries.test.ts
 viewpro-app/apps/app-new/src/features/owner/components/owner-home.tsx
+viewpro-app/apps/app-new/src/features/owner/components/owner-home.test.tsx
 viewpro-app/apps/app-new/src/features/owner/utils/owner-home-engagement-cards.ts
 viewpro-app/apps/app-new/src/features/owner/utils/owner-home-engagement-cards.test.ts
 ```
 
-- [ ] **RED:** In `viewpro-app/apps/app-new/src/features/owner/api/queries.test.ts` and `viewpro-app/apps/app-new/src/features/owner/utils/owner-home-engagement-cards.test.ts`, add failing characterization for the exact `['owner', 'engagements', engagementId, 'timeline', { order: 'desc', page: 1, pageSize: 5 }]` home key/query call, its distinction from the 25-row detail key, five-row input bound, engagement-id rejection, invalid-date rejection, newest-first ordering, equal-time movement-id tie breaking, normalized-row-zero latest/next-action/card ordering, no-activity-last, and input/query-arrival independence. <!-- sdd-owner: implementation -->
-- [ ] **GREEN:** In `viewpro-app/apps/app-new/src/features/owner/api/queries.ts`, export `ownerEngagementRecentMovementsOptions` with the shared `OWNER_HOME_RECENT_MOVEMENT_LIMIT = 5`; in `viewpro-app/apps/app-new/src/features/owner/utils/owner-home-engagement-cards.ts`, normalize only each card's bounded movement array into `recentMovements`; and in `viewpro-app/apps/app-new/src/features/owner/components/owner-home.tsx`, replace the latest-movement query/index with the aligned recent-movements query/index while retaining the current compact visual summary. <!-- sdd-owner: implementation -->
-- [ ] **TRIANGULATE:** Extend the same mapper/query tests with two agencies on one property, more than five mixed-validity rows, a mismatched `propertyEngagementId`, and completion/input permutations, proving neither the index nor sorting can borrow a sibling engagement's movement and unknown movement types remain eligible for ordering. <!-- sdd-owner: implementation -->
-- [ ] **REFACTOR:** Keep the limit defined once in `owner-home-engagement-cards.ts`, keep query/service dependencies out of the pure mapper, remove the retired latest-home helper/index names from `queries.ts` and `owner-home.tsx`, and rerun `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/owner/api/queries.test.ts src/features/owner/utils/owner-home-engagement-cards.test.ts src/features/owner/components/owner-home.test.tsx`. <!-- sdd-owner: implementation -->
+- [x] **RED:** In `viewpro-app/apps/app-new/src/features/owner/api/queries.test.ts` and `viewpro-app/apps/app-new/src/features/owner/utils/owner-home-engagement-cards.test.ts`, add failing characterization for the exact `['owner', 'engagements', engagementId, 'timeline', { order: 'desc', page: 1, pageSize: 5 }]` home key/query call, its distinction from the 25-row detail key, five-row input bound, engagement-id rejection, invalid-date rejection, newest-first ordering, equal-time movement-id tie breaking, normalized-row-zero latest/next-action/card ordering, no-activity-last, and input/query-arrival independence. <!-- sdd-owner: implementation -->
+- [x] **GREEN:** In `viewpro-app/apps/app-new/src/features/owner/api/queries.ts`, export `ownerEngagementRecentMovementsOptions` with the shared `OWNER_HOME_RECENT_MOVEMENT_LIMIT = 5`; in `viewpro-app/apps/app-new/src/features/owner/utils/owner-home-engagement-cards.ts`, normalize only each card's bounded movement array into `recentMovements`; and in `viewpro-app/apps/app-new/src/features/owner/components/owner-home.tsx`, replace the latest-movement query/index with the aligned recent-movements query/index while retaining the current compact visual summary. <!-- sdd-owner: implementation -->
+- [x] **TRIANGULATE:** Extend the same mapper/query tests with two agencies on one property, more than five mixed-validity rows, a mismatched `propertyEngagementId`, and completion/input permutations, proving neither the index nor sorting can borrow a sibling engagement's movement and unknown movement types remain eligible for ordering. <!-- sdd-owner: implementation -->
+- [x] **REFACTOR:** Keep the limit defined once in `owner-home-engagement-cards.ts`, keep query/service dependencies out of the pure mapper, remove the retired latest-home helper/index names from `queries.ts` and `owner-home.tsx`, and rerun `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/owner/api/queries.test.ts src/features/owner/utils/owner-home-engagement-cards.test.ts src/features/owner/components/owner-home.test.tsx`. <!-- sdd-owner: implementation -->
 
 **Slice completion evidence:** the focused command passes, `OwnerTimeline` remains unmounted on home, home requests at most five rows per engagement, and only the manifest files changed.
 
@@ -106,6 +107,6 @@ viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts
 
 - [x] Delivery chain is selected: `stacked-to-main` on repository integration branch `develop`; no size exception is authorized. <!-- sdd-owner: parent -->
 - [x] **P1 gate:** PR #525 passed all 10 reported checks and was squash-merged to `develop` as `17d2291137dd7408ef1a039d27c7807bfca91d11`; P2 branched from that fresh integration commit. <!-- sdd-owner: parent -->
-- [ ] **P2 gate:** From fresh `develop` containing merged P1, review, run applicable docs CI, and merge the docs-only PR containing `specs/owner-portal-home/spec.md`, `design.md`, and `tasks.md` (≤130 physical lines); Slice 1 source apply must not branch until this merge completes. <!-- sdd-owner: parent -->
+- [x] **P2 gate:** PR #526 passed all 10 reported checks and was squash-merged to `develop` as `3655452a76b38d198503917879d9f1850cf91fad`; Slice 1 branched from that fresh integration commit. <!-- sdd-owner: parent -->
 - [ ] After implementation evidence, start or reuse bounded review for each source slice under the effective review-mode policy, checking fresh-`develop` dependency, manifest, under-400 budget, rollback boundary, CI, and clean diff before its merge. <!-- sdd-owner: parent -->
 - [ ] Gate verify, sync, and archive only after P1, P2, and all three source-slice checks are recorded; do not claim review approval when review mode is disabled or unmanaged. <!-- sdd-owner: parent -->

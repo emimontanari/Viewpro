@@ -257,9 +257,18 @@ describe('OwnerHome', () => {
         [buildOwnerEngagement({ tenant: { id: 'recent', name: 'Reciente' } })]
       ],
       {
-        'engagement-tie-z': buildOwnerMovement({ createdAt: sameTimestamp }),
-        'engagement-tie-a': buildOwnerMovement({ createdAt: sameTimestamp }),
-        'engagement-recent': buildOwnerMovement({ createdAt: '2026-08-22T12:00:00.000Z' })
+            'engagement-tie-z': buildOwnerMovement({
+              createdAt: sameTimestamp,
+              propertyEngagementId: 'engagement-tie-z'
+            }),
+            'engagement-tie-a': buildOwnerMovement({
+              createdAt: sameTimestamp,
+              propertyEngagementId: 'engagement-tie-a'
+            }),
+            'engagement-recent': buildOwnerMovement({
+              createdAt: '2026-08-22T12:00:00.000Z',
+              propertyEngagementId: 'engagement-recent'
+            })
       }
     );
 
@@ -437,10 +446,11 @@ function buildOwnerMovement(input: {
   createdAt: string;
   nextStep?: string | null;
   observation?: string;
+  propertyEngagementId?: string;
 }): OwnerMovement {
   return {
     id: `movement-${input.createdAt}`,
-    propertyEngagementId: 'engagement-tenant-1',
+    propertyEngagementId: input.propertyEngagementId ?? 'engagement-tenant-1',
     type: 'STATUS_CHANGE',
     observation: input.observation ?? 'Movimiento visible para el propietario',
     nextStep: input.nextStep ?? null,
