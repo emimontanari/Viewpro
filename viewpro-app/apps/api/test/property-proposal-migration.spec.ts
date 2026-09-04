@@ -119,6 +119,17 @@ describe("property proposal additive migration", () => {
 					createdByUserId: ids.user,
 				},
 			});
+			await expect(
+				prisma.propertyEngagement.create({
+					data: {
+						tenantId: ids.tenantB,
+						propertyAssetId: ids.asset,
+						operationType: "SALE",
+						createdByUserId: ids.user,
+						sourceProposalId: ids.proposal,
+					},
+				}),
+			).rejects.toThrow("Foreign key constraint violated");
 			const source = await prisma.propertyEngagement.create({
 				data: {
 					id: ids.source,
@@ -150,18 +161,7 @@ describe("property proposal additive migration", () => {
 						sourceProposalId: ids.proposal,
 					},
 				}),
-			).rejects.toThrow();
-			await expect(
-				prisma.propertyEngagement.create({
-					data: {
-						tenantId: ids.tenantB,
-						propertyAssetId: ids.asset,
-						operationType: "SALE",
-						createdByUserId: ids.user,
-						sourceProposalId: ids.proposal,
-					},
-				}),
-			).rejects.toThrow();
+			).rejects.toThrow("Unique constraint failed");
 		} finally {
 			try {
 				await cleanFixture(prisma, ids);
