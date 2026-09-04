@@ -2,8 +2,20 @@ import { randomUUID } from "node:crypto";
 import { PrismaClient, PropertyOperationType, PropertyType, TenantMembershipStatus, TenantRole, UserStatus } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaPropertyEngagementsRepository, setPrimaryAgentLockBarrierForTest } from "../src/property-engagements/prisma-property-engagements.repository";
+import { runCleanupSteps } from './cleanup-steps'
+
 type Operation = "set" | "clear" | "remove";
-type Fixture = Awaited<ReturnType<typeof createFixture>>;
+type Fixture = {
+  tenantId: string
+  engagementId: string
+  assetId: string
+  managerId: string
+  userA: string
+  userB: string
+  assignmentA: string
+  assignmentB: string
+  primaryId: string | null
+};
 const applicationPrefix = `s3-primary-${randomUUID()}`;
 const firstApplicationName = `${applicationPrefix}-first`;
 const secondApplicationName = `${applicationPrefix}-second`;
@@ -36,7 +48,17 @@ function run(client: PrismaClient, fixture: Fixture, operation: Operation, candi
 	return operation === "clear" ? repository.clearPrimaryAgent({ ...scope, expectedPrimaryAgentId: fixture.primaryId }) : repository.removeAgent({ ...scope, agentId: candidateId });
 }
 describe("primary seller PostgreSQL concurrency", () => {
-	beforeAll(async () => { await Promise.all([firstClient.$connect(), secondClient.$connect(), observerClient.$connect()]); }); afterAll(async () => { setPrimaryAgentLockBarrierForTest(null); await Promise.all([firstClient.$disconnect(), secondClient.$disconnect(), observerClient.$disconnect()]); });
+	beforeAll(async () => {
+		await Promise.all([firstClient.$connect(), secondClient.$connect(), observerClient.$connect()]);
+	});
+	afterAll(async () => {
+		setPrimaryAgentLockBarrierForTest(null);
+		await runCleanupSteps([
+			{ name: 'first client', run: () => firstClient.$disconnect() },
+			{ name: 'second client', run: () => secondClient.$disconnect() },
+			{ name: 'observer client', run: () => observerClient.$disconnect() },
+		]);
+	});
 	it.each([
 		["set/set", "set", "set", null, "updated", "stateConflict", "assignment-a"], ["set/set reverse", "set", "set", null, "updated", "stateConflict", "assignment-b"],
 		["set/clear", "set", "clear", "assignment-a", "updated", "stateConflict", "assignment-b"], ["clear/set", "clear", "set", "assignment-a", "updated", "stateConflict", null],
@@ -132,27 +154,137 @@ describe("primary seller PostgreSQL concurrency", () => {
 			await cleanup(fixture);
 		}
 	});
+	it('keeps a sole ordinary assignment non-primary before any explicit operation', async () => {
+		const fixture = await createFixture(false)
+		try {
+			await firstClient.propertyAgent.delete({ where: { id: fixture.assignmentB } })
+			expect(await assignmentsFor(fixture)).toEqual([{ id: fixture.assignmentA, isPrimary: false }])
+			expect(await primaryId(fixture)).toBeNull()
+		} finally {
+			await cleanup(fixture)
+		}
+	})
+
+	it('persists explicit set A, change to B, and clear without materializing another aggregate', async () => {
+		const fixture = await createFixture(false)
+		const repository = new PrismaPropertyEngagementsRepository(firstClient as never)
+		try {
+			const counts = await canonicalRowCounts(fixture)
+			await expect(repository.setPrimaryAgent({
+				tenantId: fixture.tenantId, engagementId: fixture.engagementId,
+				agentId: fixture.assignmentA, expectedPrimaryAgentId: null,
+			})).resolves.toMatchObject({ status: 'updated' })
+			expect(await primaryId(fixture)).toBe(fixture.assignmentA)
+			await expect(repository.setPrimaryAgent({
+				tenantId: fixture.tenantId, engagementId: fixture.engagementId,
+				agentId: fixture.assignmentB, expectedPrimaryAgentId: fixture.assignmentA,
+			})).resolves.toMatchObject({ status: 'updated' })
+			expect(await primaryId(fixture)).toBe(fixture.assignmentB)
+			await expect(repository.clearPrimaryAgent({
+				tenantId: fixture.tenantId, engagementId: fixture.engagementId,
+				expectedPrimaryAgentId: fixture.assignmentB,
+			})).resolves.toMatchObject({ status: 'updated' })
+			expect(await primaryId(fixture)).toBeNull()
+			expect(await canonicalRowCounts(fixture)).toEqual(counts)
+		} finally {
+			await cleanup(fixture)
+		}
+	})
 });
-async function createFixture(hasPrimary: boolean) {
-	const marker = randomUUID();
-	const manager = await firstClient.user.create({ data: { email: `s3-manager-${marker}@test.local`, passwordHash: "hash", firstName: "Manager" } });
-	const userA = await firstClient.user.create({ data: { email: `s3-a-${marker}@test.local`, passwordHash: "hash", firstName: "Agent" } });
-	const userB = await firstClient.user.create({ data: { email: `s3-b-${marker}@test.local`, passwordHash: "hash", firstName: "Agent" } });
-	const tenant = await firstClient.tenant.create({ data: { name: `S3 ${marker}`, slug: `s3-${marker}` } });
-	await firstClient.tenantMembership.createMany({ data: [manager, userA, userB].map((user) => ({ userId: user.id, tenantId: tenant.id, role: user.id === manager.id ? TenantRole.MANAGER : TenantRole.AGENT })) });
-	const asset = await firstClient.propertyAsset.create({ data: { title: "S3", addressLine: "Test 1", city: "Test", province: "Test", propertyType: PropertyType.HOUSE, createdByUserId: manager.id } });
-	const engagement = await firstClient.propertyEngagement.create({ data: { tenantId: tenant.id, propertyAssetId: asset.id, operationType: PropertyOperationType.SALE, createdByUserId: manager.id } });
-	const [a, b] = await Promise.all([userA, userB].map((user, index) => firstClient.propertyAgent.create({ data: { tenantId: tenant.id, propertyEngagementId: engagement.id, agentUserId: user.id, assignedByUserId: manager.id, isPrimary: hasPrimary && index === 0 } })));
-	return { tenantId: tenant.id, engagementId: engagement.id, assetId: asset.id, managerId: manager.id, userA: userA.id, userB: userB.id, assignmentA: a.id, assignmentB: b.id, primaryId: hasPrimary ? a.id : null };
+async function createFixture(hasPrimary: boolean): Promise<Fixture> {
+  const ids: Partial<Fixture> = {}
+  const marker = randomUUID()
+  try {
+    const manager = await firstClient.user.create({
+      data: { email: `s3-manager-${marker}@test.local`, passwordHash: 'hash', firstName: 'Manager' },
+    })
+    ids.managerId = manager.id
+    const userA = await firstClient.user.create({
+      data: { email: `s3-a-${marker}@test.local`, passwordHash: 'hash', firstName: 'Agent' },
+    })
+    ids.userA = userA.id
+    const userB = await firstClient.user.create({
+      data: { email: `s3-b-${marker}@test.local`, passwordHash: 'hash', firstName: 'Agent' },
+    })
+    ids.userB = userB.id
+    const tenant = await firstClient.tenant.create({ data: { name: `S3 ${marker}`, slug: `s3-${marker}` } })
+    ids.tenantId = tenant.id
+    await firstClient.tenantMembership.createMany({
+      data: [manager, userA, userB].map((user) => ({
+        userId: user.id, tenantId: tenant.id,
+        role: user.id === manager.id ? TenantRole.MANAGER : TenantRole.AGENT,
+      })),
+    })
+    const asset = await firstClient.propertyAsset.create({
+      data: {
+        title: 'S3', addressLine: 'Test 1', city: 'Test', province: 'Test',
+        propertyType: PropertyType.HOUSE, createdByUserId: manager.id,
+      },
+    })
+    ids.assetId = asset.id
+    const engagement = await firstClient.propertyEngagement.create({
+      data: {
+        tenantId: tenant.id, propertyAssetId: asset.id,
+        operationType: PropertyOperationType.SALE, createdByUserId: manager.id,
+      },
+    })
+    ids.engagementId = engagement.id
+    const assignmentA = await firstClient.propertyAgent.create({
+      data: {
+        tenantId: tenant.id,
+        propertyEngagementId: engagement.id,
+        agentUserId: userA.id,
+        assignedByUserId: manager.id,
+        isPrimary: hasPrimary,
+      },
+    })
+    ids.assignmentA = assignmentA.id
+    const assignmentB = await firstClient.propertyAgent.create({
+      data: {
+        tenantId: tenant.id,
+        propertyEngagementId: engagement.id,
+        agentUserId: userB.id,
+        assignedByUserId: manager.id,
+        isPrimary: false,
+      },
+    })
+    ids.assignmentB = assignmentB.id
+    return { ...ids, primaryId: hasPrimary ? assignmentA.id : null } as Fixture
+  } catch (error) {
+    try {
+      await cleanup(ids)
+    } catch (cleanupError) {
+      const failure = new AggregateError([error, cleanupError], 'Primary fixture creation and cleanup failed')
+      failure.cause = error
+      throw failure
+    }
+    throw error
+  }
 }
 function outcome(result: unknown) { return result && typeof result === "object" && "status" in result ? result.status : result; }
 async function assignmentsFor(fixture: Fixture) { return firstClient.propertyAgent.findMany({ where: { tenantId: fixture.tenantId, propertyEngagementId: fixture.engagementId }, select: { id: true, isPrimary: true } }); }
 async function primaryId(fixture: Fixture) { return (await firstClient.propertyAgent.findFirst({ where: { tenantId: fixture.tenantId, propertyEngagementId: fixture.engagementId, isPrimary: true }, select: { id: true } }))?.id ?? null; }
+async function canonicalRowCounts(fixture: Fixture) {
+  const [assets, engagements, proposals] = await Promise.all([
+    firstClient.propertyAsset.count({ where: { id: fixture.assetId } }),
+    firstClient.propertyEngagement.count({ where: { id: fixture.engagementId, tenantId: fixture.tenantId } }),
+    firstClient.propertyProposal.count({ where: { tenantId: fixture.tenantId } }),
+  ])
+  return { assets, engagements, proposals }
+}
 async function eligiblePrimaryId(fixture: Fixture) { return (await firstClient.propertyAgent.findFirst({ where: { tenantId: fixture.tenantId, propertyEngagementId: fixture.engagementId, isPrimary: true, agentUser: { status: UserStatus.ACTIVE, memberships: { some: { tenantId: fixture.tenantId, status: TenantMembershipStatus.ACTIVE, role: TenantRole.AGENT } } } }, select: { id: true } }))?.id ?? null; }
-async function cleanup(fixture: Fixture) {
-	await firstClient.propertyAgent.deleteMany({ where: { tenantId: fixture.tenantId } });
-	await firstClient.propertyEngagement.deleteMany({ where: { tenantId: fixture.tenantId } });
-	await firstClient.propertyAsset.delete({ where: { id: fixture.assetId } });
-	await firstClient.tenant.delete({ where: { id: fixture.tenantId } });
-	await firstClient.user.deleteMany({ where: { id: { in: [fixture.managerId, fixture.userA, fixture.userB] } } });
+async function cleanup(fixture: Partial<Fixture>) {
+  const userIds = [fixture.managerId, fixture.userA, fixture.userB].filter((id): id is string => Boolean(id))
+  const noIds = { id: { in: [] } }
+  const tenant = fixture.tenantId ? { tenantId: fixture.tenantId } : noIds
+  const tenantId = fixture.tenantId ? { id: fixture.tenantId } : noIds
+  const asset = fixture.assetId ? { id: fixture.assetId } : noIds
+  await runCleanupSteps([
+    { name: 'agents', run: () => firstClient.propertyAgent.deleteMany({ where: tenant }) },
+    { name: 'engagements', run: () => firstClient.propertyEngagement.deleteMany({ where: tenant }) },
+    { name: 'orphan assets', run: () => firstClient.propertyAsset.deleteMany({ where: asset }) },
+    { name: 'tenant memberships', run: () => firstClient.tenantMembership.deleteMany({ where: tenant }) },
+    { name: 'tenants', run: () => firstClient.tenant.deleteMany({ where: tenantId }) },
+    { name: 'users', run: () => firstClient.user.deleteMany({ where: { id: { in: userIds } } }) },
+  ])
 }
