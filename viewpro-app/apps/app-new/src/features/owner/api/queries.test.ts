@@ -2,10 +2,13 @@ import { getDocumentRequestsRefetchInterval } from '@/lib/document-request-refre
 import { describe, expect, it, vi } from 'vitest';
 import {
   ownerDocumentRequestsOptions,
+  ownerEngagementRecentMovementsOptions,
+  ownerEngagementTimelineOptions,
   ownerKeys,
   ownerNotificationsOptions,
   ownerUnreadNotificationsCountOptions
 } from './queries';
+import { getOwnerEngagementTimeline } from './service';
 import { getOwnerNotifications, getOwnerUnreadNotificationCount } from './notifications';
 
 vi.mock('./notifications', () => ({
@@ -13,8 +16,49 @@ vi.mock('./notifications', () => ({
   getOwnerUnreadNotificationCount: vi.fn()
 }));
 
+vi.mock('./service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./service')>()),
+  getOwnerEngagementTimeline: vi.fn()
+}));
+
 const getOwnerNotificationsMock = vi.mocked(getOwnerNotifications);
 const getOwnerUnreadNotificationCountMock = vi.mocked(getOwnerUnreadNotificationCount);
+const getOwnerEngagementTimelineMock = vi.mocked(getOwnerEngagementTimeline);
+
+
+describe('owner home movement query options', () => {
+  it('uses the exact bounded home key and query independently from the detail page', async () => {
+    getOwnerEngagementTimelineMock.mockResolvedValueOnce({
+      engagement: {} as never,
+      items: [],
+      page: 1,
+      pageSize: 5,
+      total: 0
+    });
+
+    const homeOptions = ownerEngagementRecentMovementsOptions('engagement-home');
+    const detailOptions = ownerEngagementTimelineOptions('engagement-home', {
+      order: 'desc',
+      page: 1,
+      pageSize: 25
+    });
+
+    expect(homeOptions.queryKey).toEqual([
+      'owner',
+      'engagements',
+      'engagement-home',
+      'timeline',
+      { order: 'desc', page: 1, pageSize: 5 }
+    ]);
+    expect(homeOptions.queryKey).not.toEqual(detailOptions.queryKey);
+    await homeOptions.queryFn!({} as never);
+    expect(getOwnerEngagementTimelineMock).toHaveBeenCalledWith('engagement-home', {
+      order: 'desc',
+      page: 1,
+      pageSize: 5
+    });
+  });
+});
 
 describe('owner document request query options', () => {
   it('enables selective near-realtime refresh for owner documents', () => {

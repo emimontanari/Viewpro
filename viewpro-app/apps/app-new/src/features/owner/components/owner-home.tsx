@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import {
-  ownerEngagementLatestMovementOptions,
+  ownerEngagementRecentMovementsOptions,
   ownerPropertiesOptions,
   ownerPropertyEngagementsOptions
 } from '../api/queries';
@@ -60,12 +60,12 @@ export function OwnerHome() {
   );
   const movementQueries = useQueries({
     queries: visibleEngagements.map((engagement) =>
-      ownerEngagementLatestMovementOptions(engagement.id)
+      ownerEngagementRecentMovementsOptions(engagement.id)
     )
   });
-  const latestMovementByEngagementId = React.useMemo(
+  const recentMovementsByEngagementId = React.useMemo(
     () =>
-      buildLatestMovementIndex(
+      buildRecentMovementsIndex(
         visibleEngagements,
         movementQueries.map((query) => query.data)
       ),
@@ -85,9 +85,9 @@ export function OwnerHome() {
       buildOwnerHomeEngagementCards({
         properties,
         engagementsByProperty: engagementQueries.map((query) => query.data),
-        latestMovementByEngagementId
+        recentMovementsByEngagementId
       }),
-    [engagementQueries, latestMovementByEngagementId, properties]
+    [engagementQueries, recentMovementsByEngagementId, properties]
   );
   const agencies = React.useMemo(() => getOwnerAgencies(cards), [cards]);
   const hasMultipleAgencies = agencies.length > 1;
@@ -568,17 +568,17 @@ function OwnerFallbackState({ title, description }: { title: string; description
   );
 }
 
-function buildLatestMovementIndex(
+function buildRecentMovementsIndex(
   engagements: OwnerEngagement[],
   timelinePages: Array<{ items: OwnerMovement[] } | undefined>
 ) {
-  const latestMovementByEngagementId: Record<string, OwnerMovement | null> = {};
+  const recentMovementsByEngagementId: Record<string, OwnerMovement[]> = {};
 
   engagements.forEach((engagement, index) => {
-    latestMovementByEngagementId[engagement.id] = timelinePages[index]?.items[0] ?? null;
+    recentMovementsByEngagementId[engagement.id] = timelinePages[index]?.items ?? [];
   });
 
-  return latestMovementByEngagementId;
+  return recentMovementsByEngagementId;
 }
 
 function buildOwnerEngagementDetailHref(card: OwnerHomeEngagementCard) {
