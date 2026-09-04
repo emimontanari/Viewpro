@@ -30,6 +30,11 @@ import {
   filterOwnerHomeEngagementCardsByAgency,
   type OwnerHomeEngagementCard
 } from '../utils/owner-home-engagement-cards';
+import {
+  formatOwnerHomeMovementDateTime,
+  getOwnerHomeMovementVisualKind,
+  getOwnerMovementTypeLabel
+} from '../utils/owner-movement-labels';
 import { buildOwnerPropertyWhatsappHref } from '../utils/owner-whatsapp-contact';
 
 type OwnerAgency = {
@@ -200,10 +205,7 @@ function OwnerAgencySummary({
               Inmobiliaria vinculada
             </p>
             <div className='flex items-start gap-2'>
-              <h2
-                className='line-clamp-2 text-base leading-tight font-semibold tracking-tight'
-                title={agency.name}
-              >
+              <h2 className='break-words text-base leading-tight font-semibold tracking-tight'>
                 {agency.name}
               </h2>
               <Icons.badgeCheck
@@ -345,26 +347,28 @@ function OwnerEngagementSummaryCard({
 
           <div className='min-w-0'>
             <div className='space-y-2'>
-              <h2
-                className='line-clamp-2 text-lg leading-tight font-semibold tracking-tight sm:text-xl lg:text-2xl'
-                title={property.title}
-              >
+              <h2 className='break-words text-lg leading-tight font-semibold tracking-tight sm:text-xl lg:text-2xl'>
                 {displayTitle}
               </h2>
               <p className='text-sm text-muted-foreground break-words'>{propertyLocation}</p>
-              <p className='text-sm font-medium text-muted-foreground'>Gestión con {agency.name}</p>
+              <p className='break-words text-sm font-medium text-muted-foreground'>
+                Gestión con {agency.name}
+              </p>
             </div>
 
             {statusSummary ? <OwnerStatusSummary status={statusSummary} /> : null}
-
-            <OwnerEngagementActivity card={card} hasUnreadableActivity={hasUnreadableActivity} />
           </div>
 
-          <div className='min-w-0 lg:col-span-2'>
+          <div className='min-w-0 lg:col-span-2 space-y-5'>
             <OwnerEngagementActionGroup
               contactHref={contactHref}
               detailHref={detailHref}
-                  onContactClick={handleContactClick}
+              onContactClick={handleContactClick}
+            />
+            <OwnerRecentActivity
+              card={card}
+              detailHref={detailHref}
+              hasUnreadableActivity={hasUnreadableActivity}
             />
           </div>
         </div>
@@ -373,56 +377,85 @@ function OwnerEngagementSummaryCard({
   );
 }
 
-function OwnerEngagementActivity({
+function OwnerRecentActivity({
   card,
+  detailHref,
   hasUnreadableActivity
 }: {
   card: OwnerHomeEngagementCard;
+  detailHref: string;
   hasUnreadableActivity: boolean;
 }) {
-  if (hasUnreadableActivity) {
-    return (
-      <div className='mt-[18px] space-y-1 rounded-xl border border-dashed p-3'>
-        <p className='text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase'>
-          Última actividad
-        </p>
-        <p className='text-sm text-muted-foreground'>
+  return (
+    <section className='min-w-0 rounded-xl border p-4' aria-labelledby={`activity-${card.id}`}>
+      <div className='flex min-w-0 flex-wrap items-center justify-between gap-3'>
+        <h3 id={`activity-${card.id}`} className='font-semibold'>Actividad reciente</h3>
+        <Link
+          href={`${detailHref}&tab=tracking`}
+          className='inline-flex min-h-11 items-center text-sm font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+        >
+          Ver toda la actividad
+        </Link>
+      </div>
+      {hasUnreadableActivity ? (
+        <p className='mt-3 text-sm text-muted-foreground'>
           No pudimos cargar la actividad de esta gestión.
         </p>
-      </div>
-    );
-  }
+      ) : card.recentMovements.length === 0 ? (
+        <p className='mt-3 text-sm text-muted-foreground'>Todavía no hay movimientos registrados.</p>
+      ) : (
+        <ol aria-label='Movimientos recientes' className='mt-4 space-y-4'>
+          {card.recentMovements.map((movement, index) => (
+            <OwnerRecentActivityRow key={movement.id} movement={movement} showConnector={index > 0} />
+          ))}
+        </ol>
+      )}
+      {!hasUnreadableActivity ? (
+        card.nextAction ? (
+          <p className='mt-3 break-words text-sm'>Próxima acción: {card.nextAction}</p>
+        ) : (
+          <p className='mt-3 text-sm text-muted-foreground'>Sin próxima acción informada.</p>
+        )
+      ) : null}
+    </section>
+  );
+}
+
+function OwnerRecentActivityRow({
+  movement,
+  showConnector
+}: {
+  movement: OwnerMovement;
+  showConnector: boolean;
+}) {
+  const visualKind = getOwnerHomeMovementVisualKind(movement.type);
+  const toneByKind = {
+    documentation: 'bg-indigo-500',
+    general: 'bg-slate-500',
+    inquiry: 'bg-emerald-500',
+    neutral: 'bg-muted-foreground',
+    offer: 'bg-amber-500',
+    status: 'bg-violet-500',
+    visit: 'bg-blue-500'
+  };
+  const hasObservation = movement.observation.trim().length > 0;
 
   return (
-    <div className='mt-[18px] grid gap-3 sm:grid-cols-2'>
-      <div className='space-y-1 rounded-xl border border-dashed p-3'>
-        <p className='text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase'>
-          Última actividad
-        </p>
-        {card.latestMovement ? (
-          <>
-            <p className='line-clamp-2 text-sm text-foreground'>
-              {card.latestMovement.observation}
-            </p>
-            <p className='text-xs text-muted-foreground'>
-              {formatMovementDate(card.latestMovement)}
-            </p>
-          </>
-        ) : (
-          <p className='text-sm text-muted-foreground'>Todavía no hay movimientos registrados.</p>
-        )}
+    <li className='grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-3'>
+      <span aria-hidden='true' className='relative flex w-3 justify-center'>
+        {showConnector ? <span className='absolute bottom-1/2 top-[-1.25rem] w-px bg-border' /> : null}
+        <span className={`mt-1 size-3 rounded-full ${toneByKind[visualKind]}`} />
+      </span>
+      <div className='min-w-0 space-y-1'>
+        <div className='flex min-w-0 flex-wrap items-center gap-2'>
+          <span className='break-words text-sm font-medium'>{getOwnerMovementTypeLabel(movement.type)}</span>
+          <span className='text-xs text-muted-foreground'>
+            {formatOwnerHomeMovementDateTime(movement.createdAt)}
+          </span>
+        </div>
+        {hasObservation ? <p className='break-words text-sm'>{movement.observation}</p> : null}
       </div>
-      <div className='space-y-1 rounded-xl border border-dashed p-3'>
-        <p className='text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase'>
-          Próxima acción
-        </p>
-        {card.nextAction ? (
-          <p className='line-clamp-2 text-sm text-foreground'>{card.nextAction}</p>
-        ) : (
-          <p className='text-sm text-muted-foreground'>Sin próxima acción informada.</p>
-        )}
-      </div>
-    </div>
+    </li>
   );
 }
 
@@ -609,14 +642,6 @@ function getEffectiveSelectedAgencyId({
   return selectedAgencyId && agencies.some((agency) => agency.id === selectedAgencyId)
     ? selectedAgencyId
     : null;
-}
-
-function formatMovementDate(movement: OwnerMovement) {
-  return new Intl.DateTimeFormat('es-AR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  }).format(new Date(movement.createdAt));
 }
 
 function formatPropertyCount(count: number) {
