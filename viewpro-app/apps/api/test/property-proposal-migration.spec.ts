@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { describe, expect, it } from "vitest";
+import { withPropertyProposalCleanup } from "./property-proposal-cleanup";
 
 const migration = readFileSync(
 	resolve(
@@ -17,6 +18,7 @@ function migratedClient(applicationName: string) {
 	url.searchParams.set("application_name", applicationName);
 	url.searchParams.set("connect_timeout", "3");
 	url.searchParams.set("connection_limit", "1");
+	url.searchParams.set("options", "-c statement_timeout=8000 -c lock_timeout=5000");
 	return new PrismaClient({ datasources: { db: { url: url.toString() } } });
 }
 
@@ -29,27 +31,6 @@ type FixtureIds = {
 	source: string;
 	direct: string;
 };
-
-async function cleanFixture(prisma: PrismaClient, ids: FixtureIds) {
-	const steps = [
-		() => prisma.propertyEngagement.deleteMany({ where: { id: { in: [ids.source, ids.direct] } } }),
-		() => prisma.propertyAsset.deleteMany({ where: { id: ids.asset } }),
-		() => prisma.propertyProposal.deleteMany({ where: { id: ids.proposal } }),
-		() => prisma.tenant.deleteMany({ where: { id: { in: [ids.tenantA, ids.tenantB] } } }),
-		() => prisma.user.deleteMany({ where: { id: ids.user } }),
-	];
-	const failures: unknown[] = [];
-	for (const step of steps) {
-		try {
-			await step();
-		} catch (error) {
-			failures.push(error);
-		}
-	}
-	if (failures.length > 0) {
-		throw new AggregateError(failures, "property proposal migration fixture cleanup failed");
-	}
-}
 
 describe("property proposal additive migration", () => {
 	it("creates deployable proposal persistence with local bounds and a validated source FK", () => {
@@ -86,10 +67,17 @@ describe("property proposal additive migration", () => {
 			source: `source-${suffix}`,
 			direct: `direct-${suffix}`,
 		};
-		const prisma = migratedClient(`property-proposal-migration-${suffix}`);
-
-		try {
-			await prisma.tenant.createMany({
+		await withPropertyProposalCleanup(
+			() => migratedClient(`property-proposal-migration-${suffix}`),
+			{
+				sourceEngagementIds: [ids.source, ids.direct],
+				orphanAssetIds: [ids.asset],
+				proposalIds: [ids.proposal],
+				tenantIds: [ids.tenantA, ids.tenantB],
+				userIds: [ids.user],
+			},
+			async (prisma) => {
+				await prisma.tenant.createMany({
 				data: [ids.tenantA, ids.tenantB].map((id) => ({ id, name: id, slug: id })),
 			});
 			await prisma.user.create({
@@ -151,23 +139,18 @@ describe("property proposal additive migration", () => {
 				},
 			});
 			expect(direct.sourceProposalId).toBeNull();
-			await expect(
-				prisma.propertyEngagement.create({
-					data: {
-						tenantId: ids.tenantA,
-						propertyAssetId: ids.asset,
-						operationType: "SALE",
-						createdByUserId: ids.user,
-						sourceProposalId: ids.proposal,
-					},
-				}),
-			).rejects.toThrow("Unique constraint failed");
-		} finally {
-			try {
-				await cleanFixture(prisma, ids);
-			} finally {
-				await prisma.$disconnect();
-			}
-		}
+				await expect(
+					prisma.propertyEngagement.create({
+						data: {
+							tenantId: ids.tenantA,
+							propertyAssetId: ids.asset,
+							operationType: "SALE",
+							createdByUserId: ids.user,
+							sourceProposalId: ids.proposal,
+						},
+					}),
+				).rejects.toThrow("Unique constraint failed");
+			},
+		);
 	}, 20_000);
 });

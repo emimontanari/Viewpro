@@ -53,9 +53,9 @@ C2B1 manifest: `apps/api/test/property-proposal-migration-hardening.spec.ts` onl
 
 - [x] C2B1: Extend the earlier U2B evidence with broad decision/check, planner/index, deletion/update, duplicate title/address, and production-shaped actual-DDL lock coverage. <!-- sdd-owner: implementation -->
 
-C2B2 manifest: deferred `apps/api/test/property-proposal-cleanup.ts`, `apps/api/test/property-proposal-cleanup.spec.ts`, and the retained C2A `apps/api/test/property-proposal-migration.spec.ts` teardown retrofit to use the reusable helper with bounded failure-preserving teardown. C2B2 owns the helper's exhaustive direct matrix and remains mandatory before C3.
+C2B2 manifest: `apps/api/test/property-proposal-cleanup.ts`, exhaustive direct `apps/api/test/property-proposal-cleanup.spec.ts`, and the retained C2A `apps/api/test/property-proposal-migration.spec.ts` teardown retrofit to use the reusable helper with bounded failure-preserving teardown. C2B2 owns the helper's exhaustive direct matrix and remains mandatory before C3.
 
-- [ ] C2B2: Add reusable dependency-ordered cleanup support, prove its exhaustive direct matrix, retrofit the retained C2A migration smoke to use its bounded failure-preserving teardown, and rerun the deferred helper spec. <!-- sdd-owner: implementation -->
+- [x] C2B2: Add reusable dependency-ordered cleanup support, prove its exhaustive direct matrix, retrofit the retained C2A migration smoke to use its bounded failure-preserving teardown, and rerun the deferred helper spec. <!-- sdd-owner: implementation -->
 
 ### U2C — Tenant registry
 
@@ -66,7 +66,7 @@ Manifest: `apps/api/src/database/tenant-isolation.extension.ts`, `apps/api/src/d
 
 ### U3 — Pure lifecycle and replay primitives
 
-C3 remains unchecked and blocked by the mandatory unchecked C2B2 cleanup-helper unit.
+C3 remains unchecked and blocked until C2B2 merges.
 
 Manifest: `apps/api/src/property-proposals/domain/normalization.ts`, `state-machine.ts`, `replay-identity.ts`, and their three colocated specs.
 
