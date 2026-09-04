@@ -85,15 +85,15 @@ describe('OwnerHome', () => {
     expect(accessStatus).not.toHaveClass('rounded-full', 'border', 'bg-emerald-500/10');
     expect(screen.queryByText('Nueva propiedad')).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: /Inmobiliaria/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Ver seguimiento/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /1\. Actividad reciente/i })).toHaveAttribute(
       'href',
       '/owner/properties/property-1?engagement=engagement-tenant-1&tab=tracking'
     );
-    expect(screen.getByRole('link', { name: /Ver documentación/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /2\. Documentación/i })).toHaveAttribute(
       'href',
       '/owner/properties/property-1?engagement=engagement-tenant-1&tab=documents'
     );
-    expect(screen.getByText('Documentación')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /2\. Documentación/i })).toBeInTheDocument();
     expect(screen.queryByText('Ficha técnica')).not.toBeInTheDocument();
     expect(screen.getByText('Publicación activa')).toBeInTheDocument();
     expect(screen.getByText('Progreso de gestión')).toBeInTheDocument();
@@ -112,7 +112,60 @@ describe('OwnerHome', () => {
     );
   });
 
-  it('deduplicates visual location and removes trailing neighborhood from the card title', () => {
+    it('renders exactly three ordered, accessible primary engagement actions and a scoped secondary detail link', () => {
+      mockOwnerHomeData(ownerPropertiesResponse, [singleAgencyEngagements]);
+
+      render(<OwnerHome />);
+
+      const actionGroup = screen.getByTestId('owner-engagement-actions');
+      const activity = screen.getByRole('link', {
+        name: /1\. Actividad reciente\s*Seguí las acciones informadas para esta gestión\./
+      });
+      const documents = screen.getByRole('link', {
+        name: /2\. Documentación\s*Accedé a los documentos de esta gestión\./
+      });
+      const contact = screen.getByRole('link', {
+        name: /3\. Comunicarme con mi asesor\s*Escribile a tu inmobiliaria por WhatsApp\./
+      });
+      const primaryActions = [activity, documents, contact];
+
+      expect(actionGroup.querySelectorAll(':scope > a, :scope > button')).toHaveLength(3);
+      expect(primaryActions.map((action) => action.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+        '1. Actividad recienteSeguí las acciones informadas para esta gestión.',
+        '2. DocumentaciónAccedé a los documentos de esta gestión.',
+        '3. Comunicarme con mi asesorEscribile a tu inmobiliaria por WhatsApp.'
+      ]);
+      expect(actionGroup).toHaveClass(
+        'grid-cols-1',
+        'md:grid-cols-[repeat(3,minmax(0,1fr))]'
+      );
+      expect(activity).toHaveAttribute(
+        'href',
+        '/owner/properties/property-1?engagement=engagement-tenant-1&tab=tracking'
+      );
+      expect(documents).toHaveAttribute(
+        'href',
+        '/owner/properties/property-1?engagement=engagement-tenant-1&tab=documents'
+      );
+      expect(contact).toHaveAttribute('href', expect.stringContaining('https://wa.me/5493510000000'));
+
+      for (const action of primaryActions) {
+        expect(action.tagName).toBe('A');
+        expect(action).toHaveClass('min-h-11');
+        expect(action.querySelectorAll('a, button')).toHaveLength(0);
+        expect(action.querySelectorAll('[aria-hidden="true"]')).toHaveLength(2);
+      }
+
+      const detail = screen.getByRole('link', { name: 'Ver más' });
+      expect(detail).toHaveAttribute(
+        'href',
+        '/owner/properties/property-1?engagement=engagement-tenant-1'
+      );
+      expect(detail).toHaveClass('min-h-11');
+      expect(detail.querySelectorAll('a, button')).toHaveLength(0);
+    });
+
+    it('deduplicates visual location and removes trailing neighborhood from the card title', () => {
     mockOwnerHomeData(
       [
         buildOwnerProperty({
@@ -187,7 +240,7 @@ describe('OwnerHome', () => {
 
     render(<OwnerHome />);
 
-    const detailLinks = screen.getAllByRole('link', { name: /Abrir propiedad/i });
+    const detailLinks = screen.getAllByRole('link', { name: 'Ver más' });
 
     expect(detailLinks).toHaveLength(2);
     expect(detailLinks.map((link) => link.getAttribute('href'))).toEqual([
@@ -275,7 +328,7 @@ describe('OwnerHome', () => {
     render(<OwnerHome />);
 
     const renderedTitles = screen
-      .getAllByRole('link', { name: /Abrir propiedad/i })
+      .getAllByRole('link', { name: 'Ver más' })
       .map((link) => link.getAttribute('href'));
 
     expect(renderedTitles).toEqual([
@@ -317,7 +370,7 @@ describe('OwnerHome', () => {
 
     render(<OwnerHome />);
 
-    const contactLink = screen.getByRole('link', { name: /Contactar inmobiliaria/i });
+    const contactLink = screen.getByRole('link', { name: /3\. Comunicarme con mi asesor/i });
 
     expect(contactLink).toHaveAttribute(
       'href',
@@ -334,15 +387,87 @@ describe('OwnerHome', () => {
     expect(trackingSpy).toHaveBeenCalledWith('engagement-tenant-1');
   });
 
-  it('renders an unavailable contact state when tenant WhatsApp is not configured', () => {
-    mockOwnerHomeData(ownerPropertiesResponse, [
-      [
-        buildOwnerEngagement({
-          contact: {
-            available: false,
-            targetType: 'tenant',
-            displayLabel: 'Contacto no configurado'
-          },
+      it('keeps scoped navigation and agency contact isolated across two engagements', async () => {
+        const trackingSpy = vi
+          .spyOn(ownerService, 'trackOwnerWhatsappContactClick')
+          .mockResolvedValue(undefined);
+        const user = userEvent.setup();
+        mockOwnerHomeData(
+          [buildOwnerProperty({ id: 'property-1', title: 'Casa compartida' })],
+          [
+            [
+              buildOwnerEngagement({ tenant: { id: 'tenant-1', name: 'Agencia Uno' } }),
+              buildOwnerEngagement({
+                contact: {
+                  available: true,
+                  targetType: 'tenant',
+                  displayLabel: 'Contactar Agencia Dos',
+                  whatsappPhone: '+5493519999999'
+                },
+                tenant: { id: 'tenant-2', name: 'Agencia Dos' }
+              })
+            ]
+          ],
+          {
+            'engagement-tenant-1': buildOwnerMovement({
+              createdAt: '2026-08-20T10:00:00.000Z',
+              propertyEngagementId: 'engagement-tenant-1'
+            }),
+            'engagement-tenant-2': buildOwnerMovement({
+              createdAt: '2026-08-19T10:00:00.000Z',
+              propertyEngagementId: 'engagement-tenant-2'
+            })
+          }
+        );
+
+        render(<OwnerHome />);
+
+        expect(
+          screen
+            .getAllByRole('link', { name: /1\. Actividad reciente/i })
+            .map((link) => link.getAttribute('href'))
+        ).toEqual([
+          '/owner/properties/property-1?engagement=engagement-tenant-1&tab=tracking',
+          '/owner/properties/property-1?engagement=engagement-tenant-2&tab=tracking'
+        ]);
+        expect(
+          screen
+            .getAllByRole('link', { name: /2\. Documentación/i })
+            .map((link) => link.getAttribute('href'))
+        ).toEqual([
+          '/owner/properties/property-1?engagement=engagement-tenant-1&tab=documents',
+          '/owner/properties/property-1?engagement=engagement-tenant-2&tab=documents'
+        ]);
+        expect(
+          screen.getAllByRole('link', { name: 'Ver más' }).map((link) => link.getAttribute('href'))
+        ).toEqual([
+          '/owner/properties/property-1?engagement=engagement-tenant-1',
+          '/owner/properties/property-1?engagement=engagement-tenant-2'
+        ]);
+
+        const contactLinks = screen.getAllByRole('link', { name: /3\. Comunicarme con mi asesor/i });
+        expect(contactLinks.map((link) => link.getAttribute('href'))).toEqual([
+          expect.stringContaining('5493510000000'),
+          expect.stringContaining('5493519999999')
+        ]);
+        expect(contactLinks.map((link) => link.getAttribute('href'))).not.toEqual(
+          expect.arrayContaining([expect.stringContaining('5493510000001')])
+        );
+
+        await user.click(contactLinks[1]!);
+        expect(trackingSpy).toHaveBeenCalledWith('engagement-tenant-2');
+      });
+
+      it('renders an unavailable contact state when tenant WhatsApp is not configured', () => {
+        mockOwnerHomeData(ownerPropertiesResponse, [
+          [
+            buildOwnerEngagement({
+              contact: {
+                available: true,
+                targetType: 'tenant',
+                displayLabel: 'Contacto no configurado',
+                whatsappPhone: undefined
+              },
           tenant: { id: 'tenant-1', name: 'ViewPro Demo Inmobiliaria' }
         })
       ]
@@ -350,17 +475,14 @@ describe('OwnerHome', () => {
 
     render(<OwnerHome />);
 
-    const contactButton = screen.getByRole('button', { name: 'Contacto — no configurado' });
+    const contactButton = screen.getByRole('button', { name: /3\. Comunicarme con mi asesor/i });
 
     expect(contactButton).toBeDisabled();
-    expect(contactButton).toHaveClass('h-20', 'w-full');
-    expect(contactButton.parentElement).toHaveClass('grid-cols-3');
-    expect(screen.getByText('Contacto')).toBeInTheDocument();
-    expect(screen.queryByText('Contacto no configurado')).not.toBeInTheDocument();
-    expect(screen.getByTestId('owner-contact-unavailable-indicator')).toHaveClass('bg-destructive');
-    expect(screen.getByRole('link', { name: /Ver seguimiento/i })).toHaveClass('h-20', 'w-full');
-    expect(screen.getByRole('link', { name: /Ver documentación/i })).toHaveClass('h-20', 'w-full');
-    expect(screen.queryByRole('link', { name: /Contactar inmobiliaria/i })).not.toBeInTheDocument();
+    expect(contactButton).toHaveClass('min-h-11');
+    expect(contactButton).toHaveTextContent('WhatsApp no configurado por la inmobiliaria.');
+    expect(screen.getByRole('link', { name: /1\. Actividad reciente/i })).toHaveClass('min-h-11');
+    expect(screen.getByRole('link', { name: /2\. Documentación/i })).toHaveClass('min-h-11');
+    expect(screen.queryByRole('link', { name: /3\. Comunicarme con mi asesor/i })).not.toBeInTheDocument();
   });
 
   it('renders the contact button as disabled and does not wire the tracking call site (sentinel)', async () => {
@@ -383,7 +505,7 @@ describe('OwnerHome', () => {
 
     render(<OwnerHome />);
 
-    const contactButton = screen.getByRole('button', { name: 'Contacto — no configurado' });
+    const contactButton = screen.getByRole('button', { name: /3\. Comunicarme con mi asesor/i });
 
     expect(contactButton).toBeDisabled();
     // Act step: attempt to click the disabled button. The disabled attribute should

@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -296,10 +295,6 @@ function OwnerEngagementSummaryCard({
   const primaryImage = property.primaryImage ?? property.images[0] ?? null;
   const statusSummary = getOwnerStatusSummary(engagement.status);
   const contactHref = buildOwnerPropertyWhatsappHref({ contact: engagement.contact, property });
-  const isContactConfigured = Boolean(contactHref);
-  const contactLabel = isContactConfigured
-    ? (engagement.contact.displayLabel ?? 'Contactar inmobiliaria')
-    : 'Contacto';
   const propertyLocation = formatPropertyLocation(property);
   const displayTitle = formatOwnerPropertyTitle(property);
   const detailHref = buildOwnerEngagementDetailHref(card);
@@ -314,7 +309,7 @@ function OwnerEngagementSummaryCard({
   return (
     <Card className='overflow-hidden py-0 transition-shadow hover:shadow-md'>
       <CardContent className='p-4 sm:p-5'>
-        <div className='grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)_260px] lg:items-start'>
+        <div className='grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start'>
           <div className='relative overflow-hidden rounded-2xl bg-muted'>
             {primaryImage ? (
               // oxlint-disable-next-line next/no-img-element -- owner property images come from the authenticated API payload and use the existing local fallback-free card pattern.
@@ -365,37 +360,12 @@ function OwnerEngagementSummaryCard({
             <OwnerEngagementActivity card={card} hasUnreadableActivity={hasUnreadableActivity} />
           </div>
 
-          <div className='grid content-start gap-3 lg:border-l lg:pl-5'>
-            <Button asChild size='lg' className='w-full'>
-              <Link href={detailHref}>
-                Abrir propiedad
-                <Icons.arrowRight className='ml-2 size-4' aria-hidden='true' />
-              </Link>
-            </Button>
-            <div className='grid grid-cols-3 gap-3 lg:grid-cols-1'>
-              <OwnerActionTile
-                href={`${detailHref}&tab=tracking`}
-                icon={Icons.trendingUp}
-                label='Seguimiento'
-                ariaLabel='Ver seguimiento'
-              />
-              <OwnerActionTile
-                href={`${detailHref}&tab=documents`}
-                icon={Icons.page}
-                label='Documentación'
-                ariaLabel='Ver documentación'
-              />
-              <OwnerActionTile
-                href={contactHref}
-                icon={Icons.chat}
-                label={contactLabel}
-                ariaLabel={
-                  isContactConfigured ? 'Contactar inmobiliaria' : 'Contacto — no configurado'
-                }
-                showUnavailableIndicator={!isContactConfigured}
-                onClick={handleContactClick}
-              />
-            </div>
+          <div className='min-w-0 lg:col-span-2'>
+            <OwnerEngagementActionGroup
+              contactHref={contactHref}
+              detailHref={detailHref}
+                  onContactClick={handleContactClick}
+            />
           </div>
         </div>
       </CardContent>
@@ -481,71 +451,103 @@ function OwnerStatusSummary({ status }: { status: OwnerStatusSummaryViewModel })
   );
 }
 
-function OwnerActionTile({
-  ariaLabel,
-  href,
-  icon: Icon,
-  label,
-  onClick,
-  showUnavailableIndicator = false
+function OwnerEngagementActionGroup({
+  contactHref,
+  detailHref,
+  onContactClick
 }: {
-  ariaLabel: string;
-  href: string | null;
-  icon: typeof Icons.product;
-  label: string;
-  onClick?: () => void;
-  showUnavailableIndicator?: boolean;
+  contactHref: string | null;
+  detailHref: string;
+  onContactClick: () => void;
 }) {
-  const content = (
-    <>
-      {showUnavailableIndicator ? (
-        <span
-          data-testid='owner-contact-unavailable-indicator'
-          aria-hidden='true'
-          className='absolute right-2 top-2 size-2 rounded-full bg-destructive'
-        />
-      ) : null}
-      <Icon className='size-6 text-muted-foreground' aria-hidden='true' />
-      <span className='text-xs leading-tight sm:text-sm'>{label}</span>
-    </>
-  );
-
-  if (!href) {
-    return (
-      <Button
-        type='button'
-        variant='outline'
-        disabled
-        aria-label={ariaLabel}
-        className='relative h-20 w-full flex-col gap-2'
-      >
-        {content}
-      </Button>
-    );
-  }
-
-  if (href.startsWith('http://') || href.startsWith('https://')) {
-    return (
-      <Button asChild variant='outline' className='h-20 w-full flex-col gap-2'>
-        <a
-          href={href}
-          aria-label={ariaLabel}
-          target='_blank'
-          rel='noopener noreferrer'
-          onClick={onClick}
-        >
-          {content}
-        </a>
-      </Button>
-    );
-  }
+  const actionClassName =
+    'group flex min-h-11 min-w-0 items-center gap-3 rounded-xl border bg-background p-4 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
   return (
-    <Button asChild variant='outline' className='h-20 w-full flex-col gap-2'>
-      <Link href={href} aria-label={ariaLabel}>
-        {content}
+    <section className='space-y-3' aria-label='Acciones de la gestión'>
+      <Link
+        href={detailHref}
+        className='inline-flex min-h-11 items-center gap-2 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+      >
+        Ver más
+        <Icons.arrowRight className='size-4' aria-hidden='true' />
       </Link>
-    </Button>
+      <div
+        data-testid='owner-engagement-actions'
+        className='grid grid-cols-1 gap-3 md:grid-cols-[repeat(3,minmax(0,1fr))]'
+      >
+        <Link href={`${detailHref}&tab=tracking`} className={actionClassName}>
+          <OwnerEngagementActionContent
+            icon={Icons.trendingUp}
+            title='1. Actividad reciente'
+            description='Seguí las acciones informadas para esta gestión.'
+          />
+        </Link>
+        <Link href={`${detailHref}&tab=documents`} className={actionClassName}>
+          <OwnerEngagementActionContent
+            icon={Icons.page}
+            title='2. Documentación'
+            description='Accedé a los documentos de esta gestión.'
+          />
+        </Link>
+        {contactHref ? (
+          <a
+            href={contactHref}
+            target='_blank'
+            rel='noopener noreferrer'
+            className={actionClassName}
+            onClick={onContactClick}
+          >
+            <OwnerEngagementActionContent
+              icon={Icons.chat}
+              title='3. Comunicarme con mi asesor'
+              description='Escribile a tu inmobiliaria por WhatsApp.'
+            />
+          </a>
+        ) : (
+          <button
+            type='button'
+            disabled
+            className={`${actionClassName} cursor-not-allowed opacity-60`}
+          >
+            <OwnerEngagementActionContent
+              icon={Icons.chat}
+              title='3. Comunicarme con mi asesor'
+              description='WhatsApp no configurado por la inmobiliaria.'
+            />
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function OwnerEngagementActionContent({
+  description,
+  icon: Icon,
+  title
+}: {
+  description: string;
+  icon: typeof Icons.product;
+  title: string;
+}) {
+  return (
+    <>
+      <span
+        aria-hidden='true'
+        className='flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground'
+      >
+        <Icon className='size-5' />
+      </span>
+      <span className='min-w-0 flex-1 space-y-1 break-words'>
+        <span className='block font-medium text-foreground'>{title}</span>
+        <span className='block text-sm leading-5 text-muted-foreground'>{description}</span>
+      </span>
+      <Icons.arrowRight
+        aria-hidden='true'
+        className='size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5'
+      />
+    </>
   );
 }
 
