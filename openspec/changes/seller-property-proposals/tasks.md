@@ -20,7 +20,7 @@ Chained PRs recommended: Yes
 Chain strategy: stacked-to-develop
 400-line budget risk: High
 
-Unit counts: 30 production-bearing; verification-only units are U12/U22A/U22B (3); and 1 parent/verify gate with no source-unit estimate. The selected source topology is the controlled C1 → C2A → C2B → C3 … C20 chain with exactly 21 dependency-ordered groups, each max ≤650; C1 is U1, C2A atomically contains U2A, the U2B core migration contract, and U2C tenant registry, while mandatory C2B contains U2B S39 migration/index/lock/integrity hardening and U2C reusable cleanup support. C2B must merge before C3; no route or producer exists between them. Schema, migration, and tenant registry remain atomic in C2A so generated-client, database, and isolation consistency are never broken. No blanket exception applies. Strict400 remains rejected forecast/history only, not an active plan.
+Unit counts: 30 production-bearing; verification-only units are U12/U22A/U22B (3); and 1 parent/verify gate with no source-unit estimate. The selected source topology is the controlled C1 → C2A → C2B1 → C2B2 → C3 … C20 chain with exactly 22 dependency-ordered groups, each max ≤650. C1 is U1; C2A atomically contains U2A, the U2B core migration contract, and U2C tenant registry; C2B1 contains only U2B S39 migration/index/lock/integrity hardening; and C2B2 contains the reusable cleanup helper plus its exhaustive direct matrix. C2B2 is mandatory before C3, so C3 remains unchecked and blocked until C2B2 lands. Schema, migration, and tenant registry remain atomic in C2A so generated-client, database, and isolation consistency are never broken. No blanket exception applies. Strict400 remains rejected forecast/history only, not an active plan.
 
 ## Scenario linkage
 
@@ -49,10 +49,13 @@ C2A manifest: `apps/api/prisma/migrations/20260902120000_add_property_proposals/
 - [x] C2A: Retain the earlier U2 RED → GREEN → TRIANGULATE → REFACTOR chronology for the additive migration, nullable direct source, same-tenant source success, and cross-tenant/duplicate source rejection. <!-- sdd-owner: implementation -->
 - [x] C2A: Run the readable core migration contract, repository restore-schema parity, and migrated-client smoke with safe fixture cleanup, `db:validate`, pristine deploy, and API Turbo typecheck. <!-- sdd-owner: implementation -->
 
-C2B manifest: the same migration test expanded for S39 hardening plus reusable cleanup support.
+C2B1 manifest: `apps/api/test/property-proposal-migration-hardening.spec.ts` only. It is only S39 migration, index, and lock hardening; it does not add `property-proposal-cleanup.ts`, its direct spec, or a C2B1 diff to the retained C2A migration smoke.
 
-- [ ] C2B: Extend the earlier U2B evidence with broad decision/check, planner/index, deletion/update, duplicate title/address, and production-shaped actual-DDL lock coverage. <!-- sdd-owner: implementation -->
-- [ ] C2B: Add reusable dependency-ordered cleanup support, prove failure cleanup, and rerun the hardened migration/registry commands. <!-- sdd-owner: implementation -->
+- [x] C2B1: Extend the earlier U2B evidence with broad decision/check, planner/index, deletion/update, duplicate title/address, and production-shaped actual-DDL lock coverage. <!-- sdd-owner: implementation -->
+
+C2B2 manifest: deferred `apps/api/test/property-proposal-cleanup.ts`, `apps/api/test/property-proposal-cleanup.spec.ts`, and the retained C2A `apps/api/test/property-proposal-migration.spec.ts` teardown retrofit to use the reusable helper with bounded failure-preserving teardown. C2B2 owns the helper's exhaustive direct matrix and remains mandatory before C3.
+
+- [ ] C2B2: Add reusable dependency-ordered cleanup support, prove its exhaustive direct matrix, retrofit the retained C2A migration smoke to use its bounded failure-preserving teardown, and rerun the deferred helper spec. <!-- sdd-owner: implementation -->
 
 ### U2C — Tenant registry
 
@@ -62,6 +65,8 @@ Manifest: `apps/api/src/database/tenant-isolation.extension.ts`, `apps/api/src/d
 - [x] C2A: Run the registry parity test and API Turbo typecheck without reusable cleanup support. <!-- sdd-owner: implementation -->
 
 ### U3 — Pure lifecycle and replay primitives
+
+C3 remains unchecked and blocked by the mandatory unchecked C2B2 cleanup-helper unit.
 
 Manifest: `apps/api/src/property-proposals/domain/normalization.ts`, `state-machine.ts`, `replay-identity.ts`, and their three colocated specs.
 
@@ -267,9 +272,9 @@ Manifest: `apps/app-new/tests/seeded/property-proposals.spec.ts`, `property-prop
 ## Parent review and lifecycle gates
 
 - [ ] Start or reuse one bounded review after apply, checking unit boundaries, TDD order, cleanup/rollback, isolation, race evidence, exact manifests, and budgets. <!-- sdd-owner: parent -->
-- [x] After planning-chain acceptance and any separately authorized merges, require fresh explicit source/apply authorization and a fresh `origin/develop` implementation worktree before beginning the controlled C1→C2A→C2B→C3…C20 source chain. <!-- sdd-owner: parent -->
+- [x] After planning-chain acceptance and any separately authorized merges, require fresh explicit source/apply authorization and a fresh `origin/develop` implementation worktree before beginning the controlled C1→C2A→C2B1→C2B2→C3…C20 source chain. <!-- sdd-owner: parent -->
 - [ ] Run the final read-only `git diff --check` gate and reconcile all 49 matrix rows, commands, skips, blockers, and residual risks; Git mutation, delivery, push, merge, and archive remain forbidden here. <!-- sdd-owner: parent -->
 
 ## Arithmetic check
 
-The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `6,962–8,613`, verification-only `795–945`, parent gate `0`, strict implementation/test total `7,757–9,558`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650; C2A current candidate is capped at 649 and C2B at ≤635.
+The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `6,962–8,613`, verification-only `795–945`, parent gate `0`, strict implementation/test total `7,757–9,558`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650; C2A current candidate is capped at 649; C2B1 and C2B2 are each capped at ≤635.
