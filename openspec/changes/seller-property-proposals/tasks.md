@@ -66,7 +66,7 @@ Manifest: `apps/api/src/database/tenant-isolation.extension.ts`, `apps/api/src/d
 
 ### C3A / U3 — Pure lifecycle and replay primitives
 
-C3A is complete after mandatory C2B2; C3B/U4A remains required before C4/U4B.
+C3A is complete after mandatory C2B2; C3B/U4A completes locally in this candidate, and C4/U4B cannot begin until C3B merges.
 
 Manifest: `apps/api/src/property-proposals/domain/normalization.ts`, `state-machine.ts`, `replay-identity.ts`, and their three colocated specs.
 
@@ -75,12 +75,12 @@ Manifest: `apps/api/src/property-proposals/domain/normalization.ts`, `state-mach
 
 ### C3B / U4A — Shared capacity and direct-path compatibility (S24, S35)
 
-C3B is mandatory before C4/U4B.
+C3B completes locally here; C4/U4B cannot begin until C3B merges.
 
 Manifest: `apps/api/src/property-engagements/active-property-engagement-capacity.ts`, `prisma-property-engagements.repository.ts`, `property-engagements.module.ts`, `active-property-engagement-capacity.spec.ts`, `apps/api/test/property-engagements.e2e-spec.ts`.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR the tenant lock/active-count lease and direct create/restore compatibility, including manager direct-create availability and unchanged existing quota errors. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest API tests and typecheck with a local `_test` URL; restore limits and remove canonical fixtures in `finally`. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR the tenant lock/active-count lease and direct create/restore compatibility, including manager direct-create availability and unchanged existing quota errors. <!-- sdd-owner: implementation -->
+- [x] Run the manifest API tests and typecheck with a local `_test` URL; restore limits and remove canonical fixtures in `finally`. <!-- sdd-owner: implementation -->
 
 ### U4B — Materializer and primary compatibility (S40–S42)
 

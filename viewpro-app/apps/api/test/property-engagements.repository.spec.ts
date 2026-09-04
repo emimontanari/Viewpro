@@ -8,14 +8,24 @@ import {
 	Prisma,
 } from "@prisma/client";
 import { validate } from "class-validator";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ArchivePropertyEngagementDto } from "../src/property-engagements/dto/archive-property-engagement.dto";
 import { CreatePropertyEngagementDto } from "../src/property-engagements/dto/create-property-engagement.dto";
 import { ListPropertyEngagementsQuery } from "../src/property-engagements/dto/list-property-engagements.query";
 import { UpdatePropertyEngagementDto } from "../src/property-engagements/dto/update-property-engagement.dto";
+import { ActivePropertyEngagementCapacity } from "../src/property-engagements/active-property-engagement-capacity";
 import { PrismaPropertyEngagementsRepository } from "../src/property-engagements/prisma-property-engagements.repository";
 
+const assertAvailable = vi.fn();
+const activePropertyEngagementCapacity = {
+	acquire: vi.fn(),
+} satisfies Pick<ActivePropertyEngagementCapacity, "acquire">;
+
 describe("Property engagements foundation", () => {
+	beforeEach(() => {
+		assertAvailable.mockReset().mockResolvedValue(undefined);
+		activePropertyEngagementCapacity.acquire.mockReset().mockResolvedValue({ assertAvailable });
+	});
 	it("exposes the Stage 4 property domain enums from Prisma Client", () => {
 		expect(PropertyType.APARTMENT).toBe("APARTMENT");
 		expect(PropertyOperationType.RENT).toBe("RENT");
@@ -109,9 +119,10 @@ describe("Property engagements foundation", () => {
 				},
 			}),
 		);
-		const repository = new PrismaPropertyEngagementsRepository({
-			$transaction: transaction,
-		} as never);
+		const repository = new PrismaPropertyEngagementsRepository(
+			{ $transaction: transaction } as never,
+			activePropertyEngagementCapacity,
+		);
 
 		const result = await repository.createWithAsset({
 			tenantId: "tenant-1",
@@ -495,9 +506,10 @@ describe("Property engagements foundation", () => {
 				movement: { create: createMovement },
 			}),
 		);
-		const repository = new PrismaPropertyEngagementsRepository({
-			$transaction: transaction,
-		} as never);
+		const repository = new PrismaPropertyEngagementsRepository(
+			{ $transaction: transaction } as never,
+			activePropertyEngagementCapacity,
+		);
 
 		await expect(
 			repository.restoreForTenant({
