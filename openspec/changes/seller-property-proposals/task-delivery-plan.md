@@ -4,7 +4,7 @@ This normative manifest uses exact future paths only. `P/T/F/D` means production
 
 ## Audit correction
 
-The historical unsplit forecasts are U2 **433–532**, U5 **440–550**, and U22 **485–575**; the reconstituted C2A candidate is measured separately at 604 additions + 36 deletions = 640 changed lines and C2B is hard-capped at 635; U4, U11, and U16 also exceed the strict upper bound when all constituent ranges are summed. They are split below into cohesive RED+GREEN units rather than having ranges asserted downward. The five direct page-boundary tests are colocated with their page-owning units and budgeted incrementally.
+The historical unsplit forecasts are U2 **433–532**, U5 **440–550**, and U22 **485–575**; the reconstituted C2A candidate is measured separately at 611 additions + 38 deletions = 649 changed lines and C2B is hard-capped at 635; U4, U11, and U16 also exceed the strict upper bound when all constituent ranges are summed. They are split below into cohesive RED+GREEN units rather than having ranges asserted downward. The five direct page-boundary tests are colocated with their page-owning units and budgeted incrementally.
 
 ## Local verification contract
 
@@ -30,7 +30,7 @@ The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0
 |---|---|---|
 | U1 | `packages/contracts/src/index.ts` P35–45; `packages/contracts/test/runtime-contract.spec.ts` T80–95; `apps/api/src/common/filters/global-exception.filter.spec.ts` T30–40; `apps/api/src/permissions/permissions.constants.ts` P12–18; `apps/api/src/permissions/role-permissions.ts` P18–25; `apps/api/src/permissions/property-proposals-role-permissions.spec.ts` T55–65 | **230–288**; production-bearing |
 | U2A / C2A | `apps/api/prisma/schema.prisma` P115–145; `apps/api/test/property-proposal-schema.spec.ts` T55–65 | **170–210**; production-bearing |
-| U2B core / C2A | `apps/api/prisma/migrations/20260902120000_add_property_proposals/migration.sql` P110–130; `apps/api/test/property-proposal-migration.spec.ts` T120–145 | **230–275**; production-bearing |
+| U2B core / C2A | `apps/api/prisma/migrations/20260902120000_add_property_proposals/migration.sql` P110–130; `apps/api/test/property-proposal-migration.spec.ts` T120–145; `apps/api/test/restore-schema-parity.spec.ts` | **230–275**; production-bearing |
 | U2B S39 hardening / C2B | same migration/test paths, later focused expansion for decision/check, planner/index, deletion/update, duplicate, and actual-DDL lock evidence | **110–140**; production-bearing |
 | U2C registry / C2A | `apps/api/src/database/tenant-isolation.extension.ts` P8–12; `apps/api/src/database/tenant-isolation.registry.spec.ts` T25–35 | **33–47**; production-bearing |
 | U2C reusable cleanup / C2B | `apps/api/test/property-proposal-cleanup.ts` F15–20 plus focused failure evidence | **15–20**; production-bearing |
@@ -117,7 +117,7 @@ The corrected strict units mechanically group into **21** dependency-ordered opt
 | Group | Units | Maximum arithmetic | Group range |
 |---|---|---:|---:|
 | C1 | U1 | 288 | 230–288 |
-| C2A | U2A + U2B core + U2C registry | 640 current ≤640 | 640 current |
+| C2A | U2A + U2B core + U2C registry + restore-schema parity | 649 current ≤650 | 649 current |
 | C2B | U2B S39 hardening + U2C reusable cleanup | hard max ≤635 | 125–160 |
 | C3 | U3 + U4A | 275+328=603 | 477–603 |
 | C4 | U4B + U5A | 325+325=650 | 525–650 |

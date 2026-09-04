@@ -44,10 +44,10 @@ Manifest: `apps/api/prisma/schema.prisma`, `apps/api/test/property-proposal-sche
 
 ### U2B — Additive migration and migration evidence (S39)
 
-C2A manifest: `apps/api/prisma/migrations/20260902120000_add_property_proposals/migration.sql`, `apps/api/test/property-proposal-migration.spec.ts`.
+C2A manifest: `apps/api/prisma/migrations/20260902120000_add_property_proposals/migration.sql`, `apps/api/test/property-proposal-migration.spec.ts`, `apps/api/test/restore-schema-parity.spec.ts`.
 
 - [x] C2A: Retain the earlier U2 RED → GREEN → TRIANGULATE → REFACTOR chronology for the additive migration, nullable direct source, same-tenant source success, and cross-tenant/duplicate source rejection. <!-- sdd-owner: implementation -->
-- [x] C2A: Run the readable core migration contract and migrated-client smoke with safe fixture cleanup, `db:validate`, pristine deploy, and API Turbo typecheck. <!-- sdd-owner: implementation -->
+- [x] C2A: Run the readable core migration contract, repository restore-schema parity, and migrated-client smoke with safe fixture cleanup, `db:validate`, pristine deploy, and API Turbo typecheck. <!-- sdd-owner: implementation -->
 
 C2B manifest: the same migration test expanded for S39 hardening plus reusable cleanup support.
 
@@ -272,4 +272,4 @@ Manifest: `apps/app-new/tests/seeded/property-proposals.spec.ts`, `property-prop
 
 ## Arithmetic check
 
-The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `6,962–8,613`, verification-only `795–945`, parent gate `0`, strict implementation/test total `7,757–9,558`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650; C2A current candidate is capped at ≤640 and C2B at ≤635.
+The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `6,962–8,613`, verification-only `795–945`, parent gate `0`, strict implementation/test total `7,757–9,558`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650; C2A current candidate is capped at 649 and C2B at ≤635.
