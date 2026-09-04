@@ -8,7 +8,8 @@ import {
 } from "@prisma/client";
 import type { INestApplication } from "@nestjs/common";
 import request from "supertest";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { runCleanupSteps } from "./cleanup-steps";
 import { createApiApp } from "../src/bootstrap/create-app";
 import { PrismaService } from "../src/database/prisma.service";
 
@@ -29,18 +30,30 @@ describe("Property engagements (e2e)", () => {
     prisma = app.get(PrismaService);
   });
 
-  beforeEach(async () => {
-    await prisma.movement.deleteMany();
-    await prisma.propertyAgent.deleteMany();
-    await prisma.ownerInvitation.deleteMany();
-    await prisma.propertyAssetOwner.deleteMany();
-    await prisma.propertyEngagement.deleteMany();
-    await prisma.propertyAsset.deleteMany();
-    await prisma.refreshToken.deleteMany();
-    await prisma.tenantMembership.deleteMany();
-    await prisma.tenant.deleteMany();
-    await prisma.user.deleteMany();
-  });
+  const clear = (model: { deleteMany: () => Promise<unknown> }) => async () => {
+    await model.deleteMany();
+  };
+
+  async function cleanFixtures() {
+    await runCleanupSteps([
+      { name: "movements", run: clear(prisma.movement) },
+      { name: "property agents", run: clear(prisma.propertyAgent) },
+      { name: "source engagements", run: clear(prisma.propertyEngagement) },
+      { name: "owner invitations", run: clear(prisma.ownerInvitation) },
+      { name: "property asset owners", run: clear(prisma.propertyAssetOwner) },
+      { name: "canonical assets", run: clear(prisma.propertyAsset) },
+      { name: "proposal decisions", run: clear(prisma.propertyProposalReviewDecision) },
+      { name: "proposal rounds", run: clear(prisma.propertyProposalReviewRound) },
+      { name: "proposals", run: clear(prisma.propertyProposal) },
+      { name: "refresh tokens", run: clear(prisma.refreshToken) },
+      { name: "tenant memberships", run: clear(prisma.tenantMembership) },
+      { name: "tenants", run: clear(prisma.tenant) },
+      { name: "users", run: clear(prisma.user) },
+    ]);
+  }
+
+  beforeEach(cleanFixtures);
+  afterEach(cleanFixtures);
 
   afterAll(async () => {
     await app.close();
@@ -218,6 +231,73 @@ describe("Property engagements (e2e)", () => {
         select: { archivedAt: true },
       }),
     ).resolves.toEqual({ archivedAt: null });
+  });
+
+  it.each([
+    PropertyEngagementStatus.CLOSED,
+    PropertyEngagementStatus.CANCELLED,
+  ])("restores an archived %s engagement without consuming active capacity", async (status) => {
+    const manager = await registerTenantSession(
+      `manager-restore-${status.toLowerCase()}@example.com`,
+      `Manager Restore ${status}`,
+    );
+    const inactive = await createEngagement(manager.agent, manager.tenantId, {
+      title: `${status} Restore Bypass`,
+    }).expect(201);
+    await manager.agent
+      .post(`/api/property-engagements/${inactive.body.id}/archive`)
+      .set("x-tenant-id", manager.tenantId)
+      .send({ reason: `${status} fixture` })
+      .expect(201);
+    await prisma.propertyEngagement.update({
+      where: { id: inactive.body.id },
+      data: { status },
+    });
+    await prisma.tenant.update({
+      where: { id: manager.tenantId },
+      data: { maxActivePropertyEngagements: 0 },
+    });
+
+    await manager.agent
+      .post(`/api/property-engagements/${inactive.body.id}/restore`)
+      .set("x-tenant-id", manager.tenantId)
+      .expect(201);
+    await expect(
+      prisma.propertyEngagement.findUnique({
+        where: { id: inactive.body.id },
+        select: { archivedAt: true, status: true },
+      }),
+    ).resolves.toEqual({
+      archivedAt: null,
+      status,
+    });
+  });
+
+  it("does not count persisted proposal staging against canonical active capacity", async () => {
+    const manager = await registerTenantSession(
+      "manager-proposal-capacity@example.com",
+      "Manager Proposal Capacity",
+    );
+    await prisma.tenant.update({
+      where: { id: manager.tenantId },
+      data: { maxActivePropertyEngagements: 1 },
+    });
+    await prisma.propertyProposal.create({
+      data: {
+        tenantId: manager.tenantId,
+        proposedByUserId: manager.userId,
+        title: "Persisted staging only",
+      },
+    });
+
+    await createEngagement(manager.agent, manager.tenantId, {
+      title: "Canonical capacity remains available",
+    }).expect(201);
+    await expect(
+      prisma.propertyEngagement.count({
+        where: { tenantId: manager.tenantId, archivedAt: null },
+      }),
+    ).resolves.toBe(1);
   });
 
   it("rejects property engagement endpoints without x-tenant-id", async () => {

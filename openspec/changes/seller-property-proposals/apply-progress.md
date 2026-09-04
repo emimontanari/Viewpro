@@ -183,7 +183,7 @@ C2B2 was the selected `auto-chain` / `stacked-to-develop` work-unit after C2B1. 
 - Residual risk: the helper's deadline bounds JavaScript settlement only; server-side cleanup statement bounds depend on each caller's URL options, which the migrated smoke now supplies before client construction. No commit, push, PR, merge, review, receipt, C3, runtime source, schema, migration, registry, or route action occurred.
 
 ## C3A / U3 corrective replay pass
-- **Status/task:** authoritative OpenSpec was `ready` with repo-local allowed roots; both U3 rows remain visibly `[x]`, C3B/U4A remains unchecked and mandatory before C4, and parent rows were untouched.
+- **Status/task:** authoritative OpenSpec was `ready` with repo-local allowed roots; both U3 rows remain visibly `[x]`, C3B/U4A was then unchecked and mandatory before C4, and parent rows were untouched.
 | TDD Cycle Evidence | RED | GREEN | TRIANGULATE | REFACTOR |
 |---|---|---|---|---|
 | U3 corrective pass | Matcher/enum-invalid tests: 7/27 failed, 20 passed. | Implementation: 27/27 passed. | Update-version bypass: 1/27 failed, 26 passed; restoration: 27/27 passed. | No further refactor was needed. |
@@ -191,3 +191,15 @@ C2B2 was the selected `auto-chain` / `stacked-to-develop` work-unit after C2B1. 
 - **Domain contract:** pure exported literals exactly mirror schema `PropertyType` (`HOUSE|APARTMENT|LAND|COMMERCIAL|OTHER`) and `PropertyOperationType` (`SALE|RENT`); blank enums normalize to null, unsupported nonblank enums throw, update replay snapshots only its explicit allowlist, and matchers deny version/patch, version/snapshot, and round/reviewer/outcome/reason differences while approved reasons canonicalize to null.
 - **Postcheck/residue:** retained `viewpro_test_w1`–`w4` intentionally remain present, each has zero `property_proposals` rows, and zero non-idle test connections were observed; dependencies, generated/build/test residue, `.turbo`, and `*.tsbuildinfo` were removed while the generated `.gitkeep` remains.
 - **Scope/budget/risk:** the six C3A domain files plus `tasks.md`, `task-delivery-plan.md`, `task-verification-commands.md`, and this progress artifact changed; no Prisma, HTTP, UI, capacity, C3B, commit, push, PR, or merge action occurred. The exact candidate is 522 additions + 15 deletions = **537 changed lines**, within the maintainer-approved 650-line C3A cap; these pure primitives still do not prove persistence, authorization, or capacity behavior.
+
+## C3B / U4A shared capacity and direct-path compatibility
+- **Status/scope:** authoritative repo-local OpenSpec is ready; C3B/U4A is complete, and this corrective pass formats only the capacity spec, restore callback, and progress artifact.
+### TDD Cycle Evidence
+| Task | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|
+| C3B/U4A | Capacity-spec import initially failed; compatible E2E remained regression evidence. | U4A passed **2 files / 43 tests**. | `notIn: []` failed the `CLOSED`/`CANCELLED` predicate **1/3**, then passed restored. | Readability-only formatting preserves transaction, outside catch, error mapping, and assertions. |
+- **Verification:** offline frozen install and generated client; forced API Turbo typecheck passed **6/6 uncached**; U4A passed twice at **2/43**, C3A passed **3/27**, combined C3A+C3B passed **5/70**, and API lint passed.
+- **Cleanup/postchecks:** guarded matching localhost `DATABASE_URL`/`DIRECT_URL` used only `viewpro_test`; fixtures, tenant limits, retained worker rows, and non-idle test connections were zero, then dependency/build/test residue was removed while `.gitkeep` remains.
+- **Budget:** the full candidate is **288 additions + 72 deletions = 360 changed lines**, within the C3B **≤400** cap; readability uses recovered documentation budget, not code golf.
+- **Blocker:** C4/U4B cannot begin until C3B merges; its next unchecked rows remain unchanged.
+- **Risk:** movement-schema drift can break cleanup if movements stop referencing engagements compatibly; no C4, commit, push, PR, merge, review, or receipt action occurred.

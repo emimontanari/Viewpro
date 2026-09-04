@@ -13,6 +13,10 @@ import {
 import type { PropertyAssetImage } from '@prisma/client'
 import { PrismaService } from '../database/prisma.service'
 import { TENANT_ACTIVE_PROPERTY_ENGAGEMENT_LIMIT_EXCEEDED_MESSAGE } from '../tenant-limits/tenant-limit-enforcement.constants'
+import {
+  ActivePropertyCapacityExceededError,
+  ActivePropertyEngagementCapacity,
+} from './active-property-engagement-capacity'
 import { createOwnerInvitationToken } from './owner-invitation-token'
 import type {
   ArchivePropertyEngagementInput,
@@ -69,43 +73,6 @@ const propertyEngagementInclude = {
   agents: { include: { agentUser: true } },
   createdBy: true,
 } satisfies Prisma.PropertyEngagementInclude
-
-async function ensureActivePropertyEngagementCapacity(tx: Prisma.TransactionClient, tenantId: string): Promise<void> {
-  await lockTenantRow(tx, tenantId)
-
-  if (!tx.tenant) {
-    return
-  }
-
-  const tenant = await tx.tenant.findUnique({
-    where: { id: tenantId },
-    select: { maxActivePropertyEngagements: true },
-  })
-
-  if (!tenant || tenant.maxActivePropertyEngagements === null) {
-    return
-  }
-
-  const activeEngagements = await tx.propertyEngagement.count({
-    where: {
-      tenantId,
-      archivedAt: null,
-      status: { notIn: inactiveEngagementStatuses },
-    },
-  })
-
-  if (activeEngagements >= tenant.maxActivePropertyEngagements) {
-    throw new ConflictException(TENANT_ACTIVE_PROPERTY_ENGAGEMENT_LIMIT_EXCEEDED_MESSAGE)
-  }
-}
-
-async function lockTenantRow(tx: Prisma.TransactionClient, tenantId: string): Promise<void> {
-  if (typeof tx.$queryRaw !== 'function') {
-    return
-  }
-
-  await tx.$queryRaw`SELECT id FROM tenants WHERE id = ${tenantId} FOR UPDATE`
-}
 
 type PrimaryMutationOperation = 'set' | 'clear' | 'remove'
 let primaryAgentLockBarrierForTest: ((operation: PrimaryMutationOperation) => Promise<void>) | null = null
@@ -174,24 +141,35 @@ function isActiveEngagementStatus(status: PropertyEngagementStatus): boolean {
 
 @Injectable()
 export class PrismaPropertyEngagementsRepository implements PropertyEngagementsRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    private readonly activePropertyEngagementCapacity: ActivePropertyEngagementCapacity,
+  ) {}
 
-  createWithAsset(input: CreatePropertyEngagementInput): Promise<PropertyEngagementWithDetails> {
-    return this.prisma.$transaction(async (tx) => {
-      await ensureActivePropertyEngagementCapacity(tx, input.tenantId)
+  async createWithAsset(input: CreatePropertyEngagementInput): Promise<PropertyEngagementWithDetails> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const capacity = await this.activePropertyEngagementCapacity.acquire(tx, input.tenantId)
+        await capacity.assertAvailable()
 
-      const propertyAsset = await tx.propertyAsset.create({ data: input.propertyAsset })
+        const propertyAsset = await tx.propertyAsset.create({ data: input.propertyAsset })
 
-      return tx.propertyEngagement.create({
-        data: {
-          ...input.engagement,
-          tenantId: input.tenantId,
-          propertyAssetId: propertyAsset.id,
-          createdByUserId: input.createdByUserId,
-        },
-        include: propertyEngagementInclude,
+        return tx.propertyEngagement.create({
+          data: {
+            ...input.engagement,
+            tenantId: input.tenantId,
+            propertyAssetId: propertyAsset.id,
+            createdByUserId: input.createdByUserId,
+          },
+          include: propertyEngagementInclude,
+        })
       })
-    })
+    } catch (error) {
+      if (error instanceof ActivePropertyCapacityExceededError) {
+        throw new ConflictException(TENANT_ACTIVE_PROPERTY_ENGAGEMENT_LIMIT_EXCEEDED_MESSAGE)
+      }
+      throw error
+    }
   }
 
   async findMany(
@@ -306,7 +284,7 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
   }
 
   restoreForTenant(input: RestorePropertyEngagementInput): Promise<RestorePropertyEngagementResult> {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction<RestorePropertyEngagementResult>(async (tx) => {
       const existing = await tx.propertyEngagement.findFirst({
         where: this.buildTenantVisibilityWhere(input),
         select: { id: true, archivedAt: true, status: true },
@@ -321,7 +299,8 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
       }
 
       if (isActiveEngagementStatus(existing.status)) {
-        await ensureActivePropertyEngagementCapacity(tx, input.tenantId)
+        const capacity = await this.activePropertyEngagementCapacity.acquire(tx, input.tenantId)
+        await capacity.assertAvailable()
       }
 
       const restoredResult = await tx.propertyEngagement.updateMany({
@@ -354,6 +333,11 @@ export class PrismaPropertyEngagementsRepository implements PropertyEngagementsR
       })
 
       return { status: 'restored', engagement: restored }
+    }).catch((error) => {
+      if (error instanceof ActivePropertyCapacityExceededError) {
+        throw new ConflictException(TENANT_ACTIVE_PROPERTY_ENGAGEMENT_LIMIT_EXCEEDED_MESSAGE)
+      }
+      throw error
     })
   }
 

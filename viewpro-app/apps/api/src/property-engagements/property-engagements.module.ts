@@ -5,6 +5,7 @@ import { MembershipsModule } from "../memberships/memberships.module";
 import { PermissionsModule } from "../permissions/permissions.module";
 import { TenantContextModule } from "../tenant-context/tenant-context.module";
 import { UsersModule } from "../users/users.module";
+import { ActivePropertyEngagementCapacity } from "./active-property-engagement-capacity";
 import { PrismaPropertyEngagementsRepository } from "./prisma-property-engagements.repository";
 import { PropertyEngagementsController } from "./property-engagements.controller";
 import { PROPERTY_ENGAGEMENTS_REPOSITORY } from "./property-engagements.repository";
@@ -63,6 +64,7 @@ const propertyEngagementUseCases = [
 	],
 	controllers: [PropertyEngagementsController],
 	providers: [
+		ActivePropertyEngagementCapacity,
 		{
 			provide: PROPERTY_ENGAGEMENTS_REPOSITORY,
 			useClass: PrismaPropertyEngagementsRepository,
@@ -87,6 +89,10 @@ const propertyEngagementUseCases = [
 		},
 		...propertyEngagementUseCases,
 	],
-	exports: [PROPERTY_ENGAGEMENTS_REPOSITORY, ...propertyEngagementUseCases],
+	exports: [
+		PROPERTY_ENGAGEMENTS_REPOSITORY,
+		ActivePropertyEngagementCapacity,
+		...propertyEngagementUseCases,
+	],
 })
 export class PropertyEngagementsModule {}
