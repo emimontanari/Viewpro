@@ -48,9 +48,7 @@ describe('OwnerHome', () => {
     render(<OwnerHome />);
 
     expect(screen.getByRole('heading', { name: /Tus propiedades/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Casa familiar con pileta' })).toHaveClass(
-      'line-clamp-2'
-    );
+    expect(screen.getByRole('heading', { name: 'Casa familiar con pileta' })).toBeInTheDocument();
     expect(
       screen.queryByText('Casa familiar con pileta en Villa Centenario')
     ).not.toBeInTheDocument();
@@ -61,10 +59,7 @@ describe('OwnerHome', () => {
       'uppercase'
     );
     expect(screen.getByText('VI')).toHaveClass('size-12', 'rounded-xl');
-    expect(screen.getByRole('heading', { name: 'ViewPro Demo Inmobiliaria' })).toHaveClass(
-      'line-clamp-2',
-      'text-base'
-    );
+    expect(screen.getByRole('heading', { name: 'ViewPro Demo Inmobiliaria' })).toHaveClass('text-base');
     expect(screen.getByLabelText('Inmobiliaria verificada')).toHaveClass(
       'size-3.5',
       'text-emerald-700',
@@ -272,7 +267,7 @@ describe('OwnerHome', () => {
     render(<OwnerHome />);
 
     expect(screen.getByText('Recibimos una oferta formal')).toBeInTheDocument();
-    expect(screen.getByText('Coordinar firma de reserva')).toBeInTheDocument();
+    expect(screen.getByText('Próxima acción: Coordinar firma de reserva')).toBeInTheDocument();
     expect(screen.getAllByText('Recibimos una oferta formal')).toHaveLength(1);
     expect(screen.getByText('Todavía no hay movimientos registrados.')).toBeInTheDocument();
     expect(screen.getByText('Sin próxima acción informada.')).toBeInTheDocument();
@@ -361,7 +356,46 @@ describe('OwnerHome', () => {
     expect(screen.queryByText('Todavía no hay movimientos registrados.')).not.toBeInTheDocument();
   });
 
-  it('renders a WhatsApp contact link and tracks clicks best-effort', async () => {
+  it('renders at most five real recent movements as ordered semantic rows', () => {
+    const unknownObservation =
+      'La inmobiliaria mencionó una promoción y contenido destacado para la propiedad.';
+    const observations = [
+      'Actualización seis que no debe aparecer',
+      'Seguimiento cinco',
+      'Seguimiento cuatro',
+      'Seguimiento tres',
+      unknownObservation,
+      'Seguimiento fuera del límite'
+    ];
+    mockOwnerHomeData(ownerPropertiesResponse, [singleAgencyEngagements], {
+      'engagement-tenant-1': observations.map((observation, index) =>
+        buildOwnerMovement({
+          createdAt: `2026-08-${20 - index}T12:00:00.000Z`,
+          id: `movement-${index}`,
+          observation,
+          propertyEngagementId: 'engagement-tenant-1',
+          type: index === 4 ? 'UNKNOWN_RAW_TYPE' : 'STATUS_CHANGE'
+        })
+      )
+    });
+
+    render(<OwnerHome />);
+
+    const recentRows = screen.getByRole('list', { name: 'Movimientos recientes' });
+    expect(recentRows.querySelectorAll(':scope > li')).toHaveLength(5);
+    expect(recentRows).toHaveTextContent('Actualización seis que no debe aparecer');
+    expect(recentRows).toHaveTextContent(unknownObservation);
+    expect(recentRows).not.toHaveTextContent('Seguimiento fuera del límite');
+    expect(recentRows).toHaveTextContent('UNKNOWN_RAW_TYPE');
+    expect(screen.queryByText('Promoción')).not.toBeInTheDocument();
+    expect(screen.queryByText('Contenido')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ver toda la actividad' })).toHaveAttribute(
+      'href',
+      '/owner/properties/property-1?engagement=engagement-tenant-1&tab=tracking'
+    );
+  });
+
+      it('renders a WhatsApp contact link and tracks clicks best-effort', async () => {
     const trackingSpy = vi
       .spyOn(ownerService, 'trackOwnerWhatsappContactClick')
       .mockResolvedValue(undefined);
@@ -516,7 +550,7 @@ describe('OwnerHome', () => {
     expect(trackingSpy).not.toHaveBeenCalled();
   });
 
-  it('renders an owner-safe empty state', () => {
+      it('renders an owner-safe empty state', () => {
     mockOwnerHomeData([], []);
 
     render(<OwnerHome />);
@@ -529,7 +563,7 @@ describe('OwnerHome', () => {
 function mockOwnerHomeData(
   properties: OwnerPropertiesResponse,
   engagementsByProperty: OwnerEngagementsResponse[],
-  latestMovementByEngagementId: Record<string, OwnerMovement> = {}
+  latestMovementByEngagementId: Record<string, OwnerMovement | OwnerMovement[]> = {}
 ) {
   useQueryMock.mockReturnValue({
     data: properties,
@@ -545,10 +579,10 @@ function mockOwnerHomeData(
 
         return {
           data: {
-            items: movement ? [movement] : [],
+            items: movement ? (Array.isArray(movement) ? movement : [movement]) : [],
             page: 1,
-            pageSize: 1,
-            total: movement ? 1 : 0
+            pageSize: 5,
+            total: movement ? (Array.isArray(movement) ? movement.length : 1) : 0
           },
           isError: false,
           isLoading: false
@@ -566,14 +600,16 @@ function isTimelineQueryKey(queryKey: readonly unknown[]) {
 
 function buildOwnerMovement(input: {
   createdAt: string;
+  id?: string;
   nextStep?: string | null;
   observation?: string;
   propertyEngagementId?: string;
+  type?: string;
 }): OwnerMovement {
   return {
-    id: `movement-${input.createdAt}`,
+    id: input.id ?? `movement-${input.createdAt}`,
     propertyEngagementId: input.propertyEngagementId ?? 'engagement-tenant-1',
-    type: 'STATUS_CHANGE',
+    type: input.type ?? 'STATUS_CHANGE',
     observation: input.observation ?? 'Movimiento visible para el propietario',
     nextStep: input.nextStep ?? null,
     previousStatus: null,

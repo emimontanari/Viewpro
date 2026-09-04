@@ -1,10 +1,18 @@
-# Apply Progress: Owner Home Reference Fidelity — Slice 1
+# Apply Progress: Owner Home Reference Fidelity
 
-## Status
+## Current cumulative status
+
+**Slice 3A RED/GREEN core is complete; Slice 3B static TRIANGULATE, browser verification, and the final frontend gate remain pending.** The corrected persisted implementation state is **10/13 complete**, with exactly three unchecked Slice 3B tasks. Slice 3A covers the deterministic formatter/classifier, semantic bounded activity, scoped continuation, and direct unit/component behavior only; it makes no whole-home state, deliberate long-text/responsive, seeded/browser, or final-gate claim.
+
+The candidate is measured only against worktree `HEAD` `b3304e763e0853913594e67c24567b94212fb668`; the final exact manifest and changed-line count are recorded in the current Slice 3A evidence below. The launcher began in another worktree, so every correction was performed in the supplied authoritative S3 workspace and only the four allowed edit surfaces were changed.
+
+## Historical Slice 1 evidence
+
+### Initial status
 
 **Blocked during Slice 1 GREEN/REFACTOR verification.** The bounded query and pure mapper pass their focused suites, and App New typecheck passes. The required component suite has one existing fixture that supplies timeline rows whose `propertyEngagementId` is `engagement-tenant-1` for cards keyed as `engagement-recent`, `engagement-tie-a`, and `engagement-tie-z`. Slice 1's required defensive mapper correctly rejects those mismatched rows, so the component ordering assertion now fails. Updating that fixture is outside the delegated allowed edit surfaces; no mismatch rejection was weakened and no Slice 1 checkbox was marked complete.
 
-## Structured status consumed
+### Structured status consumed
 
 ```yaml
 schemaName: spec-driven
@@ -108,7 +116,7 @@ taskProgress: { implementationTotal: 13, complete: 4, remaining: 9 }
 actionContext: { mode: repo-local, workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/owner-home-reference-fidelity-s1, warning: "Only the parent may advance lifecycle or Slice 2" }
 nextRecommended: parent-lifecycle
 ```
-## Slice 2 — complete
+## Historical Slice 2 completion
 - Status consumed: `{ schemaName: spec-driven, changeName: owner-home-reference-fidelity, artifactStore: openspec, applyState: ready, actionContext: repo-local at owner-home-reference-fidelity-s2; allowed roots honored; launcher-cwd warning resolved before edits }`.
 - Completed and persisted: Slice 2 RED, GREEN, TRIANGULATE, and REFACTOR are `[x]`; parent rows unchanged.
 - Files: `owner-home.tsx`, `owner-home.test.tsx`, `demo-smoke.spec.ts`, `tasks.md`, and this file only.
@@ -120,9 +128,50 @@ nextRecommended: parent-lifecycle
 | --- | --- | --- | --- | --- |
 | Slice 2 actions | 13/13; 13/14 missing group | 14/14 | 15/15 two agencies, seller-contact isolation, unusable agency contact | smoke selector update; 53/53 regression |
 - Deviation: none. PR boundary: Slice 2 to `develop`; final candidate is 400 changed lines, within the 400-line budget.
-- Remaining exact unchecked implementation rows:
-- [ ] **RED:** Create `viewpro-app/apps/app-new/src/features/owner/utils/owner-movement-labels.test.ts` and extend `viewpro-app/apps/app-new/src/features/owner/components/owner-home.test.tsx` with failing tests for the exact `DD/MM/YYYY · HH:mm` `es-AR`/`America/Argentina/Buenos_Aires` output (including a UTC instant crossing the Buenos Aires calendar day), supported structured-type visual kinds, neutral unknown/raw labels, no inferred observation categories, ordered semantic `ol`/`li` rows, and at-most-five real observations. <!-- sdd-owner: implementation -->
-- [ ] **GREEN:** In `viewpro-app/apps/app-new/src/features/owner/utils/owner-movement-labels.ts`, add a home-only structured-type presentation classifier and `formatOwnerHomeMovementDateTime` using `Intl.DateTimeFormat(...).formatToParts()` with fixed separators; in `viewpro-app/apps/app-new/src/features/owner/components/owner-home.tsx`, add `OwnerRecentActivity` and row rendering with decorative `aria-hidden` timeline cues, unchanged nonblank observations, existing type labels, a scoped `Ver toda la actividad` link, and no modification to WhatsApp/detail date formatters. <!-- sdd-owner: implementation -->
+## Historical Slice 3 corrective rerun
+
+- Native status consumed: `openspec`, `owner-home-reference-fidelity`, `applyState: ready`; repo-local root and supplied Slice 3 roots were honored.
+- The seeded owner command was rerun first; Prisma generation is no longer the blocker, but global setup stopped before scenario execution because `DATABASE_URL` is absent for `pnpm demo:seed`.
+- Exact final gate: focused Vitest **37/37**, App New `typecheck` passed, and `lint:strict` passed; the seeded command then failed only at the `DATABASE_URL` global-setup precondition.
+
+## Current Slice 3A — corrected RED/GREEN core completion
+
+- The maintainer-approved `stacked-to-main` split remains `P1 → P2 → Slice 1 → Slice 2 → Slice 3A → Slice 3B`; this correction changes neither production behavior nor the approved boundary.
+- `tests/seeded/demo-smoke.spec.ts` is exactly equal to worktree `HEAD`; Slice 3A has no seeded/browser claim or run.
+- The prior 38/38 TRIANGULATE claim is withdrawn: whole-home state, deliberate long-text/responsive proof, browser verification, and the final gate are unchecked Slice 3B work.
+- The retained core case renders a within-five-row unknown movement whose stored observation contains promotion/content-like prose, keeps the raw `UNKNOWN_RAW_TYPE` label, and creates no `Promoción` or `Contenido` category.
+- The exact four-file focused Vitest command passed **36/36** after the correction; App New `typecheck` and `lint:strict` are rerun below, LSP diagnostics remain unavailable, and `git diff --check` is rerun below.
+- Manifest: `owner-home.tsx`, `owner-home.test.tsx`, `owner-movement-labels.ts`, `owner-movement-labels.test.ts`, `design.md`, `tasks.md`, and `apply-progress.md`; seeded changes are excluded. Candidate against `b3304e763e0853913594e67c24567b94212fb668`: **395 changed lines** (296 additions, 99 deletions, including the 44-line untracked label test).
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- |
+| Slice 3A core evidence correction | Component | Four-file command: 38/38 before the correction | Not applicable: this removed an overstated prior TRIANGULATE claim and added no production behavior | Four-file command: 36/36 with the rendered neutral/raw no-inference case | Deferred intact to unchecked Slice 3B task | No production refactor; seeded/browser scope remains deferred |
+
+### Remaining implementation tasks
+
 - [ ] **TRIANGULATE:** In `viewpro-app/apps/app-new/src/features/owner/components/owner-home.test.tsx`, retain/expand whole-home loading, properties failure, engagement failure, and owner-safe empty coverage; also prove local timeline error wins over empty, no activity differs from no next action, all-invalid rows are honest no activity, a successful card never receives sibling rows, long property/agency/observation/unknown-type text wraps without truncating meaning, and responsive structural classes preserve one source-ordered column below `md` and three `minmax(0, 1fr)` columns at/above `md`. <!-- sdd-owner: implementation -->
 - [ ] **REFACTOR and browser verification:** In `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`, add stable owner-home assertions for the three tiles, a real recent row, scoped `Ver más`/activity navigation, agency WhatsApp href, and intercepted contact tracking; use `page.setViewportSize` for 320px, 375px, the `md` transition, and a full `max-w-6xl` viewport with long strings. Compare the rendered composition with both stored reference assets, but require semantic controls, href/tracking assertions, no horizontal overflow, readable wrapped text, and keyboard reachability as independent oracles rather than using screenshots alone. <!-- sdd-owner: implementation -->
 - [ ] Run the final frontend gate from `viewpro-app/`: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/owner/api/queries.test.ts src/features/owner/utils/owner-home-engagement-cards.test.ts src/features/owner/utils/owner-movement-labels.test.ts src/features/owner/components/owner-home.test.tsx && pnpm --filter next-shadcn-dashboard-starter typecheck && pnpm --filter next-shadcn-dashboard-starter lint:strict && pnpm --filter next-shadcn-dashboard-starter test:seeded -- --grep 'owner'`; record any seeded-suite/environment blocker without weakening unit, semantic, or browser assertions. <!-- sdd-owner: implementation -->
+
+### Structured status consumed
+
+```yaml
+schemaName: spec-driven
+changeName: owner-home-reference-fidelity
+artifactStore: openspec
+artifacts: { proposal: done, specs: done, design: done, tasks: done, applyProgress: partial }
+taskProgress: { total: 13, complete: 10, remaining: 3 }
+applyState: ready
+dependencies: { apply: ready, verify: blocked, sync: blocked, archive: blocked }
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/owner-home-reference-fidelity-s3
+  allowedEditRoots: [viewpro-app/apps/app-new/src/features/owner/components/owner-home.test.tsx, openspec/changes/owner-home-reference-fidelity/design.md, openspec/changes/owner-home-reference-fidelity/tasks.md, openspec/changes/owner-home-reference-fidelity/apply-progress.md]
+  warnings: ["Launcher cwd was another worktree; corrections used this authoritative workspace."]
+nextRecommended: parent-lifecycle
+```
+
+- Deviation: the prior S3A whole-home/long-text TRIANGULATE claim was removed because it lacked deliberate long fixtures; the scoped S3A core behavior is unchanged.
+- Workload/PR boundary: Slice 3A only, under the 400-line budget; Slice 3B owns the three remaining tasks. Parent-owned review, verify, sync, and archive actions remain deferred.

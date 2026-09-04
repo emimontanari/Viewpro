@@ -109,9 +109,10 @@ Every seam runs RED → GREEN → TRIANGULATE → REFACTOR with focused evidence
 2. `viewpro-app/apps/app-new/src/features/owner/utils/owner-home-engagement-cards.test.ts`: bound, descending/equal-time order, row-zero derivation, malformed/mismatched rejection, unknown eligibility, multi-agency isolation, no-activity-last, input/completion independence.
 3. `viewpro-app/apps/app-new/src/features/owner/utils/owner-movement-labels.test.ts`: all supported kinds, unknown neutral/raw label, exact Buenos Aires output including UTC previous-day crossing; preserve WhatsApp tests.
 4. `viewpro-app/apps/app-new/src/features/owner/components/owner-home.test.tsx`: exactly three ordered semantic tiles, copy/icons/affordances, 44px targets, scoped tracking/documents/detail/continuation, available and disabled agency contact, best-effort/no tracking.
-5. Same component suite: bounded ordered real rows, timestamps/types, no inferred labels, sibling isolation, semantic list, full/local states, no-activity versus no-next-action, all-invalid rows, long-copy wrapping, source order, breakpoint classes, and no nested controls.
-6. Regression paths unchanged: `viewpro-app/apps/app-new/src/features/owner/components/owner-property-detail.test.tsx`, `viewpro-app/apps/app-new/src/features/owner/components/owner-timeline.test.tsx`, `viewpro-app/apps/app-new/src/features/owner/utils/owner-whatsapp-contact.test.ts`, `viewpro-app/apps/app-new/src/features/owner/api/service.test.ts`, `viewpro-app/apps/app-new/src/app/api/owner/engagements/[id]/timeline/route.test.ts`.
-7. Seeded smoke: three tiles, real recent row, scoped `Ver más`/activity navigation, WhatsApp href/intercepted tracking, keyboard reachability, no overflow, long-string viewport checks, and comparison with both stored references; screenshots are not the sole oracle.
+5. Slice 3A component core: bounded ordered real rows, timestamps/types, neutral/raw unknown labels without free-text inference, semantic list, and scoped continuation.
+6. Slice 3B component TRIANGULATE: full/local states, no-activity versus no-next-action, all-invalid rows, sibling isolation, deliberate long-copy fixtures, source order, and breakpoint classes.
+7. Regression paths unchanged: `viewpro-app/apps/app-new/src/features/owner/components/owner-property-detail.test.tsx`, `viewpro-app/apps/app-new/src/features/owner/components/owner-timeline.test.tsx`, `viewpro-app/apps/app-new/src/features/owner/utils/owner-whatsapp-contact.test.ts`, `viewpro-app/apps/app-new/src/features/owner/api/service.test.ts`, `viewpro-app/apps/app-new/src/app/api/owner/engagements/[id]/timeline/route.test.ts`.
+8. Slice 3B seeded smoke: three tiles, real recent row, scoped `Ver más`/activity navigation, WhatsApp href/intercepted tracking, keyboard reachability, no overflow, deliberate long-string viewport checks, and comparison with both stored references; screenshots are not the sole oracle.
 
 Run from `viewpro-app/`:
 
@@ -125,17 +126,18 @@ pnpm --filter next-shadcn-dashboard-starter test:seeded -- --grep 'owner'
 
 ## Sequential slices and review forecast
 
-Forecast **550–750 changed lines total**; use three sequential, independently green, under-400 review slices and avoid parallel edits to `owner-home.tsx`/its test:
+Use six sequential, under-400 PRs—P1 → P2 → Slice 1 → Slice 2 → Slice 3A → Slice 3B—each branched from fresh `develop` after its predecessor; the maintainer approved the audited reset and split.
 
 | Slice | Boundary and estimate | Rollback |
 | --- | --- | --- |
 | 1. Bounded data | Query/helper tests + mapper/tests; home consumes arrays while retaining compact UI. **180–260** lines. | Revert its six Slice 1 files together—query, query test, mapper, mapper test, home adapter, and home fixture test—to restore page-size-one behavior, no migration/repair. |
 | 2. Action hierarchy | Three tiles, scoped `Ver más`, contact semantics, responsive actions, component/seeded selectors. **180–280** lines. | Revert its presentation/test files together; retain Slice 1 bounded data. |
-| 3. Activity fidelity | Panel, date/type helpers, local states, responsive timeline, component/helper/seeded tests. **220–340** lines. | Revert its presentation/helper/test files together; retain Slice 2 actions and bounded query. |
+| 3A. Recent-activity RED/GREEN core | Panel, date/type helpers, bounded semantic rows, neutral unknown/raw presentation, and scoped continuation. **395 changed lines against `b3304e76` (under 400).** | Revert its four static presentation/helper/test files; retain Slice 2. |
+| 3B. Static/browser triangulation | Whole-home/local states, deliberate long-text/responsive component proof, seeded/browser assertions, and final gate. **Under 400** lines. | Revert only Slice 3B component/seeded assertions; retain 3A core. |
 
 Slice 1 is limited to `api/queries.ts`, `api/queries.test.ts`, `components/owner-home.tsx`, `components/owner-home.test.tsx`, `utils/owner-home-engagement-cards.ts`, and `utils/owner-home-engagement-cards.test.ts` under `viewpro-app/apps/app-new/src/features/owner/`.
 Slice 2 is limited to `viewpro-app/apps/app-new/src/features/owner/components/owner-home.tsx`, its `.test.tsx`, and `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`.
-Slice 3 is limited to those same home/seeded files plus `viewpro-app/apps/app-new/src/features/owner/utils/owner-movement-labels.ts` and its `.test.ts`.
+Slice 3A is limited to `owner-home.tsx`, its test, `owner-movement-labels.ts`, and its test. Slice 3B owns the deferred state/long-text/responsive assertions in `owner-home.test.tsx`, `demo-smoke.spec.ts`, and final verification; it retains all seeded/browser work.
 
 ## Rollout, rollback, risks
 

@@ -7,7 +7,7 @@
 | Estimated changed lines | Planning P1: 223 Markdown lines + 72,050-byte assets; P2: 111 + 158 + 111 Markdown lines (380; cap 399). Source: 550–750 total; S1: 180–260, S2: 180–280, S3: 220–340. |
 | 400-line budget risk | High — source total requires slices; P2 is capped below 400 Markdown lines. |
 | Chained PRs recommended | Yes |
-| Suggested split | P1 → P2 → Slice 1 → Slice 2 → Slice 3 |
+| Suggested split | P1 → P2 → Slice 1 → Slice 2 → Slice 3A → Slice 3B |
 | Delivery strategy | ask-on-risk |
 | Chain strategy | stacked-to-main (repository integration branch: `develop`) |
 
@@ -24,7 +24,7 @@ Chain strategy: stacked-to-main
 
 ## Boundaries and execution order
 
-- Use `stacked-to-main`: every PR targets `develop`, and each successor branches from fresh `develop` after its predecessor merges; each source slice is independently green and under 400 changed lines (additions plus deletions).
+- Maintainer approved the audited reset and S3A/S3B split; use `stacked-to-main`, branch every successor from fresh `develop` after its predecessor, and keep each under 400 changed lines.
 - This is owner-home frontend-only work. Do not edit API, BFF, schema, authentication, authorization, tenant isolation, document-detail, document-workflow, movement-contact, or WhatsApp URL/message/tracking contract owners.
 - Treat `openspec/changes/owner-home-reference-fidelity/assets/owner-actions-reference.jpeg` and `openspec/changes/owner-home-reference-fidelity/assets/owner-activity-reference.jpeg` as read-only visual baselines; check hierarchy, grouping, action order, timeline cues, and continuation affordance, but never copy sample data into product data.
 - Run every listed command from `viewpro-app/`; record RED, GREEN, TRIANGULATE, and REFACTOR evidence before the next source slice.
@@ -74,11 +74,11 @@ viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts
 
 **Slice completion evidence:** the regression command passes; cards retain one agency-specific identity and only three primary tiles; document/detail destinations and WhatsApp URL/message/tracking semantics are unchanged.
 
-## Slice 3 — recent-activity visual fidelity, deterministic date/type presentation, states, and browser checks
+## Slice 3A — recent-activity RED/GREEN core
 
-**Objective:** render bounded movements as a truthful reference-style timeline with deterministic Buenos Aires timestamps, supported-type-only treatments, complete states, and responsive browser evidence.
-**Depends on:** Slice 2 merged to `develop`; branch Slice 3 from fresh `develop`. **Estimate:** 220–340 changed lines.
-**Rollback boundary:** revert this slice's five listed files together to restore Slice 2's action hierarchy plus compact activity summary; do not alter bounded-query or contact contracts.
+**Objective:** retain only the deterministic Buenos Aires formatter, structured classifier, semantic bounded activity, scoped continuation, and direct unit/component behavior; whole-home state, long-text/responsive triangulation, browser work, and the final gate belong to Slice 3B.
+**Depends on:** Slice 2 merged to fresh `develop`. **Estimate:** under 400 changed lines.
+**Rollback boundary:** revert this slice's four static files together to restore Slice 2; retain bounded-query and contact contracts.
 
 ### Allowed edit manifest (repository-relative)
 
@@ -87,11 +87,16 @@ viewpro-app/apps/app-new/src/features/owner/components/owner-home.tsx
 viewpro-app/apps/app-new/src/features/owner/components/owner-home.test.tsx
 viewpro-app/apps/app-new/src/features/owner/utils/owner-movement-labels.ts
 viewpro-app/apps/app-new/src/features/owner/utils/owner-movement-labels.test.ts
-viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts
 ```
 
-- [ ] **RED:** Create `viewpro-app/apps/app-new/src/features/owner/utils/owner-movement-labels.test.ts` and extend `viewpro-app/apps/app-new/src/features/owner/components/owner-home.test.tsx` with failing tests for the exact `DD/MM/YYYY · HH:mm` `es-AR`/`America/Argentina/Buenos_Aires` output (including a UTC instant crossing the Buenos Aires calendar day), supported structured-type visual kinds, neutral unknown/raw labels, no inferred observation categories, ordered semantic `ol`/`li` rows, and at-most-five real observations. <!-- sdd-owner: implementation -->
-- [ ] **GREEN:** In `viewpro-app/apps/app-new/src/features/owner/utils/owner-movement-labels.ts`, add a home-only structured-type presentation classifier and `formatOwnerHomeMovementDateTime` using `Intl.DateTimeFormat(...).formatToParts()` with fixed separators; in `viewpro-app/apps/app-new/src/features/owner/components/owner-home.tsx`, add `OwnerRecentActivity` and row rendering with decorative `aria-hidden` timeline cues, unchanged nonblank observations, existing type labels, a scoped `Ver toda la actividad` link, and no modification to WhatsApp/detail date formatters. <!-- sdd-owner: implementation -->
+- [x] **RED:** Create `viewpro-app/apps/app-new/src/features/owner/utils/owner-movement-labels.test.ts` and extend `viewpro-app/apps/app-new/src/features/owner/components/owner-home.test.tsx` with failing tests for the exact `DD/MM/YYYY · HH:mm` `es-AR`/`America/Argentina/Buenos_Aires` output (including a UTC instant crossing the Buenos Aires calendar day), supported structured-type visual kinds, neutral unknown/raw labels, no inferred observation categories, ordered semantic `ol`/`li` rows, and at-most-five real observations. <!-- sdd-owner: implementation -->
+- [x] **GREEN:** In `viewpro-app/apps/app-new/src/features/owner/utils/owner-movement-labels.ts`, add a home-only structured-type presentation classifier and `formatOwnerHomeMovementDateTime` using `Intl.DateTimeFormat(...).formatToParts()` with fixed separators; in `viewpro-app/apps/app-new/src/features/owner/components/owner-home.tsx`, add `OwnerRecentActivity` and row rendering with decorative `aria-hidden` timeline cues, unchanged nonblank observations, existing type labels, a scoped `Ver toda la actividad` link, and no modification to WhatsApp/detail date formatters. <!-- sdd-owner: implementation -->
+**Slice 3A completion evidence:** the focused unit/component command passes for the RED/GREEN core; no whole-home state, deliberate long-text/responsive TRIANGULATE, browser, or final-gate claim is made by this slice. The corrected candidate against `b3304e763e0853913594e67c24567b94212fb668` is **395 changed lines**, below the 400-line budget.
+
+## Slice 3B — static/browser triangulation and final gate
+
+**Manifest and rollback:** `viewpro-app/apps/app-new/src/features/owner/components/owner-home.test.tsx` for the deferred state/long-text/responsive TRIANGULATE and `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts` for browser work; revert only those Slice 3B assertions to retain Slice 3A core behavior.
+
 - [ ] **TRIANGULATE:** In `viewpro-app/apps/app-new/src/features/owner/components/owner-home.test.tsx`, retain/expand whole-home loading, properties failure, engagement failure, and owner-safe empty coverage; also prove local timeline error wins over empty, no activity differs from no next action, all-invalid rows are honest no activity, a successful card never receives sibling rows, long property/agency/observation/unknown-type text wraps without truncating meaning, and responsive structural classes preserve one source-ordered column below `md` and three `minmax(0, 1fr)` columns at/above `md`. <!-- sdd-owner: implementation -->
 - [ ] **REFACTOR and browser verification:** In `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`, add stable owner-home assertions for the three tiles, a real recent row, scoped `Ver más`/activity navigation, agency WhatsApp href, and intercepted contact tracking; use `page.setViewportSize` for 320px, 375px, the `md` transition, and a full `max-w-6xl` viewport with long strings. Compare the rendered composition with both stored reference assets, but require semantic controls, href/tracking assertions, no horizontal overflow, readable wrapped text, and keyboard reachability as independent oracles rather than using screenshots alone. <!-- sdd-owner: implementation -->
 - [ ] Run the final frontend gate from `viewpro-app/`: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/owner/api/queries.test.ts src/features/owner/utils/owner-home-engagement-cards.test.ts src/features/owner/utils/owner-movement-labels.test.ts src/features/owner/components/owner-home.test.tsx && pnpm --filter next-shadcn-dashboard-starter typecheck && pnpm --filter next-shadcn-dashboard-starter lint:strict && pnpm --filter next-shadcn-dashboard-starter test:seeded -- --grep 'owner'`; record any seeded-suite/environment blocker without weakening unit, semantic, or browser assertions. <!-- sdd-owner: implementation -->
@@ -109,4 +114,4 @@ viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts
 - [x] **P1 gate:** PR #525 passed all 10 reported checks and was squash-merged to `develop` as `17d2291137dd7408ef1a039d27c7807bfca91d11`; P2 branched from that fresh integration commit. <!-- sdd-owner: parent -->
 - [x] **P2 gate:** PR #526 passed all 10 reported checks and was squash-merged to `develop` as `3655452a76b38d198503917879d9f1850cf91fad`; Slice 1 branched from that fresh integration commit. <!-- sdd-owner: parent -->
 - [ ] After implementation evidence, start or reuse bounded review for each source slice under the effective review-mode policy, checking fresh-`develop` dependency, manifest, under-400 budget, rollback boundary, CI, and clean diff before its merge. <!-- sdd-owner: parent -->
-- [ ] Gate verify, sync, and archive only after P1, P2, and all three source-slice checks are recorded; do not claim review approval when review mode is disabled or unmanaged. <!-- sdd-owner: parent -->
+- [ ] Gate verify, sync, and archive only after P1, P2, and all four source-slice checks are recorded (S1, S2, S3A, S3B); do not claim review approval when review mode is disabled or unmanaged. <!-- sdd-owner: parent -->
