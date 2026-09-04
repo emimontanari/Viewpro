@@ -121,7 +121,7 @@ pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/owner/a
 pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/owner/components/owner-property-detail.test.tsx src/features/owner/components/owner-timeline.test.tsx src/features/owner/utils/owner-whatsapp-contact.test.ts src/features/owner/api/service.test.ts 'src/app/api/owner/engagements/[id]/timeline/route.test.ts'
 pnpm --filter next-shadcn-dashboard-starter typecheck
 pnpm --filter next-shadcn-dashboard-starter lint:strict
-pnpm --filter next-shadcn-dashboard-starter test:seeded -- --grep 'owner'
+pnpm --filter next-shadcn-dashboard-starter test:seeded --grep 'owner'
 ```
 
 ## Sequential slices and review forecast

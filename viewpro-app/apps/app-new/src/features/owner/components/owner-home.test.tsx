@@ -550,14 +550,127 @@ describe('OwnerHome', () => {
     expect(trackingSpy).not.toHaveBeenCalled();
   });
 
+      it('keeps whole-home loading and failures distinct from owner-safe empty state', () => {
+        useQueryMock.mockReturnValue({ data: undefined, isError: false, isLoading: true } as ReturnType<
+          typeof useQuery
+        >);
+        useQueriesMock.mockReturnValue([] as ReturnType<typeof useQueries>);
+        const { unmount } = render(<OwnerHome />);
+        expect(screen.queryByRole('heading', { name: 'Tus propiedades' })).not.toBeInTheDocument();
+        expect(document.querySelectorAll('.animate-pulse')).toHaveLength(3);
+        unmount();
+
+        useQueryMock.mockReturnValue({ data: ownerPropertiesResponse, isError: false, isLoading: false } as ReturnType<
+          typeof useQuery
+        >);
+        useQueriesMock.mockReturnValue([{ data: undefined, isError: false, isLoading: true }] as ReturnType<
+          typeof useQueries
+        >);
+        const { unmount: unmountEngagementLoading } = render(<OwnerHome />);
+        expect(document.querySelectorAll('.animate-pulse')).toHaveLength(3);
+        unmountEngagementLoading();
+
+        useQueriesMock.mockReturnValue([
+          { data: singleAgencyEngagements, isError: false, isLoading: false },
+          { data: undefined, isError: false, isLoading: true }
+        ] as ReturnType<typeof useQueries>);
+        const { unmount: unmountTimelineLoading } = render(<OwnerHome />);
+        expect(document.querySelectorAll('.animate-pulse')).toHaveLength(3);
+        unmountTimelineLoading();
+
+        useQueriesMock.mockReturnValue([] as ReturnType<typeof useQueries>);
+        useQueryMock.mockReturnValue({ data: undefined, isError: true, isLoading: false } as ReturnType<
+          typeof useQuery
+        >);
+        render(<OwnerHome />);
+        expect(screen.getByRole('heading', { name: 'No pudimos cargar tus propiedades' })).toBeInTheDocument();
+        unmount();
+
+        useQueryMock.mockReturnValue({ data: ownerPropertiesResponse, isError: false, isLoading: false } as ReturnType<
+          typeof useQuery
+        >);
+        useQueriesMock.mockReturnValue([{ data: undefined, isError: true, isLoading: false }] as ReturnType<
+          typeof useQueries
+        >);
+        render(<OwnerHome />);
+        expect(screen.getByRole('heading', { name: 'No pudimos cargar tus inmobiliarias' })).toBeInTheDocument();
+      });
+
+      it('keeps invalid and sibling activity out while preserving long meaningful owner content', () => {
+        const longProperty = 'Propiedad excepcionalmente extensa para comprobar que cada detalle significativo permanece visible';
+        const longAgency = 'Inmobiliaria con una denominación deliberadamente extensa y significativa';
+        const longObservation = 'Observación extensa con información real que debe conservarse completa, visible y legible en cualquier ancho.';
+        const longUnknownType = 'UNKNOWN_TYPE_WITH_A_DELIBERATELY_LONG_MEANINGFUL_LABEL';
+        mockOwnerHomeData(
+          [buildOwnerProperty({ id: 'property-long', title: longProperty })],
+          [[buildOwnerEngagement({ tenant: { id: 'long', name: longAgency } })]],
+          {
+            'engagement-long': [
+              buildOwnerMovement({
+                createdAt: 'not-a-date',
+                observation: 'Fila con fecha inválida que no debe prestarse',
+                propertyEngagementId: 'engagement-long'
+              }),
+              buildOwnerMovement({
+                createdAt: '2026-08-20T10:00:00.000Z',
+                observation: 'Fila hermana que no debe prestarse',
+                propertyEngagementId: 'engagement-sibling'
+              }),
+              buildOwnerMovement({
+                createdAt: '2026-08-19T10:00:00.000Z',
+                observation: longObservation,
+                propertyEngagementId: 'engagement-long',
+                type: longUnknownType
+              })
+            ]
+          }
+        );
+
+        render(<OwnerHome />);
+
+        expect(screen.getByRole('heading', { name: longProperty })).toHaveClass('break-words');
+        expect(screen.getByText(`Gestión con ${longAgency}`)).toHaveClass('break-words');
+        expect(screen.getByText(longObservation)).toHaveClass('break-words');
+        expect(screen.getByText(longUnknownType)).toHaveClass('break-words');
+        expect(screen.queryByText('Fila con fecha inválida que no debe prestarse')).not.toBeInTheDocument();
+        expect(screen.queryByText('Fila hermana que no debe prestarse')).not.toBeInTheDocument();
+        expect(screen.getByTestId('owner-engagement-actions')).toHaveClass(
+          'grid-cols-1',
+          'md:grid-cols-[repeat(3,minmax(0,1fr))]'
+        );
+      });
+
+      it('states honest no activity when every timeline row is invalid for the card', () => {
+        mockOwnerHomeData(ownerPropertiesResponse, [singleAgencyEngagements], {
+          'engagement-tenant-1': [
+            buildOwnerMovement({
+              createdAt: 'not-a-date',
+              observation: 'Fecha inválida',
+              propertyEngagementId: 'engagement-tenant-1'
+            }),
+            buildOwnerMovement({
+              createdAt: '2026-08-20T10:00:00.000Z',
+              observation: 'Fila de otra gestión',
+              propertyEngagementId: 'engagement-sibling'
+            })
+          ]
+        });
+
+        render(<OwnerHome />);
+
+        expect(screen.getByText('Todavía no hay movimientos registrados.')).toBeInTheDocument();
+        expect(screen.queryByText('Fecha inválida')).not.toBeInTheDocument();
+        expect(screen.queryByText('Fila de otra gestión')).not.toBeInTheDocument();
+      });
+
       it('renders an owner-safe empty state', () => {
-    mockOwnerHomeData([], []);
+        mockOwnerHomeData([], []);
 
-    render(<OwnerHome />);
+        render(<OwnerHome />);
 
-    expect(screen.getByText('Todavía no tenés propiedades activas')).toBeInTheDocument();
-    expect(screen.queryByText('Nueva propiedad')).not.toBeInTheDocument();
-  });
+        expect(screen.getByText('Todavía no tenés propiedades activas')).toBeInTheDocument();
+        expect(screen.queryByText('Nueva propiedad')).not.toBeInTheDocument();
+      });
 });
 
 function mockOwnerHomeData(

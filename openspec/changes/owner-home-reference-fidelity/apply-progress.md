@@ -153,7 +153,7 @@ nextRecommended: parent-lifecycle
 
 - [ ] **TRIANGULATE:** In `viewpro-app/apps/app-new/src/features/owner/components/owner-home.test.tsx`, retain/expand whole-home loading, properties failure, engagement failure, and owner-safe empty coverage; also prove local timeline error wins over empty, no activity differs from no next action, all-invalid rows are honest no activity, a successful card never receives sibling rows, long property/agency/observation/unknown-type text wraps without truncating meaning, and responsive structural classes preserve one source-ordered column below `md` and three `minmax(0, 1fr)` columns at/above `md`. <!-- sdd-owner: implementation -->
 - [ ] **REFACTOR and browser verification:** In `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`, add stable owner-home assertions for the three tiles, a real recent row, scoped `Ver más`/activity navigation, agency WhatsApp href, and intercepted contact tracking; use `page.setViewportSize` for 320px, 375px, the `md` transition, and a full `max-w-6xl` viewport with long strings. Compare the rendered composition with both stored reference assets, but require semantic controls, href/tracking assertions, no horizontal overflow, readable wrapped text, and keyboard reachability as independent oracles rather than using screenshots alone. <!-- sdd-owner: implementation -->
-- [ ] Run the final frontend gate from `viewpro-app/`: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/owner/api/queries.test.ts src/features/owner/utils/owner-home-engagement-cards.test.ts src/features/owner/utils/owner-movement-labels.test.ts src/features/owner/components/owner-home.test.tsx && pnpm --filter next-shadcn-dashboard-starter typecheck && pnpm --filter next-shadcn-dashboard-starter lint:strict && pnpm --filter next-shadcn-dashboard-starter test:seeded -- --grep 'owner'`; record any seeded-suite/environment blocker without weakening unit, semantic, or browser assertions. <!-- sdd-owner: implementation -->
+- [ ] Run the final frontend gate from `viewpro-app/`: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/owner/api/queries.test.ts src/features/owner/utils/owner-home-engagement-cards.test.ts src/features/owner/utils/owner-movement-labels.test.ts src/features/owner/components/owner-home.test.tsx && pnpm --filter next-shadcn-dashboard-starter typecheck && pnpm --filter next-shadcn-dashboard-starter lint:strict && pnpm --filter next-shadcn-dashboard-starter test:seeded --grep 'owner'`; record any seeded-suite/environment blocker without weakening unit, semantic, or browser assertions. <!-- sdd-owner: implementation -->
 
 ### Structured status consumed
 
@@ -175,3 +175,90 @@ nextRecommended: parent-lifecycle
 
 - Deviation: the prior S3A whole-home/long-text TRIANGULATE claim was removed because it lacked deliberate long fixtures; the scoped S3A core behavior is unchanged.
 - Workload/PR boundary: Slice 3A only, under the 400-line budget; Slice 3B owns the three remaining tasks. Parent-owned review, verify, sync, and archive actions remain deferred.
+
+## Slice 3B — static/browser evidence attempt (blocked final gate)
+
+- Consumed status: `openspec`, `owner-home-reference-fidelity`, `applyState: ready`, `10/13` implementation tasks complete, repo-local workspace `/Users/emimontanari/Work/Apps/Viewpro-worktrees/owner-home-reference-fidelity-s3b`, and only the delegated component/seeded-test/OpenSpec roots. The approved delivery path is the assigned `stacked-to-main` Slice 3B boundary.
+- Local-only environment: Docker `viewpro-postgres` at `127.0.0.1:5432`; both `DATABASE_URL` and `DIRECT_URL` were `postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro?schema=public`; seeded API/web used free ports `3301`/`3400`. No external database was accessed.
+- Static TRIANGULATE added whole-home loading/properties-error/engagement-error coverage, all-invalid-row no-activity coverage, and deliberate long property/agency/observation/unknown-label preservation plus sibling-row rejection and responsive grid classes. Existing tests retain local-error-before-empty, no-activity versus no-next-action, successful-card isolation, action source order, and three-column behavior.
+- Browser REFACTOR added the seeded owner composition check: three semantic tiles, real ordered activity, scoped `Ver más`/continuation navigation, agency WhatsApp href and intercepted tracking, Tab order, 44px target, overflow/readable real-text checks at 320px, 375px, 768px (`md`), and 1280px (`max-w-6xl`). Deliberately long strings are covered by the static fixture; the test explicitly compares the rendered hierarchy/grouping/action order/timeline/continuation against both stored references while keeping semantic, href, tracking, keyboard, and overflow assertions independent of screenshots.
+
+### TDD Cycle Evidence
+
+| Task | Safety net | RED | GREEN / TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- |
+| Static TRIANGULATE | component suite 16/16 | Coverage-only test additions were green immediately because the completed S3A production behavior already satisfied them; no honest production RED or production edit was possible in this test-only slice | component suite 19/19; four-file focused suite 39/39 | Focused assertions remain scoped to the existing component contract |
+| Browser verification | focused seeded owner follow-up could not run through the requested double-dash script because Playwright received a literal `--` and found no tests | New owner browser assertions were green on first execution against the existing S3A UI; no production edit was permitted | direct seeded Playwright scenario 1/1 passed | Stable role/test-id locators and independent behavioral oracles added; no screenshots retained |
+
+### Commands and results
+
+- `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/owner/components/owner-home.test.tsx` → safety net **16/16**, then static coverage **18/18**, then final static coverage **19/19**.
+- `pnpm --filter next-shadcn-dashboard-starter exec playwright test --config playwright.seeded.config.ts --grep 'demo owner home keeps the reference hierarchy usable at every supported viewport'` → **1/1 passed**.
+- `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/owner/api/queries.test.ts src/features/owner/utils/owner-home-engagement-cards.test.ts src/features/owner/utils/owner-movement-labels.test.ts src/features/owner/components/owner-home.test.tsx` → **39/39 passed**.
+- `pnpm --filter next-shadcn-dashboard-starter typecheck` → passed; `pnpm --filter next-shadcn-dashboard-starter lint:strict` → passed; relevant LSP diagnostics were not available to this executor.
+- The historical double-dash invocation passed a literal delimiter to Playwright and returned **No tests found**. Its executable owner-filter rerun reached **5 passed, 1 failed, 5 skipped** because the manager rejection prerequisite did not match `owner`; that superseded evidence is corrected below without weakening any assertion.
+
+### Cleanup, manifest, and blocker
+
+- Restored the local deterministic seed with `pnpm demo:seed`, stopped child listeners on `3301`/`3400`, and verified both ports free; removed `.document-storage-seeded`, `test-results`, and `playwright-report` with no generated artifacts remaining.
+- Manifest: `viewpro-app/apps/app-new/src/features/owner/components/owner-home.test.tsx`, `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`, and this `apply-progress.md`; no production or fixture source changed. `git diff --check` is clean. Current Slice 3B diff is **211 changed lines** (205 additions, 6 deletions), under the 400-line boundary.
+- **Blocker:** the required owner-grep seeded gate is not self-contained and therefore does not pass. The three S3B implementation checkboxes deliberately remain `[ ]`; persisted task state is still **10/13**, not ready for verify. Parent-owned lifecycle rows remain unchanged.
+
+```yaml
+changeName: owner-home-reference-fidelity
+artifactStore: openspec
+applyState: blocked
+taskProgress: { implementationTotal: 13, complete: 10, remaining: 3 }
+actionContext: { mode: repo-local, workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/owner-home-reference-fidelity-s3b, warnings: ["owner-grep seeded gate has excluded-test ordering dependency"] }
+nextRecommended: resolve-blocker
+```
+
+## Slice 3B corrective rerun — complete
+
+- Consumed native OpenSpec status for `owner-home-reference-fidelity`: `applyState: ready`, repository-local workspace `/Users/emimontanari/Work/Apps/Viewpro-worktrees/owner-home-reference-fidelity-s3b`, and the delegated test/OpenSpec edit roots. The approved delivery path remains the assigned `stacked-to-main` S3B work unit; no production, seed-source, or fixture-source file changed.
+- **Owner-grep correction:** renamed the existing serial T18a manager rejection test to `manager can reject an uploaded document request for owner follow-up`. The `owner` grep now selects it before unchanged T18b, preserving serial order and all rejection assertions without duplicating behavior.
+- **Command correction:** the owned task, design, and progress references now use the executable `pnpm --filter next-shadcn-dashboard-starter test:seeded --grep 'owner'` form.
+- **Long-content browser correction:** the existing owner-home test locally intercepts authorized seeded property, engagement, and timeline responses. It overlays deliberate property, agency, observation, and unknown structured-label strings, retains and asserts one unmodified seeded observation, asserts full text, wrappable non-overflow geometry, semantic tiles/list/continuation, scoped hrefs, tracking, and keyboard order at 320, 375, 768, and 1280px. No screenshot is retained or used as the oracle.
+
+### TDD Cycle Evidence — corrective rerun
+
+| Task | Safety net / RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- |
+| Owner-grep prerequisite | Prior executable owner grep: 5 passed, 1 failed, 5 skipped because T18a was excluded | Existing T18a received an explicit owner-follow-up title; final grep passed 12/12 | T18a remains serially before unchanged T18b and preserves the rejection notification/reason assertions | No production behavior or duplicate test added |
+| Browser long-content proof | First long-label geometry assertion exposed that `Range` rect-count is unreliable for the inline unknown-label element, not a product overflow | Full text plus `scrollWidth <= clientWidth` and non-`nowrap` wrapping behavior passed | All four long fields plus a genuine seeded observation passed at all four target viewports | Test-local response interception only; no screenshots retained |
+
+### Exact corrective evidence
+
+- Component suite: `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/owner/components/owner-home.test.tsx` → **19/19 passed**.
+- Targeted browser scenario with local Docker PostgreSQL and ports API `3301` / web `3400` → **1/1 passed**.
+- Final gate with `DATABASE_URL` and `DIRECT_URL` both set to `postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro?schema=public`: focused four-file Vitest **39/39 passed**; App New `typecheck` passed; `lint:strict` passed; executable seeded owner grep **12/12 passed**.
+- Cleanup: reran `pnpm demo:seed`, stopped child servers, confirmed ports `3301` and `3400` have no listeners, and removed `.document-storage-seeded`, `test-results`, `playwright-report`, traces, videos, screenshots, and reports. The shared Docker PostgreSQL container was left running.
+- Final manifest: `viewpro-app/apps/app-new/src/features/owner/components/owner-home.test.tsx`, `viewpro-app/apps/app-new/tests/seeded/demo-smoke.spec.ts`, `openspec/changes/owner-home-reference-fidelity/design.md`, `tasks.md`, and this `apply-progress.md`. `git diff --check` passes; final candidate is **344 changed lines**, under the 400-line S3B budget.
+- Persisted implementation task state is **13/13 `[x]`**. The two unchanged parent-owned lifecycle rows remain deferred; no blockers remain for implementation and the next action is parent lifecycle.
+
+### Structured status after correction
+
+```yaml
+changeName: owner-home-reference-fidelity
+artifactStore: openspec
+applyState: all_done
+implementationTaskProgress: { total: 13, complete: 13, remaining: 0 }
+actionContext: { mode: repo-local, workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/owner-home-reference-fidelity-s3b, warnings: [] }
+nextRecommended: parent-lifecycle
+```
+
+## Slice 3B review-readiness correction
+
+- Corrected independent findings without production or seed-source edits: engagement/timeline loading now explicitly assert the whole-home skeleton; seeded coverage proves detail/activity/continuation share one engagement id and contact → continuation Tab order.
+- Focused component safety net was 19/19; the initial new state test exposed only a stale mock setup, and the corrected component suite is 19/19.
+- Targeted browser scenario passed 1/1 twice with local-only `DATABASE_URL`/`DIRECT_URL` and ports 3301/3400; the final gate passed focused 39/39, typecheck, exact `pnpm --filter next-shadcn-dashboard-starter lint:strict`, and seeded owner 12/12.
+- Temporary authenticated 1280px full-page capture was inspected against both JPEGs: it retains grouped three ordered tiles and a grouped recent-activity panel with timeline cues; continuation is present but top-right rather than the activity reference's centered footer treatment.
+- Cleanup reran `pnpm demo:seed`, removed `.document-storage-seeded`, `test-results`, reports/traces/videos/screenshots, and the temporary capture; ports 3301/3400 have no listeners and PostgreSQL 5432 is accepting connections.
+- Manifest remains `owner-home.test.tsx`, `demo-smoke.spec.ts`, and this progress file; the final candidate is 390 changed lines (378 additions, 12 deletions), all 13 implementation rows remain visibly `[x]`, parent lifecycle rows remain deferred, and `git diff --check` is clean.
+- Native OpenSpec status is `applyState: ready` only because 2 parent-owned lifecycle rows remain unchecked; implementation is 13/13 complete, repo-local action context is safe with no warnings, and this executor returns `parent-lifecycle`.
+
+### TDD Cycle Evidence — review correction
+
+| Task | Safety net / RED | GREEN / TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- |
+| State, scoped-navigation, and keyboard evidence | 19/19; initial test isolated a stale mock rather than a product defect | 19/19 component; 1/1 targeted browser; 39/39 final focused suite | No production refactor; assertions only |
