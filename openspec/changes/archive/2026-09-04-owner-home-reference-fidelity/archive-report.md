@@ -67,7 +67,7 @@ Archived inventory (11 files): `apply-progress.md`, `archive-report.md`, `assets
 - `git diff --check`: **PASS**
 - Archive/sync phase manifest: canonical spec plus the moved sync report and this archive report; all other change artifacts moved without content edits
 - Git rename detection: **PASS** for unchanged tracked artifacts; no content changes were detected in moved files
-- Changed-line accounting: canonical sync **108 additions**; sync report **94 additions**; archive report **74 additions**; moved tracked artifacts **0 changed lines**. Total **313 additions**, under the 400-line closeout budget; JPEG bytes are binary evidence and unchanged.
+- Changed-line accounting: canonical sync **108 additions**; sync report **131 additions**; archive report **74 additions**; moved tracked artifacts **0 changed lines**. Total **313 additions**, under the 400-line closeout budget; JPEG bytes are binary evidence and unchanged.
 
 ## Final lifecycle
 
