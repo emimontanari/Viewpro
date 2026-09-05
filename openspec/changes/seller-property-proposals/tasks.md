@@ -8,10 +8,10 @@ The controlled four-PR planning chain—exploration+proposal → all specs → d
 
 | Field | Value |
 |-------|-------|
-| Estimated changed lines | 7,757–9,558 strict implementation/test lines: 6,962–8,613 production-bearing and 795–945 verification-only; parent gate 0. |
+| Estimated changed lines | 7,877–9,758 strict implementation/test lines: 7,082–8,813 production-bearing and 795–945 verification-only; parent gate 0. |
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
-| Suggested split | Selected controlled source chain C1 → C2A → C2B1 → C2B2 → C3A → C3B → C4 … C20, each group max ≤650; selected controlled four-PR planning chain. |
+| Suggested split | Selected controlled source chain C1 → C2A → C2B1 → C2B2 → C3A → C3B → C4 → C5A → C5B → C6 … C20, each group max ≤650; selected controlled four-PR planning chain. |
 | Delivery strategy | auto-chain |
 | Chain strategy | stacked-to-develop |
 
@@ -20,7 +20,7 @@ Chained PRs recommended: Yes
 Chain strategy: stacked-to-develop
 400-line budget risk: High
 
-Unit counts: 30 production-bearing; verification-only units are U12/U22A/U22B (3); and 1 parent/verify gate with no source-unit estimate. The selected source topology is the controlled C1 → C2A → C2B1 → C2B2 → C3A → C3B → C4 … C20 chain with exactly 23 dependency-ordered groups, each max ≤650. C1 is U1; C2A atomically contains U2A, the U2B core migration contract, and U2C tenant registry; C2B1 contains only U2B S39 migration/index/lock/integrity hardening; C2B2 contains the reusable cleanup helper plus its exhaustive direct matrix; C3A contains U3; and C3B contains U4A. C2B2 is mandatory before C3A, and C3B is mandatory before C4/U4B. Schema, migration, and tenant registry remain atomic in C2A so generated-client, database, and isolation consistency are never broken. No blanket exception applies. Strict400 remains rejected forecast/history only, not an active plan.
+Unit counts: 30 production-bearing; verification-only units are U12/U22A/U22B (3); and 1 parent/verify gate with no source-unit estimate. The selected source topology is the controlled C1 → C2A → C2B1 → C2B2 → C3A → C3B → C4 → C5A → C5B → C6 … C20 chain with exactly 24 dependency-ordered groups, each max ≤650. C5A is U5B and must merge before C5B/U6; C5B remains blocked pending that merge. C1 is U1; C2A atomically contains U2A, the U2B core migration contract, and U2C tenant registry; C2B1 contains only U2B S39 migration/index/lock/integrity hardening; C2B2 contains the reusable cleanup helper plus its exhaustive direct matrix; C3A contains U3; and C3B contains U4A. C2B2 is mandatory before C3A, and C3B is mandatory before C4/U4B. Schema, migration, and tenant registry remain atomic in C2A so generated-client, database, and isolation consistency are never broken. No blanket exception applies. Strict400 remains rejected forecast/history only, not an active plan.
 
 ## Scenario linkage
 
@@ -98,14 +98,14 @@ Manifest: `property-proposals.repository.ts`, `prisma-property-proposals.reposit
 
 ### U5B — Seller draft creation and identity (S01, S03)
 
-Manifest: `apps/api/src/property-proposals/property-proposals.module.ts`, `create-property-proposal.use-case.ts`, and `create-property-proposal.use-case.spec.ts` at the exact paths in the delivery manifest.
+Manifest: `apps/api/src/property-proposals/property-proposals.module.ts`, `property-proposals.repository.ts`, `prisma-property-proposals.repository.ts`, `prisma-property-proposals.repository.spec.ts`, `create-property-proposal.use-case.ts`, and `create-property-proposal.use-case.spec.ts` at the exact paths in the delivery manifest.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR trusted tenant/proposer derivation, title-minimum draft creation, exact active `AGENT` eligibility, proposal-identity idempotency, duplicate title/address allowance, and no transport exposure. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest create spec and API typecheck; remove proposal/history fixtures in `finally`. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR trusted tenant/proposer derivation, title-minimum draft creation, exact active `AGENT` eligibility, proposal-identity idempotency, duplicate title/address allowance, and no transport exposure. <!-- sdd-owner: implementation -->
+- [x] Run the manifest create/repository specs and API typecheck; remove proposal/history fixtures in `finally`. <!-- sdd-owner: implementation -->
 
-### U6 — Seller update and editable states (S04, S06)
+### U6 / C5B — Seller update and editable states (S04, S06)
 
-Manifest: `apps/api/src/property-proposals/use-cases/update-property-proposal.use-case.ts`, `apps/api/src/property-proposals/helpers/lock-property-proposal.ts`, `apps/api/src/property-proposals/use-cases/update-property-proposal.use-case.spec.ts`, `apps/api/test/property-proposal-eligibility-race.spec.ts`.
+Blocked until C5A merges. Manifest: `apps/api/src/property-proposals/use-cases/update-property-proposal.use-case.ts`, `apps/api/src/property-proposals/helpers/lock-property-proposal.ts`, `apps/api/src/property-proposals/use-cases/update-property-proposal.use-case.spec.ts`, `apps/api/test/property-proposal-eligibility-race.spec.ts`.
 
 - [ ] RED → GREEN → TRIANGULATE → REFACTOR normalized expected-version patches, title-only saves, BORRADOR/RECHAZADA editability, locked-state conflicts, and inactive/role-changed seller races. <!-- sdd-owner: implementation -->
 - [ ] Run the manifest specs and API typecheck; close worker transactions and clean proposals in every `finally`. <!-- sdd-owner: implementation -->
@@ -279,4 +279,4 @@ Manifest: `apps/app-new/tests/seeded/property-proposals.spec.ts`, `property-prop
 
 ## Arithmetic check
 
-The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `6,962–8,613`, verification-only `795–945`, parent gate `0`, strict implementation/test total `7,757–9,558`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650; the 23-group topology separates C3A/U3 and C3B/U4A; C2A current candidate is capped at 649; C2B1 and C2B2 are each capped at ≤635.
+The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `7,082–8,813`, verification-only `795–945`, parent gate `0`, strict implementation/test total `7,877–9,758`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650; the 24-group topology separates C3A/U3, C3B/U4A, C5A/U5B, and C5B/U6; C2A current candidate is capped at 649; C2B1 and C2B2 are each capped at ≤635.

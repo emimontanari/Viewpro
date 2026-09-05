@@ -1,10 +1,21 @@
 import { describe, expect, it, vi } from 'vitest'
+import { PrismaService } from '../database/prisma.service'
 import { PrismaPropertyProposalsRepository } from './prisma-property-proposals.repository'
 import { GetPropertyProposalUseCase } from './use-cases/get-property-proposal.use-case'
 import { ListPropertyProposalsUseCase } from './use-cases/list-property-proposals.use-case'
 
 const proposal = {
   id: 'proposal-1', tenantId: 'tenant-1', proposedByUserId: 'seller-1', title: 'Draft',
+}
+
+function deferred<T>() {
+  let resolvePromise!: (value: T) => void
+  const promise = new Promise<T>((resolve) => { resolvePromise = resolve })
+  return { promise, resolve: resolvePromise }
+}
+
+function normalizeSql(query: unknown) {
+  return Array.from(query as ArrayLike<string>).join('?').replace(/\s+/g, ' ').trim()
 }
 
 function makeRepository() {
@@ -19,6 +30,10 @@ function makeRepository() {
 }
 
 describe('PrismaPropertyProposalsRepository seller reads', () => {
+  it('retains the concrete Prisma provider token for module injection', () => {
+    expect(Reflect.getMetadata('design:paramtypes', PrismaPropertyProposalsRepository)).toContain(PrismaService)
+  })
+
   it('lists only the exact tenant and proposer with deterministic pagination and no future relations', async () => {
     const { prisma, repository } = makeRepository()
 
@@ -99,5 +114,79 @@ describe('PrismaPropertyProposalsRepository seller reads', () => {
     expect(port.findForSeller).toHaveBeenCalledWith({
       tenantId: 'tenant-1', proposedByUserId: 'seller-1', proposalId: 'proposal-1',
     })
+  })
+})
+
+describe('PrismaPropertyProposalsRepository draft creation', () => {
+  const input = {
+    tenantId: 'tenant-1', proposedByUserId: 'seller-1', title: 'Draft', addressLine: null,
+    city: null, province: null, propertyType: 'HOUSE' as const, operationType: 'SALE' as const,
+    totalAreaSqm: 120, coveredAreaSqm: null, rooms: null, bedrooms: null, bathrooms: null,
+    garages: null, ageYears: null, orientation: null, ownerName: null, ownerEmail: null,
+    publishedPriceCents: null, currency: null,
+  }
+
+  it('locks the active user, then exact active AGENT membership, before one draft insert', async () => {
+    const created = { ...proposal, ...input, state: 'BORRADOR', version: 1, latestSubmittedAt: null }
+    const user = deferred<{ id: string }[]>()
+    const membership = deferred<{ id: string }[]>()
+    const insertedProposal = deferred<typeof created>()
+    const tx = {
+      $queryRaw: vi.fn()
+        .mockImplementationOnce(() => user.promise)
+        .mockImplementationOnce(() => membership.promise),
+      propertyProposal: { create: vi.fn().mockImplementation(() => insertedProposal.promise) },
+    }
+    const prisma = { $transaction: vi.fn().mockImplementation((callback) => callback(tx)) }
+    const repository = new PrismaPropertyProposalsRepository(prisma as never)
+
+    const result = repository.createDraft(input)
+    await Promise.resolve()
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(1)
+    expect(tx.propertyProposal.create).not.toHaveBeenCalled()
+    expect(normalizeSql(tx.$queryRaw.mock.calls[0]?.[0])).toContain(
+      'FROM users WHERE id = ? AND status = ?::"UserStatus" FOR NO KEY UPDATE',
+    )
+    expect(tx.$queryRaw.mock.calls[0]?.slice(1)).toEqual(['seller-1', 'ACTIVE'])
+
+    user.resolve([{ id: 'seller-1' }])
+    await Promise.resolve()
+
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(2)
+    expect(tx.propertyProposal.create).not.toHaveBeenCalled()
+    expect(normalizeSql(tx.$queryRaw.mock.calls[1]?.[0])).toContain(
+      'FROM tenant_memberships WHERE "userId" = ? AND "tenantId" = ? AND status = ?::"TenantMembershipStatus" AND role = ?::"TenantRole" FOR NO KEY UPDATE',
+    )
+    expect(tx.$queryRaw.mock.calls[1]?.slice(1)).toEqual(['seller-1', 'tenant-1', 'ACTIVE', 'AGENT'])
+
+    membership.resolve([{ id: 'membership-1' }])
+    await Promise.resolve()
+
+    expect(tx.propertyProposal.create).toHaveBeenCalledWith({
+      data: { ...input, state: 'BORRADOR', version: 1, latestSubmittedAt: null },
+    })
+    expect(tx).not.toHaveProperty('$transaction')
+    expect(Object.keys(tx)).toEqual(['$queryRaw', 'propertyProposal'])
+
+    insertedProposal.resolve(created)
+    await expect(result).resolves.toEqual({ kind: 'created', proposal: created })
+  })
+
+  it.each([
+    ['inactive or missing user', [[]]],
+    ['missing membership', [[{ id: 'seller-1' }], []]],
+    ['inactive membership', [[{ id: 'seller-1' }], []]],
+    ['non-AGENT membership', [[{ id: 'seller-1' }], []]],
+  ])('returns ineligible and skips the proposal insert for an %s', async (_case, answers) => {
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValueOnce(answers[0]).mockResolvedValueOnce(answers[1]),
+      propertyProposal: { create: vi.fn() },
+    }
+    const prisma = { $transaction: vi.fn().mockImplementation((callback) => callback(tx)) }
+
+    await expect(new PrismaPropertyProposalsRepository(prisma as never).createDraft(input)).resolves.toEqual({ kind: 'ineligible' })
+    expect(tx.propertyProposal.create).not.toHaveBeenCalled()
   })
 })
