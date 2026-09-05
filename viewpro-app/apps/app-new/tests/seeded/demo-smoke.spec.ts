@@ -164,7 +164,173 @@ test('demo owner can read the owner portal follow-up', async ({ page }) => {
   await expect(page.getByText('Editar')).toHaveCount(0);
 });
 
-test('demo owner can upload a requested document', async ({ page }) => {
+    test('demo owner home keeps the reference hierarchy usable at every supported viewport', async ({ page }) => {
+      const longPropertyTitle =
+        'Propiedad extraordinariamente extensa para comprobar que cada detalle significativo permanece visible, completo y legible en todos los anchos compatibles de esta experiencia de propietario';
+      const longAgencyName =
+        'Inmobiliaria con una denominación deliberadamente extensa que conserva toda su identidad significativa, su alcance comercial y su contexto de gestión autorizado';
+      const longObservation =
+        'Observación extensa con información autorizada que debe conservarse completa, visible y legible sin truncamiento en todos los anchos compatibles de esta experiencia de propietario.';
+      const longUnknownType =
+        'Unknown structured type label that is deliberately long enough to wrap without losing its authorized meaning at any supported viewport';
+      let seededRecentObservation = '';
+      const trackingRequests: string[] = [];
+
+      // Keep the request contracts and one real seeded movement, but derive deliberately
+      // long display values locally so browser geometry is proved without changing seed data.
+      await page.route('**/api/owner/properties', async (route) => {
+        const response = await route.fetch();
+        const properties = (await response.json()) as Array<Record<string, unknown>>;
+        await route.fulfill({
+          response,
+          json: properties.map((property, index) =>
+            index === 0 ? { ...property, title: longPropertyTitle } : property
+          )
+        });
+      });
+      await page.route('**/api/owner/properties/*/engagements', async (route) => {
+        const response = await route.fetch();
+        const engagements = (await response.json()) as Array<Record<string, unknown>>;
+        const [firstEngagement, ...remainingEngagements] = engagements;
+        await route.fulfill({
+          response,
+          json: firstEngagement
+            ? [
+                {
+                  ...firstEngagement,
+                  tenant: { ...(firstEngagement.tenant as Record<string, unknown>), name: longAgencyName }
+                },
+                ...remainingEngagements
+              ]
+            : engagements
+        });
+      });
+      await page.route('**/api/owner/engagements/*/timeline?**', async (route) => {
+        const response = await route.fetch();
+        const timeline = (await response.json()) as {
+          items: Array<Record<string, unknown>>;
+          [key: string]: unknown;
+        };
+        const seededMovement = timeline.items.find(
+          (movement) => typeof movement.observation === 'string' && movement.observation.trim()
+        );
+        seededRecentObservation = String(seededMovement?.observation ?? '');
+        await route.fulfill({
+          response,
+          json: seededMovement
+            ? {
+                ...timeline,
+                items: [
+                  {
+                    ...seededMovement,
+                    id: `${String(seededMovement.id)}-long-proof`,
+                    observation: longObservation,
+                    type: longUnknownType
+                  },
+                  ...timeline.items
+                ]
+              }
+            : timeline
+        });
+      });
+      await page.route('**/api/owner/engagements/*/whatsapp-contact-click', async (route) => {
+        trackingRequests.push(route.request().url());
+        await route.continue();
+      });
+      await signIn(page, OWNER_EMAIL, '/owner');
+
+      // The composition below is compared against owner-actions-reference.jpeg (three ordered tiles)
+      // and owner-activity-reference.jpeg (grouped timeline plus continuation); semantics remain
+      // independent assertions rather than a screenshot-only oracle.
+      const actionGroup = page.getByTestId('owner-engagement-actions').first();
+      const actions = actionGroup.locator(':scope > a, :scope > button');
+      const detail = page.getByRole('link', { name: 'Ver más', exact: true }).first();
+      const activity = actions.nth(0);
+      const documents = actions.nth(1);
+      const contact = actions.nth(2);
+      const recentActivity = page.getByRole('heading', { name: 'Actividad reciente' }).first();
+      const continuation = page.getByRole('link', { name: 'Ver toda la actividad' }).first();
+      const longProperty = page.getByRole('heading', { name: longPropertyTitle }).first();
+      const longAgency = page.getByText(`Gestión con ${longAgencyName}`, { exact: true }).first();
+      const longRecentObservation = page.getByText(longObservation, { exact: true }).first();
+      const longUnknownLabel = page.getByText(longUnknownType, { exact: true }).first();
+
+      await expect(actions).toHaveCount(3);
+      await expect(activity).toHaveAccessibleName(/1\. Actividad reciente.*Seguí las acciones/i);
+      await expect(documents).toHaveAccessibleName(/2\. Documentación.*Accedé a los documentos/i);
+      await expect(contact).toHaveAccessibleName(/3\. Comunicarme con mi asesor/i);
+      await expect(recentActivity).toBeVisible();
+      await expect(page.getByRole('list', { name: 'Movimientos recientes' }).first().locator(':scope > li')).not.toHaveCount(0);
+          await expect(detail).toHaveAttribute('href', /\?engagement=[a-f0-9-]+$/i);
+          await expect(activity).toHaveAttribute('href', /\?engagement=[a-f0-9-]+&tab=tracking$/i);
+          await expect(continuation).toHaveAttribute('href', /\?engagement=[a-f0-9-]+&tab=tracking$/i);
+          const engagementId = new URL((await detail.getAttribute('href'))!, 'http://local').searchParams.get(
+            'engagement'
+          );
+          expect(engagementId).toMatch(/^[a-f0-9-]+$/i);
+          for (const scopedLink of [activity, continuation]) {
+            expect(
+              new URL((await scopedLink.getAttribute('href'))!, 'http://local').searchParams.get('engagement')
+            ).toBe(engagementId);
+          }
+          await expect(contact).toHaveAttribute('href', /https:\/\/wa\.me\/5493510000000\?text=/);
+          expect(seededRecentObservation).not.toBe('');
+      await expect(page.getByText(seededRecentObservation, { exact: true }).first()).toBeVisible();
+
+      await detail.focus();
+      await page.keyboard.press('Tab');
+      await expect(activity).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(documents).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(contact).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(continuation).toBeFocused();
+
+      for (const viewport of [
+        { width: 320, height: 800 },
+        { width: 375, height: 800 },
+        { width: 768, height: 900 },
+        { width: 1280, height: 900 }
+      ]) {
+        await page.setViewportSize(viewport);
+        await expect(actionGroup).toBeVisible();
+        await expect(activity).toBeVisible();
+        for (const [longText, expectedText] of [
+          [longProperty, longPropertyTitle],
+          [longAgency, `Gestión con ${longAgencyName}`],
+          [longRecentObservation, longObservation],
+          [longUnknownLabel, longUnknownType]
+        ] as const) {
+          await expect(longText).toBeVisible();
+          expect(await longText.innerText()).toContain(expectedText);
+          const geometry = await longText.evaluate((element) => ({
+            fits: element.scrollWidth <= element.clientWidth,
+            wraps: !['nowrap', 'pre'].includes(getComputedStyle(element).whiteSpace)
+          }));
+          expect(geometry, expectedText).toMatchObject({ fits: true, wraps: true });
+        }
+        expect(await activity.boundingBox()).toEqual(
+          expect.objectContaining({ height: expect.any(Number), width: expect.any(Number) })
+        );
+        expect(await activity.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+        ).toBe(true);
+        expect(await activity.innerText()).toContain('Seguí las acciones informadas para esta gestión.');
+      }
+
+      await activity.click();
+      await expect(page).toHaveURL(/\?engagement=[a-f0-9-]+&tab=tracking$/i);
+      await page.goBack();
+      await expect(contact).toBeVisible();
+      const popupPromise = page.waitForEvent('popup', { timeout: 5_000 }).catch(() => null);
+      await contact.click({ modifiers: ['Meta'] });
+      await (await popupPromise)?.close();
+      await expect.poll(() => trackingRequests.length).toBeGreaterThan(0);
+    });
+
+    test('demo owner can upload a requested document', async ({ page }) => {
   await openOwnerPropertyDetail(page);
   await page.getByRole('tab', { name: 'Documentos' }).click();
 
@@ -896,7 +1062,7 @@ test('manager can create a document request through the UI', async ({ page }) =>
 // T18a — G-5 (FR-14..FR-15): Manager rejects an uploaded document request with a reason.
 // Pre-condition: Stage 26.3 Commit B added a SUBMITTED fixture 'Constancia de servicios
 // pendiente de revisión' on property index 1 (Los Boulevares).
-test('manager can reject an uploaded document request with a reason', async ({ page }) => {
+test('manager can reject an uploaded document request for owner follow-up', async ({ page }) => {
   await signIn(page, DEMO_EMAIL);
 
   // Navigate directly to property index 1 (Los Boulevares) using API to get the ID.
