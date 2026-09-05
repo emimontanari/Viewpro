@@ -262,3 +262,25 @@ nextRecommended: parent-lifecycle
 | Task | Safety net / RED | GREEN / TRIANGULATE | REFACTOR |
 | --- | --- | --- | --- |
 | State, scoped-navigation, and keyboard evidence | 19/19; initial test isolated a stale mock rather than a product defect | 19/19 component; 1/1 targeted browser; 39/39 final focused suite | No production refactor; assertions only |
+
+## Recovered contemporaneous Slice 3A strict-TDD provenance
+
+This is recovered historical evidence, not a newly manufactured RED. The append-only Pi session transcript for session `01a068ee-ad29-7b29-9320-7497e70516e9` retains both original `sdd-apply` result envelopes:
+
+- Record `58cbb895`, timestamp `2026-09-04T20:07:15.116Z`, subtask `subtask_sdd-apply_1788551893237_795c8dda`, exact result-content SHA-256 `bdd9f553c88959f9c3a70cf316ef7a335fff154eaaa24eb52cd68a19d271e312`:
+  - safety net: existing focused suites **33/33 passed**;
+  - RED: the new date/type/component tests failed **4/19** because the formatter, classifier, semantic list, and continuation did not exist;
+  - GREEN: date/type/component suites **19/19 passed**, and the exact focused suite passed **37/37**.
+- Native attempt ordinal 6 independently binds that run to finish tree `d494cc2ea536dcffd8895b32ca80b03b833928a3` and evidence revision `sha256:6710b18437a831dcd289ed32b5df3c84d70ebaa338c1ee30ad827ce4169c4433`; its failed outcome concerned Prisma browser startup after the static GREEN, not the RED/GREEN core.
+- Git object comparison proves the final S3A movement-label production blob is byte-identical to that first GREEN tree (`519963cb301b02735265496404253da844071840` in both). The only later S3A production delta is the agency-name `break-words` class in `owner-home.tsx`.
+- Record `e5d35ac6`, timestamp `2026-09-04T20:25:13.530Z`, subtask `subtask_sdd-apply_1788553179702_bd4709e0`, exact result-content SHA-256 `251fd4c3e5fb664f712bf244260c3f8410710eeddabc2fce4b3a1b81d4d2b54d`, records that wrapping delta as **37/38 RED** for missing agency wrapping and **38/38 GREEN/TRIANGULATE**.
+
+Together, the two contemporaneous records cover the final S3A production bytes: the formatter/classifier/semantic recent-activity core was test-first, and the sole later production change had its own failing wrapping assertion before GREEN. Current whole-change gates remain separate evidence and do not substitute for these historical RED results.
+
+## Parent lifecycle closeout
+
+- Fresh `gentle-ai review mode status`: receipt-driven development is **off**, decided by `clone_local`; no native receipt review was run and no receipt approval is claimed.
+- Ordinary repository-policy evidence: #525→`17d22911`, #526→`3655452a`, #528→`a704a3dd`, #529→`b3304e76`, #531→`85b7c10a`, and #534→`3dcaacc5`; each started from fresh, non-overlapping `develop`, stayed within its authorized review budget, was independently checked and CI-green, then squash-merged.
+- Authoritative verify PASS evidence is revision `sha256:9215218ce86de92b806b7ad438f73a58339a4149702c3cea5db6cb251b0bf0c6`, including validated recovered S3A RED provenance.
+- Sync is complete: six ADDED requirements and eleven scenarios merged exactly once; canonical totals are 13 requirements and 24 scenarios; strict validations pass.
+- Archive is ready at `openspec/changes/archive/2026-09-04-owner-home-reference-fidelity`. Issue #521 remains open until archived closeout is delivered because merges into `develop` do not auto-close it.
