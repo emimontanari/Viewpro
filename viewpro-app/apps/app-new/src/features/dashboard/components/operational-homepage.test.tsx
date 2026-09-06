@@ -271,7 +271,8 @@ function mockDashboardQueries({
       return {
         data: isLoading ? undefined : summary,
         isError: false,
-        isLoading
+        isLoading,
+        isSuccess: !isLoading
       } as ReturnType<typeof useQuery>;
     }
 
@@ -279,14 +280,16 @@ function mockDashboardQueries({
       return {
         data: isLoading ? undefined : activity,
         isError: false,
-        isLoading
+        isLoading,
+        isSuccess: !isLoading
       } as ReturnType<typeof useQuery>;
     }
 
     return {
       data: isLoading ? undefined : products,
       isError: false,
-      isLoading
+      isLoading,
+      isSuccess: !isLoading
     } as ReturnType<typeof useQuery>;
   });
 }
@@ -309,9 +312,9 @@ describe('OperationalHomepage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useActiveTenantMock.mockReturnValue(activeTenantContext);
-    useSessionMock.mockReturnValue(
-      { session: authenticatedSession } as unknown as ReturnType<typeof useSession>
-    );
+    useSessionMock.mockReturnValue({ session: authenticatedSession } as unknown as ReturnType<
+      typeof useSession
+    >);
     mockDashboardQueries();
   });
 

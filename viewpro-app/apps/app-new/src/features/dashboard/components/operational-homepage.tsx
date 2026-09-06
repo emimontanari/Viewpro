@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { activityFeedOptions } from '@/features/activity/api/queries';
-import { dashboardSummaryOptions } from '@/features/dashboard/api/queries';
 import type { DashboardSummaryRange } from '@/features/dashboard/api/types';
 import { productsQueryOptions } from '@/features/products/api/queries';
 import { getUserDisplayName, type TenantMembership } from '@/lib/session';
@@ -29,11 +28,15 @@ import {
 } from './operational-homepage/states';
 import { formatArgentinaCalendarDate, getRangeOption } from './operational-homepage/helpers';
 import {
+  ManagerSummaryGate,
+  useManagerSummary
+} from './operational-homepage/manager-home';
+import {
   PROPERTY_PREVIEW_SIZE,
   SELLER_ACTIVITY_PREVIEW_SIZE
 } from './operational-homepage/constants';
 
-export function OperationalHomepage({ now = () => new Date() }: { now?: () => Date }) {
+export function OperationalHomepage({ nowMs }: { nowMs?: number }) {
   const { activeMembership, activeTenantId, isTenantLoading } = useActiveTenant();
   const { session } = useSession();
 
@@ -62,7 +65,7 @@ export function OperationalHomepage({ now = () => new Date() }: { now?: () => Da
         activeMembership={activeMembership}
         activeTenantId={activeTenantId}
         displayName={displayName}
-        now={now}
+        now={new Date(nowMs ?? Date.now())}
       />
     );
   }
@@ -79,43 +82,24 @@ function ManagerOperationalHomepage({
   activeMembership: TenantMembership;
   activeTenantId: string;
   displayName: string;
-  now: () => Date;
+  now: Date;
 }) {
   const [selectedRange, setSelectedRange] = React.useState<DashboardSummaryRange>('7d');
-  const [today] = React.useState(() => formatArgentinaCalendarDate(now()));
+  const [today] = React.useState(() => formatArgentinaCalendarDate(now));
   const selectedRangeOption = getRangeOption(selectedRange);
-  const summaryQuery = useQuery({
-    ...dashboardSummaryOptions({ range: selectedRange, tenantId: activeTenantId }),
-    enabled: Boolean(activeTenantId),
-    refetchOnReconnect: false,
-    refetchOnWindowFocus: false
-  });
-  const productsQuery = useQuery({
-    ...productsQueryOptions({
-      archived: 'active',
-      limit: PROPERTY_PREVIEW_SIZE,
-      page: 1,
-      tenantId: activeTenantId
-    }),
-    enabled: Boolean(activeTenantId),
-    refetchOnReconnect: false,
-    refetchOnWindowFocus: false
-  });
-
-  const counters = summaryQuery.data?.counters;
-  const activePropertiesTotal = counters?.activeProperties ?? productsQuery.data?.total ?? 0;
+  const summary = useManagerSummary({ range: selectedRange, tenantId: activeTenantId });
+  const data = summary.status === 'ready' ? summary.data : null;
+  const counters = data?.counters;
+  const activePropertiesTotal = counters?.activeProperties ?? 0;
   const stalePropertiesTotal = counters?.staleProperties ?? 0;
   const movementsInRange = counters?.movementsInRange ?? 0;
   const attentionNeeded = counters?.attentionNeeded ?? 0;
-  const recentActivity = summaryQuery.data?.recentActivity ?? [];
-  const propertyPreview = productsQuery.data?.items ?? [];
+  const recentActivity = data?.recentActivity ?? [];
   const recentDocumentRequests = recentActivity.filter(
     (item) => item.kind === 'document_request'
   ).length;
-  const topProperties = summaryQuery.data?.topProperties ?? [];
-  const sellerInsights = summaryQuery.data?.topSellers ?? [];
-  const isLoadingData = summaryQuery.isLoading || productsQuery.isLoading;
-  const hasDataError = summaryQuery.isError || productsQuery.isError;
+  const topProperties = data?.topProperties ?? [];
+  const sellerInsights = data?.topSellers ?? [];
 
   return (
     <section className='min-w-0 space-y-6'>
@@ -160,45 +144,63 @@ function ManagerOperationalHomepage({
             <RangeSelector selectedRange={selectedRange} onSelectRange={setSelectedRange} />
           </div>
 
-          <PriorityCard
-            attentionCount={attentionNeeded}
-            documentRequestCount={recentDocumentRequests}
-            hasDataError={hasDataError}
-            isLoading={isLoadingData}
-            rangeDays={selectedRangeOption.days}
-            staleCount={stalePropertiesTotal}
-          />
+          {summary.status === 'ready' ? (
+            <PriorityCard
+              attentionCount={attentionNeeded}
+              documentRequestCount={recentDocumentRequests}
+              hasDataError={false}
+              isLoading={false}
+              rangeDays={selectedRangeOption.days}
+              staleCount={stalePropertiesTotal}
+            />
+          ) : summary.status === 'error' ? (
+            <div role='alert' className='rounded-2xl border border-dashed p-5'>
+              <p className='font-semibold'>Resumen operativo no disponible</p>
+              <p className='mt-1 text-sm text-muted-foreground'>
+                No mostramos datos anteriores como actuales.
+              </p>
+              <Button className='mt-4' disabled={summary.retrying} onClick={summary.retry}>
+                {summary.retrying ? 'Reintentando resumen' : 'Reintentar resumen'}
+              </Button>
+            </div>
+          ) : (
+            <div
+              aria-label='Preparando resumen operativo'
+              className='h-44 animate-pulse rounded-2xl bg-muted'
+            />
+          )}
         </div>
       </div>
 
+      <ManagerSummaryGate summary={summary}>
       <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
         <KpiCard
           icon={Icons.warning}
           label={`Sin novedades en ${selectedRangeOption.days} días`}
           value={stalePropertiesTotal}
           helper='Gestiones activas sin movimientos en el período.'
-          isLoading={summaryQuery.isLoading}
+          isLoading={false}
         />
         <KpiCard
           icon={Icons.clock}
           label='Movimientos del período'
           value={movementsInRange}
           helper={`Actividad registrada en los últimos ${selectedRangeOption.days} días.`}
-          isLoading={summaryQuery.isLoading}
+          isLoading={false}
         />
         <KpiCard
           icon={Icons.trendingUp}
           label='Requieren atención'
           value={attentionNeeded}
           helper='Consultas, visitas u ofertas sin próximo paso.'
-          isLoading={summaryQuery.isLoading}
+          isLoading={false}
         />
         <KpiCard
           icon={Icons.product}
           label='Propiedades activas'
           value={activePropertiesTotal}
           helper='Gestiones disponibles para operar.'
-          isLoading={summaryQuery.isLoading || productsQuery.isLoading}
+          isLoading={false}
         />
       </div>
 
@@ -218,42 +220,24 @@ function ManagerOperationalHomepage({
             </Button>
           </CardHeader>
           <CardContent className='p-5'>
-            <RecentActivityList isLoading={summaryQuery.isLoading} items={recentActivity} />
-          </CardContent>
-        </Card>
-
-        <Card className='py-0'>
-          <CardHeader className='flex flex-col gap-2 p-5 pb-0 sm:flex-row sm:items-start sm:justify-between'>
-            <div>
-              <CardTitle role='heading' aria-level={2}>
-                Gestiones para retomar
-              </CardTitle>
-              <p className='mt-1 text-sm text-muted-foreground'>
-                Propiedades activas disponibles para retomar trabajo.
-              </p>
-            </div>
-            <Button asChild variant='outline' size='sm'>
-              <Link href='/dashboard/product'>Abrir listado</Link>
-            </Button>
-          </CardHeader>
-          <CardContent className='p-5'>
-            <PropertyPreviewList isLoading={productsQuery.isLoading} products={propertyPreview} />
+            <RecentActivityList isLoading={false} items={recentActivity} />
           </CardContent>
         </Card>
       </div>
 
       <div className='grid gap-5 xl:grid-cols-2'>
         <TopPropertiesCard
-          isLoading={summaryQuery.isLoading}
+          isLoading={false}
           properties={topProperties}
           rangeLabel={selectedRangeOption.label}
         />
         <SellerActivityCard
-          isLoading={summaryQuery.isLoading}
+          isLoading={false}
           rangeLabel={selectedRangeOption.label}
           sellers={sellerInsights}
         />
       </div>
+      </ManagerSummaryGate>
     </section>
   );
 }
