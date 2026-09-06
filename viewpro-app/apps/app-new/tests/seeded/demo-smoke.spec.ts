@@ -66,9 +66,7 @@ test('demo user can navigate the seeded operational workflow', async ({ page }) 
   await signIn(page, DEMO_EMAIL);
 
   await page.waitForURL('**/dashboard');
-  await expect(
-    page.getByRole('heading', { name: `Inicio operativo de ${DEMO_TENANT_NAME}` })
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Hola, Demo ViewPro' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Ver propiedades/i })).toBeVisible();
 
   await page.goto('/dashboard/product');

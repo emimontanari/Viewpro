@@ -32,3 +32,20 @@ Workload / PR boundary: stacked-to-main I1 only; rollback reverses this dispatch
 - [ ] REFACTOR I2 without changing seller queries or BFF/API code, rerun focused/BFF/frontend suite/typecheck/lint as applicable, record evidence, measure ≤400 lines, and prepare its independent rollbackable PR.
 
 I3–I6 and the two Verification rows remain unchecked verbatim in `tasks.md`; they are outside I1.
+
+## I1 CI correction — seeded authenticated greeting
+
+The existing seeded manager smoke assertion now checks the deterministic principal-manager greeting exactly as `Hola, Demo ViewPro`; no manager heading behavior, seed source, or additional test changed. The I1 allowlist/objective now explicitly includes this existing assertion, and all checkbox states are unchanged.
+
+- **RED (GitHub CI):** PR #543 head `b9f2ae96729239ef1ae030651de4d48c4ea44696`, run `34038854991`, job `101502070963`, failed twice at `tests/seeded/demo-smoke.spec.ts:71` because it expected `Inicio operativo de ViewPro Demo Inmobiliaria`; captured evidence digest: `sha256:4990760932bc87f71e9ffbd694efe6371b1349730158bcfd52417910a4d02d24`.
+- **Safety net / component regression:** `2026-09-06T14:33:33Z` — `pnpm --filter next-shadcn-dashboard-starter test src/features/dashboard/components/operational-homepage.test.tsx src/features/dashboard/components/operational-homepage/manager-home.test.tsx` exited 0 with `2 passed`, `12 passed` after the assertion update.
+- **GREEN (local Docker PostgreSQL):** `2026-09-06T14:34:00Z` — `DATABASE_URL='postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro?schema=public' DIRECT_URL='postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro?schema=public' VIEWPRO_APP_NEW_SEEDED_E2E_API_PORT=3301 VIEWPRO_APP_NEW_SEEDED_E2E_WEB_PORT=3400 pnpm --filter next-shadcn-dashboard-starter exec playwright test --config playwright.seeded.config.ts --grep "demo user can navigate the seeded operational workflow"` exited 0 with `1 passed (30.1s)`. It reseeded only the repository-local Docker database and used 3301/3400; the existing 3001/3100 previews remained running.
+- **Environment note:** the first local GREEN attempt could not start the API because this worktree lacked a generated Prisma client; `DATABASE_URL='postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro?schema=public' DIRECT_URL='postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro?schema=public' pnpm --filter @viewpro/api db:generate` exited 0, after which the exact targeted command above passed. This was environment generation only, with no tracked API/source change.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| I1 seeded greeting correction | Seeded E2E + component | focused components 12/12 | GitHub run/job assertion failed twice | targeted seeded 1/1 | exact deterministic authenticated principal assertion, not a broadened matcher | no behavior refactor; component regression 12/12 |
+
+Workload / PR boundary: correction remains in PR #543's I1 `stacked-to-main` unit and must remain at or below 400 additions + deletions. No design deviation and no I2/product behavior was implemented.
