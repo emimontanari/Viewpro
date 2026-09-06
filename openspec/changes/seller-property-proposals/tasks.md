@@ -114,8 +114,8 @@ C5B1 is complete after C5A; C5B2 remains blocked until C5B1 merges. C5B1 manifes
 
 Blocked until C5B1 merges. C5B2 manifest: `apps/api/test/property-proposal-eligibility-race.spec.ts`.
 
-- [ ] C5B2: Add bounded barriers and prove inactive/role-changed seller create/update eligibility races with real PostgreSQL locks. <!-- sdd-owner: implementation -->
-- [ ] C5B2: Run the guarded real-PostgreSQL race command repeatedly; close worker transactions, barriers, clients, and proposals in every `finally`. <!-- sdd-owner: implementation -->
+- [x] C5B2: Add bounded barriers and prove inactive/role-changed seller create/update eligibility races with real PostgreSQL locks. <!-- sdd-owner: implementation -->
+- [x] C5B2: Run the guarded real-PostgreSQL race command repeatedly; close worker transactions, barriers, clients, and proposals in every `finally`. <!-- sdd-owner: implementation -->
 
 ### U7 — Submit, resubmit, and immutable rounds (S05, S08–S10)
 

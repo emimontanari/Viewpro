@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common'
-import { TenantMembershipStatus, TenantRole, UserStatus } from '@prisma/client'
 import type { StagedPropertyScalarsInput } from './domain/normalization'
 import { STAGED_PROPERTY_SCALAR_KEYS } from './domain/normalization'
 import { buildUpdateReplayIdentity, matchesUpdateReplayIdentity } from './domain/replay-identity'
@@ -21,21 +20,7 @@ export class PrismaPropertyProposalsRepository implements PropertyProposalsRepos
 
   async createDraft(input: CreatePropertyProposalDraftInput): Promise<CreatePropertyProposalResult> {
     return this.prisma.$transaction(async (tx) => {
-      const users = await tx.$queryRaw<{ id: string }[]>`
-        SELECT id FROM users
-        WHERE id = ${input.proposedByUserId} AND status = ${UserStatus.ACTIVE}::"UserStatus"
-        FOR NO KEY UPDATE
-      `
-      if (users.length === 0) return { kind: 'ineligible' }
-
-      const memberships = await tx.$queryRaw<{ id: string }[]>`
-        SELECT id FROM tenant_memberships
-        WHERE "userId" = ${input.proposedByUserId} AND "tenantId" = ${input.tenantId}
-          AND status = ${TenantMembershipStatus.ACTIVE}::"TenantMembershipStatus"
-          AND role = ${TenantRole.AGENT}::"TenantRole"
-        FOR NO KEY UPDATE
-      `
-      if (memberships.length === 0) return { kind: 'ineligible' }
+      if (!await lockEligibleSeller(tx, { ...input, operation: 'create' })) return { kind: 'ineligible' }
 
       const proposal = await tx.propertyProposal.create({
         data: { ...input, state: 'BORRADOR', version: 1, latestSubmittedAt: null },
@@ -58,7 +43,7 @@ export class PrismaPropertyProposalsRepository implements PropertyProposalsRepos
         where: { id: input.proposalId, tenantId: input.tenantId, proposedByUserId: input.proposedByUserId },
       })
       if (!proposal) return { kind: 'notFound' }
-      if (!await lockEligibleSeller(tx, input)) return { kind: 'ineligible' }
+      if (!await lockEligibleSeller(tx, { ...input, operation: 'update' })) return { kind: 'ineligible' }
       try {
         assertEditableProposalState(proposal.state)
       } catch {
