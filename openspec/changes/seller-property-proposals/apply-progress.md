@@ -251,3 +251,69 @@ Workload boundary: C5B1 is the assigned 372-line slice (<400); C5B2 is blocked u
 - Coverage proves APROBADA and EN_REVISION replay-shaped conflicts/no writes, RECHAZADA preservation, current-version empty updates, exact SQL bindings, deferred lock chronology, and no review-round/canonical writes.
 - Verification passed: focused update/repository 38/38 twice, C5A+C5B1 42/42, C4-C5 regression 60/60, forced uncached typecheck 6/6, and lint; full API remains deferred to independent re-gate.
 - Corrected C5B1 candidate arithmetic is 248 additions + 15 deletions + 109 untracked source/test lines = **372 changed lines** (<400); C5B2/tasks/topology remain unchanged, and no `size:exception` is required.
+
+## C5B2 / U6 final #306 remediation — maintainer-approved under-400 candidate
+
+### Status consumed
+
+```yaml
+schemaName: spec-driven
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+nextRecommended: apply
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-c5b2-eligibility-races
+  allowedEditRoots:
+    - viewpro-app/apps/api/test/property-proposal-eligibility-race.spec.ts
+    - viewpro-app/apps/api/src/property-proposals/helpers/lock-property-proposal.ts
+    - viewpro-app/apps/api/src/property-proposals/prisma-property-proposals.repository.ts
+    - viewpro-app/apps/api/src/property-proposals/prisma-property-proposals.repository.spec.ts
+    - openspec/changes/seller-property-proposals/tasks.md
+    - openspec/changes/seller-property-proposals/apply-progress.md
+    - openspec/changes/seller-property-proposals/task-delivery-plan.md
+    - openspec/changes/seller-property-proposals/task-verification-commands.md
+  warnings:
+    - Native status command was unavailable; this authoritative OpenSpec status was reconstructed from the supplied change and readable artifacts.
+```
+
+The delivery path is the explicitly selected `auto-chain` / `stacked-to-develop` C5B2 slice. The maintainer approved expansion of this cohesive boundary from 250 to `<400`, so no `size:exception` is needed. C6+ and parent-owned lifecycle rows remain deferred. The prior rejected-at-250 evidence digest was `sha256:f7b1262fc633b422366d005fc1e622ad4a72115f0512506172e8ad5a295951d8`.
+
+### Mandatory clean-redo chronology
+
+1. Copied all eight C5B2 candidate paths to an ephemeral `/tmp/c5b2-rejected-306.*` backup, restored the seven tracked paths to clean C5B1 base `0e422fea`, and removed the untracked race spec before dependency installation or any C5B2 test/source edit.
+2. Ran `pnpm install --offline --frozen-lockfile`, `pnpm --filter @viewpro/api db:generate`, the guarded local `_test` check, and the C5A+C5B1 safety net before the first C5B2 edit: 3 files / **42 passed (42)**.
+3. Added the corrected race spec first. The missing runtime export made all eight parameterized cases and `afterAll` fail with `TypeError: setEligibleSellerLockBarrierForTest is not a function`; this was setter-collection/harness failure, not behavior RED.
+4. Added only a compile/no-op setter and ran one command-lock-first case. It failed in **55 ms** (`operation command fulfilled before eligibility barrier arrival`), rather than waiting for Vitest's timeout; the full command elapsed 2.426 s including startup.
+5. Added the production barrier implementation and shared create/update eligibility path, then ran race GREEN twice at 8/8. The barrier-before-membership mutant failed the bounded command-lock-first case in **2.051 s** with `invalidation PID 23547 did not block on operation PID 23545`; restoring the membership-lock-first barrier returned GREEN.
+
+### TDD Cycle Evidence
+
+| Task | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|
+| C5B2 eligibility races | Clean C5A+C5B1 local safety net: **3 files / 42 passed** before any C5B2 test/source edit. | Missing setter was harness-only; the no-op setter then produced concrete behavior RED: one command-lock-first case failed in 55 ms because the command fulfilled before barrier arrival. | Race matrix passed 8/8 on two GREEN runs and a final rerun; focused C5A+C5B1+C5B2 passed 4 files / 50 tests; C4–C5 independently passed 7 files / **68 tests**. | Moving the barrier before the exact active-AGENT membership lock failed a bounded case after 2.051 s because the invalidation PID did not block on the operation PID; restoration passed. | The corrected test races barrier arrival against command settlement and a 2 s deadline, precomputes cleanable identities before protected setup, and preserves primary, settlement, and cleanup failures without masking. |
+
+### Final verification evidence
+
+- PASS — guarded local `_test` race matrix: 8/8, run three times after production implementation/restoration.
+- PASS — focused C5A+C5B1+C5B2: 4 files / 50 tests.
+- PASS — C4–C5 regression: 7 files / **68 tests**.
+- PASS — `pnpm exec turbo run typecheck --filter=@viewpro/api --force`: 6/6 uncached tasks.
+- PASS — `pnpm --filter @viewpro/api lint`.
+- PASS — bounded full local API suite: 156 files / 1545 tests.
+
+### Final completion and candidate arithmetic
+
+The source/test diff remains **19 additions + 19 deletions + 256 untracked race-test lines = 294 changed lines** against `0e422fea`. Every OpenSpec line is included in the final **374 changed-line** candidate: 66 additions in this progress artifact, 2 additions + 2 deletions in `tasks.md`, 4 additions + 4 deletions in `task-delivery-plan.md`, and 1 addition + 1 deletion in `task-verification-commands.md`. The normal `<400` budget is met without code golf or a size exception.
+The docs-only closure preserved all four C5B2 source/test file SHA-256 values before and after its OpenSpec edits.
+
+Persisted completion: both implementation-owned C5B2 rows are visibly `[x]`; C6 is blocked pending parent lifecycle and its exact unchecked U7 rows remain `- [ ] RED → GREEN → TRIANGULATE → REFACTOR six-field submission, locked-row snapshotting, round numbering, retained history, rejected-edit versus explicit resubmit, and replay identity. <!-- sdd-owner: implementation -->` and `- [ ] Run the manifest submit specs and API typecheck; delete rounds before proposals in every \`finally\`. <!-- sdd-owner: implementation -->`; all parent-owned lifecycle rows are unchanged.
+
+The two previous failure outcomes are superseded/remediated by this final candidate: the setter-collection/no-op-barrier failure that exposed early command settlement was fixed by the exported post-membership-lock hook, and the former 250-line budget rejection is resolved by the maintainer-approved `<400` boundary. The deliberate barrier-before-membership mutant still fails bounded lock observation and was restored before final GREEN.
+
+No design deviation was made. No commit, push, PR, merge, review, receipt, C6+, or parent lifecycle action occurred.
+
+### Postchecks and residue
+
+The explicit base plus `viewpro_test_w1`–`viewpro_test_w4` PostgreSQL postcheck reported `proposal=0,membership=0,user=0,tenant=0` and `non_idle_c5b2=0` for every database. Cleanup released/reset barriers and settled command/invalidation promises before idempotent `deleteMany` cleanup; the suite `afterAll` disconnects every named client through failure-continuing `Promise.allSettled`. The ephemeral backup was removed after the current checksum manifest was recorded. Recursive dependency/build residue cleanup removed all `node_modules`, `.turbo`, and `*.tsbuildinfo`; `packages/contracts/src/generated/.gitkeep` remains.
