@@ -8,10 +8,7 @@ export const metadata: Metadata = {
 
 export default function Dashboard() {
   return (
-    <PageContainer
-      pageTitle='Inicio'
-      pageDescription='Resumen operativo para trabajar el día de tu inmobiliaria.'
-    >
+    <PageContainer>
       <OperationalHomepage />
     </PageContainer>
   );

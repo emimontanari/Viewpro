@@ -24,6 +24,20 @@ export function MissingInmobiliariaState() {
   );
 }
 
+export function UnsupportedDashboardRoleState() {
+  return (
+    <div className='rounded-3xl border bg-card p-8 text-center shadow-xs'>
+      <div className='mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground'>
+        <Icons.warning className='size-6' />
+      </div>
+      <h1 className='text-2xl font-semibold'>Inicio no disponible para tu rol</h1>
+      <p className='mx-auto mt-2 max-w-xl text-sm text-muted-foreground'>
+        No podemos mostrar el resumen operativo con la información de tu sesión actual.
+      </p>
+    </div>
+  );
+}
+
 export function OperationalHomepageSkeleton() {
   return (
     <section className='space-y-5' aria-label='Preparando inicio operativo'>

@@ -33,7 +33,7 @@ Measured planning boundaries are deliberately separate: P1 is the reference asse
 - [x] Deliver P1 from fresh `develop`: add `openspec/changes/manager-home-reference-fidelity/assets/manager-home-reference.jpeg` (SHA-256 `97cf2dc9a6a48b816e66090b2f62b7f8b465bdb7a0f52f8fa8f7976f0f75d3c9`) and `exploration.md`; verify asset hash, `git diff --check`, status/diff, ≤400 changed lines, then merge before P2 starts. Delivered in #538 (`54e9295b`). <!-- sdd-owner: parent -->
 - [x] Deliver P2 from fresh `develop` after P1 merges: add only `proposal.md` and `specs/crm-manager-home/spec.md`; verify the 381-text-line boundary, `git diff --check`, status/diff, ≤400 changed lines, then merge before P3 starts. Delivered in #540 (`5b088ab9`). <!-- sdd-owner: parent -->
 - [x] Deliver P3 from fresh `develop` after P2 merges: add only `design.md`; verify its 231-line boundary, `git diff --check`, status/diff, ≤400 changed lines, then merge before P4 starts. Delivered in #541 (`71d5a7b2`). <!-- sdd-owner: parent -->
-- [ ] Deliver P4 from fresh `develop` after P3 merges: add only `tasks.md`; verify `git diff --check`, status/diff, an actual comfortably-≤400-line docs diff, and that unchecked implementation work is not reported ready; merge before I1 starts. <!-- sdd-owner: parent -->
+- [x] Deliver P4 from fresh `develop` after P3 merges: add only `tasks.md`; verify `git diff --check`, status/diff, an actual comfortably-≤400-line docs diff, and that unchecked implementation work is not reported ready; merge before I1 starts. Delivered in #542 (`0ec2b216`). <!-- sdd-owner: parent -->
 
 ## Shared implementation evidence and safety net
 
@@ -66,10 +66,10 @@ The following matrix is the narrow source/test allowlist for each independently 
 
 ### I1 — role, heading, and date foundation
 
-- [ ] RED in `apps/app-new/src/features/dashboard/components/operational-homepage.test.tsx` and `operational-homepage/manager-home.test.tsx`: assert exact manager/principal mounting, `AGENT` seller retention/no manager request, unknown/missing role and identity fail-closed/no request, one manager `h1`, and before/after Buenos Aires-midnight dates; run the focused component command and record its expected assertion failure. <!-- sdd-owner: implementation -->
-- [ ] GREEN only the I1 allowlist: dispatch before query-owning child mount, remove only dashboard generic visible heading ownership, and add pure `es-AR`/`America/Argentina/Buenos_Aires` date formatting with injected `now`; rerun the focused command successfully. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE I1 with both manager roles versus `AGENT`/unknown and two Argentina calendar days; rerun focused component plus owner regression commands successfully. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR I1 without semantic change, rerun its focused and owner/seller regression commands, record evidence, measure ≤400 changed lines, and prepare a standalone rollbackable PR. <!-- sdd-owner: implementation -->
+- [x] RED in `apps/app-new/src/features/dashboard/components/operational-homepage.test.tsx` and `operational-homepage/manager-home.test.tsx`: assert exact manager/principal mounting, `AGENT` seller retention/no manager request, unknown/missing role and identity fail-closed/no request, one manager `h1`, and before/after Buenos Aires-midnight dates; run the focused component command and record its expected assertion failure. <!-- sdd-owner: implementation -->
+- [x] GREEN only the I1 allowlist: dispatch before query-owning child mount, remove only dashboard generic visible heading ownership, and add pure `es-AR`/`America/Argentina/Buenos_Aires` date formatting with injected `now`; rerun the focused command successfully. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE I1 with both manager roles versus `AGENT`/unknown and two Argentina calendar days; rerun focused component plus owner regression commands successfully. <!-- sdd-owner: implementation -->
+- [x] REFACTOR I1 without semantic change, rerun its focused and owner/seller regression commands, record evidence, measure ≤400 changed lines, and prepare a standalone rollbackable PR. <!-- sdd-owner: implementation -->
 
 ### I2 — atomic summary state and retry
 

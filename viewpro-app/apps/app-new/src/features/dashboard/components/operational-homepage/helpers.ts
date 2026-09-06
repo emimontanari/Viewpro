@@ -5,6 +5,9 @@ import type {
 } from '@/features/dashboard/api/types';
 import { RANGE_OPTIONS } from './constants';
 
+const ARGENTINA_LOCALE = 'es-AR';
+const ARGENTINA_TIME_ZONE = 'America/Argentina/Buenos_Aires';
+
 /**
  * Pure label helpers. Extracted so the presentational files can share them
  * without importing each other for a string.
@@ -42,4 +45,25 @@ export function formatCount(value: number, singular: string, plural: string) {
 
 export function getRangeOption(range: DashboardSummaryRange) {
   return RANGE_OPTIONS.find((option) => option.range === range) ?? RANGE_OPTIONS[0];
+}
+
+export function formatArgentinaCalendarDate(instant: Date) {
+  const parts = new Intl.DateTimeFormat(ARGENTINA_LOCALE, {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: ARGENTINA_TIME_ZONE,
+    year: 'numeric'
+  }).formatToParts(instant);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((value) => value.type === type)?.value ?? '';
+
+  return {
+    dateTime: `${part('year')}-${part('month')}-${part('day')}`,
+    label: new Intl.DateTimeFormat(ARGENTINA_LOCALE, {
+      day: 'numeric',
+      month: 'long',
+      timeZone: ARGENTINA_TIME_ZONE,
+      weekday: 'long'
+    }).format(instant)
+  };
 }

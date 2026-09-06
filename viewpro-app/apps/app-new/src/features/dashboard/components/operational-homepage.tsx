@@ -11,8 +11,8 @@ import { activityFeedOptions } from '@/features/activity/api/queries';
 import { dashboardSummaryOptions } from '@/features/dashboard/api/queries';
 import type { DashboardSummaryRange } from '@/features/dashboard/api/types';
 import { productsQueryOptions } from '@/features/products/api/queries';
-import type { TenantMembership } from '@/lib/session';
-import { useActiveTenant } from '@/lib/session-context';
+import { getUserDisplayName, type TenantMembership } from '@/lib/session';
+import { useActiveTenant, useSession } from '@/lib/session-context';
 import { KpiCard } from './operational-homepage/primitives';
 import { PriorityCard, PriorityLink } from './operational-homepage/priority-panel';
 import {
@@ -24,16 +24,18 @@ import {
 import { RangeSelector } from './operational-homepage/range-selector';
 import {
   MissingInmobiliariaState,
-  OperationalHomepageSkeleton
+  OperationalHomepageSkeleton,
+  UnsupportedDashboardRoleState
 } from './operational-homepage/states';
-import { getRangeOption } from './operational-homepage/helpers';
+import { formatArgentinaCalendarDate, getRangeOption } from './operational-homepage/helpers';
 import {
   PROPERTY_PREVIEW_SIZE,
   SELLER_ACTIVITY_PREVIEW_SIZE
 } from './operational-homepage/constants';
 
-export function OperationalHomepage() {
+export function OperationalHomepage({ now = () => new Date() }: { now?: () => Date }) {
   const { activeMembership, activeTenantId, isTenantLoading } = useActiveTenant();
+  const { session } = useSession();
 
   if (isTenantLoading) {
     return <OperationalHomepageSkeleton />;
@@ -52,22 +54,35 @@ export function OperationalHomepage() {
     );
   }
 
-  return (
-    <ManagerOperationalHomepage
-      activeMembership={activeMembership}
-      activeTenantId={activeTenantId}
-    />
-  );
+  const displayName = getUserDisplayName(session?.user);
+
+  if (isManagerMembership(activeMembership) && displayName) {
+    return (
+      <ManagerOperationalHomepage
+        activeMembership={activeMembership}
+        activeTenantId={activeTenantId}
+        displayName={displayName}
+        now={now}
+      />
+    );
+  }
+
+  return <UnsupportedDashboardRoleState />;
 }
 
 function ManagerOperationalHomepage({
   activeMembership,
-  activeTenantId
+  activeTenantId,
+  displayName,
+  now
 }: {
   activeMembership: TenantMembership;
   activeTenantId: string;
+  displayName: string;
+  now: () => Date;
 }) {
   const [selectedRange, setSelectedRange] = React.useState<DashboardSummaryRange>('7d');
+  const [today] = React.useState(() => formatArgentinaCalendarDate(now()));
   const selectedRangeOption = getRangeOption(selectedRange);
   const summaryQuery = useQuery({
     ...dashboardSummaryOptions({ range: selectedRange, tenantId: activeTenantId }),
@@ -112,8 +127,11 @@ function ManagerOperationalHomepage({
             </Badge>
             <div className='max-w-3xl space-y-3'>
               <h1 className='text-3xl font-semibold tracking-tight md:text-4xl'>
-                Inicio operativo de {activeMembership.tenant.name}
+                Hola, {displayName}
               </h1>
+              <p className='text-sm text-muted-foreground'>
+                {activeMembership.tenant.name} · <time dateTime={today.dateTime}>{today.label}</time>
+              </p>
               <p className='text-base text-muted-foreground md:text-lg'>
                 Detectá qué gestiones se están moviendo, qué propiedades piden atención y quiénes
                 están generando actividad para decidir por dónde empezar.
@@ -436,4 +454,8 @@ function SellerOperationalHomepage({
 
 function isSellerMembership(membership: TenantMembership) {
   return membership.role === 'AGENT';
+}
+
+function isManagerMembership(membership: TenantMembership) {
+  return membership.role === 'MANAGER' || membership.role === 'PRINCIPAL_MANAGER';
 }
