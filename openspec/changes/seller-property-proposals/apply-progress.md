@@ -222,3 +222,32 @@ C2B2 was the selected `auto-chain` / `stacked-to-develop` work-unit after C2B1. 
 - **Status/scope/tasks:** authoritative OpenSpec was `ready`/`apply`, repo-local with no action-context warning; selected stacked-to-`develop` C5A/U5B stays ≤325, both U5B rows remain `[x]`, and the next exact unchecked U6 rows are `- [ ] RED → GREEN → TRIANGULATE → REFACTOR normalized expected-version patches, title-only saves, BORRADOR/RECHAZADA editability, locked-state conflicts, and inactive/role-changed seller races. <!-- sdd-owner: implementation -->` and `- [ ] Run the manifest specs and API typecheck; close worker transactions and clean proposals in every finally. <!-- sdd-owner: implementation -->`; U6/C5B remains pending merge and parent-owned lifecycle rows are byte-for-byte unchanged.
 <table><caption>TDD Cycle Evidence — clean redo selected by user</caption><thead><tr><th>RED</th><th>GREEN</th><th>TRIANGULATE</th><th>REFACTOR</th></tr></thead><tbody><tr><td>Final repository spec on clean C4: 4 read tests passed; 6 C5A assertions failed (concrete token and absent <code>createDraft</code>). Create spec first collected 0 from the missing module (collection-only, not behavior), then the compile-only skeleton collected 4 and failed all 4 behavior assertions.</td><td>Final backed candidate: focused 2 files/14 passed; C4+C5A 5/32; focused repeat 2/14.</td><td>MANAGER-predicate mutant: 1/10 failed (9 passed); reviewed final bytes restored.</td><td>No refactor planned; restore reviewed final bytes.</td></tr></tbody></table>
 - **Chronological redo/verification:** this supersedes the earlier reconstructed-RED language; it is an actual clean strict-TDD redo, not a waiver. Offline frozen dependencies and generated Prisma client supported the clean C4 RED; final focused/regression/repeat passed 14/32/14, forced typecheck passed 6/6, lint passed, and full API passed 1,509/1,509 tests across 154 files. Guarded base+w1–w4 postchecks found zero proposal rows and zero non-idle connections; residue was cleaned. Candidate arithmetic is 301 additions + 23 deletions = 324 changed lines (≤325). Before deleting the ephemeral backup, the executor verified 9/9 non-progress candidate files byte-identical; their ordered final checksum-manifest digest is `sha256:bfda7c731774089e4e7dcc42415a7181ca40110e17ccb7755fffe3c937b059ef`. No C5B, commit, push, PR, merge, review, receipt, or delivery action occurred.
+
+## C5B1 / U6 update, replay, and locks
+Status consumed: authoritative `openspec`, `ready`/`apply`; repo-local target is the supplied C5B1 worktree and all edits are within its allowed roots, with no action-context warning.
+```yaml
+artifactStore: openspec
+changeName: seller-property-proposals
+applyState: ready
+actionContext: { mode: repo-local, workspaceRoot: seller-property-proposals-c5b-updates-race }
+delivery: auto-chain / stacked-to-develop, C5B1 372 changed lines (<400)
+```
+Completed and checked: C5B1’s update/lock/replay and focused-verification rows are `[x]`; repository owns one outer transaction, retains proposal → authoritative read → user → membership locking, maps safe absence/ineligible/conflict, and writes no rounds or canonical records.
+Files: helper, update use case/spec, repository port/adapter/spec, module, and the four scoped OpenSpec artifacts; C5A retains its established user→membership path because refactoring its callback timing was not coherent in this bounded slice; no barrier/race implementation occurred.
+Verification: offline frozen install and guarded matching localhost `_test` URLs; baseline repository 10/10; GREEN/repeat update+repository 34/34; C5A+C5B1 38/38; C4–C5 69/69; forced Turbo API typecheck 6/6 uncached; lint and full API 1533/1533 passed.
+| TDD Cycle Evidence | RED | GREEN | TRIANGULATE | REFACTOR |
+| C5B1 | Missing use-case import collected 0; final repository behavior had 14 failures; skeleton behavior had 10 failures. | 34/34. | version increment 1 failed, replay equality 3 failed, tenant predicate 1 failed, role predicate 1 failed; restoration 34/34. | Extracted merged-title validation; focused suite stayed green. |
+Original combined C5B objective was interrupted with zero final drift when the user selected this split; C5B2 has no claimed real-DB race evidence.
+Remaining exact unchecked rows: `- [ ] C5B2: Add bounded barriers and prove inactive/role-changed seller create/update eligibility races with real PostgreSQL locks. <!-- sdd-owner: implementation -->`
+`- [ ] C5B2: Run the guarded real-PostgreSQL race command repeatedly; close worker transactions, barriers, clients, and proposals in every \`finally\`. <!-- sdd-owner: implementation -->`
+Workload boundary: C5B1 is the assigned 372-line slice (<400); C5B2 is blocked until C5B1 merges, and C6+ is unchanged. Cleanup and postchecks follow before handoff; no commit, push, PR, merge, review, receipt, C5B2, or C6 action occurred.
+
+## C5B1 correction: locked replay state ordering
+- Corrected `sha256:4eb92f7e5d3fbe4e0ab0d13a8cc8b78574b60a1629d550b47f0b95b79bf8d9b0`: editability now follows the scoped authoritative reread and seller eligibility lock, before replay classification.
+- Strict TDD: the new EN_REVISION expected+1 empty-patch regression was RED at 1 failed/24 passed (`replayed` received), then GREEN at 25/25 after the reorder; final repository coverage is 28/28.
+| TDD Cycle Evidence | RED | GREEN | TRIANGULATE | REFACTOR |
+| C5B1 locked-state correction | 1 failed/24 passed (`replayed`) | 25/25 passed after reorder | 3/28 failed, then 28/28 restored | None needed |
+- TRIANGULATE: negating replay equality failed 3/28 (exact/empty replays became conflicts and a different patch replayed); restored equality passed 28/28.
+- Coverage proves APROBADA and EN_REVISION replay-shaped conflicts/no writes, RECHAZADA preservation, current-version empty updates, exact SQL bindings, deferred lock chronology, and no review-round/canonical writes.
+- Verification passed: focused update/repository 38/38 twice, C5A+C5B1 42/42, C4-C5 regression 60/60, forced uncached typecheck 6/6, and lint; full API remains deferred to independent re-gate.
+- Corrected C5B1 candidate arithmetic is 248 additions + 15 deletions + 109 untracked source/test lines = **372 changed lines** (<400); C5B2/tasks/topology remain unchanged, and no `size:exception` is required.

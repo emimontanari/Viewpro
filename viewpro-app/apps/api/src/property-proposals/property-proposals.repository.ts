@@ -18,8 +18,22 @@ export type CreatePropertyProposalResult =
   | { kind: 'created'; proposal: PropertyProposal }
   | { kind: 'ineligible' }
 
+export type UpdatePropertyProposalInput = {
+  tenantId: string
+  proposedByUserId: string
+  proposalId: string
+  expectedVersion: number
+  patch: Partial<StagedPropertyScalars>
+}
+
+export type UpdatePropertyProposalResult =
+  | { kind: 'updated'; proposal: PropertyProposal }
+  | { kind: 'replayed'; proposal: PropertyProposal }
+  | { kind: 'notFound' | 'ineligible' | 'conflict' }
+
 export type PropertyProposalsRepository = {
   createDraft(input: CreatePropertyProposalDraftInput): Promise<CreatePropertyProposalResult>
+  updateForSeller(input: UpdatePropertyProposalInput): Promise<UpdatePropertyProposalResult>
   listForSeller(input: {
     tenantId: string
     proposedByUserId: string
