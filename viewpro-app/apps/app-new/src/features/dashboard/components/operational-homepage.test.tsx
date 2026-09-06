@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useQuery } from '@tanstack/react-query';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { useActiveTenant } from '@/lib/session-context';
+import { useActiveTenant, useSession } from '@/lib/session-context';
 import { OperationalHomepage } from './operational-homepage';
 import type { ActivityFeedResponse } from '@/features/activity/api/types';
 import type { DashboardSummaryResponse } from '@/features/dashboard/api/types';
@@ -18,11 +18,13 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 });
 
 vi.mock('@/lib/session-context', () => ({
-  useActiveTenant: vi.fn()
+  useActiveTenant: vi.fn(),
+  useSession: vi.fn()
 }));
 
 const useQueryMock = vi.mocked(useQuery);
 const useActiveTenantMock = vi.mocked(useActiveTenant);
+const useSessionMock = vi.mocked(useSession);
 
 const activeTenantContext = {
   activeMembership: {
@@ -42,6 +44,20 @@ const activeTenantContext = {
   memberships: [],
   needsTenantSelection: false,
   selectedTenantId: 'tenant-1'
+};
+
+const authenticatedSession = {
+  hasOwnerAccess: false,
+  memberships: [],
+  user: {
+    email: 'patricio@example.com',
+    emailVerifiedAt: '2026-05-25T00:00:00.000Z',
+    firstName: 'Patricio',
+    globalRole: 'USER' as const,
+    id: 'user-1',
+    lastName: 'Gómez',
+    status: 'ACTIVE'
+  }
 };
 
 const dashboardSummaryResponse: DashboardSummaryResponse = {
@@ -293,6 +309,9 @@ describe('OperationalHomepage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useActiveTenantMock.mockReturnValue(activeTenantContext);
+    useSessionMock.mockReturnValue(
+      { session: authenticatedSession } as unknown as ReturnType<typeof useSession>
+    );
     mockDashboardQueries();
   });
 
@@ -333,9 +352,8 @@ describe('OperationalHomepage', () => {
   it('defaults to 7 days and renders backend-owned summary, recent activity, and property preview', () => {
     render(<OperationalHomepage />);
 
-    expect(
-      screen.getByRole('heading', { name: /Inicio operativo de Costa Norte Propiedades/i })
-    ).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Hola, Patricio Gómez' })).toBeVisible();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(screen.getByRole('button', { name: '7 días' })).toHaveAttribute('aria-pressed', 'true');
     expect(hasDashboardSummaryQueryForRange('7d')).toBe(true);
     expect(screen.getAllByText('Sin novedades en 7 días')[0]).toBeVisible();
@@ -437,6 +455,46 @@ describe('OperationalHomepage', () => {
     expect(screen.queryByRole('link', { name: 'Nueva propiedad' })).not.toBeInTheDocument();
     expect(screen.queryByText('Propiedades con más movimiento')).not.toBeInTheDocument();
     expect(screen.queryByText('Vendedores con más movimiento')).not.toBeInTheDocument();
+  });
+
+  it('mounts principal managers but fails closed for unknown roles and absent identities', () => {
+    useActiveTenantMock.mockReturnValue({
+      ...activeTenantContext,
+      activeMembership: {
+        ...activeTenantContext.activeMembership,
+        role: 'PRINCIPAL_MANAGER'
+      }
+    });
+
+    const principalManager = render(<OperationalHomepage />);
+
+    expect(screen.getByRole('heading', { name: 'Hola, Patricio Gómez' })).toBeVisible();
+    expect(hasQueryScope('dashboard')).toBe(true);
+    principalManager.unmount();
+
+    useQueryMock.mockClear();
+    useActiveTenantMock.mockReturnValue({
+      ...activeTenantContext,
+      activeMembership: {
+        ...activeTenantContext.activeMembership,
+        role: 'UNKNOWN'
+      }
+    });
+
+    const unknownRole = render(<OperationalHomepage />);
+
+    expect(screen.getByRole('heading', { name: 'Inicio no disponible para tu rol' })).toBeVisible();
+    expect(hasQueryScope('dashboard')).toBe(false);
+    unknownRole.unmount();
+
+    useQueryMock.mockClear();
+    useActiveTenantMock.mockReturnValue(activeTenantContext);
+    useSessionMock.mockReturnValue({ session: null } as unknown as ReturnType<typeof useSession>);
+
+    render(<OperationalHomepage />);
+
+    expect(screen.getByRole('heading', { name: 'Inicio no disponible para tu rol' })).toBeVisible();
+    expect(hasQueryScope('dashboard')).toBe(false);
   });
 
   it('shows assigned properties and assigned activity on the seller dashboard', () => {
