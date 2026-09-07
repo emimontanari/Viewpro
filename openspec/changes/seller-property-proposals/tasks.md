@@ -128,8 +128,8 @@ Manifest: `apps/api/src/property-proposals/use-cases/submit-property-proposal.us
 
 Blocked until C6A merges. Manifest: `submit-property-proposal.use-case.ts`, `submit-property-proposal.replay.spec.ts`, and the required repository/mapper coverage.
 
-- [ ] C6B: RED → GREEN → TRIANGULATE → REFACTOR RECHAZADA-only explicit resubmit, retained prior history, next-round numbering, and exact replay. <!-- sdd-owner: implementation -->
-- [ ] C6B: Run the replay/history command and API typecheck; delete rounds before proposals in `finally`. <!-- sdd-owner: implementation -->
+- [x] C6B: RED → GREEN → TRIANGULATE → REFACTOR RECHAZADA-only explicit resubmit, retained prior history, next-round numbering, and exact replay. <!-- sdd-owner: implementation -->
+- [x] C6B: Run the replay/history command and API typecheck; delete rounds before proposals in `finally`. <!-- sdd-owner: implementation -->
 
 ### U8 — Reviewer inbox and detail reads (S11, S14–S15)
 
