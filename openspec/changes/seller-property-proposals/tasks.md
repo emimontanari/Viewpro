@@ -11,7 +11,7 @@ The controlled four-PR planning chain—exploration+proposal → all specs → d
 | Estimated changed lines | 7,877–9,758 strict implementation/test lines: 7,082–8,813 production-bearing and 795–945 verification-only; parent gate 0. |
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
-| Suggested split | Selected controlled source chain C1 → C2A → C2B1 → C2B2 → C3A → C3B → C4 → C5A → C5B1 → C5B2 → C6A → C6B → C7 … C20, each group max ≤650; selected controlled four-PR planning chain. |
+| Suggested split | Selected controlled source chain C1 → C2A → C2B1 → C2B2 → C3A → C3B → C4 → C5A → C5B1 → C5B2 → C6A → C6B → C7A1 → C7A2 → C7B → C8 … C20, each group max ≤650; selected controlled four-PR planning chain. |
 | Delivery strategy | auto-chain |
 | Chain strategy | stacked-to-develop |
 
@@ -20,11 +20,11 @@ Chained PRs recommended: Yes
 Chain strategy: stacked-to-develop
 400-line budget risk: High
 
-Unit counts: 30 production-bearing; verification-only units are U12/U22A/U22B (3); and 1 parent/verify gate with no source-unit estimate. The selected source topology is the controlled C1 → C2A → C2B1 → C2B2 → C3A → C3B → C4 → C5A → C5B1 → C5B2 → C6A → C6B → C7 … C20 chain with exactly 26 dependency-ordered groups, each max ≤650. C5A is U5B and must merge before C5B1/U6; C5B2 remains blocked pending the C5B1 merge. C1 is U1; C2A atomically contains U2A, the U2B core migration contract, and U2C tenant registry; C2B1 contains only U2B S39 migration/index/lock/integrity hardening; C2B2 contains the reusable cleanup helper plus its exhaustive direct matrix; C3A contains U3; and C3B contains U4A. C2B2 is mandatory before C3A, and C3B is mandatory before C4/U4B. Schema, migration, and tenant registry remain atomic in C2A so generated-client, database, and isolation consistency are never broken. No blanket exception applies. Strict400 remains rejected forecast/history only, not an active plan.
+Unit counts: 30 production-bearing; verification-only units are U12/U22A/U22B (3); and 1 parent/verify gate with no source-unit estimate. The selected source topology is the controlled C1 → C2A → C2B1 → C2B2 → C3A → C3B → C4 → C5A → C5B1 → C5B2 → C6A → C6B → C7A1 → C7A2 → C7B → C8 … C20 chain with exactly 28 dependency-ordered groups, each max ≤650. C5A is U5B and must merge before C5B1/U6; C5B2 remains blocked pending the C5B1 merge. C1 is U1; C2A atomically contains U2A, the U2B core migration contract, and U2C tenant registry; C2B1 contains only U2B S39 migration/index/lock/integrity hardening; C2B2 contains the reusable cleanup helper plus its exhaustive direct matrix; C3A contains U3; and C3B contains U4A. C2B2 is mandatory before C3A, and C3B is mandatory before C4/U4B. Schema, migration, and tenant registry remain atomic in C2A so generated-client, database, and isolation consistency are never broken. No blanket exception applies. Strict400 remains rejected forecast/history only, not an active plan.
 
 ## Scenario linkage
 
-The evidence matrix preserves exactly 49 rows. Task coverage links them as follows: U1 S34,S43–S45; U2B S39; U4A S24,S35; U4B S40–S42; U5A S02; U5B S01,S03; U6 S04,S06; C6A S05,S08; C6B S09–S10; U8 S11,S14–S15; U9 S13,S17–S19,S31–S32; U10A S20–S23,S27,S29; U10B S37–S38; U11A S25–S26; U11B S30,S33; U13 S07,S12,S28; U14 S16; U17 S47,S49; U18A S36; U18B S46; U20B S48; U22A/U22B final evidence for the remaining journeys. Matrix RED ownership remains authoritative.
+The evidence matrix preserves exactly 49 rows. Task coverage links them as follows: U1 S34,S43–S45; U2B S39; U4A S24,S35; U4B S40–S42; U5A S02; U5B S01,S03; U6 S04,S06; C6A S05,S08; C6B S09–S10; C7A1 S15 RED; C7A2 S15 GREEN; C7B S11,S14; U9 S13,S17–S19,S31–S32; U10A S20–S23,S27,S29; U10B S37–S38; U11A S25–S26; U11B S30,S33; U13 S07,S12,S28; U14 S16; U17 S47,S49; U18A S36; U18B S46; U20B S48; U22A/U22B final evidence for the remaining journeys. Matrix RED ownership remains authoritative.
 
 ## Ordered implementation units
 
@@ -131,12 +131,26 @@ Blocked until C6A merges. Manifest: `submit-property-proposal.use-case.ts`, `sub
 - [x] C6B: RED → GREEN → TRIANGULATE → REFACTOR RECHAZADA-only explicit resubmit, retained prior history, next-round numbering, and exact replay. <!-- sdd-owner: implementation -->
 - [x] C6B: Run the replay/history command and API typecheck; delete rounds before proposals in `finally`. <!-- sdd-owner: implementation -->
 
-### U8 — Reviewer inbox and detail reads (S11, S14–S15)
+### C7A1 — Reviewer filter builder (S15 RED)
 
-Manifest: reviewer list/detail use cases, `review-filter-builder.ts` and spec, repository filter changes, `apps/api/src/property-proposals/prisma-property-proposals.repository.spec.ts` for the later S15 filter RED, and `list-property-proposal-review.use-case.spec.ts` at the exact delivery paths.
+Manifest: `review-filter-builder.ts` and `review-filter-builder.spec.ts` only. It owns the pure, tenant-correlated filter primitives and pagination normalization; it does not consume a repository, add a port/Prisma predicate, wire a module, or add a use case.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR both reviewer roles, tenant-scoped all-state reads, pending/newest defaults, state/history AND filters, pagination limits, safe result visibility, and search rejection boundary; add S15's repository EXISTS/AND RED only after U5A's scoped-read edit. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest reviewer-read specs and API typecheck; clear query fixtures and reviewer rows. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR `NONE|PENDING|REJECTED|APPROVED`, default `EN_REVISION`, safe page/pageSize/skip bounds, state+history AND, and tenant-correlated Prisma/raw filter predicates. Exact reviewer ordering is not C7A1 work; S15's repository integration remains GREEN-owned by C7A2. <!-- sdd-owner: implementation -->
+- [x] Run the focused builder spec, forced uncached API typecheck, lint, repeat, and bounded guarded-localhost full API retry-0 for the filter/pagination boundary; remove residue and verify base+w1–w4 cleanup. <!-- sdd-owner: implementation -->
+
+### C7A2 — Reviewer repository predicates (S15 GREEN)
+
+Manifest: `property-proposals.repository.ts`, `prisma-property-proposals.repository.ts`, and `prisma-property-proposals.repository.spec.ts`. It consumes C7A1's filter-builder contract for tenant-scoped list/count/detail and raw hydration/order; no use case or module wiring.
+
+- [ ] GREEN → TRIANGULATE → REFACTOR C7A1's S15 repository port/Prisma list-count-detail, matching count/raw predicate, tenant absence, bindings, exact `COALESCE(latestSubmittedAt, createdAt) DESC, id DESC` ordering, and ordered hydration. <!-- sdd-owner: implementation -->
+- [ ] Run the C7A2 repository spec and API typecheck, including exact reviewer-order evidence; clear query fixtures and reviewer rows. <!-- sdd-owner: implementation -->
+
+### C7B — Reviewer read use cases and role boundary (S11, S14)
+
+Manifest: reviewer list/detail use cases and their specs only. It consumes C7A2's repository contract and owns both reviewer roles, reviewer-result mapping, and the pending/newest use-case boundary; no repository/filter redo.
+
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR both reviewer roles, tenant-scoped all-state use-case reads, pending/newest defaults, and safe result visibility. <!-- sdd-owner: implementation -->
+- [ ] Run the C7B reviewer-use-case specs and API typecheck; clear query fixtures and reviewer rows. <!-- sdd-owner: implementation -->
 
 ### U9 — Rejection, replay, and transition conflicts (S13, S17–S19, S31–S32)
 
@@ -293,4 +307,4 @@ Manifest: `apps/app-new/tests/seeded/property-proposals.spec.ts`, `property-prop
 
 ## Arithmetic check
 
-The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `7,082–8,813`, verification-only `795–945`, parent gate `0`, strict implementation/test total `7,877–9,758`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650; the 26-group topology separates C3A/U3, C3B/U4A, C5A/U5B, C5B1/U6 update locks, C5B2/U6 races, C6A/U7 initial submission, and C6B/U7 resubmission/history; C2A current candidate is capped at 649; C2B1 and C2B2 are each capped at ≤635.
+The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `7,082–8,813`, verification-only `795–945`, parent gate `0`, strict implementation/test total `7,877–9,758`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650; the 28-group topology separates C3A/U3, C3B/U4A, C5A/U5B, C5B1/U6 update locks, C5B2/U6 races, C6A/U7 initial submission, C6B/U7 resubmission/history, C7A1 filter RED, C7A2 repository GREEN, and C7B use cases; C2A current candidate is capped at 649; C2B1 and C2B2 are each capped at ≤635.

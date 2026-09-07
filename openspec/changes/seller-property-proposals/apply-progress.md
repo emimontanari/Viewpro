@@ -411,3 +411,43 @@ Manual authoritative OpenSpec status was consumed because no parent status was s
 - BLOCKED (unrelated): fresh guarded full API `vitest run --retry=0` completed 157/158 files and 1598/1599 tests, failing only `test/restore-schema-parity.spec.ts` SIGTERM/SIGINT forwarding. It is outside C6B edit roots and was not changed.
 - Prior arithmetic is corrected: source/test `159` plus OpenSpec `57` was `216` before correction. Final candidate is **136 tracked additions + 29 tracked deletions + 147 untracked lines = 312 changed lines**, within the 400-line C6B boundary; topology remains 26 groups and the evidence matrix remains 49 scenarios.
 - No design deviation, PostgreSQL resubmission test, commit, rebase, push, PR, merge, C7, transport/UI, provider, or external-service work occurred. Postchecks found `0|0|0` proposal/round/decision rows in `viewpro_test` and w1–w4 plus zero non-idle test connections; node_modules, `.turbo`, and `*.tsbuildinfo` were removed, while tracked `packages/contracts/src/generated/.gitkeep` remains. The only residual risk is the explicitly unclaimed real-PostgreSQL resubmission-race proof; the stateful fake proves rollback semantics for the repository transaction contract.
+
+## C7A1 reviewer-filter isolation
+
+### Status and scope
+
+- Consumed authoritative native status: `seller-property-proposals`, OpenSpec, `applyState: ready`, 31/77, repo-local workspace and sole allowed root `/Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-c7-reviewer-reads`; no action-context warnings.
+- C7A1 only: retained `review-filter-builder.ts` and its spec; reverted the C7A2 repository port/Prisma/spec delta to `7190f997`, removed four zero-byte C7B use-case placeholders, and confirmed no module or use-case wiring. C7A2 and C7B remain unchecked.
+- OpenSpec now orders C7A1 → C7A2 → C7B in 28 groups: S15 RED is C7A1, repository GREEN is C7A2, and S11/S14 stay C7B.
+
+### TDD Cycle Evidence
+
+| Task | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|
+| C7A1 pure builder / S15 RED | Clean redo evidence retained; initial current-builder run passed 18/18. | Observed clean redo skeleton failed 6/6 behavior assertions before the builder implementation; the later PENDING correction had 3 failed/70 passed before restoration. No new RED was fabricated. | Focused builder passed 18/18 before and after verification. | Retained mutations of outcome, round/decision tenant correlation, and highest-safe offset failed and were restored. | Defaults/constants remain explicit; no refactor beyond the retained pure builder. |
+
+### Verification, cleanup, and boundary
+
+- PASS: offline frozen install; Prisma generation; focused builder 18/18; forced uncached API Turbo typecheck 6/6; API lint; focused repeat 18/18; guarded localhost `viewpro_test` full API retry-0 159 files/1617 tests.
+- Cleanup/postcheck: base plus `viewpro_test_w1`–`w4` each reported `0|0|0` proposal/round/decision rows and zero non-idle connections. Dependency, generated, build, and cache residue is removed after this record.
+- No repository consumption, role/use case, U10B result, write, transport, UI, search, C7A2, C7B, C8, external, commit, rebase, push, PR, merge, review, or receipt work occurred. Final arithmetic is **188 untracked source + 58 tracked additions + 18 tracked deletions = 264 changed lines (≤400)**.
+
+## C7A1 evidence-ownership correction and independent recheck
+
+### Status and gate result
+
+- Consumed native `gentle-ai sdd-status seller-property-proposals`: OpenSpec `applyState: ready`, `next: apply`, `31/79` tasks complete, repo-local workspace `/Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-c7-reviewer-reads`, and that workspace as the sole allowed edit root.
+- The independent gate returned `CHANGES_REQUIRED`: C7A1 falsely claimed exact reviewer ordering even though the selected sequence is C7A1 filter/pagination → C7A2 repository/Prisma → C7B use cases.
+- Failed runtime evidence supplied by that gate is `sha256:68a0a26a4af8a22553fffb517c5db4aaa328c09a0e3b7bf68605e5c058162d37`.
+
+### Corrected ownership and verification state
+
+- C7A1 remains checked and owns only the approved byte-identical filter primitives and pagination; it no longer claims `COALESCE(latestSubmittedAt, createdAt) DESC, id DESC`.
+- C7A2's unchecked repository GREEN task now explicitly owns that exact ordering and its repository/order evidence remains pending; C7B remains the unchecked S11/S14 use-case boundary.
+- The correction changed no production or test bytes. Its independent recheck passed metadata consistency, fresh offline install, forced uncached typecheck 6/6, focused builder 18/18, `git diff --check`, guarded-localhost database postchecks, and recursive residue cleanup.
+- Canonical tracked-plus-untracked candidate digest `sha256:a7674772e447d7a47b7e72dd7ad0d25692616367e33fae75cfe3fe840af2869e` reproduced after cleanup. Runtime evidence `sha256:7c2a4d9cadd9e9e212cc731155522c3b392d58d9e1e166420a128f9f1c679f31` settled C7A1 passed and remediated the failed gate.
+
+### Byte preservation and arithmetic
+
+- Builder bytes remain `review-filter-builder.ts` `sha256:9bc112b23dc654bef7244b983cd0ed21f96930c9e7c59df9e5c837997893e4dd` and `review-filter-builder.spec.ts` `sha256:fdb272fd36995420971b0298d0765ca0774b27f9f0548c4369c3138c5886e46b`; the three repository files remain byte-identical to base `7190f997`.
+- Exact current-candidate arithmetic is `188` untracked builder/source-test lines + `78` tracked metadata additions + `18` tracked metadata deletions = **284 changed lines** (≤400). No source/test arithmetic is reassigned from C7A1 to C7A2; the 20-line metadata increase over the prior 264-line record is this evidence correction.
