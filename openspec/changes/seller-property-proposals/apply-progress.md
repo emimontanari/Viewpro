@@ -451,3 +451,37 @@ Manual authoritative OpenSpec status was consumed because no parent status was s
 
 - Builder bytes remain `review-filter-builder.ts` `sha256:9bc112b23dc654bef7244b983cd0ed21f96930c9e7c59df9e5c837997893e4dd` and `review-filter-builder.spec.ts` `sha256:fdb272fd36995420971b0298d0765ca0774b27f9f0548c4369c3138c5886e46b`; the three repository files remain byte-identical to base `7190f997`.
 - Exact current-candidate arithmetic is `188` untracked builder/source-test lines + `78` tracked metadata additions + `18` tracked metadata deletions = **284 changed lines** (≤400). No source/test arithmetic is reassigned from C7A1 to C7A2; the 20-line metadata increase over the prior 264-line record is this evidence correction.
+
+## C7A2 / #306 reviewer repository
+
+### Status, scope, and completion
+
+- Consumed native status for `seller-property-proposals`: OpenSpec `applyState: ready`, `next: apply`, `31/79`, exact workspace `/Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-c7a2-reviewer-repository`, and repo-local allowed root with no warning.
+- Added only the C7A2 reviewer port, Prisma list/detail adapter, and repository spec. Both C7A2 implementation-owned task rows are visibly `[x]`; C7B and all parent-owned rows are unchanged.
+- `listForReviewer` normalizes once, shares `buildReviewerWhere` with count, binds tenant/state/history/skip/limit through `Prisma.sql`, uses the exact fallback/tie order, hydrates with tenant plus IDs, restores raw order, and omits an ID deleted before hydration. `findForReviewer` scopes only tenant plus ID and returns identical `null` absence.
+
+### TDD Cycle Evidence
+
+| Cycle | Exact observed evidence |
+|---|---|
+| Safety net | `pnpm install --offline --frozen-lockfile`; `pnpm --filter @viewpro/api db:generate`; guarded `_test` focused repository command: **40/40 passed**. |
+| RED | Test-first reviewer cases initially collected and failed **6/46** only because methods were absent. After the compiling empty skeleton, the same command failed **6/46** on concrete empty-result, missing count/raw calls, and unscoped-detail assertions. |
+| GREEN | Smallest port/adapter implementation passed guarded focused repository coverage: **46/46**. |
+| TRIANGULATE | Restored mutants failed as required: outer raw tenant **1/46**, divergent count tenant **5/46**, fallback/tie ordering **1/46**, and scrambled hydration order **1/46**. The final matrix covers `NONE`, `PENDING`, `REJECTED`, `APPROVED`, default and page-2/50 pagination, exact bindings, all tenant correlations, count parity, deletion omission, and detail absence. |
+| REFACTOR | Replaced a conditional Vitest assertion after lint rejected it; focused coverage, lint, and the repeat all passed with behavior unchanged. |
+
+### Verification and cleanup
+
+- PASS — guarded `_test` focused repository spec retry-0: **46/46** (GREEN, refactor, and repeat).
+- PASS — `pnpm exec turbo run typecheck --filter=@viewpro/api --force`: **6/6 uncached**.
+- PASS — `pnpm --filter @viewpro/api lint`; the prior combined run stopped at the temporary test-only `no-conditional-expect` violation, then passed after its refactor.
+- PASS — guarded bounded full API `vitest run --retry=0`: **159 files / 1623 tests**.
+- Postcheck: `viewpro_test` plus `_w1`–`_w4` each had `0/0/0` proposal/round/decision rows; `pg_stat_activity` had zero non-idle test connections. No query fixture rows required deletion.
+
+### Workload, arithmetic, and remaining work
+
+- Assigned boundary is C7A2 / `C7A2-reviewer-repository-prisma`, `auto-chain` / stacked-to-develop, maximum **400** changed lines. No design deviation, relation include, mapping, actor/role input, command, C7B, transport, schema, Git, review, or delivery action occurred.
+- Before artifact closure: 121 tracked additions plus the already-created 98-line exploration artifact = 219 changed lines. Final arithmetic is recorded after residue cleanup; it includes the C7A2 task/progress closure and that exploration artifact.
+- Next implementation work is C7B only: `- [ ] RED → GREEN → TRIANGULATE → REFACTOR both reviewer roles, tenant-scoped all-state use-case reads, pending/newest defaults, and safe result visibility. <!-- sdd-owner: implementation -->` and `- [ ] Run the C7B reviewer-use-case specs and API typecheck; clear query fixtures and reviewer rows. <!-- sdd-owner: implementation -->`.
+- Chronological commands/results: `pnpm install --offline --frozen-lockfile` PASS; `pnpm --filter @viewpro/api db:generate` PASS; guarded `pnpm --filter @viewpro/api exec vitest run src/property-proposals/prisma-property-proposals.repository.spec.ts --retry=0` was 40/40 baseline, 6/46 absent-method pre-RED, 6/46 behavioral-skeleton RED, then 46/46 GREEN; its four restored mutants were 1/46, 5/46, 1/46, and 1/46 failures; final focused run was 46/46; forced Turbo typecheck was 6/6; lint first failed only `no-conditional-expect`, then focused/lint/repeat were 46/46/PASS/46/46; guarded `pnpm --filter @viewpro/api exec vitest run --retry=0` was 159 files/1623 tests.
+- Final candidate arithmetic after cleanup is 157 tracked additions + 2 tracked deletions + 98-line already-created exploration artifact = **257 changed lines**, within C7A2's 400-line maximum.

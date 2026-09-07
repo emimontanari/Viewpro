@@ -9,6 +9,10 @@ import { assertEditableProposalState } from './domain/state-machine'
 import { assertSubmissionFields } from './domain/normalization'
 import { lockEligibleSeller } from './helpers/lock-property-proposal'
 import { mapPropertyProposalSnapshot } from './helpers/map-property-proposal'
+import {
+  buildReviewerSqlPredicate, buildReviewerWhere, normalizeReviewerRead,
+  type PropertyProposalReviewFilters,
+} from './review-filter-builder'
 import { PrismaService } from '../database/prisma.service'
 import type {
   CreatePropertyProposalDraftInput,
@@ -16,6 +20,7 @@ import type {
   PropertyProposalsRepository,
   UpdatePropertyProposalInput,
   UpdatePropertyProposalResult,
+  ReviewerPropertyProposalsPage,
   SellerPropertyProposalsPage,
   SubmitPropertyProposalInput,
   SubmitPropertyProposalResult,
@@ -178,6 +183,38 @@ export class PrismaPropertyProposalsRepository implements PropertyProposalsRepos
         tenantId: input.tenantId,
         proposedByUserId: input.proposedByUserId,
       },
+    })
+  }
+
+  async listForReviewer(input: {
+    tenantId: string
+    filters: PropertyProposalReviewFilters
+  }): Promise<ReviewerPropertyProposalsPage> {
+    const normalized = normalizeReviewerRead(input.filters)
+    const where = buildReviewerWhere(input.tenantId, normalized)
+    const [ids, total] = await Promise.all([
+      this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+        SELECT p.id
+        FROM "property_proposals" p
+        WHERE p."tenantId" = ${input.tenantId}
+          ${buildReviewerSqlPredicate(normalized)}
+        ORDER BY COALESCE(p."latestSubmittedAt", p."createdAt") DESC, p.id DESC
+        OFFSET ${normalized.skip} LIMIT ${normalized.pageSize}
+      `),
+      this.prisma.propertyProposal.count({ where }),
+    ])
+    if (ids.length === 0) return { items: [], total }
+
+    const proposals = await this.prisma.propertyProposal.findMany({
+      where: { tenantId: input.tenantId, id: { in: ids.map(({ id }) => id) } },
+    })
+    const byId = new Map(proposals.map((proposal) => [proposal.id, proposal]))
+    return { items: ids.flatMap(({ id }) => byId.get(id) ?? []), total }
+  }
+
+  findForReviewer(input: { tenantId: string; proposalId: string }) {
+    return this.prisma.propertyProposal.findFirst({
+      where: { id: input.proposalId, tenantId: input.tenantId },
     })
   }
 }
