@@ -156,12 +156,12 @@ The following matrix is the narrow source/test allowlist for each independently 
 
 ## Sync
 
-- [ ] Start or reuse bounded review for each independently green P/I PR; confirm the chain context, fresh-`develop` predecessor merge, ≤400 changed lines, strict-TDD evidence, protected-surface regressions, and rollback boundary before merging. <!-- sdd-owner: parent -->
-- [ ] Sync implementation evidence and final verification outcomes into `openspec/changes/manager-home-reference-fidelity/` only after all I1–I6 PRs merge; do not mark unrun checks passed or alter canonical specs before acceptance. <!-- sdd-owner: parent -->
+- [x] Start or reuse bounded review for each independently green P/I PR; confirm the chain context, fresh-`develop` predecessor merge, ≤400 changed lines, strict-TDD evidence, protected-surface regressions, and rollback boundary before merging. <!-- sdd-owner: parent -->
+- [x] Sync implementation evidence and final verification outcomes into `openspec/changes/manager-home-reference-fidelity/` only after all I1–I6 PRs merge; do not mark unrun checks passed or alter canonical specs before acceptance. <!-- sdd-owner: parent -->
 
 ## Archive
 
-- [ ] Archive `openspec/changes/manager-home-reference-fidelity/` only after accepted implementation, verification evidence, required spec consolidation decision, and lifecycle gates; retain the change-local history as evidence. <!-- sdd-owner: parent -->
+- [x] Archive `openspec/changes/manager-home-reference-fidelity/` only after accepted implementation, verification evidence, required spec consolidation decision, and lifecycle gates; retain the change-local history as evidence. <!-- sdd-owner: parent -->
 
 ## Issue closure
 
