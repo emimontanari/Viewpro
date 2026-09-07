@@ -103,10 +103,10 @@ The following matrix is the narrow source/test allowlist for each independently 
 
 ### I4B — top-properties and selected-window context
 
-- [ ] RED in `operational-homepage/manager-home.test.tsx`: assert selected-window property context, real title/count/latest text/time/destination, true empty state, summary-unavailable panel, and long property wrapping; run the focused component command and record the intended failure. <!-- sdd-owner: implementation -->
-- [ ] GREEN only the I4B allowlist: replace the legacy manager top-properties rendering with a manager-only atomic-summary region and shared unavailable/retry behavior; rerun focused components successfully. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE I4B with 7d/14d/30d, bounded property ordering, valid versus unavailable destinations, and empty-ready versus error; rerun focused component and frontend suite commands successfully. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR I4B without modifying seller list contracts, rerun focused/typecheck/lint, record evidence, measure ≤400 lines, and prepare its independent rollbackable PR. <!-- sdd-owner: implementation -->
+- [x] RED in `operational-homepage/manager-home.test.tsx`: assert selected-window property context, real title/count/latest text/time/destination, true empty state, summary-unavailable panel, and long property wrapping; run the focused component command and record the intended failure. <!-- sdd-owner: implementation -->
+- [x] GREEN only the I4B allowlist: replace the legacy manager top-properties rendering with a manager-only atomic-summary region and shared unavailable/retry behavior; rerun focused components successfully. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE I4B with 7d/14d/30d, bounded property ordering, valid versus unavailable destinations, and empty-ready versus error; rerun focused component and frontend suite commands successfully. <!-- sdd-owner: implementation -->
+- [x] REFACTOR I4B without modifying seller list contracts, rerun focused/typecheck/lint, record evidence, measure ≤400 lines, and prepare its independent rollbackable PR. <!-- sdd-owner: implementation -->
 
 ### I5 — sellers, shortcuts, and forbidden content
 
