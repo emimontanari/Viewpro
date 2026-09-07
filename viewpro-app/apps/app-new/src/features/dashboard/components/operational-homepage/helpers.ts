@@ -3,6 +3,9 @@ import type {
   DashboardSummaryRange,
   DashboardSummaryTopProperty
 } from '@/features/dashboard/api/types';
+import { navGroups } from '@/config/nav-config';
+import { canAccessNavigation, toNavigationAccessContext } from '@/lib/navigation-access';
+import { canManagePropertyEngagements, type TenantMembership } from '@/lib/session';
 import { RANGE_OPTIONS } from './constants';
 
 const ARGENTINA_LOCALE = 'es-AR';
@@ -53,6 +56,57 @@ export function getDashboardEngagementHref(engagementId: string) {
   }
 
   return `/dashboard/product/${engagementId}`;
+}
+
+export function getDashboardSellerHref(sellerId: string) {
+  if (sellerId.trim() !== sellerId || !/^[A-Za-z0-9_-]+$/.test(sellerId)) {
+    return null;
+  }
+
+  return `/dashboard/seguimiento?sellerId=${encodeURIComponent(sellerId)}`;
+}
+
+export type ManagerShortcut = {
+  description: string;
+  href: string;
+  icon: keyof typeof import('@/components/icons').Icons;
+  label: string;
+};
+
+const MANAGER_NAV_SHORTCUTS = [
+  { description: 'Consultá las gestiones activas.', href: '/dashboard/product', label: 'Ver propiedades' },
+  { description: 'Revisá movimientos y próximos pasos.', href: '/dashboard/seguimiento', label: 'Ver seguimiento' },
+  { description: 'Consultá el equipo de la inmobiliaria.', href: '/dashboard/users', label: 'Ver equipo' }
+] as const;
+
+function getNavigationItem(href: string) {
+  return navGroups.flatMap((group) => group.items).find((item) => item.url === href);
+}
+
+export function getManagerShortcuts(
+  membership: TenantMembership | null | undefined,
+  isTenantLoading: boolean
+): ManagerShortcut[] {
+  const context = toNavigationAccessContext(membership ?? null, isTenantLoading);
+
+  if (!context.resolved || !context.membership) {
+    return [];
+  }
+
+  const shortcuts = MANAGER_NAV_SHORTCUTS.flatMap((shortcut) => {
+    const item = getNavigationItem(shortcut.href);
+
+    if (!item?.icon || !canAccessNavigation(item.access, context)) {
+      return [];
+    }
+
+    return [{ ...shortcut, icon: item.icon }];
+  });
+  const propertyList = shortcuts.find((shortcut) => shortcut.href === '/dashboard/product');
+
+  return propertyList && canManagePropertyEngagements(membership)
+    ? [...shortcuts, { description: 'Registrá una gestión nueva.', href: '/dashboard/product/new', icon: 'add', label: 'Nueva propiedad' }]
+    : shortcuts;
 }
 
 export function formatArgentinaActivityTime(isoDateTime: string) {
