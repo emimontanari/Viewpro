@@ -3,7 +3,9 @@ import type { StagedPropertyScalarsInput } from './domain/normalization'
 import { STAGED_PROPERTY_SCALAR_KEYS } from './domain/normalization'
 import { buildUpdateReplayIdentity, matchesUpdateReplayIdentity } from './domain/replay-identity'
 import { assertEditableProposalState } from './domain/state-machine'
+import { assertSubmissionFields } from './domain/normalization'
 import { lockEligibleSeller } from './helpers/lock-property-proposal'
+import { mapPropertyProposalSnapshot } from './helpers/map-property-proposal'
 import { PrismaService } from '../database/prisma.service'
 import type {
   CreatePropertyProposalDraftInput,
@@ -12,6 +14,8 @@ import type {
   UpdatePropertyProposalInput,
   UpdatePropertyProposalResult,
   SellerPropertyProposalsPage,
+  SubmitPropertyProposalInput,
+  SubmitPropertyProposalResult,
 } from './property-proposals.repository'
 
 @Injectable()
@@ -26,6 +30,43 @@ export class PrismaPropertyProposalsRepository implements PropertyProposalsRepos
         data: { ...input, state: 'BORRADOR', version: 1, latestSubmittedAt: null },
       })
       return { kind: 'created', proposal }
+    })
+  }
+
+  async submitForSeller(input: SubmitPropertyProposalInput): Promise<SubmitPropertyProposalResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM property_proposals
+        WHERE id = ${input.proposalId} AND "tenantId" = ${input.tenantId}
+          AND "proposedByUserId" = ${input.proposedByUserId}
+        FOR UPDATE
+      `
+      if (locked.length === 0) return { kind: 'notFound' }
+
+      const proposal = await tx.propertyProposal.findFirst({
+        where: { id: input.proposalId, tenantId: input.tenantId, proposedByUserId: input.proposedByUserId },
+      })
+      if (!proposal) return { kind: 'notFound' }
+      if (!await lockEligibleSeller(tx, { ...input, operation: 'submit' })) return { kind: 'ineligible' }
+      if (proposal.state !== 'BORRADOR' || proposal.version !== input.expectedVersion) return { kind: 'conflict' }
+
+      const snapshot = mapPropertyProposalSnapshot(proposal)
+      try {
+        assertSubmissionFields(snapshot)
+      } catch {
+        return { kind: 'incomplete' }
+      }
+      const submittedAt = new Date()
+      const completeSnapshot = snapshot as typeof snapshot & { title: string }
+      const round = await tx.propertyProposalReviewRound.create({
+        data: { ...completeSnapshot, tenantId: input.tenantId, proposalId: proposal.id, roundNumber: 1,
+          submittedByUserId: input.proposedByUserId, submittedAt },
+      })
+      const updated = await tx.propertyProposal.update({
+        where: { id: proposal.id },
+        data: { state: 'EN_REVISION', latestSubmittedAt: submittedAt, version: { increment: 1 } },
+      })
+      return { kind: 'submitted', proposal: updated, round }
     })
   }
 
