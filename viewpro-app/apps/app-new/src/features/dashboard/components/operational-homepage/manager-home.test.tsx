@@ -66,10 +66,33 @@ const zeroSummary = {
   topProperties: [],
   topSellers: []
 } as unknown as DashboardSummaryResponse;
-const nonzeroSummary = {
-  ...zeroSummary,
-  counters: { activeProperties: 2, attentionNeeded: 3, movementsInRange: 5, staleProperties: 4 }
-};
+    const nonzeroSummary = {
+      ...zeroSummary,
+      counters: { activeProperties: 2, attentionNeeded: 3, movementsInRange: 5, staleProperties: 4 }
+    };
+    const activitySummary = {
+      ...nonzeroSummary,
+      recentActivity: [
+        {
+          createdAt: '2026-05-25T03:00:00.000Z',
+          id: 'movement-1',
+          kind: 'movement',
+          observation: 'Recibimos una consulta concreta',
+          property: {
+            addressLine: 'Avenida Siempre Viva 123',
+            engagementId: 'engagement-1',
+            title: 'Casa con jardín'
+          }
+        },
+        {
+          createdAt: '2026-05-25T04:00:00.000Z',
+          documentRequest: { title: 'Escritura pendiente' },
+          id: 'document-1',
+          kind: 'document_request',
+          property: { addressLine: null, engagementId: 'engagement-2', title: 'Departamento centro' }
+        }
+      ]
+    } as unknown as DashboardSummaryResponse;
 
 type ManagerQueryState = {
   data?: DashboardSummaryResponse;
@@ -202,11 +225,15 @@ describe('manager home query state', () => {
 
     setManagerQuery({ data: nonzeroSummary, isError: true, isFetching: true, isSuccess: false });
     homepage.rerender(<OperationalHomepage />);
-    expect(screen.getByRole('button', { name: 'Reintentando resumen' })).toBeDisabled();
+      expect(
+        within(screen.getByRole('alert')).getByRole('button', { name: 'Reintentando resumen' })
+      ).toBeDisabled();
 
-    setManagerQuery({ data: nonzeroSummary, isError: true, isSuccess: false });
-    homepage.rerender(<OperationalHomepage />);
-    await user.click(screen.getByRole('button', { name: 'Reintentar resumen' }));
+      setManagerQuery({ data: nonzeroSummary, isError: true, isSuccess: false });
+      homepage.rerender(<OperationalHomepage />);
+      await user.click(
+        within(screen.getByRole('alert')).getByRole('button', { name: 'Reintentar resumen' })
+      );
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
@@ -326,7 +353,86 @@ describe('manager home query state', () => {
     expect(document.body.textContent).not.toMatch(/puntaje|calificación|trofeo|visitas de hoy|alertas|variación|mensajes enviados|%/i);
   });
 
-  it.each(['7d', '14d', '30d'] as const)('renders %s labels, helpers, and zero-success copy', async (range) => {
+    it('renders bounded truthful recent activity with Buenos Aires timestamps and engagement links', () => {
+      setManagerQuery({ data: activitySummary });
+
+      render(<OperationalHomepage />);
+
+      const activity = screen.getByRole('heading', { level: 2, name: 'Actividad reciente' }).parentElement!
+        .parentElement!.parentElement!;
+      expect(within(activity).getByText('Movimiento')).toBeVisible();
+      expect(within(activity).getByText('Recibimos una consulta concreta')).toBeVisible();
+      expect(within(activity).getByText('Casa con jardín')).toBeVisible();
+      expect(within(activity).getByText('Documento')).toBeVisible();
+      expect(within(activity).getByText('Escritura pendiente')).toBeVisible();
+      expect(within(activity).getByRole('link', { name: 'Abrir actividad: Recibimos una consulta concreta' })).toHaveAttribute(
+        'href',
+        '/dashboard/product/engagement-1'
+      );
+      expect(activity.querySelector('time')).toHaveAttribute('dateTime', '2026-05-25T03:00:00.000Z');
+      expect(within(activity).getByText('25 de may de 2026, 12:00 a. m.')).toBeVisible();
+    });
+
+    it('bounds activity without reordering, keeps long text readable, and fails closed on an invalid destination', () => {
+      const longTitle = 'Actividad extensa para comprobar que el contenido real sigue disponible sin recortes';
+      const boundedActivity = Array.from({ length: 6 }, (_, index) => ({
+        createdAt: '2026-05-25T03:00:00.000Z',
+        id: `movement-${index + 1}`,
+        kind: 'movement',
+        observation: index === 0 ? longTitle : `Movimiento ${index + 1}`,
+        property: {
+          addressLine: null,
+          engagementId: index === 0 ? 'invalid/id' : index === 1 ? '' : `engagement-${index + 1}`,
+          title: index === 0 ? `${longTitle} de propiedad` : `Propiedad ${index + 1}`
+        }
+      }));
+      setManagerQuery({
+        data: { ...activitySummary, recentActivity: boundedActivity } as DashboardSummaryResponse
+      });
+
+      render(<OperationalHomepage />);
+
+      const activity = screen.getByRole('heading', { level: 2, name: 'Actividad reciente' }).parentElement!
+        .parentElement!.parentElement!;
+      const rows = within(activity).getByRole('list').children;
+      expect(rows).toHaveLength(5);
+      expect(rows[0]).toHaveTextContent(longTitle);
+      expect(rows[1]).toHaveTextContent('Movimiento 2');
+      expect(within(activity).queryByText('Movimiento 6')).not.toBeInTheDocument();
+      expect(within(activity).queryByRole('link', { name: `Abrir actividad: ${longTitle}` })).not.toBeInTheDocument();
+      expect(within(activity).queryByRole('link', { name: 'Abrir actividad: Movimiento 2' })).not.toBeInTheDocument();
+    });
+
+    it.each(['7d', '14d', '30d'] as const)('uses %s activity context and distinguishes empty, loading, and unavailable states', async (range) => {
+      const user = userEvent.setup();
+      setManagerQuery();
+      const homepage = render(<OperationalHomepage />);
+      await user.click(screen.getByRole('button', { name: `${range.replace('d', '')} días` }));
+      expect(screen.getByText(`Movimientos y solicitudes documentales de los últimos ${range.replace('d', '')} días.`)).toBeVisible();
+      expect(screen.getByText('Sin movimientos recientes')).toBeVisible();
+
+      setManagerQuery({ data: undefined, isLoading: true, isSuccess: false });
+      homepage.rerender(<OperationalHomepage />);
+      expect(screen.getByLabelText('Cargando resumen operativo')).toBeVisible();
+      expect(screen.queryByText('Sin movimientos recientes')).not.toBeInTheDocument();
+    });
+
+    it('retries the unavailable activity panel once and disables its atomic summary action while retrying', async () => {
+      const user = userEvent.setup();
+      setManagerQuery({ data: undefined, isError: true, isFetching: true, isSuccess: false });
+      const homepage = render(<OperationalHomepage />);
+      const activity = screen.getByRole('heading', { level: 2, name: 'Actividad reciente' }).parentElement!
+        .parentElement!.parentElement!;
+      expect(within(activity).getByText('Actividad reciente no disponible')).toBeVisible();
+      expect(within(activity).getByRole('button', { name: 'Reintentando resumen' })).toBeDisabled();
+
+      setManagerQuery({ data: undefined, isError: true, isSuccess: false });
+      homepage.rerender(<OperationalHomepage />);
+      await user.click(within(activity).getByRole('button', { name: 'Reintentar resumen' }));
+      expect(refetch).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['7d', '14d', '30d'] as const)('renders %s labels, helpers, and zero-success copy', async (range) => {
     const user = userEvent.setup();
     setManagerQuery();
     render(<OperationalHomepage />);

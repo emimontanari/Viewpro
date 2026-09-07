@@ -47,6 +47,34 @@ export function getRangeOption(range: DashboardSummaryRange) {
   return RANGE_OPTIONS.find((option) => option.range === range) ?? RANGE_OPTIONS[0];
 }
 
+export function getDashboardEngagementHref(engagementId: string) {
+  if (engagementId.trim() !== engagementId || !/^[A-Za-z0-9_-]+$/.test(engagementId)) {
+    return null;
+  }
+
+  return `/dashboard/product/${engagementId}`;
+}
+
+export function formatArgentinaActivityTime(isoDateTime: string) {
+  const instant = new Date(isoDateTime);
+
+  if (Number.isNaN(instant.getTime())) {
+    return null;
+  }
+
+  return {
+    dateTime: instant.toISOString(),
+    label: new Intl.DateTimeFormat(ARGENTINA_LOCALE, {
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      month: 'short',
+      timeZone: ARGENTINA_TIME_ZONE,
+      year: 'numeric'
+    }).format(instant)
+  };
+}
+
 export function formatArgentinaCalendarDate(instant: Date) {
   const parts = new Intl.DateTimeFormat(ARGENTINA_LOCALE, {
     day: '2-digit',

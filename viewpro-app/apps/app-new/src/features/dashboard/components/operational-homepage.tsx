@@ -14,7 +14,11 @@ import { getUserDisplayName, type TenantMembership } from '@/lib/session';
 import { useActiveTenant, useSession } from '@/lib/session-context';
 import { KpiCard } from './operational-homepage/primitives';
 import { PriorityLink } from './operational-homepage/priority-panel';
-import { ManagerSummary } from './operational-homepage/manager-sections';
+import {
+  ManagerRecentActivity,
+  ManagerSummary,
+  ManagerUnavailablePanel
+} from './operational-homepage/manager-sections';
 import {
   PropertyPreviewList,
   RecentActivityList,
@@ -89,7 +93,6 @@ function ManagerOperationalHomepage({
   const selectedRangeOption = getRangeOption(selectedRange);
   const summary = useManagerSummary({ range: selectedRange, tenantId: activeTenantId });
   const data = summary.status === 'ready' ? summary.data : null;
-  const recentActivity = data?.recentActivity ?? [];
   const topProperties = data?.topProperties ?? [];
   const sellerInsights = data?.topSellers ?? [];
 
@@ -116,14 +119,12 @@ function ManagerOperationalHomepage({
       {summary.status === 'ready' ? (
         <ManagerSummary data={summary.data} onRangeChange={setSelectedRange} range={selectedRange} />
       ) : summary.status === 'error' ? (
-        <div role='alert' className='rounded-2xl border border-dashed p-5'>
-          <p className='font-semibold'>Resumen operativo no disponible</p>
-          <p className='mt-1 text-sm text-muted-foreground'>
-            No mostramos datos anteriores como actuales.
-          </p>
-          <Button className='mt-4' disabled={summary.retrying} onClick={summary.retry}>
-            {summary.retrying ? 'Reintentando resumen' : 'Reintentar resumen'}
-          </Button>
+        <div role='alert'>
+          <ManagerUnavailablePanel
+            retry={summary.retry}
+            retrying={summary.retrying}
+            title='Resumen operativo no disponible'
+          />
         </div>
       ) : (
         <div
@@ -132,28 +133,9 @@ function ManagerOperationalHomepage({
         />
       )}
 
-      <ManagerSummaryGate summary={summary}>
-      <div className='grid gap-5 xl:grid-cols-2'>
-        <Card className='py-0'>
-          <CardHeader className='flex flex-col gap-2 p-5 pb-0 sm:flex-row sm:items-start sm:justify-between'>
-            <div>
-              <CardTitle role='heading' aria-level={2}>
-                Movimientos rápidos
-              </CardTitle>
-              <p className='mt-1 text-sm text-muted-foreground'>
-                Últimas señales de avance para entender qué cambió en el período.
-              </p>
-            </div>
-            <Button asChild variant='outline' size='sm'>
-              <Link href='/dashboard/seguimiento'>Ver todo</Link>
-            </Button>
-          </CardHeader>
-          <CardContent className='p-5'>
-            <RecentActivityList isLoading={false} items={recentActivity} />
-          </CardContent>
-        </Card>
-      </div>
+      <ManagerRecentActivity range={selectedRange} summary={summary} />
 
+      <ManagerSummaryGate summary={summary}>
       <div className='grid gap-5 xl:grid-cols-2'>
         <TopPropertiesCard
           isLoading={false}
