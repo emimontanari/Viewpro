@@ -151,8 +151,8 @@ The following matrix is the narrow source/test allowlist for each independently 
 
 ## Verification
 
-- [ ] Before each implementation PR, run `git diff --check`, `git diff --stat`, and `git status --short` from `viewpro-app/`; record actual additions + deletions, command exits, and focused evidence in `openspec/changes/manager-home-reference-fidelity/apply-progress.md`, stopping for a measured >400-line cohesive diff. <!-- sdd-owner: implementation -->
-- [ ] After I6, run the shared-matrix focused component, BFF, owner, frontend suite, typecheck, lint, targeted seeded, and full seeded commands; run API validation/typecheck/test only with a visibly disposable `DATABASE_URL`; record every pass, skip, and blocker in `openspec/changes/manager-home-reference-fidelity/apply-progress.md`. <!-- sdd-owner: implementation -->
+- [x] Before each implementation PR, run `git diff --check`, `git diff --stat`, and `git status --short` from `viewpro-app/`; record actual additions + deletions, command exits, and focused evidence in `openspec/changes/manager-home-reference-fidelity/apply-progress.md`, stopping for a measured >400-line cohesive diff. Historical limitation accepted by the human: all eight PRs were recomputed at ≤400, but I1's exact pre-PR timing log is incomplete and is not claimed to exist. <!-- sdd-owner: implementation -->
+- [x] After I6, run the shared-matrix focused component, BFF, owner, frontend suite, typecheck, lint, targeted seeded, and full seeded commands; run API validation/typecheck/test only with a visibly disposable `DATABASE_URL`; record every pass, skip, and blocker in `openspec/changes/manager-home-reference-fidelity/apply-progress.md`. <!-- sdd-owner: implementation -->
 
 ## Sync
 
