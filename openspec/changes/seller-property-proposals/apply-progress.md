@@ -520,3 +520,85 @@ Manual authoritative OpenSpec status was consumed because no parent status was s
 
 - C7B is complete within the parent-selected `auto-chain` / stacked-to-`develop` C7B slice. The next implementation-owned rows are the U9 rejection/replay rows; parent lifecycle rows remain deferred and byte-for-byte unchanged.
 - Residual risk: this use-case boundary intentionally does not wire a module or transport and intentionally defers durable self-review denial to U9 and viewer-specific canonical-result disclosure to U10B.
+
+## C8A / U9 rejection, replay, and transition conflicts
+
+### Status and delivery boundary
+
+```yaml
+artifactStore: openspec
+changeName: seller-property-proposals
+applyState: ready
+nextRecommended: apply
+status: native 35/79 before C8A; exact repo-local workspace seller-property-proposals-c8a-rejection
+allowedEditRoots: user-supplied C8A source/spec and OpenSpec paths
+workUnit: C8A/U9 only; auto-chain / stacked-to-develop; max 400 changed lines
+```
+
+- The native status command confirmed this worktree and `apply: ready`; the two U9 rows are now visibly `[x]` after all required gates. C8B/U10A and every parent-owned row remain unchanged.
+- Added only the rejection use case, pure transition helper, and their colocated specs. There is no repository, schema, module, controller, DTO, approval/materializer, canonical, notification, analytics, or UI change.
+- Rejection validates unknown direct input before the transaction, locks the tenant-scoped proposal then sorted users and sorted exact memberships with `FOR NO KEY UPDATE`, checks current reviewer authority and durable self-review before replay, appends one normalized `REJECTED` decision, then moves the proposal to `RECHAZADA` with one version increment.
+
+### TDD Cycle Evidence
+
+| Task | Safety net / RED | GREEN | TRIANGULATE and mutation evidence | REFACTOR |
+|---|---|---|---|---|
+| U9 rejection and conflict helper | New specs first failed to import (0 collected); a compiling skeleton then produced **12/12 collected behavioral failures**. | Focused specs passed **2 files / 12 tests**. | Authority-before-replay, durable self-review, user-lock order, reason normalization, exact replay, competing conflict, and decision-before-proposal-update rollback mutants each failed and were restored. | Removed an unused test helper; focused specs remained green. |
+
+### Verification, cleanup, and arithmetic
+
+- PASS — offline frozen install, Prisma generation, guarded localhost `_test` focused specs retry-0: **2 files / 12 tests**, then repeated **12/12**.
+- PASS — forced uncached `pnpm exec turbo run typecheck --filter=@viewpro/api --force`: **6/6**; `pnpm --filter @viewpro/api lint`; bounded guarded-localhost `pnpm --filter @viewpro/api exec vitest run --retry=0`: **163 files / 1651 tests**.
+- Cleanup deleted decisions → rounds → proposals in `viewpro_test` and `viewpro_test_w1`–`viewpro_test_w4`; each reports `0|0|0`, and `pg_stat_activity` reports zero non-idle test connections. The operation creates no canonical rows, so no asset cleanup was needed.
+- Topology truth is now 29 groups: C8A is U9 rejection/replay/conflicts and C8B is future U10A approval materialization; C9–C20 names are unchanged.
+- Initial physical arithmetic is **268 changed lines**: 47 tracked additions + 9 tracked deletions, 22 exploration lines, and 190 source/test lines. The former 282 figure falsely counted a 36-line exploration allocation instead of the actual 22-line file; the independent correction below records the final physical total. Recursive dependency/generated/build/report/upload/cache, `.turbo`, coverage, and `*.tsbuildinfo` cleanup follows; the tracked generated `.gitkeep` is preserved.
+
+### Remaining work and risks
+
+- C8B/U10A is the next unchecked implementation boundary; U9 does not wire the future transport/module surface or alter C6 explicit resubmission behavior.
+- The pre-correction fake was not stateful and did not prove rollback durability; the independent correction below replaces that claim with a staged, rollback-capable fake. The later verification work owns broader real-PostgreSQL competing-transition race evidence.
+
+## C8A / U9 independent evidence correction
+
+### Scope and strict TDD chronology
+
+- Consumed native OpenSpec status: `seller-property-proposals`, `applyState: ready`, `nextRecommended: apply`, 37/79 completed, with this C8A worktree as the repo-local allowed edit root. The acquired correction attempt and `auto-chain` C8A boundary leave at most 154 lines before the 400-line cap; no task, topology, delivery-plan, commit, rebase, push, PR, merge, review, or receipt action was taken.
+- Expanded only the allowed U9 specs and this progress artifact. The rejection/conflict production bytes remain unchanged because no newly added assertion exposed a production contract defect.
+
+| Cycle | Truthful evidence |
+|---|---|
+| RED | Assertions and the rollback fake were added first. The first focused run failed 3 tests: an `undefined` default in the new test helper hid invalid input, raw lock bindings were read from template strings rather than mock arguments, and former-reviewer denial was incorrectly expected to carry a conflict code. These were test-harness expectation errors, not production defects. |
+| GREEN | After correcting the test helper and bindings, the focused U9 command passed 2 files / 15 tests without production changes. The former-reviewer case now uses a durable exact replay shape plus lost `AGENT` authority and proves 403 denial/no writes before replay. |
+| TRIANGULATE | Mutating `> 1000` to `>= 1000` failed the exactly-1000 acceptance assertion; mutating exact reviewer identity `===` to `!==` failed both pure and use-case exact-replay assertions. Both mutations were restored. |
+| REFACTOR | Replaced the prior non-stateful rollback assertion with a transaction fake that stages a decision, restores durable decisions and proposal state on update failure, and asserts no durable decision or state change. |
+
+### Corrected evidence
+
+- Exact coded outcomes are asserted for self-review 403 `PROPERTY_PROPOSAL_SELF_REVIEW_FORBIDDEN`, missing and cross-tenant proposal-lock absence 404 `PROPERTY_PROPOSAL_NOT_FOUND`, and actor/reason/outcome/state/missing-round competing variants 409 `PROPERTY_PROPOSAL_STATE_CONFLICT`.
+- The lock test now asserts proposal and tenant bindings, sorted reviewer-plus-proposer user bindings, and exact-tenant sorted membership bindings from raw-call arguments; it no longer relies on SQL text alone.
+- Reason coverage proves trimmed 1000 normalized characters are accepted and persisted, while 1001 is rejected before a transaction. Rejection remains non-materializing in the focused fake.
+### Verification, cleanup, and final arithmetic
+
+- PASS — guarded localhost U9 retry-0: 2 files / 15 tests; final repeat also 2 files / 15 tests.
+- PASS — `pnpm exec turbo run typecheck --filter=@viewpro/api --force`: 6/6 uncached tasks.
+- PASS — `pnpm --filter @viewpro/api lint`.
+- FAIL (unrelated) — guarded full API retry-0: 162 files / 1653 tests passed; `src/feedback/__tests__/feedback-rate-limit.repository.spec.ts` failed its sixth concurrent reservation with Prisma transaction-start timeout. It is outside the C8A edit surface.
+- Guarded cleanup deleted decisions → rounds → proposals and postchecked 0/0/0 proposal/round/decision rows and zero non-idle `viewpro_test*` connections; recursive dependency/build residue was removed.
+- No production code changed: all C8A production hashes remain as recorded after cleanup.
+- **Final physical arithmetic: 76 tracked additions + 9 tracked deletions + 22 exploration lines + 256 source/test lines = 363 changed lines; correction delta is 95 lines from the actual initial 268, leaving 37 lines below 400.**
+
+## C8A authority-matrix CHANGES_REQUIRED correction
+
+| TDD Cycle Evidence | Safety net / RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|
+| U9 authority matrix | Baseline focused U9 was 15/15; test-first authority cases passed because production already met the contract. | Final focused U9 is 2 files/22 tests. | Principal, active-user-status, and review-capability mutants failed 1, 1, and 2 tests respectively. | Removed conditional expectations after lint; no production refactor. |
+
+- Status: native OpenSpec `ready`/`apply`, 37/79, repo-local sole allowed root, no action-context warnings; C8A remains the auto-chain under-400 slice.
+- Independent gate was `CHANGES_REQUIRED`: the prior authority assertion was tautological; the correction is a parameterized active manager/principal success and generic-403 no-write matrix for inactive user/membership, AGENT, and manager/principal capability loss.
+- Production defect: none; `reject-property-proposal.use-case.ts` remains byte-identical and former-AGENT replay denial remains covered.
+- PASS: uncached API Turbo typecheck 6/6, API lint, and focused U9 retry-0 repeat 2 files/22 tests.
+- FAIL (unrelated): full API retry-0 was 162/163 files and 1660/1661 tests; `test/analytics.e2e-spec.ts` timed out at 5s outside this edit surface.
+- Guarded localhost cleanup produced zero proposal/round/decision rows and zero non-idle test connections; recursive dependency/build residue cleanup followed.
+- Final physical arithmetic: 92 additions + 9 deletions + 299 untracked lines = **400 changed lines** (at cap); no compression or size exception.
+- Hashes: production `85c0f76b70610b9a797982dda3361b3b36dcd2e6548dc9c94f6bd1ce5c295fe6`; authority spec `927f1fef21da7f27ea1153a099165a69fcefcae01640d7944274ac0c9462af59`.
+- Persisted U9 implementation task rows remain visibly `[x]`; C8B and parent-owned lifecycle work remain deferred.
