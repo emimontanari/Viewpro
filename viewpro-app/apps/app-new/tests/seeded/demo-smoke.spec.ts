@@ -67,7 +67,7 @@ test('demo user can navigate the seeded operational workflow', async ({ page }) 
 
   await page.waitForURL('**/dashboard');
   await expect(page.getByRole('heading', { name: 'Hola, Demo ViewPro' })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Ver propiedades/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Resumen operativo', level: 2 })).toBeVisible();
 
   await page.goto('/dashboard/product');
   await expect(page.getByRole('heading', { name: 'Propiedades' }).first()).toBeVisible();

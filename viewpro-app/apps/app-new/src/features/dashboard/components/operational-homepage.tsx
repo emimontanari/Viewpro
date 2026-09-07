@@ -145,7 +145,7 @@ function ManagerOperationalHomepage({
               </p>
             </div>
             <Button asChild variant='outline' size='sm'>
-              <Link href='/dashboard/seguimiento'>Ver seguimiento</Link>
+              <Link href='/dashboard/seguimiento'>Ver todo</Link>
             </Button>
           </CardHeader>
           <CardContent className='p-5'>

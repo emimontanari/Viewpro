@@ -367,7 +367,7 @@ describe('OperationalHomepage', () => {
     ).toHaveAttribute('href', '/dashboard/seguimiento');
     expect(screen.getByText('Se coordinó una visita para mañana')).toBeVisible();
     expect(screen.getAllByText('Departamento con vista abierta')[0]).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Ver seguimiento' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Ver todo' })).toHaveAttribute(
       'href',
       '/dashboard/seguimiento'
     );
