@@ -7,7 +7,8 @@ import type { ActivityFeedItem } from '@/features/activity/api/types';
 import type {
   DashboardSummaryRange,
   DashboardSummaryResponse,
-  DashboardSummaryTopProperty
+  DashboardSummaryTopProperty,
+  DashboardSummaryTopSeller
 } from '@/features/dashboard/api/types';
 import {
   formatArgentinaActivityTime,
@@ -16,7 +17,9 @@ import {
   getActivityTitle,
   getDashboardEngagementHref,
   getDashboardPropertyTitle,
-  getRangeOption
+  getDashboardSellerHref,
+  getRangeOption,
+  type ManagerShortcut
 } from './helpers';
 import type { ManagerSummaryState } from './manager-home';
 import { DashboardRowActionLink, EmptyPanel, ListSkeleton, ManagerMetricCard } from './primitives';
@@ -237,6 +240,107 @@ function ManagerTopPropertyRows({ items }: { items: DashboardSummaryTopProperty[
         );
       })}
     </ol>
+  );
+}
+
+export function ManagerTopSellers({ summary }: { summary: ManagerSummaryState }) {
+  const content =
+    summary.status === 'loading' ? (
+      <SellerListSkeleton />
+    ) : summary.status === 'error' ? (
+      <ManagerUnavailablePanel
+        retry={summary.retry}
+        retrying={summary.retrying}
+        retryingLabel='Reintentando vendedores'
+        retryLabel='Reintentar vendedores'
+        title='Vendedores con más movimiento no disponibles'
+      />
+    ) : summary.data.topSellers.length === 0 ? (
+      <EmptyPanel
+        description='No hubo movimientos manuales de vendedores en este período.'
+        icon={Icons.teams}
+        title='Sin movimientos de vendedores'
+      />
+    ) : (
+      <ManagerTopSellerRows items={summary.data.topSellers.slice(0, 3)} />
+    );
+
+  return (
+    <Card className='py-0'>
+      <CardHeader className='p-5 pb-0'>
+        <CardTitle role='heading' aria-level={2}>Vendedores con más movimiento</CardTitle>
+        <p className='mt-1 text-sm text-muted-foreground'>Ranking por movimientos manuales del período.</p>
+      </CardHeader>
+      <CardContent className='p-5'>{content}</CardContent>
+    </Card>
+  );
+}
+
+function SellerListSkeleton() {
+  return (
+    <div aria-label='Cargando vendedores' className='space-y-3'>
+      {Array.from({ length: 3 }, (_, index) => <div key={index} className='h-20 animate-pulse rounded-2xl border bg-muted' />)}
+    </div>
+  );
+}
+
+function ManagerTopSellerRows({ items }: { items: DashboardSummaryTopSeller[] }) {
+  return (
+    <ol className='space-y-3'>
+      {items.map((item) => {
+        const href = getDashboardSellerHref(item.userId);
+        const timestamp = formatArgentinaActivityTime(item.lastMovementAt);
+
+        return (
+          <li key={item.userId} className='rounded-2xl border bg-muted/20 p-3'>
+            <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+              <div className='min-w-0 space-y-1'>
+                {item.name ? <p className='break-words font-medium'>{item.name}</p> : null}
+                <p className='break-all text-sm text-muted-foreground'>{item.email}</p>
+                <p className='text-sm text-muted-foreground'>
+                  {formatCount(item.movementCount, 'movimiento manual', 'movimientos manuales')} ·{' '}
+                  {formatCount(item.touchedPropertiesCount, 'gestión con movimiento', 'gestiones con movimiento')}
+                  <span className='sr-only'> · {formatCount(item.touchedPropertiesCount, 'propiedad tocada', 'propiedades tocadas')}</span>
+                </p>
+                {timestamp ? (
+                  <time className='block text-sm text-muted-foreground' dateTime={timestamp.dateTime}>
+                    {timestamp.label}
+                  </time>
+                ) : null}
+              </div>
+              {href ? (
+                <DashboardRowActionLink
+                  ariaLabel={`Ver movimientos de ${item.name || item.email}`}
+                  href={href}
+                  label='Ver seguimiento'
+                />
+              ) : null}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+export function ManagerShortcuts({ shortcuts }: { shortcuts: ManagerShortcut[] }) {
+  return (
+    <Card className='py-0'>
+      <CardHeader className='p-5 pb-0'>
+        <CardTitle role='heading' aria-level={2}>Accesos directos</CardTitle>
+        <p className='mt-1 text-sm text-muted-foreground'>Destinos disponibles según tus permisos actuales.</p>
+      </CardHeader>
+      <CardContent className='p-5'>
+        {shortcuts.length === 0 ? <p className='text-sm text-muted-foreground'>No hay accesos directos disponibles.</p> : (
+          <ul className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
+            {shortcuts.map((shortcut) => {
+              const Icon = Icons[shortcut.icon];
+              return <li key={shortcut.href}><Link className='flex min-h-11 items-center gap-3 rounded-2xl border bg-muted/20 p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring' href={shortcut.href}><Icon aria-hidden='true' className='size-5 shrink-0' /><span className='min-w-0'><span className='block font-medium'>{shortcut.label}</span><span className='block text-sm text-muted-foreground'>{shortcut.description}</span></span></Link></li>;
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

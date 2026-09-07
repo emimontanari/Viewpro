@@ -37,11 +37,16 @@ const useQueryMock = vi.mocked(useQuery);
 const refetch = vi.fn();
 type TenantContext = ReturnType<typeof useActiveTenant>;
 
-function managerTenantContext(id: string, name: string, slug: string): TenantContext {
+function managerTenantContext(
+  id: string,
+  name: string,
+  slug: string,
+  permissions = ['engagements:view:all']
+): TenantContext {
   return {
     activeMembership: {
       id: `membership-${id}`,
-      permissions: ['engagements:view:all'],
+      permissions,
       role: 'MANAGER',
       tenant: { id, name, slug, status: 'ACTIVE' }
     },
@@ -91,6 +96,15 @@ const zeroSummary = {
           movementCount: 2,
           title: null
         }
+      ]
+    } as unknown as DashboardSummaryResponse;
+    const sellerSummary = {
+      ...nonzeroSummary,
+      topSellers: [
+        { email: 'ana@example.com', lastMovementAt: '2026-05-25T03:00:00.000Z', movementCount: 4, name: 'Ana Pérez', touchedPropertiesCount: 2, userId: 'seller-ana' },
+        { email: 'bruno@example.com', lastMovementAt: '2026-05-25T04:00:00.000Z', movementCount: 3, name: 'Bruno Díaz', touchedPropertiesCount: 1, userId: 'seller-bruno' },
+        { email: 'carla@example.com', lastMovementAt: '2026-05-25T05:00:00.000Z', movementCount: 2, name: 'Carla Ruiz', touchedPropertiesCount: 2, userId: 'seller-carla' },
+        { email: 'diego@example.com', lastMovementAt: '2026-05-25T06:00:00.000Z', movementCount: 1, name: 'Diego Soto', touchedPropertiesCount: 1, userId: 'seller-diego' }
       ]
     } as unknown as DashboardSummaryResponse;
     const activitySummary = {
@@ -192,6 +206,15 @@ function expectDocumentOrder(...elements: HTMLElement[]) {
 function getTopPropertiesSection() {
   return screen.getByRole('heading', { level: 2, name: 'Propiedades con más movimiento' }).parentElement!
     .parentElement!.parentElement!;
+}
+
+function getTopSellersSection() {
+  return screen.getByRole('heading', { level: 2, name: 'Vendedores con más movimiento' }).parentElement!
+    .parentElement!.parentElement!;
+}
+
+function getShortcutsSection() {
+  return screen.getByRole('heading', { level: 2, name: 'Accesos directos' }).closest('[data-slot="card"]') as HTMLElement;
 }
 
 describe('manager home query state', () => {
@@ -533,7 +556,94 @@ describe('manager home query state', () => {
       expect(refetch).toHaveBeenCalledTimes(1);
     });
 
-    it.each(['7d', '14d', '30d'] as const)('renders %s labels, helpers, and zero-success copy', async (range) => {
+        it('renders three truthful sellers with encoded follow-up links and no reference-only content', () => {
+          setManagerQuery({ data: sellerSummary });
+
+          render(<OperationalHomepage />);
+
+          const sellers = getTopSellersSection();
+          expect(within(sellers).getByRole('list').children).toHaveLength(3);
+          expect(within(sellers).getByText('Ana Pérez')).toBeVisible();
+          expect(within(sellers).getByText('ana@example.com')).toBeVisible();
+          expect(within(sellers).getByText('4 movimientos manuales · 2 gestiones con movimiento')).toBeVisible();
+          expect(within(sellers).getByText('25 de may de 2026, 12:00 a. m.')).toBeVisible();
+          expect(within(sellers).getByRole('link', { name: 'Ver movimientos de Ana Pérez' })).toHaveAttribute(
+            'href',
+            '/dashboard/seguimiento?sellerId=seller-ana'
+          );
+          expect(within(sellers).queryByText('Diego Soto')).not.toBeInTheDocument();
+          expect(document.body.textContent).not.toMatch(/puntaje|calificación|trofeo|foto|rendimiento|variación|%|visitas de hoy|alertas|mensajes|clientes|agenda|subir|recordatorio|notificaciones|propuesta|sincronización|proveedor|salud|operador/i);
+        });
+
+        it('shows only navigation-policy and creation-capability shortcuts', () => {
+          vi.mocked(useActiveTenant).mockReturnValue(
+            managerTenantContext('tenant-1', 'Costa Norte Propiedades', 'costa-norte', [
+              'engagements.create',
+              'engagements:view:all',
+              'team.view'
+            ])
+          );
+          setManagerQuery({ data: sellerSummary });
+          const homepage = render(<OperationalHomepage />);
+
+          const allowed = getShortcutsSection();
+          expect(within(allowed).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+            '/dashboard/product',
+            '/dashboard/seguimiento',
+            '/dashboard/users',
+            '/dashboard/product/new'
+          ]);
+
+          vi.mocked(useActiveTenant).mockReturnValue(primaryTenantContext);
+          homepage.rerender(<OperationalHomepage />);
+          const denied = getShortcutsSection();
+          expect(within(denied).queryByRole('link', { name: 'Ver equipo' })).not.toBeInTheDocument();
+          expect(within(denied).queryByRole('link', { name: 'Nueva propiedad' })).not.toBeInTheDocument();
+        });
+
+        it('distinguishes seller empty, loading, unavailable, retrying, and invalid-ID states', async () => {
+          const user = userEvent.setup();
+          setManagerQuery();
+          const homepage = render(<OperationalHomepage />);
+          expect(within(getTopSellersSection()).getByText('Sin movimientos de vendedores')).toBeVisible();
+
+          setManagerQuery({ data: undefined, isLoading: true, isSuccess: false });
+          homepage.rerender(<OperationalHomepage />);
+          expect(within(getTopSellersSection()).getByLabelText('Cargando vendedores')).toBeVisible();
+
+          setManagerQuery({ data: undefined, isError: true, isFetching: true, isSuccess: false });
+          homepage.rerender(<OperationalHomepage />);
+          expect(within(getTopSellersSection()).getByRole('button', { name: 'Reintentando vendedores' })).toBeDisabled();
+
+          setManagerQuery({ data: undefined, isError: true, isSuccess: false });
+          homepage.rerender(<OperationalHomepage />);
+          await user.click(within(getTopSellersSection()).getByRole('button', { name: 'Reintentar vendedores' }));
+          expect(refetch).toHaveBeenCalledTimes(1);
+
+          setManagerQuery({ data: { ...sellerSummary, topSellers: [{ ...sellerSummary.topSellers[0], name: '', userId: 'invalid/id' }] } });
+          homepage.rerender(<OperationalHomepage />);
+          expect(within(getTopSellersSection()).getByText('ana@example.com')).toBeVisible();
+          expect(within(getTopSellersSection()).queryByRole('link', { name: /Ana Pérez|ana@example.com/ })).not.toBeInTheDocument();
+        });
+
+        it('keeps policy-backed shortcuts visible through summary failure', () => {
+          vi.mocked(useActiveTenant).mockReturnValue(
+            managerTenantContext('tenant-1', 'Costa Norte Propiedades', 'costa-norte', ['team.view'])
+          );
+          setManagerQuery({ data: undefined, isError: true, isSuccess: false });
+
+          render(<OperationalHomepage />);
+
+          expect(screen.getByText('Vendedores con más movimiento no disponibles')).toBeVisible();
+          expect(within(getShortcutsSection()).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+            '/dashboard/product',
+            '/dashboard/seguimiento',
+            '/dashboard/users'
+          ]);
+          expect(within(getShortcutsSection()).queryByRole('link', { name: 'Nueva propiedad' })).not.toBeInTheDocument();
+        });
+
+        it.each(['7d', '14d', '30d'] as const)('renders %s labels, helpers, and zero-success copy', async (range) => {
     const user = userEvent.setup();
     setManagerQuery();
     render(<OperationalHomepage />);

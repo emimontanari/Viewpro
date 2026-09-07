@@ -16,25 +16,23 @@ import { KpiCard } from './operational-homepage/primitives';
 import { PriorityLink } from './operational-homepage/priority-panel';
 import {
   ManagerRecentActivity,
+  ManagerShortcuts,
   ManagerSummary,
   ManagerTopProperties,
+  ManagerTopSellers,
   ManagerUnavailablePanel
 } from './operational-homepage/manager-sections';
 import {
   PropertyPreviewList,
-  RecentActivityList,
-  SellerActivityCard
+  RecentActivityList
 } from './operational-homepage/lists';
 import {
   MissingInmobiliariaState,
   OperationalHomepageSkeleton,
   UnsupportedDashboardRoleState
 } from './operational-homepage/states';
-import { formatArgentinaCalendarDate, getRangeOption } from './operational-homepage/helpers';
-import {
-  ManagerSummaryGate,
-  useManagerSummary
-} from './operational-homepage/manager-home';
+import { formatArgentinaCalendarDate, getManagerShortcuts } from './operational-homepage/helpers';
+import { useManagerSummary } from './operational-homepage/manager-home';
 import {
   PROPERTY_PREVIEW_SIZE,
   SELLER_ACTIVITY_PREVIEW_SIZE
@@ -90,9 +88,8 @@ function ManagerOperationalHomepage({
 }) {
   const [selectedRange, setSelectedRange] = React.useState<DashboardSummaryRange>('7d');
   const [today] = React.useState(() => formatArgentinaCalendarDate(now));
-  const selectedRangeOption = getRangeOption(selectedRange);
   const summary = useManagerSummary({ range: selectedRange, tenantId: activeTenantId });
-  const sellerInsights = summary.status === 'ready' ? summary.data.topSellers : [];
+  const shortcuts = getManagerShortcuts(activeMembership, false);
 
   return (
     <section className='min-w-0 space-y-6'>
@@ -135,15 +132,11 @@ function ManagerOperationalHomepage({
 
           <div className='grid gap-5 xl:grid-cols-2'>
             <ManagerTopProperties range={selectedRange} summary={summary} />
-            <ManagerSummaryGate summary={summary}>
-              <SellerActivityCard
-                isLoading={false}
-                rangeLabel={selectedRangeOption.label}
-                sellers={sellerInsights}
-              />
-            </ManagerSummaryGate>
+            <ManagerTopSellers summary={summary} />
           </div>
-    </section>
+
+          <ManagerShortcuts shortcuts={shortcuts} />
+        </section>
   );
 }
 

@@ -242,3 +242,26 @@ Remaining implementation rows:
 - [ ] REFACTOR I6 without shell/mobile-chrome changes, rerun focused/typecheck/lint/targeted seeded/full seeded checks as environment permits, record skips accurately, measure ≤400 lines, and prepare its independent rollbackable PR. <!-- sdd-owner: implementation -->
 - [ ] Before each implementation PR, run `git diff --check`, `git diff --stat`, and `git status --short` from `viewpro-app/`; record actual additions + deletions, command exits, and focused evidence in `openspec/changes/manager-home-reference-fidelity/apply-progress.md`, stopping for a measured >400-line cohesive diff. <!-- sdd-owner: implementation -->
 - [ ] After I6, run the shared-matrix focused component, BFF, owner, frontend suite, typecheck, lint, targeted seeded, and full seeded commands; run API validation/typecheck/test only with a visibly disposable `DATABASE_URL`; record every pass, skip, and blocker in `openspec/changes/manager-home-reference-fidelity/apply-progress.md`. <!-- sdd-owner: implementation -->
+
+## I5 — top sellers and policy shortcuts
+
+**Structured status consumed:** parent-native acquire `proceed` for `manager-home-i5-top-sellers-and-policy-shortcuts`, generation 20/attempt 24, running/finish; repo-local target worktree. Opaque acquire material was not persisted or disclosed. Parent-authorized base: `develop@55c9fb1b`; local `develop` resolved to `9ce7094c04d460341ab12862ecd3648298d69aba`.
+
+Completed persisted rows: I5 RED, GREEN, TRIANGULATE, and REFACTOR are `[x]`. Manager-only composition replaces the legacy manager `SellerActivityCard` with summary-backed `ManagerTopSellers` and adds policy/session-backed shortcuts after sellers; `SellerOperationalHomepage` was not edited. Helpers resolve current `navGroups` through `canAccessNavigation` and gate creation with `canManagePropertyEngagements`; no routes, BFF/API, auth, session, navigation configuration, or seller list changed.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| I5 sellers/shortcuts | component + pure helper | focused 32/32 after contract build | 2 intended seller/shortcut failures | manager 24/24 | manager 26/26 | focused 36/36; static/regression checks pass |
+
+### Command evidence
+
+- Safety — `2026-09-07T15:41:35Z`, `feat/manager-home-reference-fidelity-i5`: `pnpm --filter next-shadcn-dashboard-starter test src/features/dashboard/components/operational-homepage.test.tsx src/features/dashboard/components/operational-homepage/manager-home.test.tsx`; exit 1 before tests (`@viewpro/contracts` unresolved). `2026-09-07T15:41:44Z`: `pnpm --filter @viewpro/contracts build && pnpm --filter next-shadcn-dashboard-starter test src/features/dashboard/components/operational-homepage.test.tsx src/features/dashboard/components/operational-homepage/manager-home.test.tsx`; exit 0, 32/32.
+- RED — `2026-09-07T15:43:19Z`: `pnpm --filter next-shadcn-dashboard-starter test src/features/dashboard/components/operational-homepage/manager-home.test.tsx`; exit 1, intended maximum-three seller assertion received four legacy rows and shortcuts heading was absent.
+- GREEN — `2026-09-07T15:46:23Z`: `pnpm --filter next-shadcn-dashboard-starter test src/features/dashboard/components/operational-homepage/manager-home.test.tsx`; exit 0, 24/24.
+- TRIANGULATE — `2026-09-07T15:46:56Z`: `pnpm --filter next-shadcn-dashboard-starter test src/features/dashboard/components/operational-homepage/manager-home.test.tsx`; exit 0, 26/26 for maximum/order, valid/invalid IDs, identity/count variants, empty/loading/error/retry, team/create allow/deny, failure-persistent shortcuts, and forbidden copy.
+- REFACTOR — `2026-09-07T15:47:54Z`: `pnpm --filter next-shadcn-dashboard-starter test src/features/dashboard/components/operational-homepage.test.tsx src/features/dashboard/components/operational-homepage/manager-home.test.tsx`; exit 0, 36/36. `pnpm --filter next-shadcn-dashboard-starter typecheck`; exit 0 (`tsc --noEmit`). `pnpm --filter next-shadcn-dashboard-starter lint:strict`; exit 0 (`oxlint --deny-warnings`). The preceding `2026-09-07T15:47:26Z` typecheck exit 2 identified only the new nullable helper/test element types; corrected before final refactor proof.
+- Regression — `2026-09-07T15:48:12Z`: `pnpm --filter next-shadcn-dashboard-starter test src/app/api/dashboard/summary/route.test.ts`; exit 0, 5/5. `pnpm --filter next-shadcn-dashboard-starter test src/features/owner/components/owner-home.test.tsx`; exit 0, 19/19. `pnpm --filter next-shadcn-dashboard-starter test`; exit 0, 118 files/788 tests. `OPENSPEC_TELEMETRY=0 npx --yes @fission-ai/openspec validate manager-home-reference-fidelity --strict`; exit 0, valid.
+
+Design deviation: none. Workload / PR boundary: stacked-to-main I5 (PR7/8), with the I5-only rollback boundary limited to manager seller/shortcut mapping and regions. Final `2026-09-07T15:52:44Z` `git diff --check`, no-external-diff numstat/stat/status, branch/base, and seller/list hash command exited 0: 310 additions + 26 deletions = 336 (≤400). Browser, API, database, review, receipt, commit, push, PR, settle, and lifecycle actions were not run. Remaining implementation rows are I6 RED/GREEN/TRIANGULATE/REFACTOR plus the two shared verification rows; parent-owned review, sync, archive, and #522 closure remain deferred.
