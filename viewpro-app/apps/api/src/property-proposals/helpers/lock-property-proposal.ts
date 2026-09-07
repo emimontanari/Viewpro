@@ -1,6 +1,6 @@
 import { TenantMembershipStatus, TenantRole, UserStatus, type Prisma } from '@prisma/client'
 
-type EligibleSellerLockBarrier = (context: { operation: 'create' | 'update'; backendPid: number }) => Promise<void>
+type EligibleSellerLockBarrier = (context: { operation: 'create' | 'update' | 'submit'; backendPid: number }) => Promise<void>
 
 let eligibleSellerLockBarrier: EligibleSellerLockBarrier | null = null
 
@@ -10,7 +10,7 @@ export function setEligibleSellerLockBarrierForTest(barrier: EligibleSellerLockB
 
 export async function lockEligibleSeller(
   tx: Prisma.TransactionClient,
-  input: { tenantId: string; proposedByUserId: string; operation: 'create' | 'update' },
+  input: { tenantId: string; proposedByUserId: string; operation: 'create' | 'update' | 'submit' },
 ): Promise<boolean> {
   const users = await tx.$queryRaw<{ id: string }[]>`
     SELECT id FROM users

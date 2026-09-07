@@ -317,3 +317,30 @@ No design deviation was made. No commit, push, PR, merge, review, receipt, C6+, 
 ### Postchecks and residue
 
 The explicit base plus `viewpro_test_w1`–`viewpro_test_w4` PostgreSQL postcheck reported `proposal=0,membership=0,user=0,tenant=0` and `non_idle_c5b2=0` for every database. Cleanup released/reset barriers and settled command/invalidation promises before idempotent `deleteMany` cleanup; the suite `afterAll` disconnects every named client through failure-continuing `Promise.allSettled`. The ephemeral backup was removed after the current checksum manifest was recorded. Recursive dependency/build residue cleanup removed all `node_modules`, `.turbo`, and `*.tsbuildinfo`; `packages/contracts/src/generated/.gitkeep` remains.
+
+## C6A / U7 initial BORRADOR submission
+
+### Status and delivery
+```yaml
+artifactStore: openspec
+applyState: ready
+nextRecommended: apply
+actionContext: { mode: repo-local, workspaceRoot: seller-property-proposals-c6-submission, warnings: [] }
+delivery: auto-chain / stacked-to-develop; C6A only
+```
+C6A is complete: its two persisted implementation rows are `[x]`; C6B remains blocked until C6A merges.
+
+### TDD Cycle Evidence
+| Task | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|
+| C6A submit/snapshot | C5 create/update/repository/race: 50/50 | Missing module collected 0; skeleton behavior RED 11/11 and repository RED 11/39 failures. | Focused submit/repository 50/50. | `increment: 0` failed 1/50; restored 50/50. | No further refactor needed. |
+
+### Verification and scope
+- PASS: C5+C6 72/72; C4-C6 90/90; forced uncached typecheck 6/6; lint; focused repeat 50/50; full API 157 files/1567 tests; final independent gate passed focused C6A 51/51, C5+C6A 73/73, C4-C6A 91/91, forced typecheck 6/6, lint, focused repeat 51/51, and full API 157 files/1568 tests; regressions prove durable version 1 against expected version 2 conflicts with no round/update and round creation precedes proposal update; final arithmetic is 203 tracked additions + 22 tracked deletions + 91 untracked lines = 316 changed lines (≤325).
+- Changed allowed C6A use-case, mapper, port, adapter, module, seller-lock helper, focused tests, and topology/tasks/commands/progress artifacts; no controller, DTO, AppModule, BFF, UI, canonical, decision, or replay work.
+- The transaction locks scoped proposal → reread → user → exact active AGENT membership, validates locked normalized data, then writes exactly one round/update with one timestamp and version +1; generic write failures remain transactional.
+
+### Remaining, cleanup, and risk
+- [ ] C6B: RED → GREEN → TRIANGULATE → REFACTOR RECHAZADA-only explicit resubmit, retained prior history, next-round numbering, and exact replay. <!-- sdd-owner: implementation -->
+- [ ] C6B: Run the replay/history command and API typecheck; delete rounds before proposals in `finally`. <!-- sdd-owner: implementation -->
+- C6A/C6B split updates the source topology from 25 to 26 groups; C6B is the mandatory post-merge blocker. No design deviation, commit, push, PR, merge, receipt, or review action occurred.
