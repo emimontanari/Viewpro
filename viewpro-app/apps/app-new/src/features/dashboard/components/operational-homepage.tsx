@@ -17,13 +17,13 @@ import { PriorityLink } from './operational-homepage/priority-panel';
 import {
   ManagerRecentActivity,
   ManagerSummary,
+  ManagerTopProperties,
   ManagerUnavailablePanel
 } from './operational-homepage/manager-sections';
 import {
   PropertyPreviewList,
   RecentActivityList,
-  SellerActivityCard,
-  TopPropertiesCard
+  SellerActivityCard
 } from './operational-homepage/lists';
 import {
   MissingInmobiliariaState,
@@ -92,9 +92,7 @@ function ManagerOperationalHomepage({
   const [today] = React.useState(() => formatArgentinaCalendarDate(now));
   const selectedRangeOption = getRangeOption(selectedRange);
   const summary = useManagerSummary({ range: selectedRange, tenantId: activeTenantId });
-  const data = summary.status === 'ready' ? summary.data : null;
-  const topProperties = data?.topProperties ?? [];
-  const sellerInsights = data?.topSellers ?? [];
+  const sellerInsights = summary.status === 'ready' ? summary.data.topSellers : [];
 
   return (
     <section className='min-w-0 space-y-6'>
@@ -135,20 +133,16 @@ function ManagerOperationalHomepage({
 
       <ManagerRecentActivity range={selectedRange} summary={summary} />
 
-      <ManagerSummaryGate summary={summary}>
-      <div className='grid gap-5 xl:grid-cols-2'>
-        <TopPropertiesCard
-          isLoading={false}
-          properties={topProperties}
-          rangeLabel={selectedRangeOption.label}
-        />
-        <SellerActivityCard
-          isLoading={false}
-          rangeLabel={selectedRangeOption.label}
-          sellers={sellerInsights}
-        />
-      </div>
-      </ManagerSummaryGate>
+          <div className='grid gap-5 xl:grid-cols-2'>
+            <ManagerTopProperties range={selectedRange} summary={summary} />
+            <ManagerSummaryGate summary={summary}>
+              <SellerActivityCard
+                isLoading={false}
+                rangeLabel={selectedRangeOption.label}
+                sellers={sellerInsights}
+              />
+            </ManagerSummaryGate>
+          </div>
     </section>
   );
 }

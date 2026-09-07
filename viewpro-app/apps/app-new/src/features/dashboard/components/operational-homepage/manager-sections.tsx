@@ -4,12 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ActivityFeedItem } from '@/features/activity/api/types';
-import type { DashboardSummaryRange, DashboardSummaryResponse } from '@/features/dashboard/api/types';
+import type {
+  DashboardSummaryRange,
+  DashboardSummaryResponse,
+  DashboardSummaryTopProperty
+} from '@/features/dashboard/api/types';
 import {
   formatArgentinaActivityTime,
+  formatCount,
   getActivityPropertyTitle,
   getActivityTitle,
   getDashboardEngagementHref,
+  getDashboardPropertyTitle,
   getRangeOption
 } from './helpers';
 import type { ManagerSummaryState } from './manager-home';
@@ -20,10 +26,14 @@ import { RangeSelector } from './range-selector';
 export function ManagerUnavailablePanel({
   retry,
   retrying,
+  retryingLabel = 'Reintentando resumen',
+  retryLabel = 'Reintentar resumen',
   title
 }: {
   retry: () => void;
   retrying: boolean;
+  retryingLabel?: string;
+  retryLabel?: string;
   title: string;
 }) {
   return (
@@ -33,7 +43,7 @@ export function ManagerUnavailablePanel({
         No mostramos datos anteriores como actuales.
       </p>
       <Button className='mt-4' disabled={retrying} onClick={retry}>
-        {retrying ? 'Reintentando resumen' : 'Reintentar resumen'}
+        {retrying ? retryingLabel : retryLabel}
       </Button>
     </div>
   );
@@ -121,6 +131,106 @@ function ManagerRecentActivityRows({ items }: { items: ActivityFeedItem[] }) {
                   ariaLabel={`Abrir actividad: ${title}`}
                   href={engagementHref}
                 />
+              ) : null}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+export function ManagerTopProperties({
+  range,
+  summary
+}: {
+  range: DashboardSummaryRange;
+  summary: ManagerSummaryState;
+}) {
+  const { days } = getRangeOption(range);
+  const content =
+    summary.status === 'loading' ? (
+      <PropertyListSkeleton />
+    ) : summary.status === 'error' ? (
+      <ManagerUnavailablePanel
+        retry={summary.retry}
+        retrying={summary.retrying}
+        retryingLabel='Reintentando propiedades'
+        retryLabel='Reintentar propiedades'
+        title='Propiedades con más movimiento no disponibles'
+      />
+    ) : summary.data.topProperties.length === 0 ? (
+      <EmptyPanel
+        description={`No hubo movimientos ni solicitudes documentales en los últimos ${days} días.`}
+        icon={Icons.product}
+        title='Sin actividad para comparar'
+      />
+    ) : (
+      <ManagerTopPropertyRows items={summary.data.topProperties.slice(0, 3)} />
+    );
+
+  return (
+    <Card className='py-0'>
+      <CardHeader className='flex flex-col gap-2 p-5 pb-0 sm:flex-row sm:items-start sm:justify-between'>
+        <div>
+          <CardTitle role='heading' aria-level={2}>
+            Propiedades con más movimiento
+          </CardTitle>
+          <p className='mt-1 text-sm text-muted-foreground'>
+            Ranking por movimientos y solicitudes documentales de los últimos {days} días.
+          </p>
+        </div>
+        <Badge variant='outline' className='w-fit rounded-full bg-muted/40'>
+          Últimos {days} días
+        </Badge>
+      </CardHeader>
+      <CardContent className='p-5'>{content}</CardContent>
+    </Card>
+  );
+}
+
+function PropertyListSkeleton() {
+  return (
+    <div aria-label='Cargando propiedades' className='space-y-3'>
+      {Array.from({ length: 3 }, (_, index) => (
+        <div key={index} className='space-y-3 rounded-2xl border p-3'>
+          <div className='h-4 w-24 animate-pulse rounded bg-muted' />
+          <div className='h-5 w-2/3 animate-pulse rounded bg-muted' />
+          <div className='h-4 w-full animate-pulse rounded bg-muted' />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ManagerTopPropertyRows({ items }: { items: DashboardSummaryTopProperty[] }) {
+  return (
+    <ol className='space-y-3'>
+      {items.map((item) => {
+        const title = getDashboardPropertyTitle(item);
+        const engagementHref = getDashboardEngagementHref(item.engagementId);
+        const timestamp = formatArgentinaActivityTime(item.lastActivityAt);
+
+        return (
+          <li key={item.engagementId} className='rounded-2xl border bg-muted/20 p-3'>
+            <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+              <div className='min-w-0 space-y-1'>
+                <p className='break-words font-medium'>{title}</p>
+                <p className='text-sm text-muted-foreground'>
+                  {formatCount(item.movementCount, 'movimiento', 'movimientos')} ·{' '}
+                  {formatCount(item.documentRequestCount, 'documento', 'documentos')}
+                </p>
+                <p className='break-words text-sm text-muted-foreground'>
+                  Último: {item.lastActivityTitle}
+                </p>
+                {timestamp ? (
+                  <time className='block text-sm text-muted-foreground' dateTime={timestamp.dateTime}>
+                    {timestamp.label}
+                  </time>
+                ) : null}
+              </div>
+              {engagementHref ? (
+                <DashboardRowActionLink ariaLabel={`Abrir propiedad ${title}`} href={engagementHref} />
               ) : null}
             </div>
           </li>

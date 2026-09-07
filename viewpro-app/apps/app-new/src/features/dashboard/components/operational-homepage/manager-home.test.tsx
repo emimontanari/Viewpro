@@ -70,8 +70,31 @@ const zeroSummary = {
       ...zeroSummary,
       counters: { activeProperties: 2, attentionNeeded: 3, movementsInRange: 5, staleProperties: 4 }
     };
-    const activitySummary = {
+    const propertySummary = {
       ...nonzeroSummary,
+      topProperties: [
+        {
+          addressLine: 'Avenida Siempre Viva 123',
+          documentRequestCount: 2,
+          engagementId: 'engagement-property-1',
+          lastActivityAt: '2026-05-25T03:00:00.000Z',
+          lastActivityTitle: 'Escritura pendiente',
+          movementCount: 4,
+          title: 'Casa con jardín'
+        },
+        {
+          addressLine: 'Calle 8 456',
+          documentRequestCount: 0,
+          engagementId: 'engagement-property-2',
+          lastActivityAt: '2026-05-25T04:00:00.000Z',
+          lastActivityTitle: 'Nueva consulta',
+          movementCount: 2,
+          title: null
+        }
+      ]
+    } as unknown as DashboardSummaryResponse;
+    const activitySummary = {
+      ...propertySummary,
       recentActivity: [
         {
           createdAt: '2026-05-25T03:00:00.000Z',
@@ -164,6 +187,11 @@ function expectDocumentOrder(...elements: HTMLElement[]) {
   for (let index = 1; index < elements.length; index += 1) {
     expect(elements[index - 1]!.compareDocumentPosition(elements[index]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   }
+}
+
+function getTopPropertiesSection() {
+  return screen.getByRole('heading', { level: 2, name: 'Propiedades con más movimiento' }).parentElement!
+    .parentElement!.parentElement!;
 }
 
 describe('manager home query state', () => {
@@ -401,6 +429,79 @@ describe('manager home query state', () => {
       expect(within(activity).queryByText('Movimiento 6')).not.toBeInTheDocument();
       expect(within(activity).queryByRole('link', { name: `Abrir actividad: ${longTitle}` })).not.toBeInTheDocument();
       expect(within(activity).queryByRole('link', { name: 'Abrir actividad: Movimiento 2' })).not.toBeInTheDocument();
+    });
+
+    it.each(['7d', '14d', '30d'] as const)(
+      'identifies %s property rankings and renders their real source facts and destinations',
+      async (range) => {
+        const user = userEvent.setup();
+        setManagerQuery({ data: propertySummary });
+        render(<OperationalHomepage />);
+
+        await user.click(screen.getByRole('button', { name: `${range.replace('d', '')} días` }));
+
+        const properties = screen.getByRole('heading', { level: 2, name: 'Propiedades con más movimiento' })
+          .parentElement!.parentElement!.parentElement!;
+        expect(within(properties).getByText(`Ranking por movimientos y solicitudes documentales de los últimos ${range.replace('d', '')} días.`)).toBeVisible();
+        expect(within(properties).getByText(`Últimos ${range.replace('d', '')} días`)).toBeVisible();
+        expect(within(properties).getByText('Casa con jardín')).toBeVisible();
+        expect(within(properties).getByText('4 movimientos · 2 documentos')).toBeVisible();
+        expect(within(properties).getByText('Último: Escritura pendiente')).toBeVisible();
+        expect(within(properties).getByRole('link', { name: 'Abrir propiedad Casa con jardín' })).toHaveAttribute(
+          'href',
+          '/dashboard/product/engagement-property-1'
+        );
+        expect(properties.querySelector('time')).toHaveAttribute('dateTime', '2026-05-25T03:00:00.000Z');
+        expect(within(properties).getByText('25 de may de 2026, 12:00 a. m.')).toBeVisible();
+        expect(within(properties).getByText('Calle 8 456')).toBeVisible();
+      }
+    );
+
+    it('bounds property rows in source order, keeps long fallbacks readable, and fails closed on malformed destinations', () => {
+      const longAddress = 'Avenida muy extensa con un nombre real que debe mantenerse visible sin recortes';
+      const topProperties = Array.from({ length: 4 }, (_, index) => ({
+        addressLine: index === 0 ? longAddress : `Calle ${index + 1}`,
+        documentRequestCount: index,
+        engagementId: index === 0 ? 'invalid/id' : `engagement-property-${index + 1}`,
+        lastActivityAt: '2026-05-25T03:00:00.000Z',
+        lastActivityTitle: `Actividad ${index + 1}`,
+        movementCount: index + 1,
+        title: index === 0 ? null : `Propiedad ${index + 1}`
+      }));
+      setManagerQuery({ data: { ...propertySummary, topProperties } as DashboardSummaryResponse });
+
+      render(<OperationalHomepage />);
+
+      const properties = screen.getByRole('heading', { level: 2, name: 'Propiedades con más movimiento' })
+        .parentElement!.parentElement!.parentElement!;
+      const rows = within(properties).getByRole('list').children;
+      expect(rows).toHaveLength(3);
+      expect(rows[0]).toHaveTextContent(longAddress);
+      expect(rows[1]).toHaveTextContent('Propiedad 2');
+      expect(within(properties).queryByText('Propiedad 4')).not.toBeInTheDocument();
+      expect(within(properties).queryByRole('link', { name: `Abrir propiedad ${longAddress}` })).not.toBeInTheDocument();
+    });
+
+    it('distinguishes the property loading, empty, and unavailable states with an atomic panel retry', async () => {
+      const user = userEvent.setup();
+      setManagerQuery();
+      const homepage = render(<OperationalHomepage />);
+      expect(within(getTopPropertiesSection()).getByText('Sin actividad para comparar')).toBeVisible();
+
+      setManagerQuery({ data: undefined, isLoading: true, isSuccess: false });
+      homepage.rerender(<OperationalHomepage />);
+      expect(within(getTopPropertiesSection()).getByLabelText('Cargando propiedades')).toBeVisible();
+      expect(within(getTopPropertiesSection()).queryByText('Sin actividad para comparar')).not.toBeInTheDocument();
+
+      setManagerQuery({ data: undefined, isError: true, isFetching: true, isSuccess: false });
+      homepage.rerender(<OperationalHomepage />);
+      expect(within(getTopPropertiesSection()).getByText('Propiedades con más movimiento no disponibles')).toBeVisible();
+      expect(within(getTopPropertiesSection()).getByRole('button', { name: 'Reintentando propiedades' })).toBeDisabled();
+
+      setManagerQuery({ data: undefined, isError: true, isSuccess: false });
+      homepage.rerender(<OperationalHomepage />);
+      await user.click(within(getTopPropertiesSection()).getByRole('button', { name: 'Reintentar propiedades' }));
+      expect(refetch).toHaveBeenCalledTimes(1);
     });
 
     it.each(['7d', '14d', '30d'] as const)('uses %s activity context and distinguishes empty, loading, and unavailable states', async (range) => {
