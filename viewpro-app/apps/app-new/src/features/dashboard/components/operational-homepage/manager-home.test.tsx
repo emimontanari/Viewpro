@@ -70,6 +70,25 @@ const nonzeroSummary = {
   ...zeroSummary,
   counters: { activeProperties: 2, attentionNeeded: 3, movementsInRange: 5, staleProperties: 4 }
 };
+const movementWithEngagement = (engagementId: string, observation: string) =>
+  ({
+createdAt: '2026-05-25T02:30:00.000Z',
+id: observation,
+kind: 'movement',
+nextStep: null,
+observation,
+property: { addressLine: null, engagementId, title: observation }
+  }) as DashboardSummaryResponse['recentActivity'][number];
+const propertyWithEngagement = (engagementId: string, title: string) =>
+  ({
+addressLine: null,
+documentRequestCount: 0,
+engagementId,
+lastActivityAt: '2026-05-25T02:30:00.000Z',
+lastActivityTitle: title,
+movementCount: 1,
+title
+  }) as DashboardSummaryResponse['topProperties'][number];
 
 type ManagerQueryState = {
   data?: DashboardSummaryResponse;
@@ -335,6 +354,115 @@ describe('manager home query state', () => {
 
     expect(screen.getByText(`0 gestiones activas y 0 movimientos en los últimos ${days} días.`)).toBeVisible();
     for (const expectedCopy of ['Gestiones activas, sin archivar y sin cerrar ni cancelar.', `Movimientos creados en gestiones activas durante los últimos ${days} días.`, `Gestiones activas sin movimientos creados en los últimos ${days} días.`, `Sin novedades en ${days} días`, 'Gestiones activas cuya última consulta, visita completada u oferta recibida del período no tiene próximo paso significativo.', `No hubo movimientos en los últimos ${days} días.`, `No hay gestiones sin novedades en ${days} días.`, 'No hay gestiones activas en este resumen.', 'No hay gestiones que requieran atención.']) expect(expectedCopy === `Sin novedades en ${days} días` ? within(screen.getByRole('list', { name: 'Métricas del resumen operativo' })).getByText(expectedCopy) : screen.getByText(expectedCopy)).toBeVisible();
+    });
+
+  it('renders bounded real activity and top-property records with Argentina-local source times', () => {
+    const longActivity = 'Movimiento con una observación extensa que debe seguir siendo completamente legible sin perder información operativa.';
+    const longProperty = 'Propiedad con un nombre excepcionalmente largo que debe seguir siendo completamente legible para la inmobiliaria.';
+    const activity = (id: string, kind: 'movement' | 'document_request') =>
+      ({
+        createdAt: '2026-05-25T02:30:00.000Z',
+        id,
+        kind,
+        observation: longActivity,
+        property: {
+          addressLine: 'Avenida Siempre Viva 742, Ciudad Autónoma de Buenos Aires',
+          engagementId: `engagement-${id}`,
+          title: longProperty
+        },
+        ...(kind === 'document_request'
+          ? { documentRequest: { title: 'Escritura del inmueble' } }
+          : { nextStep: null })
+      }) as DashboardSummaryResponse['recentActivity'][number];
+    const topProperty = (index: number) =>
+      ({
+        addressLine: `Dirección ${index}`,
+        documentRequestCount: index,
+        engagementId: `engagement-property-${index}`,
+        lastActivityAt: '2026-05-25T02:30:00.000Z',
+        lastActivityTitle: `Última actividad ${index}`,
+        movementCount: index + 1,
+        title: index === 1 ? null : `${longProperty} ${index}`
+      }) as DashboardSummaryResponse['topProperties'][number];
+
+    setManagerQuery({
+      data: {
+        ...nonzeroSummary,
+        recentActivity: [
+          activity('1', 'movement'),
+          activity('2', 'document_request'),
+          activity('3', 'movement'),
+          activity('4', 'movement'),
+          activity('5', 'movement'),
+          activity('6', 'movement')
+        ],
+        topProperties: [topProperty(1), topProperty(2), topProperty(3), topProperty(4)]
+      } as DashboardSummaryResponse
+    });
+
+    const { container } = render(<OperationalHomepage />);
+
+    const recentActivity = screen.getByRole('list', { name: 'Actividad reciente' });
+    expect(within(recentActivity).getAllByRole('listitem')).toHaveLength(5);
+    expect(within(recentActivity).getAllByText('Movimiento')).toHaveLength(4);
+    expect(within(recentActivity).getByText('Documento')).toBeVisible();
+    expect(within(recentActivity).getAllByText(longActivity)).toHaveLength(4);
+    expect(within(recentActivity).getAllByText(longProperty)).toHaveLength(4);
+    expect(within(recentActivity).getAllByText('24 de may de 2026, 23:30')).toHaveLength(5);
+    expect(container.querySelector('time[dateTime="2026-05-25T02:30:00.000Z"]')).toBeVisible();
+    expect(within(recentActivity).getAllByRole('link', { name: /abrir actividad/i })[0]).toHaveAttribute(
+      'href',
+      '/dashboard/product/engagement-1'
+    );
+
+    const topProperties = screen.getByRole('list', { name: 'Propiedades con más movimiento' });
+    expect(within(topProperties).getAllByRole('listitem')).toHaveLength(3);
+    expect(within(topProperties).getByText('Dirección 1')).toBeVisible();
+    expect(within(topProperties).getByText('2 movimientos · 1 documento')).toBeVisible();
+    expect(within(topProperties).getByText('Último: Última actividad 1')).toBeVisible();
+    expect(within(topProperties).getAllByText('24 de may de 2026, 23:30')).toHaveLength(3);
+    expect(container.querySelectorAll('time[dateTime="2026-05-25T02:30:00.000Z"]')).toHaveLength(8);
+    expect(within(topProperties).getAllByRole('link', { name: /abrir propiedad/i })[0]).toHaveAttribute(
+      'href',
+      '/dashboard/product/engagement-property-1'
+    );
+    expect(document.body.textContent).not.toMatch(/puntaje|rendimiento|variación|porcentaje|%/i);
   });
 
+      it('keeps real destinations fail-closed for blank or malformed engagement identifiers', () => {
+        setManagerQuery({
+          data: {
+            ...zeroSummary,
+            recentActivity: [
+              movementWithEngagement('engagement-valid', 'Actividad válida'),
+              movementWithEngagement('bad/path', 'Actividad inválida')
+            ],
+            topProperties: [
+              propertyWithEngagement('engagement-valid', 'Propiedad válida'),
+              propertyWithEngagement(' ', 'Propiedad inválida')
+            ]
+          } as DashboardSummaryResponse
+        });
+    render(<OperationalHomepage />);
+
+    expect(screen.getByRole('link', { name: 'Abrir actividad: Actividad válida' })).toHaveAttribute('href', '/dashboard/product/engagement-valid');
+    expect(within(screen.getAllByText('Actividad inválida')[0].closest('li')!).queryByRole('link')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Abrir propiedad Propiedad válida' })).toHaveAttribute('href', '/dashboard/product/engagement-valid');
+    expect(within(screen.getByText('Propiedad inválida').closest('li')!).queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('keeps ready-empty ranking copy distinct from summary-unavailable panels', () => {
+    setManagerQuery();
+    const homepage = render(<OperationalHomepage />);
+    expect(screen.getByText('Sin movimientos recientes')).toBeVisible();
+    expect(screen.getByText('Sin actividad para comparar')).toBeVisible();
+
+    setManagerQuery({ data: nonzeroSummary, isError: true, isSuccess: false });
+    homepage.rerender(<OperationalHomepage />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Resumen operativo no disponible');
+    expect(screen.getByText('Actividad reciente no disponible')).toBeVisible();
+    expect(screen.getByText('Propiedades con más movimiento no disponibles')).toBeVisible();
+    expect(screen.queryByText('Sin movimientos recientes')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sin actividad para comparar')).not.toBeInTheDocument();
+  });
 });

@@ -47,6 +47,22 @@ export function getRangeOption(range: DashboardSummaryRange) {
   return RANGE_OPTIONS.find((option) => option.range === range) ?? RANGE_OPTIONS[0];
 }
 
+export function formatArgentinaDateTime(instant: string) {
+  return new Intl.DateTimeFormat(ARGENTINA_LOCALE, {
+    day: 'numeric',
+    hour: '2-digit',
+    hourCycle: 'h23',
+    minute: '2-digit',
+    month: 'short',
+    timeZone: ARGENTINA_TIME_ZONE,
+    year: 'numeric'
+  }).format(new Date(instant));
+}
+
+export function getEngagementHref(engagementId: string) {
+  return /^[A-Za-z0-9_-]+$/.test(engagementId) ? `/dashboard/product/${engagementId}` : null;
+}
+
 export function formatArgentinaCalendarDate(instant: Date) {
   const parts = new Intl.DateTimeFormat(ARGENTINA_LOCALE, {
     day: '2-digit',

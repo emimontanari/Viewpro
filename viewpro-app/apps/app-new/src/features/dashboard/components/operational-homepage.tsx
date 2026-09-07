@@ -14,12 +14,15 @@ import { getUserDisplayName, type TenantMembership } from '@/lib/session';
 import { useActiveTenant, useSession } from '@/lib/session-context';
 import { KpiCard } from './operational-homepage/primitives';
 import { PriorityLink } from './operational-homepage/priority-panel';
-import { ManagerSummary } from './operational-homepage/manager-sections';
+import {
+  ManagerRecentActivity,
+  ManagerSummary,
+  ManagerTopProperties
+} from './operational-homepage/manager-sections';
 import {
   PropertyPreviewList,
   RecentActivityList,
-  SellerActivityCard,
-  TopPropertiesCard
+  SellerActivityCard
 } from './operational-homepage/lists';
 import {
   MissingInmobiliariaState,
@@ -27,10 +30,7 @@ import {
   UnsupportedDashboardRoleState
 } from './operational-homepage/states';
 import { formatArgentinaCalendarDate, getRangeOption } from './operational-homepage/helpers';
-import {
-  ManagerSummaryGate,
-  useManagerSummary
-} from './operational-homepage/manager-home';
+import { useManagerSummary } from './operational-homepage/manager-home';
 import {
   PROPERTY_PREVIEW_SIZE,
   SELLER_ACTIVITY_PREVIEW_SIZE
@@ -88,10 +88,6 @@ function ManagerOperationalHomepage({
   const [today] = React.useState(() => formatArgentinaCalendarDate(now));
   const selectedRangeOption = getRangeOption(selectedRange);
   const summary = useManagerSummary({ range: selectedRange, tenantId: activeTenantId });
-  const data = summary.status === 'ready' ? summary.data : null;
-  const recentActivity = data?.recentActivity ?? [];
-  const topProperties = data?.topProperties ?? [];
-  const sellerInsights = data?.topSellers ?? [];
 
   return (
     <section className='min-w-0 space-y-6'>
@@ -132,41 +128,26 @@ function ManagerOperationalHomepage({
         />
       )}
 
-      <ManagerSummaryGate summary={summary}>
-      <div className='grid gap-5 xl:grid-cols-2'>
-        <Card className='py-0'>
-          <CardHeader className='flex flex-col gap-2 p-5 pb-0 sm:flex-row sm:items-start sm:justify-between'>
-            <div>
-              <CardTitle role='heading' aria-level={2}>
-                Movimientos rápidos
-              </CardTitle>
-              <p className='mt-1 text-sm text-muted-foreground'>
-                Últimas señales de avance para entender qué cambió en el período.
-              </p>
-            </div>
-            <Button asChild variant='outline' size='sm'>
-              <Link href='/dashboard/seguimiento'>Ver todo</Link>
-            </Button>
-          </CardHeader>
-          <CardContent className='p-5'>
-            <RecentActivityList isLoading={false} items={recentActivity} />
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className='grid gap-5 xl:grid-cols-2'>
-        <TopPropertiesCard
-          isLoading={false}
-          properties={topProperties}
-          rangeLabel={selectedRangeOption.label}
-        />
-        <SellerActivityCard
-          isLoading={false}
-          rangeLabel={selectedRangeOption.label}
-          sellers={sellerInsights}
-        />
-      </div>
-      </ManagerSummaryGate>
+      {summary.status === 'ready' ? (
+        <>
+          <div className='grid gap-5 xl:grid-cols-2'>
+            <ManagerRecentActivity items={summary.data.recentActivity} />
+          </div>
+          <div className='grid gap-5 xl:grid-cols-2'>
+            <ManagerTopProperties properties={summary.data.topProperties} />
+            <SellerActivityCard
+              isLoading={false}
+              rangeLabel={selectedRangeOption.label}
+              sellers={summary.data.topSellers}
+            />
+          </div>
+        </>
+      ) : summary.status === 'error' ? (
+        <div className='grid gap-5 xl:grid-cols-2'>
+          <ManagerRecentActivity unavailable />
+          <ManagerTopProperties unavailable />
+        </div>
+      ) : null}
     </section>
   );
 }
