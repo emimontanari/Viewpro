@@ -321,3 +321,92 @@ describe('PrismaPropertyProposalsRepository atomic seller updates', () => {
     expect(tx.propertyProposal.update).not.toHaveBeenCalled()
   })
 })
+
+describe('PrismaPropertyProposalsRepository initial submission', () => {
+  const staged = {
+    id: 'proposal-1', tenantId: 'tenant-1', proposedByUserId: 'seller-1', state: 'BORRADOR', version: 2,
+    title: '  Casa  ', addressLine: '  Calle 1 ', city: ' Rosario ', province: ' Santa Fe ', propertyType: 'HOUSE', operationType: 'SALE',
+    totalAreaSqm: 120, coveredAreaSqm: 80, rooms: 4, bedrooms: 3, bathrooms: 2, garages: 1, ageYears: 7,
+    orientation: ' Norte ', ownerName: null, ownerEmail: ' owner@example.test ', publishedPriceCents: 12_500_000, currency: ' ARS ',
+    latestSubmittedAt: null,
+  }
+  const input = { tenantId: 'tenant-1', proposedByUserId: 'seller-1', proposalId: 'proposal-1', expectedVersion: 2 }
+  const transaction = (proposal = staged, answers: unknown[][] = [[{ id: proposal.id }], [{ id: 'seller-1' }], [{ id: 'membership-1' }]]) => {
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValueOnce(answers[0]).mockResolvedValueOnce(answers[1]).mockResolvedValueOnce(answers[2]),
+      propertyProposal: { findFirst: vi.fn().mockResolvedValue(proposal), update: vi.fn().mockImplementation(({ data }) => ({ ...proposal, ...data, version: proposal.version + 1 })) },
+      propertyProposalReviewRound: { create: vi.fn().mockImplementation(({ data }) => ({ id: 'round-1', ...data })) },
+    }
+    return { tx, prisma: { $transaction: vi.fn().mockImplementation((callback) => callback(tx)) } }
+  }
+
+  it('locks proposal, rereads, locks seller and exact AGENT membership, then snapshots all fields into round one before one transition', async () => {
+    const proposalLock = deferred<{ id: string }[]>()
+    const reread = deferred<typeof staged>()
+    const user = deferred<{ id: string }[]>()
+    const membership = deferred<{ id: string }[]>()
+    const tx = {
+      $queryRaw: vi.fn().mockImplementationOnce(() => proposalLock.promise).mockImplementationOnce(() => user.promise).mockImplementationOnce(() => membership.promise),
+      propertyProposal: { findFirst: vi.fn().mockImplementation(() => reread.promise), update: vi.fn().mockResolvedValue({ ...staged, state: 'EN_REVISION', version: 3 }) },
+      propertyProposalReviewRound: { create: vi.fn().mockResolvedValue({ id: 'round-1' }) },
+    }
+    const prisma = { $transaction: vi.fn().mockImplementation((callback) => callback(tx)) }
+    const result = new PrismaPropertyProposalsRepository(prisma as never).submitForSeller(input)
+
+    await Promise.resolve()
+    expect(normalizeSql(tx.$queryRaw.mock.calls[0]?.[0])).toContain('FROM property_proposals WHERE id = ? AND "tenantId" = ? AND "proposedByUserId" = ? FOR UPDATE')
+    expect(tx.$queryRaw.mock.calls[0]?.slice(1)).toEqual(['proposal-1', 'tenant-1', 'seller-1'])
+    proposalLock.resolve([{ id: 'proposal-1' }]); await Promise.resolve()
+    expect(tx.propertyProposal.findFirst).toHaveBeenCalledOnce()
+    reread.resolve(staged); await Promise.resolve()
+    expect(tx.$queryRaw.mock.calls[1]?.slice(1)).toEqual(['seller-1', 'ACTIVE'])
+    user.resolve([{ id: 'seller-1' }]); await Promise.resolve()
+    expect(tx.$queryRaw.mock.calls[2]?.slice(1)).toEqual(['seller-1', 'tenant-1', 'ACTIVE', 'AGENT'])
+    membership.resolve([{ id: 'membership-1' }]); await Promise.resolve(); await Promise.resolve()
+
+    const round = tx.propertyProposalReviewRound.create.mock.calls[0]![0].data
+    await vi.waitFor(() => expect(tx.propertyProposalReviewRound.create).toHaveBeenCalledBefore(tx.propertyProposal.update))
+    expect(round).toEqual({
+      tenantId: 'tenant-1', proposalId: 'proposal-1', roundNumber: 1, submittedByUserId: 'seller-1', submittedAt: expect.any(Date),
+      title: 'Casa', addressLine: 'Calle 1', city: 'Rosario', province: 'Santa Fe', propertyType: 'HOUSE', operationType: 'SALE',
+      totalAreaSqm: 120, coveredAreaSqm: 80, rooms: 4, bedrooms: 3, bathrooms: 2, garages: 1, ageYears: 7,
+      orientation: 'Norte', ownerName: null, ownerEmail: 'owner@example.test', publishedPriceCents: 12_500_000, currency: 'ARS',
+    })
+    expect(tx.propertyProposal.update).toHaveBeenCalledWith({ where: { id: 'proposal-1' }, data: { state: 'EN_REVISION', latestSubmittedAt: round.submittedAt, version: { increment: 1 } } })
+    await expect(result).resolves.toMatchObject({ kind: 'submitted', proposal: { state: 'EN_REVISION', version: 3 }, round: { id: 'round-1' } })
+    expect(tx).not.toHaveProperty('$transaction')
+  })
+
+  it.each([
+    ['missing', 'tenant-1', 'seller-1'], ['wrong tenant', 'tenant-2', 'seller-1'], ['wrong proposer', 'tenant-1', 'seller-2'],
+  ])('returns safe absence without writes for %s scope', async (_name, tenantId, proposedByUserId) => {
+    const { tx, prisma } = transaction(staged, [[], [], []])
+    await expect(new PrismaPropertyProposalsRepository(prisma as never).submitForSeller({ ...input, tenantId, proposedByUserId })).resolves.toEqual({ kind: 'notFound' })
+    expect(tx.propertyProposal.findFirst).not.toHaveBeenCalled()
+    expect(tx.propertyProposalReviewRound.create).not.toHaveBeenCalled()
+    expect(tx.propertyProposal.update).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['ineligible', staged, [[{ id: 'proposal-1' }], [], []], 'ineligible'],
+    ['incomplete locked fields', { ...staged, city: '   ' }, [[{ id: 'proposal-1' }], [{ id: 'seller-1' }], [{ id: 'membership-1' }]], 'incomplete'],
+    ['rejected', { ...staged, state: 'RECHAZADA' }, [[{ id: 'proposal-1' }], [{ id: 'seller-1' }], [{ id: 'membership-1' }]], 'conflict'],
+    ['reviewing', { ...staged, state: 'EN_REVISION' }, [[{ id: 'proposal-1' }], [{ id: 'seller-1' }], [{ id: 'membership-1' }]], 'conflict'],
+    ['approved', { ...staged, state: 'APROBADA' }, [[{ id: 'proposal-1' }], [{ id: 'seller-1' }], [{ id: 'membership-1' }]], 'conflict'],
+    ['stale version', { ...staged, version: 3 }, [[{ id: 'proposal-1' }], [{ id: 'seller-1' }], [{ id: 'membership-1' }]], 'conflict'],
+    ['future durable version', { ...staged, version: 1 }, [[{ id: 'proposal-1' }], [{ id: 'seller-1' }], [{ id: 'membership-1' }]], 'conflict'],
+  ] as const)('returns %s with no round or proposal write', async (_name, proposal, answers, kind) => {
+    const { tx, prisma } = transaction(proposal, answers as unknown as unknown[][])
+    await expect(new PrismaPropertyProposalsRepository(prisma as never).submitForSeller(input)).resolves.toEqual({ kind })
+    expect(tx.propertyProposalReviewRound.create).not.toHaveBeenCalled()
+    expect(tx.propertyProposal.update).not.toHaveBeenCalled()
+  })
+
+  it('surfaces a round failure through the outer transaction without an update or nested transaction', async () => {
+    const { tx, prisma } = transaction()
+    tx.propertyProposalReviewRound.create.mockRejectedValueOnce(new Error('round failure'))
+    await expect(new PrismaPropertyProposalsRepository(prisma as never).submitForSeller(input)).rejects.toThrow('round failure')
+    expect(tx.propertyProposal.update).not.toHaveBeenCalled()
+    expect(tx).not.toHaveProperty('$transaction')
+  })
+})

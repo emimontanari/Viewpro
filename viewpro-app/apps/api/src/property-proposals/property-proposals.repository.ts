@@ -1,4 +1,4 @@
-import type { PropertyProposal } from '@prisma/client'
+import type { PropertyProposal, PropertyProposalReviewRound } from '@prisma/client'
 import type { StagedPropertyScalars } from './domain/normalization'
 
 export const PROPERTY_PROPOSALS_REPOSITORY = Symbol('PROPERTY_PROPOSALS_REPOSITORY')
@@ -18,6 +18,17 @@ export type CreatePropertyProposalResult =
   | { kind: 'created'; proposal: PropertyProposal }
   | { kind: 'ineligible' }
 
+export type SubmitPropertyProposalInput = {
+  tenantId: string
+  proposedByUserId: string
+  proposalId: string
+  expectedVersion: number
+}
+
+export type SubmitPropertyProposalResult =
+  | { kind: 'submitted'; proposal: PropertyProposal; round: PropertyProposalReviewRound }
+  | { kind: 'notFound' | 'ineligible' | 'conflict' | 'incomplete' }
+
 export type UpdatePropertyProposalInput = {
   tenantId: string
   proposedByUserId: string
@@ -33,6 +44,7 @@ export type UpdatePropertyProposalResult =
 
 export type PropertyProposalsRepository = {
   createDraft(input: CreatePropertyProposalDraftInput): Promise<CreatePropertyProposalResult>
+  submitForSeller(input: SubmitPropertyProposalInput): Promise<SubmitPropertyProposalResult>
   updateForSeller(input: UpdatePropertyProposalInput): Promise<UpdatePropertyProposalResult>
   listForSeller(input: {
     tenantId: string

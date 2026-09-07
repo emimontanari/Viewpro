@@ -4,12 +4,14 @@ import { PROPERTY_PROPOSALS_REPOSITORY } from './property-proposals.repository'
 import { CreatePropertyProposalUseCase } from './use-cases/create-property-proposal.use-case'
 import { GetPropertyProposalUseCase } from './use-cases/get-property-proposal.use-case'
 import { ListPropertyProposalsUseCase } from './use-cases/list-property-proposals.use-case'
+import { SubmitPropertyProposalUseCase } from './use-cases/submit-property-proposal.use-case'
 import { UpdatePropertyProposalUseCase } from './use-cases/update-property-proposal.use-case'
 
 const propertyProposalUseCases = [
   CreatePropertyProposalUseCase,
   GetPropertyProposalUseCase,
   ListPropertyProposalsUseCase,
+  SubmitPropertyProposalUseCase,
   UpdatePropertyProposalUseCase,
 ]
 

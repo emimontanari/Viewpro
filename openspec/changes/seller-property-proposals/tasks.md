@@ -11,7 +11,7 @@ The controlled four-PR planning chain—exploration+proposal → all specs → d
 | Estimated changed lines | 7,877–9,758 strict implementation/test lines: 7,082–8,813 production-bearing and 795–945 verification-only; parent gate 0. |
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
-| Suggested split | Selected controlled source chain C1 → C2A → C2B1 → C2B2 → C3A → C3B → C4 → C5A → C5B1 → C5B2 → C6 … C20, each group max ≤650; selected controlled four-PR planning chain. |
+| Suggested split | Selected controlled source chain C1 → C2A → C2B1 → C2B2 → C3A → C3B → C4 → C5A → C5B1 → C5B2 → C6A → C6B → C7 … C20, each group max ≤650; selected controlled four-PR planning chain. |
 | Delivery strategy | auto-chain |
 | Chain strategy | stacked-to-develop |
 
@@ -20,11 +20,11 @@ Chained PRs recommended: Yes
 Chain strategy: stacked-to-develop
 400-line budget risk: High
 
-Unit counts: 30 production-bearing; verification-only units are U12/U22A/U22B (3); and 1 parent/verify gate with no source-unit estimate. The selected source topology is the controlled C1 → C2A → C2B1 → C2B2 → C3A → C3B → C4 → C5A → C5B1 → C5B2 → C6 … C20 chain with exactly 25 dependency-ordered groups, each max ≤650. C5A is U5B and must merge before C5B1/U6; C5B2 remains blocked pending the C5B1 merge. C1 is U1; C2A atomically contains U2A, the U2B core migration contract, and U2C tenant registry; C2B1 contains only U2B S39 migration/index/lock/integrity hardening; C2B2 contains the reusable cleanup helper plus its exhaustive direct matrix; C3A contains U3; and C3B contains U4A. C2B2 is mandatory before C3A, and C3B is mandatory before C4/U4B. Schema, migration, and tenant registry remain atomic in C2A so generated-client, database, and isolation consistency are never broken. No blanket exception applies. Strict400 remains rejected forecast/history only, not an active plan.
+Unit counts: 30 production-bearing; verification-only units are U12/U22A/U22B (3); and 1 parent/verify gate with no source-unit estimate. The selected source topology is the controlled C1 → C2A → C2B1 → C2B2 → C3A → C3B → C4 → C5A → C5B1 → C5B2 → C6A → C6B → C7 … C20 chain with exactly 26 dependency-ordered groups, each max ≤650. C5A is U5B and must merge before C5B1/U6; C5B2 remains blocked pending the C5B1 merge. C1 is U1; C2A atomically contains U2A, the U2B core migration contract, and U2C tenant registry; C2B1 contains only U2B S39 migration/index/lock/integrity hardening; C2B2 contains the reusable cleanup helper plus its exhaustive direct matrix; C3A contains U3; and C3B contains U4A. C2B2 is mandatory before C3A, and C3B is mandatory before C4/U4B. Schema, migration, and tenant registry remain atomic in C2A so generated-client, database, and isolation consistency are never broken. No blanket exception applies. Strict400 remains rejected forecast/history only, not an active plan.
 
 ## Scenario linkage
 
-The evidence matrix preserves exactly 49 rows. Task coverage links them as follows: U1 S34,S43–S45; U2B S39; U4A S24,S35; U4B S40–S42; U5A S02; U5B S01,S03; U6 S04,S06; U7 S05,S08–S10; U8 S11,S14–S15; U9 S13,S17–S19,S31–S32; U10A S20–S23,S27,S29; U10B S37–S38; U11A S25–S26; U11B S30,S33; U13 S07,S12,S28; U14 S16; U17 S47,S49; U18A S36; U18B S46; U20B S48; U22A/U22B final evidence for the remaining journeys. Matrix RED ownership remains authoritative.
+The evidence matrix preserves exactly 49 rows. Task coverage links them as follows: U1 S34,S43–S45; U2B S39; U4A S24,S35; U4B S40–S42; U5A S02; U5B S01,S03; U6 S04,S06; C6A S05,S08; C6B S09–S10; U8 S11,S14–S15; U9 S13,S17–S19,S31–S32; U10A S20–S23,S27,S29; U10B S37–S38; U11A S25–S26; U11B S30,S33; U13 S07,S12,S28; U14 S16; U17 S47,S49; U18A S36; U18B S46; U20B S48; U22A/U22B final evidence for the remaining journeys. Matrix RED ownership remains authoritative.
 
 ## Ordered implementation units
 
@@ -117,12 +117,19 @@ Blocked until C5B1 merges. C5B2 manifest: `apps/api/test/property-proposal-eligi
 - [x] C5B2: Add bounded barriers and prove inactive/role-changed seller create/update eligibility races with real PostgreSQL locks. <!-- sdd-owner: implementation -->
 - [x] C5B2: Run the guarded real-PostgreSQL race command repeatedly; close worker transactions, barriers, clients, and proposals in every `finally`. <!-- sdd-owner: implementation -->
 
-### U7 — Submit, resubmit, and immutable rounds (S05, S08–S10)
+### U7 / C6A — Initial BORRADOR submission and immutable round one (S05,S08)
 
-Manifest: `apps/api/src/property-proposals/use-cases/submit-property-proposal.use-case.ts`, `apps/api/src/property-proposals/helpers/map-property-proposal.ts`, `apps/api/src/property-proposals/use-cases/submit-property-proposal.use-case.spec.ts`, `apps/api/src/property-proposals/use-cases/submit-property-proposal.replay.spec.ts`.
+Manifest: `apps/api/src/property-proposals/use-cases/submit-property-proposal.use-case.ts`, `apps/api/src/property-proposals/helpers/map-property-proposal.ts`, `property-proposals.repository.ts`, `prisma-property-proposals.repository.ts`, `prisma-property-proposals.repository.spec.ts`, `property-proposals.module.ts`, `helpers/lock-property-proposal.ts`, and `submit-property-proposal.use-case.spec.ts`.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR six-field submission, locked-row snapshotting, round numbering, retained history, rejected-edit versus explicit resubmit, and replay identity. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest submit specs and API typecheck; delete rounds before proposals in `finally`. <!-- sdd-owner: implementation -->
+- [x] C6A: RED → GREEN → TRIANGULATE → REFACTOR BORRADOR-only six-field locked-data submission, exact seller locks, immutable full round-one snapshot, same timestamp, and one version increment. <!-- sdd-owner: implementation -->
+- [x] C6A: Run focused submit/repository coverage, C5+C6 regression, forced API typecheck, lint, and cleanup/postchecks. <!-- sdd-owner: implementation -->
+
+### U7 / C6B — Rejected resubmission, history, and exact replay (S09–S10)
+
+Blocked until C6A merges. Manifest: `submit-property-proposal.use-case.ts`, `submit-property-proposal.replay.spec.ts`, and the required repository/mapper coverage.
+
+- [ ] C6B: RED → GREEN → TRIANGULATE → REFACTOR RECHAZADA-only explicit resubmit, retained prior history, next-round numbering, and exact replay. <!-- sdd-owner: implementation -->
+- [ ] C6B: Run the replay/history command and API typecheck; delete rounds before proposals in `finally`. <!-- sdd-owner: implementation -->
 
 ### U8 — Reviewer inbox and detail reads (S11, S14–S15)
 
@@ -286,4 +293,4 @@ Manifest: `apps/app-new/tests/seeded/property-proposals.spec.ts`, `property-prop
 
 ## Arithmetic check
 
-The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `7,082–8,813`, verification-only `795–945`, parent gate `0`, strict implementation/test total `7,877–9,758`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650; the 25-group topology separates C3A/U3, C3B/U4A, C5A/U5B, C5B1/U6 update locks, and C5B2/U6 races; C2A current candidate is capped at 649; C2B1 and C2B2 are each capped at ≤635.
+The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `7,082–8,813`, verification-only `795–945`, parent gate `0`, strict implementation/test total `7,877–9,758`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650; the 26-group topology separates C3A/U3, C3B/U4A, C5A/U5B, C5B1/U6 update locks, C5B2/U6 races, C6A/U7 initial submission, and C6B/U7 resubmission/history; C2A current candidate is capped at 649; C2B1 and C2B2 are each capped at ≤635.
