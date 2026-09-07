@@ -1,7 +1,10 @@
+import { Prisma } from '@prisma/client'
 import { Injectable } from '@nestjs/common'
 import type { StagedPropertyScalarsInput } from './domain/normalization'
 import { STAGED_PROPERTY_SCALAR_KEYS } from './domain/normalization'
-import { buildUpdateReplayIdentity, matchesUpdateReplayIdentity } from './domain/replay-identity'
+import {
+  buildSubmitReplayIdentity, buildUpdateReplayIdentity, matchesSubmitReplayIdentity, matchesUpdateReplayIdentity,
+} from './domain/replay-identity'
 import { assertEditableProposalState } from './domain/state-machine'
 import { assertSubmissionFields } from './domain/normalization'
 import { lockEligibleSeller } from './helpers/lock-property-proposal'
@@ -17,6 +20,15 @@ import type {
   SubmitPropertyProposalInput,
   SubmitPropertyProposalResult,
 } from './property-proposals.repository'
+
+function isRoundNumberUniquenessError(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') return false
+  const meta = error.meta as { constraint?: unknown; target?: unknown } | undefined
+  const target = meta?.target
+  return meta?.constraint === 'property_proposal_review_rounds_proposalId_roundNumber_key'
+    || target === 'property_proposal_review_rounds_proposalId_roundNumber_key'
+    || (Array.isArray(target) && target.length === 2 && target.includes('proposalId') && target.includes('roundNumber'))
+}
 
 @Injectable()
 export class PrismaPropertyProposalsRepository implements PropertyProposalsRepository {
@@ -34,7 +46,8 @@ export class PrismaPropertyProposalsRepository implements PropertyProposalsRepos
   }
 
   async submitForSeller(input: SubmitPropertyProposalInput): Promise<SubmitPropertyProposalResult> {
-    return this.prisma.$transaction(async (tx) => {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
       const locked = await tx.$queryRaw<{ id: string }[]>`
         SELECT id FROM property_proposals
         WHERE id = ${input.proposalId} AND "tenantId" = ${input.tenantId}
@@ -47,27 +60,51 @@ export class PrismaPropertyProposalsRepository implements PropertyProposalsRepos
         where: { id: input.proposalId, tenantId: input.tenantId, proposedByUserId: input.proposedByUserId },
       })
       if (!proposal) return { kind: 'notFound' }
-      if (!await lockEligibleSeller(tx, { ...input, operation: 'submit' })) return { kind: 'ineligible' }
-      if (proposal.state !== 'BORRADOR' || proposal.version !== input.expectedVersion) return { kind: 'conflict' }
+          if (!await lockEligibleSeller(tx, { ...input, operation: 'submit' })) return { kind: 'ineligible' }
 
-      const snapshot = mapPropertyProposalSnapshot(proposal)
-      try {
-        assertSubmissionFields(snapshot)
-      } catch {
-        return { kind: 'incomplete' }
-      }
-      const submittedAt = new Date()
-      const completeSnapshot = snapshot as typeof snapshot & { title: string }
-      const round = await tx.propertyProposalReviewRound.create({
-        data: { ...completeSnapshot, tenantId: input.tenantId, proposalId: proposal.id, roundNumber: 1,
-          submittedByUserId: input.proposedByUserId, submittedAt },
+          const snapshot = mapPropertyProposalSnapshot(proposal)
+          if (proposal.state === 'EN_REVISION') {
+            if (proposal.version !== input.expectedVersion + 1) return { kind: 'conflict' }
+            const round = await tx.propertyProposalReviewRound.findFirst({
+              where: { proposalId: proposal.id, tenantId: input.tenantId }, orderBy: { roundNumber: 'desc' },
+            })
+            if (round && matchesSubmitReplayIdentity(
+                buildSubmitReplayIdentity(input.expectedVersion, round),
+                buildSubmitReplayIdentity(input.expectedVersion, snapshot),
+              )) return { kind: 'submitted', proposal, round }
+            return { kind: 'conflict' }
+          }
+          if (proposal.state !== 'BORRADOR' && proposal.state !== 'RECHAZADA') return { kind: 'conflict' }
+          if (proposal.version !== input.expectedVersion) return { kind: 'conflict' }
+
+          try {
+            assertSubmissionFields(snapshot)
+          } catch {
+            return { kind: 'incomplete' }
+          }
+          const latestRound = proposal.state === 'RECHAZADA'
+            ? await tx.propertyProposalReviewRound.findFirst({
+              where: { proposalId: proposal.id, tenantId: input.tenantId }, orderBy: { roundNumber: 'desc' },
+            })
+            : null
+          if (proposal.state === 'RECHAZADA' && !latestRound) return { kind: 'conflict' }
+
+          const submittedAt = new Date()
+          const completeSnapshot = snapshot as typeof snapshot & { title: string }
+          const round = await tx.propertyProposalReviewRound.create({
+            data: { ...completeSnapshot, tenantId: input.tenantId, proposalId: proposal.id,
+              roundNumber: latestRound ? latestRound.roundNumber + 1 : 1, submittedByUserId: input.proposedByUserId, submittedAt },
+          })
+          const updated = await tx.propertyProposal.update({
+            where: { id: proposal.id },
+            data: { state: 'EN_REVISION', latestSubmittedAt: submittedAt, version: { increment: 1 } },
+          })
+          return { kind: 'submitted', proposal: updated, round }
       })
-      const updated = await tx.propertyProposal.update({
-        where: { id: proposal.id },
-        data: { state: 'EN_REVISION', latestSubmittedAt: submittedAt, version: { increment: 1 } },
-      })
-      return { kind: 'submitted', proposal: updated, round }
-    })
+    } catch (error) {
+      if (isRoundNumberUniquenessError(error)) return { kind: 'conflict' }
+      throw error
+    }
   }
 
   async updateForSeller(input: UpdatePropertyProposalInput): Promise<UpdatePropertyProposalResult> {

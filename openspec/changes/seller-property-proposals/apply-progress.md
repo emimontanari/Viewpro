@@ -344,3 +344,70 @@ C6A is complete: its two persisted implementation rows are `[x]`; C6B remains bl
 - [ ] C6B: RED → GREEN → TRIANGULATE → REFACTOR RECHAZADA-only explicit resubmit, retained prior history, next-round numbering, and exact replay. <!-- sdd-owner: implementation -->
 - [ ] C6B: Run the replay/history command and API typecheck; delete rounds before proposals in `finally`. <!-- sdd-owner: implementation -->
 - C6A/C6B split updates the source topology from 25 to 26 groups; C6B is the mandatory post-merge blocker. No design deviation, commit, push, PR, merge, receipt, or review action occurred.
+
+## C6B / U7 rejected resubmission, history, and exact replay
+
+### Status consumed and delivery
+```yaml
+schemaName: spec-driven
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+dependencies: { apply: ready }
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-c6b-resubmission
+  allowedEditRoots: user-supplied C6B source/test and OpenSpec paths
+  warnings: []
+nextRecommended: apply
+```
+The parent-selected delivery path is `auto-chain` / `stacked-to-develop`; this is the C6B-only work-unit after merged C6A. Both C6B implementation rows are visibly `[x]`; C7+ and all parent-owned rows remain unchanged.
+
+### Completed behavior and strict TDD evidence
+
+| Task | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|
+| C6B resubmit/history/replay | Clean C5+C6A: 4 files / 65 tests passed before edits. | New behavioral repository tests failed 3/7: `RECHAZADA` returned conflict, exact replay returned conflict, and a forced round failure never reached the insert. | C6B replay/history plus repository coverage passed 2 files / 48 tests. | Mutating next-round calculation to reuse the prior durable number failed 1/7; restoration passed. | Reused the existing immutable snapshot/replay primitives; no further refactor was needed. |
+
+- `RECHAZADA` is now the only added explicit submission state; `BORRADOR` remains C6A's round-one path.
+- The transaction retains proposal → reread → user → exact active-`AGENT` membership locks, snapshots all 18 normalized staged scalars from the locked proposal, appends `latestRound.roundNumber + 1`, uses one timestamp for round/proposal, transitions to `EN_REVISION`, and increments version once.
+- Exact replay requires `EN_REVISION`, durable version `expectedVersion + 1`, and equality between the locked staged snapshot and latest durable round; it returns the durable proposal/round with no create/update. Stale, future, snapshot-near-match, approved, scoped-absence, ineligible, and incomplete outcomes remain conflict/safe as applicable.
+- Round and proposal-update failures reject through the outer transaction; no decision, canonical, controller, DTO, BFF, UI, or C7 code was changed.
+
+### Verification and cleanup
+
+- PASS — guarded local `viewpro_test` C6B command: replay/history and repository coverage, 2 files / 48 tests.
+- PASS — forced API Turbo typecheck: 6/6 uncached tasks; direct API typecheck initially exposed the existing generated-contract prerequisite, so the normative C6B command now uses Turbo generation.
+- PASS — API lint.
+- PASS — C5+C6 regression: 5 files / 73 tests.
+- No database fixtures, rounds, or proposal rows were created by the mock-focused suites; postchecks and recursive generated/dependency/build cleanup are recorded with final candidate arithmetic below.
+
+### Remaining work, boundary, and risks
+
+- Exact next unchecked implementation row: `- [ ] RED → GREEN → TRIANGULATE → REFACTOR both reviewer roles, tenant-scoped all-state reads, pending/newest defaults, state/history AND filters, pagination limits, safe result visibility, and search rejection boundary; add S15's repository EXISTS/AND RED only after U5A's scoped-read edit. <!-- sdd-owner: implementation -->`
+- Candidate arithmetic is 96 tracked additions + 28 tracked deletions + 92 untracked replay-test lines = 216 changed lines, within the 400-line C6B boundary in the retained 26-group topology. No code golf or size exception was used; parent lifecycle, review, receipt, commit, push, PR, merge, transport/UI, external services, and C7+ are deferred.
+- Residual risk: no real PostgreSQL resubmission race is claimed here; C6B's proposal row lock plus durable history query are unit-proven, while later verification owns broader integration/concurrency evidence.
+
+## C6B #306 independent-review corrective cycle
+
+### Status, scope, and persisted tasks
+
+Manual authoritative OpenSpec status was consumed because no parent status was supplied: `seller-property-proposals`, `artifactStore: openspec`, `applyState: ready`, `nextRecommended: apply`, `mode: repo-local`, workspace `/Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-c6b-resubmission`, with the user-supplied C6B roots only and no action-context warning. The `auto-chain` / `stacked-to-develop` C6B slice is explicitly authorized. Both C6B implementation rows remain visibly `[x]`; C7+ and all parent-owned rows remain unchanged.
+
+### Corrective chronology and TDD Cycle Evidence
+
+| Task | Safety net / RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|
+| C6B uniqueness, replay, ordering, and rollback correction | Offline frozen install, generated client, and C6A/C6B safety net passed 3 files / 59 tests. Test-first corrective matrix then failed exactly 1 of 65: Prisma P2002 `target: ['proposalId','roundNumber']` escaped instead of reaching the stable use-case conflict; all 18 mismatch, order, and stateful-fake behaviors already exercised existing code. | Added only a narrow P2002 predicate around `submitForSeller`; focused C6A+C6B/repository/use-case coverage passed 3 files / 82 tests. | Replacing the narrow predicate with all P2002 failed exactly 1 of 31 replay tests because an unrelated `['tenantId','id']` P2002 became `{kind:'conflict'}`; restored predicate passed 82 focused tests. | Restored retained C6B stale/future/approved, round-failure, and update-failure tests; no production refactor beyond the narrow error mapping. |
+
+- The adapter maps only `PrismaClientKnownRequestError` P2002 metadata identifying the `(proposalId, roundNumber)` constraint (field pair or its generated constraint name) to `{kind:'conflict'}`; other failures propagate. The composed repository/use-case test proves `PROPERTY_PROPOSAL_STATE_CONFLICT` / 409.
+- The parameterized replay matrix rejects mismatch of every 18 staged snapshot fields, including nullable numeric/string values and distinct `PropertyType` / `PropertyOperationType` enum values, with no new round or proposal update.
+- An explicit event trace proves proposal lock → authoritative reread → active-user lock → exact active-AGENT membership lock → latest-round read → round create → proposal update. A stateful transactional fake commits only on successful callback completion; both injected round and update failures leave the full prior round snapshot and `REJECTED` decision/reason unchanged. This is transaction-contract evidence, not a claim of PostgreSQL resubmission integration coverage.
+
+### Verification, blockers, and accounting
+
+- PASS: guarded localhost `viewpro_test` C5+C6 including C5B2 race, 6 files / 104 tests; corrected C4-C6 repeat, 9 files / 122 tests; C6 focused repeat, 3 files / 82 tests; forced uncached API Turbo typecheck, 6/6; API lint.
+- The first C4-C6 run had one 5s timeout in the unmodified primary-concurrency test; its isolated rerun passed 14/14 and the complete 9-file rerun passed 122/122.
+- BLOCKED (unrelated): fresh guarded full API `vitest run --retry=0` completed 157/158 files and 1598/1599 tests, failing only `test/restore-schema-parity.spec.ts` SIGTERM/SIGINT forwarding. It is outside C6B edit roots and was not changed.
+- Prior arithmetic is corrected: source/test `159` plus OpenSpec `57` was `216` before correction. Final candidate is **136 tracked additions + 29 tracked deletions + 147 untracked lines = 312 changed lines**, within the 400-line C6B boundary; topology remains 26 groups and the evidence matrix remains 49 scenarios.
+- No design deviation, PostgreSQL resubmission test, commit, rebase, push, PR, merge, C7, transport/UI, provider, or external-service work occurred. Postchecks found `0|0|0` proposal/round/decision rows in `viewpro_test` and w1–w4 plus zero non-idle test connections; node_modules, `.turbo`, and `*.tsbuildinfo` were removed, while tracked `packages/contracts/src/generated/.gitkeep` remains. The only residual risk is the explicitly unclaimed real-PostgreSQL resubmission-race proof; the stateful fake proves rollback semantics for the repository transaction contract.

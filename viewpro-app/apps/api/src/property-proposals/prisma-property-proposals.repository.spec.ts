@@ -335,7 +335,10 @@ describe('PrismaPropertyProposalsRepository initial submission', () => {
     const tx = {
       $queryRaw: vi.fn().mockResolvedValueOnce(answers[0]).mockResolvedValueOnce(answers[1]).mockResolvedValueOnce(answers[2]),
       propertyProposal: { findFirst: vi.fn().mockResolvedValue(proposal), update: vi.fn().mockImplementation(({ data }) => ({ ...proposal, ...data, version: proposal.version + 1 })) },
-      propertyProposalReviewRound: { create: vi.fn().mockImplementation(({ data }) => ({ id: 'round-1', ...data })) },
+          propertyProposalReviewRound: {
+            findFirst: vi.fn().mockResolvedValue(null),
+            create: vi.fn().mockImplementation(({ data }) => ({ id: 'round-1', ...data })),
+          },
     }
     return { tx, prisma: { $transaction: vi.fn().mockImplementation((callback) => callback(tx)) } }
   }

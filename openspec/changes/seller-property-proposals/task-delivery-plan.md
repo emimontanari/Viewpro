@@ -42,7 +42,7 @@ The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0
 | U6 / C5B1 | `apps/api/src/property-proposals/property-proposals.repository.ts`, `prisma-property-proposals.repository.ts`, `property-proposals.module.ts`, `helpers/lock-property-proposal.ts`, update use case, update spec, and focused repository spec | **372 changed lines (<400)**; production-bearing |
 | U6 / C5B2 | `apps/api/test/property-proposal-eligibility-race.spec.ts` plus final OpenSpec closure | **374 changed lines (<400)**; production-bearing; maintainer-approved normal-boundary expansion from 250, no size exception |
 | U7 / C6A | `apps/api/src/property-proposals/use-cases/submit-property-proposal.use-case.ts`, `helpers/map-property-proposal.ts`, `helpers/lock-property-proposal.ts`, repository port/adapter/module, `submit-property-proposal.use-case.spec.ts`, and focused repository coverage for initial BORRADOR submission | **203 tracked additions + 22 tracked deletions + 91 untracked lines = 316 changed lines (≤325)**; production-bearing |
-| U7 / C6B | Later rejected resubmit/history/exact-replay use-case and replay/repository coverage after C6A merges | **≤400**; production-bearing, blocked until C6A merge |
+| U7 / C6B | Rejected resubmit/history/exact-replay adapter and `submit-property-proposal.replay.spec.ts` / repository coverage | **231 source/test changed lines; 312 entire C6B candidate lines**; production-bearing, completed after merged C6A |
 | U8 | `apps/api/src/property-proposals/use-cases/list-property-proposal-review.use-case.ts` P35–45; `apps/api/src/property-proposals/use-cases/get-property-proposal-review.use-case.ts` P25–35; `apps/api/src/property-proposals/review-filter-builder.ts` P25–35; `apps/api/src/property-proposals/prisma-property-proposals.repository.ts` P35–45; `apps/api/src/property-proposals/use-cases/list-property-proposal-review.use-case.spec.ts` T85–95 F20–25; `apps/api/src/property-proposals/review-filter-builder.spec.ts` T40–50; later S15 edit `apps/api/src/property-proposals/prisma-property-proposals.repository.spec.ts` T55–65 F10–15 | **320–400**; production-bearing |
 | U9 | `apps/api/src/property-proposals/use-cases/reject-property-proposal.use-case.ts` P55–65; `apps/api/src/property-proposals/use-cases/review-transition-conflict.ts` P20–30; `apps/api/src/property-proposals/use-cases/reject-property-proposal.use-case.spec.ts` T95–105 F25–30; `apps/api/src/property-proposals/use-cases/review-transition-conflict.spec.ts` T50–60 F20–25 | **265–315**; production-bearing |
 | U10A | `apps/api/src/property-proposals/use-cases/approve-property-proposal.use-case.ts` P80–95; `apps/api/src/property-proposals/property-proposals.repository.ts` P25–35; `apps/api/src/property-proposals/use-cases/approve-property-proposal.use-case.spec.ts` T105–115 F25–30 | **235–275**; production-bearing |
@@ -85,7 +85,7 @@ U4B 75+85+70+25+10 = 265; 90+100+85+35+15 = 325
 U5A 70+85+20+20+45+20 = 260; 85+100+30+30+55+25 = 325
 U5B / C5A 18+10+28+(64+25)+25+65 = 235; 24+14+40+(90+40)+32+85 = 325
 U6 / C5B historical combined 275–360; C5B1 verified candidate 372 changed lines (<400); C5B2 final = source/test 19 additions + 19 deletions + 256 race-test lines (294) + OpenSpec 66 additions (apply-progress) + 2/+2 (tasks) + 4/+4 (this plan) + 1/+1 (verification command) = 374 changed lines (<400), with maintainer-approved 250→<400 boundary expansion and no size exception
-C6A initial submit/snapshot = 203 tracked additions + 22 tracked deletions + 91 untracked lines = 316 changed lines (≤325); C6B rejected resubmit/history/replay = ≤400 (blocked until C6A merge)
+C6A initial submit/snapshot = 203 tracked additions + 22 tracked deletions + 91 untracked lines = 316 changed lines (≤325); C6B prior source/test = 4 additions + 1 deletion (repository spec) + 42 additions + 20 deletions (adapter) + 92 untracked replay-test lines = 159, and prior OpenSpec = 50 additions + 7 deletions = 57, so the independently rejected pre-correction candidate was 216; final C6B = 136 tracked additions + 29 tracked deletions + 147 untracked replay-test lines = 312 (≤400).
 U8 35+25+25+35+85+20+40+45+10 = 320; 45+35+35+45+95+25+50+55+15 = 400
 U9 55+20+95+25+50+20 = 265; 65+30+105+30+60+25 = 315
 U10A 80+25+105+25 = 235; 95+35+115+30 = 275
@@ -129,7 +129,7 @@ The corrected strict units mechanically group into **26** dependency-ordered opt
 | C5B1 | U6 update/lock/replay (after C5A merge) | 372 | 372 changed lines (<400) |
 | C5B2 | U6 barriers/real PostgreSQL races plus final OpenSpec closure | 374 | 374 changed lines (<400); approved normal-boundary expansion (250→<400), no size exception |
 | C6A | U7 initial BORRADOR submit/snapshot | 316 | 203 tracked additions + 22 tracked deletions + 91 untracked lines = 316 changed lines (≤325) |
-| C6B | U7 rejected resubmit/history/exact replay (after C6A merge) | ≤400 | ≤400 |
+| C6B | U7 rejected resubmit/history/exact replay | 231 source/test | 312 entire candidate, ≤400 |
 | C7 | U8 | 400 | 320–400 |
 | C8 | U9 + U10A | 315+275=590 | 500–590 |
 | C9 | U10B + U11A | 170+200=370 | 295–370 |
