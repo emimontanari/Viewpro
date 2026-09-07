@@ -9,7 +9,7 @@ This is an executable, frontend-only delivery plan for `crm-manager-home`. Draft
 | Estimated changed lines | 1,840–2,210 across six implementation PRs; 180–390 per implementation slice |
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
-| Suggested split | P1 → P2 → P3 → P4 → I1 → I2 → I3 → I4 → I5 → I6 |
+| Suggested split | P1 → P2 → P3 → P4 → I1 → I2A → I2B → I3 → I4 → I5 → I6 |
 | Delivery strategy | ask-on-risk resolved to required split; no exception |
 | Chain strategy | stacked-to-main |
 
@@ -37,7 +37,7 @@ Measured planning boundaries are deliberately separate: P1 is the reference asse
 
 ## Shared implementation evidence and safety net
 
-For every I1–I6, append one evidence record to `openspec/changes/manager-home-reference-fidelity/apply-progress.md` and the PR evidence section: **slice/phase (RED, GREEN, TRIANGULATE, REFACTOR), UTC timestamp, fresh-develop branch, tree or commit SHA, exact command, exit code, and decisive output**. RED must fail on the intended behavioral assertion rather than setup; GREEN reruns it successfully; TRIANGULATE proves a contrasting case; REFACTOR changes no behavior and reruns focused plus slice regression checks.
+For every I1, I2A, I2B, and I3–I6, append one evidence record to `openspec/changes/manager-home-reference-fidelity/apply-progress.md` and the PR evidence section: **slice/phase (RED, GREEN, TRIANGULATE, REFACTOR), UTC timestamp, fresh-develop branch, tree or commit SHA, exact command, exit code, and decisive output**. RED must fail on the intended behavioral assertion rather than setup; GREEN reruns it successfully; TRIANGULATE proves a contrasting case; REFACTOR changes no behavior and reruns focused plus slice regression checks.
 
 Run all commands from `viewpro-app/`. API commands are regression-only (no backend change) and may run **only** when `DATABASE_URL` visibly names `viewpro_test` or another disposable test database; never use Neon or an external/production database. Record every skipped command and reason rather than claiming a pass.
 
@@ -58,7 +58,8 @@ The following matrix is the narrow source/test allowlist for each independently 
 | Slice | Allowed source and test surfaces | Objective, safety net, finish / rollback | Expected lines |
 |---|---|---|---|
 | I1 | `apps/app-new/src/app/dashboard/page.tsx`; `src/features/dashboard/components/operational-homepage.tsx`; `operational-homepage/helpers.ts`; `operational-homepage/states.tsx`; `operational-homepage.test.tsx`; new `operational-homepage/manager-home.test.tsx`; `tests/seeded/demo-smoke.spec.ts` (existing manager heading assertion only) | Exact `AGENT` / `MANAGER` / `PRINCIPAL_MANAGER` dispatcher; unknown/missing role and missing identity fail closed before any manager query; sole truthful manager `h1`, Argentina date seam, unchanged seller heading/query, and the existing seeded principal-manager assertion matches the deterministic authenticated greeting. Safety: agent/unknown no-summary-query assertions and owner test. Finish: roles/date deterministic. Roll back I1 as one dispatcher/heading change; never restore broad non-agent manager routing. | 220–340 |
-| I2 | `src/features/dashboard/components/operational-homepage.tsx`; new `operational-homepage/manager-home.tsx`; `operational-homepage/states.tsx`; `operational-homepage/helpers.ts`; `operational-homepage.test.tsx`; `manager-home.test.tsx` | Move the sole manager `dashboardSummaryOptions` query and selected `7d`/`14d`/`30d` state into the manager container; remove manager `/api/products` query/preview/fallback; give error precedence over retained data, explicit loading/ready/empty/error/retrying and exact `refetch` retry. Safety: tenant/range query key and BFF route regression unchanged. Finish: no zero/empty/fallback facts on failure. Roll back container/query removal as one slice. | 280–390 |
+| I2A | `src/features/dashboard/components/operational-homepage.tsx`; new `operational-homepage/manager-home.tsx`; `operational-homepage.test.tsx`; `manager-home.test.tsx` | Add serializable `nowMs`, one manager summary adapter/query, and remove manager products preview/fallback. Prove loading/no-facts, zero-success empties, retained-data error precedence, and exact retry; seller stays unchanged. Roll back adapter/query removal. | 250–340 |
+| I2B | `operational-homepage/manager-home.test.tsx` | Add successful-refreshing, range/tenant loading, and exact latest-key triangulation evidence; source changes only if that proof finds a defect. | 80–160 |
 | I3 | `operational-homepage/manager-home.tsx`; new `operational-homepage/manager-sections.tsx`; `operational-homepage/helpers.ts`; `operational-homepage/primitives.tsx`; `operational-homepage/priority-panel.tsx`; `manager-home.test.tsx` | Render greeting/date → dominant summary/range → four truthful metric tiles → two truthful `/dashboard/seguimiento` priorities, with selected-window labels and successful zero values distinct from failure. Safety: only existing summary fields and 7/14/30d; no visits, alerts, scores, deltas, or percentages. Finish: semantic DOM order and metric meanings proven. Roll back hero/metrics/priorities only. | 300–390 |
 | I4 | `operational-homepage/manager-sections.tsx`; `operational-homepage/helpers.ts`; `manager-home.test.tsx` | Add bounded recent activity and top-properties regions from the atomic summary: real type/text/time, Argentina-local `<time>`, true empty states, wrap-safe text, and authorized `/dashboard/product/{engagementId}` links. Safety: exclude fabricated activity and preserve summary-error unavailable treatment. Finish: permitted source, link, empty, long-text, and unavailable evidence. Roll back the two regions without changing seller lists. | 280–390 |
 | I5 | `operational-homepage/manager-sections.tsx`; `operational-homepage/helpers.ts`; `operational-homepage/primitives.tsx`; `manager-home.test.tsx` | Add bounded top-sellers (real name/email and supported manual-movement counts only) and policy-derived shortcuts from `navGroups`, `canAccessNavigation`, and `canManagePropertyEngagements`; hide unresolved/unauthorized routes and create action. Safety: forbidden-content/action proof covers score/rating/trophy, photos, performance, client/agenda/message/upload/reminder, #306 proposals, and #327 platform terms. Finish: permission/policy contrasts and encoded seller destination pass. Roll back seller/shortcut regions only. | 260–380 |
@@ -71,12 +72,19 @@ The following matrix is the narrow source/test allowlist for each independently 
 - [x] TRIANGULATE I1 with both manager roles versus `AGENT`/unknown and two Argentina calendar days; rerun focused component plus owner regression commands successfully. <!-- sdd-owner: implementation -->
 - [x] REFACTOR I1 without semantic change, rerun its focused and owner/seller regression commands, record evidence, measure ≤400 changed lines, and prepare a standalone rollbackable PR. <!-- sdd-owner: implementation -->
 
-### I2 — atomic summary state and retry
+### I2A — atomic summary core and retry
 
-- [ ] RED in `operational-homepage/manager-home.test.tsx`: assert sole manager summary query, no manager products request/fallback, loading not factual, all-zero successful data truthful, error precedence over stale data, disabled retry while fetching, and retry calls current summary `refetch`; run the focused component command and record the intended failure. <!-- sdd-owner: implementation -->
-- [ ] GREEN only the I2 allowlist: introduce the discriminated atomic manager summary state and query container, retain tenant/range key and 10-second BFF behavior, remove manager products composition, and rerun focused components plus BFF regression successfully. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE I2 with range and tenant changes, zero-ready versus error, and retrying versus ready; rerun focused component and BFF commands successfully. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR I2 without changing seller queries or BFF/API code, rerun focused/BFF/frontend suite/typecheck/lint as applicable, record evidence, measure ≤400 lines, and prepare its independent rollbackable PR. <!-- sdd-owner: implementation -->
+- [x] RED in `operational-homepage/manager-home.test.tsx`: assert serializable `nowMs`, exactly one initial manager summary query/config, no manager products preview, loading/no facts, zero-success empty semantics, retained-data error precedence, and disabled/exact retry; record the intended failure. <!-- sdd-owner: implementation -->
+- [x] GREEN only the I2A allowlist: add the summary adapter/query, retain the tenant/range key and 10-second BFF behavior, remove manager products composition, and rerun focused components plus BFF regression. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE I2A with zero-ready versus retained-data error and retrying versus retry-ready; rerun focused component and BFF commands. <!-- sdd-owner: implementation -->
+- [x] REFACTOR I2A without changing seller queries or BFF/API code; rerun focused/BFF/frontend suite/typecheck/lint, record evidence, measure ≤400 lines, and prepare its rollbackable PR. <!-- sdd-owner: implementation -->
+
+### I2B — refreshing, range, and tenant proof
+
+- [ ] RED in `operational-homepage/manager-home.test.tsx`: assert successful-refreshing keeps truthful ready facts and range/tenant changes do not retain prior facts; record the focused failure. <!-- sdd-owner: implementation -->
+- [ ] GREEN only the I2B allowlist: make the minimum source change only if the refreshing/range/tenant proof exposes a defect; rerun focused components. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE I2B with 7d/14d/30d and two tenant IDs, including exact latest summary query key/config; rerun focused components and BFF regression. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR I2B and run focused, BFF, owner, frontend suite, typecheck, lint, diff/accounting, and final seller regressions; record its independent ≤400-line boundary. <!-- sdd-owner: implementation -->
 
 ### I3 — hierarchy, metrics, priorities, and range
 
@@ -116,7 +124,7 @@ The following matrix is the narrow source/test allowlist for each independently 
 | R2 — Greeting renders the Argentina-local current date | I1 truthful `h1` and fixed-instant formatter assertions |
 | R2 — Date changes across calendar days | I1 before/after Buenos Aires-midnight fixtures |
 | R3 — Manager sees the supported reference hierarchy | I3 DOM order; I5 forbidden-content proof; I6 browser hierarchy proof |
-| R4 — Selected range controls metric meaning | I2 range state plus I3 7d/14d/30d label assertions |
+| R4 — Selected range controls metric meaning | I2B range/latest-key proof plus I3 7d/14d/30d label assertions |
 | R4 — Metrics preserve their source meanings | I3 supported-field and forbidden-label assertions |
 | R4 — No qualifying records has truthful labels | I3 zero-ready versus error contrast |
 | R5 — Activity and rankings use permitted source records | I4 permitted/inactive fixtures and I5 bounded-seller fixtures |
@@ -131,7 +139,7 @@ The following matrix is the narrow source/test allowlist for each independently 
 | R9 — Keyboard user reaches controls coherently | I6 named controls, focus, and DOM-order proof |
 | R9 — Long content remains usable across critical viewports | I6 long-text four-viewport geometry proof |
 | R10 — Protected surfaces remain unchanged | I1 agent isolation, owner regression, BFF/frontend suite, and no source outside the allowlists |
-| R10 — Manager home remains tenant scoped | I2 tenant-key contrast and unchanged selected-tenant BFF regression |
+| R10 — Manager home remains tenant scoped | I2B tenant/latest-key contrast and unchanged selected-tenant BFF regression |
 
 ## Verification
 
