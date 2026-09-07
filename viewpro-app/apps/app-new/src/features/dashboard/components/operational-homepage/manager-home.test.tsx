@@ -1,8 +1,9 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useQuery } from '@tanstack/react-query';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DashboardSummaryResponse } from '@/features/dashboard/api/types';
+import { useActiveTenant } from '@/lib/session-context';
 import { formatArgentinaCalendarDate } from '../operational-homepage/helpers';
 import { OperationalHomepage } from '../operational-homepage';
 
@@ -16,21 +17,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 });
 
 vi.mock('@/lib/session-context', () => ({
-  useActiveTenant: vi.fn(() => ({
-    activeMembership: {
-      id: 'membership-1',
-      permissions: ['engagements:view:all'],
-      role: 'MANAGER',
-      tenant: {
-        id: 'tenant-1',
-        name: 'Costa Norte Propiedades',
-        slug: 'costa-norte',
-        status: 'ACTIVE'
-      }
-    },
-    activeTenantId: 'tenant-1',
-    isTenantLoading: false
-  })),
+  useActiveTenant: vi.fn(),
   useSession: vi.fn(() => ({
     session: {
       user: {
@@ -48,6 +35,31 @@ vi.mock('@/lib/session-context', () => ({
 
 const useQueryMock = vi.mocked(useQuery);
 const refetch = vi.fn();
+type TenantContext = ReturnType<typeof useActiveTenant>;
+
+function managerTenantContext(id: string, name: string, slug: string): TenantContext {
+  return {
+    activeMembership: {
+      id: `membership-${id}`,
+      permissions: ['engagements:view:all'],
+      role: 'MANAGER',
+      tenant: { id, name, slug, status: 'ACTIVE' }
+    },
+    activeTenantId: id,
+    isTenantLoading: false
+  } as TenantContext;
+}
+
+const primaryTenantContext = managerTenantContext(
+  'tenant-1',
+  'Costa Norte Propiedades',
+  'costa-norte'
+);
+const secondaryTenantContext = managerTenantContext(
+  'tenant-2',
+  'Río Plata Inmobiliaria',
+  'rio-plata'
+);
 const zeroSummary = {
   counters: { activeProperties: 0, attentionNeeded: 0, movementsInRange: 0, staleProperties: 0 },
   recentActivity: [],
@@ -90,7 +102,48 @@ function expectMetric(label: string, value: number) {
   expect(within(metric!.parentElement!).getByText(String(value))).toBeVisible();
 }
 
+function expectLatestSummaryQuery(tenantId: string, range: '7d' | '14d' | '30d') {
+  const options = useQueryMock.mock.calls.at(-1)?.[0] as unknown as Record<string, unknown>;
+
+  expect(Object.keys(options).toSorted()).toEqual([
+    'enabled',
+    'queryFn',
+    'queryKey',
+    'refetchOnReconnect',
+    'refetchOnWindowFocus'
+  ]);
+  expect(options).toMatchObject({
+    enabled: true,
+    queryKey: ['dashboard', 'summary', tenantId, range],
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false
+  });
+  expect(options.queryFn).toEqual(expect.any(Function));
+}
+
+function expectNoSummaryFacts() {
+  for (const label of [
+    'Movimientos del período',
+    'Propiedades activas',
+    'Requieren atención',
+    'Sin novedades en 7 días',
+    'Sin novedades en 14 días',
+    'Sin novedades en 30 días',
+    'Sin movimientos recientes',
+    'Sin actividad para comparar',
+    'Sin movimientos de vendedores'
+  ]) {
+    expect(screen.queryByText(label)).not.toBeInTheDocument();
+  }
+}
+
 describe('manager home query state', () => {
+  beforeEach(() => {
+    useQueryMock.mockClear();
+    refetch.mockClear();
+    vi.mocked(useActiveTenant).mockReturnValue(primaryTenantContext);
+  });
+
   it('uses exactly one initial summary query and omits the manager property preview while loading', () => {
     setManagerQuery({ data: undefined, isLoading: true, isSuccess: false });
 
@@ -152,6 +205,7 @@ describe('manager home query state', () => {
   });
 
   it('formats opposite sides of Buenos Aires midnight from a serializable millisecond seam', () => {
+    setManagerQuery({ data: undefined, isLoading: true, isSuccess: false });
     expect(formatArgentinaCalendarDate(new Date('2026-05-25T02:59:00.000Z')).dateTime).toBe('2026-05-24');
     expect(formatArgentinaCalendarDate(new Date('2026-05-25T03:00:00.000Z')).dateTime).toBe('2026-05-25');
 
@@ -165,5 +219,75 @@ describe('manager home query state', () => {
       <OperationalHomepage nowMs={Date.parse('2026-05-25T03:00:00.000Z')} />
     );
     expect(afterMidnight.container.querySelector('time')).toHaveAttribute('dateTime', '2026-05-25');
+  });
+
+  it('keeps successful ready counters and true empty facts while the summary refreshes', () => {
+    setManagerQuery({ data: nonzeroSummary, isFetching: true });
+
+    render(<OperationalHomepage />);
+
+    expectMetric('Movimientos del período', 5);
+    expectMetric('Propiedades activas', 2);
+    expectMetric('Requieren atención', 3);
+    expectMetric('Sin novedades en 7 días', 4);
+    expect(screen.getByText('Sin movimientos recientes')).toBeVisible();
+    expect(screen.getByText('Sin actividad para comparar')).toBeVisible();
+    expect(screen.getByText('Sin movimientos de vendedores')).toBeVisible();
+    expectLatestSummaryQuery('tenant-1', '7d');
+  });
+
+  it('clears prior facts during each range transition and uses the current range query', async () => {
+    const user = userEvent.setup();
+    setManagerQuery({ data: nonzeroSummary });
+    const homepage = render(<OperationalHomepage />);
+    expectLatestSummaryQuery('tenant-1', '7d');
+
+    setManagerQuery({ data: undefined, isLoading: true, isSuccess: false });
+    await user.click(screen.getByRole('button', { name: '14 días' }));
+    expect(screen.getByLabelText('Preparando resumen operativo')).toBeVisible();
+    expectNoSummaryFacts();
+    expectLatestSummaryQuery('tenant-1', '14d');
+
+    setManagerQuery({ data: nonzeroSummary });
+    homepage.rerender(<OperationalHomepage />);
+    expectMetric('Movimientos del período', 5);
+    expectLatestSummaryQuery('tenant-1', '14d');
+
+    setManagerQuery({ data: undefined, isLoading: true, isSuccess: false });
+    await user.click(screen.getByRole('button', { name: '30 días' }));
+    expect(screen.getByLabelText('Preparando resumen operativo')).toBeVisible();
+    expectNoSummaryFacts();
+    expectLatestSummaryQuery('tenant-1', '30d');
+
+    setManagerQuery({ data: nonzeroSummary });
+    homepage.rerender(<OperationalHomepage />);
+    expectMetric('Movimientos del período', 5);
+    expectLatestSummaryQuery('tenant-1', '30d');
+  });
+
+  it('clears tenant-one facts before querying the current range for a second membership', () => {
+    const tenantContext = vi.mocked(useActiveTenant);
+    setManagerQuery({ data: nonzeroSummary });
+    const homepage = render(<OperationalHomepage />);
+    expectMetric('Movimientos del período', 5);
+
+    tenantContext.mockReturnValue(secondaryTenantContext);
+    setManagerQuery({ data: undefined, isLoading: true, isSuccess: false });
+    homepage.rerender(<OperationalHomepage />);
+
+    expect(screen.getByLabelText('Preparando resumen operativo')).toBeVisible();
+    expectNoSummaryFacts();
+    expectLatestSummaryQuery('tenant-2', '7d');
+
+    setManagerQuery({ data: nonzeroSummary });
+    homepage.rerender(<OperationalHomepage />);
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === 'P' && element.textContent?.includes('Río Plata Inmobiliaria') === true
+      )
+    ).toBeVisible();
+    expectMetric('Movimientos del período', 5);
+    expectLatestSummaryQuery('tenant-2', '7d');
   });
 });
