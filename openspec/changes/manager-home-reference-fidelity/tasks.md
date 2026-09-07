@@ -6,10 +6,10 @@ This is an executable, frontend-only delivery plan for `crm-manager-home`. Draft
 
 | Field | Value |
 |-------|-------|
-| Estimated changed lines | 1,840–2,210 across six implementation PRs; 180–390 per implementation slice |
+| Estimated changed lines | 1,840–2,210 across eight implementation PRs; 180–390 per implementation slice |
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
-| Suggested split | P1 → P2 → P3 → P4 → I1 → I2A → I2B → I3 → I4 → I5 → I6 |
+| Suggested split | P1 → P2 → P3 → P4 → I1 → I2A → I2B → I3 → I4A → I4B → I5 → I6 |
 | Delivery strategy | ask-on-risk resolved to required split; no exception |
 | Chain strategy | stacked-to-main |
 
@@ -37,7 +37,7 @@ Measured planning boundaries are deliberately separate: P1 is the reference asse
 
 ## Shared implementation evidence and safety net
 
-For every I1, I2A, I2B, and I3–I6, append one evidence record to `openspec/changes/manager-home-reference-fidelity/apply-progress.md` and the PR evidence section: **slice/phase (RED, GREEN, TRIANGULATE, REFACTOR), UTC timestamp, fresh-develop branch, tree or commit SHA, exact command, exit code, and decisive output**. RED must fail on the intended behavioral assertion rather than setup; GREEN reruns it successfully; TRIANGULATE proves a contrasting case; REFACTOR changes no behavior and reruns focused plus slice regression checks.
+For every I1, I2A, I2B, I3, I4A, I4B, I5, and I6, append one evidence record to `openspec/changes/manager-home-reference-fidelity/apply-progress.md` and the PR evidence section: **slice/phase (RED, GREEN, TRIANGULATE, REFACTOR), UTC timestamp, fresh-develop branch, tree or commit SHA, exact command, exit code, and decisive output**. RED must fail on the intended behavioral assertion rather than setup; GREEN reruns it successfully; TRIANGULATE proves a contrasting case; REFACTOR changes no behavior and reruns focused plus slice regression checks.
 
 Run all commands from `viewpro-app/`. API commands are regression-only (no backend change) and may run **only** when `DATABASE_URL` visibly names `viewpro_test` or another disposable test database; never use Neon or an external/production database. Record every skipped command and reason rather than claiming a pass.
 
@@ -61,7 +61,8 @@ The following matrix is the narrow source/test allowlist for each independently 
 | I2A | `src/features/dashboard/components/operational-homepage.tsx`; new `operational-homepage/manager-home.tsx`; `operational-homepage.test.tsx`; `manager-home.test.tsx` | Add serializable `nowMs`, one manager summary adapter/query, and remove manager products preview/fallback. Prove loading/no-facts, zero-success empties, retained-data error precedence, and exact retry; seller stays unchanged. Roll back adapter/query removal. | 250–340 |
 | I2B | `operational-homepage/manager-home.test.tsx` | Add successful-refreshing, range/tenant loading, and exact latest-key triangulation evidence; source changes only if that proof finds a defect. | 80–160 |
 | I3 | `src/features/dashboard/components/operational-homepage.tsx` (manager composition/imports only); `operational-homepage/manager-home.tsx`; new `operational-homepage/manager-sections.tsx`; `operational-homepage/helpers.ts`; `operational-homepage/primitives.tsx`; `operational-homepage/priority-panel.tsx`; `manager-home.test.tsx` | Render greeting/date → dominant summary/range → four truthful metric tiles → two truthful `/dashboard/seguimiento` priorities, with selected-window labels and successful zero values distinct from failure. Safety: only existing summary fields and 7/14/30d; no visits, alerts, scores, deltas, or percentages. Finish: semantic DOM order and metric meanings proven. Roll back hero/metrics/priorities only. | 300–390 |
-| I4 | `operational-homepage/manager-sections.tsx`; `operational-homepage/helpers.ts`; `manager-home.test.tsx` | Add bounded recent activity and top-properties regions from the atomic summary: real type/text/time, Argentina-local `<time>`, true empty states, wrap-safe text, and authorized `/dashboard/product/{engagementId}` links. Safety: exclude fabricated activity and preserve summary-error unavailable treatment. Finish: permitted source, link, empty, long-text, and unavailable evidence. Roll back the two regions without changing seller lists. | 280–390 |
+| I4A | `src/features/dashboard/components/operational-homepage.tsx` (manager composition/imports only); `operational-homepage/manager-sections.tsx`; `operational-homepage/helpers.ts`; `manager-home.test.tsx` | Add bounded recent activity and reusable atomic-summary unavailable/retry panel: real kind/text/property/time, Argentina-local `<time>`, true empty/loading/error states, wrap-safe text, and fail-closed authorized `/dashboard/product/{engagementId}` links. Safety: no fabricated activity and preserve parent-summary failure. Finish: source, range, bounds, link, empty, long-text, unavailable/retry evidence. Roll back activity/panel only without changing seller lists. | 250–350 |
+| I4B | `operational-homepage/manager-sections.tsx`; `operational-homepage/helpers.ts`; `manager-home.test.tsx` | Redesign top-properties from the atomic summary with selected-window context, real title/count/latest activity/time, true empty/error states, wrap-safe text, and authorized engagement links. Safety: retain legacy `TopPropertiesCard` byte-equivalent until this slice and do not change seller lists. Finish: property source, selected window, link, empty, long-text, and unavailable/retry evidence. Roll back top-properties only. | 180–300 |
 | I5 | `operational-homepage/manager-sections.tsx`; `operational-homepage/helpers.ts`; `operational-homepage/primitives.tsx`; `manager-home.test.tsx` | Add bounded top-sellers (real name/email and supported manual-movement counts only) and policy-derived shortcuts from `navGroups`, `canAccessNavigation`, and `canManagePropertyEngagements`; hide unresolved/unauthorized routes and create action. Safety: forbidden-content/action proof covers score/rating/trophy, photos, performance, client/agenda/message/upload/reminder, #306 proposals, and #327 platform terms. Finish: permission/policy contrasts and encoded seller destination pass. Roll back seller/shortcut regions only. | 260–380 |
 | I6 | `operational-homepage/manager-home.tsx`; `operational-homepage/manager-sections.tsx`; `operational-homepage/primitives.tsx`; `operational-homepage/states.tsx`; `manager-home.test.tsx`; `tests/seeded/demo-smoke.spec.ts` | Polish responsive/a11y behavior only: one/two/four-column thresholds, 44px narrow controls, visible focus, named range group with `aria-pressed`, h1/h2/list/time/link semantics, and no meaningful truncation. Add one serial read-only seeded principal-manager proof at 320×800, 375×812, 768×900, and 1280×900; it uses real auth/summary data and may replace display strings only through `route.fetch()` while preserving IDs/counts/kinds/destinations. Safety: no seed/DB mutation, no auth/permission interception, no network-failure browser mock. Finish: focus/DOM order, wrapping, non-overlap, and `scrollWidth <= innerWidth` pass. Roll back browser proof and polish independently. | 180–320 |
 
@@ -93,12 +94,19 @@ The following matrix is the narrow source/test allowlist for each independently 
 - [x] TRIANGULATE I3 with 7d/14d/30d, nonzero versus zero-ready, and stale versus attention meanings; rerun focused component and frontend suite commands successfully. <!-- sdd-owner: implementation -->
 - [x] REFACTOR I3 while preserving one `h1`, ordered section headings, and no seller primitive behavior change; rerun focused/typecheck/lint, record evidence, measure ≤400 lines, and prepare its independent rollbackable PR. <!-- sdd-owner: implementation -->
 
-### I4 — activity and top-property rankings
+### I4A — recent activity and atomic retry
 
-- [ ] RED in `operational-homepage/manager-home.test.tsx`: assert bounded permitted activity/property records, real kind/text/time/destination, true empty states, summary-unavailable panels, and long property/activity wrapping; run the focused component command and record the intended failure. <!-- sdd-owner: implementation -->
-- [ ] GREEN only the I4 allowlist: render manager-only recent activity and top-properties lists from summary data with authorized engagement links and Argentina-local times; rerun focused components successfully. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE I4 with permitted versus excluded/inactive fixtures, link present versus unavailable destination, and empty-ready versus error; rerun focused component and frontend suite commands successfully. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR I4 without modifying shared seller list contracts, rerun focused/typecheck/lint, record evidence, measure ≤400 lines, and prepare its independent rollbackable PR. <!-- sdd-owner: implementation -->
+- [x] RED in `operational-homepage/manager-home.test.tsx`: assert activity source movement/document kind/title/property text, ISO dateTime with deterministic es-AR Buenos Aires visible time, selected 7d/14d/30d context, valid engagement link, and no initial activity heading; run the focused component command and record the intended failure. <!-- sdd-owner: implementation -->
+- [x] GREEN only the I4A allowlist: render manager-only recent activity and reusable atomic-summary unavailable/retry panel; preserve the parent summary failure and legacy top-properties/seller calls; rerun focused components successfully. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE I4A with maximum five preserving source order, blank/malformed IDs without links, long wrap-safe text, ready empty, loading, unavailable/retrying, and exactly-one-refetch behavior; rerun focused component and frontend suite commands successfully. <!-- sdd-owner: implementation -->
+- [x] REFACTOR I4A without modifying the seller block or legacy `TopPropertiesCard`, rerun focused/typecheck/lint, record evidence, measure ≤400 lines, and prepare its independent rollbackable PR. <!-- sdd-owner: implementation -->
+
+### I4B — top-properties and selected-window context
+
+- [ ] RED in `operational-homepage/manager-home.test.tsx`: assert selected-window property context, real title/count/latest text/time/destination, true empty state, summary-unavailable panel, and long property wrapping; run the focused component command and record the intended failure. <!-- sdd-owner: implementation -->
+- [ ] GREEN only the I4B allowlist: replace the legacy manager top-properties rendering with a manager-only atomic-summary region and shared unavailable/retry behavior; rerun focused components successfully. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE I4B with 7d/14d/30d, bounded property ordering, valid versus unavailable destinations, and empty-ready versus error; rerun focused component and frontend suite commands successfully. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR I4B without modifying seller list contracts, rerun focused/typecheck/lint, record evidence, measure ≤400 lines, and prepare its independent rollbackable PR. <!-- sdd-owner: implementation -->
 
 ### I5 — sellers, shortcuts, and forbidden content
 
@@ -127,9 +135,9 @@ The following matrix is the narrow source/test allowlist for each independently 
 | R4 — Selected range controls metric meaning | I2B range/latest-key proof plus I3 7d/14d/30d label assertions |
 | R4 — Metrics preserve their source meanings | I3 supported-field and forbidden-label assertions |
 | R4 — No qualifying records has truthful labels | I3 zero-ready versus error contrast |
-| R5 — Activity and rankings use permitted source records | I4 permitted/inactive fixtures and I5 bounded-seller fixtures |
-| R5 — Ranked property opens its real destination | I4 authorized engagement-link assertions |
-| R5 — Empty activity remains distinct from a failure | I4 empty-ready versus unavailable-panel assertions |
+| R5 — Activity and rankings use permitted source records | I4A activity source fixtures, I4B property fixtures, and I5 bounded-seller fixtures |
+| R5 — Ranked property opens its real destination | I4A activity and I4B property authorized engagement-link assertions |
+| R5 — Empty activity remains distinct from a failure | I4A empty-ready versus unavailable-panel assertions |
 | R6 — Loading values are not presented as facts | I2 atomic loading assertions |
 | R6 — Summary failure is explicit | I2 error-precedence, no-zero, and exact-refetch assertions |
 | R6 — Independent failure remains local | I2 proves the design has no independent manager query: every unavailable group identifies the same atomic summary failure and retries that request |
