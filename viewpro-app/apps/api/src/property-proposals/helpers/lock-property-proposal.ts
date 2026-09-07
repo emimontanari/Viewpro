@@ -1,8 +1,16 @@
 import { TenantMembershipStatus, TenantRole, UserStatus, type Prisma } from '@prisma/client'
 
+type EligibleSellerLockBarrier = (context: { operation: 'create' | 'update'; backendPid: number }) => Promise<void>
+
+let eligibleSellerLockBarrier: EligibleSellerLockBarrier | null = null
+
+export function setEligibleSellerLockBarrierForTest(barrier: EligibleSellerLockBarrier | null) {
+  eligibleSellerLockBarrier = barrier
+}
+
 export async function lockEligibleSeller(
   tx: Prisma.TransactionClient,
-  input: { tenantId: string; proposedByUserId: string },
+  input: { tenantId: string; proposedByUserId: string; operation: 'create' | 'update' },
 ): Promise<boolean> {
   const users = await tx.$queryRaw<{ id: string }[]>`
     SELECT id FROM users
@@ -18,5 +26,11 @@ export async function lockEligibleSeller(
       AND role = ${TenantRole.AGENT}::"TenantRole"
     FOR NO KEY UPDATE
   `
-  return memberships.length > 0
+  if (memberships.length === 0) return false
+
+  if (eligibleSellerLockBarrier) {
+    const [backend] = await tx.$queryRaw<{ backendPid: number }[]>`SELECT pg_backend_pid() AS "backendPid"`
+    await eligibleSellerLockBarrier({ operation: input.operation, backendPid: backend!.backendPid })
+  }
+  return true
 }

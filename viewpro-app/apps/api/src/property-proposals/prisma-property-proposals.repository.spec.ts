@@ -163,6 +163,7 @@ describe('PrismaPropertyProposalsRepository draft creation', () => {
 
     membership.resolve([{ id: 'membership-1' }])
     await Promise.resolve()
+    await Promise.resolve()
 
     expect(tx.propertyProposal.create).toHaveBeenCalledWith({
       data: { ...input, state: 'BORRADOR', version: 1, latestSubmittedAt: null },
