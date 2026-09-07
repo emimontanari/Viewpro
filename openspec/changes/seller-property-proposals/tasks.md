@@ -142,8 +142,8 @@ Manifest: `review-filter-builder.ts` and `review-filter-builder.spec.ts` only. I
 
 Manifest: `property-proposals.repository.ts`, `prisma-property-proposals.repository.ts`, and `prisma-property-proposals.repository.spec.ts`. It consumes C7A1's filter-builder contract for tenant-scoped list/count/detail and raw hydration/order; no use case or module wiring.
 
-- [ ] GREEN → TRIANGULATE → REFACTOR C7A1's S15 repository port/Prisma list-count-detail, matching count/raw predicate, tenant absence, bindings, exact `COALESCE(latestSubmittedAt, createdAt) DESC, id DESC` ordering, and ordered hydration. <!-- sdd-owner: implementation -->
-- [ ] Run the C7A2 repository spec and API typecheck, including exact reviewer-order evidence; clear query fixtures and reviewer rows. <!-- sdd-owner: implementation -->
+- [x] GREEN → TRIANGULATE → REFACTOR C7A1's S15 repository port/Prisma list-count-detail, matching count/raw predicate, tenant absence, bindings, exact `COALESCE(latestSubmittedAt, createdAt) DESC, id DESC` ordering, and ordered hydration. <!-- sdd-owner: implementation -->
+- [x] Run the C7A2 repository spec and API typecheck, including exact reviewer-order evidence; clear query fixtures and reviewer rows. <!-- sdd-owner: implementation -->
 
 ### C7B — Reviewer read use cases and role boundary (S11, S14)
 

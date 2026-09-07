@@ -1,9 +1,15 @@
 import type { PropertyProposal, PropertyProposalReviewRound } from '@prisma/client'
 import type { StagedPropertyScalars } from './domain/normalization'
+import type { PropertyProposalReviewFilters } from './review-filter-builder'
 
 export const PROPERTY_PROPOSALS_REPOSITORY = Symbol('PROPERTY_PROPOSALS_REPOSITORY')
 
 export type SellerPropertyProposalsPage = {
+  items: PropertyProposal[]
+  total: number
+}
+
+export type ReviewerPropertyProposalsPage = {
   items: PropertyProposal[]
   total: number
 }
@@ -55,6 +61,14 @@ export type PropertyProposalsRepository = {
   findForSeller(input: {
     tenantId: string
     proposedByUserId: string
+    proposalId: string
+  }): Promise<PropertyProposal | null>
+  listForReviewer(input: {
+    tenantId: string
+    filters: PropertyProposalReviewFilters
+  }): Promise<ReviewerPropertyProposalsPage>
+  findForReviewer(input: {
+    tenantId: string
     proposalId: string
   }): Promise<PropertyProposal | null>
 }

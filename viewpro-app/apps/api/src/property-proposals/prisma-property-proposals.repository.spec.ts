@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { PrismaService } from '../database/prisma.service'
+import { buildReviewerWhere } from './review-filter-builder'
 import { PrismaPropertyProposalsRepository } from './prisma-property-proposals.repository'
 import { GetPropertyProposalUseCase } from './use-cases/get-property-proposal.use-case'
 import { ListPropertyProposalsUseCase } from './use-cases/list-property-proposals.use-case'
@@ -114,6 +115,75 @@ describe('PrismaPropertyProposalsRepository seller reads', () => {
     expect(port.findForSeller).toHaveBeenCalledWith({
       tenantId: 'tenant-1', proposedByUserId: 'seller-1', proposalId: 'proposal-1',
     })
+  })
+})
+
+describe('PrismaPropertyProposalsRepository reviewer reads', () => {
+  const reviewer = (repository: PrismaPropertyProposalsRepository) => repository as typeof repository & {
+    listForReviewer(input: { tenantId: string; filters: { state?: 'EN_REVISION' | 'RECHAZADA'; history?: 'NONE' | 'PENDING' | 'REJECTED' | 'APPROVED'; page?: number; pageSize?: number } }): Promise<{ items: typeof proposal[]; total: number }>
+    findForReviewer(input: { tenantId: string; proposalId: string }): Promise<typeof proposal | null>
+  }
+
+  function makeReviewerRepository() {
+    const prisma = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: 'proposal-3' }, { id: 'proposal-1' }, { id: 'deleted' }]),
+      propertyProposal: {
+        count: vi.fn().mockResolvedValue(3),
+        findMany: vi.fn().mockResolvedValue([{ ...proposal, id: 'proposal-1' }, { ...proposal, id: 'proposal-3' }]),
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+    }
+    return { prisma, repository: reviewer(new PrismaPropertyProposalsRepository(prisma as never)) }
+  }
+
+  function reviewerSql(query: { strings: readonly string[] }) {
+    return query.strings.join('?').replace(/\s+/g, ' ').trim()
+  }
+
+  it('lists the default pending inbox with tenant-bound count, raw IDs, fallback ordering, and ordered hydration', async () => {
+    const { prisma, repository } = makeReviewerRepository()
+
+    await expect(repository.listForReviewer({ tenantId: 'tenant-1', filters: {} })).resolves.toEqual({
+      items: [{ ...proposal, id: 'proposal-3' }, { ...proposal, id: 'proposal-1' }], total: 3,
+    })
+
+    expect(prisma.propertyProposal.count).toHaveBeenCalledWith({ where: { tenantId: 'tenant-1', state: 'EN_REVISION' } })
+    const raw = prisma.$queryRaw.mock.calls[0]?.[0]
+    expect(reviewerSql(raw)).toContain('WHERE p."tenantId" = ? AND p.state = ?::"PropertyProposalStatus" ORDER BY COALESCE(p."latestSubmittedAt", p."createdAt") DESC, p.id DESC OFFSET ? LIMIT ?')
+    expect(raw.values).toEqual(['tenant-1', 'EN_REVISION', 0, 20])
+    expect(prisma.propertyProposal.findMany).toHaveBeenCalledWith({ where: { tenantId: 'tenant-1', id: { in: ['proposal-3', 'proposal-1', 'deleted'] } } })
+    expect(prisma.propertyProposal.findMany.mock.calls[0]?.[0]).not.toHaveProperty('include')
+  })
+
+  it.each([
+    ['NONE', 'NOT EXISTS', undefined],
+    ['PENDING', 'NOT EXISTS', undefined],
+    ['REJECTED', 'd.outcome = ?', 'REJECTED'],
+    ['APPROVED', 'd.outcome = ?', 'APPROVED'],
+  ] as const)('keeps the %s state-and-history predicate equivalent in count and raw tenant-correlated SQL', async (history, fragment, outcome) => {
+    const { prisma, repository } = makeReviewerRepository()
+
+    await repository.listForReviewer({ tenantId: 'tenant-1', filters: { state: 'RECHAZADA', history, page: 2, pageSize: 50 } })
+
+    expect(prisma.propertyProposal.count).toHaveBeenCalledWith({
+      where: buildReviewerWhere('tenant-1', { state: 'RECHAZADA', history }),
+    })
+    const raw = prisma.$queryRaw.mock.calls[0]?.[0]
+    expect(reviewerSql(raw)).toContain(fragment)
+    expect(reviewerSql(raw)).toContain(
+      history === 'NONE' ? 'r."tenantId" = p."tenantId"' : 'd."tenantId" = p."tenantId"',
+    )
+    expect(raw.values).toEqual(['tenant-1', 'RECHAZADA', ...(outcome ? [outcome] : []), 50, 50])
+  })
+
+  it('returns identical null detail absence after one tenant-plus-ID query without relations', async () => {
+    const { prisma, repository } = makeReviewerRepository()
+
+    await expect(repository.findForReviewer({ tenantId: 'tenant-1', proposalId: 'missing' })).resolves.toBeNull()
+    await expect(repository.findForReviewer({ tenantId: 'tenant-2', proposalId: 'proposal-1' })).resolves.toBeNull()
+
+    expect(prisma.propertyProposal.findFirst).toHaveBeenCalledTimes(2)
+    expect(prisma.propertyProposal.findFirst).toHaveBeenLastCalledWith({ where: { id: 'proposal-1', tenantId: 'tenant-2' } })
   })
 })
 
