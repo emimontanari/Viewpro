@@ -313,3 +313,45 @@ No production behavior changed. I6 task checks are preserved. Remaining unchecke
 - [ ] After I6, run the shared-matrix focused component, BFF, owner, frontend suite, typecheck, lint, targeted seeded, and full seeded commands; run API validation/typecheck/test only with a visibly disposable `DATABASE_URL`; record every pass, skip, and blocker in `openspec/changes/manager-home-reference-fidelity/apply-progress.md`. <!-- sdd-owner: implementation -->
 
 Parent-owned lifecycle rows remain pending.
+
+## Whole-change verification — fresh `develop@6bf10308`
+
+**Runtime/status:** `generation23`, objective `manager-home-whole-change-verification`, outcome `running`, next action `finish`; explicit target worktree and OpenSpec artifacts overrode the unrelated injected no-active-change status. Action context was limited to the three allowed OpenSpec files. No acquire, settle, token persistence, code edit, commit, push, PR, sync, archive, or issue closure occurred.
+
+**Verdict:** FUNCTIONAL PASS / STRICT-TDD EVIDENCE FAIL. All 10 requirements and 22 scenarios have passing component/BFF/owner/frontend/seeded/API evidence, but strict TDD remains CRITICAL for I2A and I2B: I2A records a 452-line budget failure rather than the required behavioral RED, and I2B explicitly records GREEN-on-arrival without a behavioral RED. The shared whole-change matrix row is now `[x]`; the per-PR accounting row remains `[ ]` because its required before-each-PR command/timing record cannot be proven retroactively for every slice.
+
+### Exact UTC verification evidence
+
+- `2026-09-07T19:24:12Z` — `pnpm --filter next-shadcn-dashboard-starter test src/features/dashboard/components/operational-homepage.test.tsx src/features/dashboard/components/operational-homepage/manager-home.test.tsx`; exit 0; 2 files, 38 tests passed.
+- `2026-09-07T19:24:26Z` — `pnpm --filter next-shadcn-dashboard-starter test src/app/api/dashboard/summary/route.test.ts`; exit 0; 5/5 passed.
+- `2026-09-07T19:24:28Z` — `pnpm --filter next-shadcn-dashboard-starter test src/features/owner/components/owner-home.test.tsx`; exit 0; 19/19 passed.
+- `2026-09-07T19:24:37Z` — `pnpm --filter next-shadcn-dashboard-starter test`; exit 0; 118 files, 790 tests passed.
+- `2026-09-07T19:25:17Z` — `pnpm --filter next-shadcn-dashboard-starter typecheck`; exit 0; `tsc --noEmit`.
+- `2026-09-07T19:25:26Z` — `pnpm --filter next-shadcn-dashboard-starter lint:strict`; exit 0; `oxlint --deny-warnings`.
+- `2026-09-07T19:27:28Z` — `DATABASE_URL=postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro_test_manager_home_verify?schema=public DIRECT_URL=same VIEWPRO_APP_NEW_SEEDED_E2E_API_PORT=3308 VIEWPRO_APP_NEW_SEEDED_E2E_WEB_PORT=3408 pnpm --filter next-shadcn-dashboard-starter exec playwright test --config playwright.seeded.config.ts --grep "manager home reference hierarchy"`; exit 0; 1/1 passed with exact selected-test evidence.
+- `2026-09-07T19:28:11Z` — same visible local disposable DB and ports with `pnpm --filter next-shadcn-dashboard-starter test:seeded`; exit 0; 34/34 passed in 2.6m.
+- `2026-09-07T19:30:58Z` — visible local disposable DB with `pnpm --filter @viewpro/api db:validate`; exit 0; Prisma schema valid.
+- `2026-09-07T19:31:10Z` — visible local disposable DB with `pnpm --filter @viewpro/api typecheck`; exit 0; `tsc --noEmit`.
+- `2026-09-07T19:31:26Z` — visible local disposable DB with `pnpm --filter @viewpro/api test`; exit 0; 159 files, 1,623 tests passed.
+- `2026-09-07T19:32:46Z` — `OPENSPEC_TELEMETRY=0 npx --yes @fission-ai/openspec validate manager-home-reference-fidelity --strict`; exit 0; change valid.
+- `2026-09-07T19:32:57Z` — `git diff --check && git diff --stat && git status --short --branch && shasum -a 256 openspec/changes/manager-home-reference-fidelity/assets/manager-home-reference.jpeg`; exit 0; clean tree and expected asset digest `97cf2dc9a6a48b816e66090b2f62b7f8b465bdb7a0f52f8fa8f7976f0f75d3c9` before documentation updates.
+
+Setup-only failures were recorded honestly: the first targeted seeded attempt at `19:26:22Z` exited 1 because the new database had no tables; the first migration attempt at `19:26:54Z` exited 1 because `DIRECT_URL` was empty. After separately exporting `DIRECT_URL`, 32 local migrations applied and the exact targeted/full commands passed. Neither failure was behavioral.
+
+### Review boundary and accounting
+
+The eight merged implementation commits remeasure to I1 300, I2A 382, I2B 214, I3 400, I4A 396, I4B 298, I5 336, and I6 307 additions+deletions. Each is ≤400, no `size:exception` exists, and interleaved #306 commits #554/#555 are disjoint. Manager commits changed only the planned dashboard page/components/tests and seeded test; seller `lists.tsx`, owner, BFF/auth, API/contracts, public routes, and #327 paths are unchanged by those commits.
+
+### Strict-TDD and assertion quality
+
+TDD tables and real test files exist for all eight slices; current GREEN is confirmed. Six slices have complete behavioral RED/GREEN/TRIANGULATE/REFACTOR evidence, while I2A/I2B do not have the required behavioral RED. No tautology, assertion-without-production-call, smoke-only test, or unsafe ghost loop was found. Warning: component assertions at `operational-homepage.test.tsx:422-425` and `manager-home.test.tsx:487-488,541,630` assert CSS classes; the browser test's long activity/property/seller branch remains conditional on real seeded rows, while deterministic component fixtures and the always-present long tenant browser case cover the fallback. Coverage was not run because no coverage provider is configured. Direct LSP tooling was unavailable; full TypeScript and strict lint passed.
+
+### Cleanup
+
+Only local Docker PostgreSQL `viewpro_test_manager_home_verify` was used; no external/Neon database was contacted. Ports 3308/3408 were released, pre-existing owner preview ports 3001/3100 remained listening, the disposable database was dropped, and generated Prisma/install/build/browser/document/upload/report artifacts created by verification were removed. Post-cleanup inspection found no owned screenshot, trace, video, report, document-storage, upload, generated client, `.next`, `dist`, `test-results`, or `node_modules` artifacts and a clean tracked tree before these OpenSpec edits.
+
+## Human acceptance of audited historical limitations
+
+The human explicitly selected **Aceptar excepciones** and authorized verify/sync/archive continuation without manufactured evidence. Accepted limitations are: I2A's recorded RED is a 452-line budget failure rather than a behavioral RED; I2B was GREEN-on-arrival after the authorized I2A/I2B split; and I1's exact pre-PR timing log is incomplete even though every implementation PR was independently recomputed at or below 400 changed lines. This acceptance changes the whole-change verdict to PASS while preserving each limitation and all assertion/browser warnings as audited historical evidence. It does not assert that missing RED runs or timing logs exist.
+
+The before-each-PR accounting row is now `[x]` on the basis of performed/recomputed accounting plus explicit human acceptance of the incomplete timing record. All implementation/shared verification rows are complete. Parent-owned review reconciliation, sync, archive, and #522 closure remain pending; none was performed here.
