@@ -81,10 +81,10 @@ The following matrix is the narrow source/test allowlist for each independently 
 
 ### I2B — refreshing, range, and tenant proof
 
-- [ ] RED in `operational-homepage/manager-home.test.tsx`: assert successful-refreshing keeps truthful ready facts and range/tenant changes do not retain prior facts; record the focused failure. <!-- sdd-owner: implementation -->
-- [ ] GREEN only the I2B allowlist: make the minimum source change only if the refreshing/range/tenant proof exposes a defect; rerun focused components. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE I2B with 7d/14d/30d and two tenant IDs, including exact latest summary query key/config; rerun focused components and BFF regression. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR I2B and run focused, BFF, owner, frontend suite, typecheck, lint, diff/accounting, and final seller regressions; record its independent ≤400-line boundary. <!-- sdd-owner: implementation -->
+- [x] RED in `operational-homepage/manager-home.test.tsx`: assert successful-refreshing keeps truthful ready facts and range/tenant changes do not retain prior facts; record the focused failure. <!-- sdd-owner: implementation -->
+- [x] GREEN only the I2B allowlist: make the minimum source change only if the refreshing/range/tenant proof exposes a defect; rerun focused components. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE I2B with 7d/14d/30d and two tenant IDs, including exact latest summary query key/config; rerun focused components and BFF regression. <!-- sdd-owner: implementation -->
+- [x] REFACTOR I2B and run focused, BFF, owner, frontend suite, typecheck, lint, diff/accounting, and final seller regressions; record its independent ≤400-line boundary. <!-- sdd-owner: implementation -->
 
 ### I3 — hierarchy, metrics, priorities, and range
 

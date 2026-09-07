@@ -84,3 +84,53 @@ I3–I6, the two implementation verification rows, and four parent lifecycle row
 - **Missing proof:** all four metric labels and the three ready-empty messages are absent while the loading indicator is visible.
 - **Focused GREEN:** `pnpm --filter next-shadcn-dashboard-starter test src/features/dashboard/components/operational-homepage.test.tsx src/features/dashboard/components/operational-homepage/manager-home.test.tsx` exit 0; `2 passed`, `14 passed`.
 - **Final diff:** 279 additions + 103 deletions = 382 changed lines (≤400).
+
+## I2B — refreshing, range, and tenant proof
+**Structured status consumed:** `gentle-ai.sdd-status@2` was native `apply-ready` for `manager-home-reference-fidelity` and `manager-home-i2b-transition-proof`; OpenSpec artifacts were present, action context was repo-local, and edits stayed within the injected I2B test/docs roots.
+**Completed persisted rows:** I2B RED, GREEN, TRIANGULATE, and REFACTOR are `[x]` in `tasks.md`. The new behavioral characterization proves ready facts (including truthful empties) survive `isFetching`; 7d→14d→30d and tenant-1→tenant-2 show loading with no prior factual metrics/empty facts; every inspected latest `useQuery` config has only `queryKey`, `queryFn`, `enabled`, and both disabled background-refetch flags with the exact current tenant/range key. No production defect appeared, so `manager-home.tsx` stayed byte-identical (SHA-256 before/after `462fffee250e5600d859049ff3cb50b819d3b29d2d617590dc13e90c78f68e16`).
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| I2B transitions | Component behavior | focused 14/14 baseline could not run before dependency setup | not manufactured: I2A already supplied the behavior | GREEN-on-arrival after I2A split, focused 17/17 | 7d/14d/30d plus two realistic memberships/current key/config | test helpers only; focused 17/17, static/full regressions pass |
+**Evidence:** `2026-09-07T00:48:00Z` focused manager/seller command exit 0 (17/17); `00:48:20Z` BFF summary command exit 0 (5/5), owner command exit 0 (19/19), and strict OpenSpec validation exit 0; `00:48:20Z` frontend suite exit 0 (118 files, 769 tests); `00:48:00Z` typecheck and strict lint both exit 0. The first post-install execution had non-behavioral test-selector assertions (`Últimos 14/30 días` instead of current `14/30 días`) and TypeScript/lint test-helper issues, all corrected in the test only; no fresh behavioral RED is reproducible because I2A's existing adapter/gate already implements the specified mechanism.
+
+**Workload / PR boundary:** stacked-to-main I2B only, 120 test additions before SDD evidence/task metadata and no source correction; final accounting is 156 additions + 4 deletions = 160 changed lines (≤400), and rollback removes only these transition-characterization tests. No design deviation, browser/API/database run, review, receipt, commit, or lifecycle task occurred.
+
+**Remaining implementation tasks (exact unchecked rows):**
+- [ ] RED in `operational-homepage/manager-home.test.tsx`: assert the specified DOM scan order, selected 14d wording, exact labels/helper semantics for active engagements, movements, stale, and attention, two follow-up priorities, and true zero-success copy; run the focused component command and record the intended failure. <!-- sdd-owner: implementation -->
+- [ ] GREEN only the I3 allowlist: render the dominant summary, accessible range controls, four metric primitives, and priorities from ready atomic data without unsupported claims; rerun focused components successfully. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE I3 with 7d/14d/30d, nonzero versus zero-ready, and stale versus attention meanings; rerun focused component and frontend suite commands successfully. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR I3 while preserving one `h1`, ordered section headings, and no seller primitive behavior change; rerun focused/typecheck/lint, record evidence, measure ≤400 lines, and prepare its independent rollbackable PR. <!-- sdd-owner: implementation -->
+- [ ] RED in `operational-homepage/manager-home.test.tsx`: assert bounded permitted activity/property records, real kind/text/time/destination, true empty states, summary-unavailable panels, and long property/activity wrapping; run the focused component command and record the intended failure. <!-- sdd-owner: implementation -->
+- [ ] GREEN only the I4 allowlist: render manager-only recent activity and top-properties lists from summary data with authorized engagement links and Argentina-local times; rerun focused components successfully. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE I4 with permitted versus excluded/inactive fixtures, link present versus unavailable destination, and empty-ready versus error; rerun focused component and frontend suite commands successfully. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR I4 without modifying shared seller list contracts, rerun focused/typecheck/lint, record evidence, measure ≤400 lines, and prepare its independent rollbackable PR. <!-- sdd-owner: implementation -->
+- [ ] RED in `operational-homepage/manager-home.test.tsx`: assert bounded top-seller real identities/counts and encoded follow-up links; assert navigation-policy and create-permission allowed/denied cases; assert forbidden facts/actions/terms never render; run the focused component command and record the intended failure. <!-- sdd-owner: implementation -->
+- [ ] GREEN only the I5 allowlist: map sellers and existing authorized property/follow-up/team/create shortcuts through centralized policy/capability helpers, failing closed on missing policy/route; rerun focused components successfully. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE I5 with create permission on/off, team policy on/off, seller identity/count variants, and forbidden #306/#327/reference-only copy; rerun focused component and frontend suite commands successfully. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR I5 without role-name-only action authority or new destinations, rerun focused/typecheck/lint and owner/seller regressions, record evidence, measure ≤400 lines, and prepare its independent rollbackable PR. <!-- sdd-owner: implementation -->
+- [ ] RED in `operational-homepage/manager-home.test.tsx` and `tests/seeded/demo-smoke.spec.ts`: assert names/focus/DOM order, long-text readability, target sizes, viewport geometry, and the seeded manager hierarchy; record a meaningful focused assertion failure without mutating seed data or mocking auth/permissions. <!-- sdd-owner: implementation -->
+- [ ] GREEN only the I6 allowlist: apply semantic responsive/focus/wrapping polish and the one bounded serial seeded manager case; run focused components and the targeted seeded manager command successfully. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE I6 at 320×800, 375×812, 768×900, and 1280×900 with short/long display values while preserving real response semantics; rerun targeted seeded and frontend suite commands successfully. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR I6 without shell/mobile-chrome changes, rerun focused/typecheck/lint/targeted seeded/full seeded checks as environment permits, record skips accurately, measure ≤400 lines, and prepare its independent rollbackable PR. <!-- sdd-owner: implementation -->
+- [ ] Before each implementation PR, run `git diff --check`, `git diff --stat`, and `git status --short` from `viewpro-app/`; record actual additions + deletions, command exits, and focused evidence in `openspec/changes/manager-home-reference-fidelity/apply-progress.md`, stopping for a measured >400-line cohesive diff. <!-- sdd-owner: implementation -->
+- [ ] After I6, run the shared-matrix focused component, BFF, owner, frontend suite, typecheck, lint, targeted seeded, and full seeded commands; run API validation/typecheck/test only with a visibly disposable `DATABASE_URL`; record every pass, skip, and blocker in `openspec/changes/manager-home-reference-fidelity/apply-progress.md`. <!-- sdd-owner: implementation -->
+
+
+## I2B independent test-isolation correction
+
+**Structured status consumed:** native `gentle-ai.sdd-status@2` reported authoritative OpenSpec `apply: ready`, `nextRecommended: apply`, 16/38 implementation rows complete, no blockers, and repo-local action context rooted at this worktree. **Action-context warning:** only the injected I2B test and apply-progress surfaces were edited; task checkboxes, production source, lifecycle, and delivery operations remain untouched.
+
+- **Independent FAIL** — 2026-09-07T01:01:13Z: the settled candidate evidence `sha256:5b54580bd32b21d36b4b82ff59feaf7f2203409002d680ce62901fc9d26caf3f` was reproduced with `pnpm --filter next-shadcn-dashboard-starter test src/features/dashboard/components/operational-homepage/manager-home.test.tsx --sequence.shuffle --sequence.seed=1`; exit 1, 2 failed/5 passed because stale secondary tenant context yielded `tenant-2` where the tests required `tenant-1`.
+- **Correction** — added `beforeEach` isolation that clears cumulative `useQueryMock` calls and `refetch`, then restores a typed primary tenant context. A concise typed helper creates both primary and secondary manager contexts; the tenant-transition test now uses the secondary helper, and the date-rendering test explicitly sets its own query state.
+- **Focused GREEN** — 2026-09-07T01:01:13Z: the same seed-1 command exited 0 (7/7), seed-2 exited 0 (7/7), and `pnpm --filter next-shadcn-dashboard-starter test src/features/dashboard/components/operational-homepage.test.tsx src/features/dashboard/components/operational-homepage/manager-home.test.tsx` exited 0 (2 files, 17/17).
+- **Strict OpenSpec** — 2026-09-07T01:01:13Z: `OPENSPEC_TELEMETRY=0 npx --yes @fission-ai/openspec validate manager-home-reference-fidelity --strict` exited 0: `Change 'manager-home-reference-fidelity' is valid`.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| I2B test isolation | Component test harness | focused manager/seller 17/17 | shuffled seed 1: 2 failures from leaked tenant context | seed 1: 7/7 | seed 2: 7/7 | helper/isolation only; focused 17/17 |
+
+**Final accounting:** `git diff --check` exited 0; aggregate candidate numstat is 194 additions + 20 deletions = 214 changed lines (≤400). Production `manager-home.tsx` remains byte-identical at SHA-256 `462fffee250e5600d859049ff3cb50b819d3b29d2d617590dc13e90c78f68e16`. No task checkbox was changed, and no full suite, typecheck, lint, BFF, owner, browser, API, review, commit, push, PR, or lifecycle operation ran.
