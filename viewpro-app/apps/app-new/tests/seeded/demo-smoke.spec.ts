@@ -95,7 +95,168 @@ test('demo user can navigate the seeded operational workflow', async ({ page }) 
   ).toBeVisible();
 });
 
-for (const scenario of SELLER_SCENARIOS) {
+    test('manager home reference hierarchy remains readable and keyboard-accessible at supported viewports', async ({ page }) => {
+      const longActivity =
+        'Actividad operativa deliberadamente extensa que conserva cada detalle autorizado sin perder significado ni accesibilidad durante esta comprobación de geometría.';
+      const longTenant =
+        'Inmobiliaria con una denominación deliberadamente extensa que conserva su identidad autorizada completa para comprobar la geometría en todos los anchos compatibles.';
+      const longProperty =
+        'Propiedad con una denominación deliberadamente extensa para comprobar que cada detalle autorizado permanece completo y legible en todos los anchos compatibles.';
+      const longSeller =
+        'Vendedora con un nombre deliberadamente extenso para comprobar que la identidad autorizada permanece completa y legible en todos los anchos compatibles.';
+      let interceptedSession = false;
+      let interceptedSummary = false;
+
+      // The normal sign-in clears tenant selection, so the first real membership is active.
+      // Preserve the authenticated session contract and change only that tenant's display name.
+      await page.route('**/api/auth/me', async (route) => {
+        const response = await route.fetch();
+        const session = (await response.json()) as {
+          memberships: Array<Record<string, unknown>>;
+          [key: string]: unknown;
+        };
+        const [activeMembership, ...otherMemberships] = session.memberships;
+        interceptedSession = true;
+
+        await route.fulfill({
+          response,
+          json: activeMembership
+            ? {
+                ...session,
+                memberships: [
+                  {
+                    ...activeMembership,
+                    tenant: {
+                      ...(activeMembership.tenant as Record<string, unknown>),
+                      name: longTenant
+                    }
+                  },
+                  ...otherMemberships
+                ]
+              }
+            : session
+        });
+      });
+
+      // This keeps the authorized response, identifiers, counts, kinds, and destinations intact.
+      // Only display strings on existing rows become long to exercise wrapping without changing seed data.
+      await page.route('**/api/dashboard/summary?**', async (route) => {
+        const response = await route.fetch();
+        const summary = (await response.json()) as {
+          recentActivity: Array<Record<string, unknown>>;
+          topProperties: Array<Record<string, unknown>>;
+          topSellers: Array<Record<string, unknown>>;
+          [key: string]: unknown;
+        };
+        interceptedSummary = true;
+
+        await route.fulfill({
+          response,
+          json: {
+            ...summary,
+            recentActivity: summary.recentActivity.map((item, index) =>
+              index === 0
+                ? {
+                    ...item,
+                    observation: longActivity,
+                    property: {
+                      ...(item.property as Record<string, unknown>),
+                      addressLine: longProperty,
+                      title: longProperty
+                    }
+                  }
+                : item
+            ),
+            topProperties: summary.topProperties.map((item, index) =>
+              index === 0
+                ? { ...item, addressLine: longProperty, lastActivityTitle: longActivity, title: longProperty }
+                : item
+            ),
+            topSellers: summary.topSellers.map((item, index) =>
+              index === 0
+                ? { ...item, email: 'vendedora.con.identidad.extensa@viewpro.local', name: longSeller }
+                : item
+            )
+          }
+        });
+      });
+
+      await signIn(page, DEMO_EMAIL);
+      const greeting = page.getByRole('heading', { level: 1, name: 'Hola, Demo ViewPro' });
+      const tenantName = greeting.locator('xpath=following-sibling::p').first();
+      await expect(greeting).toBeVisible();
+      await expect(tenantName).toContainText(longTenant);
+      await expect(page.getByRole('group', { name: 'Período del resumen operativo' })).toBeVisible();
+      expect(interceptedSession).toBe(true);
+      expect(interceptedSummary).toBe(true);
+
+      const rangeButtons = page.getByRole('group', { name: 'Período del resumen operativo' }).getByRole('button');
+      await expect(rangeButtons).toHaveCount(3);
+      await expect(rangeButtons.nth(0)).toHaveAttribute('aria-pressed', 'true');
+      expect(
+        await page.getByRole('heading', { level: 2 }).evaluateAll((headings) =>
+          headings.every((heading) => heading.tagName === 'H2')
+        )
+      ).toBe(true);
+
+      await rangeButtons.nth(0).focus();
+      await page.keyboard.press('Tab');
+      await expect(rangeButtons.nth(1)).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(rangeButtons.nth(2)).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(page.getByRole('link', { name: /Ver .*sin novedades.*seguimiento/i })).toBeFocused();
+
+      for (const viewport of [
+        { width: 320, height: 800, metricColumns: 1, rankingColumns: 1 },
+        { width: 375, height: 812, metricColumns: 1, rankingColumns: 1 },
+        { width: 768, height: 900, metricColumns: 2, rankingColumns: 1 },
+        { width: 1280, height: 900, metricColumns: 4, rankingColumns: 2 }
+      ]) {
+        await page.setViewportSize(viewport);
+        const metrics = page.getByRole('list', { name: 'Métricas del resumen operativo' });
+        const rankings = page.locator('div.grid').filter({
+          has: page.getByRole('heading', { level: 2, name: 'Propiedades con más movimiento' })
+        }).first();
+        await expect(metrics).toBeVisible();
+        await expect(rankings).toBeVisible();
+        expect(
+          await metrics.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length)
+        ).toBe(viewport.metricColumns);
+        expect(
+          await rankings.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length)
+        ).toBe(viewport.rankingColumns);
+
+        for (const control of [rangeButtons.nth(0), page.getByRole('link', { name: 'Ver todo' })]) {
+          await expect(control).toBeVisible();
+          const box = await control.boundingBox();
+          expect(box?.height).toBeGreaterThanOrEqual(44);
+          expect(box?.width).toBeGreaterThanOrEqual(44);
+        }
+        await expect(tenantName).toBeVisible();
+        expect(await tenantName.innerText()).toContain(longTenant);
+        expect(
+          await tenantName.evaluate((element) => ({
+            fits: element.scrollWidth <= element.clientWidth,
+            wraps: !['nowrap', 'pre'].includes(getComputedStyle(element).whiteSpace)
+          }))
+        ).toMatchObject({ fits: true, wraps: true });
+        const longValues = [
+          page.getByText(longActivity, { exact: true }).first(),
+          page.getByText(longProperty, { exact: true }).first(),
+          page.getByText(longSeller, { exact: true }).first()
+        ];
+        if (await longValues[0].count()) {
+          for (const text of longValues) {
+            await expect(text).toBeVisible();
+            expect(await text.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+          }
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      }
+    });
+
+    for (const scenario of SELLER_SCENARIOS) {
   test(`${scenario.email} sees a distinct assigned seller dashboard`, async ({ page }) => {
     await signIn(page, scenario.email);
 

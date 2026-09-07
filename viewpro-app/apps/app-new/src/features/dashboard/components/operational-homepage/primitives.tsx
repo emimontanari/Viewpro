@@ -126,7 +126,12 @@ export function DashboardRowActionLink({
   label?: string;
 }) {
   return (
-    <Button asChild variant='outline' size='sm' className={cn('shrink-0', ROW_ACTION_CLASS)}>
+        <Button
+          asChild
+          variant='outline'
+          size='sm'
+          className={cn('min-h-11 min-w-11 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', ROW_ACTION_CLASS)}
+        >
       <Link href={href} aria-label={ariaLabel}>
         <span className='sm:sr-only'>{label}</span>
         <Icons.externalLink className='size-4' aria-hidden='true' />

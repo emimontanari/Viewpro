@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import type { ActivityFeedItem } from '@/features/activity/api/types';
 import type {
   DashboardSummaryRange,
@@ -45,7 +45,7 @@ export function ManagerUnavailablePanel({
       <p className='mt-1 text-sm text-muted-foreground'>
         No mostramos datos anteriores como actuales.
       </p>
-      <Button className='mt-4' disabled={retrying} onClick={retry}>
+      <Button className='mt-4 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring' disabled={retrying} onClick={retry}>
         {retrying ? retryingLabel : retryLabel}
       </Button>
     </div>
@@ -83,9 +83,7 @@ export function ManagerRecentActivity({
     <Card className='py-0'>
       <CardHeader className='flex flex-col gap-2 p-5 pb-0 sm:flex-row sm:items-start sm:justify-between'>
         <div>
-          <CardTitle role='heading' aria-level={2}>
-            Actividad reciente
-          </CardTitle>
+          <h2 className='text-lg font-semibold leading-none tracking-tight'>Actividad reciente</h2>
           <p className='mt-1 text-sm text-muted-foreground'>
             Movimientos y solicitudes documentales de los últimos {days} días.
           </p>
@@ -94,7 +92,7 @@ export function ManagerRecentActivity({
           <Badge variant='outline' className='w-fit rounded-full bg-muted/40'>
             Últimos {days} días
           </Badge>
-          <Button asChild variant='outline' size='sm'>
+          <Button asChild variant='outline' size='sm' className='min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'>
             <Link href='/dashboard/seguimiento'>Ver todo</Link>
           </Button>
         </div>
@@ -176,9 +174,7 @@ export function ManagerTopProperties({
     <Card className='py-0'>
       <CardHeader className='flex flex-col gap-2 p-5 pb-0 sm:flex-row sm:items-start sm:justify-between'>
         <div>
-          <CardTitle role='heading' aria-level={2}>
-            Propiedades con más movimiento
-          </CardTitle>
+          <h2 className='text-lg font-semibold leading-none tracking-tight'>Propiedades con más movimiento</h2>
           <p className='mt-1 text-sm text-muted-foreground'>
             Ranking por movimientos y solicitudes documentales de los últimos {days} días.
           </p>
@@ -268,7 +264,7 @@ export function ManagerTopSellers({ summary }: { summary: ManagerSummaryState })
   return (
     <Card className='py-0'>
       <CardHeader className='p-5 pb-0'>
-        <CardTitle role='heading' aria-level={2}>Vendedores con más movimiento</CardTitle>
+        <h2 className='text-lg font-semibold leading-none tracking-tight'>Vendedores con más movimiento</h2>
         <p className='mt-1 text-sm text-muted-foreground'>Ranking por movimientos manuales del período.</p>
       </CardHeader>
       <CardContent className='p-5'>{content}</CardContent>
@@ -327,7 +323,7 @@ export function ManagerShortcuts({ shortcuts }: { shortcuts: ManagerShortcut[] }
   return (
     <Card className='py-0'>
       <CardHeader className='p-5 pb-0'>
-        <CardTitle role='heading' aria-level={2}>Accesos directos</CardTitle>
+        <h2 className='text-lg font-semibold leading-none tracking-tight'>Accesos directos</h2>
         <p className='mt-1 text-sm text-muted-foreground'>Destinos disponibles según tus permisos actuales.</p>
       </CardHeader>
       <CardContent className='p-5'>
@@ -370,7 +366,7 @@ export function ManagerSummary({
           <div
             role='group'
             aria-label='Período del resumen operativo'
-            className='rounded-2xl border border-primary-foreground/20 bg-primary-foreground/10 p-1'
+            className='rounded-2xl border border-primary-foreground/20 bg-primary-foreground/10 p-1 [&_button]:min-h-11 [&_button]:focus-visible:outline-none [&_button]:focus-visible:ring-2 [&_button]:focus-visible:ring-primary-foreground'
           >
             <RangeSelector selectedRange={range} onSelectRange={onRangeChange} />
           </div>
