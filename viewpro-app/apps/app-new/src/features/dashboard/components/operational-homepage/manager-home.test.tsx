@@ -137,6 +137,12 @@ function expectNoSummaryFacts() {
   }
 }
 
+function expectDocumentOrder(...elements: HTMLElement[]) {
+  for (let index = 1; index < elements.length; index += 1) {
+    expect(elements[index - 1]!.compareDocumentPosition(elements[index]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  }
+}
+
 describe('manager home query state', () => {
   beforeEach(() => {
     useQueryMock.mockClear();
@@ -290,4 +296,45 @@ describe('manager home query state', () => {
     expectMetric('Movimientos del período', 5);
     expectLatestSummaryQuery('tenant-2', '7d');
   });
+
+  it('renders the complete manager hierarchy with four metrics and two distinct follow-ups', async () => {
+    const user = userEvent.setup();
+    setManagerQuery({ data: nonzeroSummary });
+    const { container } = render(<OperationalHomepage />);
+    await user.click(screen.getByRole('button', { name: '14 días' }));
+
+    const greeting = screen.getByRole('heading', { level: 1, name: 'Hola, Patricio Gómez' });
+    const date = container.querySelector('time')!;
+    const summary = screen.getByRole('heading', { level: 2, name: 'Resumen operativo' });
+    const range = screen.getByRole('group', { name: 'Período del resumen operativo' });
+    const metrics = screen.getByRole('list', { name: 'Métricas del resumen operativo' });
+    const labels = ['Propiedades activas', 'Movimientos del período', 'Sin novedades en 14 días', 'Requieren atención'];
+    const priorities = screen.getByRole('heading', { level: 2, name: 'Prioridades' });
+    expectDocumentOrder(greeting, date, summary, range, ...labels.map((label) => within(metrics).getByText(label)), priorities);
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.getAllByRole('heading', { level: 2 }).slice(0, 2).map(({ textContent }) => textContent)).toEqual(['Resumen operativo', 'Prioridades']);
+    expect(within(metrics).getAllByRole('listitem')).toHaveLength(4);
+    expect(screen.queryAllByRole('link', { name: /^(Ver seguimiento|Nueva propiedad|Ver propiedades)$/ }).every((link) => !(date.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING && link.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+
+    const rows = within(priorities.parentElement!.parentElement!).getAllByRole('link');
+    expect(rows).toHaveLength(2);
+    expect(rows.map((row) => row.getAttribute('href'))).toEqual(['/dashboard/seguimiento', '/dashboard/seguimiento']);
+    expect(rows[0]).toHaveTextContent('Sin novedades en 14 días');
+    expect(rows[1]).toHaveTextContent('Requieren atención');
+    expect(rows[0]).not.toHaveTextContent('Requieren atención');
+    expect(rows[1]).not.toHaveTextContent('Sin novedades');
+    expect(document.body.textContent).not.toMatch(/puntaje|calificación|trofeo|visitas de hoy|alertas|variación|mensajes enviados|%/i);
+  });
+
+  it.each(['7d', '14d', '30d'] as const)('renders %s labels, helpers, and zero-success copy', async (range) => {
+    const user = userEvent.setup();
+    setManagerQuery();
+    render(<OperationalHomepage />);
+    await user.click(screen.getByRole('button', { name: `${range.replace('d', '')} días` }));
+    const days = range.replace('d', '');
+
+    expect(screen.getByText(`0 gestiones activas y 0 movimientos en los últimos ${days} días.`)).toBeVisible();
+    for (const expectedCopy of ['Gestiones activas, sin archivar y sin cerrar ni cancelar.', `Movimientos creados en gestiones activas durante los últimos ${days} días.`, `Gestiones activas sin movimientos creados en los últimos ${days} días.`, `Sin novedades en ${days} días`, 'Gestiones activas cuya última consulta, visita completada u oferta recibida del período no tiene próximo paso significativo.', `No hubo movimientos en los últimos ${days} días.`, `No hay gestiones sin novedades en ${days} días.`, 'No hay gestiones activas en este resumen.', 'No hay gestiones que requieran atención.']) expect(expectedCopy === `Sin novedades en ${days} días` ? within(screen.getByRole('list', { name: 'Métricas del resumen operativo' })).getByText(expectedCopy) : screen.getByText(expectedCopy)).toBeVisible();
+  });
+
 });
