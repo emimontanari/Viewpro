@@ -72,6 +72,46 @@ export function PriorityCard({
   );
 }
 
+export function ManagerPriorityPanel({
+  attentionCount,
+  rangeDays,
+  staleCount
+}: {
+  attentionCount: number;
+  rangeDays: number;
+  staleCount: number;
+}) {
+  return (
+    <Card className='py-0'>
+      <CardContent className='space-y-4 p-5'>
+        <div>
+          <h2 className='text-lg font-semibold'>Prioridades</h2>
+          <p className='mt-1 text-sm text-muted-foreground'>Seguimientos que requieren una decisión.</p>
+        </div>
+        <p className='rounded-2xl border bg-background/70 p-3 text-sm'>
+          {staleCount} gestiones no tuvieron novedades en {rangeDays} días.
+        </p>
+        <div className='grid gap-2'>
+          <PriorityLink
+            action='Actualizar'
+            ariaLabel={`Ver ${staleCount} gestiones sin novedades en ${rangeDays} días en seguimiento`}
+            count={staleCount}
+            href='/dashboard/seguimiento'
+            label={`Sin novedades en ${rangeDays} días`}
+          />
+          <PriorityLink
+            action='Resolver'
+            ariaLabel={`Ver ${attentionCount} gestiones que requieren atención en seguimiento`}
+            count={attentionCount}
+            href='/dashboard/seguimiento'
+            label='Requieren atención'
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function PriorityLink({
   action,
   ariaLabel,

@@ -43,6 +43,45 @@ export function KpiCard({
   );
 }
 
+export function ManagerMetricCard({
+  helper,
+  icon: Icon,
+  label,
+  tone,
+  value,
+  zeroCopy
+}: {
+  helper: string;
+  icon: typeof Icons.product;
+  label: string;
+  tone: 'active' | 'movements' | 'stale' | 'attention';
+  value: number;
+  zeroCopy: string;
+}) {
+  const iconTone = {
+    active: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+    attention: 'bg-destructive/15 text-destructive',
+    movements: 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
+    stale: 'bg-amber-500/15 text-amber-800 dark:text-amber-300'
+  }[tone];
+
+  return (
+    <Card role='listitem' className='py-0'>
+      <CardContent className='flex items-start gap-4 p-5'>
+        <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-full', iconTone)}>
+          <Icon className='size-5' aria-hidden='true' />
+        </div>
+        <div className='min-w-0 space-y-1'>
+          <p className='text-sm font-medium text-muted-foreground'>{label}</p>
+          <p className='text-3xl font-semibold tracking-tight'>{value}</p>
+          <p className='text-sm text-muted-foreground'>{helper}</p>
+          {value === 0 ? <p className='text-sm text-muted-foreground'>{zeroCopy}</p> : null}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function EmptyPanel({
   description,
   icon: Icon,

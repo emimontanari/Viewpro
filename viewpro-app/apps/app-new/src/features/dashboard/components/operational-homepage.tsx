@@ -13,14 +13,14 @@ import { productsQueryOptions } from '@/features/products/api/queries';
 import { getUserDisplayName, type TenantMembership } from '@/lib/session';
 import { useActiveTenant, useSession } from '@/lib/session-context';
 import { KpiCard } from './operational-homepage/primitives';
-import { PriorityCard, PriorityLink } from './operational-homepage/priority-panel';
+import { PriorityLink } from './operational-homepage/priority-panel';
+import { ManagerSummary } from './operational-homepage/manager-sections';
 import {
   PropertyPreviewList,
   RecentActivityList,
   SellerActivityCard,
   TopPropertiesCard
 } from './operational-homepage/lists';
-import { RangeSelector } from './operational-homepage/range-selector';
 import {
   MissingInmobiliariaState,
   OperationalHomepageSkeleton,
@@ -89,121 +89,50 @@ function ManagerOperationalHomepage({
   const selectedRangeOption = getRangeOption(selectedRange);
   const summary = useManagerSummary({ range: selectedRange, tenantId: activeTenantId });
   const data = summary.status === 'ready' ? summary.data : null;
-  const counters = data?.counters;
-  const activePropertiesTotal = counters?.activeProperties ?? 0;
-  const stalePropertiesTotal = counters?.staleProperties ?? 0;
-  const movementsInRange = counters?.movementsInRange ?? 0;
-  const attentionNeeded = counters?.attentionNeeded ?? 0;
   const recentActivity = data?.recentActivity ?? [];
-  const recentDocumentRequests = recentActivity.filter(
-    (item) => item.kind === 'document_request'
-  ).length;
   const topProperties = data?.topProperties ?? [];
   const sellerInsights = data?.topSellers ?? [];
 
   return (
     <section className='min-w-0 space-y-6'>
       <div className='overflow-hidden rounded-3xl border bg-card shadow-xs'>
-        <div className='grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:p-8'>
-          <div className='space-y-5'>
-            <Badge variant='outline' className='rounded-full bg-muted/40'>
-              Panel de inmobiliaria
-            </Badge>
-            <div className='max-w-3xl space-y-3'>
-              <h1 className='text-3xl font-semibold tracking-tight md:text-4xl'>
-                Hola, {displayName}
-              </h1>
-              <p className='text-sm text-muted-foreground'>
-                {activeMembership.tenant.name} · <time dateTime={today.dateTime}>{today.label}</time>
-              </p>
-              <p className='text-base text-muted-foreground md:text-lg'>
-                Detectá qué gestiones se están moviendo, qué propiedades piden atención y quiénes
-                están generando actividad para decidir por dónde empezar.
-              </p>
-            </div>
-            <div className='flex flex-wrap gap-2'>
-              <Link href='/dashboard/seguimiento' className={buttonVariants({ size: 'sm' })}>
-                <Icons.trendingUp className='size-4' />
-                Ver seguimiento
-              </Link>
-              <Link
-                href='/dashboard/product/new'
-                className={buttonVariants({ size: 'sm', variant: 'secondary' })}
-              >
-                <Icons.add className='size-4' />
-                Nueva propiedad
-              </Link>
-              <Link
-                href='/dashboard/product'
-                className={buttonVariants({ size: 'sm', variant: 'outline' })}
-              >
-                <Icons.product className='size-4' />
-                Ver propiedades
-              </Link>
-            </div>
-            <RangeSelector selectedRange={selectedRange} onSelectRange={setSelectedRange} />
+        <div className='space-y-5 p-6 lg:p-8'>
+          <Badge variant='outline' className='rounded-full bg-muted/40'>
+            Panel de inmobiliaria
+          </Badge>
+          <div className='max-w-3xl space-y-3'>
+            <h1 className='text-3xl font-semibold tracking-tight md:text-4xl'>Hola, {displayName}</h1>
+            <p className='text-sm text-muted-foreground'>
+              {activeMembership.tenant.name} · <time dateTime={today.dateTime}>{today.label}</time>
+            </p>
+            <p className='text-base text-muted-foreground md:text-lg'>
+              Detectá qué gestiones se están moviendo, qué propiedades piden atención y quiénes
+              están generando actividad para decidir por dónde empezar.
+            </p>
           </div>
-
-          {summary.status === 'ready' ? (
-            <PriorityCard
-              attentionCount={attentionNeeded}
-              documentRequestCount={recentDocumentRequests}
-              hasDataError={false}
-              isLoading={false}
-              rangeDays={selectedRangeOption.days}
-              staleCount={stalePropertiesTotal}
-            />
-          ) : summary.status === 'error' ? (
-            <div role='alert' className='rounded-2xl border border-dashed p-5'>
-              <p className='font-semibold'>Resumen operativo no disponible</p>
-              <p className='mt-1 text-sm text-muted-foreground'>
-                No mostramos datos anteriores como actuales.
-              </p>
-              <Button className='mt-4' disabled={summary.retrying} onClick={summary.retry}>
-                {summary.retrying ? 'Reintentando resumen' : 'Reintentar resumen'}
-              </Button>
-            </div>
-          ) : (
-            <div
-              aria-label='Preparando resumen operativo'
-              className='h-44 animate-pulse rounded-2xl bg-muted'
-            />
-          )}
         </div>
       </div>
 
-      <ManagerSummaryGate summary={summary}>
-      <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
-        <KpiCard
-          icon={Icons.warning}
-          label={`Sin novedades en ${selectedRangeOption.days} días`}
-          value={stalePropertiesTotal}
-          helper='Gestiones activas sin movimientos en el período.'
-          isLoading={false}
+      {summary.status === 'ready' ? (
+        <ManagerSummary data={summary.data} onRangeChange={setSelectedRange} range={selectedRange} />
+      ) : summary.status === 'error' ? (
+        <div role='alert' className='rounded-2xl border border-dashed p-5'>
+          <p className='font-semibold'>Resumen operativo no disponible</p>
+          <p className='mt-1 text-sm text-muted-foreground'>
+            No mostramos datos anteriores como actuales.
+          </p>
+          <Button className='mt-4' disabled={summary.retrying} onClick={summary.retry}>
+            {summary.retrying ? 'Reintentando resumen' : 'Reintentar resumen'}
+          </Button>
+        </div>
+      ) : (
+        <div
+          aria-label='Preparando resumen operativo'
+          className='h-44 animate-pulse rounded-2xl bg-muted'
         />
-        <KpiCard
-          icon={Icons.clock}
-          label='Movimientos del período'
-          value={movementsInRange}
-          helper={`Actividad registrada en los últimos ${selectedRangeOption.days} días.`}
-          isLoading={false}
-        />
-        <KpiCard
-          icon={Icons.trendingUp}
-          label='Requieren atención'
-          value={attentionNeeded}
-          helper='Consultas, visitas u ofertas sin próximo paso.'
-          isLoading={false}
-        />
-        <KpiCard
-          icon={Icons.product}
-          label='Propiedades activas'
-          value={activePropertiesTotal}
-          helper='Gestiones disponibles para operar.'
-          isLoading={false}
-        />
-      </div>
+      )}
 
+      <ManagerSummaryGate summary={summary}>
       <div className='grid gap-5 xl:grid-cols-2'>
         <Card className='py-0'>
           <CardHeader className='flex flex-col gap-2 p-5 pb-0 sm:flex-row sm:items-start sm:justify-between'>
