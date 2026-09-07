@@ -485,3 +485,38 @@ Manual authoritative OpenSpec status was consumed because no parent status was s
 - Next implementation work is C7B only: `- [ ] RED → GREEN → TRIANGULATE → REFACTOR both reviewer roles, tenant-scoped all-state use-case reads, pending/newest defaults, and safe result visibility. <!-- sdd-owner: implementation -->` and `- [ ] Run the C7B reviewer-use-case specs and API typecheck; clear query fixtures and reviewer rows. <!-- sdd-owner: implementation -->`.
 - Chronological commands/results: `pnpm install --offline --frozen-lockfile` PASS; `pnpm --filter @viewpro/api db:generate` PASS; guarded `pnpm --filter @viewpro/api exec vitest run src/property-proposals/prisma-property-proposals.repository.spec.ts --retry=0` was 40/40 baseline, 6/46 absent-method pre-RED, 6/46 behavioral-skeleton RED, then 46/46 GREEN; its four restored mutants were 1/46, 5/46, 1/46, and 1/46 failures; final focused run was 46/46; forced Turbo typecheck was 6/6; lint first failed only `no-conditional-expect`, then focused/lint/repeat were 46/46/PASS/46/46; guarded `pnpm --filter @viewpro/api exec vitest run --retry=0` was 159 files/1623 tests.
 - Final candidate arithmetic after cleanup is 157 tracked additions + 2 tracked deletions + 98-line already-created exploration artifact = **257 changed lines**, within C7A2's 400-line maximum.
+
+## C7B / #306 reviewer read use cases
+
+### Status, scope, and completion
+
+- Consumed native `gentle-ai sdd-status seller-property-proposals`: OpenSpec `applyState: ready`, `next: apply`, `33/79` complete, exact repo-local workspace `/Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-c7b-reviewer-use-cases`, and that workspace as the sole allowed edit root; no action-context warnings.
+- Added only the four C7B manifest files. The exploration artifact `explore-c7b-reviewer-use-cases.md` was read as authoritative C7B planning input and is included in the candidate arithmetic.
+- Both implementation-owned C7B task rows are now visibly `[x]`; no parent-owned row was changed. Status is consequently `35/79` complete.
+
+### Completed behavior
+
+- Each injected repository use case explicitly allows only `MANAGER` or `PRINCIPAL_MANAGER` with `PROPERTY_PROPOSALS_REVIEW`; AGENT, unsupported, role-only, and forged-capability contexts throw `new ForbiddenException('Insufficient permissions')` before either read.
+- List passes trusted `tenant.tenantId` and the original filter object to `listForReviewer`, returns repository item order unchanged, and uses `normalizeReviewerRead` only for response `page`/`pageSize` metadata.
+- Detail reads all states through `findForReviewer({ tenantId, proposalId })`; both missing and cross-tenant null results produce the exact coded `PROPERTY_PROPOSAL_NOT_FOUND` 404.
+- No self-review denial, writes, repository/filter/module changes, canonical-result/source mapping, transport, route, DTO, BFF, UI, schema, migration, or C8+ work was introduced.
+
+### TDD Cycle Evidence
+
+| Task | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|
+| C7B list/detail reads | Specs were authored first; after a minimal importable skeleton, collected behavioral assertions failed **16/16** on absent authorization, trusted repository calls, order/page metadata, and coded absence (not missing-import or zero-collection failure). | Smallest repository-DI implementation passed focused **2 files / 16 tests**. | Restored mutants failed: principal role removal **2/16**, role/capability conjunction **3/16**, tenant propagation **8/16**, local list reverse/page rewrite **4/16**, and 404 mapping/result leakage **4/16**. | No refactor was needed; the two short local explicit allowlists preserve the four-file boundary. |
+
+### Verification, cleanup, and arithmetic
+
+- PASS — offline frozen install and Prisma generation; guarded localhost `viewpro_test` focused C7B tests retry-0: **2 files / 16 tests**, then repeated **16/16**.
+- PASS — forced uncached `pnpm exec turbo run typecheck --filter=@viewpro/api --force`: **6/6**; the first forced pass exposed only an inferred `Set` type mismatch, corrected to `Set<TenantRole>` before the successful run.
+- PASS — `pnpm --filter @viewpro/api lint`; guarded bounded full API `vitest run --retry=0`: **161 files / 1639 tests**.
+- Postchecks: `viewpro_test` and `_w1`–`_w4` each report `0/0/0` proposal/round/decision rows and `pg_stat_activity` reports zero non-idle test connections; query fixtures and reviewer rows required no deletion.
+- Recursive cleanup removed dependency/generated/build/report/upload/cache residue, `.turbo`, coverage, and `*.tsbuildinfo`; `packages/contracts/src/generated/.gitkeep` remains. `git diff --check` passes.
+- Final candidate arithmetic after cleanup is **37 tracked additions + 2 tracked deletions + 292 untracked lines = 331 changed lines**; it remains bounded by the active C7B **400-line** work-unit cap, with no size exception, compression, commit, rebase, push, PR, merge, review, receipt, provider, staging, or production action.
+
+### Remaining work and boundary
+
+- C7B is complete within the parent-selected `auto-chain` / stacked-to-`develop` C7B slice. The next implementation-owned rows are the U9 rejection/replay rows; parent lifecycle rows remain deferred and byte-for-byte unchanged.
+- Residual risk: this use-case boundary intentionally does not wire a module or transport and intentionally defers durable self-review denial to U9 and viewer-specific canonical-result disclosure to U10B.

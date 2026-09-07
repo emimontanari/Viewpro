@@ -149,8 +149,8 @@ Manifest: `property-proposals.repository.ts`, `prisma-property-proposals.reposit
 
 Manifest: reviewer list/detail use cases and their specs only. It consumes C7A2's repository contract and owns both reviewer roles, reviewer-result mapping, and the pending/newest use-case boundary; no repository/filter redo.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR both reviewer roles, tenant-scoped all-state use-case reads, pending/newest defaults, and safe result visibility. <!-- sdd-owner: implementation -->
-- [ ] Run the C7B reviewer-use-case specs and API typecheck; clear query fixtures and reviewer rows. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR both reviewer roles, tenant-scoped all-state use-case reads, pending/newest defaults, and safe result visibility. <!-- sdd-owner: implementation -->
+- [x] Run the C7B reviewer-use-case specs and API typecheck; clear query fixtures and reviewer rows. <!-- sdd-owner: implementation -->
 
 ### U9 — Rejection, replay, and transition conflicts (S13, S17–S19, S31–S32)
 
