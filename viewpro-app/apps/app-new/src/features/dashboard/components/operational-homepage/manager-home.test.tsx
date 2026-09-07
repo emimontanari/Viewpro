@@ -375,7 +375,43 @@ describe('manager home query state', () => {
     expectLatestSummaryQuery('tenant-2', '7d');
   });
 
-  it('renders the complete manager hierarchy with four metrics and two distinct follow-ups', async () => {
+    it('uses native ordered section headings and an accessible pressed range group', async () => {
+      const user = userEvent.setup();
+      setManagerQuery({ data: { ...activitySummary, ...sellerSummary } as DashboardSummaryResponse });
+
+      render(<OperationalHomepage />);
+
+      const range = screen.getByRole('group', { name: 'Período del resumen operativo' });
+      const rangeButtons = within(range).getAllByRole('button');
+      expect(rangeButtons.map((button) => button.getAttribute('aria-pressed'))).toEqual([
+        'true',
+        'false',
+        'false'
+      ]);
+      await user.click(screen.getByRole('button', { name: '14 días' }));
+      expect(screen.getByRole('button', { name: '14 días' })).toHaveAttribute('aria-pressed', 'true');
+
+      const sectionNames = [
+        'Resumen operativo',
+        'Prioridades',
+        'Actividad reciente',
+        'Propiedades con más movimiento',
+        'Vendedores con más movimiento',
+        'Accesos directos'
+      ];
+      const headings = sectionNames.map((name) => screen.getByRole('heading', { level: 2, name }));
+      expect(headings.map((heading) => heading.tagName)).toEqual([
+        'H2',
+        'H2',
+        'H2',
+        'H2',
+        'H2',
+        'H2'
+      ]);
+      expectDocumentOrder(...headings);
+    });
+
+    it('renders the complete manager hierarchy with four metrics and two distinct follow-ups', async () => {
     const user = userEvent.setup();
     setManagerQuery({ data: nonzeroSummary });
     const { container } = render(<OperationalHomepage />);
@@ -448,6 +484,8 @@ describe('manager home query state', () => {
       const rows = within(activity).getByRole('list').children;
       expect(rows).toHaveLength(5);
       expect(rows[0]).toHaveTextContent(longTitle);
+      expect(within(rows[0] as HTMLElement).getByText(longTitle)).toHaveClass('break-words');
+      expect(within(rows[0] as HTMLElement).getByText(`${longTitle} de propiedad`)).toHaveClass('break-words');
       expect(rows[1]).toHaveTextContent('Movimiento 2');
       expect(within(activity).queryByText('Movimiento 6')).not.toBeInTheDocument();
       expect(within(activity).queryByRole('link', { name: `Abrir actividad: ${longTitle}` })).not.toBeInTheDocument();
@@ -500,6 +538,7 @@ describe('manager home query state', () => {
       const rows = within(properties).getByRole('list').children;
       expect(rows).toHaveLength(3);
       expect(rows[0]).toHaveTextContent(longAddress);
+      expect(within(rows[0] as HTMLElement).getByText(longAddress)).toHaveClass('break-words');
       expect(rows[1]).toHaveTextContent('Propiedad 2');
       expect(within(properties).queryByText('Propiedad 4')).not.toBeInTheDocument();
       expect(within(properties).queryByRole('link', { name: `Abrir propiedad ${longAddress}` })).not.toBeInTheDocument();
@@ -573,6 +612,26 @@ describe('manager home query state', () => {
           );
           expect(within(sellers).queryByText('Diego Soto')).not.toBeInTheDocument();
           expect(document.body.textContent).not.toMatch(/puntaje|calificación|trofeo|foto|rendimiento|variación|%|visitas de hoy|alertas|mensajes|clientes|agenda|subir|recordatorio|notificaciones|propuesta|sincronización|proveedor|salud|operador/i);
+        });
+
+        it('keeps a long seller identity semantic and wrap-safe', () => {
+          const longSeller =
+            'Vendedora con una identidad deliberadamente extensa que debe seguir completa y legible en el ranking autorizado';
+          setManagerQuery({
+            data: {
+              ...sellerSummary,
+              topSellers: [{ ...sellerSummary.topSellers[0], name: longSeller }]
+            } as DashboardSummaryResponse
+          });
+
+          render(<OperationalHomepage />);
+
+          const sellers = getTopSellersSection();
+          expect(within(sellers).getByText(longSeller)).toHaveClass('break-words');
+          expect(within(sellers).getByRole('link', { name: `Ver movimientos de ${longSeller}` })).toHaveAttribute(
+            'href',
+            '/dashboard/seguimiento?sellerId=seller-ana'
+          );
         });
 
         it('shows only navigation-policy and creation-capability shortcuts', () => {
