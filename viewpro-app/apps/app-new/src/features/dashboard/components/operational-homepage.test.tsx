@@ -460,6 +460,27 @@ describe('OperationalHomepage', () => {
     expect(screen.queryByText('Vendedores con más movimiento')).not.toBeInTheDocument();
   });
 
+  it('keeps retained product refresh errors visibly unavailable in the current seller composition', () => {
+    useActiveTenantMock.mockReturnValue({
+      ...activeTenantContext,
+      activeMembership: { ...activeTenantContext.activeMembership, role: 'AGENT' }
+    });
+    useQueryMock.mockImplementation((options) => {
+      const productsQuery = (options.queryKey as readonly unknown[])[0] === 'products';
+      return {
+        data: productsQuery ? productsResponse : activityFeedResponse,
+        isError: productsQuery,
+        isFetching: false,
+        isLoading: false,
+        isSuccess: !productsQuery
+      } as ReturnType<typeof useQuery>;
+    });
+
+    render(<OperationalHomepage />);
+
+    expect(screen.getByText('No se pudo cargar tu resumen. Reintentá en unos segundos.')).toBeVisible();
+  });
+
   it('mounts principal managers but fails closed for unknown roles and absent identities', () => {
     useActiveTenantMock.mockReturnValue({
       ...activeTenantContext,

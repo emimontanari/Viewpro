@@ -4,10 +4,10 @@
 
 | Field | Value |
 |-------|-------|
-| Estimated changed lines | 1,100–1,450 total; I1 300–390, I2 300–390, I3 320–395, I4 180–280 |
+| Estimated changed lines | 1,450–1,855 total; I1A 350–400, I1B 300–390, I2 300–390, I3 320–395, I4 180–280 |
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
-| Suggested split | P1 → P2 → P3 → P4 → P5 → I1 → I2 → I3 → I4 |
+| Suggested split | P1 → P2 → P3 → P4 → P5 → I1A → I1B → I2 → I3 → I4 |
 | Delivery strategy | ask-on-risk resolved to required split |
 | Chain strategy | stacked-to-main |
 
@@ -67,17 +67,25 @@ All implementation rows have `source: implementation; task: implementation; evid
 
 | Unit | File allowlist and expected symbols | Start → finish / rollback | Forecast |
 |---|---|---|---:|
-| I1 Seller state foundation | `src/features/dashboard/components/operational-homepage.tsx` (`OperationalHomepage` dispatch); new `operational-homepage/seller-home.tsx` (`SellerOperationalHomepage`, `SellerProductsState`, `SellerActivityState`, `toSellerProductsState`, `toSellerActivityState`); `operational-homepage.test.tsx`; new `seller-home.test.tsx`; `openspec/changes/seller-home-reference-fidelity/apply-progress.md` | Inline seller query state → keyed seller container/adapters with exact role/identity/tenant gate and independently honest states; revert container/dispatch/test files together. | 300–390 |
+| I1A Seller adapters/extraction | `operational-homepage.tsx` and `operational-homepage.test.tsx` (seller extraction/parity only); new `seller-home.tsx` (container/adapters); new `seller-home.test.tsx`; tasks/progress | Inline seller queries → independently validated seller adapters and unchanged composition; revert extraction/tests together. | 350–400 |
+| I1B Seller gates/truthful current state | `operational-homepage.tsx`, `seller-home.tsx`, both seller tests, tasks/progress | I1A → exact identity/membership gate, keyed tenant transition, and current-composition unavailable/retry/refresh rendering; revert this cutover only. | 300–390 |
 | I2 Reference summary composition | `operational-homepage.tsx` (seller import/cutover only); `seller-home.tsx`; new `seller-sections.tsx` (`SellerHomeView`, fact/priority/unavailable sections); `seller-home.test.tsx`; new `seller-sections.test.tsx`; `openspec/changes/seller-home-reference-fidelity/apply-progress.md` | State foundation → greeting/facts/priorities and beginning hierarchy; revert pure sections plus narrow cutover. | 300–390 |
 | I3 Bounded content/cutover | `operational-homepage.tsx` (complete seller extraction/import cleanup only); `seller-home.tsx`; `seller-sections.tsx`; new `seller-lists.tsx` (bounded rows); `seller-home.test.tsx`; `seller-sections.test.tsx`; `openspec/changes/seller-home-reference-fidelity/apply-progress.md` | Summary → real bounded lists, safe formatting/links, shortcuts, final seller extraction; revert seller lists/sections and restore prior extracted composition only. | 320–395 |
 | I4 Responsive/browser proof | `seller-sections.tsx`; `seller-lists.tsx`; `seller-sections.test.tsx`; `tests/seeded/demo-smoke.spec.ts`; `apply-progress.md` | Complete seller view → semantic/focus/wrapping/grid polish and one read-only seeded proof; revert proof/polish only. | 180–280 |
 
-### I1 — seller state foundation
+### I1A — seller adapters and extraction
 
-- [ ] RED: add `operational-homepage.test.tsx`/`seller-home.test.tsx` assertions that exact `AGENT` alone mounts seller queries; manager/principal/unknown/missing identity and membership-tenant mismatch mount none; products/activity each fail loading, zero-ready, error, refreshing, retained-error, malformed/cross-tenant payload, local retry/retrying, partial sibling success, and tenant-A→B race expectations; run C and expect these behavioral assertions to fail. <!-- sdd-owner: implementation -->
-- [ ] GREEN: create `seller-home.tsx` adapters/container, tenant-keyed remount, response-integrity checks, and product/activity-only `refetch`; retain existing query keys/options and minimal old composition, then run C and Protected successfully. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: with a real QueryClient contrast same-tenant retained refresh against tenant-A late response after B switch; contrast product retry with no activity refetch and vice versa, then run C and BFF successfully. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: simplify seller-only types/imports without state change; run C, BFF, Protected, typecheck/lint, LSP, diff/accounting, record evidence, and stop if I1 exceeds 400. <!-- sdd-owner: implementation -->
+- [x] RED: add pure `seller-home.test.tsx` adapter assertions for loading, ready/zero, error/retrying, refreshing, retained-error, malformed counts, cross-tenant rows, and activity engagement mismatch; run focused C and expect the missing module assertion to fail. <!-- sdd-owner: implementation -->
+- [x] GREEN: create seller-only query container and product/activity integrity adapters, retaining existing options and unchanged seller composition; run C and Protected. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: contrast valid product/activity data with malformed totals/counters and tenant/engagement payload mismatches; prove local retry callbacks and run C/BFF. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: remove unused seller-query imports/types without behavior change; run C, BFF, Protected, typecheck/lint, parent LSP, OpenSpec, diff/accounting, and stop at 400. <!-- sdd-owner: implementation -->
+
+### I1B — seller gates and truthful current composition
+
+- [ ] RED: add operational and real-QueryClient assertions for exact `AGENT`, identity/membership-tenant no-query gates, same-tenant retained contrast, and A→B late response isolation; add current-composition unavailable/retry/refresh/retained-error assertions that reject false zero/empty copy. <!-- sdd-owner: implementation -->
+- [ ] GREEN: add exact gates, membership/tenant keyed remount, and independent current-composition unavailable/retry/refresh/retained-error rendering with own-query retries only; run C/Protected. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE: contrast product failure/activity ready and vice versa, each local retry, same-tenant retention, and A→B in-flight data; run C/BFF. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR: preserve manager and seller visual composition while simplifying I1B-only wiring; run C, BFF, Protected, typecheck/lint, parent LSP, OpenSpec, diff/accounting, and stop at 400. <!-- sdd-owner: implementation -->
 
 ### I2 — reference summary composition
 
@@ -104,29 +112,29 @@ All implementation rows have `source: implementation; task: implementation; evid
 
 | Scenario | Implementing evidence |
 |---|---|
-| R1.1 exact agent | I1 role/query test |
-| R1.2 protected managers | I1 Protected manager regression |
-| R1.3 fail closed | I1 missing/unknown/no-query test |
+| R1.1 exact agent | I1B role/query test |
+| R1.2 protected managers | I1B Protected manager regression |
+| R1.3 fail closed | I1B missing/unknown/no-query test |
 | R2.1 real identity + tenant | I2 greeting/tenant test; I4 seeded proof |
-| R2.2 missing identity | I1 identity gate; I2 no-fabrication test |
+| R2.2 missing identity | I1B identity gate; I2 no-fabrication test |
 | R2.3 no reference shell chrome | I2 hierarchy/absence test; I4 browser |
 | R3.1 assigned scope | I2 product-owner fact test |
 | R3.2 rolling movement/stale | I2 exact window/timezone helper-copy and owner test |
 | R3.3 narrow follow-up | I2 priority meaning/forbidden-task test |
 | R4.1 two rows | I2 exact `<ul>/<li>` count test |
 | R4.2 truthful zero priorities | I2 zero-ready contrast |
-| R4.3 activity failure priorities | I1 activity error; I2 local recovery |
+| R4.3 activity failure priorities | I1B activity error; I2 local recovery |
 | R5.1 real assigned preview | I3 bounds/field-fallback test |
 | R5.2 permitted source activity | I3 kind/order/bound test |
 | R5.3 successful empties | I3 product/activity empty contrast |
 | R5.4 prose/malformed time | I3 no-inference/no-`time` contrast |
-| R6.1 product initial loading | I1 products loading adapter test |
-| R6.2 both successful empty | I1 ready-zero; I3 empty copy test |
-| R6.3 product local failure | I1 product-error/activity-ready test |
-| R6.4 activity local failure | I1 activity-error/product-ready test |
-| R6.5 local retry | I1 one-query refetch/retrying test |
-| R6.6 retained refresh | I1 refreshing/retained-error test |
-| R6.7 tenant transition | I1 real QueryClient A→B race test |
+| R6.1 product initial loading | I1A loading adapter; I1B current composition |
+| R6.2 both successful empty | I1A ready-zero; I3 empty copy test |
+| R6.3 product local failure | I1B product-error/activity-ready test |
+| R6.4 activity local failure | I1B activity-error/product-ready test |
+| R6.5 local retry | I1A callback; I1B one-query current-composition retry |
+| R6.6 retained refresh | I1A adapter; I1B same-tenant current-composition contrast |
+| R6.7 tenant transition | I1B real QueryClient A→B race test |
 | R7.1 authorized destinations | I3 shortcut/valid-link test; I4 real seed |
 | R7.2 invalid identity | I3 fail-closed link test |
 | R7.3 contextual movement only | I3 absence plus existing detail regression |
