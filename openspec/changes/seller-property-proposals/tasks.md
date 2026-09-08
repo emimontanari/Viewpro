@@ -163,8 +163,8 @@ Manifest: rejection use case, `review-transition-conflict.ts` and specs, plus `r
 
 Manifest: `approve-property-proposal.use-case.ts`, repository additions, `approve-property-proposal.use-case.spec.ts`.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR one-transaction approval, CAPTURE, creator/reviewer attribution, source link, ordinary non-primary assignment, owner-reference exclusion, side-effect exclusion, and generic rollback. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest approval spec and API typecheck; delete source engagements before captured orphan assets in `finally`. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR one-transaction approval, CAPTURE, creator/reviewer attribution, source link, ordinary non-primary assignment, owner-reference exclusion, side-effect exclusion, and generic rollback. <!-- sdd-owner: implementation -->
+- [x] Run the manifest approval spec and API typecheck; delete source engagements before captured orphan assets in `finally`. <!-- sdd-owner: implementation -->
 
 ### U10B — Result-link response safety (S37–S38)
 
