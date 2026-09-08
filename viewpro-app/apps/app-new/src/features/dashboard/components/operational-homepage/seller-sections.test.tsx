@@ -1,8 +1,9 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { SellerActivityState, SellerProductsState } from './seller-home';
 import { SellerActivityList, SellerPropertyList } from './seller-lists';
-import { SellerHomeView } from './seller-sections';
+import { SellerHomeView, type SellerShortcut } from './seller-sections';
 
 const products = { data: { items: [], total: 7 }, status: 'ready', tenantId: 'tenant-1' } as unknown as SellerProductsState;
 const activity = {
@@ -13,16 +14,22 @@ const activity = {
 
 function renderSeller({
   activityState = activity,
-  productsState = products
+  productsState = products,
+  shortcuts = [
+    { href: '/dashboard/product', icon: 'product', label: 'Propiedades' },
+    { href: '/dashboard/seguimiento', icon: 'trendingUp', label: 'Seguimiento' }
+  ]
 }: {
   activityState?: SellerActivityState;
   productsState?: SellerProductsState;
+  shortcuts?: SellerShortcut[];
 } = {}) {
   return render(
     <SellerHomeView
       activity={activityState}
       displayName='Martín Pérez'
       products={productsState}
+      shortcuts={shortcuts}
       tenantName='Inmobiliaria del Río'
     />
   );
@@ -85,7 +92,7 @@ describe('SellerHomeView', () => {
     });
 
     expect(screen.getAllByText('0')).toHaveLength(3);
-    expect(screen.getAllByText('Actualizando…')).toHaveLength(5);
+    expect(screen.getAllByText('Actualizando…')).toHaveLength(6);
     expect(within(screen.getByRole('region', { name: 'Prioridades' })).getAllByRole('listitem')).toHaveLength(2);
   });
 
@@ -100,23 +107,87 @@ describe('SellerHomeView', () => {
       } as unknown as SellerActivityState
     });
 
-    expect(screen.getAllByText('Última información disponible')).toHaveLength(5);
+    expect(screen.getAllByText('Última información disponible')).toHaveLength(6);
     expect(screen.getByText('4')).toBeVisible();
     expect(within(screen.getByRole('region', { name: 'Prioridades' })).getAllByRole('listitem')).toHaveLength(2);
+  });
+
+  it('keeps each retained list available with only its own retry', async () => {
+    const productRetry = vi.fn();
+    const activityRetry = vi.fn();
+    const user = userEvent.setup();
+
+    renderSeller({
+      activityState: {
+        ...sellerActivity([movementRow(1)]),
+        retry: activityRetry,
+        retrying: false,
+        status: 'retained-error'
+      },
+      productsState: {
+        ...sellerProducts([propertyRow(1)], 1),
+        retry: productRetry,
+        retrying: false,
+        status: 'retained-error'
+      }
+    });
+
+    expect(screen.getByText('Propiedad 1')).toBeVisible();
+    expect(screen.getByText('Movimiento 1')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Reintentar propiedades asignadas' }));
+    expect(productRetry).toHaveBeenCalledTimes(1);
+    expect(activityRetry).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Reintentar actividad' }));
+    expect(activityRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('composes the bounded seller lists and only property then follow-up shortcuts', () => {
+    renderSeller({
+      activityState: sellerActivity([movementRow(1)]),
+      productsState: sellerProducts([propertyRow(1)], 1)
+    });
+
+    expect(
+      screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)
+    ).toEqual([
+      'Resumen de gestiones',
+      'Prioridades',
+      'Mis propiedades asignadas',
+      'Actividad de mis propiedades',
+      'Accesos rápidos'
+    ]);
+    expect(
+      within(screen.getByRole('region', { name: 'Mis propiedades' })).getByRole('link', {
+        name: 'Abrir propiedad: Propiedad 1'
+      })
+    ).toHaveAttribute('href', '/dashboard/product/engagement-1');
+    expect(
+      within(screen.getByRole('region', { name: 'Actividad reciente' })).getByRole('link', {
+        name: 'Abrir actividad: Propiedad 1'
+      })
+    ).toHaveAttribute('href', '/dashboard/product/engagement-1');
+    expect(
+      within(screen.getByRole('navigation', { name: 'Accesos rápidos' }))
+        .getAllByRole('link')
+        .map((link) => ({ href: link.getAttribute('href'), label: link.textContent }))
+    ).toEqual([
+      { href: '/dashboard/product', label: 'Propiedades' },
+      { href: '/dashboard/seguimiento', label: 'Seguimiento' }
+    ]);
   });
 });
 
 
-function sellerProducts(items: unknown[], total: number): SellerProductsState {
-  return { data: { items, total }, status: 'ready', tenantId: 'tenant-1' } as SellerProductsState;
+function sellerProducts(items: unknown[], total: number): Extract<SellerProductsState, { status: 'ready' }> {
+  return { data: { items, total }, status: 'ready', tenantId: 'tenant-1' } as Extract<SellerProductsState, { status: 'ready' }>;
 }
 
-function sellerActivity(items: unknown[]): SellerActivityState {
+function sellerActivity(items: unknown[]): Extract<SellerActivityState, { status: 'ready' }> {
   return {
     data: { counters: { attentionCount: 0, staleCount: 0, todayCount: 0 }, items },
     status: 'ready',
     tenantId: 'tenant-1'
-  } as SellerActivityState;
+  } as Extract<SellerActivityState, { status: 'ready' }>;
 }
 
 function propertyRow(index: number, overrides: Record<string, unknown> = {}) {

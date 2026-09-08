@@ -1,18 +1,27 @@
+import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { SellerActivityState, SellerProductsState } from './seller-home';
+import { SellerActivityList, SellerPropertyList } from './seller-lists';
+
+export type SellerShortcut = {
+  href: '/dashboard/product' | '/dashboard/seguimiento';
+  icon: 'product' | 'trendingUp';
+  label: string;
+};
 
 type SellerHomeViewProps = {
   activity: SellerActivityState;
   displayName: string;
   products: SellerProductsState;
+  shortcuts: readonly SellerShortcut[];
   tenantName: string;
 };
 
 type SellerState = SellerProductsState | SellerActivityState;
 
-export function SellerHomeView({ activity, displayName, products, tenantName }: SellerHomeViewProps) {
+export function SellerHomeView({ activity, displayName, products, shortcuts, tenantName }: SellerHomeViewProps) {
   return (
     <>
       <header className='rounded-3xl border bg-card p-6 shadow-xs lg:p-8'>
@@ -41,7 +50,45 @@ export function SellerHomeView({ activity, displayName, products, tenantName }: 
           </ul>
         ) : <Unavailable label='Prioridades de actividad' state={activity} />}
       </section>
+      <div className='grid gap-5 xl:grid-cols-2'>
+        <SellerContentSection accessibleLabel='Mis propiedades' description='Gestiones asignadas de la inmobiliaria activa.' heading='Mis propiedades asignadas' headingId='seller-engagements-heading' state={products} unavailableLabel='Propiedades asignadas'>
+          <SellerPropertyList state={products} />
+        </SellerContentSection>
+        <SellerContentSection accessibleLabel='Actividad reciente' description='Movimientos y solicitudes documentales permitidos vinculados a tus gestiones.' heading='Actividad de mis propiedades' headingId='seller-activity-heading' state={activity} unavailableLabel='Actividad'>
+          <SellerActivityList state={activity} />
+        </SellerContentSection>
+      </div>
+      <nav aria-labelledby='seller-shortcuts-heading' className='rounded-3xl border bg-card p-5 shadow-xs'>
+        <h2 id='seller-shortcuts-heading' className='text-lg font-semibold'>Accesos rápidos</h2>
+        <div className='mt-3 grid gap-3 sm:grid-cols-2'>
+          {shortcuts.map((shortcut) => {
+            const Icon = Icons[shortcut.icon];
+            return (
+              <Link key={shortcut.href} className='flex min-h-11 items-center gap-3 rounded-2xl border p-3 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring' href={shortcut.href}>
+                <Icon aria-hidden='true' className='size-5 text-muted-foreground' />
+                {shortcut.label}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </>
+  );
+}
+
+function SellerContentSection({ accessibleLabel, children, description, heading, headingId, state, unavailableLabel }: { accessibleLabel: string; children: React.ReactNode; description: string; heading: string; headingId: 'seller-engagements-heading' | 'seller-activity-heading'; state: SellerState; unavailableLabel: string }) {
+  return (
+    <section aria-labelledby={headingId}>
+      <Card className='h-full py-0'>
+        <CardContent className='space-y-4 p-5'>
+          <div>
+            <h2 aria-label={accessibleLabel} id={headingId} className='text-lg font-semibold'>{heading}</h2>
+            <p className='mt-1 text-sm text-muted-foreground'>{description}</p>
+          </div>
+          {'data' in state ? <><StateLabel state={state} />{state.status === 'retained-error' ? <Unavailable label={unavailableLabel} state={state} /> : null}{children}</> : <Unavailable label={unavailableLabel} state={state} />}
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 
@@ -79,7 +126,8 @@ function Unavailable({ label, retry = true, state }: { label: string; retry?: bo
   if (state.status === 'loading') return <span aria-label={`Preparando ${label.toLowerCase()}`}>Preparando…</span>;
   if (state.status === 'error' || state.status === 'retained-error') {
     const retryLabel = `Reintentar ${label.toLowerCase()}`;
-    return <span role='alert' aria-label={`${label} no disponible`} className='block text-sm font-normal'>Información no disponible {retry ? <Button type='button' variant='outline' onClick={state.retry} disabled={state.retrying}>{state.retrying ? `Reintentando ${label.toLowerCase()}…` : retryLabel}</Button> : null}</span>;
+    const availability = `${label} no ${label === 'Propiedades asignadas' ? 'disponibles' : 'disponible'}`;
+    return <span role='alert' aria-label={availability} className='block text-sm font-normal'>Información no disponible {retry ? <Button type='button' variant='outline' onClick={state.retry} disabled={state.retrying}>{state.retrying ? `Reintentando ${label.toLowerCase()}…` : retryLabel}</Button> : null}</span>;
   }
   return null;
 }

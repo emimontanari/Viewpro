@@ -107,3 +107,39 @@
 | Task | Test file | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | I3A | `seller-sections.test.tsx` | Component | 4/4 | Missing presenter module | Direct 7/7 | C 26/26 + BFF 13/13 + Protected 47/47 | Full frontend 806 + typecheck/lint |
+
+## I3B — seller composition cutover and shortcuts
+
+- **Scope/base/status:** 2026-09-08T18:34:55Z; fresh `develop@8eff68f64008` after I3A #575. The user-selected repo-local change supersedes the null-change status from another cwd; allowed root is this worktree with no action-context warnings. I3B only; parent LSP checked all five changed TS/TSX files, including the seeded correction, with **0 diagnostics**.
+- **RED:** focused `seller-sections.test.tsx` exited **1** with the named missing composition assertion: expected the seller list and shortcut headings after priorities, but only the two summary headings rendered. A corrective retained-data RED then failed on the missing product-only retry while confirmed product/activity rows remained visible.
+- **GREEN/TRIANGULATE:** `SellerHomeView` now owns the I3A property/activity presenters and final property→follow-up navigation. `OperationalHomepage` removes only seller inline lists/JSX and maps those two routes, labels, and icons from filtered existing `navGroups` after the exact `AGENT` gate. Retained presenters now keep confirmed rows and expose only their own retry. C **29**, BFF **13**, and Protected manager/owner **47** passed; contrasts cover independent failure/retry/refresh/retained data, success empty/positive-total empty, valid/invalid row links, and manager/unknown/mismatch isolation.
+- **REFACTOR/verification:** full frontend **809**, typecheck, strict lint, strict OpenSpec, and `git diff --check` passed. No BFF/API/nav-config/access-policy/session/manager/owner/shared-list change and no I4 browser/geometry work. Only the four I3B implementation rows were checked; I4 and all parent rows remain unchecked.
+- **Workload/boundary:** **187 additions + 126 deletions = 313** including evidence; I3B stays below 400. Changed files are the allowed seller composition/tests plus tasks/progress; no design deviation.
+
+### TDD Cycle Evidence
+| Task | Test file | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| I3B | `seller-sections.test.tsx`, `operational-homepage.test.tsx` | Component/integration | C 26/26; Protected 47/47 | Composition heading and retained local-retry assertions failed | seller-sections 9/9 | C 29/29 + BFF 13/13 + Protected 47/47 | Frontend 809/809 + typecheck/lint/OpenSpec/diff |
+
+## I3B — verifier accessibility correction
+
+- **Scope/status:** 2026-09-08T18:43:56Z; user-directed I3B-only correction within the same repo-local root. The original null-change status remains inapplicable to this explicitly selected target; no action-context warning. No task checkbox changed because I3B is already complete and this correction uses the allowed source/test/progress surfaces only.
+- **RED/GREEN/TRIANGULATE:** safety net `seller-sections.test.tsx` was **9/9**. New composed-region assertions then failed because whitespace-derived `aria-labelledby` values left both list sections unnamed. Replaced the runtime heading derivation with explicit `seller-engagements-heading` and `seller-activity-heading`; the headings retain their visible copy while the regions resolve as `Mis propiedades` and `Actividad reciente` and contain their respective valid row links. Focused component test returned **9/9**.
+- **REFACTOR/verification:** focused C **29**, BFF **13**, Protected **47**, full frontend **809**, typecheck, strict lint, and `git diff --check` passed. No I4/browser/geometry work, route, policy, manager, owner, BFF, or API change. Parent LSP remains the final parent-owned check.
+
+### TDD Cycle Evidence — verifier correction
+| Task | Test file | Layer | Safety net | RED | GREEN / TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- |
+| I3B region names | `seller-sections.test.tsx` | Component | 9/9 | Named regions were absent | 9/9 with both stable IDs and independently named regions | C 29/29 + BFF 13/13 + Protected 47/47 + frontend/typecheck/lint |
+
+## I3B — seeded selector correction
+
+- **Scope/status:** 2026-09-08T19:08:21Z; narrow I3B compatibility correction only. Added `demo-smoke.spec.ts` to I3B's allowlist solely for this stale shortcut selector; no I4 responsive, keyboard, row, or geometry proof changed.
+- **RED/GREEN/TRIANGULATE:** PR #577 exposed `demo-smoke.spec.ts:265` RED; local targeted run with Docker-local `DATABASE_URL`/`DIRECT_URL` and ports **3023/3123** reproduced the missing `Abrir listado` link for Martín before Lucía ran. The replacement scopes exact `Propiedades` to navigation `Accesos rápidos` and preserves the both-seller loop plus every assignment/isolation/permission assertion. Targeted **2/2** then full seeded **34/34** passed on unique ports **3024/3124** and **3025/3125**.
+- **Local database/cleanup:** `docker compose up -d postgres`, `db:generate`, `db:validate`, and `prisma migrate deploy` used only `postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro`; 32 migrations had none pending. Removed generated `test-results`, reports, traces/videos/screenshots, and `tsconfig.tsbuildinfo`.
+- **Verification/accounting:** focused C **29/29**, strict OpenSpec, and `git diff --check` passed. Correction delta is **4 additions / 2 deletions = 6** before this receipt; no source, route, authorization, or protected-surface behavior changed. Parent final LSP remains deferred.
+
+### TDD Cycle Evidence — seeded selector correction
+| Task | Test file | Layer | Safety net | RED | GREEN / TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- |
+| I3B shortcut selector | `tests/seeded/demo-smoke.spec.ts` | Seeded browser | Focused C 29/29 | Targeted stale `Abrir listado` selector failed | Targeted 2/2; full seeded 34/34 across both sellers | Selector-only diff, artifact cleanup, OpenSpec/diff |
