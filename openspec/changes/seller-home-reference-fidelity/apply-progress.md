@@ -83,3 +83,27 @@
 | I2 correction | `seller-sections.test.tsx` | 5 freshness labels failed; 4 rendered | targeted 4/4 | C 23/23, BFF 13/13, Protected 47/47, frontend 803/803, typecheck/lint/OpenSpec |
 
 - **Seeded correction:** CI job `102141409204` RED on the three stale selectors; only `tests/seeded/demo-smoke.spec.ts` now asserts `^Hola, `, exact main `DEMO_TENANT_NAME`, and `Abrir listado` → `/dashboard/product`. Local Docker `viewpro-postgres` only: `docker compose up -d postgres` **0**; `DATABASE_URL=postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro pnpm --filter @viewpro/api db:generate` **0**; `DATABASE_URL=postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro DIRECT_URL=postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro pnpm --filter @viewpro/api db:validate` and `DATABASE_URL=postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro DIRECT_URL=postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro pnpm --filter @viewpro/api exec prisma migrate deploy` **0** (32 migrations, none pending). After avoiding a reused owner-preview server on 3001/3100, targeted `DATABASE_URL=postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro DIRECT_URL=postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro VIEWPRO_APP_NEW_SEEDED_E2E_API_PORT=3012 VIEWPRO_APP_NEW_SEEDED_E2E_WEB_PORT=3111 pnpm --filter next-shadcn-dashboard-starter exec playwright test --config playwright.seeded.config.ts --grep 'distinct assigned seller dashboard'` **0** (**2 passed**); full `DATABASE_URL=postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro DIRECT_URL=postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro VIEWPRO_APP_NEW_SEEDED_E2E_API_PORT=3013 VIEWPRO_APP_NEW_SEEDED_E2E_WEB_PORT=3112 pnpm --filter next-shadcn-dashboard-starter test:seeded` **0** (**34 passed**). Artifacts cleaned; tasks/progress scope updated; cumulative accounting is **400**.
+
+## I3 — bounded content/cutover (blocked: review budget)
+
+- **Scope/status:** repo-local target worktree `seller-home-reference-fidelity-i3` at `develop@a91f5f6f`; the supplied target-specific change selection supersedes the injected null-change status for another worktree. I3 is the assigned stacked-to-main slice, with no size exception.
+- **Environment/safety net:** `pnpm install --offline --frozen-lockfile` and `pnpm --filter @viewpro/contracts build` exited **0** in `viewpro-app/`; focused C baseline exited **0** (**23 tests**).
+- **RED:** new seller list/presenter assertions imported the absent `./seller-lists`; focused `seller-sections.test.tsx` exited **1** with the named module-resolution error before production code.
+- **Budget stop:** the GREEN/triangulation candidate (bounded source-order lists, safe tenant/ID links, time formatting, empty wording, shortcut cutover, and tests) measured **251 additions / 157 deletions = 408 changed lines** before required task/progress evidence. Per the I3 ≤400 contract, all candidate source/test changes were reverted; only this evidence remains and every I3 checkbox remains unchecked.
+- **Split proposal:** deliver seller-list presenters plus their direct tests first, then a successor cutover that moves the two list sections and nav-derived shortcuts out of `operational-homepage.tsx`; both retain the same I3 contract and must be measured independently.
+
+- **TDD stop evidence:** C **23/23** safety net; `seller-sections.test.tsx` failed on missing `seller-lists`; no GREEN candidate was retained because it exceeded the budget.
+
+- **Accepted split:** Human selected `Dividir I3`; deliver I3A then I3B as fresh-`develop`, ≤400-line sequential PRs with no `size:exception`.
+
+## I3A — seller bounded list presenters
+
+- **Scope/status/base:** 2026-09-08T17:50:05Z; exact user-selected change in the repo-local target worktree, action context limited to that root with no warnings. The parent’s accepted I3A split resolves the workload gate; I3B composition/shortcuts remain untouched.
+- **RED:** direct `seller-sections.test.tsx` presenter import failed with the named missing `./seller-lists` module; the pre-edit safety net was **4/4**.
+- **GREEN/TRIANGULATE:** added only `seller-lists.tsx` and direct tests. They prove six-or-fewer source-order rows, safe same-tenant links, neutral fields and positive-total-empty copy, movement/document stored prose, valid Argentina `<time>`, malformed neutral time, and successful-empty/error separation. C **26**, BFF **13**, and Protected **47** passed; verifier corrections were GREEN-on-arrival for exact long-prose preservation, blank observation/document fallbacks, blank/malformed IDs and times, normalized offset ISO, and the full forbidden matrix on both populated presenters. Its initial typecheck found only a fixture-array annotation mismatch, corrected without presenter behavior change.
+- **REFACTOR/verification:** retained independent presenters with extracted field/link helpers; no `SellerHomeView`, `OperationalHomepage`, shortcut, manager, or shared-list change. Full frontend **806**, typecheck, strict lint, strict OpenSpec, and `git diff --check` passed; `tsconfig.tsbuildinfo` was removed. Parent’s prior LSP zero applies only to pre-correction files; rerun is parent-owned. Final correction accounting is **381 additions / 19 deletions = 400**.
+
+### TDD Cycle Evidence
+| Task | Test file | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| I3A | `seller-sections.test.tsx` | Component | 4/4 | Missing presenter module | Direct 7/7 | C 26/26 + BFF 13/13 + Protected 47/47 | Full frontend 806 + typecheck/lint |
