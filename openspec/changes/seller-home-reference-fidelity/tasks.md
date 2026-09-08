@@ -33,11 +33,11 @@ Chain strategy: stacked-to-main
 | P4 | `design.md` (`SellerOperationalHomepage`, adapters, `SellerHomeView`, browser strategy) | Design only; ≤400 changed lines. |
 | P5 | `tasks.md` (this file: forecast, chain, TDD/evidence/matrix/traceability) | Tasks only; ≤400 changed lines and no implementation claimed complete. |
 
-- [ ] Deliver P1 from fresh `develop`, verify the reference hash, `git diff --check`, stat/status, and ≤400 accounting, then merge before P2. <!-- sdd-owner: parent -->
-- [ ] Deliver P2 from fresh `develop` after P1, verify proposal-only scope, diff/status, and ≤400 accounting, then merge before P3. <!-- sdd-owner: parent -->
-- [ ] Deliver P3 from fresh `develop` after P2, verify all nine requirements/34 scenarios, diff/status, and ≤400 accounting, then merge before P4. <!-- sdd-owner: parent -->
-- [ ] Deliver P4 from fresh `develop` after P3, verify design-only scope, diff/status, and ≤400 accounting, then merge before P5. <!-- sdd-owner: parent -->
-- [ ] Deliver P5 from fresh `develop` after P4, verify this tasks-only diff is ≤400 lines and all implementation rows remain unchecked, then merge before I1. <!-- sdd-owner: parent -->
+- [x] Deliver P1 from fresh `develop`, verify the reference hash, `git diff --check`, stat/status, and ≤400 accounting, then merge before P2. <!-- sdd-owner: parent -->
+- [x] Deliver P2 from fresh `develop` after P1, verify proposal-only scope, diff/status, and ≤400 accounting, then merge before P3. <!-- sdd-owner: parent -->
+- [x] Deliver P3 from fresh `develop` after P2, verify all nine requirements/34 scenarios, diff/status, and ≤400 accounting, then merge before P4. <!-- sdd-owner: parent -->
+- [x] Deliver P4 from fresh `develop` after P3, verify design-only scope, diff/status, and ≤400 accounting, then merge before P5. <!-- sdd-owner: parent -->
+- [x] Deliver P5 from fresh `develop` after P4, verify this tasks-only diff is ≤400 lines and all implementation rows remain unchecked, then merge before I1. <!-- sdd-owner: parent -->
 
 ## Shared evidence, safety, and verification
 
@@ -167,7 +167,7 @@ Remaining execution sequence: I3A from fresh `develop` after I2 → I3B from fre
 
 ## Parent lifecycle gates
 
-- [ ] Start or reuse bounded review for every P/I PR; verify fresh-develop predecessor merge, allowlist, ≤400 accounting, strict-TDD records, rollback boundary, and protected regressions before merge. <!-- sdd-owner: parent -->
-- [ ] After I4 and all merges, sync accurate `apply-progress.md` and final verification outcomes into this change without marking skipped checks as passed. <!-- sdd-owner: parent -->
+- [x] Start or reuse bounded review for every P/I PR; verify fresh-develop predecessor merge, allowlist, ≤400 accounting, strict-TDD records, rollback boundary, and protected regressions before merge. <!-- sdd-owner: parent -->
+- [x] After I4 and all merges, sync accurate `apply-progress.md` and final verification outcomes into this change without marking skipped checks as passed. <!-- sdd-owner: parent -->
 - [ ] Archive only after implementation acceptance, complete verification, and the canonical-spec consolidation decision; retain change-local evidence. <!-- sdd-owner: parent -->
 - [ ] Manually close issue #523 only after archive eligibility confirms all 34 scenarios, browser/accessibility proof, protected boundaries, and no unresolved blocker. <!-- sdd-owner: parent -->
