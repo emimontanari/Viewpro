@@ -1,0 +1,147 @@
+# Tasks: Seller Home Reference Fidelity
+
+## Review Workload Forecast
+
+| Field | Value |
+|-------|-------|
+| Estimated changed lines | 1,100–1,450 total; I1 300–390, I2 300–390, I3 320–395, I4 180–280 |
+| 400-line budget risk | High |
+| Chained PRs recommended | Yes |
+| Suggested split | P1 → P2 → P3 → P4 → P5 → I1 → I2 → I3 → I4 |
+| Delivery strategy | ask-on-risk resolved to required split |
+| Chain strategy | stacked-to-main |
+
+Decision needed before apply: No
+Chained PRs recommended: Yes
+Chain strategy: stacked-to-main
+400-line budget risk: High
+
+## Delivery contract
+
+- Each successor starts from freshly synchronized `develop` only after its predecessor merges, targets `develop`, and contains one independently green, reversible work unit; never base on an unmerged branch.
+- Every PR is limited to 400 additions + deletions, includes its tests/docs and actual accounting, and stops on a cohesive measured overage; no code-golf, deferral of required proof, or `size:exception` is allowed.
+- Work only in `viewpro-app/` with pnpm. This is frontend-only: do not edit BFF/API/backend/schema/seed/auth/tenant-selection/navigation-policy/shell/manager/owner/#306/#327 surfaces except named regression tests.
+- API verification is regression-only and may use only repository Docker PostgreSQL with a visibly disposable local `DATABASE_URL` (for example `localhost`/Docker `viewpro_test`); never Neon, production, or any external database. Receipt review is disabled/unmanaged.
+
+## Planning chain and allowlists
+
+| PR | Allowlist and expected symbol/evidence | Budget and completion boundary |
+|---|---|---|
+| P1 | `assets/seller-home-reference.jpeg` (SHA-256 `68be…d10c`), `exploration.md` (`Result`, data/state/reference evidence), `preproposal.md` (confirmed `greeting:personalized`, `priority:short-list`) | Asset + discovery/decision evidence only; hash/diff check and ≤400 changed lines. |
+| P2 | `proposal.md` (`Decision`, scope, data truthfulness, protected boundaries) | Proposal only; ≤400 changed lines. |
+| P3 | `specs/crm-seller-home/spec.md` (R1–R9, 34 scenarios) | Delta specification only; ≤400 changed lines. |
+| P4 | `design.md` (`SellerOperationalHomepage`, adapters, `SellerHomeView`, browser strategy) | Design only; ≤400 changed lines. |
+| P5 | `tasks.md` (this file: forecast, chain, TDD/evidence/matrix/traceability) | Tasks only; ≤400 changed lines and no implementation claimed complete. |
+
+- [ ] Deliver P1 from fresh `develop`, verify the reference hash, `git diff --check`, stat/status, and ≤400 accounting, then merge before P2. <!-- sdd-owner: parent -->
+- [ ] Deliver P2 from fresh `develop` after P1, verify proposal-only scope, diff/status, and ≤400 accounting, then merge before P3. <!-- sdd-owner: parent -->
+- [ ] Deliver P3 from fresh `develop` after P2, verify all nine requirements/34 scenarios, diff/status, and ≤400 accounting, then merge before P4. <!-- sdd-owner: parent -->
+- [ ] Deliver P4 from fresh `develop` after P3, verify design-only scope, diff/status, and ≤400 accounting, then merge before P5. <!-- sdd-owner: parent -->
+- [ ] Deliver P5 from fresh `develop` after P4, verify this tasks-only diff is ≤400 lines and all implementation rows remain unchecked, then merge before I1. <!-- sdd-owner: parent -->
+
+## Shared evidence, safety, and verification
+
+For every implementation phase append one `apply-progress.md` record with: `slice`, `phase` (RED/GREEN/TRIANGULATE/REFACTOR), UTC timestamp, fresh-develop branch, tree/commit SHA, allowed paths, exact command, exit code, decisive output, additions, deletions, total, and pass/skip/blocker reason. RED must fail the named new assertion (not setup); GREEN reruns it; TRIANGULATE proves the stated contrast; REFACTOR has no behavior change and reruns focused proof.
+
+| Family | Command / required evidence |
+|---|---|
+| C | `pnpm --filter next-shadcn-dashboard-starter test src/features/dashboard/components/operational-homepage.test.tsx src/features/dashboard/components/operational-homepage/seller-home.test.tsx src/features/dashboard/components/operational-homepage/seller-sections.test.tsx` |
+| BFF | `pnpm --filter next-shadcn-dashboard-starter test src/app/api/activity/feed/route.test.ts src/lib/bff-api.test.ts src/features/products/api/queries.test.ts src/features/products/api/service.test.ts` |
+| Protected | `pnpm --filter next-shadcn-dashboard-starter test src/features/dashboard/components/operational-homepage/manager-home.test.tsx src/features/owner/components/owner-home.test.tsx` |
+| Frontend | `pnpm --filter next-shadcn-dashboard-starter test` · `pnpm --filter next-shadcn-dashboard-starter typecheck` · `pnpm --filter next-shadcn-dashboard-starter lint:strict` |
+| Seeded | `pnpm --filter next-shadcn-dashboard-starter exec playwright test --config playwright.seeded.config.ts --grep "seller home|distinct assigned seller dashboard"` · `pnpm --filter next-shadcn-dashboard-starter test:seeded` |
+| API local-only | After recording disposable Docker-local `DATABASE_URL`: `pnpm --filter @viewpro/api db:validate` · `pnpm --filter @viewpro/api typecheck` · `pnpm --filter @viewpro/api test` |
+| Static/artifact | `git diff --check`, `git diff --stat`, `git status --short`, `pnpm exec openspec validate seller-home-reference-fidelity --strict`, and LSP diagnostics on every changed `.ts/.tsx` file |
+
+| Safety/regression target | Required proof |
+|---|---|
+| Role/query/tenant isolation | Exact `AGENT`; manager/principal preserved; missing/unknown/identity or membership-tenant mismatch mounts no query; tenant-A race never appears under B; no seller manager-summary request. |
+| State truthfulness | Products and activity separately prove loading, ready/zero, error, refreshing, retained-error, local retry/retrying, partial sibling success, and no cross-source zero/empty fallback. |
+| Content/navigation | Four owner-bound facts; exactly two non-checkable priorities; six-or-fewer source-order rows; real text only; malformed IDs/times fail closed; only property/detail/follow-up destinations. |
+| Protected surfaces | BFF/product/activity service, manager, owner, full frontend, seeded, API-local-only, auth/public/shell/no forbidden action regressions remain green. |
+| Cleanup | Remove no generated artifacts; do not commit screenshots, traces, videos, coverage, Playwright output, `.env`, database bytes/dumps, or external connection data; record `git status --short` clean intent. |
+
+## Implementation work units
+
+All implementation rows have `source: implementation; task: implementation; evidence: implementation`. Each unit may modify only its allowlist, must carry tests in the same PR, and rolls back by reverting that PR without touching a predecessor or protected surface.
+
+| Unit | File allowlist and expected symbols | Start → finish / rollback | Forecast |
+|---|---|---|---:|
+| I1 Seller state foundation | `src/features/dashboard/components/operational-homepage.tsx` (`OperationalHomepage` dispatch); new `operational-homepage/seller-home.tsx` (`SellerOperationalHomepage`, `SellerProductsState`, `SellerActivityState`, `toSellerProductsState`, `toSellerActivityState`); `operational-homepage.test.tsx`; new `seller-home.test.tsx`; `openspec/changes/seller-home-reference-fidelity/apply-progress.md` | Inline seller query state → keyed seller container/adapters with exact role/identity/tenant gate and independently honest states; revert container/dispatch/test files together. | 300–390 |
+| I2 Reference summary composition | `operational-homepage.tsx` (seller import/cutover only); `seller-home.tsx`; new `seller-sections.tsx` (`SellerHomeView`, fact/priority/unavailable sections); `seller-home.test.tsx`; new `seller-sections.test.tsx`; `openspec/changes/seller-home-reference-fidelity/apply-progress.md` | State foundation → greeting/facts/priorities and beginning hierarchy; revert pure sections plus narrow cutover. | 300–390 |
+| I3 Bounded content/cutover | `operational-homepage.tsx` (complete seller extraction/import cleanup only); `seller-home.tsx`; `seller-sections.tsx`; new `seller-lists.tsx` (bounded rows); `seller-home.test.tsx`; `seller-sections.test.tsx`; `openspec/changes/seller-home-reference-fidelity/apply-progress.md` | Summary → real bounded lists, safe formatting/links, shortcuts, final seller extraction; revert seller lists/sections and restore prior extracted composition only. | 320–395 |
+| I4 Responsive/browser proof | `seller-sections.tsx`; `seller-lists.tsx`; `seller-sections.test.tsx`; `tests/seeded/demo-smoke.spec.ts`; `apply-progress.md` | Complete seller view → semantic/focus/wrapping/grid polish and one read-only seeded proof; revert proof/polish only. | 180–280 |
+
+### I1 — seller state foundation
+
+- [ ] RED: add `operational-homepage.test.tsx`/`seller-home.test.tsx` assertions that exact `AGENT` alone mounts seller queries; manager/principal/unknown/missing identity and membership-tenant mismatch mount none; products/activity each fail loading, zero-ready, error, refreshing, retained-error, malformed/cross-tenant payload, local retry/retrying, partial sibling success, and tenant-A→B race expectations; run C and expect these behavioral assertions to fail. <!-- sdd-owner: implementation -->
+- [ ] GREEN: create `seller-home.tsx` adapters/container, tenant-keyed remount, response-integrity checks, and product/activity-only `refetch`; retain existing query keys/options and minimal old composition, then run C and Protected successfully. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE: with a real QueryClient contrast same-tenant retained refresh against tenant-A late response after B switch; contrast product retry with no activity refetch and vice versa, then run C and BFF successfully. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR: simplify seller-only types/imports without state change; run C, BFF, Protected, typecheck/lint, LSP, diff/accounting, record evidence, and stop if I1 exceeds 400. <!-- sdd-owner: implementation -->
+
+### I2 — reference summary composition
+
+- [ ] RED: in `seller-sections.test.tsx` assert real display-name greeting plus active tenant, six-region DOM start, four separately-owned facts in fixed order with exact rolling meanings and the `America/Argentina/Buenos_Aires` helper, and exactly two non-checkable aggregate priority rows; expect failure for missing hierarchy/copy/owner-state contrasts via C. <!-- sdd-owner: implementation -->
+- [ ] GREEN: add pure `SellerHomeView` summary sections with labeled loading/unavailable/refresh/retained-error states, no numeric placeholders, reference-adapted rounded density, and no visual shell redesign; run C successfully. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE: prove usable versus missing identity, product-ready/activity-error versus product-error/activity-ready, and zero-ready versus unavailable; assert no “hoy”, tasks, checkboxes, deadlines, alerts, badges, create/global movement, manager/owner/#306/#327 content, then run C and Protected. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR: remove only superseded inline seller summary JSX and preserve one `h1`/ordered semantic regions; run C, Frontend, LSP, diff/accounting, record evidence, and stop if I2 exceeds 400. <!-- sdd-owner: implementation -->
+
+### I3 — bounded content and seller cutover
+
+- [ ] RED: add list/presenter tests for ≤6 source-order assigned/activity rows, real movement/document distinctions, stored prose/fallbacks, `formatArgentinaActivityTime` ISO `<time>` versus malformed neutral text, valid versus blank/malformed/cross-tenant IDs, and only property/detail/follow-up links; run C and expect the named content/safety assertions to fail. <!-- sdd-owner: implementation -->
+- [ ] GREEN: implement `seller-lists.tsx`, complete extracted seller composition, property/activity empty versus positive-total-empty wording, safe hrefs, Argentina formatting, and policy-derived two shortcuts; run C and BFF successfully. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE: contrast optional blank/whitespace/long fields, movement versus document request, valid versus invalid ID/time, success-empty versus error, and confirm no proposal/create/mutation/document-request/global-action/free-text inference; run C, BFF, and Protected. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR: remove only seller-owned dead inline imports/JSX (not shared `lists.tsx`/`primitives.tsx` cleanup), then run C, Frontend, Protected, LSP, diff/accounting, record evidence, and stop if I3 exceeds 400. <!-- sdd-owner: implementation -->
+
+### I4 — responsive and browser proof
+
+- [ ] RED: add component and one serial seeded seller case requiring semantic headings/list/nav, accessible retry names/disabled retry, visible focus/44px targets, wrapping/no overflow, 1/2/4 fact grids at 320/375/768/1280, real authorized rows and source-order keyboard traversal; run C and targeted Seeded and expect the named assertions to fail. <!-- sdd-owner: implementation -->
+- [ ] GREEN: make only seller section/list accessibility-responsive changes and add the read-only `martin.demo@viewpro.local` proof that waits for real successful `/api/products` and `/api/activity/feed` rows; run C and targeted Seeded successfully. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE: verify all four widths with short and permitted display-only long substitutions; intercept only successful real responses and preserve status, rows, IDs, tenant IDs, assignments, counters, kinds/types/times/order/destinations while recording upstream success; run targeted Seeded and Frontend. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR: remove test artifacts and retain no screenshots/traces/videos/coverage; run C, Frontend, Protected, targeted and full Seeded, API local-only, OpenSpec, LSP, diff/accounting, recording every pass/skip/blocker and stopping if I4 exceeds 400. <!-- sdd-owner: implementation -->
+
+## Requirement and scenario traceability
+
+| Scenario | Implementing evidence |
+|---|---|
+| R1.1 exact agent | I1 role/query test |
+| R1.2 protected managers | I1 Protected manager regression |
+| R1.3 fail closed | I1 missing/unknown/no-query test |
+| R2.1 real identity + tenant | I2 greeting/tenant test; I4 seeded proof |
+| R2.2 missing identity | I1 identity gate; I2 no-fabrication test |
+| R2.3 no reference shell chrome | I2 hierarchy/absence test; I4 browser |
+| R3.1 assigned scope | I2 product-owner fact test |
+| R3.2 rolling movement/stale | I2 exact window/timezone helper-copy and owner test |
+| R3.3 narrow follow-up | I2 priority meaning/forbidden-task test |
+| R4.1 two rows | I2 exact `<ul>/<li>` count test |
+| R4.2 truthful zero priorities | I2 zero-ready contrast |
+| R4.3 activity failure priorities | I1 activity error; I2 local recovery |
+| R5.1 real assigned preview | I3 bounds/field-fallback test |
+| R5.2 permitted source activity | I3 kind/order/bound test |
+| R5.3 successful empties | I3 product/activity empty contrast |
+| R5.4 prose/malformed time | I3 no-inference/no-`time` contrast |
+| R6.1 product initial loading | I1 products loading adapter test |
+| R6.2 both successful empty | I1 ready-zero; I3 empty copy test |
+| R6.3 product local failure | I1 product-error/activity-ready test |
+| R6.4 activity local failure | I1 activity-error/product-ready test |
+| R6.5 local retry | I1 one-query refetch/retrying test |
+| R6.6 retained refresh | I1 refreshing/retained-error test |
+| R6.7 tenant transition | I1 real QueryClient A→B race test |
+| R7.1 authorized destinations | I3 shortcut/valid-link test; I4 real seed |
+| R7.2 invalid identity | I3 fail-closed link test |
+| R7.3 contextual movement only | I3 absence plus existing detail regression |
+| R7.4 forbidden populated home | I2/I3 complete forbidden-content matrix |
+| R8.1 keyboard/focus | I4 focus-order/accessible-name proof |
+| R8.2 long responsive content | I4 four-width wrapping/overflow proof |
+| R8.3 non-color meaning | I2/I4 visible-label/state assertions |
+| R9.1 server authorization | BFF/API-local-only regression; no client authorization edits |
+| R9.2 public/auth unchanged | Protected/full regression; allowlist audit |
+| R9.3 owner/manager/shell unchanged | Protected manager/owner regression; allowlist audit |
+| R9.4 contracts not expanded | BFF/API regression and no-new-request assertion |
+
+## Parent lifecycle gates
+
+- [ ] Start or reuse bounded review for every P/I PR; verify fresh-develop predecessor merge, allowlist, ≤400 accounting, strict-TDD records, rollback boundary, and protected regressions before merge. <!-- sdd-owner: parent -->
+- [ ] After I4 and all merges, sync accurate `apply-progress.md` and final verification outcomes into this change without marking skipped checks as passed. <!-- sdd-owner: parent -->
+- [ ] Archive only after implementation acceptance, complete verification, and the canonical-spec consolidation decision; retain change-local evidence. <!-- sdd-owner: parent -->
+- [ ] Manually close issue #523 only after archive eligibility confirms all 34 scenarios, browser/accessibility proof, protected boundaries, and no unresolved blocker. <!-- sdd-owner: parent -->
