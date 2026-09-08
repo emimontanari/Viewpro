@@ -211,6 +211,8 @@ function SellerHomeContent({
                     ? 'Preparando actividad de tus propiedades'
                     : 'La actividad no está disponible en este momento.'}
               </div>
+              {activity.status === 'refreshing' ? <p role='status'>Actualizando…</p> : null}
+              {activity.status === 'retained-error' ? <p role='status'>Última información disponible</p> : null}
               {activityData ? (
                 <div className='grid gap-2'>
                   <PriorityLink

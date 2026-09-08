@@ -601,7 +601,7 @@ describe('OperationalHomepage', () => {
       } as unknown as ReturnType<typeof useQuery>;
     });
     const activityRefresh = render(<OperationalHomepage />);
-    expect(screen.getAllByText('Actualizando…')).toHaveLength(4);
+    expect(screen.getAllByText('Actualizando…')).toHaveLength(5);
     expect(screen.getByText('Se coordinó una visita para mañana')).toBeVisible();
     activityRefresh.unmount();
 
@@ -617,7 +617,7 @@ describe('OperationalHomepage', () => {
       } as unknown as ReturnType<typeof useQuery>;
     });
     render(<OperationalHomepage />);
-    expect(screen.getAllByText('Última información disponible')).toHaveLength(3);
+    expect(screen.getAllByText('Última información disponible')).toHaveLength(4);
     expect(screen.getByText('Se coordinó una visita para mañana')).toBeVisible();
   });
 
