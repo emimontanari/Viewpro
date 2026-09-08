@@ -567,7 +567,7 @@ describe('OperationalHomepage', () => {
       } as unknown as ReturnType<typeof useQuery>;
     });
     const refresh = render(<OperationalHomepage />);
-    expect(screen.getAllByText('Actualizando…').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Actualizando…')).toHaveLength(2);
     expect(screen.getByText('Departamento con vista abierta')).toBeVisible();
     expect(screen.getByText('Preparando actividad de tus propiedades')).toBeVisible();
     refresh.unmount();
@@ -584,7 +584,7 @@ describe('OperationalHomepage', () => {
       } as unknown as ReturnType<typeof useQuery>;
     });
     const productRetained = render(<OperationalHomepage />);
-    expect(screen.getAllByText('No se pudo actualizar; mostramos la última información disponible').length).toBeGreaterThan(0);
+    expect(screen.getByText('Última información disponible')).toBeVisible();
     expect(screen.getByText('Departamento con vista abierta')).toBeVisible();
     expect(screen.queryByText('Sin propiedades asignadas')).not.toBeInTheDocument();
     productRetained.unmount();
@@ -601,7 +601,7 @@ describe('OperationalHomepage', () => {
       } as unknown as ReturnType<typeof useQuery>;
     });
     const activityRefresh = render(<OperationalHomepage />);
-    expect(screen.getAllByText('Actualizando…').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Actualizando…')).toHaveLength(4);
     expect(screen.getByText('Se coordinó una visita para mañana')).toBeVisible();
     activityRefresh.unmount();
 
@@ -617,7 +617,7 @@ describe('OperationalHomepage', () => {
       } as unknown as ReturnType<typeof useQuery>;
     });
     render(<OperationalHomepage />);
-    expect(screen.getAllByText('No se pudo actualizar; mostramos la última información disponible').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Última información disponible')).toHaveLength(3);
     expect(screen.getByText('Se coordinó una visita para mañana')).toBeVisible();
   });
 

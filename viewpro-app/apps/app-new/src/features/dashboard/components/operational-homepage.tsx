@@ -317,6 +317,8 @@ function SellerKpiCard({
           ) : (
             <p className='text-3xl font-semibold tracking-tight'>{value}</p>
           )}
+          {state.status === 'refreshing' ? <p role='status'>Actualizando…</p> : null}
+          {state.status === 'retained-error' ? <p role='status'>Última información disponible</p> : null}
         </div>
       </CardContent>
     </Card>
