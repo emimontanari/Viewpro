@@ -85,8 +85,14 @@ function makeCandidate(options: Options = {}) {
       }
     }),
   }
-  const materializer = {
-    createInTransaction: vi.fn(async (receivedTx, input) => {
+      const capacity = {
+        acquire: vi.fn(async () => {
+          events.push('capacity-acquire')
+          return { assertAvailable: async () => { events.push('capacity-assert') } }
+        }),
+      }
+      const materializer = {
+        createInTransaction: vi.fn(async (receivedTx, input) => {
       events.push('materialize')
       expect(receivedTx).toBe(tx)
       durable.canonical.push({ input })
@@ -94,7 +100,7 @@ function makeCandidate(options: Options = {}) {
       return { asset: { id: 'asset-1' }, engagement: { id: 'engagement-1' }, assignment: { id: 'assignment-1', isPrimary: false } }
     }),
   }
-  return { useCase: new ApprovePropertyProposalUseCase(prisma as never, materializer as never), prisma, tx, materializer, durable, events }
+  return { useCase: new ApprovePropertyProposalUseCase(prisma as never, materializer as never, capacity as never), prisma, tx, materializer, durable, events }
 }
 
 async function exception(rejection: Promise<unknown>): Promise<HttpException> {
@@ -120,7 +126,7 @@ describe('ApprovePropertyProposalUseCase', () => {
       ...proposal, state: 'APROBADA', version: 3,
     })
 
-    expect(candidate.events).toEqual(['proposal', 'find', 'users', 'memberships', 'round', 'materialize', 'decision', 'update'])
+    expect(candidate.events).toEqual(['proposal', 'find', 'capacity-acquire', 'users', 'memberships', 'round', 'capacity-assert', 'materialize', 'decision', 'update'])
     const [proposalLock, userLock, membershipLock] = candidate.tx.$queryRaw.mock.calls as unknown as [unknown[], unknown[], unknown[]]
     expect(proposalLock.slice(1)).toEqual([proposal.id, tenant.tenantId])
     expect(userLock[1]).toMatchObject({ values: ['agent-1', reviewer.id] })
@@ -215,7 +221,7 @@ describe('ApprovePropertyProposalUseCase', () => {
 
   it('declares no owner, image, notification, or analytics collaborator contract', () => {
     const candidate = makeCandidate()
-    expect(Object.keys(candidate.useCase as object).sort()).toEqual(['materializer', 'prisma'])
+    expect(Object.keys(candidate.useCase as object).sort()).toEqual(['activePropertyEngagementCapacity', 'materializer', 'prisma'])
     expect(Object.keys(candidate.tx).sort()).toEqual([
       '$queryRaw', 'propertyProposal', 'propertyProposalReviewDecision', 'propertyProposalReviewRound',
     ])

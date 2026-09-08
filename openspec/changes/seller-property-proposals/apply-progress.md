@@ -721,3 +721,42 @@ workUnit: C8A/U9 only; auto-chain / stacked-to-develop; max 400 changed lines
 - PASS — `git diff --check`; this mock-only suite created no fixtures. Post-cleanup residue, non-idle localhost connection, candidate accounting, and path-delimited digest are recorded below.
 - Final physical candidate accounting: `79` tracked additions + `2` tracked deletions + `267` untracked lines = **348 changed lines** (cap: 400). The response-only path-delimited SHA-256 digest (source path + NUL + source SHA-256, then spec path + NUL + spec SHA-256) is `sha256:1ecceae733ac19e46c868721cb63caf91a3381605551c45ef96527f73a202aa4`.
 - No design deviation, source behavior change, task change, database fixture, external access, commit, push, PR, merge, rebase, review, receipt, or lifecycle action occurred. C9A remains within the parent-selected `auto-chain` / stacked-to-`develop` work-unit; U11A and parent lifecycle remain deferred.
+
+## C9B / U11A approval quota and proposer eligibility
+
+### Status, scope, and workload
+
+- Consumed parent-authoritative OpenSpec status: `seller-property-proposals`, `apply: ready`, repo-local exact C9B workspace, no action-context warnings, and the `auto-chain` / stacked-to-`develop` C9B-only delivery path.
+- The exploration's 193–228-line estimate omitted the approval-fixture adaptation and artifact closure. Before edits, the honest forecast was 337–377 physical lines; final accounting below is within the 400-line cap.
+- Implemented only the approved use case, its existing fixture, the U11A quota spec, the lock-order helper, exploration, and required OpenSpec artifacts. U11B replay/races, U13 wiring, modules, transport, and external services remain excluded.
+
+### Completed implementation and TDD evidence
+
+- Approval now has one outer transaction with proposal → tenant capacity lease → sorted user → sorted membership → round/decision ordering. It requires an active exact-`AGENT` proposer, maps coded quota/ineligible 409 outcomes, asserts capacity before canonical writes, and rolls failures back to retryable `EN_REVISION`.
+- Persisted completion: both U11A implementation-owned rows in `tasks.md` are visibly `[x]`; parent-owned rows were preserved.
+
+| Task | Safety net / RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|
+| U11A quota and eligibility | Existing approval spec passed 17/17 before edits. Test-first quota suite produced 6 behavioral failures while the approval suite stayed 17/17. | Focused quota plus approval suites passed 23/23. | Moving capacity assertion after materialization failed 1/6; reversing the exact-`AGENT` predicate failed 4/6. Both were restored. | Removed an unused test import after lint; focused suite stayed 23/23. |
+
+### Verification and cleanup
+
+- PASS — offline `pnpm install --offline --frozen-lockfile`; local Prisma generation; guarded localhost `viewpro_test` focused command twice, 2 files / 23 tests.
+- PASS — forced `pnpm exec turbo run typecheck --filter=@viewpro/api --force`, 6/6 uncached; API lint; guarded full API `vitest run --retry=0`, 166 files / 1709 tests.
+- All commands used only guarded matching local `DATABASE_URL` and `DIRECT_URL`. These stateful fakes created no database rows; capacity/rollback tests retain no assets, limits, or transactions.
+
+### Remaining work, boundary, and risks
+
+- Exact next unchecked implementation rows: `- [ ] RED → GREEN → TRIANGULATE → REFACTOR actor-specific approval replay and competing approval/rejection/final-slot race outcomes without duplicate aggregates. <!-- sdd-owner: implementation -->` and `- [ ] Run the manifest replay/race specs repeatedly with bounded named connections and clean barriers, clients, limits, and assets in \`finally\`. <!-- sdd-owner: implementation -->`.
+- Final physical accounting is 85 tracked additions + 41 tracked deletions + 170 untracked lines = **296 changed lines** (≤400). Cleanup removed dependency/generated/build/cache/test residue while preserving `packages/contracts/src/generated/.gitkeep`; base plus w1–w4 rows are each `0/0/0/0` (proposal/round/decision/source-engagement) and non-idle connections are zero.
+- Source/test SHA-256: use case `c914dbfc81d6235cac9a14fee927417cb796f8a9e6a83e2ea79b0d73ee7b5fa4`, existing approval spec `2335821b5f5458cb9b5ddb5587b00166491c5b699e849d255010355d40874f5b`, lock helper `699fbcb7c0edf6c338d252c5adfaaa70893399a0eb9f265b040c6a95ad09bb92`, quota spec `3eb1bfd5ce02b066c9c52eaac39516c11c0c4c2a214c1eead1dff732817a5fc3`; path-delimited combined digest `60761e8ef4e005bc669fef5c64a936ae16d0a51091278a5e49e645a5f3a64ff8`.
+- No design deviation, commit, push, PR, merge, review, receipt, or parent-lifecycle action occurred.
+
+## C9B test-only correction
+
+- **Status/scope:** consumed the parent-resolved `seller-property-proposals` OpenSpec apply-ready status for the exact C9B worktree. Only `approve-property-proposal.quota.spec.ts` and this cumulative progress artifact changed; U11A rows were already visibly `[x]`, so `tasks.md` was preserved.
+- **Correction:** the restored-capacity retry uses one fake transaction/durable store and changes only its capacity flag. The rejected attempt proves zero materializer, decision, and proposal-update calls; the retry proves exactly one aggregate, decision, and transition. Each inactive/deactivated/non-AGENT proposer case now also proves those three write collaborators received zero calls.
+- **TDD evidence:** safety-net focused quota+approval specs were green on arrival at 23/23. This is a test-correction cycle, not a fabricated product RED; the corrected focused command passed 23/23 twice. A first corrected run exposed the fake's per-transaction query cursor rather than production behavior; resetting that cursor in the test fake restored the same-store retry scenario.
+- **Verification:** guarded matching localhost `DATABASE_URL`/`DIRECT_URL` to `viewpro_test`; focused quota+approval specs passed twice (2 files/23 tests), API typecheck passed after the required local contracts build, and API lint passed. No database fixtures were created.
+- **Source identity:** `approve-property-proposal.use-case.ts` remains `sha256:c914dbfc81d6235cac9a14fee927417cb796f8a9e6a83e2ea79b0d73ee7b5fa4`, identical to the C9B record before this test-only correction. No source mutation was performed because that file is outside the authorized edit roots; the zero-call eligibility assertions are mutation-sensitive to eligibility moving after materialization.
+- **Boundary/cleanup:** candidate accounting remains below the 400-line cap; no source behavior, task, delivery, review, or external-service action occurred. Offline dependency/generated/build/cache outputs are removed after final postchecks.
