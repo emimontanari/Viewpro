@@ -260,11 +260,9 @@ test('demo user can navigate the seeded operational workflow', async ({ page }) 
   test(`${scenario.email} sees a distinct assigned seller dashboard`, async ({ page }) => {
     await signIn(page, scenario.email);
 
-    await expect(
-      page.getByRole('heading', { name: `Tu jornada comercial en ${DEMO_TENANT_NAME}` })
-    ).toBeVisible();
-    await expect(page.getByText('Panel de vendedor')).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Ver mis propiedades' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: /^Hola, / })).toBeVisible();
+    await expect(page.getByRole('main').getByText(DEMO_TENANT_NAME, { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Abrir listado' })).toHaveAttribute('href', '/dashboard/product');
     await expect(page.getByRole('link', { name: 'Nueva propiedad' })).toHaveCount(0);
 
     const assignedProducts = await getAssignedProducts(page);

@@ -2,14 +2,12 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { DashboardSummaryRange } from '@/features/dashboard/api/types';
 import { getUserDisplayName, type TenantMembership } from '@/lib/session';
 import { useActiveTenant, useSession } from '@/lib/session-context';
-import { PriorityLink } from './operational-homepage/priority-panel';
 import {
   ManagerRecentActivity,
   ManagerShortcuts,
@@ -34,6 +32,7 @@ import {
   type SellerActivityState,
   type SellerProductsState
 } from './operational-homepage/seller-home';
+import { SellerHomeView } from './operational-homepage/seller-sections';
 
 export function OperationalHomepage({ nowMs }: { nowMs?: number }) {
   const { activeMembership, activeTenantId, isTenantLoading } = useActiveTenant();
@@ -56,7 +55,7 @@ export function OperationalHomepage({ nowMs }: { nowMs?: number }) {
   if (isSellerMembership(activeMembership) && displayName) {
     return (
       <SellerOperationalHomepage activeTenantId={activeTenantId} membershipId={activeMembership.id}>
-        {(states) => <SellerHomeContent activeMembership={activeMembership} {...states} />}
+        {(states) => <SellerHomeContent activeMembership={activeMembership} displayName={displayName} {...states} />}
       </SellerOperationalHomepage>
     );
   }
@@ -143,105 +142,25 @@ function ManagerOperationalHomepage({
 function SellerHomeContent({
   activeMembership,
   activity,
+  displayName,
   products
 }: {
   activeMembership: TenantMembership;
   activity: SellerActivityState;
+  displayName: string;
   products: SellerProductsState;
 }) {
   const productsData = 'data' in products ? products.data : undefined;
   const activityData = 'data' in activity ? activity.data : undefined;
-  const counters = activityData?.counters;
-  const assignedPropertiesTotal = productsData?.total;
-  const todayCount = counters?.todayCount;
-  const attentionNeeded = counters?.attentionCount;
-  const stalePropertiesTotal = counters?.staleCount;
 
   return (
     <section className='min-w-0 space-y-6'>
-      <div className='overflow-hidden rounded-3xl border bg-card shadow-xs'>
-        <div className='grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:p-8'>
-          <div className='space-y-5'>
-            <Badge variant='outline' className='rounded-full bg-muted/40'>
-              Panel de vendedor
-            </Badge>
-            <div className='max-w-3xl space-y-3'>
-              <h1 className='text-3xl font-semibold tracking-tight md:text-4xl'>
-                Tu jornada comercial en {activeMembership.tenant.name}
-              </h1>
-              <p className='text-base text-muted-foreground md:text-lg'>
-                Priorizá tus propiedades asignadas, revisá novedades recientes y entrá directo a
-                cargar actualizaciones sin perder tiempo en métricas de toda la inmobiliaria.
-              </p>
-            </div>
-            <div className='flex flex-wrap gap-2'>
-              <Link href='/dashboard/product' className={buttonVariants({ size: 'sm' })}>
-                <Icons.product className='size-4' />
-                Ver mis propiedades
-              </Link>
-              <Link
-                href='/dashboard/seguimiento'
-                className={buttonVariants({ size: 'sm', variant: 'outline' })}
-              >
-                <Icons.trendingUp className='size-4' />
-                Ver seguimiento
-              </Link>
-            </div>
-          </div>
-
-          <Card className='border-dashed bg-muted/20 py-0'>
-            <CardContent className='space-y-4 p-5'>
-              <div className='flex items-center gap-3'>
-                <div className='flex size-10 items-center justify-center rounded-full bg-background text-muted-foreground'>
-                  <Icons.clock className='size-5' />
-                </div>
-                <div>
-                  <p className='text-sm text-muted-foreground'>Foco del día</p>
-                  <p className='font-semibold'>Mover las gestiones asignadas</p>
-                </div>
-              </div>
-              <p className='text-sm text-muted-foreground'>
-                Usá este inicio para retomar propiedades sin novedades, resolver próximos pasos y
-                registrar actividad apenas ocurre.
-              </p>
-              <div className='rounded-2xl border bg-background/70 p-3 text-sm'>
-                {activityData
-                  ? `${attentionNeeded} gestiones necesitan seguimiento y ${stalePropertiesTotal} siguen sin novedades recientes.`
-                  : activity.status === 'loading'
-                    ? 'Preparando actividad de tus propiedades'
-                    : 'La actividad no está disponible en este momento.'}
-              </div>
-              {activity.status === 'refreshing' ? <p role='status'>Actualizando…</p> : null}
-              {activity.status === 'retained-error' ? <p role='status'>Última información disponible</p> : null}
-              {activityData ? (
-                <div className='grid gap-2'>
-                  <PriorityLink
-                    action='Retomar'
-                    ariaLabel={`Ver ${attentionNeeded} próximos pasos pendientes en seguimiento`}
-                    count={attentionNeeded ?? 0}
-                    href='/dashboard/seguimiento'
-                    label='Próximos pasos pendientes'
-                  />
-                  <PriorityLink
-                    action='Actualizar'
-                    ariaLabel={`Ver ${stalePropertiesTotal} propiedades asignadas sin novedades recientes`}
-                    count={stalePropertiesTotal ?? 0}
-                    href='/dashboard/seguimiento'
-                    label='Sin novedades recientes'
-                  />
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
-        <SellerKpiCard icon={Icons.product} label='Mis propiedades asignadas' value={assignedPropertiesTotal} state={products} />
-        <SellerKpiCard icon={Icons.clock} label='Actualizaciones hoy' value={todayCount} state={activity} />
-        <SellerKpiCard icon={Icons.trendingUp} label='Necesitan seguimiento' value={attentionNeeded} state={activity} />
-        <SellerKpiCard icon={Icons.warning} label='Sin novedades 7 días' value={stalePropertiesTotal} state={activity} />
-      </div>
+      <SellerHomeView
+        activity={activity}
+        displayName={displayName}
+        products={products}
+        tenantName={activeMembership.tenant.name}
+      />
 
       <div className='grid gap-5 xl:grid-cols-2'>
         <Card className='py-0'>
@@ -292,38 +211,6 @@ function SellerHomeContent({
         </Card>
       </div>
     </section>
-  );
-}
-
-function SellerKpiCard({
-  icon: Icon,
-  label,
-  state,
-  value
-}: {
-  icon: typeof Icons.product;
-  label: string;
-  state: SellerProductsState | SellerActivityState;
-  value: number | undefined;
-}) {
-  return (
-    <Card className='py-0'>
-      <CardContent className='flex items-start gap-4 p-5'>
-        <Icon className='size-5 text-muted-foreground' aria-hidden='true' />
-        <div className='min-w-0 space-y-1'>
-          <p className='text-sm font-medium text-muted-foreground'>{label}</p>
-          {state.status === 'loading' ? (
-            <p aria-label={`Preparando ${label}`}>Preparando…</p>
-          ) : value === undefined ? (
-            <p>Información no disponible</p>
-          ) : (
-            <p className='text-3xl font-semibold tracking-tight'>{value}</p>
-          )}
-          {state.status === 'refreshing' ? <p role='status'>Actualizando…</p> : null}
-          {state.status === 'retained-error' ? <p role='status'>Última información disponible</p> : null}
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 
