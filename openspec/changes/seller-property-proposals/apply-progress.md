@@ -830,3 +830,38 @@ actionContext:
 - Final source SHA-256: `approve-property-proposal.use-case.ts` `48eb99d42c4045f50e6604bf2972af3df58ffa9a7c85b37c008f0bc75f76f517`; replay spec `233ab98f9efce9796d35afc7d89b26b43cf4c8fae2d063611efd6464a7acd7d5`.
 - Remaining exact implementation rows: `- [ ] U11B2: RED → GREEN → TRIANGULATE → REFACTOR bounded same-proposal approval/approval and approval/rejection PostgreSQL lock races without duplicate aggregates. <!-- sdd-owner: implementation -->`; `- [ ] U11B3: RED → GREEN → TRIANGULATE → REFACTOR bounded final-slot approval/approval and approval/direct-create/restore races with failure-continuing cleanup. <!-- sdd-owner: implementation -->`.
 - No design deviation. Final candidate: 115 tracked additions + 21 tracked deletions + 157 untracked physical lines = **293 changed lines** (≤400). `git diff --check` passed; postcheck found proposals=0, rounds=0, decisions=0, nonidle=0; dependencies, generated/build/cache/test residue were removed while `packages/contracts/src/generated/.gitkeep` remains. `next_recommended: parent-lifecycle`.
+
+## C10B / U11B2 same-proposal PostgreSQL races
+
+### Status and completion
+- Consumed parent-native selection: OpenSpec `seller-property-proposals`, apply ready, repo-local exact U11B2 target at `f234ad60`; no action-context warning.
+- Scope is only the approval-race test and allowed OpenSpec artifacts; U11B3, U12, source behavior, providers, schema, transport, UI, and settlement lifecycle remain excluded.
+- Persisted `tasks.md` now visibly marks the sole U11B2 implementation-owned row `- [x]`; parent-owned rows remain untouched.
+
+### Completed evidence
+- Three named guarded-localhost Prisma clients run real approve/reject use cases; a winner-only transaction proxy pauses after the actual proposal `FOR UPDATE` and records its backend PID.
+- Four cases cover both approval reviewer orders plus approval/rejection winner orders; every loser is coded 409, every winner gives one durable decision/outcome, and approval gives exactly one CAPTURE source, asset, ordinary non-primary assignment, and result link.
+- Bounded observer evidence requires `wait_event_type='Lock'` and `pg_blocking_pids(loserPid) === [winnerPid]`; finally releases/settles work, captures sources/assets before ordered deletion, and all three connections disconnect via `allSettled`.
+
+### TDD Cycle Evidence
+| Task | Layer | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|
+| U11B2 | PostgreSQL integration | Test-local unimplemented lock-observer seam failed 1/1; no production defect was claimed. | Real harness passed 4/4 twice. | `winnerPid + 1` exact-blocker mutant failed 4/4 in 210ms and was restored. | Resolved proxy/PID sequencing and lint findings; source remained unchanged. |
+
+### Verification, budget, and remaining work
+- PASS: guarded U11B2 race command twice, 4/4 each; relevant approval/rejection regression, 6 files/62 tests; forced Turbo API typecheck 6/6; API lint.
+- PASS: guarded full API `vitest run --retry=0`, 168 files/1726 tests; all fixture rows and named non-idle connections are checked and cleaned before final residue cleanup.
+- Candidate accounting: test 214 + exploration 23 + progress 24 + checkbox replacement 2 = **263 changed lines**, within the C10B/U11B2 400-line boundary; no design deviation.
+- Remaining implementation task: `- [ ] U11B3: RED → GREEN → TRIANGULATE → REFACTOR bounded final-slot approval/approval and approval/direct-create/restore races with failure-continuing cleanup. <!-- sdd-owner: implementation -->`.
+- Risk: this slice proves only same-proposal row-lock races; final-slot capacity races remain U11B3, and parent owns lifecycle settlement.
+
+### C10B / U11B2 bounded correction
+
+- **Status consumed:** parent-native `seller-property-proposals` / OpenSpec apply-ready / repo-local target override, runtime `proceed1e82e0a986f5a78b4006c82011670f3d0617d68477043261c563f41e6c7c51c9`; no action-context warnings. Delivery remains the selected `auto-chain` / stacked-to-develop U11B2 slice, capped at 400 lines.
+- **Correction:** assertions independently count every tenant engagement and every asset created by the fixture proposer; the exact source link is then checked separately. They now require the exact proposal/tenant identities and decision round, reviewer, tenant, and outcome, while rejection requires zero assets and engagements.
+- **Cleanup:** captures and deletes all tenant engagements and all fixture-owned assets, including source-unlinked orphan assets; each cleanup verifies zero engagements, assets, proposal, tenant, and users. All named-client disconnects have a 5-second deadline inside failure-preserving `Promise.allSettled` aggregation.
+- **TDD Cycle Evidence:** this test-only static-gate correction was GREEN on arrival, so no RED was claimed or fabricated; the corrected real-PostgreSQL race suite passed 4/4 on each of four post-edit executions. The existing exact-blocker PID mutant remains the meaningful behavioral fail proof; no production source/schema change was required.
+- **Verification:** offline frozen install and Prisma generation; guarded localhost `viewpro_test` race suite 4/4 twice standalone (and again in regression/full API); approval/rejection regression 6 files/62 tests; forced API Turbo typecheck 6/6; API lint; full API retry-0 168 files/1726 tests.
+- **Postchecks:** base and `viewpro_test_w1`–`w4` each reported `0|0|0|0|0|0|0` fixture user/tenant/proposal/round/decision/source/asset rows and zero named non-idle connections. Dependencies, generated outputs, caches, test residue, and build residue are removed after this record while the tracked generated `.gitkeep` remains.
+- **Persisted tasks:** re-read `tasks.md`; completed U11B2 remains visibly `- [x]`, U11B3 remains exactly `- [ ] U11B3: RED → GREEN → TRIANGULATE → REFACTOR bounded final-slot approval/approval and approval/direct-create/restore races with failure-continuing cleanup. <!-- sdd-owner: implementation -->`, and every parent-owned row is unchanged.
+- **Boundary:** no design deviation, source/schema broadening, transport/UI/provider work, review, receipt, commit, push, PR, merge, or publication occurred. Final physical candidate accounting: **310** changed lines (cap 400); `next_recommended: parent-lifecycle`.
