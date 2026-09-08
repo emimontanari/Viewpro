@@ -87,13 +87,21 @@ export function toSellerActivityState(query: SellerQuerySnapshot<ActivityFeedRes
   return toSellerState(query, tenantId, hasValidActivity);
 }
 
-export function SellerOperationalHomepage({
-  activeTenantId,
-  children
-}: {
+type SellerOperationalHomepageProps = {
   activeTenantId: string;
   children: (states: { activity: SellerActivityState; products: SellerProductsState }) => ReactNode;
-}) {
+  membershipId: string;
+};
+
+export function SellerOperationalHomepage({ activeTenantId, children, membershipId }: SellerOperationalHomepageProps) {
+  return (
+    <SellerOperationalHomepageQueryContainer key={`${membershipId}:${activeTenantId}`} activeTenantId={activeTenantId}>
+      {children}
+    </SellerOperationalHomepageQueryContainer>
+  );
+}
+
+function SellerOperationalHomepageQueryContainer({ activeTenantId, children }: Omit<SellerOperationalHomepageProps, 'membershipId'>) {
   const productsQuery = useQuery({
     ...productsQueryOptions({ archived: 'active', limit: PROPERTY_PREVIEW_SIZE, page: 1, tenantId: activeTenantId }),
     enabled: Boolean(activeTenantId),
