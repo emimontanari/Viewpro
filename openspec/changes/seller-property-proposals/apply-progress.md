@@ -865,3 +865,57 @@ actionContext:
 - **Postchecks:** base and `viewpro_test_w1`–`w4` each reported `0|0|0|0|0|0|0` fixture user/tenant/proposal/round/decision/source/asset rows and zero named non-idle connections. Dependencies, generated outputs, caches, test residue, and build residue are removed after this record while the tracked generated `.gitkeep` remains.
 - **Persisted tasks:** re-read `tasks.md`; completed U11B2 remains visibly `- [x]`, U11B3 remains exactly `- [ ] U11B3: RED → GREEN → TRIANGULATE → REFACTOR bounded final-slot approval/approval and approval/direct-create/restore races with failure-continuing cleanup. <!-- sdd-owner: implementation -->`, and every parent-owned row is unchanged.
 - **Boundary:** no design deviation, source/schema broadening, transport/UI/provider work, review, receipt, commit, push, PR, merge, or publication occurred. Final physical candidate accounting: **310** changed lines (cap 400); `next_recommended: parent-lifecycle`.
+
+## C10C / U11B3 final-slot capacity races
+
+### Status, scope, and persisted completion
+
+- Consumed parent-native OpenSpec selection: `seller-property-proposals`, apply ready (46/81), repo-local workspace `/Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u11b3-capacity-races`, exact target edit root, and no action-context warning. Delivery is the authorized `auto-chain`/stacked-to-develop U11B3 slice under the 400-line budget.
+- Changed only the allowed real-PostgreSQL race harness and its three allowed OpenSpec artifacts; no production, schema, transport, UI, provider, Git, review, receipt, commit, push, PR, merge, or publication work occurred.
+- Persisted `tasks.md` now visibly marks U11B3 `[x]`. Parent-owned lifecycle rows remain byte-for-byte unchanged.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| U11B3 final-slot races | PostgreSQL integration | U11B2 harness: 4/4 passed before edits. | New tenant-lock observer seam failed 1/5 because `pauseAfterTenantLock` was absent; after adding it, the same-proposal trial failed with its real `PROPERTY_PROPOSAL_STATE_CONFLICT`, proving it was not a capacity race. | Six distinct-proposal/direct/restore final-slot cases passed, then the combined harness passed 10/10. | The exact-blocker PID mutant (`winnerPid + 1`) failed all 10 cases and was restored; direct and restore loser response shapes were separately asserted. | Kept a test-local proxy only; no production refactor was needed. |
+
+### Verification, cleanup, and boundary
+
+- PASS — guarded localhost `viewpro_test` U11B3 command ran 10 consecutive times: 10/10 each; approval/rejection/capacity regression: 6 files / 69 tests; forced API Turbo typecheck: 6/6 uncached; API lint; full API `vitest run --retry=0`: 168 files / 1732 tests.
+- Winner pauses only after the actual tenant `FOR UPDATE` has returned; the observer saw the named loser backend with `wait_event_type='Lock'` and exact singleton blocker PID. Each final-slot race has cap 1, exactly one active engagement, independently counted tenant engagements and actor assets, exact approval decision/round/actor/source/CAPTURE/non-primary assignment checks, losing approval quota code/EN_REVISION no-write checks, direct/restore message-only 409 checks, and restore archive-state checks.
+- Cleanup releases barriers, settles both operations, captures all tenant engagements and all fixture-actor assets before dependency-ordered deletion, and deadline-disconnects named clients. Postcheck for base and `viewpro_test_w1`–`w4` reported `0|0|0|0|0` for U11B3 fixture users/tenants/proposals/engagements/non-idle named connections.
+- No design deviation. Workload remains one U11B3 auto-chain slice; final candidate arithmetic is 207 physical changed lines (181 tracked additions/deletions plus 26 untracked exploration lines), below 400. The next exact unchecked implementation rows are `- [ ] Repeat only already-green eligibility, reviewer, approval, quota, direct-path, primary, and cleanup behavior; observe \`pg_stat_activity\`/\`pg_blocking_pids\` with bounded timeouts rather than unsettled promises. <!-- sdd-owner: implementation -->` and `- [ ] Record observed outcomes only; do not add a first RED or production fix, and always release barriers, clients, transactions, fixtures, orphan assets, and limits. <!-- sdd-owner: implementation -->`.
+- Deferred lifecycle actions: all parent-owned rows remain unchanged. `next_recommended: parent-lifecycle`.
+
+## C10C / U11B3 static evidence correction
+
+### Status, scope, and persisted task state
+
+- Consumed the parent-native `seller-property-proposals` OpenSpec repo-local apply-ready status for this exact worktree; the parent owns token and settlement. `auto-chain`/stacked-to-develop remains the resolved delivery path, the 400-line budget was current at 207 physical lines, and no action-context warning was supplied.
+- Only the allowed race test plus this progress artifact and `explore-u11b3-capacity-races.md` changed. No production, schema, transport, review, receipt, Git, or publication work occurred.
+- Re-read `tasks.md`: U11B3 remains visibly `[x]`; no checkbox was changed because this bounded correction remediates already-completed test evidence. Parent-owned rows remain byte-for-byte deferred.
+
+### Static failure and corrected evidence
+
+- The first check was a static source audit, not a fabricated TDD RED. It exited 1 because the final-slot branch lacked a winner `reviewRoundId`, restore `RESTORED` audit assertions, and failure-continuing cleanup discovery.
+- The corrected audit passed after adding exact winning-round, creator/source, direct-create identity/source, losing-approval version/snapshot/round-absence, restore archive-cleared-or-preserved, and `RESTORED` movement assertions.
+- Cleanup now uses independent `Promise.allSettled` discoveries, aggregates both original discovery failures, retains known restore IDs, and uses tenant- and fixture-actor-scoped deletion fallbacks before the existing dependency-ordered cleanup.
+- The first post-edit race run exposed one matcher defect in the new direct-create assertion (`toEqual` against an `ObjectContaining` array); it did not indicate production failure. The assertion now proves one active direct engagement and then matches its exact identity/source fields.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| U11B3 static evidence correction | PostgreSQL integration test | Original final-slot suite had prior green evidence; this correction introduced no production behavior. | No RED claimed: the initial failure was the static audit above, not an unimplemented production behavior. | Guarded race suite passed 10/10 twice after the corrected assertions. | The six final-slot operation orders plus the six-file approval/rejection/capacity regression passed 69/69. | Narrowed the direct-create matcher to a non-archived singleton before matching its durable fields; no production refactor. |
+
+### Verification, cleanup, and boundary
+
+- PASS — offline `pnpm install --offline --frozen-lockfile`; local Prisma generation; guarded localhost `viewpro_test` only.
+- PASS — `pnpm --filter @viewpro/api exec vitest run --retry=0 test/property-proposal-approval-race.spec.ts`: 10/10 twice.
+- PASS — six-file approval/rejection/capacity regression: 69/69; forced `pnpm exec turbo run typecheck --filter=@viewpro/api --force`; API lint; full API `vitest run --retry=0`: 168 files / 1732 tests.
+- Postcheck: `viewpro_test` and `viewpro_test_w1`–`w4` each reported `0|0|0|0|0` U11B3 tenant/proposal/round/decision/engagement fixtures, and named non-idle connections were zero.
+- Removed installed dependencies, generated output, `.turbo`, and `*.tsbuildinfo`; the tracked `packages/contracts/src/generated/.gitkeep` remains. No design deviation; final physical candidate accounting is 273 changed lines, below 400. Remaining implementation tasks begin exactly:
+  - [ ] Repeat only already-green eligibility, reviewer, approval, quota, direct-path, primary, and cleanup behavior; observe `pg_stat_activity`/`pg_blocking_pids` with bounded timeouts rather than unsettled promises. <!-- sdd-owner: implementation -->
+  - [ ] Record observed outcomes only; do not add a first RED or production fix, and always release barriers, clients, transactions, fixtures, orphan assets, and limits. <!-- sdd-owner: implementation -->
+  `next_recommended: parent-lifecycle`.
