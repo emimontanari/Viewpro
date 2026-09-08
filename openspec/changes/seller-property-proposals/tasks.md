@@ -20,7 +20,7 @@ Chained PRs recommended: Yes
 Chain strategy: stacked-to-develop
 400-line budget risk: High
 
-Unit counts: 30 production-bearing; verification-only units are U12/U22A/U22B (3); and 1 parent/verify gate with no source-unit estimate. The selected source topology is the controlled C1 → C2A → C2B1 → C2B2 → C3A → C3B → C4 → C5A → C5B1 → C5B2 → C6A → C6B → C7A1 → C7A2 → C7B → C8A → C8B → C9 … C20 chain with exactly 29 dependency-ordered groups, each max ≤650. C5A is U5B and must merge before C5B1/U6; C5B2 remains blocked pending the C5B1 merge. C1 is U1; C2A atomically contains U2A, the U2B core migration contract, and U2C tenant registry; C2B1 contains only U2B S39 migration/index/lock/integrity hardening; C2B2 contains the reusable cleanup helper plus its exhaustive direct matrix; C3A contains U3; and C3B contains U4A. C2B2 is mandatory before C3A, and C3B is mandatory before C4/U4B. Schema, migration, and tenant registry remain atomic in C2A so generated-client, database, and isolation consistency are never broken. No blanket exception applies. Strict400 remains rejected forecast/history only, not an active plan.
+Unit counts: 30 production-bearing; verification-only units are U12/U22A/U22B (3); and 1 parent/verify gate with no source-unit estimate. The selected source topology is the controlled C1 → C2A → C2B1 → C2B2 → C3A → C3B → C4 → C5A → C5B1 → C5B2 → C6A → C6B → C7A1 → C7A2 → C7B → C8A → C8B → C9 … C20 chain with exactly 31 dependency-ordered groups, each max ≤650. C5A is U5B and must merge before C5B1/U6; C5B2 remains blocked pending the C5B1 merge. C1 is U1; C2A atomically contains U2A, the U2B core migration contract, and U2C tenant registry; C2B1 contains only U2B S39 migration/index/lock/integrity hardening; C2B2 contains the reusable cleanup helper plus its exhaustive direct matrix; C3A contains U3; and C3B contains U4A. C2B2 is mandatory before C3A, and C3B is mandatory before C4/U4B. Schema, migration, and tenant registry remain atomic in C2A so generated-client, database, and isolation consistency are never broken. No blanket exception applies. Strict400 remains rejected forecast/history only, not an active plan.
 
 ## Scenario linkage
 
@@ -182,10 +182,12 @@ Manifest: approval use-case quota changes, `helpers/approval-lock-order.ts`, `ap
 
 ### U11B — Approval replay and race proof (S30, S33)
 
-Manifest: `helpers/approval-replay.ts`, `approve-property-proposal.replay.spec.ts`, `test/property-proposal-approval-race.spec.ts`.
+U11B is split to stay within the 400-line review budget. U11B1 owns replay ordering/source invariants; U11B2 owns same-proposal approval/rejection races; U11B3 owns final-slot races. U12 remains verification-only.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR actor-specific approval replay and competing approval/rejection/final-slot race outcomes without duplicate aggregates. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest replay/race specs repeatedly with bounded named connections and clean barriers, clients, limits, and assets in `finally`. <!-- sdd-owner: implementation -->
+- [x] U11B1: RED → GREEN → TRIANGULATE → REFACTOR same-reviewer approval replay after active reviewer/self-review authorization, requiring exact round/approved actor outcome and one same-tenant source engagement; apply proposer eligibility and quota only to new approval. <!-- sdd-owner: implementation -->
+- [x] U11B1: Run focused replay, approval, and quota specs twice plus forced API typecheck and lint; no barriers, race clients, or transport wiring. <!-- sdd-owner: implementation -->
+- [ ] U11B2: RED → GREEN → TRIANGULATE → REFACTOR bounded same-proposal approval/approval and approval/rejection PostgreSQL lock races without duplicate aggregates. <!-- sdd-owner: implementation -->
+- [ ] U11B3: RED → GREEN → TRIANGULATE → REFACTOR bounded final-slot approval/approval and approval/direct-create/restore races with failure-continuing cleanup. <!-- sdd-owner: implementation -->
 
 ### U12 — Repeated PostgreSQL concurrency matrix (verification-only)
 
@@ -307,4 +309,4 @@ Manifest: `apps/app-new/tests/seeded/property-proposals.spec.ts`, `property-prop
 
 ## Arithmetic check
 
-The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `7,082–8,813`, verification-only `795–945`, parent gate `0`, strict implementation/test total `7,877–9,758`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650; the 29-group topology separates C3A/U3, C3B/U4A, C5A/U5B, C5B1/U6 update locks, C5B2/U6 races, C6A/U7 initial submission, C6B/U7 resubmission/history, C7A1 filter RED, C7A2 repository GREEN, and C7B use cases; C8A/U9 rejection and C8B/U10A approval materialization; C2A current candidate is capped at 649; C2B1 and C2B2 are each capped at ≤635.
+The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `7,082–8,813`, verification-only `795–945`, parent gate `0`, strict implementation/test total `7,877–9,758`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650; the 31-group topology separates C3A/U3, C3B/U4A, C5A/U5B, C5B1/U6 update locks, C5B2/U6 races, C6A/U7 initial submission, C6B/U7 resubmission/history, C7A1 filter RED, C7A2 repository GREEN, and C7B use cases; C8A/U9 rejection and C8B/U10A approval materialization; C2A current candidate is capped at 649; C2B1 and C2B2 are each capped at ≤635.

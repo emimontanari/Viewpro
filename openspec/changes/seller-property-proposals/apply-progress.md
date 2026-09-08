@@ -759,4 +759,74 @@ workUnit: C8A/U9 only; auto-chain / stacked-to-develop; max 400 changed lines
 - **TDD evidence:** safety-net focused quota+approval specs were green on arrival at 23/23. This is a test-correction cycle, not a fabricated product RED; the corrected focused command passed 23/23 twice. A first corrected run exposed the fake's per-transaction query cursor rather than production behavior; resetting that cursor in the test fake restored the same-store retry scenario.
 - **Verification:** guarded matching localhost `DATABASE_URL`/`DIRECT_URL` to `viewpro_test`; focused quota+approval specs passed twice (2 files/23 tests), API typecheck passed after the required local contracts build, and API lint passed. No database fixtures were created.
 - **Source identity:** `approve-property-proposal.use-case.ts` remains `sha256:c914dbfc81d6235cac9a14fee927417cb796f8a9e6a83e2ea79b0d73ee7b5fa4`, identical to the C9B record before this test-only correction. No source mutation was performed because that file is outside the authorized edit roots; the zero-call eligibility assertions are mutation-sensitive to eligibility moving after materialization.
-- **Boundary/cleanup:** candidate accounting remains below the 400-line cap; no source behavior, task, delivery, review, or external-service action occurred. Offline dependency/generated/build/cache outputs are removed after final postchecks.
+- **Boundary/cleanup:** candidate accounting remains below the 400-line cap; no source behavior, task, delivery, review, or external-service action occurred.
+
+## C10A / U11B1 approval replay ordering and source invariant
+
+### Status and decision
+
+```yaml
+artifactStore: openspec
+changeName: seller-property-proposals
+applyState: ready
+nextRecommended: apply
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u11b-replay-races
+  allowedEditRoots: parent-supplied U11B1 paths
+  warnings: []
+```
+
+- Consumed the parent-selected U11B1 status for fresh `develop` `2d0db052`; the injected ambient status was not used. The parent-approved decision was persisted first in the capability spec, design, split delivery/tasks/commands, and exploration.
+- Exact same-reviewer approval replay now revalidates reviewer authority and self-review before classifying the approved round and same-tenant source engagement. Only new approval evaluates proposer eligibility and quota. Canonical result visibility remains unchanged.
+- Both U11B1 implementation rows are visibly `[x]` in `tasks.md`; U11B2/U11B3 races, U12, and parent lifecycle rows remain unchecked and unchanged.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| U11B1 replay ordering/source invariant | Unit | Existing approval+quota specs: 23/23 | New replay behavior failed 2/32: full quota returned state conflict and inactive proposer returned proposer-ineligible conflict. | Three focused specs passed 33/33. | Added full-quota/ineligible-proposer, actor/round/outcome/source mismatch, authority/self-review, no-write, and exact source/tenant binding cases; negating the source predicate failed 4/9. | Extracted the pure replay classifier; focused specs stayed green. |
+
+### Verification and boundary
+
+- PASS — offline frozen install and local Prisma generation; guarded focused command passed twice: 3 files / 33 tests.
+- PASS — forced uncached API typecheck: 6/6 tasks; API lint; guarded full API `vitest run --retry=0`: 167 files / 1719 tests.
+- The first forced typecheck failed only `TS2322` at approval replay `requestedRoundId` because the validated input narrowed across the transaction callback as `unknown`; binding the validated string before the callback fixed it. A post-cleanup full run initially failed 33 suites because `@viewpro/contracts` `dist` had been removed; the required forced typecheck rebuilt it and the retried full run passed. No source-related failure remains.
+- Forecast before source edits was 195 physical changed lines excluding this progress closure, leaving 205 lines for progress; final accounting and residue postcheck follow below. No design deviation, transport/result mapping, race barrier, schema, external service, commit, push, PR, merge, review, receipt, or token persistence occurred.
+
+### Remaining implementation work
+
+- [ ] U11B2: RED → GREEN → TRIANGULATE → REFACTOR bounded same-proposal approval/approval and approval/rejection PostgreSQL lock races without duplicate aggregates. <!-- sdd-owner: implementation -->
+- [ ] U11B3: RED → GREEN → TRIANGULATE → REFACTOR bounded final-slot approval/approval and approval/direct-create/restore races with failure-continuing cleanup. <!-- sdd-owner: implementation -->
+
+### Accounting and cleanup
+
+- Final candidate: 83 tracked additions + 17 tracked deletions + 135 untracked physical lines = **235 total physical changed lines**, within the 400-line U11B1 cap. `git diff --check` passed; guarded localhost postcheck found zero non-idle `viewpro_test`/w1–w4 connections; node modules, generated build output, `.turbo`, and `*.tsbuildinfo` were removed while `packages/contracts/src/generated/.gitkeep` remains. Offline dependency/generated/build/cache outputs are removed after final postchecks.
+
+## C10A / U11B1 corrective replay ordering
+
+### Status and scope
+
+- Consumed the parent-selected authoritative status: `seller-property-proposals`, OpenSpec `apply: ready`, repo-local exact target `/Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u11b-replay-races`, runtime `e17bc8acac3c012cc51fe8fff88a565c26eb056df6800dc3dc35dafe48616732`, and no action-context warnings. The ambient status was not used.
+- This corrective C10A/U11B1 slice is authorized under `auto-chain` / stacked-to-develop and remains below 400 changed lines. No race, transport, provider, publication, review, or parent lifecycle action was performed.
+
+### Completed correction and persisted tasks
+
+- After unsuccessful replay classification, approval now rejects a non-new state, round, or decision with `PROPERTY_PROPOSAL_STATE_CONFLICT` before checking proposer eligibility; new approval alone evaluates proposer eligibility and quota.
+- The replay fake now performs an actual `EN_REVISION` approval and replays against that same durable transition. It proves one source query bound to the proposal and tenant, no additional quota assertion or writes after changed proposer role/inactive membership, and 403 before replay lookup for reviewer status, membership, role, capability, or self-review loss.
+- The invalid replay matrix combines proposer inactivity with wrong actor, stale round, rejected/missing decision, missing source, and cross-tenant source; every case returns the exact state conflict with no writes.
+- `tasks.md` was reread: both completed U11B1 implementation-owned rows remain visibly `- [x]`; U11B2/U11B3 and parent-owned lifecycle rows remain unchanged. Current topology claims in `tasks.md` and `task-delivery-plan.md` now state 31 displayed groups; historical evidence was not edited.
+
+### TDD Cycle Evidence
+
+| Task | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|
+| U11B1 corrective ordering | New behavioral replay matrix failed 6/13: all invalid approved replay cases returned `PROPERTY_PROPOSAL_PROPOSER_INELIGIBLE`. | Reordering state conflict before proposer eligibility passed focused replay/approval/quota coverage at 36/36. | Restoring the old order failed the same 6/13 cases; restoration passed 36/36. | Replaced fabricated approved-store fixtures with one stateful durable fake and explicit no-additional-write assertions. |
+
+### Verification, hashes, and remaining work
+
+- PASS — offline `pnpm install --offline --frozen-lockfile`, local Prisma generation, and guarded localhost `viewpro_test` only.
+- PASS — focused replay/approval/quota command: 3 files / 36 tests, run twice after GREEN and again after the final assertion; forced API Turbo typecheck: 6/6 uncached; API lint; guarded full API `vitest run --retry=0`: 167 files / 1722 tests.
+- Final source SHA-256: `approve-property-proposal.use-case.ts` `48eb99d42c4045f50e6604bf2972af3df58ffa9a7c85b37c008f0bc75f76f517`; replay spec `233ab98f9efce9796d35afc7d89b26b43cf4c8fae2d063611efd6464a7acd7d5`.
+- Remaining exact implementation rows: `- [ ] U11B2: RED → GREEN → TRIANGULATE → REFACTOR bounded same-proposal approval/approval and approval/rejection PostgreSQL lock races without duplicate aggregates. <!-- sdd-owner: implementation -->`; `- [ ] U11B3: RED → GREEN → TRIANGULATE → REFACTOR bounded final-slot approval/approval and approval/direct-create/restore races with failure-continuing cleanup. <!-- sdd-owner: implementation -->`.
+- No design deviation. Final candidate: 115 tracked additions + 21 tracked deletions + 157 untracked physical lines = **293 changed lines** (≤400). `git diff --check` passed; postcheck found proposals=0, rounds=0, decisions=0, nonidle=0; dependencies, generated/build/cache/test residue were removed while `packages/contracts/src/generated/.gitkeep` remains. `next_recommended: parent-lifecycle`.
