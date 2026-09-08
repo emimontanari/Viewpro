@@ -170,8 +170,8 @@ Manifest: `approve-property-proposal.use-case.ts`, repository additions, `approv
 
 Manifest: `apps/api/src/property-proposals/responses/property-proposal.response.ts`, `apps/api/src/property-proposals/responses/property-proposal.response.spec.ts`.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR fresh viewer-specific same-tenant result visibility, assignment/capability checks, and omission for missing, cross-tenant, inactive, or lost-capability links. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest response spec and API typecheck; remove test assignments and canonical fixtures in `finally`. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR fresh viewer-specific same-tenant result visibility, assignment/capability checks, and omission for missing, cross-tenant, inactive, or lost-capability links. <!-- sdd-owner: implementation -->
+- [x] Run the manifest response spec and API typecheck; remove test assignments and canonical fixtures in `finally`. <!-- sdd-owner: implementation -->
 
 ### U11A — Approval quota and proposer eligibility (S25–S26)
 

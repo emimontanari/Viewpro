@@ -644,3 +644,80 @@ workUnit: C8A/U9 only; auto-chain / stacked-to-develop; max 400 changed lines
 - Test-only correction adds exact proposal/tenant and sorted identity-lock bindings, deterministic SQL order, coded missing/cross-tenant 404, exact generic 403, direct no-write conflicts, exact success shape without a canonical ID, and one outer transaction.
 - Corrective test-first baseline was 17/17, confirming no production defect. Mutating sorted IDs failed 1/17; mutating the proposal tenant binding failed 3/17; restored source passed focused 17/17 twice, forced typecheck 6/6, lint, and guarded full API retry-0 164 files/1678 tests.
 - Cleanup/postcheck again left base plus w1–w4 at `0|0|0|0` and zero non-idle connections; dependencies, generated/build/cache/test residue, and `*.tsbuildinfo` were removed with `.gitkeep` retained. Final arithmetic: 44 additions + 2 deletions + 312 untracked lines = 358 (<400). No production or task bytes changed in this correction.
+
+## C9A / U10B result-visibility response boundary
+
+### Status, scope, and completion
+
+- Consumed parent-authoritative OpenSpec status: `seller-property-proposals`, `apply: ready`, repo-local C9A workspace, no action-context warnings; attempt token `sha256:8b9860ab2af8fd6a08e6f86372833cb1208d003affb97fa066e259949c1797d7` and 400-line cap.
+- Updated the exploration decision first: C9A owns an unmounted response-local resolver plus optional mapper; U13 still owns fresh lookup orchestration and transport mounting. The revised forecast was 342 lines.
+- Added the response-local `resolveCanonicalEngagementId` and `mapPropertyProposalResultLink`. The resolver accepts only a freshly loaded viewer snapshot and fail-closes unless the approved canonical candidate is source-linked and same-tenant, the viewer and exact membership are active, and current role/capability plus seller assignment or reviewer authority permits it.
+- Both U10B implementation-owned rows are visibly `[x]` in `tasks.md`; parent-owned rows were not changed.
+
+### TDD Cycle Evidence
+
+| Cycle | Truthful evidence |
+|---|---|
+| RED | A compiling no-behavior response seam was added before the spec; the prescribed focused command then failed 3/12 behavioral assertions because all eligible seller/reviewer resolutions returned `undefined`. |
+| GREEN | The smallest resolver and omission mapper passed the focused response spec: 12/12. |
+| TRIANGULATE | Removing the source-proposal match failed 1/12 (unlinked canonical ID leaked); replacing current role permissions with all permissions failed 1/12 (lost-capability ID leaked). Both mutants were restored. |
+| REFACTOR | The capability spy now restores in `finally`; the final focused repeat remained 12/12. |
+
+### Verification, cleanup, and boundary
+
+- PASS — `pnpm --filter @viewpro/api exec vitest run src/property-proposals/responses/property-proposal.response.spec.ts` — 12/12 after GREEN and again after refactor.
+- PASS — `pnpm --filter @viewpro/api typecheck`; its first attempt was blocked only by the existing missing generated `@viewpro/contracts` output, then `pnpm --filter @viewpro/contracts build` restored that local prerequisite and the exact API command passed.
+- PASS — `pnpm --filter @viewpro/api lint`; PASS — `git diff --check`.
+- No design deviation or database, fixture, canonical record, assignment, provider, service, controller, DTO, BFF, UI, schema, migration, owner, image, event, or result side effect was created. The sole mocked capability override is restored in `finally`.
+- Changed only `apps/api/src/property-proposals/responses/property-proposal.response.ts`, its focused spec, `explore-c9a-result-visibility.md`, these two U10B checkboxes, and this cumulative progress artifact. The response resolver is deliberately unmounted.
+- Workload/PR boundary: C9A-U10B only, auto-chain / stacked-to-develop; 249 physical changed lines, below the 400-line cap. U11A quota/proposer eligibility, U11B approval replay/races, and U13 wiring remain excluded.
+
+### Remaining tasks and risk
+
+- Next exact unchecked implementation rows are `- [ ] RED → GREEN → TRIANGULATE → REFACTOR proposer eligibility, protected final-slot quota behavior, retry after restored capacity, and atomic rollback with stable public outcomes. <!-- sdd-owner: implementation -->` and `- [ ] Run the manifest quota spec and API typecheck; restore limits, close transactions, and remove assets in `finally`. <!-- sdd-owner: implementation -->`.
+- Residual risk: this unmounted C9A boundary proves fail-closed resolution of a fresh input snapshot, not the U13 live query/batching or canonical detail reauthorization; no fresh request path exists yet.
+
+## C9A / U10B maintainer-authorized test-only evidence correction
+
+### Status, scope, and task preservation
+
+- Consumed the parent-supplied authoritative OpenSpec status: `seller-property-proposals`, `applyState: ready`, repo-local workspace `seller-property-proposals-c9a-result-visibility`, and only the response spec plus this progress artifact as edit roots. Runtime token: `sha256:180d1e377b7db1d0ee7d4d08300357ba6c05ee060386f3fe72adb3d2d210b327`; it remediates failed evidence `sha256:e9757a332fb5ea8415a9b887523b02f30612bc309e6d118ab56a3a5b3506b272`.
+- Expanded only `property-proposal.response.spec.ts`; `property-proposal.response.ts` had no defect and its final SHA-256 is the pre-mutation value `2f03d37071090f7d902e0bfd0a9d5a87ae8e7942b55de81e976486f492af1066`. The already-complete U10B task rows remain visibly `[x]`; `tasks.md` was not edited.
+- The parameterized denial matrix asserts exact `{}` output, not merely an absent property, for wrong assignment tenant/engagement/agent; missing viewer/membership; membership user/tenant mismatch; non-proposer viewer; all non-`APROBADA` states; otherwise-positive wrong role; and each seller/reviewer capability loss.
+
+### TDD Cycle Evidence
+
+| Cycle | Truthful correction evidence |
+|---|---|
+| Safety net / GREEN-on-arrival | Offline frozen install plus local Prisma generation completed; the pre-edit focused response suite passed **12/12**. The expanded behavior passed **24/24** without production changes, so this was not a new RED. |
+| TRIANGULATE mutation | Temporary independent source mutants failed the focused suite and were restored from one byte backup: state **3 failed/21 passed**; membership, proposer, role, capability, and assignment each **1 failed/23 passed**. |
+| REFACTOR | Extracted `reviewer`, result-link, exact-omission, and capability-removal helpers in the spec only; no implementation-text assertion or source refactor was added. |
+
+### Final verification, cleanup, and accounting
+
+- PASS — focused response command twice: **24/24** on each run; forced uncached `pnpm exec turbo run typecheck --filter=@viewpro/api --force`: **6/6**; API lint; bounded local `vitest run --retry=0`: **165 files / 1702 tests**.
+- PASS — `git diff --check`; postcheck found zero non-idle local `viewpro_test*` connections. The test uses no fixtures or external/provider/staging/production access.
+- Removed offline dependency/generated/build/cache/report/upload/Turbo/coverage/`*.tsbuildinfo` residue while retaining tracked `.gitkeep`. Test-candidate digest (response source plus response spec, path-delimited SHA-256): `sha256:339cfa3db04b2a4a3144ccc96869cd25652415f69909b3dbc9d23d419b88cb8f`; final physical accounting: `57 tracked additions + 2 tracked deletions + 251 untracked lines = 310` changed lines (cap: 400).
+- No source behavior change, task edit, exploration edit, U11/U13 surface, commit, push, PR, merge, rebase, review, or receipt action occurred. C9A remains the bounded `auto-chain` / stacked-to-`develop` work-unit; parent lifecycle is deferred.
+
+## C9A / U10B final seller-role isolation correction
+
+### Status and scope
+
+- Consumed the parent-authoritative OpenSpec status: `seller-property-proposals`, `applyState: ready`, repo-local workspace `seller-property-proposals-c9a-result-visibility`, with only the response spec and this progress artifact allowed for edits. Runtime correction token: `sha256:28ad7912c2dfe695649ffcb15619915826e459bd1348eecb890c3e41a8315364`; remediates failed evidence `sha256:bc94adb05695c3ab6e84c8eda344b7a2d25c0617ab2ef54a85691d05fd67ad26`.
+- Added one test-only seller-role isolation case. It retains an active same-tenant durable proposer, matching active membership, valid canonical source link, exact assignment, and both mocked seller capabilities; its `MANAGER` role has no reviewer capabilities, so reviewer denial does not rely on proposer or assignment mismatch. The exact `{}` result therefore isolates the seller `membership.role === 'AGENT'` predicate.
+- `property-proposal.response.ts` was restored byte-for-byte after the temporary mutant; its final SHA-256 is `2f03d37071090f7d902e0bfd0a9d5a87ae8e7942b55de81e976486f492af1066`. `tasks.md` and exploration remain unchanged; both already-complete U10B implementation rows remain visibly `[x]`.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN-on-arrival | TRIANGULATE / role mutant | REFACTOR |
+|---|---|---|---|---|---|---|
+| C9A/U10B seller-role isolation | Unit | Focused response spec: 24/24 before the test edit | None: the authorized correction adds evidence for already-correct production behavior; no RED was fabricated. | New 25th assertion passed 25/25 without production changes. | Removing only `membership.role === 'AGENT'` made exactly the new test fail: 1 failed/24 passed; source was restored, then final focused run passed 25/25. | No refactor needed; production source remains byte-identical. |
+
+### Verification, cleanup, and accounting
+
+- PASS — offline `pnpm install --offline --frozen-lockfile` and local Prisma generation; focused response spec passed 24/24 before the edit, then 25/25 after it and 25/25 after mutant restoration.
+- PASS — local contracts build supplied the existing generated-contract prerequisite, then API `typecheck` and `lint` passed. The first direct API typecheck was blocked only because `@viewpro/contracts` output was absent.
+- PASS — `git diff --check`; this mock-only suite created no fixtures. Post-cleanup residue, non-idle localhost connection, candidate accounting, and path-delimited digest are recorded below.
+- Final physical candidate accounting: `79` tracked additions + `2` tracked deletions + `267` untracked lines = **348 changed lines** (cap: 400). The response-only path-delimited SHA-256 digest (source path + NUL + source SHA-256, then spec path + NUL + spec SHA-256) is `sha256:1ecceae733ac19e46c868721cb63caf91a3381605551c45ef96527f73a202aa4`.
+- No design deviation, source behavior change, task change, database fixture, external access, commit, push, PR, merge, rebase, review, receipt, or lifecycle action occurred. C9A remains within the parent-selected `auto-chain` / stacked-to-`develop` work-unit; U11A and parent lifecycle remain deferred.
