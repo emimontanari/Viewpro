@@ -14,6 +14,7 @@ import { PERMISSIONS } from '../../permissions/permissions.constants'
 import { getPermissionsForRole } from '../../permissions/role-permissions'
 import type { TenantContext } from '../../tenant-context/tenant-context.types'
 import { lockApprovalIdentities } from '../helpers/approval-lock-order'
+import { isApprovalReplay } from '../helpers/approval-replay'
 
 const conflict = () => new ConflictException({ errorCode: 'PROPERTY_PROPOSAL_STATE_CONFLICT', message: 'Property proposal state conflict' })
 const forbidden = () => new ForbiddenException('Insufficient permissions')
@@ -30,6 +31,7 @@ export class ApprovePropertyProposalUseCase {
 
   async execute(tenant: TenantContext, currentUser: CurrentUser, proposalId: string, input: { reviewRoundId?: unknown }) {
     if (typeof input.reviewRoundId !== 'string') throw conflict()
+    const reviewRoundId = input.reviewRoundId
     try {
       return await this.prisma.$transaction(async (tx) => {
         const locked = await tx.$queryRaw<{ id: string }[]>`
@@ -48,13 +50,19 @@ export class ApprovePropertyProposalUseCase {
         if (proposal.proposedByUserId === currentUser.id) {
           throw new ForbiddenException({ errorCode: 'PROPERTY_PROPOSAL_SELF_REVIEW_FORBIDDEN', message: 'Property proposal self-review is forbidden' })
         }
-        if (identities.proposer?.status !== UserStatus.ACTIVE || identities.proposerMembership?.status !== TenantMembershipStatus.ACTIVE
-          || identities.proposerMembership?.role !== TenantRole.AGENT) throw proposerIneligible()
-
         const round = await tx.propertyProposalReviewRound.findFirst({
           where: { proposalId: proposal.id, tenantId: tenant.tenantId }, orderBy: { roundNumber: 'desc' }, include: { decision: true },
         })
-        if (!round || proposal.state !== 'EN_REVISION' || round.id !== input.reviewRoundId || round.decision !== null) throw conflict()
+        const sourceEngagement = proposal.state === 'APROBADA'
+          ? await tx.propertyEngagement.findFirst({ where: { sourceProposalId: proposal.id, tenantId: tenant.tenantId } })
+          : null
+        if (round && isApprovalReplay({
+          proposalState: proposal.state, requestedRoundId: reviewRoundId, roundId: round.id,
+          decision: round.decision, reviewerUserId: currentUser.id, hasSameTenantSource: sourceEngagement !== null,
+        })) return proposal
+        if (!round || proposal.state !== 'EN_REVISION' || round.id !== reviewRoundId || round.decision !== null) throw conflict()
+        if (identities.proposer?.status !== UserStatus.ACTIVE || identities.proposerMembership?.status !== TenantMembershipStatus.ACTIVE
+          || identities.proposerMembership?.role !== TenantRole.AGENT) throw proposerIneligible()
 
         await capacity.assertAvailable()
         await this.materializer.createInTransaction(tx, this.materializerInput(tenant.tenantId, proposal.id, proposal.proposedByUserId, currentUser.id, round))
