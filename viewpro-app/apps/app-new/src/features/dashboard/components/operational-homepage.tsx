@@ -2,14 +2,11 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
 import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { activityFeedOptions } from '@/features/activity/api/queries';
 import type { DashboardSummaryRange } from '@/features/dashboard/api/types';
-import { productsQueryOptions } from '@/features/products/api/queries';
 import { getUserDisplayName, type TenantMembership } from '@/lib/session';
 import { useActiveTenant, useSession } from '@/lib/session-context';
 import { KpiCard } from './operational-homepage/primitives';
@@ -34,9 +31,10 @@ import {
 import { formatArgentinaCalendarDate, getManagerShortcuts } from './operational-homepage/helpers';
 import { useManagerSummary } from './operational-homepage/manager-home';
 import {
-  PROPERTY_PREVIEW_SIZE,
-  SELLER_ACTIVITY_PREVIEW_SIZE
-} from './operational-homepage/constants';
+  SellerOperationalHomepage,
+  type SellerActivityState,
+  type SellerProductsState
+} from './operational-homepage/seller-home';
 
 export function OperationalHomepage({ nowMs }: { nowMs?: number }) {
   const { activeMembership, activeTenantId, isTenantLoading } = useActiveTenant();
@@ -52,10 +50,9 @@ export function OperationalHomepage({ nowMs }: { nowMs?: number }) {
 
   if (isSellerMembership(activeMembership)) {
     return (
-      <SellerOperationalHomepage
-        activeMembership={activeMembership}
-        activeTenantId={activeTenantId}
-      />
+      <SellerOperationalHomepage activeTenantId={activeTenantId}>
+        {(states) => <SellerHomeContent activeMembership={activeMembership} {...states} />}
+      </SellerOperationalHomepage>
     );
   }
 
@@ -140,45 +137,26 @@ function ManagerOperationalHomepage({
   );
 }
 
-function SellerOperationalHomepage({
+function SellerHomeContent({
   activeMembership,
-  activeTenantId
+  activity,
+  products
 }: {
   activeMembership: TenantMembership;
-  activeTenantId: string;
+  activity: SellerActivityState;
+  products: SellerProductsState;
 }) {
-  const productsQuery = useQuery({
-    ...productsQueryOptions({
-      archived: 'active',
-      limit: PROPERTY_PREVIEW_SIZE,
-      page: 1,
-      tenantId: activeTenantId
-    }),
-    enabled: Boolean(activeTenantId),
-    refetchOnReconnect: false,
-    refetchOnWindowFocus: false
-  });
-  const activityQuery = useQuery({
-    ...activityFeedOptions({
-      kind: 'all',
-      page: 1,
-      pageSize: SELLER_ACTIVITY_PREVIEW_SIZE,
-      tenantId: activeTenantId
-    }),
-    enabled: Boolean(activeTenantId),
-    refetchOnReconnect: false,
-    refetchOnWindowFocus: false
-  });
-
-  const assignedProperties = productsQuery.data?.items ?? [];
-  const recentActivity = activityQuery.data?.items ?? [];
-  const counters = activityQuery.data?.counters;
-  const assignedPropertiesTotal = productsQuery.data?.total ?? 0;
+  const productsData = 'data' in products ? products.data : undefined;
+  const activityData = 'data' in activity ? activity.data : undefined;
+  const assignedProperties = productsData?.items ?? [];
+  const recentActivity = activityData?.items ?? [];
+  const counters = activityData?.counters;
+  const assignedPropertiesTotal = productsData?.total ?? 0;
   const todayCount = counters?.todayCount ?? 0;
   const attentionNeeded = counters?.attentionCount ?? 0;
   const stalePropertiesTotal = counters?.staleCount ?? 0;
-  const isLoadingData = productsQuery.isLoading || activityQuery.isLoading;
-  const hasDataError = productsQuery.isError || activityQuery.isError;
+  const isLoadingData = products.status === 'loading' || activity.status === 'loading';
+  const hasDataError = products.status === 'error' || products.status === 'retained-error' || activity.status === 'error' || activity.status === 'retained-error';
 
   return (
     <section className='min-w-0 space-y-6'>
@@ -261,28 +239,28 @@ function SellerOperationalHomepage({
           label='Mis propiedades asignadas'
           value={assignedPropertiesTotal}
           helper='Gestiones activas donde sos parte del equipo comercial.'
-          isLoading={productsQuery.isLoading}
+          isLoading={products.status === 'loading'}
         />
         <KpiCard
           icon={Icons.clock}
           label='Actualizaciones hoy'
           value={todayCount}
           helper='Movimientos registrados hoy en tus propiedades.'
-          isLoading={activityQuery.isLoading}
+          isLoading={activity.status === 'loading'}
         />
         <KpiCard
           icon={Icons.trendingUp}
           label='Necesitan seguimiento'
           value={attentionNeeded}
           helper='Consultas, visitas u ofertas sin próximo paso.'
-          isLoading={activityQuery.isLoading}
+          isLoading={activity.status === 'loading'}
         />
         <KpiCard
           icon={Icons.warning}
           label='Sin novedades 7 días'
           value={stalePropertiesTotal}
           helper='Propiedades asignadas sin actividad reciente.'
-          isLoading={activityQuery.isLoading}
+          isLoading={activity.status === 'loading'}
         />
       </div>
 
@@ -305,7 +283,7 @@ function SellerOperationalHomepage({
             <PropertyPreviewList
               emptyDescription='Todavía no tenés propiedades activas asignadas. Cuando una gestión quede a tu cargo, va a aparecer acá.'
               emptyTitle='Sin propiedades asignadas'
-              isLoading={productsQuery.isLoading}
+              isLoading={products.status === 'loading'}
               products={assignedProperties}
             />
           </CardContent>
@@ -326,7 +304,7 @@ function SellerOperationalHomepage({
             </Button>
           </CardHeader>
           <CardContent className='p-5'>
-            <RecentActivityList isLoading={activityQuery.isLoading} items={recentActivity} />
+            <RecentActivityList isLoading={activity.status === 'loading'} items={recentActivity} />
           </CardContent>
         </Card>
       </div>
