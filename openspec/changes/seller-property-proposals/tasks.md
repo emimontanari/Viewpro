@@ -186,7 +186,7 @@ U11B is split to stay within the 400-line review budget. U11B1 owns replay order
 
 - [x] U11B1: RED → GREEN → TRIANGULATE → REFACTOR same-reviewer approval replay after active reviewer/self-review authorization, requiring exact round/approved actor outcome and one same-tenant source engagement; apply proposer eligibility and quota only to new approval. <!-- sdd-owner: implementation -->
 - [x] U11B1: Run focused replay, approval, and quota specs twice plus forced API typecheck and lint; no barriers, race clients, or transport wiring. <!-- sdd-owner: implementation -->
-- [ ] U11B2: RED → GREEN → TRIANGULATE → REFACTOR bounded same-proposal approval/approval and approval/rejection PostgreSQL lock races without duplicate aggregates. <!-- sdd-owner: implementation -->
+- [x] U11B2: RED → GREEN → TRIANGULATE → REFACTOR bounded same-proposal approval/approval and approval/rejection PostgreSQL lock races without duplicate aggregates. <!-- sdd-owner: implementation -->
 - [ ] U11B3: RED → GREEN → TRIANGULATE → REFACTOR bounded final-slot approval/approval and approval/direct-create/restore races with failure-continuing cleanup. <!-- sdd-owner: implementation -->
 
 ### U12 — Repeated PostgreSQL concurrency matrix (verification-only)
