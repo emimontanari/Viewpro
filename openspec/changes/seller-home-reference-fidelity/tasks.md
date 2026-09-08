@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Estimated changed lines | 1,450–1,845 total; I1A 350–390, I1B 300–390, I2 300–390, I3 320–395, I4 180–280 |
+| Estimated changed lines | 1,450–1,855 total; I1A 350–400, I1B 300–390, I2 300–390, I3 320–395, I4 180–280 |
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
 | Suggested split | P1 → P2 → P3 → P4 → P5 → I1A → I1B → I2 → I3 → I4 |
@@ -67,7 +67,7 @@ All implementation rows have `source: implementation; task: implementation; evid
 
 | Unit | File allowlist and expected symbols | Start → finish / rollback | Forecast |
 |---|---|---|---:|
-| I1A Seller adapters/extraction | `operational-homepage.tsx` and `operational-homepage.test.tsx` (seller extraction/parity only); new `seller-home.tsx` (container/adapters); new `seller-home.test.tsx`; tasks/progress | Inline seller queries → independently validated seller adapters and unchanged composition; revert extraction/tests together. | 350–390 |
+| I1A Seller adapters/extraction | `operational-homepage.tsx` and `operational-homepage.test.tsx` (seller extraction/parity only); new `seller-home.tsx` (container/adapters); new `seller-home.test.tsx`; tasks/progress | Inline seller queries → independently validated seller adapters and unchanged composition; revert extraction/tests together. | 350–400 |
 | I1B Seller gates/truthful current state | `operational-homepage.tsx`, `seller-home.tsx`, both seller tests, tasks/progress | I1A → exact identity/membership gate, keyed tenant transition, and current-composition unavailable/retry/refresh rendering; revert this cutover only. | 300–390 |
 | I2 Reference summary composition | `operational-homepage.tsx` (seller import/cutover only); `seller-home.tsx`; new `seller-sections.tsx` (`SellerHomeView`, fact/priority/unavailable sections); `seller-home.test.tsx`; new `seller-sections.test.tsx`; `openspec/changes/seller-home-reference-fidelity/apply-progress.md` | State foundation → greeting/facts/priorities and beginning hierarchy; revert pure sections plus narrow cutover. | 300–390 |
 | I3 Bounded content/cutover | `operational-homepage.tsx` (complete seller extraction/import cleanup only); `seller-home.tsx`; `seller-sections.tsx`; new `seller-lists.tsx` (bounded rows); `seller-home.test.tsx`; `seller-sections.test.tsx`; `openspec/changes/seller-home-reference-fidelity/apply-progress.md` | Summary → real bounded lists, safe formatting/links, shortcuts, final seller extraction; revert seller lists/sections and restore prior extracted composition only. | 320–395 |

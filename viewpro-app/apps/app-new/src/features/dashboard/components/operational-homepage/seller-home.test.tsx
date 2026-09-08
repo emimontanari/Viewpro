@@ -95,36 +95,22 @@ describe('seller query adapters', () => {
     ).toMatchObject({ status: 'error', tenantId });
   });
 
-  it('rejects malformed activity counters, tenants, and engagement identities', () => {
-    expect(
-      toSellerActivityState(
-        snapshot({
-          data: { ...activity, counters: { ...activity.counters, staleCount: Number.NaN } },
-          isSuccess: true
-        }),
-        tenantId
-      )
-    ).toMatchObject({ status: 'error', tenantId });
-    expect(
-      toSellerActivityState(
-        snapshot({
-          data: { ...activity, items: [{ ...activity.items[0], tenantId: 'tenant-b' }] },
-          isSuccess: true
-        }),
-        tenantId
-      )
-    ).toMatchObject({ status: 'error', tenantId });
-    expect(
-      toSellerActivityState(
-        snapshot({
-          data: {
-            ...activity,
-            items: [{ ...activity.items[0], propertyEngagementId: 'engagement-b' }]
-          },
-          isSuccess: true
-        }),
-        tenantId
-      )
-    ).toMatchObject({ status: 'error', tenantId });
+  it('rejects null, missing, and malformed activity counters plus invalid item identities', () => {
+    const invalidResponses = [
+      { ...activity, counters: null },
+      { items: activity.items },
+      { ...activity, counters: { ...activity.counters, staleCount: Number.NaN } },
+      { ...activity, items: [{ ...activity.items[0], tenantId: 'tenant-b' }] },
+      { ...activity, items: [{ ...activity.items[0], propertyEngagementId: 'engagement-b' }] }
+    ];
+
+    for (const data of invalidResponses) {
+      expect(
+        toSellerActivityState(
+          snapshot({ data: data as unknown as ActivityFeedResponse, isSuccess: true }),
+          tenantId
+        )
+      ).toMatchObject({ status: 'error', tenantId });
+    }
   });
 });

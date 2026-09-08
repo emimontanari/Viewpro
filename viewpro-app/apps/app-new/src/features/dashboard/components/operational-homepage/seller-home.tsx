@@ -50,6 +50,7 @@ function hasValidProducts(data: ProductsResponse, tenantId: string) {
 }
 
 function hasValidActivity(data: ActivityFeedResponse, tenantId: string) {
+  if (!data.counters) return false;
   const { attentionCount, staleCount, todayCount } = data.counters;
   return (
     isFiniteCount(attentionCount) &&
