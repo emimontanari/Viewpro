@@ -55,3 +55,39 @@
 | Task | Test file | Layer | Safety net | PROBE | Corrective RED | GREEN | TRIANGULATE/REFACTOR |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | I1C P1 | `seller-home.test.tsx` | Integration | 6/6 | Original response race was GREEN-on-arrival | Mounted probe B assertion failed with A retained | Named 1/1; full seller test 6/6 | Existing ready/error/refetch variants plus C 19/19, BFF 13/13, Protected 47/47, typecheck/lint/OpenSpec |
+
+## I2 — Reference summary composition
+
+- **Scope/status/base:** UTC **2026-09-08T15:26:14Z**; `feat/seller-home-reference-fidelity-i2` at fresh `develop@9107ea1b` after I1C #571; scoped `next_action: begin` applies to this worktree. Repo-local action context permits only this worktree; the injected null-change status was for another cwd. Stacked-to-main I2 is the assigned ≤400-line PR boundary.
+- **RED:** added `seller-sections.test.tsx`; focused C exited **1** because `./seller-sections` did not exist.
+- **GREEN:** added pure `SellerHomeView` and cut over only the legacy seller hero/focus/KPI summary. C exited **0** (**22 tests**): real greeting/tenant, four owner-bound facts, rolling-window helper, exact two non-checkable priorities, and no zero substitution.
+- **TRIANGULATE:** direct presentation cases cover activity unavailable with products retained, successful activity zeros while refreshing, and forbidden `hoy`/checkbox content; existing operational coverage keeps missing identity fail-closed and retained owner states. BFF exited **0** (**13**); protected manager/owner exited **0** (**47**).
+- **REFACTOR/verification:** C **22/22**, full frontend test **802/802**, typecheck **0**, lint **0**, and `npx --yes @fission-ai/openspec validate seller-home-reference-fidelity --strict` **0**. Parent LSP remains parent-owned; `tsconfig.tsbuildinfo` was removed. `git diff --check` is clean.
+- **Files:** `operational-homepage.tsx`, its narrow regression test, `seller-sections.tsx`, `seller-sections.test.tsx`, `tasks.md`, and this progress file. No design deviation, shell, BFF/API, manager, owner, I3 lists/shortcuts, or I4 browser work.
+- **Remaining implementation rows:**
+  - [ ] RED: add list/presenter tests for ≤6 source-order assigned/activity rows, real movement/document distinctions, stored prose/fallbacks, `formatArgentinaActivityTime` ISO `<time>` versus malformed neutral text, valid versus blank/malformed/cross-tenant IDs, and only property/detail/follow-up links; run C and expect the named content/safety assertions to fail. <!-- sdd-owner: implementation -->
+  - [ ] GREEN: implement `seller-lists.tsx`, complete extracted seller composition, property/activity empty versus positive-total-empty wording, safe hrefs, Argentina formatting, and policy-derived two shortcuts; run C and BFF successfully. <!-- sdd-owner: implementation -->
+  - [ ] TRIANGULATE: contrast optional blank/whitespace/long fields, movement versus document request, valid versus invalid ID/time, success-empty versus error, and confirm no proposal/create/mutation/document-request/global-action/free-text inference; run C, BFF, and Protected. <!-- sdd-owner: implementation -->
+  - [ ] REFACTOR: remove only seller-owned dead inline imports/JSX (not shared `lists.tsx`/`primitives.tsx` cleanup), then run C, Frontend, Protected, LSP, diff/accounting, record evidence, and stop if I3 exceeds 400. <!-- sdd-owner: implementation -->
+  - [ ] RED: add component and one serial seeded seller case requiring semantic headings/list/nav, accessible retry names/disabled retry, visible focus/44px targets, wrapping/no overflow, 1/2/4 fact grids at 320/375/768/1280, real authorized rows and source-order keyboard traversal; run C and targeted Seeded and expect the named assertions to fail. <!-- sdd-owner: implementation -->
+  - [ ] GREEN: make only seller section/list accessibility-responsive changes and add the read-only `martin.demo@viewpro.local` proof that waits for real successful `/api/products` and `/api/activity/feed` rows; run C and targeted Seeded successfully. <!-- sdd-owner: implementation -->
+  - [ ] TRIANGULATE: verify all four widths with short and permitted display-only long substitutions; intercept only successful real responses and preserve status, rows, IDs, tenant IDs, assignments, counters, kinds/types/times/order/destinations while recording upstream success; run targeted Seeded and Frontend. <!-- sdd-owner: implementation -->
+  - [ ] REFACTOR: remove test artifacts and retain no screenshots/traces/videos/coverage; run C, Frontend, Protected, targeted and full Seeded, API local-only, OpenSpec, LSP, diff/accounting, recording every pass/skip/blocker and stopping if I4 exceeds 400. <!-- sdd-owner: implementation -->
+
+### TDD Cycle Evidence
+| Task | Test file | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| I2 | `seller-sections.test.tsx` | Component | C 19/19 | Missing module failed | C 22/22 | unavailable/zero/refresh + BFF 13/13 + Protected 47/47 | C/typecheck/lint/OpenSpec green |
+
+- **Commands (all exit 0 unless RED):** Frontend `pnpm --filter next-shadcn-dashboard-starter test`; C `pnpm --filter next-shadcn-dashboard-starter test src/features/dashboard/components/operational-homepage.test.tsx src/features/dashboard/components/operational-homepage/seller-home.test.tsx src/features/dashboard/components/operational-homepage/seller-sections.test.tsx`; BFF `pnpm --filter next-shadcn-dashboard-starter test src/app/api/activity/feed/route.test.ts src/lib/bff-api.test.ts src/features/products/api/queries.test.ts src/features/products/api/service.test.ts`; Protected `pnpm --filter next-shadcn-dashboard-starter test src/features/dashboard/components/operational-homepage/manager-home.test.tsx src/features/owner/components/owner-home.test.tsx`; typecheck `pnpm --filter next-shadcn-dashboard-starter typecheck`; lint `pnpm --filter next-shadcn-dashboard-starter lint:strict`; OpenSpec `npx --yes @fission-ai/openspec validate seller-home-reference-fidelity --strict`.
+
+## I2 — verifier corrective proof
+
+- **UTC 2026-09-08T15:40:02Z / RED:** after the initial missing-module setup failure, focused `seller-sections.test.tsx` failed: five per-priority `Actualizando…`/`Última información disponible` labels were expected and four rendered.
+- **GREEN/TRIANGULATE/REFACTOR:** each priority owns its `StateLabel`; fact/priority order, all forbidden summary groups, both unavailable-owner/sibling-success directions, zeros, refresh, and retained-error are asserted. C **23**, BFF **13**, Protected **47**, frontend **803**, typecheck, lint, strict OpenSpec, and `git diff --check` passed; `tsconfig.tsbuildinfo` was removed.
+- **Boundary/LSP:** no design deviation or I3/I4 behavior; the I2 allowlist now names the narrow operational regression test plus tasks/progress. Parent LSP checked `operational-homepage.tsx`, `operational-homepage.test.tsx`, `seller-sections.tsx`, and `seller-sections.test.tsx` with **0 diagnostics**.
+
+### TDD Cycle Evidence — verifier correction
+| Task | Test file | RED | GREEN | TRIANGULATE / REFACTOR |
+| --- | --- | --- | --- | --- |
+| I2 correction | `seller-sections.test.tsx` | 5 freshness labels failed; 4 rendered | targeted 4/4 | C 23/23, BFF 13/13, Protected 47/47, frontend 803/803, typecheck/lint/OpenSpec |

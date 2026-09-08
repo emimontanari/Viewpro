@@ -440,21 +440,11 @@ describe('OperationalHomepage', () => {
 
     render(<OperationalHomepage />);
 
-    expect(
-      screen.getByRole('heading', { name: /Tu jornada comercial en Costa Norte Propiedades/i })
-    ).toBeVisible();
-    expect(screen.getByText('Panel de vendedor')).toBeVisible();
+    expect(screen.getByRole('heading', { level: 1, name: 'Hola, Patricio Gómez' })).toBeVisible();
+    expect(screen.getByText('Costa Norte Propiedades')).toBeVisible();
     expect(hasQueryScope('dashboard')).toBe(false);
     expect(hasQueryScope('products')).toBe(true);
     expect(hasQueryScope('activity')).toBe(true);
-    expect(screen.getByRole('link', { name: 'Ver mis propiedades' })).toHaveAttribute(
-      'href',
-      '/dashboard/product'
-    );
-    expect(screen.getByRole('link', { name: 'Ver seguimiento' })).toHaveAttribute(
-      'href',
-      '/dashboard/seguimiento'
-    );
     expect(screen.queryByRole('link', { name: 'Nueva propiedad' })).not.toBeInTheDocument();
     expect(screen.queryByText('Propiedades con más movimiento')).not.toBeInTheDocument();
     expect(screen.queryByText('Vendedores con más movimiento')).not.toBeInTheDocument();
@@ -569,7 +559,7 @@ describe('OperationalHomepage', () => {
     const refresh = render(<OperationalHomepage />);
     expect(screen.getAllByText('Actualizando…')).toHaveLength(2);
     expect(screen.getByText('Departamento con vista abierta')).toBeVisible();
-    expect(screen.getByText('Preparando actividad de tus propiedades')).toBeVisible();
+    expect(screen.getByLabelText('Preparando movimientos en las últimas 24 horas')).toBeVisible();
     refresh.unmount();
 
     useQueryMock.mockImplementation((options) => {
@@ -601,7 +591,7 @@ describe('OperationalHomepage', () => {
       } as unknown as ReturnType<typeof useQuery>;
     });
     const activityRefresh = render(<OperationalHomepage />);
-    expect(screen.getAllByText('Actualizando…')).toHaveLength(5);
+    expect(screen.getAllByText('Actualizando…')).toHaveLength(6);
     expect(screen.getByText('Se coordinó una visita para mañana')).toBeVisible();
     activityRefresh.unmount();
 
@@ -617,7 +607,7 @@ describe('OperationalHomepage', () => {
       } as unknown as ReturnType<typeof useQuery>;
     });
     render(<OperationalHomepage />);
-    expect(screen.getAllByText('Última información disponible')).toHaveLength(4);
+    expect(screen.getAllByText('Última información disponible')).toHaveLength(5);
     expect(screen.getByText('Se coordinó una visita para mañana')).toBeVisible();
   });
 
@@ -674,13 +664,10 @@ describe('OperationalHomepage', () => {
 
     render(<OperationalHomepage />);
 
-    expect(
-      screen.getByText('3 gestiones necesitan seguimiento y 2 siguen sin novedades recientes.')
-    ).toBeVisible();
+    expect(screen.getByText('Movimientos en las últimas 24 horas')).toBeVisible();
+    expect(screen.getByText('Sin movimientos en los últimos 7 días')).toBeVisible();
     expect(screen.getAllByText('Mis propiedades asignadas')[0]).toBeVisible();
-    expect(screen.getByText('Actualizaciones hoy')).toBeVisible();
-    expect(screen.getByText('Necesitan seguimiento')).toBeVisible();
-    expect(screen.getByText('Sin novedades 7 días')).toBeVisible();
+    expect(screen.getByText('Requieren seguimiento')).toBeVisible();
     expect(screen.getAllByText('Departamento con vista abierta')[0]).toBeVisible();
     expect(screen.getByText('Actividad de mis propiedades')).toBeVisible();
     expect(screen.getByText('Se coordinó una visita para mañana')).toBeVisible();
