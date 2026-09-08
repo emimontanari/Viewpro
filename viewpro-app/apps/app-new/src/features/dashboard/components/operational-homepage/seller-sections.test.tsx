@@ -175,6 +175,46 @@ describe('SellerHomeView', () => {
       { href: '/dashboard/seguimiento', label: 'Seguimiento' }
     ]);
   });
+
+  it('keeps named semantic regions and owner retries in keyboard order', async () => {
+    const user = userEvent.setup();
+    const productRetry = vi.fn();
+    const activityRetry = vi.fn();
+
+    renderSeller({
+      activityState: {
+        ...sellerActivity([movementRow(1)]),
+        retry: activityRetry,
+        retrying: true,
+        status: 'retained-error'
+      },
+      productsState: {
+        ...sellerProducts([propertyRow(1)], 1),
+        retry: productRetry,
+        retrying: true,
+        status: 'retained-error'
+      }
+    });
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Hola, Martín Pérez' })).toBeVisible();
+    expect(within(screen.getByRole('region', { name: 'Resumen de gestiones' })).getByRole('list', { name: 'Hechos del resumen' })).toBeVisible();
+    expect(within(screen.getByRole('region', { name: 'Prioridades' })).getByRole('list', { name: 'Prioridades de seguimiento' })).toBeVisible();
+    expect(screen.getByRole('navigation', { name: 'Accesos rápidos' })).toBeVisible();
+    expect(screen.getAllByRole('button', { name: /^Reintentando / })).toHaveLength(2);
+    for (const button of screen.getAllByRole('button', { name: /^Reintentando / })) {
+      expect(button).toBeDisabled();
+    }
+
+    const priorities = within(screen.getByRole('region', { name: 'Prioridades' })).getAllByRole('link');
+    expect(priorities.map((link) => link.textContent)).toEqual([
+      expect.stringContaining('Requieren seguimiento'),
+      expect.stringContaining('Sin movimientos en los últimos 7 días')
+    ]);
+    await user.tab();
+    expect(priorities[0]).toHaveFocus();
+    await user.tab();
+    expect(priorities[1]).toHaveFocus();
+  });
 });
 
 
