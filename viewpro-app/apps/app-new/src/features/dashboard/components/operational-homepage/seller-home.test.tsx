@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { activityFeedOptions } from '@/features/activity/api/queries';
@@ -137,6 +138,7 @@ describe('SellerOperationalHomepage production tenant transitions', () => {
     await waitFor(() => expect(getActivityFeedMock).toHaveBeenCalledTimes(2));
     expect(screen.getByTestId('products-state')).toHaveTextContent('loading:tenant-b:none');
     expect(screen.getByTestId('activity-state')).toHaveTextContent('loading:tenant-b:none');
+    expect(screen.getByTestId('mounted-tenant')).toHaveTextContent('mounted:tenant-b');
 
     await act(async () => {
       tenantAProducts.resolve(productsFixture('tenant-a', 'A'));
@@ -258,14 +260,17 @@ function activityFixture(tenantId: string, label: string) {
 }
 
 function productionSeller(queryClient: QueryClient, membershipId: string, tenantId: string) {
+  const sellerProps = { activeTenantId: tenantId, membershipId };
+
   return (
     <QueryClientProvider client={queryClient}>
-      <SellerOperationalHomepage key={`${membershipId}:${tenantId}`} activeTenantId={tenantId}>
+      <SellerOperationalHomepage {...sellerProps}>
         {({ activity, products }) => {
           const productData = 'data' in products ? products.data : undefined;
           const activityData = 'data' in activity ? activity.data : undefined;
           return (
             <section>
+              <MountedTenantProbe tenantId={products.tenantId} />
               <output data-testid='products-state'>
                 {`${products.status}:${products.tenantId}:${productData?.total ?? 'none'}`}
               </output>
@@ -286,6 +291,11 @@ function productionSeller(queryClient: QueryClient, membershipId: string, tenant
 
 function renderProductionSeller(queryClient: QueryClient, membershipId: string, tenantId: string) {
   return render(productionSeller(queryClient, membershipId, tenantId));
+}
+
+function MountedTenantProbe({ tenantId }: { tenantId: string }) {
+  const [mountedTenantId] = useState(tenantId);
+  return <output data-testid='mounted-tenant'>{`mounted:${mountedTenantId}`}</output>;
 }
 
 function expectProductionOptions(queryClient: QueryClient, tenantId: string) {

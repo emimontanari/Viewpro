@@ -55,7 +55,7 @@ export function OperationalHomepage({ nowMs }: { nowMs?: number }) {
 
   if (isSellerMembership(activeMembership) && displayName) {
     return (
-      <SellerOperationalHomepage key={`${activeMembership.id}:${activeTenantId}`} activeTenantId={activeTenantId}>
+      <SellerOperationalHomepage activeTenantId={activeTenantId} membershipId={activeMembership.id}>
         {(states) => <SellerHomeContent activeMembership={activeMembership} {...states} />}
       </SellerOperationalHomepage>
     );

@@ -90,7 +90,7 @@ All implementation rows have `source: implementation; task: implementation; evid
 
 ### I1C — production tenant-transition proof
 
-- [x] RED: mount real `SellerOperationalHomepage` with production `productsQueryOptions`/`activityFeedOptions`, switch membership/tenant keys before A resolves, and fail on A identity/value/row under B. <!-- sdd-owner: implementation -->
+- [x] PROBE/GREEN-on-arrival + corrective RED: mount real `SellerOperationalHomepage` with production `productsQueryOptions`/`activityFeedOptions`, switch membership/tenant keys before A resolves, and fail on A identity/value/row under B; then prove the public component owns the membership/tenant remount. <!-- sdd-owner: implementation -->
 - [x] GREEN: resolve B-owned responses through the real container and prove same-tenant retained refresh/refetch-error separately from the A→B transition. <!-- sdd-owner: implementation -->
 - [x] TRIANGULATE: vary A late/B ready and B loading/error cases while asserting production query keys and both independent query options remain intact. <!-- sdd-owner: implementation -->
 - [x] REFACTOR: retain only production-container transition proof; run C/BFF/Protected/typecheck/lint/LSP/OpenSpec/diff/accounting under 400. <!-- sdd-owner: implementation -->
