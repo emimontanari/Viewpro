@@ -602,3 +602,45 @@ workUnit: C8A/U9 only; auto-chain / stacked-to-develop; max 400 changed lines
 - Final physical arithmetic: 92 additions + 9 deletions + 299 untracked lines = **400 changed lines** (at cap); no compression or size exception.
 - Hashes: production `85c0f76b70610b9a797982dda3361b3b36dcd2e6548dc9c94f6bd1ce5c295fe6`; authority spec `927f1fef21da7f27ea1153a099165a69fcefcae01640d7944274ac0c9462af59`.
 - Persisted U9 implementation task rows remain visibly `[x]`; C8B and parent-owned lifecycle work remain deferred.
+
+## C8B / U10A approval materialization
+
+### Status and boundary
+
+- Consumed the parent-supplied authoritative `gentle-ai sdd-status seller-property-proposals --cwd /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-c8b-approval`: OpenSpec `apply: ready`, repo-local requested C8B workspace, 37/79 native (36/76 implementation), no warnings, runtime token `sha256:13461973338bb43606e8df972b3b6ba0cd2a11d4b5d64351e0332644df3f5e4b`.
+- C8B is the selected `auto-chain` / stacked-to-develop U10A-only slice, capped at 400 physical changed lines. U11A tenant/capacity and proposer eligibility, U11B replay/races, and U13 registration remain deferred.
+
+### Completed behavior and persisted tasks
+
+- Added an unmounted `ApprovePropertyProposalUseCase`. One outer transaction locks the proposal first, then sorted user and membership rows; this preserves the insertion point for U11A's tenant lock before those identity locks.
+- It rereads active manager/principal reviewer authority and durable self-review, requires the exact latest `EN_REVISION` round with no decision, materializes only immutable round values through `CanonicalPropertyMaterializer.createInTransaction`, appends `APPROVED`, and changes the proposal to `APROBADA` with one version increment.
+- Materializer input sets proposer creator/source/ordinary assignment and reviewer assigner; the existing materializer supplies CAPTURE, explicit non-primary, and null-currency omission. No module, transport, owner/image, notification, analytics, quota, proposer-eligibility, replay, or race surface was added.
+- Both U10A implementation rows in `tasks.md` are visibly `[x]`; parent-owned rows are unchanged.
+
+### TDD Cycle Evidence
+
+| Cycle | Evidence |
+|---|---|
+| RED | The test file first failed to import the absent use case; after the inert compiling skeleton, behavioral RED was 14 failed / 1 passed of 15. |
+| GREEN | The smallest transaction use case passed the focused approval spec: 15/15. |
+| TRIANGULATE | Mutating the `EN_REVISION` guard made 7/15 fail; restored source passed 15/15. |
+| REFACTOR | A test-only capability-spy type narrowing correction was followed by focused 15/15, forced typecheck 6/6, and lint pass. |
+
+### Verification, cleanup, and arithmetic
+
+- PASS: offline frozen install; guarded-localhost focused spec final repeat 15/15; forced `pnpm exec turbo run typecheck --filter=@viewpro/api --force` 6/6 uncached; API lint; bounded guarded-localhost full API retry-0 164 files / 1676 tests.
+- The stateful fake proves materializer, decision, and proposal-update failures each roll back staged canonical/decision/proposal state. Owner/image/event exclusion is proved through the use-case's only two collaborator contracts, not no-call mocks.
+- Guarded postchecks for base plus `viewpro_test_w1`–`w4` were each `0|0|0|0` for proposals/rounds/decisions/source engagements, with zero non-idle connections. No fixture, limit, or worker state remains.
+- Pre-correction arithmetic was 37 tracked additions + 2 tracked deletions + 288 untracked source/test lines = 327; the audited final arithmetic is recorded below.
+
+### Remaining work and risks
+
+- Next exact unchecked U10B rows: `- [ ] RED → GREEN → TRIANGULATE → REFACTOR fresh viewer-specific same-tenant result visibility, assignment/capability checks, and omission for missing, cross-tenant, inactive, or lost-capability links. <!-- sdd-owner: implementation -->` and `- [ ] Run the manifest response spec and API typecheck; remove test assignments and canonical fixtures in \`finally\`. <!-- sdd-owner: implementation -->`.
+- C8B intentionally provides neither tenant/capacity locking nor proposer eligibility (U11A), and neither approval replay nor real PostgreSQL approval races (U11B); DI/module mounting remains U13.
+
+### C8B audited corrective reset
+
+- Consumed corrective token `sha256:93ed2c440151bf0611c5dc22f34cf08ebd146cfdc7c8c6c7c4976fc8ca5de10a`; a later passing settlement must remediate `sha256:15a193bee4e6fd8a241918b8e6be061a4cd095ee551c1f432e69cbb6009bd0bb`.
+- Test-only correction adds exact proposal/tenant and sorted identity-lock bindings, deterministic SQL order, coded missing/cross-tenant 404, exact generic 403, direct no-write conflicts, exact success shape without a canonical ID, and one outer transaction.
+- Corrective test-first baseline was 17/17, confirming no production defect. Mutating sorted IDs failed 1/17; mutating the proposal tenant binding failed 3/17; restored source passed focused 17/17 twice, forced typecheck 6/6, lint, and guarded full API retry-0 164 files/1678 tests.
+- Cleanup/postcheck again left base plus w1–w4 at `0|0|0|0` and zero non-idle connections; dependencies, generated/build/cache/test residue, and `*.tsbuildinfo` were removed with `.gitkeep` retained. Final arithmetic: 44 additions + 2 deletions + 312 untracked lines = 358 (<400). No production or task bytes changed in this correction.
