@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useQuery } from '@tanstack/react-query';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
@@ -450,6 +450,31 @@ describe('OperationalHomepage', () => {
     expect(screen.queryByText('Vendedores con más movimiento')).not.toBeInTheDocument();
   });
 
+  it('derives only property then follow-up shortcuts after the exact agent gate', () => {
+    useActiveTenantMock.mockReturnValue({
+      ...activeTenantContext,
+      activeMembership: {
+        ...activeTenantContext.activeMembership,
+        id: 'membership-agent',
+        permissions: ['tenant.view', 'engagements.view_assigned'],
+        role: 'AGENT'
+      }
+    });
+
+    render(<OperationalHomepage />);
+
+    expect(
+      within(screen.getByRole('navigation', { name: 'Accesos rápidos' }))
+        .getAllByRole('link')
+        .map((link) => ({ href: link.getAttribute('href'), label: link.textContent }))
+    ).toEqual([
+      { href: '/dashboard/product', label: 'Propiedades' },
+      { href: '/dashboard/seguimiento', label: 'Seguimiento' }
+    ]);
+    expect(screen.queryByRole('link', { name: /nueva propiedad|crear propiedad|movimiento global/i })).not.toBeInTheDocument();
+    expect(hasQueryScope('dashboard')).toBe(false);
+  });
+
   it('fails closed without seller queries for non-exact roles, missing identity, or tenant-membership mismatch', () => {
     const agentMembership = { ...activeTenantContext.activeMembership, id: 'membership-agent', role: 'AGENT' };
 
@@ -574,7 +599,7 @@ describe('OperationalHomepage', () => {
       } as unknown as ReturnType<typeof useQuery>;
     });
     const productRetained = render(<OperationalHomepage />);
-    expect(screen.getByText('Última información disponible')).toBeVisible();
+    expect(screen.getAllByText('Última información disponible')).toHaveLength(2);
     expect(screen.getByText('Departamento con vista abierta')).toBeVisible();
     expect(screen.queryByText('Sin propiedades asignadas')).not.toBeInTheDocument();
     productRetained.unmount();
@@ -607,7 +632,7 @@ describe('OperationalHomepage', () => {
       } as unknown as ReturnType<typeof useQuery>;
     });
     render(<OperationalHomepage />);
-    expect(screen.getAllByText('Última información disponible')).toHaveLength(5);
+    expect(screen.getAllByText('Última información disponible')).toHaveLength(6);
     expect(screen.getByText('Se coordinó una visita para mañana')).toBeVisible();
   });
 
@@ -699,7 +724,7 @@ describe('OperationalHomepage', () => {
     expect(screen.getByText('Sin propiedades asignadas')).toBeVisible();
     expect(
       screen.getByText(
-        'Todavía no tenés propiedades activas asignadas. Cuando una gestión quede a tu cargo, va a aparecer acá.'
+        'No hay gestiones asignadas en esta vista.'
       )
     ).toBeVisible();
     expect(screen.queryByText(/Creá una propiedad/i)).not.toBeInTheDocument();
