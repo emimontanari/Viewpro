@@ -918,4 +918,108 @@ actionContext:
 - Removed installed dependencies, generated output, `.turbo`, and `*.tsbuildinfo`; the tracked `packages/contracts/src/generated/.gitkeep` remains. No design deviation; final physical candidate accounting is 273 changed lines, below 400. Remaining implementation tasks begin exactly:
   - [ ] Repeat only already-green eligibility, reviewer, approval, quota, direct-path, primary, and cleanup behavior; observe `pg_stat_activity`/`pg_blocking_pids` with bounded timeouts rather than unsettled promises. <!-- sdd-owner: implementation -->
   - [ ] Record observed outcomes only; do not add a first RED or production fix, and always release barriers, clients, transactions, fixtures, orphan assets, and limits. <!-- sdd-owner: implementation -->
-  `next_recommended: parent-lifecycle`.
+      `next_recommended: parent-lifecycle`.
+
+## U12 verification-only concurrency matrix
+
+### Status and delivery boundary
+
+```yaml
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+workUnit: U12-verification-only
+progress: 47/81 before U12
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u12-verification
+  allowedEditRoots: parent-supplied U12 test and OpenSpec paths
+  warnings:
+    - Ambient working directory differed; every command explicitly targeted workspaceRoot.
+delivery: auto-chain / stacked-to-develop; U12 only
+```
+
+- Consumed the parent-selected U12 status. The global verify block is not a U12 apply blocker.
+- U12 remains verification-only: no production, schema, transport, UI, provider, or first-RED work was introduced.
+
+### Completed work and persisted task state
+
+- Added the import-only matrix that registers the existing 8-case eligibility and 10-case approval PostgreSQL suites without duplicating their fixtures.
+- Hardened the existing 14-case primary concurrency harness with guarded localhost `_test` URLs, connection/statement/lock timeouts, bounded barrier/observation waits, exact `pg_blocking_pids` winner-PID checks, and deadline-bounded failure-preserving disconnect cleanup.
+- Removed the unused planned `property-proposal-concurrency-fixtures.ts` manifest entry: the existing suites remain fixture owners.
+- Re-read `tasks.md`: both U12 implementation-owned rows are visibly `- [x]`; parent-owned rows are unchanged.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| U12 repeated evidence | PostgreSQL integration | Existing primary harness: 14/14 before edits | Not applicable: U12 is repeat-only and owns no first RED. | Exact U12 command passed 32/32 twice. | Existing eligibility 8, approval 10, and primary 14 cases exercise distinct already-green paths. | Test-only bounded observation and cleanup hardening; no production refactor. |
+
+### Verification and cleanup
+
+- PASS — normative guarded command, default Vitest retry configuration retained (no retries observed): **2 files / 32 tests**.
+- PASS — exact repeat of the same normative command: **2 files / 32 tests**.
+- PASS — API typecheck after the generated-contract prerequisite and API lint. The first direct typecheck was blocked only because the workspace contract output was absent; forced Turbo generation/typecheck passed 6/6, after which direct typecheck passed.
+- The first post-edit U12 command exposed an omitted expected winner PID in two pre-existing primary invalidation observation calls; this was a test-harness assertion defect, not a product failure or a claimed RED. After passing the PID explicitly, both final normative executions passed.
+- Postcheck across `viewpro_test` and `viewpro_test_w1`–`w4` returned `0|0|0|0|0|0` for U12 fixture users, tenants, proposals, engagements, orphan assets, and named non-idle connections. The databases were retained.
+- Full API was intentionally not run: the import-only matrix already re-executes the existing eligibility/approval race suites, so a full API run would confound U12's repeated-test counters without adding this unit's required evidence.
+
+### Workload, deviations, and remaining work
+
+- No design deviation. The U12 source/test forecast is 87–119 lines plus the retained exploration note; the actual candidate remains below 400 lines.
+- No commit, push, PR, merge, review, receipt, or delivery gate action occurred.
+- Remaining implementation rows begin with U13 and are out of scope. Deferred lifecycle actions are the parent-owned rows, preserved byte-for-byte.
+- `next_recommended: parent-lifecycle`.
+
+## U12 bounded correction — invalidation signal lifecycle
+
+### Status, scope, and persisted tasks
+
+```yaml
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+workUnit: U12 bounded correction
+progress: 47/81 at parent selection
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u12-verification
+  allowedEditRoots:
+    - viewpro-app/apps/api/test/property-agent-primary-concurrency.e2e-spec.ts
+    - openspec/changes/seller-property-proposals/apply-progress.md
+    - openspec/changes/seller-property-proposals/explore-u12-verification.md
+  warnings:
+    - The ambient change selection was ignored in favor of the parent-provided exact U12 repo-local override.
+delivery: auto-chain / stacked-to-develop; U12 correction only; current candidate 181 lines before this correction
+```
+
+- This correction is limited to test-harness cleanup reliability. It does not change business behavior, production code, schema, transport, UI, task delivery topology, or fixture ownership.
+- Both U12 implementation-owned rows were already visibly `- [x]`; this correction does not alter `tasks.md`. Parent-owned rows remain byte-for-byte unchanged.
+
+### Correction and failure-path reasoning
+
+- The two held invalidation transactions no longer await `updatedWait` without a bound. `waitForInvalidationSignal` races the lock signal against transaction fulfillment, transaction rejection, and the existing two-second observation deadline.
+- Each fixture setup is inside its corresponding `try` block. Every `finally` releases the held transaction/barrier, waits for all launched promises, then cleans its fixture.
+- Cleanup aggregates the primary failure, unexpected promise rejections, and cleanup failure so an assertion or pre-signal transaction failure is preserved rather than masked. The deliberate rollback is ignored only after its expected rejection assertion has passed.
+
+### TDD Cycle Evidence
+
+| Task | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|
+| U12 lifecycle correction | Not applicable: U12 is verification-only and must not add a first RED or production behavior. | The exact 32-test guarded U12 command passed twice after the correction. | Transaction fulfillment, rejection, and deadline are distinct races, so a missing signal cannot be treated as a merely unsettled operation. | The shared finalizer avoids duplicated release/settlement/cleanup paths while preserving each failure source. |
+
+### Verification and cleanup
+
+- PASS — `DATABASE_URL` and matching `DIRECT_URL` were guarded localhost `viewpro_test` URLs for both exact normative executions: `pnpm --filter @viewpro/api exec vitest run test/property-proposal-concurrency-matrix.e2e-spec.ts test/property-agent-primary-concurrency.e2e-spec.ts` — **2 files / 32 tests** on each run.
+- PASS — `pnpm --filter @viewpro/contracts build && pnpm --filter @viewpro/api typecheck && pnpm --filter @viewpro/api lint`.
+- The first direct API typecheck was blocked only because the generated `@viewpro/contracts` `dist` output was absent; after the required local contract build, typecheck and lint passed. This was a generated-artifact prerequisite, not a product or test failure.
+- PASS — postcheck for `viewpro_test` and `viewpro_test_w1`–`viewpro_test_w4`: each reported `0|0|0|0` for this harness's users, tenants, engagements, and named non-idle primary-concurrency connections.
+- Dependencies were installed only with `pnpm install --offline --frozen-lockfile`; Prisma was generated locally for test execution. Workspace dependencies, generated output, caches, and test/build residue were removed before handoff; tracked `.gitkeep` files remain.
+
+### Remaining work and boundary
+
+- The final physical working-tree delta is 264 additions plus 60 deletions (**324 changed lines**, including the two retained untracked U12 files), below the 400-line review budget and inside the parent-selected U12 work-unit boundary. No commit, push, PR, merge, review, receipt, full-suite run, or delivery gate action occurred.
+- Remaining implementation rows are out of scope and begin:
+  - [ ] RED → GREEN → TRIANGULATE → REFACTOR seller routes, permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, current-role checks, and absent withdraw/delete/image routes; mount only here. <!-- sdd-owner: implementation -->
+  - [ ] Run the manifest controller/E2E tests and API typecheck; clean seeded rows/assets in `finally`. <!-- sdd-owner: implementation -->
+- `next_recommended: parent-lifecycle`.
