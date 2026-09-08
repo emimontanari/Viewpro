@@ -22,7 +22,7 @@ if (!/^[A-Za-z0-9][A-Za-z0-9_-]*_test(?:_w[1-9][0-9]*|_worker_[A-Za-z0-9_-]+)?$/
 NODE
 ```
 
-The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0.0.1`, and requires the decoded final pathname component to be a base name ending `_test`, a retained worker name such as `viewpro_test_w1`–`viewpro_test_w4`, or an explicit `_test_worker_<suffix>` database; every failure exits nonzero. Use only `pnpm install --offline --frozen-lockfile` if installation is required. Restore limits and delete rows/assets, clients, transactions, barriers, and worker state in `finally`. The selected source topology is controlled C1→C2A→C2B1→C2B2→C3A→C3B→C4→C5A→C5B1→C5B2→C6A→C6B→C7A1→C7A2→C7B→C8A→C8B→C9…C20 (29 groups total); C5A/U5B must merge before C5B1/U6, then C5B1 must merge before C5B2, C2B1 and C2B2 are each ≤635, and every other group ≤650; C5B2 uses the maintainer-approved normal-boundary expansion from 250 to <400 with no size exception; strict400 is rejected forecast/history only. Planning publication is authorized only for the controlled four-PR chain (exploration+proposal → all specs → design+interface → all task artifacts) and only for commits, pushes, and PR creation, with no PR numbers yet; merge and source/apply are not authorized. After planning-chain acceptance and any separately authorized merges, source/apply requires fresh explicit authorization and a fresh `origin/develop` worktree. No provider or external service is allowed.
+The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0.0.1`, and requires the decoded final pathname component to be a base name ending `_test`, a retained worker name such as `viewpro_test_w1`–`viewpro_test_w4`, or an explicit `_test_worker_<suffix>` database; every failure exits nonzero. Use only `pnpm install --offline --frozen-lockfile` if installation is required. Restore limits and delete rows/assets, clients, transactions, barriers, and worker state in `finally`. The selected source topology is controlled C1→C2A→C2B1→C2B2→C3A→C3B→C4→C5A→C5B1→C5B2→C6A→C6B→C7A1→C7A2→C7B→C8A→C8B→C9…C20 (31 groups total); C5A/U5B must merge before C5B1/U6, then C5B1 must merge before C5B2, C2B1 and C2B2 are each ≤635, and every other group ≤650; C5B2 uses the maintainer-approved normal-boundary expansion from 250 to <400 with no size exception; strict400 is rejected forecast/history only. Planning publication is authorized only for the controlled four-PR chain (exploration+proposal → all specs → design+interface → all task artifacts) and only for commits, pushes, and PR creation, with no PR numbers yet; merge and source/apply are not authorized. After planning-chain acceptance and any separately authorized merges, source/apply requires fresh explicit authorization and a fresh `origin/develop` worktree. No provider or external service is allowed.
 
 ## Corrected strict-unit manifest
 
@@ -50,7 +50,9 @@ The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0
 | U10A | `apps/api/src/property-proposals/use-cases/approve-property-proposal.use-case.ts` P80–95; `apps/api/src/property-proposals/property-proposals.repository.ts` P25–35; `apps/api/src/property-proposals/use-cases/approve-property-proposal.use-case.spec.ts` T105–115 F25–30 | **235–275**; production-bearing |
 | U10B | `apps/api/src/property-proposals/responses/property-proposal.response.ts` P55–75; `apps/api/src/property-proposals/responses/property-proposal.response.spec.ts` T60–75 F15–20 | **130–170**; production-bearing |
 | U11A | `apps/api/src/property-proposals/use-cases/approve-property-proposal.use-case.ts` P35–45; `apps/api/src/property-proposals/helpers/approval-lock-order.ts` P30–40; `apps/api/src/property-proposals/use-cases/approve-property-proposal.quota.spec.ts` T75–85 F25–30 | **165–200**; production-bearing |
-| U11B | `apps/api/src/property-proposals/helpers/approval-replay.ts` P25–35; `apps/api/src/property-proposals/use-cases/approve-property-proposal.replay.spec.ts` T55–65 F20–25; `apps/api/test/property-proposal-approval-race.spec.ts` T65–75 F35–40 | **200–240**; production-bearing |
+| U11B1 | `apps/api/src/property-proposals/helpers/approval-replay.ts`, approval use case, and the three focused approval specs | **≤400 total physical lines including OpenSpec closure**; production-bearing replay ordering/source invariant only |
+| U11B2 | `apps/api/test/property-proposal-approval-race.spec.ts` same-proposal approval/approval and approval/rejection proof | **≤400**; production-bearing |
+| U11B3 | `apps/api/test/property-proposal-approval-race.spec.ts` final-slot approval/approval and approval/direct-create/restore proof | **≤400**; production-bearing |
 | U12 | `apps/api/test/property-proposal-concurrency-matrix.e2e-spec.ts` T150–170 F45–55; `apps/api/test/property-proposal-concurrency-fixtures.ts` T45–55 F45–55; `apps/api/test/property-agent-primary-concurrency.e2e-spec.ts` T25–35 | **310–370**; verification-only |
 | U13 | `apps/api/src/property-proposals/property-proposals.controller.ts` P55–65; `apps/api/src/property-proposals/dto/create-property-proposal.dto.ts` P25–35; `apps/api/src/property-proposals/dto/update-property-proposal.dto.ts` P25–35; `apps/api/src/property-proposals/dto/submit-property-proposal.dto.ts` P12–18; `apps/api/src/property-proposals/property-proposals.controller.spec.ts` T70–85; `apps/api/src/property-proposals/property-proposals.module.ts` P15–20; `apps/api/src/app.module.ts` P2–4; `apps/api/test/property-proposals.e2e-spec.ts` T75–85 F35–40 | **314–387**; production-bearing |
 | U14 | `apps/api/src/property-proposals/property-proposals.controller.ts` P45–55; `apps/api/src/property-proposals/dto/list-property-proposal-review.query.ts` P35–45; `apps/api/src/property-proposals/dto/review-property-proposal.dto.ts` P15–22; `apps/api/src/property-proposals/dto/reject-property-proposal.dto.ts` P18–25; `apps/api/src/property-proposals/dto/list-property-proposal-review.query.spec.ts` T60–75; `apps/api/test/property-proposals.e2e-spec.ts` T60–70 F25–30 | **258–322**; production-bearing |
@@ -93,7 +95,7 @@ U9 55+20+95+25+50+20 = 265; 65+30+105+30+60+25 = 315
 U10A 80+25+105+25 = 235; 95+35+115+30 = 275
 U10B 55+60+15 = 130; 75+75+20 = 170
 U11A 35+30+75+25 = 165; 45+40+85+30 = 200
-U11B 25+55+20+65+35 = 200; 35+65+25+75+40 = 240
+U11B is split: U11B1 replay ordering/source invariant, U11B2 same-proposal races, and U11B3 final-slot races; each has a hard ≤400 physical-line boundary.
 U12 150+45+45+25+45 = 310; 170+55+55+35+55 = 370
 U13 55+25+25+12+70+15+2+75+35 = 314; 65+35+35+18+85+20+4+85+40 = 387
 U14 45+35+15+18+60+60+25 = 258; 55+45+22+25+75+70+30 = 322
@@ -116,7 +118,7 @@ Summing all 30 production-bearing units gives **7,082–8,813**. Summing U12, U2
 
 ## Selected controlled ≤650 source grouping
 
-The corrected strict units mechanically group into **29** dependency-ordered options. Execute C1→C2A→C2B1→C2B2→C3A→C3B→C4→C5A→C5B1→C5B2→C6A→C6B→C7A1→C7A2→C7B→C8A→C8B→C9…C20 and execute units left-to-right within each group; C5A/U5B must merge before C5B1/U6 and C5B1 must merge before C5B2/U6 races. C2B1 contains only the new S39 hardening spec, while C2B2 owns the reusable cleanup helper/direct matrix and retained C2A migration-smoke teardown retrofit. C2B2 is mandatory before C3A, C3B is mandatory before C4/U4B, C2B1/C2B2 are each ≤635, and every other displayed maximum is ≤650:
+The corrected strict units mechanically group into **31** dependency-ordered options. Execute C1→C2A→C2B1→C2B2→C3A→C3B→C4→C5A→C5B1→C5B2→C6A→C6B→C7A1→C7A2→C7B→C8A→C8B→C9…C20 and execute units left-to-right within each group; C5A/U5B must merge before C5B1/U6 and C5B1 must merge before C5B2/U6 races. C2B1 contains only the new S39 hardening spec, while C2B2 owns the reusable cleanup helper/direct matrix and retained C2A migration-smoke teardown retrofit. C2B2 is mandatory before C3A, C3B is mandatory before C4/U4B, C2B1/C2B2 are each ≤635, and every other displayed maximum is ≤650:
 
 | Group | Units | Maximum arithmetic | Group range |
 |---|---|---:|---:|
@@ -138,7 +140,9 @@ The corrected strict units mechanically group into **29** dependency-ordered opt
 | C8A | U9 rejection/replay/conflicts | 315 | 265–315 |
 | C8B | U10A approval materialization | 275 | 235–275 |
 | C9 | U10B + U11A | 170+200=370 | 295–370 |
-| C10 | U11B + U12 | 240+370=610 | 510–610 |
+| C10A | U11B1 | 400 | ≤400 replay ordering/source invariant |
+| C10B | U11B2 | 400 | ≤400 same-proposal races |
+| C10C | U11B3 + U12 | 400+370=770 historical forecast; execute as separate U11B3 then verification-only U12 | each slice ≤400 |
 | C11 | U13 | 387 | 314–387 |
 | C12 | U14 | 322 | 258–322 |
 | C13 | U15A | 363 | 272–363 |

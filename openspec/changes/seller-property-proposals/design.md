@@ -44,9 +44,9 @@ Every command against an existing proposal runs in a transaction, locks the tena
 | reject | current `EN_REVISION` round; insert decision, set `RECHAZADA` | same round, same reviewer user ID, `REJECTED`, same normalized reason | every other decided/stale case is 409 |
 | approve | current `EN_REVISION` round; atomic canonical write and `APROBADA` | same round, same reviewer user ID, `APPROVED`, one source engagement | every other decided/stale case is 409 |
 
-Review replay is actor-specific. After any decision, a different actor receives stable `409 PROPERTY_PROPOSAL_STATE_CONFLICT`, even when requesting the same outcome. Rejection replay additionally requires exact equality of the normalized reason. Same-actor duplicates return authoritative detail with 200 and perform no write.
+Review replay is actor-specific. After any decision, a different actor receives stable `409 PROPERTY_PROPOSAL_STATE_CONFLICT`, even when requesting the same outcome. Rejection replay additionally requires exact equality of the normalized reason. An approval replay additionally requires exactly one durable same-tenant source engagement. Same-actor duplicates return authoritative detail with 200 and perform no write.
 
-Active reviewer role/capability and identity-based self-review checks happen before replay can succeed. A former reviewer cannot use replay after deactivation or role loss, and the durable proposer can never review after acquiring a manager role.
+Active reviewer role/capability and identity-based self-review checks happen before replay can succeed. A former reviewer cannot use replay after deactivation or role loss, and the durable proposer can never review after acquiring a manager role. Proposer active-AGENT eligibility and `assertAvailable()` apply only to a new approval, after replay classification; they do not block an otherwise authorized same-reviewer approval replay.
 
 Normalization trims strings and stores omitted/blank optional fields as null. Draft save requires a nonblank title. Submission validates title, address, city, province, property type, and operation under lock. The rejection use case is the sole rejection verdict owner: it accepts unknown direct input, requires a string, trims it, and enforces length 1..1000 before state classification; details are in the companion contract.
 

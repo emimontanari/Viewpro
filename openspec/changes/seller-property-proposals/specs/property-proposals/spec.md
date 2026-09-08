@@ -262,9 +262,17 @@ Replaying a command after it has already produced the current state MUST return 
 #### Scenario: Replaying approval returns the existing result
 
 - GIVEN approval has already completed for a proposal
-- WHEN the same approval command is replayed
-- THEN the response returns the existing approved state and canonical result reference
-- AND no second asset, engagement, assignment, or result reference is created
+- WHEN the same active authorized reviewer replays the same round
+- THEN the response returns the existing approved state and canonical result reference even if the proposer subsequently becomes inactive or changes role
+- AND replay reads exactly one durable same-tenant source engagement
+- AND no quota assertion, second asset, engagement, assignment, or result reference is created
+
+#### Scenario: Approval replay conflicts on a noncanonical durable source
+
+- GIVEN an approval replay has a different reviewer, stale round, rejected decision, missing source engagement, or a source engagement outside the proposal tenant
+- WHEN the command is attempted
+- THEN it fails with HTTP `409`
+- AND it writes no canonical or proposal data
 
 #### Scenario: Replaying rejection returns the current rejected result
 
