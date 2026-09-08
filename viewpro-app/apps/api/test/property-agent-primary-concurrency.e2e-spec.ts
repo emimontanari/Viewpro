@@ -20,9 +20,21 @@ const applicationPrefix = `s3-primary-${randomUUID()}`;
 const firstApplicationName = `${applicationPrefix}-first`;
 const secondApplicationName = `${applicationPrefix}-second`;
 const observerApplicationName = `${applicationPrefix}-observer`;
+const timeoutMs = 8_000;
+const observationDeadlineMs = 2_000;
+const disconnectDeadlineMs = 5_000;
+function guardedUrl(applicationName: string) {
+	const url = new URL(process.env.DATABASE_URL ?? "");
+	const database = decodeURIComponent(url.pathname).split("/").filter(Boolean).at(-1) ?? "";
+	if (!['localhost', '127.0.0.1'].includes(url.hostname) || !/^[A-Za-z0-9][A-Za-z0-9_-]*_test(?:_w[1-9][0-9]*|_worker_[A-Za-z0-9_-]+)?$/.test(database)) throw new Error("primary concurrency requires a guarded localhost *_test DATABASE_URL");
+	url.searchParams.set("application_name", applicationName);
+	url.searchParams.set("connect_timeout", "3");
+	url.searchParams.set("connection_limit", "1");
+	url.searchParams.set("options", `-c statement_timeout=${timeoutMs} -c lock_timeout=${timeoutMs}`);
+	return url.toString();
+}
 function client(applicationName: string) {
-	const url = new URL(process.env.DATABASE_URL!); url.searchParams.set("application_name", applicationName);
-	return new PrismaClient({ datasources: { db: { url: url.toString() } } });
+	return new PrismaClient({ datasources: { db: { url: guardedUrl(applicationName) } } });
 }
 const firstClient = client(firstApplicationName);
 const secondClient = client(secondApplicationName);
@@ -34,13 +46,63 @@ function oneUseBarrier(operation: Operation) {
 	setPrimaryAgentLockBarrierForTest(async (locked) => { if (!used && locked === operation) { used = true; arrive(); await wait; } });
 	return { arrived, release };
 }
-async function assertClientWaitsForLock(applicationName: string) {
-	for (let attempt = 0; attempt < 1_000; attempt += 1) {
-		const waiting = await observerClient.$queryRaw<{ wait_event_type: string | null }[]>`SELECT wait_event_type FROM pg_stat_activity WHERE application_name = ${applicationName} AND wait_event_type = 'Lock'`;
-		if (waiting.some((activity) => activity.wait_event_type === "Lock")) return;
+async function waitForBarrier(arrived: Promise<void>, operation: Promise<unknown>) {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	try {
+		await Promise.race([
+			arrived,
+			operation.then(() => { throw new Error("primary operation settled before lock barrier arrival"); }, (error) => { throw new Error("primary operation rejected before lock barrier arrival", { cause: error }); }),
+			new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new Error(`primary lock barrier was not reached within ${observationDeadlineMs}ms`)), observationDeadlineMs); }),
+		]);
+	} finally { if (timer) clearTimeout(timer); }
+}
+async function waitForInvalidationSignal(signal: Promise<void>, transaction: Promise<unknown>) {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	try {
+		await Promise.race([
+			signal,
+			transaction.then(
+				() => { throw new Error("primary invalidation committed before its lock signal"); },
+				(error) => { throw new Error("primary invalidation rejected before its lock signal", { cause: error }); },
+			),
+			new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new Error(`primary invalidation lock signal was not reached within ${observationDeadlineMs}ms`)), observationDeadlineMs); }),
+		]);
+	} finally { if (timer) clearTimeout(timer); }
+}
+function appendError(errors: unknown[], error: unknown) { if (error instanceof AggregateError) errors.push(...error.errors); else errors.push(error); }
+async function settleAndCleanup(fixture: Partial<Fixture>, release: () => void, promises: Array<Promise<unknown> | undefined>, primaryError: unknown, expectedRejections: Promise<unknown>[] = []) {
+	release();
+	const errors: unknown[] = [];
+	if (primaryError !== undefined) appendError(errors, primaryError);
+	const activePromises = promises.filter((promise): promise is Promise<unknown> => Boolean(promise));
+	const settlements = await Promise.allSettled(activePromises);
+	for (const [index, settlement] of settlements.entries()) if (settlement.status === "rejected" && !expectedRejections.includes(activePromises[index]!)) appendError(errors, settlement.reason);
+	try { await cleanup(fixture); } catch (error) { appendError(errors, error); }
+	if (errors.length === 1) throw errors[0];
+	if (errors.length > 1) throw new AggregateError(errors, "Primary concurrency race and cleanup failures");
+}
+async function backendPid(applicationName: string) {
+	const [activity] = await observerClient.$queryRaw<{ pid: number }[]>`SELECT pid FROM pg_stat_activity WHERE application_name = ${applicationName}`;
+	if (!activity) throw new Error(`missing PostgreSQL client ${applicationName}`);
+	return activity.pid;
+}
+async function assertClientWaitsForLock(applicationName: string, winnerPid: number) {
+	const deadline = performance.now() + observationDeadlineMs;
+	while (performance.now() < deadline) {
+		const [activity] = await observerClient.$queryRaw<{ pid: number; application_name: string; wait_event_type: string | null; blockers: number[] }[]>`SELECT pid, application_name, wait_event_type, pg_blocking_pids(pid) AS blockers FROM pg_stat_activity WHERE application_name = ${applicationName}`;
+		if (activity?.wait_event_type === "Lock" && activity.application_name === applicationName && activity.blockers.length === 1 && activity.blockers[0] === winnerPid) return;
 		await new Promise<void>(setImmediate);
 	}
-	expect.fail(`expected PostgreSQL client ${applicationName} to wait on a row lock`);
+	expect.fail(`expected PostgreSQL client ${applicationName} to block only on winner PID ${winnerPid}`);
+}
+async function disconnectWithDeadline(client: PrismaClient, name: string) {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	try {
+		await Promise.race([
+			client.$disconnect(),
+			new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new Error(`${name} disconnect exceeded ${disconnectDeadlineMs}ms`)), disconnectDeadlineMs); }),
+		]);
+	} finally { if (timer) clearTimeout(timer); }
 }
 function run(client: PrismaClient, fixture: Fixture, operation: Operation, candidateId: string) {
 	const repository = new PrismaPropertyEngagementsRepository(client as never); const scope = { tenantId: fixture.tenantId, engagementId: fixture.engagementId };
@@ -54,9 +116,9 @@ describe("primary seller PostgreSQL concurrency", () => {
 	afterAll(async () => {
 		setPrimaryAgentLockBarrierForTest(null);
 		await runCleanupSteps([
-			{ name: 'first client', run: () => firstClient.$disconnect() },
-			{ name: 'second client', run: () => secondClient.$disconnect() },
-			{ name: 'observer client', run: () => observerClient.$disconnect() },
+			{ name: 'first client', run: () => disconnectWithDeadline(firstClient, 'first client') },
+			{ name: 'second client', run: () => disconnectWithDeadline(secondClient, 'second client') },
+			{ name: 'observer client', run: () => disconnectWithDeadline(observerClient, 'observer client') },
 		]);
 	});
 	it.each([
@@ -73,9 +135,10 @@ describe("primary seller PostgreSQL concurrency", () => {
 		let secondResult: Promise<unknown> | undefined;
 		try {
 			firstResult = run(firstClient, fixture, first, firstCandidate);
-			await barrier.arrived;
+			await waitForBarrier(barrier.arrived, firstResult);
+			const winnerPid = await backendPid(firstApplicationName);
 			secondResult = run(secondClient, fixture, second, secondCandidate);
-			await assertClientWaitsForLock(secondApplicationName);
+			await assertClientWaitsForLock(secondApplicationName, winnerPid);
 			barrier.release();
 			expect(outcome(await firstResult)).toBe(firstStatus);
 			expect(outcome(await secondResult)).toBe(secondStatus);
@@ -96,63 +159,58 @@ describe("primary seller PostgreSQL concurrency", () => {
 		const invalidation = (client: PrismaClient, fixture: Fixture) => kind === "user"
 			? client.user.update({ where: { id: fixture.userB }, data: { status: UserStatus.SUSPENDED } })
 			: client.tenantMembership.update({ where: { userId_tenantId: { userId: fixture.userB, tenantId: fixture.tenantId } }, data: kind === "membership status" ? { status: TenantMembershipStatus.DEACTIVATED } : { role: TenantRole.MANAGER } });
-		const invalidationFirst = await createFixture(true);
-		let releaseInvalidation = () => undefined; let changing: Promise<unknown> | undefined; let selection: Promise<unknown> | undefined;
+		let invalidationFirst: Partial<Fixture> = {}; let releaseInvalidation = () => undefined; let changing: Promise<unknown> | undefined; let selection: Promise<unknown> | undefined; let firstError: unknown;
 		try {
+			invalidationFirst = await createFixture(true);
+			const fixture = invalidationFirst as Fixture;
 			let updated!: () => void;
 			const updatedWait = new Promise<void>((resolve) => { updated = resolve; });
 			const releaseWait = new Promise<void>((resolve) => { releaseInvalidation = resolve; });
-			changing = secondClient.$transaction(async (tx) => { await invalidation(tx as PrismaClient, invalidationFirst); updated(); await releaseWait; });
-			await updatedWait; selection = run(firstClient, invalidationFirst, "set", invalidationFirst.assignmentB);
-			await assertClientWaitsForLock(firstApplicationName);
+			changing = secondClient.$transaction(async (tx) => { await invalidation(tx as PrismaClient, fixture); updated(); await releaseWait; });
+			await waitForInvalidationSignal(updatedWait, changing); const winnerPid = await backendPid(secondApplicationName); selection = run(firstClient, fixture, "set", fixture.assignmentB);
+			await assertClientWaitsForLock(firstApplicationName, winnerPid);
 			releaseInvalidation();
 			await changing;
 			await expect(selection).resolves.toEqual({ status: "candidateInvalid" });
-			expect(await primaryId(invalidationFirst)).toBe(invalidationFirst.assignmentA);
-		} finally {
-			releaseInvalidation();
-			await Promise.allSettled([changing, selection].filter((result): result is Promise<unknown> => Boolean(result)));
-			await cleanup(invalidationFirst);
-		}
-		const selectionFirst = await createFixture(true);
-		const barrier = oneUseBarrier("set");
-		let firstSelection: Promise<unknown> | undefined; let selectedChanging: Promise<unknown> | undefined;
+			expect(await primaryId(fixture)).toBe(fixture.assignmentA);
+		} catch (error) { firstError = error;
+		} finally { await settleAndCleanup(invalidationFirst, releaseInvalidation, [changing, selection], firstError); }
+		let selectionFirst: Partial<Fixture> = {}; const barrier = oneUseBarrier("set"); let firstSelection: Promise<unknown> | undefined; let selectedChanging: Promise<unknown> | undefined; let secondError: unknown;
 		try {
-			firstSelection = run(firstClient, selectionFirst, "set", selectionFirst.assignmentB);
-			await barrier.arrived;
-			selectedChanging = invalidation(secondClient, selectionFirst).then((result) => result);
-			await assertClientWaitsForLock(secondApplicationName);
+			selectionFirst = await createFixture(true);
+			const fixture = selectionFirst as Fixture;
+			firstSelection = run(firstClient, fixture, "set", fixture.assignmentB);
+			await waitForBarrier(barrier.arrived, firstSelection);
+			const winnerPid = await backendPid(firstApplicationName);
+			selectedChanging = invalidation(secondClient, fixture).then((result) => result);
+			await assertClientWaitsForLock(secondApplicationName, winnerPid);
 			barrier.release();
 			await expect(firstSelection).resolves.toMatchObject({ status: "updated" });
 			await selectedChanging;
-			expect(await primaryId(selectionFirst)).toBe(selectionFirst.assignmentB);
-			expect(await eligiblePrimaryId(selectionFirst)).toBeNull();
-		} finally {
-			barrier.release();
-			setPrimaryAgentLockBarrierForTest(null);
-			await Promise.allSettled([firstSelection, selectedChanging].filter((result): result is Promise<unknown> => Boolean(result)));
-			await cleanup(selectionFirst);
-		}
+			expect(await primaryId(fixture)).toBe(fixture.assignmentB);
+			expect(await eligiblePrimaryId(fixture)).toBeNull();
+		} catch (error) { secondError = error;
+		} finally { setPrimaryAgentLockBarrierForTest(null); await settleAndCleanup(selectionFirst, barrier.release, [firstSelection, selectedChanging], secondError); }
 	});
 	it("resumes after a held user invalidation rolls back", async () => {
-		const fixture = await createFixture(true); let releaseInvalidation = () => undefined;
-		let invalidating: Promise<unknown> | undefined; let selection: Promise<unknown> | undefined;
+		let fixture: Partial<Fixture> = {}; let releaseInvalidation = () => undefined; let invalidating: Promise<unknown> | undefined; let selection: Promise<unknown> | undefined; let primaryError: unknown; let expectedRollback = false;
 		try {
+			fixture = await createFixture(true);
+			const data = fixture as Fixture;
 			let updated!: () => void;
 			const updatedWait = new Promise<void>((resolve) => { updated = resolve; });
 			const releaseWait = new Promise<void>((resolve) => { releaseInvalidation = resolve; });
-			invalidating = secondClient.$transaction(async (tx) => { await tx.user.update({ where: { id: fixture.userB }, data: { status: UserStatus.SUSPENDED } }); updated(); await releaseWait; throw new Error("deliberate invalidation rollback"); });
-			await updatedWait; selection = run(firstClient, fixture, "set", fixture.assignmentB);
-			await assertClientWaitsForLock(firstApplicationName); releaseInvalidation();
+			invalidating = secondClient.$transaction(async (tx) => { await tx.user.update({ where: { id: data.userB }, data: { status: UserStatus.SUSPENDED } }); updated(); await releaseWait; throw new Error("deliberate invalidation rollback"); });
+			await waitForInvalidationSignal(updatedWait, invalidating); const winnerPid = await backendPid(secondApplicationName); selection = run(firstClient, data, "set", data.assignmentB);
+			await assertClientWaitsForLock(firstApplicationName, winnerPid); releaseInvalidation();
 			await expect(invalidating).rejects.toThrow("deliberate invalidation rollback");
+			expectedRollback = true;
 			await expect(selection).resolves.toMatchObject({ status: "updated" });
-			expect(await primaryId(fixture)).toBe(fixture.assignmentB);
-			expect(await eligiblePrimaryId(fixture)).toBe(fixture.assignmentB);
-			expect((await assignmentsFor(fixture)).map(({ id }) => id).sort()).toEqual([fixture.assignmentA, fixture.assignmentB].sort());
-		} finally {
-			releaseInvalidation(); await Promise.allSettled([invalidating, selection].filter((result): result is Promise<unknown> => Boolean(result)));
-			await cleanup(fixture);
-		}
+			expect(await primaryId(data)).toBe(data.assignmentB);
+			expect(await eligiblePrimaryId(data)).toBe(data.assignmentB);
+			expect((await assignmentsFor(data)).map(({ id }) => id).sort()).toEqual([data.assignmentA, data.assignmentB].sort());
+		} catch (error) { primaryError = error;
+		} finally { await settleAndCleanup(fixture, releaseInvalidation, [invalidating, selection], primaryError, expectedRollback && invalidating ? [invalidating] : []); }
 	});
 	it('keeps a sole ordinary assignment non-primary before any explicit operation', async () => {
 		const fixture = await createFixture(false)

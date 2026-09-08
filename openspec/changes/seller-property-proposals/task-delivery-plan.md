@@ -53,7 +53,7 @@ The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0
 | U11B1 | `apps/api/src/property-proposals/helpers/approval-replay.ts`, approval use case, and the three focused approval specs | **≤400 total physical lines including OpenSpec closure**; production-bearing replay ordering/source invariant only |
 | U11B2 | `apps/api/test/property-proposal-approval-race.spec.ts` same-proposal approval/approval and approval/rejection proof | **≤400**; production-bearing |
 | U11B3 | `apps/api/test/property-proposal-approval-race.spec.ts` final-slot approval/approval and approval/direct-create/restore proof | **≤400**; production-bearing |
-| U12 | `apps/api/test/property-proposal-concurrency-matrix.e2e-spec.ts` T150–170 F45–55; `apps/api/test/property-proposal-concurrency-fixtures.ts` T45–55 F45–55; `apps/api/test/property-agent-primary-concurrency.e2e-spec.ts` T25–35 | **310–370**; verification-only |
+| U12 | import-only `apps/api/test/property-proposal-concurrency-matrix.e2e-spec.ts`; bounded-observer `apps/api/test/property-agent-primary-concurrency.e2e-spec.ts`. No `property-proposal-concurrency-fixtures.ts`: the matrix registers existing green suites without duplicating their fixtures. | **87–119**; verification-only, plus the existing exploration note |
 | U13 | `apps/api/src/property-proposals/property-proposals.controller.ts` P55–65; `apps/api/src/property-proposals/dto/create-property-proposal.dto.ts` P25–35; `apps/api/src/property-proposals/dto/update-property-proposal.dto.ts` P25–35; `apps/api/src/property-proposals/dto/submit-property-proposal.dto.ts` P12–18; `apps/api/src/property-proposals/property-proposals.controller.spec.ts` T70–85; `apps/api/src/property-proposals/property-proposals.module.ts` P15–20; `apps/api/src/app.module.ts` P2–4; `apps/api/test/property-proposals.e2e-spec.ts` T75–85 F35–40 | **314–387**; production-bearing |
 | U14 | `apps/api/src/property-proposals/property-proposals.controller.ts` P45–55; `apps/api/src/property-proposals/dto/list-property-proposal-review.query.ts` P35–45; `apps/api/src/property-proposals/dto/review-property-proposal.dto.ts` P15–22; `apps/api/src/property-proposals/dto/reject-property-proposal.dto.ts` P18–25; `apps/api/src/property-proposals/dto/list-property-proposal-review.query.spec.ts` T60–75; `apps/api/test/property-proposals.e2e-spec.ts` T60–70 F25–30 | **258–322**; production-bearing |
 | U15A | `apps/app-new/src/app/api/property-proposals/route.ts` P25–35; `apps/app-new/src/app/api/property-proposals/[proposalId]/route.ts` P25–35; `apps/app-new/src/app/api/property-proposals/[proposalId]/submit/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/[proposalId]/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/[proposalId]/submit/route.test.ts` T40–55; `apps/app-new/src/lib/bff-api.ts` P12–18; `apps/app-new/src/lib/bff-api.test.ts` T70–80 | **272–363**; production-bearing |
@@ -96,7 +96,7 @@ U10A 80+25+105+25 = 235; 95+35+115+30 = 275
 U10B 55+60+15 = 130; 75+75+20 = 170
 U11A 35+30+75+25 = 165; 45+40+85+30 = 200
 U11B is split: U11B1 replay ordering/source invariant, U11B2 same-proposal races, and U11B3 final-slot races; each has a hard ≤400 physical-line boundary.
-U12 150+45+45+25+45 = 310; 170+55+55+35+55 = 370
+U12 import-only matrix + bounded primary observer = 87; upper bound = 119; existing exploration remains separately retained
 U13 55+25+25+12+70+15+2+75+35 = 314; 65+35+35+18+85+20+4+85+40 = 387
 U14 45+35+15+18+60+60+25 = 258; 55+45+22+25+75+70+30 = 322
 U15A 25+25+20+40+40+40+12+70 = 272; 35+35+30+55+55+55+18+80 = 363
@@ -114,7 +114,7 @@ U22A 100+45+45+55+25 = 270; 115+55+55+65+35 = 325
 U22B 120+45+50 = 215; 135+55+60 = 250
 ```
 
-Summing all 30 production-bearing units gives **7,082–8,813**. Summing U12, U22A, and U22B gives **795–945** verification-only. Therefore the strict implementation/test forecast is **7,877–9,758**, with parent gate **0**. Every strict unit maximum is ≤400.
+Summing all 30 production-bearing units gives **7,082–8,813**. Summing U12, U22A, and U22B gives **572–694** verification-only. Therefore the strict implementation/test forecast is **7,654–9,507**, with parent gate **0**. Every strict unit maximum is ≤400.
 
 ## Selected controlled ≤650 source grouping
 
@@ -142,7 +142,7 @@ The corrected strict units mechanically group into **31** dependency-ordered opt
 | C9 | U10B + U11A | 170+200=370 | 295–370 |
 | C10A | U11B1 | 400 | ≤400 replay ordering/source invariant |
 | C10B | U11B2 | 400 | ≤400 same-proposal races |
-| C10C | U11B3 + U12 | 400+370=770 historical forecast; execute as separate U11B3 then verification-only U12 | each slice ≤400 |
+| C10C | U11B3 + U12 | 400+119=519 planned; execute as separate U11B3 then verification-only U12 | each slice ≤400 |
 | C11 | U13 | 387 | 314–387 |
 | C12 | U14 | 322 | 258–322 |
 | C13 | U15A | 363 | 272–363 |
