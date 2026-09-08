@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { DashboardSummaryRange } from '@/features/dashboard/api/types';
 import { getUserDisplayName, type TenantMembership } from '@/lib/session';
 import { useActiveTenant, useSession } from '@/lib/session-context';
-import { KpiCard } from './operational-homepage/primitives';
 import { PriorityLink } from './operational-homepage/priority-panel';
 import {
   ManagerRecentActivity,
@@ -48,15 +47,19 @@ export function OperationalHomepage({ nowMs }: { nowMs?: number }) {
     return <MissingInmobiliariaState />;
   }
 
-  if (isSellerMembership(activeMembership)) {
+  if (activeMembership.tenant.id !== activeTenantId) {
+    return <OperationalHomepageSkeleton />;
+  }
+
+  const displayName = getUserDisplayName(session?.user).trim();
+
+  if (isSellerMembership(activeMembership) && displayName) {
     return (
-      <SellerOperationalHomepage activeTenantId={activeTenantId}>
+      <SellerOperationalHomepage key={`${activeMembership.id}:${activeTenantId}`} activeTenantId={activeTenantId}>
         {(states) => <SellerHomeContent activeMembership={activeMembership} {...states} />}
       </SellerOperationalHomepage>
     );
   }
-
-  const displayName = getUserDisplayName(session?.user);
 
   if (isManagerMembership(activeMembership) && displayName) {
     return (
@@ -148,15 +151,11 @@ function SellerHomeContent({
 }) {
   const productsData = 'data' in products ? products.data : undefined;
   const activityData = 'data' in activity ? activity.data : undefined;
-  const assignedProperties = productsData?.items ?? [];
-  const recentActivity = activityData?.items ?? [];
   const counters = activityData?.counters;
-  const assignedPropertiesTotal = productsData?.total ?? 0;
-  const todayCount = counters?.todayCount ?? 0;
-  const attentionNeeded = counters?.attentionCount ?? 0;
-  const stalePropertiesTotal = counters?.staleCount ?? 0;
-  const isLoadingData = products.status === 'loading' || activity.status === 'loading';
-  const hasDataError = products.status === 'error' || products.status === 'retained-error' || activity.status === 'error' || activity.status === 'retained-error';
+  const assignedPropertiesTotal = productsData?.total;
+  const todayCount = counters?.todayCount;
+  const attentionNeeded = counters?.attentionCount;
+  const stalePropertiesTotal = counters?.staleCount;
 
   return (
     <section className='min-w-0 space-y-6'>
@@ -206,62 +205,40 @@ function SellerHomeContent({
                 registrar actividad apenas ocurre.
               </p>
               <div className='rounded-2xl border bg-background/70 p-3 text-sm'>
-                {hasDataError
-                  ? 'No se pudo cargar tu resumen. Reintentá en unos segundos.'
-                  : isLoadingData
-                    ? 'Preparando tu jornada comercial…'
-                    : `${attentionNeeded} gestiones necesitan seguimiento y ${stalePropertiesTotal} siguen sin novedades recientes.`}
+                {activityData
+                  ? `${attentionNeeded} gestiones necesitan seguimiento y ${stalePropertiesTotal} siguen sin novedades recientes.`
+                  : activity.status === 'loading'
+                    ? 'Preparando actividad de tus propiedades'
+                    : 'La actividad no está disponible en este momento.'}
               </div>
-              <div className='grid gap-2'>
-                <PriorityLink
-                  action='Retomar'
-                  ariaLabel={`Ver ${attentionNeeded} próximos pasos pendientes en seguimiento`}
-                  count={attentionNeeded}
-                  href='/dashboard/seguimiento'
-                  label='Próximos pasos pendientes'
-                />
-                <PriorityLink
-                  action='Actualizar'
-                  ariaLabel={`Ver ${stalePropertiesTotal} propiedades asignadas sin novedades recientes`}
-                  count={stalePropertiesTotal}
-                  href='/dashboard/seguimiento'
-                  label='Sin novedades recientes'
-                />
-              </div>
+              {activityData ? (
+                <div className='grid gap-2'>
+                  <PriorityLink
+                    action='Retomar'
+                    ariaLabel={`Ver ${attentionNeeded} próximos pasos pendientes en seguimiento`}
+                    count={attentionNeeded ?? 0}
+                    href='/dashboard/seguimiento'
+                    label='Próximos pasos pendientes'
+                  />
+                  <PriorityLink
+                    action='Actualizar'
+                    ariaLabel={`Ver ${stalePropertiesTotal} propiedades asignadas sin novedades recientes`}
+                    count={stalePropertiesTotal ?? 0}
+                    href='/dashboard/seguimiento'
+                    label='Sin novedades recientes'
+                  />
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </div>
       </div>
 
       <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
-        <KpiCard
-          icon={Icons.product}
-          label='Mis propiedades asignadas'
-          value={assignedPropertiesTotal}
-          helper='Gestiones activas donde sos parte del equipo comercial.'
-          isLoading={products.status === 'loading'}
-        />
-        <KpiCard
-          icon={Icons.clock}
-          label='Actualizaciones hoy'
-          value={todayCount}
-          helper='Movimientos registrados hoy en tus propiedades.'
-          isLoading={activity.status === 'loading'}
-        />
-        <KpiCard
-          icon={Icons.trendingUp}
-          label='Necesitan seguimiento'
-          value={attentionNeeded}
-          helper='Consultas, visitas u ofertas sin próximo paso.'
-          isLoading={activity.status === 'loading'}
-        />
-        <KpiCard
-          icon={Icons.warning}
-          label='Sin novedades 7 días'
-          value={stalePropertiesTotal}
-          helper='Propiedades asignadas sin actividad reciente.'
-          isLoading={activity.status === 'loading'}
-        />
+        <SellerKpiCard icon={Icons.product} label='Mis propiedades asignadas' value={assignedPropertiesTotal} state={products} />
+        <SellerKpiCard icon={Icons.clock} label='Actualizaciones hoy' value={todayCount} state={activity} />
+        <SellerKpiCard icon={Icons.trendingUp} label='Necesitan seguimiento' value={attentionNeeded} state={activity} />
+        <SellerKpiCard icon={Icons.warning} label='Sin novedades 7 días' value={stalePropertiesTotal} state={activity} />
       </div>
 
       <div className='grid gap-5 xl:grid-cols-2'>
@@ -280,12 +257,14 @@ function SellerHomeContent({
             </Button>
           </CardHeader>
           <CardContent className='p-5'>
-            <PropertyPreviewList
-              emptyDescription='Todavía no tenés propiedades activas asignadas. Cuando una gestión quede a tu cargo, va a aparecer acá.'
-              emptyTitle='Sin propiedades asignadas'
-              isLoading={products.status === 'loading'}
-              products={assignedProperties}
-            />
+            <SellerDataState state={products} label='Propiedades asignadas'>
+              <PropertyPreviewList
+                emptyDescription='Todavía no tenés propiedades activas asignadas. Cuando una gestión quede a tu cargo, va a aparecer acá.'
+                emptyTitle='Sin propiedades asignadas'
+                isLoading={false}
+                products={productsData?.items ?? []}
+              />
+            </SellerDataState>
           </CardContent>
         </Card>
 
@@ -304,11 +283,95 @@ function SellerHomeContent({
             </Button>
           </CardHeader>
           <CardContent className='p-5'>
-            <RecentActivityList isLoading={activity.status === 'loading'} items={recentActivity} />
+            <SellerDataState state={activity} label='Actividad'>
+              <RecentActivityList isLoading={false} items={activityData?.items ?? []} />
+            </SellerDataState>
           </CardContent>
         </Card>
       </div>
     </section>
+  );
+}
+
+function SellerKpiCard({
+  icon: Icon,
+  label,
+  state,
+  value
+}: {
+  icon: typeof Icons.product;
+  label: string;
+  state: SellerProductsState | SellerActivityState;
+  value: number | undefined;
+}) {
+  return (
+    <Card className='py-0'>
+      <CardContent className='flex items-start gap-4 p-5'>
+        <Icon className='size-5 text-muted-foreground' aria-hidden='true' />
+        <div className='min-w-0 space-y-1'>
+          <p className='text-sm font-medium text-muted-foreground'>{label}</p>
+          {state.status === 'loading' ? (
+            <p aria-label={`Preparando ${label}`}>Preparando…</p>
+          ) : value === undefined ? (
+            <p>Información no disponible</p>
+          ) : (
+            <p className='text-3xl font-semibold tracking-tight'>{value}</p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SellerDataState({
+  children,
+  label,
+  state
+}: {
+  children: React.ReactNode;
+  label: string;
+  state: SellerProductsState | SellerActivityState;
+}) {
+  if (state.status === 'loading') {
+    return <p aria-label={`Preparando ${label.toLowerCase()}`}>Preparando {label.toLowerCase()}</p>;
+  }
+
+  if (state.status === 'error') {
+    return <UnavailableSellerData label={label} retry={state.retry} retrying={state.retrying} />;
+  }
+
+  return (
+    <>
+      {state.status === 'refreshing' ? <p role='status'>Actualizando…</p> : null}
+      {state.status === 'retained-error' ? (
+        <UnavailableSellerData label={label} retry={state.retry} retrying={state.retrying} retained />
+      ) : null}
+      {children}
+    </>
+  );
+}
+
+function UnavailableSellerData({
+  label,
+  retained = false,
+  retry,
+  retrying
+}: {
+  label: string;
+  retained?: boolean;
+  retry: () => void;
+  retrying: boolean;
+}) {
+  const retryLabel = `Reintentar ${label.toLowerCase()}`;
+  const availability = `${label} no ${label === 'Actividad' ? 'disponible' : 'disponibles'}`;
+
+  return (
+    <div role='alert' aria-label={availability} className='space-y-3 rounded-2xl border border-dashed p-4'>
+      <p>{retained ? 'No se pudo actualizar; mostramos la última información disponible' : availability}</p>
+      <Button type='button' variant='outline' onClick={retry} disabled={retrying}>
+        {retrying ? `Reintentando ${label.toLowerCase()}…` : retryLabel}
+      </Button>
+    </div>
   );
 }
 

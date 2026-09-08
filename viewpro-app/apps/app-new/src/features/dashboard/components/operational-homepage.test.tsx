@@ -460,11 +460,118 @@ describe('OperationalHomepage', () => {
     expect(screen.queryByText('Vendedores con más movimiento')).not.toBeInTheDocument();
   });
 
-  it('keeps retained product refresh errors visibly unavailable in the current seller composition', () => {
+  it('fails closed without seller queries for non-exact roles, missing identity, or tenant-membership mismatch', () => {
+    const agentMembership = { ...activeTenantContext.activeMembership, id: 'membership-agent', role: 'AGENT' };
+
+    useActiveTenantMock.mockReturnValue({ ...activeTenantContext, activeMembership: { ...agentMembership, role: 'AGENT_MANAGER' } });
+    const nonExactRole = render(<OperationalHomepage />);
+    expect(screen.getByRole('heading', { name: 'Inicio no disponible para tu rol' })).toBeVisible();
+    expect(hasQueryScope('products')).toBe(false);
+    expect(hasQueryScope('activity')).toBe(false);
+    nonExactRole.unmount();
+
+    useQueryMock.mockClear();
     useActiveTenantMock.mockReturnValue({
       ...activeTenantContext,
-      activeMembership: { ...activeTenantContext.activeMembership, role: 'AGENT' }
+      activeMembership: { ...agentMembership, tenant: { ...agentMembership.tenant, id: 'tenant-other' } }
     });
+    const mismatch = render(<OperationalHomepage />);
+    expect(screen.getByLabelText('Preparando inicio operativo')).toBeVisible();
+    expect(hasQueryScope('products')).toBe(false);
+    expect(hasQueryScope('activity')).toBe(false);
+    mismatch.unmount();
+
+    useQueryMock.mockClear();
+    useActiveTenantMock.mockReturnValue({ ...activeTenantContext, activeMembership: agentMembership });
+    useSessionMock.mockReturnValue({
+      session: { ...authenticatedSession, user: { ...authenticatedSession.user, email: ' ', firstName: null, lastName: null } }
+    } as unknown as ReturnType<typeof useSession>);
+    render(<OperationalHomepage />);
+    expect(screen.getByRole('heading', { name: 'Inicio no disponible para tu rol' })).toBeVisible();
+    expect(hasQueryScope('products')).toBe(false);
+    expect(hasQueryScope('activity')).toBe(false);
+  });
+
+  it('keeps failures, retained data, and retries local to their seller owner', async () => {
+    const productRetry = vi.fn();
+    const activityRetry = vi.fn();
+    useActiveTenantMock.mockReturnValue({ ...activeTenantContext, activeMembership: { ...activeTenantContext.activeMembership, role: 'AGENT' } });
+    useQueryMock.mockImplementation((options) => {
+      const productsQuery = (options.queryKey as readonly unknown[])[0] === 'products';
+      return {
+        data: productsQuery ? undefined : activityFeedResponse,
+        isError: productsQuery,
+        isFetching: false,
+        isLoading: false,
+        isSuccess: !productsQuery,
+        refetch: productsQuery ? productRetry : activityRetry
+      } as unknown as ReturnType<typeof useQuery>;
+    });
+
+    const productFailure = render(<OperationalHomepage />);
+    expect(screen.getByRole('alert', { name: 'Propiedades asignadas no disponibles' })).toBeVisible();
+    expect(screen.getByText('Actividad de mis propiedades')).toBeVisible();
+    expect(screen.getByText('Se coordinó una visita para mañana')).toBeVisible();
+    expect(screen.queryByText('Sin propiedades asignadas')).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Reintentar propiedades asignadas' }));
+    expect(productRetry).toHaveBeenCalledTimes(1);
+    expect(activityRetry).not.toHaveBeenCalled();
+    productFailure.unmount();
+
+    useQueryMock.mockImplementation((options) => {
+      const productsQuery = (options.queryKey as readonly unknown[])[0] === 'products';
+      return {
+        data: productsQuery ? undefined : activityFeedResponse,
+        isError: productsQuery,
+        isFetching: productsQuery,
+        isLoading: false,
+        isSuccess: !productsQuery,
+        refetch: productsQuery ? productRetry : activityRetry
+      } as unknown as ReturnType<typeof useQuery>;
+    });
+    const productRetrying = render(<OperationalHomepage />);
+    expect(screen.getByRole('button', { name: 'Reintentando propiedades asignadas…' })).toBeDisabled();
+    productRetrying.unmount();
+
+    useQueryMock.mockImplementation((options) => {
+      const productsQuery = (options.queryKey as readonly unknown[])[0] === 'products';
+      return {
+        data: productsQuery ? productsResponse : undefined,
+        isError: !productsQuery,
+        isFetching: false,
+        isLoading: false,
+        isSuccess: productsQuery,
+        refetch: productsQuery ? productRetry : activityRetry
+      } as unknown as ReturnType<typeof useQuery>;
+    });
+    render(<OperationalHomepage />);
+    expect(screen.getByRole('alert', { name: 'Actividad no disponible' })).toBeVisible();
+    expect(screen.getAllByText('Mis propiedades asignadas')[0]).toBeVisible();
+    expect(screen.getByText('Departamento con vista abierta')).toBeVisible();
+    expect(screen.queryByText('Sin movimientos recientes')).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Reintentar actividad' }));
+    expect(activityRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('distinguishes same-tenant refresh and retained refresh error from initial loading', () => {
+    useActiveTenantMock.mockReturnValue({ ...activeTenantContext, activeMembership: { ...activeTenantContext.activeMembership, role: 'AGENT' } });
+    useQueryMock.mockImplementation((options) => {
+      const productsQuery = (options.queryKey as readonly unknown[])[0] === 'products';
+      return {
+        data: productsQuery ? productsResponse : undefined,
+        isError: false,
+        isFetching: productsQuery,
+        isLoading: !productsQuery,
+        isSuccess: productsQuery,
+        refetch: vi.fn()
+      } as unknown as ReturnType<typeof useQuery>;
+    });
+    const refresh = render(<OperationalHomepage />);
+    expect(screen.getAllByText('Actualizando…').length).toBeGreaterThan(0);
+    expect(screen.getByText('Departamento con vista abierta')).toBeVisible();
+    expect(screen.getByText('Preparando actividad de tus propiedades')).toBeVisible();
+    refresh.unmount();
+
     useQueryMock.mockImplementation((options) => {
       const productsQuery = (options.queryKey as readonly unknown[])[0] === 'products';
       return {
@@ -472,13 +579,46 @@ describe('OperationalHomepage', () => {
         isError: productsQuery,
         isFetching: false,
         isLoading: false,
-        isSuccess: !productsQuery
-      } as ReturnType<typeof useQuery>;
+        isSuccess: !productsQuery,
+        refetch: vi.fn()
+      } as unknown as ReturnType<typeof useQuery>;
     });
+    const productRetained = render(<OperationalHomepage />);
+    expect(screen.getAllByText('No se pudo actualizar; mostramos la última información disponible').length).toBeGreaterThan(0);
+    expect(screen.getByText('Departamento con vista abierta')).toBeVisible();
+    expect(screen.queryByText('Sin propiedades asignadas')).not.toBeInTheDocument();
+    productRetained.unmount();
 
+    useQueryMock.mockImplementation((options) => {
+      const productsQuery = (options.queryKey as readonly unknown[])[0] === 'products';
+      return {
+        data: productsQuery ? productsResponse : activityFeedResponse,
+        isError: false,
+        isFetching: !productsQuery,
+        isLoading: false,
+        isSuccess: true,
+        refetch: vi.fn()
+      } as unknown as ReturnType<typeof useQuery>;
+    });
+    const activityRefresh = render(<OperationalHomepage />);
+    expect(screen.getAllByText('Actualizando…').length).toBeGreaterThan(0);
+    expect(screen.getByText('Se coordinó una visita para mañana')).toBeVisible();
+    activityRefresh.unmount();
+
+    useQueryMock.mockImplementation((options) => {
+      const productsQuery = (options.queryKey as readonly unknown[])[0] === 'products';
+      return {
+        data: productsQuery ? productsResponse : activityFeedResponse,
+        isError: !productsQuery,
+        isFetching: false,
+        isLoading: false,
+        isSuccess: productsQuery,
+        refetch: vi.fn()
+      } as unknown as ReturnType<typeof useQuery>;
+    });
     render(<OperationalHomepage />);
-
-    expect(screen.getByText('No se pudo cargar tu resumen. Reintentá en unos segundos.')).toBeVisible();
+    expect(screen.getAllByText('No se pudo actualizar; mostramos la última información disponible').length).toBeGreaterThan(0);
+    expect(screen.getByText('Se coordinó una visita para mañana')).toBeVisible();
   });
 
   it('mounts principal managers but fails closed for unknown roles and absent identities', () => {
