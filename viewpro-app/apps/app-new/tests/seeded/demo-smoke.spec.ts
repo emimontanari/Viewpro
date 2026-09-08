@@ -256,6 +256,225 @@ test('demo user can navigate the seeded operational workflow', async ({ page }) 
       }
     });
 
+    test('Martin seller home preserves real authorized hierarchy, keyboard order, and responsive geometry', async ({ page }) => {
+      const sessionResponse = page.waitForResponse((response) =>
+        response.request().method() === 'GET' && response.url().includes('/api/auth/me')
+      );
+      const productsResponse = page.waitForResponse((response) =>
+        response.request().method() === 'GET' && /\/api\/products\?/.test(response.url())
+      );
+      const activityResponse = page.waitForResponse((response) =>
+        response.request().method() === 'GET' && /\/api\/activity\/feed\?/.test(response.url())
+      );
+
+      await signIn(page, 'martin.demo@viewpro.local');
+      const [session, products, activity] = await Promise.all([
+        sessionResponse,
+        productsResponse,
+        activityResponse
+      ]);
+      expect(session.ok()).toBe(true);
+      expect(products.ok()).toBe(true);
+      expect(activity.ok()).toBe(true);
+
+      const sessionData = (await session.json()) as {
+        memberships: Array<{ tenant: { id: string; name: string } }>;
+        user: { firstName: string; lastName?: string | null };
+      };
+      const productsData = (await products.json()) as {
+        items: Array<{ id: string; property: { addressLine?: string | null; title: string } }>;
+        total: number;
+      };
+      const activityData = (await activity.json()) as {
+        counters: { attentionCount: number; staleCount: number; todayCount: number };
+        items: Array<{ kind: 'document_request' | 'movement'; observation?: string | null; documentRequest?: { title?: string | null }; property: { engagementId: string; title: string } }>;
+      };
+      const displayName = [sessionData.user.firstName, sessionData.user.lastName].filter(Boolean).join(' ');
+      const tenantName = sessionData.memberships[0]?.tenant.name;
+      const firstProduct = productsData.items[0];
+      const firstActivity = activityData.items[0];
+
+      expect(displayName).not.toBe('');
+      expect(tenantName).toBeTruthy();
+      expect(firstProduct).toBeTruthy();
+      expect(firstActivity, 'Martin needs a real permitted activity row for this read-only proof').toBeTruthy();
+      await expect(page.getByRole('heading', { level: 1, name: `Hola, ${displayName}` })).toBeVisible();
+      await expect(page.getByRole('main').getByText(tenantName!, { exact: true })).toBeVisible();
+
+      expect(await page.getByRole('heading', { level: 2 }).evaluateAll((headings) => headings.map((heading) => heading.textContent))).toEqual([
+        'Resumen de gestiones',
+        'Prioridades',
+        'Mis propiedades asignadas',
+        'Actividad de mis propiedades',
+        'Accesos rápidos'
+      ]);
+      const facts = page.getByRole('region', { name: 'Resumen de gestiones' }).getByRole('list', { name: 'Hechos del resumen' });
+      const priorities = page.getByRole('region', { name: 'Prioridades' }).getByRole('list', { name: 'Prioridades de seguimiento' });
+      const factRows = facts.getByRole('listitem');
+      const factValues = [productsData.total, activityData.counters.todayCount, activityData.counters.attentionCount, activityData.counters.staleCount];
+      await expect(factRows).toHaveCount(4);
+      expect(await factRows.evaluateAll((rows) => rows.map((row) => row.querySelector('p')?.textContent))).toEqual(['Mis gestiones asignadas', 'Movimientos en las últimas 24 horas', 'Requieren seguimiento', 'Sin movimientos en los últimos 7 días']);
+      for (const [index, value] of factValues.entries()) await expect(factRows.nth(index).getByText(String(value), { exact: true })).toHaveCount(1);
+      const priorityLinks = priorities.getByRole('link');
+      const priorityValues = [activityData.counters.attentionCount, activityData.counters.staleCount];
+      const priorityLabels = ['Requieren seguimiento', 'Sin movimientos en los últimos 7 días'];
+      await expect(priorityLinks).toHaveCount(2);
+      for (const [index, value] of priorityValues.entries()) await expect(priorityLinks.nth(index).getByText(`${priorityLabels[index]}: ${value}`, { exact: true })).toHaveCount(1);
+      const shortcutNavigation = page.getByRole('navigation', { name: 'Accesos rápidos' });
+      const shortcuts = shortcutNavigation.getByRole('link');
+      const shortcutGrid = shortcutNavigation.locator('div.grid');
+      await expect(shortcuts).toHaveCount(2);
+      await expect(shortcuts.nth(0)).toHaveAttribute('href', '/dashboard/product');
+      await expect(shortcuts.nth(1)).toHaveAttribute('href', '/dashboard/seguimiento');
+      await expect(page.getByRole('link', { name: /Nueva propiedad|Crear propiedad|Propuestas?|Agenda|WhatsApp/i })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /Crear propiedad|Movimiento global|Propuestas?|Agenda|WhatsApp/i })).toHaveCount(0);
+
+      const propertyRegion = page.getByRole('region', { name: 'Mis propiedades' });
+      const activityRegion = page.getByRole('region', { name: 'Actividad reciente' });
+      const propertyRows = propertyRegion.getByRole('listitem');
+      const activityRows = activityRegion.getByRole('listitem');
+      const propertyLinks = propertyRegion.getByRole('link');
+      const activityLinks = activityRegion.getByRole('link');
+      const contentGrid = propertyRegion.locator('xpath=..');
+      const expectedProducts = productsData.items.slice(0, 6);
+      const expectedActivity = activityData.items.slice(0, 6);
+      await expect(propertyRows).toHaveCount(expectedProducts.length);
+      await expect(activityRows).toHaveCount(expectedActivity.length);
+      for (const [index, item] of expectedProducts.entries()) {
+        await expect(propertyRows.nth(index).getByText(item.property.title, { exact: true })).toBeVisible();
+        await expect(propertyLinks.nth(index)).toHaveAttribute('href', `/dashboard/product/${item.id}`);
+      }
+      for (const [index, item] of expectedActivity.entries()) {
+        const discriminator = item.kind === 'movement' ? item.observation?.trim() || 'Observación no informada' : item.documentRequest?.title?.trim() || 'Solicitud documental sin título';
+        await expect(activityRows.nth(index).getByText(item.kind === 'movement' ? discriminator : /Solicitud documental/)).toBeVisible();
+        if (item.kind === 'document_request') await expect(activityRows.nth(index).getByText(discriminator, { exact: true })).toBeVisible();
+        await expect(activityLinks.nth(index)).toHaveAttribute('href', `/dashboard/product/${item.property.engagementId}`);
+      }
+      const assertKeyboardOrder = async () => {
+        await priorityLinks.first().focus();
+        for (const group of [priorityLinks, propertyLinks, activityLinks, shortcuts]) for (let index = 0; index < await group.count(); index += 1) {
+          await expect(group.nth(index)).toBeFocused();
+          if (index + 1 < await group.count() || group !== shortcuts) await page.keyboard.press('Tab');
+        }
+      };
+
+      const assertResponsive = async (longText: readonly Locator[] = []) => {
+        for (const viewport of [
+          { width: 320, height: 800, columns: 1 }, { width: 375, height: 812, columns: 1 },
+          { width: 768, height: 900, columns: 2 }, { width: 1280, height: 900, columns: 4 }
+        ]) {
+          await page.setViewportSize(viewport);
+          expect(await facts.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length)).toBe(viewport.columns);
+          expect(await shortcutGrid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length)).toBe(viewport.columns === 4 ? 2 : viewport.columns);
+          expect(await contentGrid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length)).toBe(viewport.columns === 4 ? 2 : 1);
+          await assertKeyboardOrder();
+          for (const rows of [propertyRows, activityRows]) for (let index = 0; index < await rows.count(); index += 1) expect(await rows.nth(index).evaluate((row) => row.scrollWidth <= row.clientWidth)).toBe(true);
+          for (const group of [priorityLinks, propertyLinks, activityLinks, shortcuts]) for (let index = 0; index < await group.count(); index += 1) {
+            const control = group.nth(index); await expect(control).toBeVisible(); const box = await control.boundingBox();
+            expect(box?.height).toBeGreaterThanOrEqual(44); expect(box?.width).toBeGreaterThanOrEqual(44);
+            await control.focus(); expect(await control.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe('none');
+          }
+          for (const value of longText) {
+            await expect(value).toBeVisible();
+            expect(await value.evaluate((element) => ({ fits: element.scrollWidth <= element.clientWidth, wraps: !['nowrap', 'pre'].includes(getComputedStyle(element).whiteSpace) }))).toMatchObject({ fits: true, wraps: true });
+          }
+          expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        }
+      };
+      await assertResponsive();
+
+      const longName = 'Martín con una identidad deliberadamente extensa para comprobar que su saludo auténtico permanece completo y legible';
+      const longTenant = 'Inmobiliaria con una denominación deliberadamente extensa para comprobar cada ancho compatible sin perder su contexto autorizado';
+      const longProperty = 'Propiedad con un nombre y dirección deliberadamente extensos que deben conservar cada detalle autorizado sin truncarse';
+      const longActivity = 'Actividad deliberadamente extensa que conserva el texto real como prosa autorizada sin inventar una tarea o acción adicional';
+      const longPropertyTitle = (index: number) => `${longProperty} título ${index + 1}`;
+      const longPropertyAddress = (index: number) => `${longProperty} dirección ${index + 1}`;
+      const longActivityText = (index: number) => `${longActivity} ${index + 1}`;
+      let longSessionUpstream = false;
+      let longProductsUpstream = false;
+      let longActivityUpstream = false;
+
+      await page.route('**/api/auth/me', async (route) => {
+        const response = await route.fetch();
+        const body = (await response.json()) as { memberships: Array<Record<string, unknown>>; user: Record<string, unknown> };
+        const [activeMembership, ...remainingMemberships] = body.memberships;
+        if (response.ok() && activeMembership && body.user) {
+          longSessionUpstream = true;
+          await route.fulfill({
+            response,
+            json: {
+              ...body,
+              memberships: [{ ...activeMembership, tenant: { ...(activeMembership.tenant as Record<string, unknown>), name: longTenant } }, ...remainingMemberships],
+              user: { ...body.user, firstName: longName, lastName: null }
+            }
+          });
+          return;
+        }
+        await route.fulfill({ response });
+      });
+      await page.route('**/api/products?**', async (route) => {
+        const response = await route.fetch();
+        const body = (await response.json()) as { items: Array<Record<string, unknown>> };
+        if (response.ok() && body.items.length) {
+          longProductsUpstream = true;
+              await route.fulfill({
+                response,
+                json: {
+                  ...body,
+                  items: body.items.map((item, index) => ({
+                    ...item,
+                    property: { ...(item.property as Record<string, unknown>), addressLine: longPropertyAddress(index), title: longPropertyTitle(index) }
+                  }))
+                }
+              });
+          return;
+        }
+        await route.fulfill({ response });
+      });
+      await page.route('**/api/activity/feed?**', async (route) => {
+        const response = await route.fetch();
+        const body = (await response.json()) as { items: Array<Record<string, unknown>> };
+        if (response.ok() && body.items.length) {
+          longActivityUpstream = true;
+              await route.fulfill({
+                response,
+                json: {
+                  ...body,
+                  items: body.items.map((item, index) => ({
+                    ...item,
+                    ...(item.kind === 'movement'
+                      ? { observation: longActivityText(index), nextStep: longActivityText(index) }
+                      : { documentRequest: { ...(item.documentRequest as Record<string, unknown>), description: longActivityText(index), title: longActivityText(index) } }),
+                    property: { ...(item.property as Record<string, unknown>), addressLine: longPropertyAddress(index), title: longPropertyTitle(index) }
+                  }))
+                }
+              });
+          return;
+        }
+        await route.fulfill({ response });
+      });
+
+      await page.reload();
+      await expect(page.getByRole('heading', { level: 1, name: `Hola, ${longName}` })).toBeVisible();
+      expect(longSessionUpstream).toBe(true);
+      expect(longProductsUpstream).toBe(true);
+      expect(longActivityUpstream, 'Martin seed lacks a permitted activity row; do not fabricate one').toBe(true);
+
+      await assertResponsive([
+        page.getByRole('heading', { level: 1, name: `Hola, ${longName}` }),
+        page.getByRole('main').getByText(longTenant, { exact: true }),
+        ...expectedProducts.flatMap((_, index) => [
+          propertyRegion.getByText(longPropertyTitle(index), { exact: true }),
+          propertyRegion.getByText(longPropertyAddress(index))
+        ]),
+        ...expectedActivity.flatMap((item, index) => {
+          const row = activityRegion.getByRole('listitem').nth(index);
+          const text = longActivityText(index);
+          return [row.getByText(text, { exact: true }), row.getByText(item.kind === 'movement' ? `Próximo paso informado: ${text}` : `Descripción: ${text}`, { exact: true })];
+        })
+      ]);
+    });
+
     for (const scenario of SELLER_SCENARIOS) {
   test(`${scenario.email} sees a distinct assigned seller dashboard`, async ({ page }) => {
     await signIn(page, scenario.email);

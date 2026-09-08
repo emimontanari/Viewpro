@@ -55,13 +55,13 @@ export function SellerPropertyList({ state }: { state: SellerProductsState }) {
   }
 
   return (
-    <ol className='space-y-3'>
+    <ol className='min-w-0 space-y-3'>
       {items.slice(0, PROPERTY_PREVIEW_SIZE).map((product, index) => {
         const title = getPropertyTitle(product.property);
         const href = getSafeEngagementHref(product.id, product.tenantId, state.tenantId);
 
         return (
-          <li key={product.id || index} className='rounded-2xl border bg-muted/20 p-3'>
+          <li key={product.id || index} className='min-w-0 rounded-2xl border bg-muted/20 p-3'>
             <div className='min-w-0 space-y-1'>
               <div className='flex flex-wrap items-center gap-2'>
                 <p className='break-words font-medium'>{title}</p>
@@ -94,14 +94,14 @@ export function SellerActivityList({ state }: { state: SellerActivityState }) {
   }
 
   return (
-    <ol className='space-y-3'>
+    <ol className='min-w-0 space-y-3'>
       {state.data.items.slice(0, SELLER_ACTIVITY_PREVIEW_SIZE).map((item, index) => {
         const title = getPropertyTitle(item.property);
         const href = getSafeEngagementHref(item.property.engagementId, item.tenantId, state.tenantId);
         const timestamp = nonblank(item.createdAt) ? formatArgentinaActivityTime(item.createdAt) : null;
 
         return (
-          <li key={item.id || index} className='rounded-2xl border bg-muted/20 p-3'>
+          <li key={item.id || index} className='min-w-0 rounded-2xl border bg-muted/20 p-3'>
             <div className='min-w-0 space-y-1'>
               {item.kind === 'movement' ? <MovementContent item={item} /> : <DocumentRequestContent item={item} />}
               <p className='break-words text-sm text-muted-foreground'>
@@ -154,7 +154,7 @@ function DocumentRequestContent({ item }: { item: Extract<ActivityFeedItem, { ki
 function SellerDetailLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
-      className='inline-flex min-h-11 items-center font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+      className='inline-flex min-h-11 min-w-11 items-center break-words font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
       href={href}
     >
       {label}

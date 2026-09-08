@@ -121,10 +121,10 @@ Remaining execution sequence: I3A from fresh `develop` after I2 → I3B from fre
 
 ### I4 — responsive and browser proof
 
-- [ ] RED: add component and one serial seeded seller case requiring semantic headings/list/nav, accessible retry names/disabled retry, visible focus/44px targets, wrapping/no overflow, 1/2/4 fact grids at 320/375/768/1280, real authorized rows and source-order keyboard traversal; run C and targeted Seeded and expect the named assertions to fail. <!-- sdd-owner: implementation -->
-- [ ] GREEN: make only seller section/list accessibility-responsive changes and add the read-only `martin.demo@viewpro.local` proof that waits for real successful `/api/products` and `/api/activity/feed` rows; run C and targeted Seeded successfully. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: verify all four widths with short and permitted display-only long substitutions; intercept only successful real responses and preserve status, rows, IDs, tenant IDs, assignments, counters, kinds/types/times/order/destinations while recording upstream success; run targeted Seeded and Frontend. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: remove test artifacts and retain no screenshots/traces/videos/coverage; run C, Frontend, Protected, targeted and full Seeded, API local-only, OpenSpec, LSP, diff/accounting, recording every pass/skip/blocker and stopping if I4 exceeds 400. <!-- sdd-owner: implementation -->
+- [x] RED: add component and one serial seeded seller case requiring semantic headings/list/nav, accessible retry names/disabled retry, visible focus/44px targets, wrapping/no overflow, 1/2/4 fact grids at 320/375/768/1280, real authorized rows and source-order keyboard traversal; run C and targeted Seeded and expect the named assertions to fail. <!-- sdd-owner: implementation -->
+- [x] GREEN: make only seller section/list accessibility-responsive changes and add the read-only `martin.demo@viewpro.local` proof that waits for real successful `/api/products` and `/api/activity/feed` rows; run C and targeted Seeded successfully. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: verify all four widths with short and permitted display-only long substitutions; intercept only successful real responses and preserve status, rows, IDs, tenant IDs, assignments, counters, kinds/types/times/order/destinations while recording upstream success; run targeted Seeded and Frontend. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: remove test artifacts and retain no screenshots/traces/videos/coverage; run C, Frontend, Protected, targeted and full Seeded, API local-only, OpenSpec, LSP, diff/accounting, recording every pass/skip/blocker and stopping if I4 exceeds 400. <!-- sdd-owner: implementation -->
 
 ## Requirement and scenario traceability
 
