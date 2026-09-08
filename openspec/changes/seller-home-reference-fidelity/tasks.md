@@ -4,11 +4,11 @@
 
 | Field | Value |
 |-------|-------|
-| Estimated changed lines | 1,630–2,105 total; I1A 350–400, I1B 330–390, I1C 150–250, I2 300–390, I3 320–395, I4 180–280 |
+| Estimated changed lines | 1,750–2,330 total; I1A 350–400, I1B 330–390, I1C 150–250, I2 300–390, I3A 190–280, I3B 250–340, I4 180–280 |
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
-| Suggested split | P1 → P2 → P3 → P4 → P5 → I1A → I1B → I1C → I2 → I3 → I4 |
-| Delivery strategy | ask-on-risk resolved to required split |
+| Suggested split | P1 → P2 → P3 → P4 → P5 → I1A → I1B → I1C → I2 → I3A → I3B → I4 |
+| Delivery strategy | ask-on-risk resolved: human accepted the I3 split; no size exception |
 | Chain strategy | stacked-to-main |
 
 Decision needed before apply: No
@@ -71,8 +71,11 @@ All implementation rows have `source: implementation; task: implementation; evid
 | I1B Seller gates/truthful current state | `operational-homepage.tsx`, both seller tests, tasks/progress | I1A → exact role/identity/membership gates and independent current-composition unavailable/retry/refresh rendering; revert this cutover only. | 330–390 |
 | I1C Production tenant-transition proof | `operational-homepage.tsx`, `seller-home.tsx`, both seller tests, tasks/progress | I1B → real container/query-option tenant transition and same-tenant retained proof; revert proof/wiring only. | 150–250 |
 | I2 Reference summary composition | `operational-homepage.tsx` (seller import/cutover only); `operational-homepage.test.tsx` (narrow integration regression); `seller-home.tsx`; new `seller-sections.tsx` (`SellerHomeView`, fact/priority/unavailable sections); `seller-home.test.tsx`; new `seller-sections.test.tsx`; `tests/seeded/demo-smoke.spec.ts` (narrow stale-selector correction only); `openspec/changes/seller-home-reference-fidelity/tasks.md`; `openspec/changes/seller-home-reference-fidelity/apply-progress.md` | State foundation → greeting/facts/priorities and beginning hierarchy; revert pure sections plus narrow cutover. | 300–390 |
-| I3 Bounded content/cutover | `operational-homepage.tsx` (complete seller extraction/import cleanup only); `seller-home.tsx`; `seller-sections.tsx`; new `seller-lists.tsx` (bounded rows); `seller-home.test.tsx`; `seller-sections.test.tsx`; `openspec/changes/seller-home-reference-fidelity/apply-progress.md` | Summary → real bounded lists, safe formatting/links, shortcuts, final seller extraction; revert seller lists/sections and restore prior extracted composition only. | 320–395 |
-| I4 Responsive/browser proof | `seller-sections.tsx`; `seller-lists.tsx`; `seller-sections.test.tsx`; `tests/seeded/demo-smoke.spec.ts`; `apply-progress.md` | Complete seller view → semantic/focus/wrapping/grid polish and one read-only seeded proof; revert proof/polish only. | 180–280 |
+| I3A Seller bounded list presenters | New `seller-lists.tsx`; direct deterministic coverage in `seller-sections.test.tsx` (create a narrower list test only if demonstrably lower-coupling and more readable); `seller-home.tsx` exports/types only if required by those tests; tasks/progress | I2 summary → independently rendered, source-order bounded seller list presenters with no home cutover or shortcuts; revert presenter/tests only. | 190–280 |
+| I3B Seller composition cutover and shortcuts | `operational-homepage.tsx` (seller-owned import/JSX cleanup only); `seller-home.tsx`; `seller-sections.tsx`; `operational-homepage.test.tsx`; `seller-home.test.tsx`; `seller-sections.test.tsx`; tasks/progress | Fresh develop after I3A → composed lists, nav-derived property/follow-up shortcuts, and protected integration evidence; revert cutover/shortcuts only, retaining I3A presenters. | 250–340 |
+| I4 Responsive/browser proof | `seller-sections.tsx`; `seller-lists.tsx`; `seller-sections.test.tsx`; `tests/seeded/demo-smoke.spec.ts`; `apply-progress.md` | I3B complete seller view → semantic/focus/wrapping/grid polish and one read-only seeded proof; revert proof/polish only. | 180–280 |
+
+Remaining execution sequence: I3A from fresh `develop` after I2 → I3B from fresh `develop` after I3A → I4 from fresh `develop` after I3B; each targets `develop` and is measured independently against the 400-line budget.
 
 ### I1A — seller adapters and extraction
 
@@ -102,12 +105,19 @@ All implementation rows have `source: implementation; task: implementation; evid
 - [x] TRIANGULATE: prove usable versus missing identity, product-ready/activity-error versus product-error/activity-ready, and zero-ready versus unavailable; assert no “hoy”, tasks, checkboxes, deadlines, alerts, badges, create/global movement, manager/owner/#306/#327 content, then run C and Protected. <!-- sdd-owner: implementation -->
 - [x] REFACTOR: remove only superseded inline seller summary JSX and preserve one `h1`/ordered semantic regions; run C, Frontend, LSP, diff/accounting, record evidence, and stop if I2 exceeds 400. <!-- sdd-owner: implementation -->
 
-### I3 — bounded content and seller cutover
+### I3A — seller bounded list presenters
 
-- [ ] RED: add list/presenter tests for ≤6 source-order assigned/activity rows, real movement/document distinctions, stored prose/fallbacks, `formatArgentinaActivityTime` ISO `<time>` versus malformed neutral text, valid versus blank/malformed/cross-tenant IDs, and only property/detail/follow-up links; run C and expect the named content/safety assertions to fail. <!-- sdd-owner: implementation -->
-- [ ] GREEN: implement `seller-lists.tsx`, complete extracted seller composition, property/activity empty versus positive-total-empty wording, safe hrefs, Argentina formatting, and policy-derived two shortcuts; run C and BFF successfully. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: contrast optional blank/whitespace/long fields, movement versus document request, valid versus invalid ID/time, success-empty versus error, and confirm no proposal/create/mutation/document-request/global-action/free-text inference; run C, BFF, and Protected. <!-- sdd-owner: implementation -->
-- [ ] REFACTOR: remove only seller-owned dead inline imports/JSX (not shared `lists.tsx`/`primitives.tsx` cleanup), then run C, Frontend, Protected, LSP, diff/accounting, record evidence, and stop if I3 exceeds 400. <!-- sdd-owner: implementation -->
+- [x] RED: add direct deterministic `seller-sections.test.tsx` coverage for the absent `seller-lists.tsx` presenters—≤6 source-order assigned/activity rows, truthful property/activity field fallbacks, movement versus document-request content, safe href and Argentina `<time>` versus malformed neutral text, and success-empty versus error/positive-total-empty copy; create a narrower direct test only when it demonstrably reduces coupling and improves readability; run C and expect the named missing-presenter/content assertion to fail. <!-- sdd-owner: implementation -->
+- [x] GREEN: implement only `seller-lists.tsx` and any test-required seller export/type wiring; render bounded source-order rows, stored-prose/neutral field fallbacks, movement/document distinctions, validated detail hrefs, and safe Argentina time; retain truthful product/activity successful-empty, error, and positive-total-empty states without cutting over `SellerHomeView` or `OperationalHomepage` and without shortcuts; run direct C and BFF successfully. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: contrast blank/whitespace/long optional fields, movement versus document request, valid versus blank/malformed/cross-tenant IDs and times, and each successful-empty/error/positive-total-empty owner state; prove no free-text inference, proposal/create/mutation/document-request/global action, shortcut, or home-composition change; run C, BFF, and Protected. <!-- sdd-owner: implementation -->
+- [x] REFACTOR: retain presenter-only boundaries and direct tests; run C, Frontend, Protected, LSP, diff/accounting, and strict OpenSpec validation, record evidence, and stop if I3A exceeds 400. <!-- sdd-owner: implementation -->
+
+### I3B — seller composition cutover and shortcuts
+
+- [ ] RED: add composition integration regressions in `seller-sections.test.tsx`, `seller-home.test.tsx`, and/or `operational-homepage.test.tsx` for rendering the I3A lists through the seller home, nav-derived property/follow-up shortcuts, exact role and membership/tenant gates, independent products/activity states, and protected manager/owner behavior; run C and Protected and expect the named cutover/shortcut assertion to fail. <!-- sdd-owner: implementation -->
+- [ ] GREEN: from fresh `develop` after I3A, compose `seller-lists.tsx` into the seller home, derive only the existing property/follow-up shortcuts from navigation metadata, and remove only superseded seller-owned inline imports/JSX from `operational-homepage.tsx`; preserve every independent owner state, exact `AGENT` and membership/tenant gates, manager/owner composition, and no global/create action; run C, BFF, and Protected successfully. <!-- sdd-owner: implementation -->
+- [ ] TRIANGULATE: contrast product-ready/activity-error and activity-ready/product-error, refreshing/retained-error, successful-empty/positive-total-empty list states, valid/invalid row destinations, exact `AGENT` against manager/owner/unknown/mismatched-tenant cases, and nav-derived shortcuts against forbidden actions; run C, BFF, and Protected. <!-- sdd-owner: implementation -->
+- [ ] REFACTOR: remove only seller-owned dead inline imports/JSX, not shared `lists.tsx`/`primitives.tsx` cleanup; rerun C, Frontend, Protected, LSP, diff/accounting, and strict OpenSpec validation, record evidence, and stop if I3B exceeds 400. <!-- sdd-owner: implementation -->
 
 ### I4 — responsive and browser proof
 
@@ -132,21 +142,21 @@ All implementation rows have `source: implementation; task: implementation; evid
 | R4.1 two rows | I2 exact `<ul>/<li>` count test |
 | R4.2 truthful zero priorities | I2 zero-ready contrast |
 | R4.3 activity failure priorities | I1B activity error; I2 local recovery |
-| R5.1 real assigned preview | I3 bounds/field-fallback test |
-| R5.2 permitted source activity | I3 kind/order/bound test |
-| R5.3 successful empties | I3 product/activity empty contrast |
-| R5.4 prose/malformed time | I3 no-inference/no-`time` contrast |
+| R5.1 real assigned preview | I3A bounds/field-fallback presenter test; I3B composition integration |
+| R5.2 permitted source activity | I3A kind/order/bound presenter test; I3B composition integration |
+| R5.3 successful empties | I3A product/activity successful-empty versus error/positive-total-empty contrast; I3B composition integration |
+| R5.4 prose/malformed time | I3A no-inference/no-`time` presenter contrast |
 | R6.1 product initial loading | I1A loading adapter; I1B current composition |
-| R6.2 both successful empty | I1A ready-zero; I3 empty copy test |
+| R6.2 both successful empty | I1A ready-zero; I3A empty-copy presenter test; I3B composition integration |
 | R6.3 product local failure | I1B product-error/activity-ready test |
 | R6.4 activity local failure | I1B activity-error/product-ready test |
 | R6.5 local retry | I1A callback; I1B one-query current-composition retry |
 | R6.6 retained refresh | I1A adapter; I1B current-composition contrast; I1C production container proof |
 | R6.7 tenant transition | I1C production `SellerOperationalHomepage` A→B race proof |
-| R7.1 authorized destinations | I3 shortcut/valid-link test; I4 real seed |
-| R7.2 invalid identity | I3 fail-closed link test |
-| R7.3 contextual movement only | I3 absence plus existing detail regression |
-| R7.4 forbidden populated home | I2/I3 complete forbidden-content matrix |
+| R7.1 authorized destinations | I3A valid-row-link test; I3B nav-derived shortcut/composition integration; I4 real seed |
+| R7.2 invalid identity | I3A fail-closed link presenter test; I3B composition integration |
+| R7.3 contextual movement only | I3B forbidden-action composition regression plus existing detail regression |
+| R7.4 forbidden populated home | I2/I3B complete forbidden-content matrix |
 | R8.1 keyboard/focus | I4 focus-order/accessible-name proof |
 | R8.2 long responsive content | I4 four-width wrapping/overflow proof |
 | R8.3 non-color meaning | I2/I4 visible-label/state assertions |
