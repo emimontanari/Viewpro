@@ -56,6 +56,7 @@ The seller home MUST present only these four supported facts and MUST preserve t
 - Movements in the last 24 hours MUST mean movement records, excluding document-request activity, created on visible active engagements during the rolling interval `[now − 24 hours, now)`; it MUST NOT be labeled or implied as calendar-day “today,” calls, visits, contacts, or all activity.
 - Require follow-up MUST mean visible active engagements whose latest movement, without a time-window restriction, is an inquiry, completed visit, or received offer and whose next step is null or blank after trimming; it MUST NOT be presented as a general alert, task, overdue-work, or inbox count.
 - No movements in the last 7 days MUST mean visible active engagements with no movement during `[now − 7 days, now)`; document-request activity MUST NOT reset that meaning, and the fact MUST NOT be presented as calendar-day inactivity or a task count.
+- Temporal helper text for both rolling windows MUST identify `America/Argentina/Buenos_Aires`, and item timestamps MUST use `es-AR` formatting in that zone.
 
 A fact MUST be unavailable when its owning successful result is unavailable; values from the other seller data group MUST NOT fill, infer, default, or conceal it.
 
