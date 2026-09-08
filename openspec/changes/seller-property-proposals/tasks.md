@@ -177,8 +177,8 @@ Manifest: `apps/api/src/property-proposals/responses/property-proposal.response.
 
 Manifest: approval use-case quota changes, `helpers/approval-lock-order.ts`, `approve-property-proposal.quota.spec.ts`.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR proposer eligibility, protected final-slot quota behavior, retry after restored capacity, and atomic rollback with stable public outcomes. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest quota spec and API typecheck; restore limits, close transactions, and remove assets in `finally`. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR proposer eligibility, protected final-slot quota behavior, retry after restored capacity, and atomic rollback with stable public outcomes. <!-- sdd-owner: implementation -->
+- [x] Run the manifest quota spec and API typecheck; restore limits, close transactions, and remove assets in `finally`. <!-- sdd-owner: implementation -->
 
 ### U11B — Approval replay and race proof (S30, S33)
 
