@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ComponentType, ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MovementOutcomeCombobox } from './movement-outcome-combobox';
 
@@ -126,4 +126,39 @@ describe('MovementOutcomeCombobox', () => {
 
     expect(onChange).toHaveBeenCalledWith(expect.stringContaining('EN_CAPTACION'));
   });
+
+  it('commits a created label before reporting that creation settled', async () => {
+    const user = userEvent.setup();
+    const creation = deferred<Response>();
+    const events: string[] = [];
+    const ComboboxWithPending = MovementOutcomeCombobox as ComponentType<
+      ComponentProps<typeof MovementOutcomeCombobox> & { onCreatePendingChange: (pending: boolean) => void }
+    >;
+    vi.stubGlobal('fetch', vi.fn((_input, init?: RequestInit) =>
+      init?.method === 'POST' ? creation.promise : Promise.resolve(new Response(JSON.stringify([]), { status: 200 }))
+    ));
+    render(
+      <ComboboxWithPending
+        canCreateLabel
+        onChange={(value) => events.push(`selected:${value}`)}
+        onCreatePendingChange={(pending) => events.push(`pending:${pending}`)}
+        value={null}
+      />,
+      { wrapper: Wrapper }
+    );
+
+    await user.click(screen.getByRole('combobox', { name: /resultado del movimiento/i }));
+    await user.click(screen.getByText(/\+ Agregar etiqueta/i));
+    await user.type(screen.getByLabelText('Nombre'), 'Etiqueta creada');
+    await user.click(screen.getByRole('button', { name: /Crear etiqueta/i }));
+    await waitFor(() => expect(events).toEqual(['pending:true']));
+
+    creation.resolve(new Response(JSON.stringify({ id: 'label-1', label: 'Etiqueta creada', color: null }), { status: 201 }));
+    await waitFor(() => expect(events).toEqual(['pending:true', 'selected:custom:label-1', 'pending:false']));
+  });
 });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  return { promise: new Promise<T>((done) => { resolve = done; }), resolve };
+}

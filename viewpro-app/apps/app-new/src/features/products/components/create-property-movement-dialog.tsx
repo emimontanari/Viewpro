@@ -66,6 +66,7 @@ export function CreatePropertyMovementDialog({
 }) {
   const [values, setValues] = useState<CreateProductMovementDialogState>(INITIAL_VALUES);
   const [errors, setErrors] = useState<MovementFormErrors>({});
+  const [isCreatingOutcomeLabel, setIsCreatingOutcomeLabel] = useState(false);
   const observationLength = values.observation.length;
   const nextStepLength = values.nextStep.length;
 
@@ -73,11 +74,13 @@ export function CreatePropertyMovementDialog({
     if (!open) {
       setValues(INITIAL_VALUES);
       setErrors({});
+      setIsCreatingOutcomeLabel(false);
     }
   }, [open]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isCreatingOutcomeLabel) return;
 
     const parsed = createProductMovementSchema.safeParse({
       newStatus:
@@ -147,6 +150,7 @@ export function CreatePropertyMovementDialog({
               onChange={(encoded) => setValues((current) => ({ ...current, outcome: encoded }))}
               canCreateLabel={canCreateLabel}
               disabled={isSubmitting}
+              onCreatePendingChange={setIsCreatingOutcomeLabel}
             />
             <FieldDescription>
               Opcional: etiquetá el resultado de esta actualización.
@@ -245,7 +249,7 @@ export function CreatePropertyMovementDialog({
           <Button
             type='submit'
             form='create-property-movement-form'
-            disabled={isSubmitting}
+            disabled={isSubmitting || isCreatingOutcomeLabel}
             isLoading={isSubmitting}
           >
             Guardar actualización

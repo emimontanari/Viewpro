@@ -42,6 +42,7 @@ type Props = {
   onChange: (value: string | null) => void;
   canCreateLabel: boolean;
   disabled?: boolean;
+  onCreatePendingChange?: (pending: boolean) => void;
 };
 
 /**
@@ -57,7 +58,13 @@ type Props = {
  *   - aria-expanded reflects open state
  *   - focus trap and keyboard nav are handled by Radix Popover + list role
  */
-export function MovementOutcomeCombobox({ value, onChange, canCreateLabel, disabled }: Props) {
+export function MovementOutcomeCombobox({
+  value,
+  onChange,
+  canCreateLabel,
+  disabled,
+  onCreatePendingChange
+}: Props) {
   const [open, setOpen] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const addLabelButtonRef = useRef<HTMLButtonElement>(null);
@@ -74,6 +81,7 @@ export function MovementOutcomeCombobox({ value, onChange, canCreateLabel, disab
     setOpen(nextOpen);
     if (!nextOpen) {
       setShowCreateForm(false);
+      onCreatePendingChange?.(false);
     }
   }
 
@@ -193,9 +201,11 @@ export function MovementOutcomeCombobox({ value, onChange, canCreateLabel, disab
                   }}
                   onCancel={() => {
                     setShowCreateForm(false);
+                    onCreatePendingChange?.(false);
                     // Return focus to the trigger button on close.
                     addLabelButtonRef.current?.focus();
                   }}
+                  onPendingChange={(pending) => onCreatePendingChange?.(pending)}
                 />
               ) : (
                 <button

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { type FormEvent } from 'react';
+import { type FormEvent, useEffect, useRef } from 'react';
 import { createMovementOutcomeLabel } from '../api/service';
 import type { MovementOutcomeLabelDto } from '../api/types';
 import { movementOutcomeLabelsKeys } from '../api/queries';
@@ -12,6 +12,7 @@ import { movementOutcomeLabelsKeys } from '../api/queries';
 type Props = {
   onCreated: (label: MovementOutcomeLabelDto) => void;
   onCancel: () => void;
+  onPendingChange: (pending: boolean) => void;
   cancelRef?: React.RefObject<HTMLElement | null>;
 };
 
@@ -23,33 +24,52 @@ type Props = {
  * On collision (idempotent 200): dedupes by id before updating cache.
  * On error: keeps the form open with an error message.
  */
-export function MovementOutcomeCreateLabelForm({ onCreated, onCancel, cancelRef }: Props) {
+export function MovementOutcomeCreateLabelForm({ onCreated, onCancel, onPendingChange, cancelRef }: Props) {
   const queryClient = useQueryClient();
+  const mountedRef = useRef(false);
+  const operationRef = useRef(0);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      operationRef.current += 1;
+    };
+  }, []);
 
   const mutation = useMutation({
-    mutationFn: (data: { label: string; color?: string }) =>
-      createMovementOutcomeLabel(data),
-    onSuccess: (newLabel) => {
-      // Push into the active-only list cache, deduping by id.
-      const queryKey = movementOutcomeLabelsKeys.list({ activeOnly: true });
-      queryClient.setQueryData<MovementOutcomeLabelDto[]>(queryKey, (prev) => {
-        const existing = prev ?? [];
-        const alreadyPresent = existing.some((l) => l.id === newLabel.id);
-        return alreadyPresent ? existing : [...existing, newLabel];
-      });
-      // Invalidate to re-fetch from server.
-      void queryClient.invalidateQueries({ queryKey: movementOutcomeLabelsKeys.all });
-      onCreated(newLabel);
-    }
+    mutationFn: (data: { label: string; color?: string }) => createMovementOutcomeLabel(data)
   });
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    event.stopPropagation();
     const data = new FormData(event.currentTarget);
     const label = (data.get('label') as string | null)?.trim() ?? '';
     const colorRaw = (data.get('color') as string | null)?.trim() ?? '';
     const color = colorRaw || undefined;
-    mutation.mutate({ label, color });
+    const operation = operationRef.current + 1;
+    operationRef.current = operation;
+    onPendingChange(true);
+    mutation.mutate(
+      { label, color },
+      {
+        onError: () => {
+          if (mountedRef.current && operationRef.current === operation) onPendingChange(false);
+        },
+        onSuccess: (newLabel) => {
+          if (!mountedRef.current || operationRef.current !== operation) return;
+          const queryKey = movementOutcomeLabelsKeys.list({ activeOnly: true });
+          queryClient.setQueryData<MovementOutcomeLabelDto[]>(queryKey, (prev) => {
+            const existing = prev ?? [];
+            return existing.some((item) => item.id === newLabel.id) ? existing : [...existing, newLabel];
+          });
+          void queryClient.invalidateQueries({ queryKey: movementOutcomeLabelsKeys.all });
+          onCreated(newLabel);
+          onPendingChange(false);
+        }
+      }
+    );
   }
 
   return (

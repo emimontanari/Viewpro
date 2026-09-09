@@ -915,6 +915,7 @@ test('seller can create movements with outcomes and chip appears in feed (FR-11 
   await page.getByLabel('Nombre').fill('Smoke test label');
   await page.getByLabel(/Color de la etiqueta/i).fill('#10B981');
   await page.getByRole('button', { name: /Crear etiqueta/i }).click();
+  await expect(page.getByRole('combobox', { name: /resultado del movimiento/i })).toContainText('Smoke test label');
 
   // Fill observation for the second movement.
   await page.getByLabel('Observación').fill('Segundo movimiento con etiqueta personalizada de smoke test.');

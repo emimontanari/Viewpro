@@ -1,0 +1,21 @@
+# Exploration — movement-label-save-race
+- Context: approved Issue #585; worktree is based on `develop@41ab8007`; this slice is separate from DTO #583.
+- Evidence: label `POST` returns 200, then movement `POST` returns 201 only 126 ms later without `outcome`; the outer form can submit before the inline mutation selects its returned label.
+- Cause: `MovementOutcomeCreateLabelForm` owns `mutation.isPending`; neither `MovementOutcomeCombobox` nor `CreatePropertyMovementDialog` receives it, so only inline controls are gated.
+- Existing callback resolution: no pending-state callback exists; only `onCreated` and `onCancel` exist, so add a narrow instance-scoped pending callback rather than global/query-cache coupling.
+- Behavior: while inline label creation is pending, disable `Guardar actualización` and make the outer form submit handler return without calling `onSubmit`.
+- Behavior: on 200/201 label success, publish the encoded custom-label selection before clearing pending; the next allowed movement submit must include `{ customLabelId }`.
+- Behavior: on label failure, keep the inline form open, show its existing mutation error, clear only pending, and permit retry/cancel or an outcome-less movement save.
+- Race safety: use mounted/operation guards and per-dialog state; reset pending when the combobox/dialog closes so late completions cannot select labels or strand disabled state after unmount.
+- Non-goals: no API/DTO/schema changes, timeout increases, label-management redesign, database work, installs, or edits to seller-property-proposals/seller-home.
+- Source allowlist: `movement-outcome-create-label-form.tsx`, `movement-outcome-combobox.tsx`, `create-property-movement-dialog.tsx`.
+- Unit-test allowlist: `movement-outcome-combobox.test.tsx`, `create-property-movement-dialog.test.tsx`; cover deferred success, blocked button+submit, selected id after resolution, failure recovery, and stale/unmount isolation.
+- E2E allowlist: `tests/seeded/demo-smoke.spec.ts`; after clicking `Crear etiqueta`, explicitly await the selected label on the outcome combobox before saving, with existing Playwright defaults.
+- Seeded helper: reuse `tests/seeded/_helpers.ts#getJson` for the status invariant; use `page.waitForResponse` locally only if response evidence is needed, matching existing seeded patterns.
+- Acceptance: a save attempt during pending emits no movement request; successful creation yields exactly one movement request containing the returned label id; failure yields no implicit selection and remains recoverable.
+- Acceptance: closing/unmounting or rendering separate dialog instances cannot let one label mutation clear/set another instance's pending or selected state.
+- Error handling: preserve the current API error message in `FieldError`; do not swallow failures, auto-save, retry automatically, or increase timeouts.
+- Forecast: source 45–70 lines, unit tests 90–125, seeded E2E 5–12, proposal/spec/design/tasks/apply-progress 145–174, this exploration 19; total 304–400 lines.
+- Delivery gate: keep artifacts concise; if the concrete plan reaches >400 changed lines, pause under `ask-on-risk` rather than splitting prematurely or claiming an exception.
+- Local checks (no install/DB/publication): `pnpm --filter next-shadcn-dashboard-starter test -- create-property-movement-dialog.test.tsx movement-outcome-combobox.test.tsx`; `pnpm --filter next-shadcn-dashboard-starter lint:strict`; `pnpm --filter next-shadcn-dashboard-starter typecheck`.
+- Seeded check when the existing local stack/seed is already available: `pnpm --filter next-shadcn-dashboard-starter test:seeded -- --grep "seller can create movements with outcomes"`; otherwise record it as skipped, never provision DB here.
