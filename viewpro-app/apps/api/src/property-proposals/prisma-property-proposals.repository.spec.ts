@@ -26,6 +26,10 @@ function makeRepository() {
       count: vi.fn().mockResolvedValue(1),
       findFirst: vi.fn().mockResolvedValue(proposal),
     },
+    user: { findUnique: vi.fn().mockResolvedValue(null) },
+    propertyProposalReviewRound: { findMany: vi.fn().mockResolvedValue([]) },
+    propertyEngagement: { findMany: vi.fn().mockResolvedValue([]) },
+    propertyAgent: { findMany: vi.fn().mockResolvedValue([]) },
   }
   return { prisma, repository: new PrismaPropertyProposalsRepository(prisma as never) }
 }
