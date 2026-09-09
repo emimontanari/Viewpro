@@ -1142,3 +1142,39 @@ delivery: auto-chain / stacked-to-develop; U13B2 only, under 400 lines
 - **Verification:** local `db:generate` passed; the exact five-file no-global-setup fallback passed **86/86** twice; API typecheck and lint passed.
 - **Cleanup:** temporary config and generated/dependency/build/cache residue were removed; no database was contacted.
 - **Arithmetic:** 285 tracked additions + 18 deletions + 31 untracked lines = **334** physical changed lines, below 400.
+
+## U13C1 seller controller contract and first mount
+
+### Status consumed
+
+```yaml
+schemaName: spec-driven
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+nextRecommended: apply
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u13c-endpoints
+  allowedEditRoots: parent-supplied U13C1 controller, module, AppModule, and OpenSpec paths
+  warnings: []
+delivery: auto-chain / stacked-to-develop; U13C1 only, under 400 lines
+```
+
+- **Completed:** added only the five seller routes (`POST /`, `GET /`, `GET /:proposalId`, `PATCH /:proposalId`, `POST /:proposalId/submit`) with the exact class guard order and seller permission. Create/update/submit use their mutation result ID only to reread through `GetPropertyProposalUseCase`; list/detail call safe read use cases directly.
+- **Files/mount:** added `property-proposals.controller.ts` and its spec; updated `property-proposals.module.ts`, `app.module.ts`, `tasks.md`, `task-delivery-plan.md`, and this progress artifact. `PropertyProposalsModule` now imports `AuthModule`, `PermissionsModule`, and `TenantContextModule`, registers the controller while preserving providers/exports, and `AppModule` imports the module once without another `DatabaseModule` mount.
+- **Persisted tasks:** only the two U13C1 implementation rows are visibly `- [x]`; U13C2 and aggregate U13C/U13 rows remain `- [ ]`. No E2E, reviewer, approval/rejection, BFF, UI, schema, or database work occurred.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| U13C1 controller contract/mount | Unit metadata and direct wiring | New controller/spec | Controller import failed before production code; normal runner was blocked by local PostgreSQL `P1001`. | Temporary no-global-setup unit run passed 3/3 after the controller and mount. | Removing a guard, changing permission, returning a raw create result, changing submit to 201, and adding withdraw each failed; restored. | Type-only DTO-to-use-case parameter assertions keep the controller boundary explicit; focused run stayed green. |
+
+### Verification and remaining work
+
+- PASS — focused temporary no-global-setup controller spec: 3/3, repeated twice after GREEN; this pure unit fallback was used only after two normal focused commands stopped in global Prisma setup with local `P1001` before collection.
+- PASS — `pnpm --filter @viewpro/contracts build && pnpm --filter @viewpro/api typecheck && pnpm --filter @viewpro/api lint`.
+- BLOCKED INFRASTRUCTURE — normal focused Vitest invoked `prisma migrate deploy` and could not reach local PostgreSQL; no database was connected or seeded.
+- Remaining exact U13C rows: `- [ ] U13C2: RED → GREEN → TRIANGULATE → REFACTOR HTTP transport integration for permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, and current-role checks. <!-- sdd-owner: implementation -->`; `- [ ] U13C2: Run controller/E2E transport evidence and API typecheck; clean seeded rows/assets in finally. <!-- sdd-owner: implementation -->`; aggregate U13C/U13 rows remain unchecked.
+- Workload boundary: U13C1 is **271 additions + 2 deletions = 273 physical changed lines**, under 400; U13C2 owns HTTP/E2E transport integration. Temporary config, dependencies, generated contract/build output, caches, reports, uploads, and `*.tsbuildinfo` were removed while `.gitkeep` was retained. No design deviation, commit, push, PR, merge, review, receipt, or lifecycle action occurred.

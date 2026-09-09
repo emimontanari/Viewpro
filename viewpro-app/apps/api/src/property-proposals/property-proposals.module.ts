@@ -1,4 +1,8 @@
 import { Module } from '@nestjs/common'
+import { AuthModule } from '../auth/auth.module'
+import { PermissionsModule } from '../permissions/permissions.module'
+import { TenantContextModule } from '../tenant-context/tenant-context.module'
+import { PropertyProposalsController } from './property-proposals.controller'
 import { PrismaPropertyProposalsRepository } from './prisma-property-proposals.repository'
 import { PROPERTY_PROPOSALS_REPOSITORY } from './property-proposals.repository'
 import { CreatePropertyProposalUseCase } from './use-cases/create-property-proposal.use-case'
@@ -16,6 +20,8 @@ const propertyProposalUseCases = [
 ]
 
 @Module({
+  imports: [AuthModule, PermissionsModule, TenantContextModule],
+  controllers: [PropertyProposalsController],
   providers: [
     { provide: PROPERTY_PROPOSALS_REPOSITORY, useClass: PrismaPropertyProposalsRepository },
     ...propertyProposalUseCases,
