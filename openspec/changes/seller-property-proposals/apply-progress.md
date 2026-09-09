@@ -1081,3 +1081,64 @@ delivery: auto-chain / stacked-to-develop; U12 correction only; current candidat
 
 - **Verification:** guarded normal focus stopped in global Prisma migration setup at local PostgreSQL `P1001`, so no database was provisioned. The temporary no-global-setup focus passed 32/32 twice; forced API Turbo typecheck passed 6/6; API lint passed. Offline frozen install and local Prisma generation were used; cleanup removes dependency/generated/build/cache residue.
 - **Boundary/risk:** no controller/module/endpoint, detail/history, schema, BFF, UI, or U14 work occurred. Final arithmetic is 184 tracked additions + 9 deletions + 104 untracked test lines = **297 changed lines**, under 400 without an exception; the resolved list contract is in `explore-u13-api.md`. Remaining exact rows include `- [ ] U13B: Resolve the current-round/history public-field contract, then RED → GREEN → TRIANGULATE → REFACTOR safe seller read shaping and fresh current visibility without controller or module mounting. <!-- sdd-owner: implementation -->` and `- [ ] U13B2: Resolve seller detail/history shaping and retain equivalent fresh visibility without changing U13B1 list summaries. <!-- sdd-owner: implementation -->`. No commit, push, PR, review, receipt, or lifecycle action occurred.
+
+## U13B2 seller detail/history shaping
+
+### Status consumed
+
+```yaml
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+nextRecommended: apply
+workUnit: U13B2
+base: d39bb9a3
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u13b2-detail
+  allowedEditRoots: parent-supplied U13B2 source/test and OpenSpec paths
+  warnings: []
+delivery: auto-chain / stacked-to-develop; U13B2 only, under 400 lines
+```
+
+- **Resolved contract:** seller detail returns literal proposal staged fields, optional `currentReviewRoundId`, and newest-first immutable `history`. Each history entry contains its ID, round number, submitted date, snapshot, submitter `{ id, firstName, lastName }`, and either `decision: null` or outcome, decided date, nullable rejection reason, and reviewer `{ id, firstName, lastName }`. No email, status, membership, tenant ID, or raw relation is emitted.
+- **Completed:** tenant-plus-proposer detail reads now return the identical coded `PROPERTY_PROPOSAL_NOT_FOUND` 404 for absence. The repository batches rounds, decisions, participating users, source engagements, and assignments, then uses the fresh C9A visibility resolver; it does not change U13B1 list summaries.
+- **Persisted completion:** the two aggregate U13B rows and U13B2 row are visibly `[x]` in `tasks.md`. Aggregate U13, U13C, and every parent-owned lifecycle row remain unchecked and unchanged.
+
+### TDD Cycle Evidence
+
+| Task | Safety net / RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|
+| U13B2 detail/history | Normal focused runner was blocked before collection by local PostgreSQL `P1001`; the no-global-setup fallback then produced 6 failures: missing detail mapper/repository method and legacy raw detail path. | Focused repository/use-case/transport/C9A suite passed 83/83. | Reversing newest-first round order failed 1/2; copying the raw submitter failed 1/6. Existing C9A cross-tenant/untrusted relation and null-decision cases ran in both focused passes. | Kept explicit public-person literals and batched reads; no further refactor was needed. |
+
+### Verification and cleanup
+
+- PASS — no-global-setup focused command for seller read/detail, transport, repository regression, and C9A: 5 files / 83 tests; repeated: 5 files / 83 tests.
+- PASS — `pnpm --filter @viewpro/contracts build && pnpm --filter @viewpro/api typecheck && pnpm --filter @viewpro/api lint`.
+- BLOCKED INFRASTRUCTURE — the normal focused Vitest command invoked global Prisma migration setup and failed `P1001` before collection; no database was provisioned. The pure fallback was meaningful because all selected tests use mocks and the C9A resolver is pure.
+- Removed the temporary fallback config. No fixtures, database connections, controller/module/endpoint, schema, BFF/UI, U14, commit, push, PR, review, receipt, or lifecycle action occurred.
+
+### Workload and remaining work
+
+- Current source/test delta is 201 tracked additions + 14 deletions plus 31 untracked test lines. The full candidate is 248 tracked additions + 17 deletions plus 31 untracked lines = 296 physical changed lines, below the 400-line U13B2 boundary. No design deviation or size exception was used.
+- Remaining exact unchecked implementation rows begin:
+  - [ ] U13C: RED → GREEN → TRIANGULATE → REFACTOR seller routes, permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, current-role checks, and absent withdraw/delete/image routes; mount only here. <!-- sdd-owner: implementation -->
+  - [ ] U13C: Run the approved controller/E2E transport tests and API typecheck; clean seeded rows/assets in `finally`. <!-- sdd-owner: implementation -->
+- Deferred lifecycle actions are all parent-owned task rows, preserved byte-for-byte. `next_recommended: parent-lifecycle`.
+
+## U13B2 d9e7 bounded correction
+
+- **Status:** parent exact `seller-property-proposals/runtime proceed1afa`; remediation `d9e7`; OpenSpec target and listed edit roots only; no ambient status used.
+- **Corrections:** detail port is required and the use case has no raw fallback; snapshot reuse normalizes the explicit staged-field allowlist; C9A receives the loaded source ID; history actors require tenant membership.
+- **TDD:** RED was 2/40 failures (snapshot and actor predicate); GREEN was 40/40. Raw-reader, snapshot-spread, source-ID substitution, and actor-scope mutants failed (4/4, 1/6, 1/5, 1/5) and were restored.
+- **Verification:** normal runner first stopped before collection at local PostgreSQL `P1001`; meaningful no-global-setup focused runs passed 40/40 twice; typecheck and lint passed.
+- **Superseded blocker:** the five-file fallback had one legacy raw-reader fake outside the former roots; the parent expanded that root and adapted it to the required safe-detail port, after which the 86-test fallback passed twice.
+- **Tasks/cleanup:** existing U13B2 checkbox remains `[x]`; `tasks.md` was not edited. The temporary fallback config was removed; no DB, Git, review, or lifecycle action occurred.
+
+## U13B2 d9e7 verification closure
+
+- **Status:** parent expanded only the legacy repository spec root; no ambient status was used.
+- **Parent adaptation:** its safe-detail fake returns a shaped detail and asserts `findDetailForSeller`; no source behavior or task state changed here.
+- **Verification:** local `db:generate` passed; the exact five-file no-global-setup fallback passed **86/86** twice; API typecheck and lint passed.
+- **Cleanup:** temporary config and generated/dependency/build/cache residue were removed; no database was contacted.
+- **Arithmetic:** 285 tracked additions + 18 deletions + 31 untracked lines = **334** physical changed lines, below 400.
