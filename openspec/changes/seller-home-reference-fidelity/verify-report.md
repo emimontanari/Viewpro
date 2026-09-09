@@ -1,3 +1,19 @@
+```yaml
+schema: gentle-ai.verify-result/v1
+evidence_revision: sha256:dee95bac29af88a1b8727fa4fefdbdbe8da39d839c5acbc09968c9f1f242869e
+verdict: pass
+blockers: 0
+critical_findings: 0
+requirements: 9/9
+scenarios: 34/34
+test_command: "pnpm --filter next-shadcn-dashboard-starter test"
+test_exit_code: 0
+test_output_hash: sha256:6eb986eb66b6ca830ca3719e867a22633b006e512d37c0b7b47085bf52ac9b3e
+build_command: "pnpm --filter next-shadcn-dashboard-starter typecheck && pnpm --filter next-shadcn-dashboard-starter lint:strict"
+build_exit_code: 0
+build_output_hash: sha256:1ea88ab5dfb48921bb548423a63dadc8400872106e22c405f1f5a2d05de784d6
+```
+
 # Verification Report: Seller Home Reference Fidelity
 
 **Final disposition:** PASS
@@ -11,6 +27,13 @@
 - Independent verifier: contracts build; focused seller C **30**; BFF **13**; Protected **47**; frontend **810 tests / 120 files**; app typecheck and strict lint; API local validation, typecheck, and **1,732 tests / 168 files**; clean status and diffcheck.
 - Command worker: repository Docker PostgreSQL only, with `DATABASE_URL` and `DIRECT_URL` explicitly set to `postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro`; `db:generate`, `db:validate`, and migrate deploy passed. All **32 migrations** were applied; none were pending. Strict OpenSpec validation passed. CI fresh-server Martín browser proof passed **1/1** on **3052/3152**; full seeded suite passed **35/35** on **3053/3153**. Generated artifacts were removed and the final tree was clean.
 - Parent diagnostics: the final I4 changed TS/TSX files had **0** LSP diagnostics; every individual implementation slice also had **0** primary diagnostics.
+
+## Envelope digest basis
+
+- `evidence_revision` is the SHA-256 of the exact pre-envelope `verify-report.md` bytes merged at HEAD `602a1c7766f955248984c0cf9bacdb0359a16789`.
+- `test_output_hash` is the SHA-256 of the newline-terminated retained summary `PASS: 810 tests in 120 files`; raw command stdout was not retained and is not claimed.
+- `build_output_hash` is the SHA-256 of the newline-terminated retained summary `PASS: app typecheck and strict lint`; raw command stdout was not retained and is not claimed.
+- The complete independent target evidence and all additional exact counts remain recorded below; this envelope does not relabel GREEN-on-arrival probes as RED or claim new implementation execution.
 
 ## Requirement and scenario results
 
