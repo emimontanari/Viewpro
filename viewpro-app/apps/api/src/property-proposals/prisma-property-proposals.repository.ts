@@ -13,6 +13,7 @@ import {
   buildReviewerSqlPredicate, buildReviewerWhere, normalizeReviewerRead,
   type PropertyProposalReviewFilters,
 } from './review-filter-builder'
+import { mapPropertyProposalResultLink, resolveCanonicalEngagementId } from './responses/property-proposal.response'
 import { PrismaService } from '../database/prisma.service'
 import type {
   CreatePropertyProposalDraftInput,
@@ -22,6 +23,7 @@ import type {
   UpdatePropertyProposalResult,
   ReviewerPropertyProposalsPage,
   SellerPropertyProposalsPage,
+  SellerPropertyProposalSummariesPage,
   SubmitPropertyProposalInput,
   SubmitPropertyProposalResult,
 } from './property-proposals.repository'
@@ -170,6 +172,77 @@ export class PrismaPropertyProposalsRepository implements PropertyProposalsRepos
       this.prisma.propertyProposal.count({ where }),
     ])
     return { items, total }
+  }
+
+  async listSummariesForSeller(input: {
+    tenantId: string
+    proposedByUserId: string
+    page: number
+    pageSize: number
+  }): Promise<SellerPropertyProposalSummariesPage> {
+    const page = await this.listForSeller(input)
+    const proposalIds = page.items.map(({ id }) => id)
+    if (proposalIds.length === 0) return { items: [], total: page.total }
+
+    const [viewer, rounds, engagements] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: input.proposedByUserId },
+        select: {
+          id: true,
+          status: true,
+          memberships: {
+            where: { tenantId: input.tenantId },
+            select: { userId: true, tenantId: true, status: true, role: true },
+          },
+        },
+      }),
+      this.prisma.propertyProposalReviewRound.findMany({
+        where: { tenantId: input.tenantId, proposalId: { in: proposalIds } },
+        orderBy: [{ proposalId: 'asc' }, { roundNumber: 'desc' }],
+        select: { id: true, proposalId: true },
+      }),
+      this.prisma.propertyEngagement.findMany({
+        where: { tenantId: input.tenantId, sourceProposalId: { in: proposalIds } },
+        select: { id: true, tenantId: true, sourceProposalId: true },
+      }),
+    ])
+    const assignments = await this.prisma.propertyAgent.findMany({
+      where: {
+        tenantId: input.tenantId,
+        agentUserId: input.proposedByUserId,
+        propertyEngagementId: { in: engagements.map(({ id }) => id) },
+      },
+      select: { tenantId: true, propertyEngagementId: true, agentUserId: true },
+    })
+    const roundByProposalId = new Map<string, string>()
+    for (const round of rounds) {
+      if (!roundByProposalId.has(round.proposalId)) roundByProposalId.set(round.proposalId, round.id)
+    }
+    const engagementByProposalId = new Map<string, { id: string; tenantId: string; sourceProposalId: string }>()
+    for (const engagement of engagements) {
+      if (engagement.sourceProposalId) engagementByProposalId.set(engagement.sourceProposalId, engagement as typeof engagement & { sourceProposalId: string })
+    }
+    const membership = viewer?.memberships[0]
+    const visibilityAssignments = assignments.map((assignment) => ({
+      tenantId: assignment.tenantId,
+      engagementId: assignment.propertyEngagementId,
+      agentUserId: assignment.agentUserId,
+    }))
+
+    return {
+      total: page.total,
+      items: page.items.map((proposal) => ({
+        proposal,
+        currentReviewRoundId: roundByProposalId.get(proposal.id),
+        resultLink: mapPropertyProposalResultLink(resolveCanonicalEngagementId({
+          proposal,
+          canonicalEngagement: engagementByProposalId.get(proposal.id),
+          viewer: viewer ?? undefined,
+          membership,
+          assignments: visibilityAssignments,
+        })),
+      })),
+    }
   }
 
   findForSeller(input: {

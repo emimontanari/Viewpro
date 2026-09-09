@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mapPropertyProposalTransport } from './property-proposal.transport'
+import { mapPropertyProposalSummaryTransport, mapPropertyProposalTransport } from './property-proposal.transport'
 
 const createdAt = new Date('2026-09-14T10:00:00.000Z')
 const updatedAt = new Date('2026-09-15T11:00:00.000Z')
@@ -72,6 +72,17 @@ describe('property proposal transport projection', () => {
       createdAt,
       updatedAt,
     })
+  })
+
+  it('maps a list summary through the literal allowlist and omits unauthorized fields', () => {
+    expect(mapPropertyProposalSummaryTransport(proposal(), 'round-1', {
+      canonicalEngagementId: 'engagement-1',
+    })).toEqual({
+      id: 'proposal-1', state: 'EN_REVISION', version: 2, title: 'Casa del parque',
+      currentReviewRoundId: 'round-1', canonicalEngagementId: 'engagement-1',
+      latestSubmittedAt, createdAt, updatedAt,
+    })
+    expect(mapPropertyProposalSummaryTransport(proposal(), undefined, {})).not.toHaveProperty('canonicalEngagementId')
   })
 
   it('copies only an already-authorized canonical result ID and omits it when absent', () => {

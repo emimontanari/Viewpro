@@ -4,11 +4,16 @@ import type { TenantContext } from '../../tenant-context/tenant-context.types'
 import {
   PROPERTY_PROPOSALS_REPOSITORY,
   type PropertyProposalsRepository,
-  type SellerPropertyProposalsPage,
 } from '../property-proposals.repository'
+import { mapPropertyProposalSummaryTransport } from '../responses/property-proposal.transport'
 
 export type ListPropertyProposalsQuery = { page?: number; pageSize?: number }
-export type ListPropertyProposalsResult = SellerPropertyProposalsPage & { page: number; pageSize: number }
+export type ListPropertyProposalsResult = {
+  items: ReturnType<typeof mapPropertyProposalSummaryTransport>[]
+  total: number
+  page: number
+  pageSize: number
+}
 
 @Injectable()
 export class ListPropertyProposalsUseCase {
@@ -24,13 +29,30 @@ export class ListPropertyProposalsUseCase {
   ): Promise<ListPropertyProposalsResult> {
     const pageSize = normalizePageSize(query.pageSize)
     const page = normalizePage(query.page, pageSize)
-    const result = await this.propertyProposalsRepository.listForSeller({
+    const input = {
       tenantId: tenant.tenantId,
       proposedByUserId: currentUser.id,
       page,
       pageSize,
-    })
-    return { ...result, page, pageSize }
+    }
+    const summaries = await this.propertyProposalsRepository.listSummariesForSeller?.(input)
+    if (summaries) {
+      return {
+        items: summaries.items.map(({ proposal, currentReviewRoundId, resultLink }) => (
+          mapPropertyProposalSummaryTransport(proposal, currentReviewRoundId, resultLink)
+        )),
+        total: summaries.total,
+        page,
+        pageSize,
+      }
+    }
+    const result = await this.propertyProposalsRepository.listForSeller(input)
+    return {
+      items: result.items.map((proposal) => mapPropertyProposalSummaryTransport(proposal, undefined, {})),
+      total: result.total,
+      page,
+      pageSize,
+    }
   }
 }
 

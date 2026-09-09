@@ -29,6 +29,33 @@ export type PropertyProposalTransportInput = {
 
 export type PropertyProposalTransport = PropertyProposalTransportInput & ProposalResultLink
 
+export type PropertyProposalSummaryTransport = Pick<PropertyProposalTransportInput,
+  'id' | 'state' | 'version' | 'title' | 'latestSubmittedAt' | 'createdAt' | 'updatedAt'
+> & { currentReviewRoundId?: string } & ProposalResultLink
+
+export function mapPropertyProposalSummaryTransport(
+  proposal: PropertyProposalTransportInput,
+  currentReviewRoundId: string | undefined,
+  resultLink: ProposalResultLink,
+): PropertyProposalSummaryTransport {
+  const transport: PropertyProposalSummaryTransport = {
+    id: proposal.id,
+    state: proposal.state,
+    version: proposal.version,
+    title: proposal.title,
+    latestSubmittedAt: proposal.latestSubmittedAt,
+    createdAt: proposal.createdAt,
+    updatedAt: proposal.updatedAt,
+  }
+  if (typeof currentReviewRoundId === 'string' && currentReviewRoundId.length > 0) {
+    transport.currentReviewRoundId = currentReviewRoundId
+  }
+  if (typeof resultLink.canonicalEngagementId === 'string' && resultLink.canonicalEngagementId.length > 0) {
+    transport.canonicalEngagementId = resultLink.canonicalEngagementId
+  }
+  return transport
+}
+
 export function mapPropertyProposalTransport(
   proposal: PropertyProposalTransportInput,
   resultLink?: ProposalResultLink,

@@ -21,6 +21,13 @@
 - Run RED → GREEN → TRIANGULATE → REFACTOR with `pnpm --filter @viewpro/api exec vitest run --retry=0 src/property-proposals/dto/property-proposal-transport.spec.ts` twice, after the localhost `_test` URL guard; then typecheck and lint. No body coercion is allowed; query conversion is explicit.
 - Before source work, account for the whole working-tree diff and native cumulative 87: the final total must be ≤400 and the newly consumed delta ≤313.
 
+## U13B1 resolved seller-list contract
+
+- Seller list summaries expose only `id`, `state`, `version`, `title`, `currentReviewRoundId` when a tenant-scoped round exists, `latestSubmittedAt`, `createdAt`, `updatedAt`, and an already-authorized optional `canonicalEngagementId`.
+- The envelope remains `{ items, total, page, pageSize }` with `updatedAt DESC, id DESC`; no staged detail fields, tenant/proposer/source references, relations, assignment, membership, or raw users are public.
+- The repository loads the current viewer plus exact tenant membership once, current round IDs in one tenant-scoped page batch, same-tenant source engagements in one page-ID batch, and matching assignments in one batch; it passes only this fresh snapshot to the C9A resolver.
+- U13B1 is list-only. Seller detail/history shaping stays in U13B2, while controller/module/endpoint integration remains U13C.
+
 ## Approved U13B/U13C follow-up boundaries
 
 - The approved split is U13A → U13B → U13C, each with a hard under-400 physical-line boundary. U13B owns safe seller reads, current/history shaping, and fresh current visibility without controller or module mounting. It must resolve the unnamed current-round/history public fields before claiming a detailed response contract.
