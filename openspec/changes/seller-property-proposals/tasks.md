@@ -206,8 +206,8 @@ U13A1 is DTO-only; U13A2 retains the pure projection. Neither mounts a controlle
 
 - [x] U13A1: RED → GREEN → TRIANGULATE → REFACTOR whitelisted seller DTO validation: required/nullable fields, versions, pagination, UUIDs, body/query conversion, and unknown-key rejection. <!-- sdd-owner: implementation -->
 - [x] U13A1: Run the guarded DTO spec twice, API typecheck and lint; remove local generated/build/cache residue and record final arithmetic. <!-- sdd-owner: implementation -->
-- [ ] U13A2: RED → GREEN → TRIANGULATE → REFACTOR the literal-allowlisted transport projection and raw-relation exclusion. <!-- sdd-owner: implementation -->
-- [ ] U13A2: Run its focused projection evidence, API typecheck, and lint. <!-- sdd-owner: implementation -->
+- [x] U13A2: RED → GREEN → TRIANGULATE → REFACTOR the literal-allowlisted transport projection and raw-relation exclusion. <!-- sdd-owner: implementation -->
+- [x] U13A2: Run its focused projection evidence, API typecheck, and lint. <!-- sdd-owner: implementation -->
 
 #### U13B — Safe seller reads and current/history visibility
 
