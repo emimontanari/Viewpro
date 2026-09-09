@@ -198,7 +198,26 @@ Manifest: `apps/api/test/property-proposal-concurrency-matrix.e2e-spec.ts`, `pro
 
 ### U13 — Seller REST transport and first module mount (S07, S12, S28)
 
-Manifest: seller controller/DTOs, response/module/app mount paths, `apps/api/src/property-proposals/property-proposals.controller.spec.ts`, and `apps/api/test/property-proposals.e2e-spec.ts`.
+The approved under-400 delivery split is U13A → U13B → U13C. The two original U13 completion rows remain the aggregate seller-route outcome and are not complete until U13C.
+
+#### U13A — DTO/projection split
+
+U13A1 is DTO-only; U13A2 retains the pure projection. Neither mounts a controller or module, adds an endpoint/query/role check, or edits C9A response sources.
+
+- [x] U13A1: RED → GREEN → TRIANGULATE → REFACTOR whitelisted seller DTO validation: required/nullable fields, versions, pagination, UUIDs, body/query conversion, and unknown-key rejection. <!-- sdd-owner: implementation -->
+- [x] U13A1: Run the guarded DTO spec twice, API typecheck and lint; remove local generated/build/cache residue and record final arithmetic. <!-- sdd-owner: implementation -->
+- [ ] U13A2: RED → GREEN → TRIANGULATE → REFACTOR the literal-allowlisted transport projection and raw-relation exclusion. <!-- sdd-owner: implementation -->
+- [ ] U13A2: Run its focused projection evidence, API typecheck, and lint. <!-- sdd-owner: implementation -->
+
+#### U13B — Safe seller reads and current/history visibility
+
+- [ ] U13B: Resolve the current-round/history public-field contract, then RED → GREEN → TRIANGULATE → REFACTOR safe seller read shaping and fresh current visibility without controller or module mounting. <!-- sdd-owner: implementation -->
+- [ ] U13B: Run its approved focused read/visibility evidence and API typecheck; clean fixtures and document the resolved response contract. <!-- sdd-owner: implementation -->
+
+#### U13C — Seller endpoints, module mount, and transport integration
+
+- [ ] U13C: RED → GREEN → TRIANGULATE → REFACTOR seller routes, permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, current-role checks, and absent withdraw/delete/image routes; mount only here. <!-- sdd-owner: implementation -->
+- [ ] U13C: Run the approved controller/E2E transport tests and API typecheck; clean seeded rows/assets in `finally`. <!-- sdd-owner: implementation -->
 
 - [ ] RED → GREEN → TRIANGULATE → REFACTOR seller routes, permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, current-role checks, and absent withdraw/delete/image routes; mount only here. <!-- sdd-owner: implementation -->
 - [ ] Run the manifest controller/E2E tests and API typecheck; clean seeded rows/assets in `finally`. <!-- sdd-owner: implementation -->
