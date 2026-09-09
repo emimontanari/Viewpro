@@ -169,5 +169,5 @@ Remaining execution sequence: I3A from fresh `develop` after I2 → I3B from fre
 
 - [x] Start or reuse bounded review for every P/I PR; verify fresh-develop predecessor merge, allowlist, ≤400 accounting, strict-TDD records, rollback boundary, and protected regressions before merge. <!-- sdd-owner: parent -->
 - [x] After I4 and all merges, sync accurate `apply-progress.md` and final verification outcomes into this change without marking skipped checks as passed. <!-- sdd-owner: parent -->
-- [ ] Archive only after implementation acceptance, complete verification, and the canonical-spec consolidation decision; retain change-local evidence. <!-- sdd-owner: parent -->
+- [x] Archive only after implementation acceptance, complete verification, and the canonical-spec consolidation decision; retain change-local evidence. <!-- sdd-owner: parent -->
 - [ ] Manually close issue #523 only after archive eligibility confirms all 34 scenarios, browser/accessibility proof, protected boundaries, and no unresolved blocker. <!-- sdd-owner: parent -->
