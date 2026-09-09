@@ -8,7 +8,7 @@ The controlled four-PR planning chain—exploration+proposal → all specs → d
 
 | Field | Value |
 |-------|-------|
-| Estimated changed lines | 7,877–9,758 strict implementation/test lines: 7,082–8,813 production-bearing and 795–945 verification-only; parent gate 0. |
+| Estimated changed lines | 7,654–9,507 strict implementation/test lines: 7,082–8,813 production-bearing and 572–694 verification-only; parent gate 0. U12 is forecast at 87–119 source/test lines plus its existing exploration note. |
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
 | Suggested split | Selected controlled source chain C1 → C2A → C2B1 → C2B2 → C3A → C3B → C4 → C5A → C5B1 → C5B2 → C6A → C6B → C7A1 → C7A2 → C7B → C8A → C8B → C9 … C20, each group max ≤650; selected controlled four-PR planning chain. |
@@ -191,10 +191,10 @@ U11B is split to stay within the 400-line review budget. U11B1 owns replay order
 
 ### U12 — Repeated PostgreSQL concurrency matrix (verification-only)
 
-Manifest: `apps/api/test/property-proposal-concurrency-matrix.e2e-spec.ts`, `property-proposal-concurrency-fixtures.ts`, `property-agent-primary-concurrency.e2e-spec.ts`.
+Manifest: `apps/api/test/property-proposal-concurrency-matrix.e2e-spec.ts`, `property-agent-primary-concurrency.e2e-spec.ts`. No `property-proposal-concurrency-fixtures.ts` is created: the import-only matrix reuses the already-green suites and their fixture ownership without duplicating a harness.
 
-- [ ] Repeat only already-green eligibility, reviewer, approval, quota, direct-path, primary, and cleanup behavior; observe `pg_stat_activity`/`pg_blocking_pids` with bounded timeouts rather than unsettled promises. <!-- sdd-owner: implementation -->
-- [ ] Record observed outcomes only; do not add a first RED or production fix, and always release barriers, clients, transactions, fixtures, orphan assets, and limits. <!-- sdd-owner: implementation -->
+- [x] Repeat only already-green eligibility, reviewer, approval, quota, direct-path, primary, and cleanup behavior; observe `pg_stat_activity`/`pg_blocking_pids` with bounded timeouts rather than unsettled promises. <!-- sdd-owner: implementation -->
+- [x] Record observed outcomes only; do not add a first RED or production fix, and always release barriers, clients, transactions, fixtures, orphan assets, and limits. <!-- sdd-owner: implementation -->
 
 ### U13 — Seller REST transport and first module mount (S07, S12, S28)
 
@@ -309,4 +309,4 @@ Manifest: `apps/app-new/tests/seeded/property-proposals.spec.ts`, `property-prop
 
 ## Arithmetic check
 
-The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `7,082–8,813`, verification-only `795–945`, parent gate `0`, strict implementation/test total `7,877–9,758`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650; the 31-group topology separates C3A/U3, C3B/U4A, C5A/U5B, C5B1/U6 update locks, C5B2/U6 races, C6A/U7 initial submission, C6B/U7 resubmission/history, C7A1 filter RED, C7A2 repository GREEN, and C7B use cases; C8A/U9 rejection and C8B/U10A approval materialization; C2A current candidate is capped at 649; C2B1 and C2B2 are each capped at ≤635.
+The delivery companion contains the read-only worksheet. Corrected strict-unit totals are recomputed mechanically from every listed path range: production-bearing `7,082–8,813`, verification-only `572–694`, parent gate `0`, strict implementation/test total `7,654–9,507`; every strict unit maximum is ≤400 and every controlled group maximum is ≤650; the 31-group topology separates C3A/U3, C3B/U4A, C5A/U5B, C5B1/U6 update locks, C5B2/U6 races, C6A/U7 initial submission, C6B/U7 resubmission/history, C7A1 filter RED, C7A2 repository GREEN, and C7B use cases; C8A/U9 rejection and C8B/U10A approval materialization; C2A current candidate is capped at 649; C2B1 and C2B2 are each capped at ≤635.
