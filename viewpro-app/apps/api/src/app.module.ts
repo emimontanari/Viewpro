@@ -22,6 +22,7 @@ import { OwnerInvitationsModule } from './owner-invitations/owner-invitations.mo
 import { OwnerPortalModule } from './owner-portal/owner-portal.module'
 import { PermissionsModule } from './permissions/permissions.module'
 import { PropertyEngagementsModule } from './property-engagements/property-engagements.module'
+import { PropertyProposalsModule } from './property-proposals/property-proposals.module'
 import { TenantsModule } from './tenants/tenants.module'
 import { TenantsContactModule } from './tenants/tenants-contact.module'
 import { TenantContextModule } from './tenant-context/tenant-context.module'
@@ -58,6 +59,7 @@ import { UsersModule } from './users/users.module'
     TenantContextModule,
     TeamModule,
     PropertyEngagementsModule,
+    PropertyProposalsModule,
     MovementsModule,
     MovementOutcomeLabelsModule,
     StatusChangeRequestsModule,
