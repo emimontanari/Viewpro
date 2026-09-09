@@ -26,6 +26,22 @@ export type SellerPropertyProposalSummariesPage = {
   total: number
 }
 
+export type SellerPropertyProposalDetail = SellerPropertyProposalSummary & {
+  history: Array<{
+    id: string
+    roundNumber: number
+    submittedAt: Date
+    submittedBy: { id: string; firstName: string; lastName: string | null }
+    snapshot: StagedPropertyScalars
+    decision: null | {
+      outcome: string
+      decidedAt: Date
+      rejectionReason: string | null
+      reviewer: { id: string; firstName: string; lastName: string | null }
+    }
+  }>
+}
+
 export type CreatePropertyProposalDraftInput = StagedPropertyScalars & {
   tenantId: string
   proposedByUserId: string
@@ -81,6 +97,11 @@ export type PropertyProposalsRepository = {
     proposedByUserId: string
     proposalId: string
   }): Promise<PropertyProposal | null>
+  findDetailForSeller(input: {
+    tenantId: string
+    proposedByUserId: string
+    proposalId: string
+  }): Promise<SellerPropertyProposalDetail | null>
   listForReviewer(input: {
     tenantId: string
     filters: PropertyProposalReviewFilters

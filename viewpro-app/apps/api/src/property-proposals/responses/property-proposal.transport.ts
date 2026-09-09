@@ -1,3 +1,5 @@
+import type { SellerPropertyProposalDetail } from '../property-proposals.repository'
+import { mapPropertyProposalSnapshot } from '../helpers/map-property-proposal'
 import type { ProposalResultLink } from './property-proposal.response'
 
 export type PropertyProposalTransportInput = {
@@ -92,5 +94,39 @@ export function mapPropertyProposalTransport(
     transport.canonicalEngagementId = canonicalEngagementId
   }
 
+  return transport
+}
+
+export type PropertyProposalDetailTransport = PropertyProposalTransport & {
+  currentReviewRoundId?: string
+  history: SellerPropertyProposalDetail['history']
+}
+
+export function mapPropertyProposalDetailTransport(
+  proposal: PropertyProposalTransportInput,
+  resultLink: ProposalResultLink,
+  detail: Pick<SellerPropertyProposalDetail, 'currentReviewRoundId' | 'history'>,
+): PropertyProposalDetailTransport {
+  const transport: PropertyProposalDetailTransport = {
+    ...mapPropertyProposalTransport(proposal, resultLink),
+    history: detail.history.map((round) => ({
+      id: round.id,
+      roundNumber: round.roundNumber,
+      submittedAt: round.submittedAt,
+      submittedBy: { id: round.submittedBy.id, firstName: round.submittedBy.firstName, lastName: round.submittedBy.lastName },
+      snapshot: mapPropertyProposalSnapshot(round.snapshot),
+      decision: round.decision && {
+        outcome: round.decision.outcome,
+        decidedAt: round.decision.decidedAt,
+        rejectionReason: round.decision.rejectionReason,
+        reviewer: {
+          id: round.decision.reviewer.id,
+          firstName: round.decision.reviewer.firstName,
+          lastName: round.decision.reviewer.lastName,
+        },
+      },
+    })),
+  }
+  if (detail.currentReviewRoundId) transport.currentReviewRoundId = detail.currentReviewRoundId
   return transport
 }

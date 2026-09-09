@@ -23,6 +23,7 @@ import type {
   UpdatePropertyProposalResult,
   ReviewerPropertyProposalsPage,
   SellerPropertyProposalsPage,
+  SellerPropertyProposalDetail,
   SellerPropertyProposalSummariesPage,
   SubmitPropertyProposalInput,
   SubmitPropertyProposalResult,
@@ -245,18 +246,86 @@ export class PrismaPropertyProposalsRepository implements PropertyProposalsRepos
     }
   }
 
-  findForSeller(input: {
+  async findForSeller(input: {
     tenantId: string
     proposedByUserId: string
     proposalId: string
   }) {
     return this.prisma.propertyProposal.findFirst({
-      where: {
-        id: input.proposalId,
-        tenantId: input.tenantId,
-        proposedByUserId: input.proposedByUserId,
-      },
+      where: { id: input.proposalId, tenantId: input.tenantId, proposedByUserId: input.proposedByUserId },
     })
+  }
+
+  async findDetailForSeller(input: {
+    tenantId: string
+    proposedByUserId: string
+    proposalId: string
+  }): Promise<SellerPropertyProposalDetail | null> {
+    const proposal = await this.findForSeller(input)
+    if (!proposal) return null
+    const [rounds, viewer, engagements] = await Promise.all([
+      this.prisma.propertyProposalReviewRound.findMany({
+        where: { tenantId: input.tenantId, proposalId: proposal.id },
+        orderBy: [{ submittedAt: 'desc' }, { id: 'desc' }],
+      }),
+      this.prisma.user.findUnique({
+        where: { id: input.proposedByUserId },
+        select: { id: true, status: true, memberships: { where: { tenantId: input.tenantId }, select: { userId: true, tenantId: true, status: true, role: true } } },
+      }),
+      this.prisma.propertyEngagement.findMany({
+        where: { tenantId: input.tenantId, sourceProposalId: proposal.id },
+        select: { id: true, tenantId: true, sourceProposalId: true },
+      }),
+    ])
+    const [decisions, assignments] = await Promise.all([
+      this.prisma.propertyProposalReviewDecision.findMany({
+        where: { tenantId: input.tenantId, reviewRoundId: { in: rounds.map(({ id }) => id) } },
+      }),
+      this.prisma.propertyAgent.findMany({
+        where: { tenantId: input.tenantId, agentUserId: input.proposedByUserId, propertyEngagementId: { in: engagements.map(({ id }) => id) } },
+        select: { tenantId: true, propertyEngagementId: true, agentUserId: true },
+      }),
+    ])
+    const people = await this.prisma.user.findMany({
+      where: {
+        id: { in: [...new Set([...rounds.map(({ submittedByUserId }) => submittedByUserId), ...decisions.map(({ reviewerUserId }) => reviewerUserId)])] },
+        memberships: { some: { tenantId: input.tenantId } },
+      },
+      select: { id: true, firstName: true, lastName: true },
+    })
+    const decisionByRoundId = new Map(decisions.map((decision) => [decision.reviewRoundId, decision]))
+    const personById = new Map(people.map((person) => [person.id, person]))
+    const history = rounds.map((round) => {
+      const decision = decisionByRoundId.get(round.id)
+      const submittedBy = personById.get(round.submittedByUserId)
+      const reviewer = decision && personById.get(decision.reviewerUserId)
+      if (!submittedBy || (decision && !reviewer)) throw new Error('proposal history actor is missing')
+      return {
+        id: round.id, roundNumber: round.roundNumber, submittedAt: round.submittedAt,
+        submittedBy: { id: submittedBy.id, firstName: submittedBy.firstName, lastName: submittedBy.lastName },
+        snapshot: mapPropertyProposalSnapshot(round),
+        decision: decision && reviewer ? {
+          outcome: decision.outcome, decidedAt: decision.decidedAt, rejectionReason: decision.rejectionReason,
+          reviewer: { id: reviewer.id, firstName: reviewer.firstName, lastName: reviewer.lastName },
+        } : null,
+      }
+    })
+    const engagement = engagements[0]
+    const membership = viewer?.memberships[0]
+    return {
+      proposal,
+      currentReviewRoundId: rounds[0]?.id,
+      history,
+      resultLink: mapPropertyProposalResultLink(resolveCanonicalEngagementId({
+        proposal,
+        canonicalEngagement: engagement?.sourceProposalId
+          ? { id: engagement.id, tenantId: engagement.tenantId, sourceProposalId: engagement.sourceProposalId }
+          : undefined,
+        viewer: viewer ?? undefined,
+        membership,
+        assignments: assignments.map(({ tenantId, propertyEngagementId, agentUserId }) => ({ tenantId, engagementId: propertyEngagementId, agentUserId })),
+      })),
+    }
   }
 
   async listForReviewer(input: {

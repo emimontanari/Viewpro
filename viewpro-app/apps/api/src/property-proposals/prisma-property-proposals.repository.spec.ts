@@ -107,16 +107,17 @@ describe('PrismaPropertyProposalsRepository seller reads', () => {
   })
 
   it('keeps detail reads tenant-plus-proposer scoped through trusted context', async () => {
-    const port = { listForSeller: vi.fn(), findForSeller: vi.fn().mockResolvedValue(proposal) }
+    const detail = { proposal, currentReviewRoundId: undefined, resultLink: undefined, history: [] }
+    const port = { listForSeller: vi.fn(), findDetailForSeller: vi.fn().mockResolvedValue(detail) }
     const get = new GetPropertyProposalUseCase(port as never)
 
     await expect(get.execute(
       { tenantId: 'tenant-1' } as never,
       { id: 'seller-1', email: 'seller@example.test' },
       'proposal-1',
-    )).resolves.toBe(proposal)
+    )).resolves.toMatchObject({ id: 'proposal-1', title: 'Draft', history: [] })
 
-    expect(port.findForSeller).toHaveBeenCalledWith({
+    expect(port.findDetailForSeller).toHaveBeenCalledWith({
       tenantId: 'tenant-1', proposedByUserId: 'seller-1', proposalId: 'proposal-1',
     })
   })
