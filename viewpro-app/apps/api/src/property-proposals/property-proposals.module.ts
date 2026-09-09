@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { AuthModule } from '../auth/auth.module'
+import { MembershipsModule } from '../memberships/memberships.module'
 import { PermissionsModule } from '../permissions/permissions.module'
 import { TenantContextModule } from '../tenant-context/tenant-context.module'
 import { PropertyProposalsController } from './property-proposals.controller'
@@ -20,7 +21,7 @@ const propertyProposalUseCases = [
 ]
 
 @Module({
-  imports: [AuthModule, PermissionsModule, TenantContextModule],
+  imports: [AuthModule, MembershipsModule, PermissionsModule, TenantContextModule],
   controllers: [PropertyProposalsController],
   providers: [
     { provide: PROPERTY_PROPOSALS_REPOSITORY, useClass: PrismaPropertyProposalsRepository },

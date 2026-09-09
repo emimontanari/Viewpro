@@ -5,6 +5,7 @@ import { AppModule } from '../app.module'
 import { AuthModule } from '../auth/auth.module'
 import { AuthGuard } from '../auth/guards/auth.guard'
 import { DatabaseModule } from '../database/database.module'
+import { MembershipsModule } from '../memberships/memberships.module'
 import { PermissionGuard } from '../permissions/permission.guard'
 import { PermissionsModule } from '../permissions/permissions.module'
 import { PERMISSIONS } from '../permissions/permissions.constants'
@@ -87,6 +88,7 @@ describe('PropertyProposalsController', () => {
     expect(Reflect.getMetadata(MODULE_METADATA.CONTROLLERS, PropertyProposalsModule)).toEqual([PropertyProposalsController])
     expect(Reflect.getMetadata(MODULE_METADATA.IMPORTS, PropertyProposalsModule)).toEqual([
       AuthModule,
+      MembershipsModule,
       PermissionsModule,
       TenantContextModule,
     ])
