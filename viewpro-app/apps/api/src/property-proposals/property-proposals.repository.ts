@@ -1,4 +1,5 @@
 import type { PropertyProposal, PropertyProposalReviewRound } from '@prisma/client'
+import type { ProposalResultLink } from './responses/property-proposal.response'
 import type { StagedPropertyScalars } from './domain/normalization'
 import type { PropertyProposalReviewFilters } from './review-filter-builder'
 
@@ -11,6 +12,17 @@ export type SellerPropertyProposalsPage = {
 
 export type ReviewerPropertyProposalsPage = {
   items: PropertyProposal[]
+  total: number
+}
+
+export type SellerPropertyProposalSummary = {
+  proposal: PropertyProposal
+  currentReviewRoundId?: string
+  resultLink: ProposalResultLink
+}
+
+export type SellerPropertyProposalSummariesPage = {
+  items: SellerPropertyProposalSummary[]
   total: number
 }
 
@@ -57,7 +69,13 @@ export type PropertyProposalsRepository = {
     proposedByUserId: string
     page: number
     pageSize: number
-  }): Promise<SellerPropertyProposalsPage>
+      }): Promise<SellerPropertyProposalsPage>
+  listSummariesForSeller?(input: {
+    tenantId: string
+    proposedByUserId: string
+    page: number
+    pageSize: number
+  }): Promise<SellerPropertyProposalSummariesPage>
   findForSeller(input: {
     tenantId: string
     proposedByUserId: string

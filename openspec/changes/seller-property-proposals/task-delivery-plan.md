@@ -56,7 +56,8 @@ The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0
 | U12 | import-only `apps/api/test/property-proposal-concurrency-matrix.e2e-spec.ts`; bounded-observer `apps/api/test/property-agent-primary-concurrency.e2e-spec.ts`. No `property-proposal-concurrency-fixtures.ts`: the matrix registers existing green suites without duplicating their fixtures. | **87–119**; verification-only, plus the existing exploration note |
 | U13A1 | Six seller DTO paths, `dto/property-proposal-transport.spec.ts`, and concise OpenSpec closure only. No projection, controller/module mount, endpoint, query, role check, or C9A response-source edit. | **Pre-code forecast:** 128–151 source + 108–136 test; final working-tree arithmetic must remain ≤400 and native new delta ≤313; production-bearing |
 | U13A2 | Pure literal-allowlisted projection and its focused spec only. | Deferred after U13A1; production-bearing |
-| U13B | Safe seller reads, current/history visibility, and the public-field contract resolved before response detail is claimed. No controller or module mount. | **Deferred for a separate ≤400 manifest after the interface-field gap is resolved**; production-bearing |
+| U13B1 | `property-proposals.repository.ts`, Prisma seller reads, seller-list use case/spec, summary transport/spec, and concise U13 artifacts; list summaries only with fresh batched visibility. | **≤400 physical lines**; production-bearing |
+| U13B2 | Seller detail/history shaping after U13B1; no controller or module mount. | Deferred; production-bearing |
 | U13C | Seller controller/routes, module/AppModule mount, controller/E2E transport evidence, and aggregate U13 completion. | **Deferred for a separate ≤400 manifest after U13B**; production-bearing |
 | U14 | `apps/api/src/property-proposals/property-proposals.controller.ts` P45–55; `apps/api/src/property-proposals/dto/list-property-proposal-review.query.ts` P35–45; `apps/api/src/property-proposals/dto/review-property-proposal.dto.ts` P15–22; `apps/api/src/property-proposals/dto/reject-property-proposal.dto.ts` P18–25; `apps/api/src/property-proposals/dto/list-property-proposal-review.query.spec.ts` T60–75; `apps/api/test/property-proposals.e2e-spec.ts` T60–70 F25–30 | **258–322**; production-bearing |
 | U15A | `apps/app-new/src/app/api/property-proposals/route.ts` P25–35; `apps/app-new/src/app/api/property-proposals/[proposalId]/route.ts` P25–35; `apps/app-new/src/app/api/property-proposals/[proposalId]/submit/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/[proposalId]/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/[proposalId]/submit/route.test.ts` T40–55; `apps/app-new/src/lib/bff-api.ts` P12–18; `apps/app-new/src/lib/bff-api.test.ts` T70–80 | **272–363**; production-bearing |
@@ -148,7 +149,8 @@ The corrected strict units mechanically group into **31** dependency-ordered opt
 | C10C | U11B3 + U12 | 400+119=519 planned; execute as separate U11B3 then verification-only U12 | each slice ≤400 |
 | C11A1 | U13A1 DTO contracts and validation | <400 | DTO-only slice; final total and native delta are hard gates |
 | C11A2 | U13A2 pure projection | <400 | after U13A1 |
-| C11B | U13B reads/history/current visibility | <400 | deferred manifest after public-field resolution |
+| C11B1 | U13B1 seller-list summaries/current visibility | <400 | list-only, no detail/history/controller/module |
+| C11B2 | U13B2 seller detail/history shaping | <400 | deferred after U13B1 |
 | C11C | U13C endpoints/module/transport integration | <400 | deferred manifest after U13B |
 | C12 | U14 | 322 | 258–322 |
 | C13 | U15A | 363 | 272–363 |

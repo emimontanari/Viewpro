@@ -213,6 +213,9 @@ U13A1 is DTO-only; U13A2 retains the pure projection. Neither mounts a controlle
 
 - [ ] U13B: Resolve the current-round/history public-field contract, then RED → GREEN → TRIANGULATE → REFACTOR safe seller read shaping and fresh current visibility without controller or module mounting. <!-- sdd-owner: implementation -->
 - [ ] U13B: Run its approved focused read/visibility evidence and API typecheck; clean fixtures and document the resolved response contract. <!-- sdd-owner: implementation -->
+- [x] U13B1: RED → GREEN → TRIANGULATE → REFACTOR seller list summaries with the literal public allowlist, one tenant-scoped current-round batch, and fresh result visibility batches only. <!-- sdd-owner: implementation -->
+- [x] U13B1: Run focused seller-read/list/transport/C9A evidence twice, then API typecheck and lint; no database fixtures, controller, module, detail, or history work. <!-- sdd-owner: implementation -->
+- [ ] U13B2: Resolve seller detail/history shaping and retain equivalent fresh visibility without changing U13B1 list summaries. <!-- sdd-owner: implementation -->
 
 #### U13C — Seller endpoints, module mount, and transport integration
 
