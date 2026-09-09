@@ -1258,11 +1258,10 @@ The parent supplied the exact change/runtime authorization (`proceede643`, remed
 - BLOCKED INFRASTRUCTURE — guarded local `DATABASE_URL`/`DIRECT_URL` E2E invocation reached `test/global-setup.ts` but `prisma migrate deploy` failed `P1001` at `localhost:5432` before collection; no database was provisioned or seeded.
 - Removed `node_modules`, generated contract output, Prisma generated/dependency output, `.turbo`, and `*.tsbuildinfo` after verification. No temporary test configuration, cache, report, upload, database fixture, commit, push, PR, review, receipt, or lifecycle action was created.
 
-### Remaining tasks and boundary
+### CI runtime closure and boundary
 
-The exact U13C2 implementation-owned rows remain unchecked until the guarded HTTP suite passes:
+- PASS — PR #595 exact head `a1a96bab0239d6e1b8389c89ba15338f1d7c956f` ran the normal API `Test` job: 120 files / 815 tests in its API group, including the new property-proposals HTTP E2E; the complete job passed.
+- PASS — one non-candidate Seeded E2E reload-assumption failure was isolated outside this two-file candidate; the single failed-job rerun passed and all exact-head checks became green.
+- COMPLETE — both U13C2 rows, both aggregate U13C rows, and both original aggregate U13 rows are now checked. U14 and parent-owned lifecycle rows remain unchanged.
 
-- [ ] U13C2: RED → GREEN → TRIANGULATE → REFACTOR HTTP transport integration for permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, and current-role checks. <!-- sdd-owner: implementation -->
-- [ ] U13C2: Run controller/E2E transport evidence and API typecheck; clean seeded rows/assets in `finally`. <!-- sdd-owner: implementation -->
-
-The corrected E2E file is within the requested 400-line cap. No design deviation was made; the remaining risk is solely unexecuted HTTP evidence while local PostgreSQL is unavailable.
+The final E2E candidate remains within the requested 400-line cap. No design deviation or production-source change was made.

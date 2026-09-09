@@ -223,14 +223,14 @@ U13C is split under 400 lines: U13C1 owns the controller contract and first moun
 
 - [x] U13C1: RED → GREEN → TRIANGULATE → REFACTOR the five seller controller routes, exact guard/permission metadata, trusted context wiring, safe mutation rereads, and absent forbidden handlers; mount the controller and module only here. <!-- sdd-owner: implementation -->
 - [x] U13C1: Run the focused controller contract twice, API typecheck, and lint; normal runner P1001 may use a temporary no-global-setup unit fallback only. <!-- sdd-owner: implementation -->
-- [ ] U13C2: RED → GREEN → TRIANGULATE → REFACTOR HTTP transport integration for permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, and current-role checks. <!-- sdd-owner: implementation -->
-- [ ] U13C2: Run controller/E2E transport evidence and API typecheck; clean seeded rows/assets in `finally`. <!-- sdd-owner: implementation -->
+- [x] U13C2: RED → GREEN → TRIANGULATE → REFACTOR HTTP transport integration for permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, and current-role checks. <!-- sdd-owner: implementation -->
+- [x] U13C2: Run controller/E2E transport evidence and API typecheck; clean seeded rows/assets in `finally`. <!-- sdd-owner: implementation -->
 
-- [ ] U13C: RED → GREEN → TRIANGULATE → REFACTOR seller routes, permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, current-role checks, and absent withdraw/delete/image routes; mount only here. <!-- sdd-owner: implementation -->
-- [ ] U13C: Run the approved controller/E2E transport tests and API typecheck; clean seeded rows/assets in `finally`. <!-- sdd-owner: implementation -->
+- [x] U13C: RED → GREEN → TRIANGULATE → REFACTOR seller routes, permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, current-role checks, and absent withdraw/delete/image routes; mount only here. <!-- sdd-owner: implementation -->
+- [x] U13C: Run the approved controller/E2E transport tests and API typecheck; clean seeded rows/assets in `finally`. <!-- sdd-owner: implementation -->
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR seller routes, permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, current-role checks, and absent withdraw/delete/image routes; mount only here. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest controller/E2E tests and API typecheck; clean seeded rows/assets in `finally`. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR seller routes, permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, current-role checks, and absent withdraw/delete/image routes; mount only here. <!-- sdd-owner: implementation -->
+- [x] Run the manifest controller/E2E tests and API typecheck; clean seeded rows/assets in `finally`. <!-- sdd-owner: implementation -->
 
 ### U14 — Reviewer REST transport and static route precedence (S16)
 
