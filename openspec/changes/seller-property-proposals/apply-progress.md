@@ -1178,3 +1178,91 @@ delivery: auto-chain / stacked-to-develop; U13C1 only, under 400 lines
 - BLOCKED INFRASTRUCTURE — normal focused Vitest invoked `prisma migrate deploy` and could not reach local PostgreSQL; no database was connected or seeded.
 - Remaining exact U13C rows: `- [ ] U13C2: RED → GREEN → TRIANGULATE → REFACTOR HTTP transport integration for permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, and current-role checks. <!-- sdd-owner: implementation -->`; `- [ ] U13C2: Run controller/E2E transport evidence and API typecheck; clean seeded rows/assets in finally. <!-- sdd-owner: implementation -->`; aggregate U13C/U13 rows remain unchecked.
 - Workload boundary: U13C1 is **271 additions + 2 deletions = 273 physical changed lines**, under 400; U13C2 owns HTTP/E2E transport integration. Temporary config, dependencies, generated contract/build output, caches, reports, uploads, and `*.tsbuildinfo` were removed while `.gitkeep` was retained. No design deviation, commit, push, PR, merge, review, receipt, or lifecycle action occurred.
+
+## U13C2 HTTP/E2E transport integration — runtime blocked
+
+### Status and boundary consumed
+
+```yaml
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+nextRecommended: apply
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u13c2-e2e
+  allowedEditRoots:
+    - viewpro-app/apps/api/test/property-proposals.e2e-spec.ts
+    - openspec/changes/seller-property-proposals/tasks.md
+    - openspec/changes/seller-property-proposals/apply-progress.md
+warnings: []
+delivery: auto-chain / stacked-to-develop; U13C2 only
+```
+
+- Consumed the parent-supplied authoritative status exactly; no ambient/native status was run or reconstructed.
+- Added the new 243-line HTTP E2E evidence file only. It covers authenticated active-agent create `201` → list/detail → update/submit `200`; public-response key allowlists and recursive exclusion of tenant/proposer/source/membership/raw-relation keys; unknown create/update/submit bodies and list query rejection; same-tenant manager `403` on a valid absent UUID; same-code `PROPERTY_PROPOSAL_NOT_FOUND` `404` for absent, wrong seller, and another active tenant; persisted role change followed by the same cookie's next-request denial; and absent delete/withdraw/image routes. It adds no reviewer behavior, fixtures helper, or production source change.
+- Cleanup in the E2E file is dependency ordered: decisions → rounds → proposals → refresh tokens → memberships → tenants → users, with a zero-proposal postcondition. The runner stopped in global setup before app creation or fixture seeding, so no test rows, assets, worker databases, or app-owned connections were created; existing `_test` worker databases were not changed.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| U13C2 HTTP transport | HTTP E2E | N/A — new test file | Not fabricated: the mounted controller behavior already exists and this slice has no production edit. | Blocked before collection by the normal guarded runner's Prisma global setup (`P1001` at `localhost:5432`). | The test cases independently cover lifecycle, validation, authorization-before-lookup, 404 equivalence, role refresh, and absent-route branches, but could not execute without local PostgreSQL. | No production refactor; the lint-only cleanup assertion was converted to an explicit thrown cleanup failure. |
+
+### Verification, cleanup, and remaining tasks
+
+- PASS — `pnpm install --offline --frozen-lockfile`; `pnpm --filter @viewpro/api db:generate`; `pnpm --filter @viewpro/contracts build`; `pnpm --filter @viewpro/api typecheck`; and `pnpm --filter @viewpro/api lint`.
+- BLOCKED INFRASTRUCTURE — after the localhost `_test` URL guard, `DATABASE_URL`/`DIRECT_URL` pointed at `postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro_test?schema=public`; `pnpm --filter @viewpro/api exec vitest run --retry=0 test/property-proposals.e2e-spec.ts` stopped in `test/global-setup.ts` at `prisma migrate deploy` with `P1001` before test collection. No local database was provisioned and no fallback was used because this is HTTP E2E evidence.
+- Removed offline dependency directories, generated Prisma/client dependencies, contract `dist`, `.turbo`, and `*.tsbuildinfo`; no cache, report, or upload directory remained. The E2E source file is 243 physical lines, under the 400-line U13C2 budget.
+- Persisted task checkboxes were reread and deliberately remain unchecked: `- [ ] U13C2: RED → GREEN → TRIANGULATE → REFACTOR HTTP transport integration for permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, and current-role checks. <!-- sdd-owner: implementation -->`; `- [ ] U13C2: Run controller/E2E transport evidence and API typecheck; clean seeded rows/assets in \`finally\`. <!-- sdd-owner: implementation -->`; the aggregate U13C and U13 rows remain unchecked as required. Parent-owned lifecycle rows are unchanged.
+- Remaining blocker: make guarded local PostgreSQL available and rerun the exact U13C2 E2E command; if it exposes a product defect, stop on that exact failure without expanding into U14. No commit, push, PR, merge, review, receipt, or lifecycle action occurred.
+
+## U13C2 bounded static correction after audited reset
+
+### Status and scope consumed
+
+```yaml
+schemaName: spec-driven
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+nextRecommended: apply
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u13c2-e2e
+  allowedEditRoots:
+    - viewpro-app/apps/api/test/property-proposals.e2e-spec.ts
+    - openspec/changes/seller-property-proposals/apply-progress.md
+  warnings: []
+delivery: auto-chain / stacked-to-develop; bounded U13C2 correction
+```
+
+The parent supplied the exact change/runtime authorization (`proceede643`, remediation `remediates8c5a`) and target worktree; no ambient status was consumed. Proposal, consolidated property-proposals specification, design/interface design, tasks, prior progress, execution ledger, and strict-TDD config were read. The U13C2 checkbox rows remain deliberately unchecked because HTTP evidence did not collect; parent-owned rows were untouched.
+
+### Completed correction
+
+- Enabled the public error envelope for this isolated E2E app and restored its prior environment value during shutdown.
+- Replaced loose status-only assertions with exact public envelopes for manager `403`, all unknown body/query `400`s, persisted-role `403`, and absent delete/withdraw/images `404`s. The stable existing fallback is `REQUEST_FAILED`; scoped proposal absence retains `PROPERTY_PROPOSAL_NOT_FOUND`.
+- Made the manager permission-test email run-unique. Before the other-active-tenant switch, the test explicitly writes the seller's second tenant to `TenantStatus.ACTIVE` and asserts the persisted ID/status pair.
+- Replaced the recursive denylist-only response helper with literal nested allowlists for history rounds, snapshots, submitters, decisions, and reviewers. It recursively rejects `proposedBy`, identity/FK fields, tenant/membership, and raw-relation fields, and explicitly fails when `history` is not an array.
+
+### TDD Cycle Evidence
+
+| Task | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|
+| U13C2 static E2E correction | No production source was changed; HTTP execution stopped in global Prisma setup before collection with local `P1001`, so no runtime RED is claimed. | TypeScript parsing/typecheck and lint passed after the test correction. | Assertion reasoning covers wrong fallback code/status, forbidden nested fields, missing history array, and non-ACTIVE tenant setup; each would fail the strengthened test after runtime collection. | Helpers remain small and test-only; no production refactor or route behavior change occurred. |
+
+### Verification and cleanup
+
+- PASS — offline frozen install, Prisma client generation, `pnpm --filter @viewpro/contracts build`, `pnpm --filter @viewpro/api typecheck`, and `pnpm --filter @viewpro/api lint`.
+- BLOCKED INFRASTRUCTURE — guarded local `DATABASE_URL`/`DIRECT_URL` E2E invocation reached `test/global-setup.ts` but `prisma migrate deploy` failed `P1001` at `localhost:5432` before collection; no database was provisioned or seeded.
+- Removed `node_modules`, generated contract output, Prisma generated/dependency output, `.turbo`, and `*.tsbuildinfo` after verification. No temporary test configuration, cache, report, upload, database fixture, commit, push, PR, review, receipt, or lifecycle action was created.
+
+### Remaining tasks and boundary
+
+The exact U13C2 implementation-owned rows remain unchecked until the guarded HTTP suite passes:
+
+- [ ] U13C2: RED → GREEN → TRIANGULATE → REFACTOR HTTP transport integration for permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, and current-role checks. <!-- sdd-owner: implementation -->
+- [ ] U13C2: Run controller/E2E transport evidence and API typecheck; clean seeded rows/assets in `finally`. <!-- sdd-owner: implementation -->
+
+The corrected E2E file is within the requested 400-line cap. No design deviation was made; the remaining risk is solely unexecuted HTTP evidence while local PostgreSQL is unavailable.
