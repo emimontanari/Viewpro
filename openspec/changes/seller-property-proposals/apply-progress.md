@@ -1018,8 +1018,28 @@ delivery: auto-chain / stacked-to-develop; U12 correction only; current candidat
 
 ### Remaining work and boundary
 
-- The final physical working-tree delta is 264 additions plus 60 deletions (**324 changed lines**, including the two retained untracked U12 files), below the 400-line review budget and inside the parent-selected U12 work-unit boundary. No commit, push, PR, merge, review, receipt, full-suite run, or delivery gate action occurred.
-- Remaining implementation rows are out of scope and begin:
-  - [ ] RED → GREEN → TRIANGULATE → REFACTOR seller routes, permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, current-role checks, and absent withdraw/delete/image routes; mount only here. <!-- sdd-owner: implementation -->
-  - [ ] Run the manifest controller/E2E tests and API typecheck; clean seeded rows/assets in `finally`. <!-- sdd-owner: implementation -->
-- `next_recommended: parent-lifecycle`.
+    - The final physical working-tree delta is 264 additions plus 60 deletions (**324 changed lines**, including the two retained untracked U12 files), below the 400-line review budget and inside the parent-selected U12 work-unit boundary. No commit, push, PR, merge, review, receipt, full-suite run, or delivery gate action occurred.
+    - Remaining implementation rows are out of scope and begin:
+      - [ ] RED → GREEN → TRIANGULATE → REFACTOR seller routes, permission-before-lookup, own/tenant 404 equivalence, unknown-key rejection, current-role checks, and absent withdraw/delete/image routes; mount only here. <!-- sdd-owner: implementation -->
+      - [ ] Run the manifest controller/E2E tests and API typecheck; clean seeded rows/assets in `finally`. <!-- sdd-owner: implementation -->
+    - `next_recommended: parent-lifecycle`.
+
+## U13A discarded prototype and approved rescope
+
+- The DTO/projection prototype measured **575 physical lines** and was removed rather than exceed the 400-line cap, code-golf, or omit coverage; no source/test delivery or checkbox completion was claimed.
+- The user approved U13A1 as DTO-only. U13A2 retains pure projection; U13B remains safe reads/history/current visibility; U13C remains endpoints and mounting.
+- U13A1 must stay within final working diff ≤400 and native new delta ≤313; no commit, push, PR, merge, review, receipt, or lifecycle action occurred.
+
+## U13A1 DTO-only apply
+
+- **Status:** parent-selected `seller-property-proposals`, OpenSpec `ready`/`apply`, repo-local target and supplied DTO/OpenSpec roots; no action-context warning. The approved `auto-chain` boundary is U13A1 only.
+- **Completed:** six DTO contracts and one DTO transport spec; both persisted U13A1 implementation rows are `[x]`. U13A2 projection, U13B/C, aggregate U13, and parent rows remain unchecked.
+- **Files:** six `apps/api/src/property-proposals/dto/*.ts` paths, `property-proposal-transport.spec.ts`, and the allowed U13 OpenSpec artifacts. No controller, module, endpoint, query, response, or projection file changed.
+
+| TDD Cycle Evidence | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|
+| U13A1 DTO contracts | Compiling skeleton collected 7 behavioral tests: 5 failed/2 passed. | Explicit decorators passed 7/7. | All-field matrix passed 7/7; `@Min(-1)` mutant failed 2/7, then restoration passed. | Kept explicit decorators; no compressed refactor. |
+
+- **Verification:** guarded localhost `viewpro_test` focused DTO command passed twice (7/7); API typecheck and lint passed. The first skeleton typecheck needed the local contracts build prerequisite; no test/database failure occurred.
+- **Cleanup/risk:** offline frozen install and local Prisma generation only; dependency/generated/build/cache residue was removed and `.gitkeep` retained. Full arithmetic is 137 source + 147 test + 91 docs = **375**; native cumulative 87 leaves **288** new lines (both limits met). DTO validation leaves trimming, blank-title, normalization, and submission completeness to domain/use cases.
+- **Remaining:** `- [ ] U13A2: RED → GREEN → TRIANGULATE → REFACTOR the literal-allowlisted transport projection and raw-relation exclusion. <!-- sdd-owner: implementation -->`; `- [ ] U13A2: Run its focused projection evidence, API typecheck, and lint. <!-- sdd-owner: implementation -->`.

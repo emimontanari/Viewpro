@@ -54,7 +54,10 @@ The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0
 | U11B2 | `apps/api/test/property-proposal-approval-race.spec.ts` same-proposal approval/approval and approval/rejection proof | **≤400**; production-bearing |
 | U11B3 | `apps/api/test/property-proposal-approval-race.spec.ts` final-slot approval/approval and approval/direct-create/restore proof | **≤400**; production-bearing |
 | U12 | import-only `apps/api/test/property-proposal-concurrency-matrix.e2e-spec.ts`; bounded-observer `apps/api/test/property-agent-primary-concurrency.e2e-spec.ts`. No `property-proposal-concurrency-fixtures.ts`: the matrix registers existing green suites without duplicating their fixtures. | **87–119**; verification-only, plus the existing exploration note |
-| U13 | `apps/api/src/property-proposals/property-proposals.controller.ts` P55–65; `apps/api/src/property-proposals/dto/create-property-proposal.dto.ts` P25–35; `apps/api/src/property-proposals/dto/update-property-proposal.dto.ts` P25–35; `apps/api/src/property-proposals/dto/submit-property-proposal.dto.ts` P12–18; `apps/api/src/property-proposals/property-proposals.controller.spec.ts` T70–85; `apps/api/src/property-proposals/property-proposals.module.ts` P15–20; `apps/api/src/app.module.ts` P2–4; `apps/api/test/property-proposals.e2e-spec.ts` T75–85 F35–40 | **314–387**; production-bearing |
+| U13A1 | Six seller DTO paths, `dto/property-proposal-transport.spec.ts`, and concise OpenSpec closure only. No projection, controller/module mount, endpoint, query, role check, or C9A response-source edit. | **Pre-code forecast:** 128–151 source + 108–136 test; final working-tree arithmetic must remain ≤400 and native new delta ≤313; production-bearing |
+| U13A2 | Pure literal-allowlisted projection and its focused spec only. | Deferred after U13A1; production-bearing |
+| U13B | Safe seller reads, current/history visibility, and the public-field contract resolved before response detail is claimed. No controller or module mount. | **Deferred for a separate ≤400 manifest after the interface-field gap is resolved**; production-bearing |
+| U13C | Seller controller/routes, module/AppModule mount, controller/E2E transport evidence, and aggregate U13 completion. | **Deferred for a separate ≤400 manifest after U13B**; production-bearing |
 | U14 | `apps/api/src/property-proposals/property-proposals.controller.ts` P45–55; `apps/api/src/property-proposals/dto/list-property-proposal-review.query.ts` P35–45; `apps/api/src/property-proposals/dto/review-property-proposal.dto.ts` P15–22; `apps/api/src/property-proposals/dto/reject-property-proposal.dto.ts` P18–25; `apps/api/src/property-proposals/dto/list-property-proposal-review.query.spec.ts` T60–75; `apps/api/test/property-proposals.e2e-spec.ts` T60–70 F25–30 | **258–322**; production-bearing |
 | U15A | `apps/app-new/src/app/api/property-proposals/route.ts` P25–35; `apps/app-new/src/app/api/property-proposals/[proposalId]/route.ts` P25–35; `apps/app-new/src/app/api/property-proposals/[proposalId]/submit/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/[proposalId]/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/[proposalId]/submit/route.test.ts` T40–55; `apps/app-new/src/lib/bff-api.ts` P12–18; `apps/app-new/src/lib/bff-api.test.ts` T70–80 | **272–363**; production-bearing |
 | U15B | `apps/app-new/src/app/api/property-proposals/review/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/reject/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/approve/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/reject/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/approve/route.test.ts` T40–55 | **240–340**; production-bearing |
@@ -97,7 +100,7 @@ U10B 55+60+15 = 130; 75+75+20 = 170
 U11A 35+30+75+25 = 165; 45+40+85+30 = 200
 U11B is split: U11B1 replay ordering/source invariant, U11B2 same-proposal races, and U11B3 final-slot races; each has a hard ≤400 physical-line boundary.
 U12 import-only matrix + bounded primary observer = 87; upper bound = 119; existing exploration remains separately retained
-U13 55+25+25+12+70+15+2+75+35 = 314; 65+35+35+18+85+20+4+85+40 = 387
+The 575-line U13A DTO/projection prototype was discarded rather than exceed 400, code-golf, or omit coverage. The user-approved U13A1 DTO-only rescope is independently forecast at 128–151 source plus 108–136 test lines; U13A2 retains projection.
 U14 45+35+15+18+60+60+25 = 258; 55+45+22+25+75+70+30 = 322
 U15A 25+25+20+40+40+40+12+70 = 272; 35+35+30+55+55+55+18+80 = 363
 U15B 20+20+20+20+40+40+40+40 = 240; 30+30+30+30+55+55+55+55 = 340
@@ -143,7 +146,10 @@ The corrected strict units mechanically group into **31** dependency-ordered opt
 | C10A | U11B1 | 400 | ≤400 replay ordering/source invariant |
 | C10B | U11B2 | 400 | ≤400 same-proposal races |
 | C10C | U11B3 + U12 | 400+119=519 planned; execute as separate U11B3 then verification-only U12 | each slice ≤400 |
-| C11 | U13 | 387 | 314–387 |
+| C11A1 | U13A1 DTO contracts and validation | <400 | DTO-only slice; final total and native delta are hard gates |
+| C11A2 | U13A2 pure projection | <400 | after U13A1 |
+| C11B | U13B reads/history/current visibility | <400 | deferred manifest after public-field resolution |
+| C11C | U13C endpoints/module/transport integration | <400 | deferred manifest after U13B |
 | C12 | U14 | 322 | 258–322 |
 | C13 | U15A | 363 | 272–363 |
 | C14 | U15B + U16A | 340+302=642 | 495–642 |
