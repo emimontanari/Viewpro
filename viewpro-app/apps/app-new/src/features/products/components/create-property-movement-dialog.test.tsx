@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
@@ -79,7 +79,123 @@ describe('CreatePropertyMovementDialog', () => {
     const payload = onSubmit.mock.calls[0]?.[0];
     expect(payload?.outcome).toEqual({ builtIn: 'CONSULTAS_Y_VISITAS' });
   });
+
+  it('blocks pointer and direct form saves until the created label is selected', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    const creation = deferred<Response>();
+    stubMovementLabelRequests(creation.promise);
+    renderCreatePropertyMovementDialog({ canUpdateStatus: false, onSubmit });
+
+    await user.type(screen.getByLabelText('Observación'), 'Etiqueta pendiente.');
+    await startInlineLabelCreation(user);
+
+    const save = screen.getByRole('button', { name: /Guardar actualización/i });
+    await waitFor(() => expect(save).toBeDisabled());
+    fireEvent.submit(document.getElementById('create-property-movement-form')!);
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    creation.resolve(labelResponse('label-1', 'Etiqueta creada'));
+    await waitFor(() => expect(save).toBeEnabled());
+
+    await user.click(save);
+    expect(onSubmit).toHaveBeenCalledOnce();
+    expect(onSubmit.mock.calls[0]?.[0].outcome).toEqual({ customLabelId: 'label-1' });
+  });
+
+  it('keeps a failed label creation recoverable without an implicit outcome', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    const creation = deferred<Response>();
+    stubMovementLabelRequests(creation.promise);
+    renderCreatePropertyMovementDialog({ canUpdateStatus: false, onSubmit });
+
+    await user.type(screen.getByLabelText('Observación'), 'Guardar sin resultado.');
+    await startInlineLabelCreation(user);
+    await waitFor(() => expect(screen.getByRole('button', { name: /Guardar actualización/i })).toBeDisabled());
+
+    creation.resolve(new Response('{}', { status: 409 }));
+    await screen.findByText('No pudimos completar la solicitud.');
+    const save = screen.getByRole('button', { name: /Guardar actualización/i });
+    expect(save).toBeEnabled();
+    expect(screen.getByRole('combobox', { name: /resultado del movimiento/i })).toHaveTextContent('Seleccioná un resultado');
+
+    await user.click(save);
+    expect(onSubmit).toHaveBeenCalledOnce();
+    expect(onSubmit.mock.calls[0]?.[0].outcome).toBeUndefined();
+  });
+
+    it('allows retrying a failed label creation with its returned outcome', async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      let attempts = 0;
+      vi.stubGlobal('fetch', vi.fn((_input, init?: RequestInit) => {
+        if (init?.method === 'POST') {
+          return Promise.resolve(attempts++ ? labelResponse('label-retry', 'Etiqueta reintentada') : new Response('{}', { status: 409 }));
+        }
+        return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+      }));
+      renderCreatePropertyMovementDialog({ canUpdateStatus: false, onSubmit });
+
+      await user.type(screen.getByLabelText('Observación'), 'Reintentar la etiqueta.');
+      await startInlineLabelCreation(user);
+      await screen.findByText('No pudimos completar la solicitud.');
+      await user.click(screen.getByRole('button', { name: /Crear etiqueta/i }));
+      await waitFor(() => expect(screen.getByRole('combobox', { name: /resultado del movimiento/i })).toHaveTextContent('Etiqueta personalizada'));
+
+      await user.click(screen.getByRole('button', { name: /Guardar actualización/i }));
+      expect(onSubmit).toHaveBeenCalledOnce();
+      expect(onSubmit.mock.calls[0]?.[0].outcome).toEqual({ customLabelId: 'label-retry' });
+    });
+
+    it('ignores a prior label completion after close and reopen', async () => {
+    const user = userEvent.setup();
+    const creation = deferred<Response>();
+    const onSubmit = vi.fn();
+    stubMovementLabelRequests(creation.promise);
+    const view = renderCreatePropertyMovementDialog({ canUpdateStatus: false, onSubmit });
+
+    await startInlineLabelCreation(user);
+    view.rerender(
+      <Wrapper>
+<CreatePropertyMovementDialog canUpdateStatus={false} isSubmitting={false} onOpenChange={vi.fn()} onSubmit={onSubmit} open={false} />
+      </Wrapper>
+    );
+    view.rerender(
+      <Wrapper>
+<CreatePropertyMovementDialog canUpdateStatus={false} isSubmitting={false} onOpenChange={vi.fn()} onSubmit={onSubmit} open />
+      </Wrapper>
+    );
+    creation.resolve(labelResponse('label-old', 'Etiqueta vieja'));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /Guardar actualización/i })).toBeEnabled());
+    expect(screen.getByRole('combobox', { name: /resultado del movimiento/i })).toHaveTextContent('Seleccioná un resultado');
+    fireEvent.submit(document.getElementById('create-property-movement-form')!);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  return { promise: new Promise<T>((done) => { resolve = done; }), resolve };
+}
+
+function labelResponse(id: string, label: string) {
+  return new Response(JSON.stringify({ id, label, color: null }), { status: 201 });
+}
+
+function stubMovementLabelRequests(creation: Promise<Response>) {
+  vi.stubGlobal('fetch', vi.fn((_input, init?: RequestInit) =>
+    init?.method === 'POST' ? creation : Promise.resolve(new Response(JSON.stringify([]), { status: 200 }))
+  ));
+}
+
+async function startInlineLabelCreation(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('combobox', { name: /resultado del movimiento/i }));
+  await user.click(screen.getByText(/\+ Agregar etiqueta/i));
+  await user.type(screen.getByLabelText('Nombre'), 'Etiqueta pendiente');
+  await user.click(screen.getByRole('button', { name: /Crear etiqueta/i }));
+}
 
 function renderCreatePropertyMovementDialog({
   canUpdateStatus = true,
