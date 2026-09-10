@@ -64,7 +64,8 @@ The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0
 | U14A2 | reviewer detail/history shaping and focused evidence only | Deferred after U14A1; production-bearing |
 | U14B | reviewer DTO/controller/module/provider contract and static-route proof | Deferred after U14A2; production-bearing |
 | U14C | guarded reviewer HTTP E2E only | Deferred after U14B; verification-bearing |
-| U15A | `apps/app-new/src/app/api/property-proposals/route.ts` P25–35; `apps/app-new/src/app/api/property-proposals/[proposalId]/route.ts` P25–35; `apps/app-new/src/app/api/property-proposals/[proposalId]/submit/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/[proposalId]/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/[proposalId]/submit/route.test.ts` T40–55; `apps/app-new/src/lib/bff-api.ts` P12–18; `apps/app-new/src/lib/bff-api.test.ts` T70–80 | **272–363**; production-bearing |
+| U15A1 | `apps/app-new/src/app/api/property-proposals/route.ts`, its colocated test, `apps/app-new/src/lib/bff-api.ts`, and `bff-api.test.ts`; shared helper plus collection only | **≤400**; production-bearing, no detail/submit routes |
+| U15A2 | seller `[proposalId]` and `[proposalId]/submit` routes with their colocated tests only | **≤400**; production-bearing after U15A1, no helper or collection changes |
 | U15B | `apps/app-new/src/app/api/property-proposals/review/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/reject/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/approve/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/reject/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/approve/route.test.ts` T40–55 | **240–340**; production-bearing |
 | U16A | `apps/app-new/src/features/property-proposals/api/types.ts` P45–55; `apps/app-new/src/features/property-proposals/api/service.ts` P70–80; `apps/app-new/src/lib/bff-client.ts` P15–22; `apps/app-new/src/lib/__tests__/bff-client.spec.ts` T80–90; `apps/app-new/src/features/property-proposals/api/service.test.ts` T45–55 | **255–302**; production-bearing |
 | U16B | `apps/app-new/src/features/property-proposals/api/queries.ts` P65–75; `apps/app-new/src/features/property-proposals/api/queries.test.ts` T45–55 | **110–130**; production-bearing |
@@ -107,7 +108,7 @@ U11B is split: U11B1 replay ordering/source invariant, U11B2 same-proposal races
 U12 import-only matrix + bounded primary observer = 87; upper bound = 119; existing exploration remains separately retained
 The 575-line U13A DTO/projection prototype was discarded rather than exceed 400, code-golf, or omit coverage. The user-approved U13A1 DTO-only rescope is independently forecast at 128–151 source plus 108–136 test lines; U13A2 retains projection.
 U14 is split: U14A1 list-only is ≤400; U14A2 detail/history, U14B transport contract, and U14C HTTP evidence are separate ≤400 boundaries.
-U15A 25+25+20+40+40+40+12+70 = 272; 35+35+30+55+55+55+18+80 = 363
+U15A1 helper+collection and U15A2 detail+submit are separate hard ≤400 slices; their former aggregate forecast was 272–363.
 U15B 20+20+20+20+40+40+40+40 = 240; 30+30+30+30+55+55+55+55 = 340
 U16A 45+70+15+80+45 = 255; 55+80+22+90+55 = 302
 U16B 65+45 = 110; 75+55 = 130
@@ -161,7 +162,8 @@ The corrected strict units mechanically group into **31** dependency-ordered opt
 | C12A2 | U14A2 reviewer detail/history projection | 400 | ≤400 |
 | C12B | U14B reviewer transport contract | 400 | ≤400 |
 | C12C | U14C reviewer HTTP E2E | 400 | ≤400 |
-| C13 | U15A | 363 | 272–363 |
+| C13A | U15A1 helper + collection | 400 | ≤400 |
+| C13B | U15A2 detail + submit | 400 | ≤400 |
 | C14 | U15B + U16A | 340+302=642 | 495–642 |
 | C15 | U16B + U17 | 130+235=365 | 295–365 |
 | C16 | U18A | 348 | 286–348 |

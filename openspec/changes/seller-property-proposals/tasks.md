@@ -249,12 +249,21 @@ Manifest: U14A1 is list-only: reviewer repository port/Prisma adapter, reviewer 
 - [x] RED → GREEN → TRIANGULATE → REFACTOR static `review` precedence, both reviewer roles, permission-before-lookup, self-review, direct rejection validation, replay/conflict/quota mappings, and unsupported search rejection. <!-- sdd-owner: implementation -->
 - [x] Run the manifest query/controller E2E tests and API typecheck; clean decisions, rounds, proposals, and assets. <!-- sdd-owner: implementation -->
 
-### U15A — Seller BFF routes
+### U15A — Seller BFF routes (aggregate)
 
 Manifest: seller `route.ts` files and colocated `route.test.ts` files for collection, `[proposalId]`, and `[proposalId]/submit`, plus `src/lib/bff-api.ts` and `bff-api.test.ts`.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR method/path/body/query forwarding, selected-tenant behavior, passthrough status/body, request-ID filtering, malformed/no-body, and timeout handling through the real BFF helpers. <!-- sdd-owner: implementation -->
-- [ ] Run only the listed seller route tests and App typecheck; clear mock responses, timers, and request context. <!-- sdd-owner: implementation -->
+#### U15A1 — Shared helper and seller collection
+
+- [x] RED → GREEN → TRIANGULATE → REFACTOR trusted selected-tenant forwarding, canonical request-ID filtering, status/body passthrough, malformed/no-body, timeout/network handling, and collection GET/POST query/raw-body forwarding through `bffFetch`, `proxyJsonResponse`, and `proxyBffErrorResponse`; JSON tenant/proposer fields never override trusted context. <!-- sdd-owner: implementation -->
+- [x] Run `bff-api.test.ts` and collection `route.test.ts`, App typecheck, and lint; reset fetch/header mocks, timers, responses, and request context. <!-- sdd-owner: implementation -->
+
+#### U15A2 — Seller detail and submit routes
+
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR detail and submit method/path/body forwarding, selected-tenant behavior, passthrough status/body, request-ID filtering, malformed/no-body, and timeout handling only through the real shared BFF helpers. <!-- sdd-owner: implementation -->
+- [ ] Run only the detail and submit route tests, App typecheck, and lint; clear mock responses, timers, and request context. <!-- sdd-owner: implementation -->
+
+- [ ] U15A aggregate: complete both U15A1 and U15A2 seller BFF slices without route-local helper duplication. <!-- sdd-owner: implementation -->
 
 ### U15B — Reviewer BFF routes
 
