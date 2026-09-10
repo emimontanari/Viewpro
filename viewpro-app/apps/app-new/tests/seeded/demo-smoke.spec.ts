@@ -456,9 +456,9 @@ test('demo user can navigate the seeded operational workflow', async ({ page }) 
 
       await page.reload();
       await expect(page.getByRole('heading', { level: 1, name: `Hola, ${longName}` })).toBeVisible();
-      expect(longSessionUpstream).toBe(true);
-      expect(longProductsUpstream).toBe(true);
-      expect(longActivityUpstream, 'Martin seed lacks a permitted activity row; do not fabricate one').toBe(true);
+      await expect.poll(() => longSessionUpstream).toBe(true);
+      await expect.poll(() => longProductsUpstream).toBe(true);
+      await expect.poll(() => longActivityUpstream).toBe(true);
 
       await assertResponsive([
         page.getByRole('heading', { level: 1, name: `Hola, ${longName}` }),

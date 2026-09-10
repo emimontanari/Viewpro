@@ -1,3 +1,4 @@
+import { BffError } from '@/lib/bff-client';
 import { getDocumentRequestsRefetchInterval } from '@/lib/document-request-refresh';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -6,6 +7,8 @@ import {
   ownerEngagementTimelineOptions,
   ownerKeys,
   ownerNotificationsOptions,
+  ownerPropertyEngagementsOptions,
+  ownerPropertyOptions,
   ownerUnreadNotificationsCountOptions
 } from './queries';
 import { getOwnerEngagementTimeline } from './service';
@@ -25,6 +28,35 @@ const getOwnerNotificationsMock = vi.mocked(getOwnerNotifications);
 const getOwnerUnreadNotificationCountMock = vi.mocked(getOwnerUnreadNotificationCount);
 const getOwnerEngagementTimelineMock = vi.mocked(getOwnerEngagementTimeline);
 
+
+type DetailRetry = (failureCount: number, error: Error) => boolean;
+
+function ownerDetailRetries(): DetailRetry[] {
+  return [ownerPropertyOptions('property-1'), ownerPropertyEngagementsOptions('property-1')].map(
+    ({ retry }) => {
+      expect(retry).toBeTypeOf('function');
+      return retry as DetailRetry;
+    }
+  );
+}
+
+describe('owner detail query retries', () => {
+  it('stops typed BFF 404 denials immediately for both owner detail reads', () => {
+    for (const retry of ownerDetailRetries()) {
+      expect(retry(0, new BffError(404))).toBe(false);
+    }
+  });
+
+  it.each([new BffError(403), new BffError(500), new Error('network unavailable')])(
+    'retains three retries for non-terminal failures',
+    (error) => {
+      for (const retry of ownerDetailRetries()) {
+        expect([0, 1, 2].map((failureCount) => retry(failureCount, error))).toEqual([true, true, true]);
+        expect(retry(3, error)).toBe(false);
+      }
+    }
+  );
+});
 
 describe('owner home movement query options', () => {
   it('uses the exact bounded home key and query independently from the detail page', async () => {
