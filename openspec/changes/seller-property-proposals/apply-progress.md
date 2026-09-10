@@ -1405,3 +1405,97 @@ The parent supplied the exact target, apply-ready status, and runtime `proceed a
 - **Verification:** focused pure controller test passed twice (3/3); contracts build, API typecheck, API lint, and `git diff --check` passed. The test is metadata evidence only: this constrained correction does not instantiate the Nest runtime graph; CI/U14C retains runtime HTTP/graph evidence.
 - **Mutants:** production mutations (dropping seller args, duplicating provider, or rebinding the engagements token) were not made because they are outside this correction's allowed edit surface; the new assertions are specifically constructed to fail those states.
 - **Arithmetic/cleanup:** the candidate is now 312 changed lines including this correction record and remains under 400. Offline dependencies, generated outputs, caches, and the temporary no-global Vitest config are removed; no database work, task-checkbox change, commit, push, PR, review, receipt, or lifecycle action occurred.
+
+## U14C reviewer HTTP E2E — runtime-blocked attempt
+
+### Status consumed
+
+```yaml
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+nextRecommended: apply
+runtime: proceed-c534
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u14c-e2e
+  allowedEditRoots:
+    - viewpro-app/apps/api/test/property-proposals.e2e-spec.ts
+    - viewpro-app/apps/api/test/property-proposal-cleanup.ts (not changed)
+    - openspec/changes/seller-property-proposals/tasks.md
+    - openspec/changes/seller-property-proposals/apply-progress.md
+warnings: []
+delivery: auto-chain / stacked-to-develop; U14C only; maintainer-approved under 400
+```
+
+The parent supplied this exact status and workspace; no ambient/native status query was made. The authoritative proposal, change specification, design/interface, task/verification companions, U14 exploration, prior progress, execution ledger, and strict-TDD guidance were read before editing.
+
+### Work performed
+
+- Added compact HTTP E2E cases to the existing seller suite for unauthenticated and forged-capability denial, static `/review` routing, unsupported/over-limit query rejection, both reviewer roles, tenant list/detail scope and uniform coded 404s, recursive literal safe-response allowlists, and GET write-count invariance.
+- Added rejection evidence for coded invalid reasons, normalized durable reason/history reread, stale-round 409, and durable self-review 403.
+- Added approval evidence through the mounted real materializer: safe reread/replay, one same-tenant `CAPTURE` source engagement, proposer/reviewer attribution, explicit non-primary assignment, and no owner/image/notification/analytics side effects.
+- Extended this suite's dependency-ordered `finally` cleanup to discover and remove proposal-source engagements and captured orphan assets before proposal history, tenant memberships, tenants, and users. No reusable cleanup helper change was needed.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| U14C reviewer HTTP evidence | HTTP E2E | Existing seller suite command was attempted after the localhost `_test` guard. | Test-first reviewer cases initially referenced missing test helpers; normal Vitest did not collect because global Prisma migration stopped at local `P1001`. | Static API typecheck and lint passed after helpers/cleanup were added; runtime GREEN is not claimed. | The cases independently cover distinct authorization, validation, tenant, safety, mutation, replay, and side-effect branches; runtime execution remains blocked. | Kept the additions in the existing fixture suite and used the existing cleanup runner; no production refactor occurred. |
+
+### Verification and remaining work
+
+- PASS — local URL guard for `postgresql://viewpro:viewpro@127.0.0.1:5432/viewpro_test?schema=public`.
+- PASS — `pnpm install --offline --frozen-lockfile`, `pnpm --filter @viewpro/api db:generate`, `pnpm --filter @viewpro/contracts build`, `pnpm --filter @viewpro/api typecheck`, `pnpm --filter @viewpro/api lint`, and `git diff --check`.
+- BLOCKED INFRASTRUCTURE — `DATABASE_URL="$database_url" DIRECT_URL="$database_url" pnpm --filter @viewpro/api exec vitest run --retry=0 test/property-proposals.e2e-spec.ts` reached `test/global-setup.ts` and failed `prisma migrate deploy` with local `P1001` before test collection, app creation, fixture seeding, writes, cleanup, or mutant execution.
+- The updated E2E source is 387 physical lines. The candidate remains within the approved U14C review boundary; no production or non-allowed test file changed.
+- Persisted U14C and aggregate-U14 checkboxes remain unchecked because the required HTTP evidence did not execute. Exact remaining implementation rows are `- [ ] Run guarded reviewer query/controller HTTP evidence and API typecheck; return any discovered product defect to U14A2/U14B and clean decisions, rounds, proposals, and assets. <!-- sdd-owner: implementation -->` and `- [ ] RED → GREEN → TRIANGULATE → REFACTOR static \`review\` precedence, both reviewer roles, permission-before-lookup, self-review, direct rejection validation, replay/conflict/quota mappings, and unsupported search rejection. <!-- sdd-owner: implementation -->`.
+- No product defects were observed because the runtime suite did not collect. Required guard/cross-tenant/projection/status/materializer/reason-validation mutants were not attempted: changing production is outside the authorized edit roots and no runtime safety net was available.
+
+## U14C audited static correction
+
+### Status and boundary consumed
+
+```yaml
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+runtime: proceed-89db
+remediation: remediates-40e6
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u14c-e2e
+  allowedEditRoots:
+    - viewpro-app/apps/api/test/property-proposals.e2e-spec.ts
+    - openspec/changes/seller-property-proposals/tasks.md
+    - openspec/changes/seller-property-proposals/apply-progress.md
+warnings: []
+delivery: U14C corrective slice; maximum 400 changed lines
+```
+
+No ambient/native status was queried. This corrective pass is test-only: no production source, reusable cleanup helper, other test, lifecycle task, Git delivery, or subagent action occurred.
+
+### Corrected evidence and cleanup
+
+- The initial registration membership is explicitly changed to current `MANAGER` for a real successful review request, then to `PRINCIPAL_MANAGER` for the retained second success.
+- The inbox now contains the current-tenant submitted proposal and explicitly excludes a separately submitted active-other-tenant proposal. Forged seller review commands against missing UUIDs return 403 before lookup; unauthenticated 401, static route, and query 400 coverage remain.
+- Rejection now covers blank/whitespace/non-string/1001 rejection, accepted 1000-character reason, same-reviewer 200 replay, and stale/different-reviewer 409 outcomes. Approval asserts exactly one asset, source engagement, decision, and assignment, and replay returns the same canonical engagement ID.
+- GET snapshots only proposal/round/decision/engagement/assignment counts plus assets created by the fixture seller and tenant-scoped notification, analytics, and platform-outbox counts; it makes no claim about unrelated durable rows.
+- Cleanup discovers source engagements inside `try` and removes their captured assets before proposal history. It also deletes tenant-scoped `PlatformOutboxEvent` registration artifacts before tenant/user deletion; `finally` clears run-scoped IDs even if discovery fails.
+
+### TDD and verification
+
+| Task | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|
+| U14C static correction | The prior normal HTTP runner is already blocked before collection by localhost Prisma `P1001`; corrective assertions were added before test helper changes. | `pnpm --filter @viewpro/api typecheck` and `pnpm --filter @viewpro/api lint` passed. | Manager/principal, own/other tenant, same/different reviewer, and first/replay approval inputs exercise distinct runtime branches once PostgreSQL is available. | Count scopes and cleanup ordering were tightened without production changes. |
+
+- PASS — API typecheck, API lint, and `git diff --check`.
+- NOT RERUN — the HTTP E2E requires unavailable local PostgreSQL and the prior guarded attempt already recorded `P1001` before collection; no runtime pass or task completion is claimed.
+- Current candidate arithmetic is 139 additions and 21 deletions in the E2E plus 87 progress additions: 247 physical changed lines, below the 400-line maximum. U14C and aggregate-U14 checkboxes remain unchecked until the guarded HTTP command executes; U15 and all parent-owned rows are unchanged.
+
+## U14C approval-replay count correction
+
+- The first approval response and same-reviewer replay must both return the discovered source engagement ID. A shared bounded count helper snapshots exactly one asset, engagement, decision, and assignment plus zero owner/image rows and unchanged tenant-scoped notification, analytics, and platform-outbox counts; replay must match that complete snapshot.
+- This is test-first static evidence for the mounted real approval/materializer/response path. API typecheck, lint, and `git diff --check` pass; the local database remains unavailable, so no HTTP execution or task checkbox completion is claimed.
+- U14C intentionally does **not** duplicate stale-approval, quota, or proposer-ineligible HTTP matrices. Those mappings remain explicitly covered by `approve-property-proposal.use-case.spec.ts`, `approve-property-proposal.quota.spec.ts`, and `approve-property-proposal.replay.spec.ts`; the aggregate U14 task remains unchecked pending CI/runtime evidence.
+- Current candidate arithmetic is 150 E2E additions + 21 deletions + 87 prior progress additions, before this concise record, and remains below 400 changed lines. No other file changed.
