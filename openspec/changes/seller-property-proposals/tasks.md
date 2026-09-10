@@ -240,7 +240,7 @@ Manifest: U14A1 is list-only: reviewer repository port/Prisma adapter, reviewer 
 - [x] RED → GREEN → TRIANGULATE → REFACTOR a literal reviewer list summary behind the existing reviewer role/capability gate, preserving every C7 list test/filter/order/pagination boundary; batch tenant-scoped rounds, result rows, and proposers once per page without N+1 or direct-source output, and never drop a row because its proposer lacks current membership. <!-- sdd-owner: implementation -->
 - [x] Run the focused list repository/use-case/transport evidence twice, API typecheck, and lint; record the normal-runner P1001 and use only a no-global unit fallback. <!-- sdd-owner: implementation -->
 #### U14A2 — Reviewer detail/history projection
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR reviewer detail/history shaping and coded absence without changing U14A1 list behavior. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR reviewer detail/history shaping and coded absence without changing U14A1 list behavior. <!-- sdd-owner: implementation -->
 #### U14B — DTO/controller/module contract
 - [ ] RED → GREEN → TRIANGULATE → REFACTOR reviewer DTO/controller/module/provider wiring, static `review` precedence, both reviewer roles, permission-before-lookup, self-review, direct rejection validation, replay/conflict/quota mappings, and unsupported search rejection. <!-- sdd-owner: implementation -->
 #### U14C — Reviewer HTTP E2E

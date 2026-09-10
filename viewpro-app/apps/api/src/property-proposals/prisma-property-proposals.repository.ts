@@ -21,6 +21,7 @@ import type {
   PropertyProposalsRepository,
   UpdatePropertyProposalInput,
   UpdatePropertyProposalResult,
+  ReviewerPropertyProposalDetail,
   ReviewerPropertyProposalSummariesPage,
   ReviewerPropertyProposalsPage,
   SellerPropertyProposalsPage,
@@ -315,6 +316,100 @@ export class PrismaPropertyProposalsRepository implements PropertyProposalsRepos
     const membership = viewer?.memberships[0]
     return {
       proposal,
+      currentReviewRoundId: rounds[0]?.id,
+      history,
+      resultLink: mapPropertyProposalResultLink(resolveCanonicalEngagementId({
+        proposal,
+        canonicalEngagement: engagement?.sourceProposalId
+          ? { id: engagement.id, tenantId: engagement.tenantId, sourceProposalId: engagement.sourceProposalId }
+          : undefined,
+        viewer: viewer ?? undefined,
+        membership,
+        assignments: assignments.map(({ tenantId, propertyEngagementId, agentUserId }) => ({ tenantId, engagementId: propertyEngagementId, agentUserId })),
+      })),
+    }
+  }
+
+  async findDetailForReviewer(input: {
+    tenantId: string
+    reviewerUserId: string
+    proposalId: string
+  }): Promise<ReviewerPropertyProposalDetail | null> {
+    const proposal = await this.findForReviewer({ tenantId: input.tenantId, proposalId: input.proposalId })
+    if (!proposal) return null
+
+    const [rounds, viewer, engagements] = await Promise.all([
+      this.prisma.propertyProposalReviewRound.findMany({
+        where: { tenantId: input.tenantId, proposalId: proposal.id },
+        orderBy: [{ submittedAt: 'desc' }, { id: 'desc' }],
+      }),
+      this.prisma.user.findUnique({
+        where: { id: input.reviewerUserId },
+        select: {
+          id: true,
+          status: true,
+          memberships: {
+            where: { tenantId: input.tenantId },
+            select: { userId: true, tenantId: true, status: true, role: true },
+          },
+        },
+      }),
+      this.prisma.propertyEngagement.findMany({
+        where: { tenantId: input.tenantId, sourceProposalId: proposal.id },
+        select: { id: true, tenantId: true, sourceProposalId: true },
+      }),
+    ])
+    const [decisions, assignments] = await Promise.all([
+      this.prisma.propertyProposalReviewDecision.findMany({
+        where: { tenantId: input.tenantId, reviewRoundId: { in: rounds.map(({ id }) => id) } },
+      }),
+      this.prisma.propertyAgent.findMany({
+        where: { tenantId: input.tenantId, propertyEngagementId: { in: engagements.map(({ id }) => id) } },
+        select: { tenantId: true, propertyEngagementId: true, agentUserId: true },
+      }),
+    ])
+    const people = await this.prisma.user.findMany({
+      where: {
+        id: {
+          in: [...new Set([
+            proposal.proposedByUserId,
+            ...rounds.map(({ submittedByUserId }) => submittedByUserId),
+            ...decisions.map(({ reviewerUserId }) => reviewerUserId),
+          ])],
+        },
+      },
+      select: { id: true, firstName: true, lastName: true },
+    })
+
+    const personById = new Map(people.map((person) => [person.id, person]))
+    const proposedBy = personById.get(proposal.proposedByUserId)
+    if (!proposedBy) throw new Error('proposal proposer is missing')
+    const decisionByRoundId = new Map(decisions.map((decision) => [decision.reviewRoundId, decision]))
+    const history = rounds.map((round) => {
+      const submittedBy = personById.get(round.submittedByUserId)
+      const decision = decisionByRoundId.get(round.id)
+      const reviewer = decision && personById.get(decision.reviewerUserId)
+      if (!submittedBy || (decision && !reviewer)) throw new Error('proposal history actor is missing')
+      return {
+        id: round.id,
+        roundNumber: round.roundNumber,
+        submittedAt: round.submittedAt,
+        submittedBy: { id: submittedBy.id, firstName: submittedBy.firstName, lastName: submittedBy.lastName },
+        snapshot: mapPropertyProposalSnapshot(round),
+        decision: decision && reviewer ? {
+          outcome: decision.outcome,
+          decidedAt: decision.decidedAt,
+          rejectionReason: decision.rejectionReason,
+          reviewer: { id: reviewer.id, firstName: reviewer.firstName, lastName: reviewer.lastName },
+        } : null,
+      }
+    })
+    const engagement = engagements[0]
+    const membership = viewer?.memberships[0]
+
+    return {
+      proposal,
+      proposedBy: { id: proposedBy.id, firstName: proposedBy.firstName, lastName: proposedBy.lastName },
       currentReviewRoundId: rounds[0]?.id,
       history,
       resultLink: mapPropertyProposalResultLink(resolveCanonicalEngagementId({
