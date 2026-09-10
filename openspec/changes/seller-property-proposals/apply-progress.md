@@ -1763,3 +1763,68 @@ This is the user-approved U15B2 decision slice and completes the U15B aggregate:
 - [ ] Run the manifest service/client specs, App typecheck, and strict lint; reset query clients and mock servers. <!-- sdd-owner: implementation -->
 
 No design deviation is recorded, and all parent-owned lifecycle actions remain deferred.
+
+## U16A1 BFF error boundary
+
+### Status and delivery boundary
+
+```yaml
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+runtime: proceed2fc9
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u16a1-bff-error
+  allowedEditRoots: supplied U16A1 BFF and OpenSpec paths
+warnings: []
+```
+
+The parent supplied status directly; no ambient/native status lookup was performed. The approved split replaces the oversized U16A candidate with U16A1 (this BFF boundary) and dependent U16A2 (typed proposal service). U16A1 is complete and visibly checked; U16A2 and aggregate U16A remain unchecked.
+
+### Completed work
+
+- `BffError` now exposes only safe status, known catalog code, generic message, and optional canonical lowercase UUIDv4 `requestId`.
+- Canonical header IDs win body IDs; invalid or absent headers fall back only to canonical body IDs. Browser memory capture and SSR isolation remain intact.
+- Abort failures map to 408; non-abort fetch failures map to generic safe 502; returned HTTP 504 remains unchanged.
+- Updated task, delivery-plan, and verification-command artifacts to formalize U16A1 → U16A2.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| U16A1 BFF boundary | Unit | Existing client spec passed 20/20 after offline dependency install and contracts build. | Added request-ID and network assertions first; 4/24 failed because `BffError` lacked request IDs and network errors leaked. | Focused client spec passed 24/24 twice. | Reversed header precedence, leaked `TypeError`, accepted uppercase UUIDs, and admitted unknown codes; the focused spec failed 4/24 and was restored. | Extracted canonical-ID parsing so response capture and `BffError` use the same boundary. |
+
+### Verification and cleanup
+
+- PASS — focused U16A1 client spec twice: 24/24 each run.
+- PASS — App typecheck.
+- PASS — App strict lint.
+- Mutants failed then restored for header precedence, network leakage, UUID case validation, and unknown-code admission.
+- Offline frozen installation and generated contracts were used only for verification; no route, feature service/type, query, UI, backend, or contract source changed.
+
+### Remaining work
+
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR typed seller/reviewer service calls through `bffRequest`, local code mapping, signals, and timeout behavior. <!-- sdd-owner: implementation -->
+- [ ] Run the focused service spec, App typecheck, and strict lint; reset mocks and query state. <!-- sdd-owner: implementation -->
+- [ ] U16A aggregate: complete U16A1 and U16A2 without feature routes, queries, UI, backend, or contract changes. <!-- sdd-owner: implementation -->
+
+Parent-owned lifecycle rows were preserved byte-for-byte. No commit, push, PR, review, receipt, or delivery action occurred.
+
+## U16A1 request-ID boundary correction
+
+Status consumed: parent-directed `seller-property-proposals` U16A1 corrective pass, runtime `proceed3baf`, remediation `df6c`, repo-local target with only the supplied BFF and progress roots; no ambient/native status lookup occurred.
+
+- `BffError` canonicalizes its exported constructor argument, so invalid IDs cannot be retained.
+- `toBffError` canonicalizes a supplied ID before applying the existing response-header then response-body fallback order.
+- Added direct constructor/fallback tests and a real `bffRequest` HTTP 504 assertion proving the returned response remains status 504 with only safe code/message/request-ID fields.
+
+| TDD cycle | Evidence |
+|---|---|
+| Safety net | Pre-correction focused client spec passed 24/24. |
+| RED | New constructor and supplied-ID fallback tests failed 7/32 because invalid IDs were retained/prioritized. |
+| GREEN | Focused spec passed 32/32. |
+| TRIANGULATE | Constructor-validation bypass, invalid-supplied-ID priority, and 504→502 mutants failed 11/32; restoration passed. |
+| REFACTOR | Reused the existing canonical-ID helper for every exported and internal error boundary. |
+
+Verification: focused client spec passed twice at 32/32; App typecheck and strict lint passed; `git diff --check` passed. Offline dependencies/generated contracts were used only for verification and will be removed during cleanup. U16A1 checkboxes remain visibly `[x]`; U16A2 and aggregate U16A remain unchecked. No design deviation, route, service/type, UI, backend, contract, commit, push, PR, review, or receipt action occurred.

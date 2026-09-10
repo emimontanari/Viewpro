@@ -37,12 +37,14 @@ export function clearLatestApplicationRequestId(): void {
 export class BffError extends Error {
   readonly status: number;
   readonly errorCode?: PublicErrorCode;
+  readonly requestId?: string;
 
-  constructor(status: number, errorCode?: PublicErrorCode) {
+  constructor(status: number, errorCode?: PublicErrorCode, requestId?: string) {
     super(GENERIC_BFF_ERROR_MESSAGE);
     this.name = 'BffError';
     this.status = status;
     this.errorCode = errorCode;
+    this.requestId = canonicalRequestId(requestId);
   }
 }
 
@@ -94,47 +96,54 @@ export async function bffRequest<TResponse>(
     if (error instanceof Error && error.name === 'AbortError') {
       throw new BffError(408);
     }
-    throw error;
+    throw new BffError(502);
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
   }
 
-  const capturedHeaderRequestId = captureApplicationRequestId(response.headers.get('x-request-id'));
+  const headerRequestId = canonicalRequestId(response.headers.get('x-request-id'));
 
   if (response.status === 204) {
+    captureApplicationRequestId(headerRequestId);
     return undefined as TResponse;
   }
 
-    const body = await response.json().catch(() => undefined);
-    if (!capturedHeaderRequestId) {
-      captureApplicationRequestId(requestIdFromBody(body));
-    }
+  const body = await response.json().catch(() => undefined);
+  const requestId = headerRequestId ?? canonicalRequestId(requestIdFromBody(body));
+  captureApplicationRequestId(requestId);
 
   if (!response.ok) {
-    throw toBffError(response, body);
+    throw toBffError(response, body, requestId);
   }
 
   return body as TResponse;
 }
 
-function captureApplicationRequestId(requestId: unknown): boolean {
-  if (typeof window !== 'undefined' && typeof requestId === 'string' && CANONICAL_UUID_V4.test(requestId)) {
+function captureApplicationRequestId(requestId: string | undefined): void {
+  if (typeof window !== 'undefined' && requestId) {
     latestApplicationRequestId = requestId;
-    return true;
   }
+}
 
-  return false;
+function canonicalRequestId(value: unknown): string | undefined {
+  return typeof value === 'string' && CANONICAL_UUID_V4.test(value) ? value : undefined;
 }
 
 function requestIdFromBody(body: unknown): unknown {
   return body && typeof body === 'object' ? (body as Record<string, unknown>).requestId : undefined;
 }
 
-export function toBffError(response: Response, body: unknown): BffError {
+export function toBffError(response: Response, body: unknown, requestId?: string): BffError {
   const parsed = body && typeof body === 'object' ? (body as Record<string, unknown>) : undefined;
   const errorCode = isPublicErrorCode(parsed?.errorCode) ? parsed.errorCode : undefined;
 
-  return new BffError(response.status, errorCode);
+  return new BffError(
+    response.status,
+    errorCode,
+    canonicalRequestId(requestId) ??
+      canonicalRequestId(response.headers.get('x-request-id')) ??
+      canonicalRequestId(requestIdFromBody(body))
+  );
 }
 
 /**
