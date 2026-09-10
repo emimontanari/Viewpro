@@ -1356,3 +1356,52 @@ The U14A2 source/test delta is 309 additions and 6 deletions across seven allowe
 - [ ] Run the manifest query/controller E2E tests and API typecheck; clean decisions, rounds, proposals, and assets. <!-- sdd-owner: implementation -->
 
 The assigned PR boundary is U14A2 only; return to parent lifecycle for the next controlled slice. Parent-owned lifecycle actions remain deferred byte-for-byte.
+
+## U14B — reviewer DTO/controller/module contract
+
+### Status consumed
+
+```yaml
+schemaName: spec-driven
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+nextRecommended: apply
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u14b-routes
+  allowedEditRoots: parent-supplied U14B DTO/controller/module/OpenSpec paths
+  warnings: []
+delivery: auto-chain / stacked-to-develop; U14B only, under 400 lines
+```
+
+The parent supplied the exact target, apply-ready status, and runtime `proceed a122`; no ambient status was used. The proposal, specifications, design/interface, tasks, U14 exploration, prior progress, ledger, and strict-TDD configuration were read before editing.
+
+### Completed work
+
+- Added whitelist-safe reviewer DTOs: list supports only state/history/page/pageSize with pagination conversion; UUID `reviewRoundId` is required for commands; rejection deliberately admits `unknown` reason for the existing use case's coded direct-validation verdict.
+- Added the four static reviewer routes before seller `:proposalId`; each uses the existing controller guards, `PROPERTY_PROPOSALS_REVIEW`, trusted tenant/user context, and safe reviewer rereads after commands.
+- Registered reviewer reads/commands and imported `PropertyEngagementsModule`. It provides/exports `CanonicalPropertyMaterializer` once, with no duplicate engagements-repository binding or circular import.
+- Marked only the U14B implementation checkbox `[x]`; U14C and aggregate U14 rows remain unchecked.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| U14B DTO/controller/module | no-global API unit | Existing seller controller contract: 3/3 passed. | DTO imports were absent and controller contract failed 3/3 for absent handlers/module import. | DTO/controller contract: 2 files/6 passed. | Missing guard, wrong permission, raw command result, absent materializer export, accepted `search`, and static-after-dynamic mutants each failed and were restored. | Literal DTO allowlists and direct provider wiring needed no further refactor. |
+
+### Verification and boundary
+
+- PASS — focused no-global DTO/controller fallback twice: 2 files / 6 tests each; contracts build, API typecheck, API lint, and `git diff --check` passed.
+- BLOCKED INFRASTRUCTURE — normal guarded focused Vitest stopped during Prisma global migration setup with local PostgreSQL `P1001` before collection; the permitted no-global fallback created no DB fixture or connection.
+- The U14B source/test delta is 253 lines; including tasks and this progress entry it is 296 changed lines, within the approved 400-line boundary. No U14C/E2E, schema, BFF, UI, seller-access change, database cleanup, commit, push, PR, review, receipt, or lifecycle work occurred.
+- Remaining exact unchecked rows: `- [ ] Run guarded reviewer query/controller HTTP evidence and API typecheck; return any discovered product defect to U14A2/U14B and clean decisions, rounds, proposals, and assets. <!-- sdd-owner: implementation -->`; `- [ ] RED → GREEN → TRIANGULATE → REFACTOR static \`review\` precedence, both reviewer roles, permission-before-lookup, self-review, direct rejection validation, replay/conflict/quota mappings, and unsupported search rejection. <!-- sdd-owner: implementation -->`; `- [ ] Run the manifest query/controller E2E tests and API typecheck; clean decisions, rounds, proposals, and assets. <!-- sdd-owner: implementation -->`.
+- Residual risk: controller metadata/unit coverage proves declarations, guards, permissions, DTO whitelist behavior, context wiring, safe rereads, and provider graph; U14C owns real HTTP authorization/status and cleanup evidence.
+
+## U14B audited static-gate correction
+
+- **Status:** parent supplied the same exact target and U14B objective under runtime `proceed b62d`; no ambient status was queried. Allowed edits were limited to this controller spec and cumulative progress artifact.
+- **Safety/TDD:** the pre-edit no-global controller contract passed 3/3. Restored direct assertions for seller create/list/get/update/submit trusted tenant/user, proposal ID, body/query forwarding, and the four safe-detail rereads. The strengthened static module contract now proves each reviewer provider and `PropertyEngagementsModule` import occurs exactly once, materializer export occurs exactly once, and proposal providers neither duplicate the materializer nor bind `PROPERTY_ENGAGEMENTS_REPOSITORY`.
+- **Verification:** focused pure controller test passed twice (3/3); contracts build, API typecheck, API lint, and `git diff --check` passed. The test is metadata evidence only: this constrained correction does not instantiate the Nest runtime graph; CI/U14C retains runtime HTTP/graph evidence.
+- **Mutants:** production mutations (dropping seller args, duplicating provider, or rebinding the engagements token) were not made because they are outside this correction's allowed edit surface; the new assertions are specifically constructed to fail those states.
+- **Arithmetic/cleanup:** the candidate is now 312 changed lines including this correction record and remains under 400. Offline dependencies, generated outputs, caches, and the temporary no-global Vitest config are removed; no database work, task-checkbox change, commit, push, PR, review, receipt, or lifecycle action occurred.
