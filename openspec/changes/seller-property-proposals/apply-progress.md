@@ -1572,3 +1572,73 @@ U15A1 is the assigned under-400 helper-plus-collection PR boundary. The immediat
 - [ ] U15A aggregate: complete both U15A1 and U15A2 seller BFF slices without route-local helper duplication. <!-- sdd-owner: implementation -->
 
 No design deviation occurred. The residual risk is limited to U15A2's unimplemented detail and submit routes; helper coverage is intentionally shared rather than duplicated there.
+
+## U15A2 seller detail and submit BFF routes
+
+### Status consumed
+
+```yaml
+schemaName: gentle-pi.sdd-status
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+nextRecommended: apply
+workUnit: U15A2-detail-and-submit
+base: develop50bd490e
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u15a2-bff
+  allowedEditRoots: supplied U15A2 route, test, and OpenSpec paths
+warnings:
+  - Parent supplied the exact selected status and prohibited ambient/native status lookup.
+delivery: auto-chain / stacked-to-develop, C13B; user-approved A1/A2 split under 400
+```
+
+### Completed work
+
+- Added GET/PATCH detail and POST submit routes using only `bffFetch`, `proxyJsonResponse`, and `proxyBffErrorResponse`.
+- Awaited async route params, encoded `proposalId` exactly once, and forwarded PATCH/submit raw text with the incoming content type without body parsing or route-local tenant/auth logic.
+- Added focused route tests for encoded slash/space/Unicode IDs, exact methods/paths/raw bodies/content types, success/error passthrough, request-ID filtering, malformed/no-body handling, and representative network/timeout delegation.
+- Marked both U15A2 rows and the U15A aggregate row `[x]` in `tasks.md`; U15B+ and every parent-owned row remain unchanged.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| U15A2 detail/submit routes | Route unit | New route files; U15A1 helper/collection contract was read and its prior 19-test evidence retained. | Both new test files failed to resolve missing `./route` modules before production files existed. | Minimal routes initially passed 10/12; NextRequest supplied `text/plain;charset=UTF-8` for an empty string body, so the test was corrected to assert the actual incoming content type. Focused suite then passed 12/12. | Omitting encoding failed 1/8; parsing PATCH JSON failed 2/8; submit `PATCH` method failed 3/4; forced 200 status failed 3/8; swallowed network error failed 1/8. All mutants were restored. | No production refactor needed; clarified the malformed/no-body test title and reran both route files twice at 12/12. |
+
+### Verification and cleanup
+
+- PASS — focused detail/submit Vitest command twice: 2 files / 12 tests.
+- PASS — `pnpm --filter @viewpro/contracts build && pnpm --filter next-shadcn-dashboard-starter typecheck && pnpm --filter next-shadcn-dashboard-starter lint`.
+- The initial App typecheck was blocked by the fresh worktree's absent generated `@viewpro/contracts` output; after the local contracts build, typecheck and lint passed.
+- No database, provider, shared BFF helper/collection, API/backend, Git, commit, push, PR, review, receipt, or lifecycle action occurred. Dependency, generated, and cache residue is removed after the final postcheck.
+
+### Files, boundary, and remaining work
+
+- `viewpro-app/apps/app-new/src/app/api/property-proposals/[proposalId]/route.ts`
+- `viewpro-app/apps/app-new/src/app/api/property-proposals/[proposalId]/route.test.ts`
+- `viewpro-app/apps/app-new/src/app/api/property-proposals/[proposalId]/submit/route.ts`
+- `viewpro-app/apps/app-new/src/app/api/property-proposals/[proposalId]/submit/route.test.ts`
+- `openspec/changes/seller-property-proposals/tasks.md`
+- `openspec/changes/seller-property-proposals/apply-progress.md`
+
+This completes the user-approved C13B/U15A2 work-unit and aggregate U15A: 305 additions plus 3 deletions = 308 changed lines, within its under-400-line boundary. Remaining implementation begins with the U15B reviewer BFF rows; parent-owned lifecycle actions remain deferred. No design deviation is recorded.
+
+## U15A2 PATCH encoded-ID test correction
+
+### Status and boundary
+
+The parent supplied exact ready status `proceed3034` / remediation `f1b0` for the existing U15A2 candidate and prohibited ambient status lookup. This correction changes only the detail-route test and this cumulative progress artifact; `route.ts` was authorized only for a temporary mutant and was restored byte-for-byte before final verification.
+
+### TDD correction evidence
+
+| Task | Safety net | Strengthened contract | Mutant RED | Final GREEN |
+|---|---|---|---|---|
+| U15A2 PATCH forwarding | Focused detail/submit routes: 2 files / 12 tests passed before the test edit. | All valid, malformed, and empty PATCH body cases now use `proposal/con espacio-ñ` and assert `/property-proposals/proposal%2Fcon%20espacio-%C3%B1`. | Removing PATCH `encodeURIComponent` failed 3/12 (one failure for each representative body); it was restored. | Focused two-file command passed twice at 12/12; contracts build, App typecheck, App lint, and `git diff --check` passed. |
+
+### Restoration and accounting
+
+- The pre-mutant and restored `route.ts` Git blob hash is `c691bd0e73a5b9e9f67ed7d09953e900021f0fa0`; its untracked preexisting-candidate status is unchanged.
+- No production change, task checkbox, shared helper, other test, commit, push, PR, review, or lifecycle action occurred.
+- Final physical total is 326 additions plus 3 deletions = 329 changed lines, within the user-approved 400-line boundary.
