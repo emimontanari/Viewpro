@@ -1,3 +1,4 @@
+import { isBffError } from '@/lib/bff-client';
 import { getDocumentRequestsRefetchInterval } from '@/lib/document-request-refresh';
 import { queryOptions } from '@tanstack/react-query';
 import { getOwnerNotifications, getOwnerUnreadNotificationCount } from './notifications';
@@ -32,16 +33,21 @@ export const ownerPropertiesOptions = () =>
     queryFn: getOwnerProperties
   });
 
+const retryOwnerDetailRead = (failureCount: number, error: unknown) =>
+  !(isBffError(error) && error.status === 404) && failureCount < 3;
+
 export const ownerPropertyOptions = (id: string) =>
   queryOptions({
     queryKey: ownerKeys.property(id),
-    queryFn: () => getOwnerProperty(id)
+    queryFn: () => getOwnerProperty(id),
+    retry: retryOwnerDetailRead
   });
 
 export const ownerPropertyEngagementsOptions = (propertyId: string) =>
   queryOptions({
     queryKey: ownerKeys.engagements(propertyId),
-    queryFn: () => getOwnerPropertyEngagements(propertyId)
+    queryFn: () => getOwnerPropertyEngagements(propertyId),
+    retry: retryOwnerDetailRead
   });
 
 export const ownerEngagementTimelineOptions = (
