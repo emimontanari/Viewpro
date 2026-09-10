@@ -1499,3 +1499,15 @@ No ambient/native status was queried. This corrective pass is test-only: no prod
 - This is test-first static evidence for the mounted real approval/materializer/response path. API typecheck, lint, and `git diff --check` pass; the local database remains unavailable, so no HTTP execution or task checkbox completion is claimed.
 - U14C intentionally does **not** duplicate stale-approval, quota, or proposer-ineligible HTTP matrices. Those mappings remain explicitly covered by `approve-property-proposal.use-case.spec.ts`, `approve-property-proposal.quota.spec.ts`, and `approve-property-proposal.replay.spec.ts`; the aggregate U14 task remains unchecked pending CI/runtime evidence.
 - Current candidate arithmetic is 150 E2E additions + 21 deletions + 87 prior progress additions, before this concise record, and remains below 400 changed lines. No other file changed.
+
+## U14C CI reconciliation
+
+### GREEN and cleanup evidence
+
+- Immutable CI evidence: PR #601 head `72fa5a2e0e4ca079f15213f342d7ba9a69f56925`, run `34496401481` attempt 1, and API Test job `102936624541` all succeeded; `property-proposals.e2e-spec.ts` passed 8/8 in 6875ms, including the three named U14C reviewer scenarios.
+- Seeded, typecheck, lint, audit, cutover, and Vercel checks also passed. CI executed the suite's dependency-ordered cleanup; prior local `P1001` and static typecheck/lint chronology remain retained as historical evidence.
+
+### Completion and arithmetic
+
+- Marked exactly the U14C-specific execution row and the two aggregate U14 rows `[x]`; U15+ and parent-owned lifecycle rows remain unchanged.
+- Final physical PR arithmetic is the supplied prior 265 lines plus 6 task-checkbox replacement lines and 12 CI-progress lines = **283 changed lines**, within the 400-line boundary. No commit, push, PR, or source/test edit occurred.
