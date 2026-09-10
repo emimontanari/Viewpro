@@ -66,7 +66,8 @@ The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0
 | U14C | guarded reviewer HTTP E2E only | Deferred after U14B; verification-bearing |
 | U15A1 | `apps/app-new/src/app/api/property-proposals/route.ts`, its colocated test, `apps/app-new/src/lib/bff-api.ts`, and `bff-api.test.ts`; shared helper plus collection only | **≤400**; production-bearing, no detail/submit routes |
 | U15A2 | seller `[proposalId]` and `[proposalId]/submit` routes with their colocated tests only | **≤400**; production-bearing after U15A1, no helper or collection changes |
-| U15B | `apps/app-new/src/app/api/property-proposals/review/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/reject/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/approve/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/reject/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/approve/route.test.ts` T40–55 | **240–340**; production-bearing |
+| U15B1 reviewer reads | `apps/app-new/src/app/api/property-proposals/review/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/route.test.ts` T40–55 | **120–170**; production-bearing; collection/detail GET only |
+| U15B2 reviewer decisions | `apps/app-new/src/app/api/property-proposals/review/[proposalId]/reject/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/approve/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/reject/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/approve/route.test.ts` T40–55 | **120–170**; production-bearing; reject/approve only after U15B1 |
 | U16A | `apps/app-new/src/features/property-proposals/api/types.ts` P45–55; `apps/app-new/src/features/property-proposals/api/service.ts` P70–80; `apps/app-new/src/lib/bff-client.ts` P15–22; `apps/app-new/src/lib/__tests__/bff-client.spec.ts` T80–90; `apps/app-new/src/features/property-proposals/api/service.test.ts` T45–55 | **255–302**; production-bearing |
 | U16B | `apps/app-new/src/features/property-proposals/api/queries.ts` P65–75; `apps/app-new/src/features/property-proposals/api/queries.test.ts` T45–55 | **110–130**; production-bearing |
 | U17 | `apps/app-new/src/lib/property-proposal-access.ts` P35–45; `apps/app-new/src/lib/navigation-access.ts` P12–18; `apps/app-new/src/hooks/use-nav.ts` P8–12; `apps/app-new/src/lib/navigation-access.test.ts` T60–70; `apps/app-new/src/hooks/use-nav.test.ts` T35–45; `apps/app-new/src/test/navigation-access-fixtures.ts` T20–25 F15–20 | **185–235**; production-bearing |
@@ -109,7 +110,7 @@ U12 import-only matrix + bounded primary observer = 87; upper bound = 119; exist
 The 575-line U13A DTO/projection prototype was discarded rather than exceed 400, code-golf, or omit coverage. The user-approved U13A1 DTO-only rescope is independently forecast at 128–151 source plus 108–136 test lines; U13A2 retains projection.
 U14 is split: U14A1 list-only is ≤400; U14A2 detail/history, U14B transport contract, and U14C HTTP evidence are separate ≤400 boundaries.
 U15A1 helper+collection and U15A2 detail+submit are separate hard ≤400 slices; their former aggregate forecast was 272–363.
-U15B 20+20+20+20+40+40+40+40 = 240; 30+30+30+30+55+55+55+55 = 340
+U15B1 reviewer reads 20+20+40+40 = 120; 30+30+55+55 = 170. U15B2 reviewer decisions 20+20+40+40 = 120; 30+30+55+55 = 170. The aggregate remains 240–340 but its two independently applied slices stay under 400.
 U16A 45+70+15+80+45 = 255; 55+80+22+90+55 = 302
 U16B 65+45 = 110; 75+55 = 130
 U17 35+12+8+60+35+20+15 = 185; 45+18+12+70+45+25+20 = 235
@@ -164,7 +165,7 @@ The corrected strict units mechanically group into **31** dependency-ordered opt
 | C12C | U14C reviewer HTTP E2E | 400 | ≤400 |
 | C13A | U15A1 helper + collection | 400 | ≤400 |
 | C13B | U15A2 detail + submit | 400 | ≤400 |
-| C14 | U15B + U16A | 340+302=642 | 495–642 |
+| C14 | U15B1 reviewer reads → U15B2 reviewer decisions → U16A | max independently applied sub-slice 302 | 120–170; 120–170; 255–302 |
 | C15 | U16B + U17 | 130+235=365 | 295–365 |
 | C16 | U18A | 348 | 286–348 |
 | C17 | U18B | 399 | 317–399 |
