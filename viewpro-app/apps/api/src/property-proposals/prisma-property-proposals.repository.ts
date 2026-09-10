@@ -21,6 +21,7 @@ import type {
   PropertyProposalsRepository,
   UpdatePropertyProposalInput,
   UpdatePropertyProposalResult,
+  ReviewerPropertyProposalSummariesPage,
   ReviewerPropertyProposalsPage,
   SellerPropertyProposalsPage,
   SellerPropertyProposalDetail,
@@ -325,6 +326,73 @@ export class PrismaPropertyProposalsRepository implements PropertyProposalsRepos
         membership,
         assignments: assignments.map(({ tenantId, propertyEngagementId, agentUserId }) => ({ tenantId, engagementId: propertyEngagementId, agentUserId })),
       })),
+    }
+  }
+
+  async listSummariesForReviewer(input: {
+    tenantId: string
+    reviewerUserId: string
+    filters: PropertyProposalReviewFilters
+  }): Promise<ReviewerPropertyProposalSummariesPage> {
+    const page = await this.listForReviewer(input)
+    const proposalIds = page.items.map(({ id }) => id)
+    if (proposalIds.length === 0) return { items: [], total: page.total }
+
+    const [viewer, rounds, engagements, proposers] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: input.reviewerUserId },
+        select: {
+          id: true,
+          status: true,
+          memberships: {
+            where: { tenantId: input.tenantId },
+            select: { userId: true, tenantId: true, status: true, role: true },
+          },
+        },
+      }),
+      this.prisma.propertyProposalReviewRound.findMany({
+        where: { tenantId: input.tenantId, proposalId: { in: proposalIds } },
+        orderBy: [{ proposalId: 'asc' }, { roundNumber: 'desc' }],
+        select: { id: true, proposalId: true },
+      }),
+      this.prisma.propertyEngagement.findMany({
+        where: { tenantId: input.tenantId, sourceProposalId: { in: proposalIds } },
+        select: { id: true, tenantId: true, sourceProposalId: true },
+      }),
+      this.prisma.user.findMany({
+        where: { id: { in: page.items.map(({ proposedByUserId }) => proposedByUserId) } },
+        select: { id: true, firstName: true, lastName: true },
+      }),
+    ])
+    const roundByProposalId = new Map<string, string>()
+    for (const round of rounds) {
+      if (!roundByProposalId.has(round.proposalId)) roundByProposalId.set(round.proposalId, round.id)
+    }
+    const engagementByProposalId = new Map(engagements.flatMap((engagement) => (
+      engagement.sourceProposalId
+        ? [[engagement.sourceProposalId, { id: engagement.id, tenantId: engagement.tenantId, sourceProposalId: engagement.sourceProposalId }] as const]
+        : []
+    )))
+    const proposerById = new Map(proposers.map((proposer) => [proposer.id, proposer]))
+    const membership = viewer?.memberships[0]
+
+    return {
+      total: page.total,
+      items: page.items.map((proposal) => {
+        const proposedBy = proposerById.get(proposal.proposedByUserId)
+        if (!proposedBy) throw new Error('proposal proposer is missing')
+        return {
+          proposal,
+          proposedBy,
+          currentReviewRoundId: roundByProposalId.get(proposal.id),
+          resultLink: mapPropertyProposalResultLink(resolveCanonicalEngagementId({
+            proposal,
+            canonicalEngagement: engagementByProposalId.get(proposal.id),
+            viewer: viewer ?? undefined,
+            membership,
+          })),
+        }
+      }),
     }
   }
 

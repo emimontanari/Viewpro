@@ -234,7 +234,17 @@ U13C is split under 400 lines: U13C1 owns the controller contract and first moun
 
 ### U14 — Reviewer REST transport and static route precedence (S16)
 
-Manifest: reviewer additions to `property-proposals.controller.ts`, reviewer DTOs, `apps/api/src/property-proposals/dto/list-property-proposal-review.query.spec.ts`, and reviewer additions to `apps/api/test/property-proposals.e2e-spec.ts`.
+Manifest: U14A1 is list-only: reviewer repository port/Prisma adapter, reviewer list use case/spec, literal summary transport/spec, and reviewer-read repository spec. U14A2 owns detail/history; U14B owns controller/DTO/module; U14C owns HTTP E2E.
+
+#### U14A1 — Reviewer list-only projection
+- [x] RED → GREEN → TRIANGULATE → REFACTOR a literal reviewer list summary behind the existing reviewer role/capability gate, preserving every C7 list test/filter/order/pagination boundary; batch tenant-scoped rounds, result rows, and proposers once per page without N+1 or direct-source output, and never drop a row because its proposer lacks current membership. <!-- sdd-owner: implementation -->
+- [x] Run the focused list repository/use-case/transport evidence twice, API typecheck, and lint; record the normal-runner P1001 and use only a no-global unit fallback. <!-- sdd-owner: implementation -->
+#### U14A2 — Reviewer detail/history projection
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR reviewer detail/history shaping and coded absence without changing U14A1 list behavior. <!-- sdd-owner: implementation -->
+#### U14B — DTO/controller/module contract
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR reviewer DTO/controller/module/provider wiring, static `review` precedence, both reviewer roles, permission-before-lookup, self-review, direct rejection validation, replay/conflict/quota mappings, and unsupported search rejection. <!-- sdd-owner: implementation -->
+#### U14C — Reviewer HTTP E2E
+- [ ] Run guarded reviewer query/controller HTTP evidence and API typecheck; return any discovered product defect to U14A2/U14B and clean decisions, rounds, proposals, and assets. <!-- sdd-owner: implementation -->
 
 - [ ] RED → GREEN → TRIANGULATE → REFACTOR static `review` precedence, both reviewer roles, permission-before-lookup, self-review, direct rejection validation, replay/conflict/quota mappings, and unsupported search rejection. <!-- sdd-owner: implementation -->
 - [ ] Run the manifest query/controller E2E tests and API typecheck; clean decisions, rounds, proposals, and assets. <!-- sdd-owner: implementation -->

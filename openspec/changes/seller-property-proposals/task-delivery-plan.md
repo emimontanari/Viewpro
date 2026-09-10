@@ -60,7 +60,10 @@ The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0
 | U13B2 | Seller detail/history shaping after U13B1; no controller or module mount. | Deferred; production-bearing |
 | U13C1 | `apps/api/src/property-proposals/property-proposals.controller.ts`, its controller contract spec, `property-proposals.module.ts`, `app.module.ts`, and concise U13 artifacts; exactly five seller routes, safe mutation rereads, and first mount only. | **≤400 physical lines**; production-bearing, no HTTP/E2E transport integration |
 | U13C2 | Seller HTTP/E2E transport integration and aggregate U13/U13C completion after U13C1. | Deferred; production-bearing |
-| U14 | `apps/api/src/property-proposals/property-proposals.controller.ts` P45–55; `apps/api/src/property-proposals/dto/list-property-proposal-review.query.ts` P35–45; `apps/api/src/property-proposals/dto/review-property-proposal.dto.ts` P15–22; `apps/api/src/property-proposals/dto/reject-property-proposal.dto.ts` P18–25; `apps/api/src/property-proposals/dto/list-property-proposal-review.query.spec.ts` T60–75; `apps/api/test/property-proposals.e2e-spec.ts` T60–70 F25–30 | **258–322**; production-bearing |
+| U14A1 | reviewer list port/Prisma adapter/list use case and their focused specs, plus the literal reviewer-summary transport/spec | **≤400**; production-bearing list-only slice; no detail/history, controller, DTO, module, route, or E2E |
+| U14A2 | reviewer detail/history shaping and focused evidence only | Deferred after U14A1; production-bearing |
+| U14B | reviewer DTO/controller/module/provider contract and static-route proof | Deferred after U14A2; production-bearing |
+| U14C | guarded reviewer HTTP E2E only | Deferred after U14B; verification-bearing |
 | U15A | `apps/app-new/src/app/api/property-proposals/route.ts` P25–35; `apps/app-new/src/app/api/property-proposals/[proposalId]/route.ts` P25–35; `apps/app-new/src/app/api/property-proposals/[proposalId]/submit/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/[proposalId]/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/[proposalId]/submit/route.test.ts` T40–55; `apps/app-new/src/lib/bff-api.ts` P12–18; `apps/app-new/src/lib/bff-api.test.ts` T70–80 | **272–363**; production-bearing |
 | U15B | `apps/app-new/src/app/api/property-proposals/review/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/reject/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/approve/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/reject/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/approve/route.test.ts` T40–55 | **240–340**; production-bearing |
 | U16A | `apps/app-new/src/features/property-proposals/api/types.ts` P45–55; `apps/app-new/src/features/property-proposals/api/service.ts` P70–80; `apps/app-new/src/lib/bff-client.ts` P15–22; `apps/app-new/src/lib/__tests__/bff-client.spec.ts` T80–90; `apps/app-new/src/features/property-proposals/api/service.test.ts` T45–55 | **255–302**; production-bearing |
@@ -103,7 +106,7 @@ U11A 35+30+75+25 = 165; 45+40+85+30 = 200
 U11B is split: U11B1 replay ordering/source invariant, U11B2 same-proposal races, and U11B3 final-slot races; each has a hard ≤400 physical-line boundary.
 U12 import-only matrix + bounded primary observer = 87; upper bound = 119; existing exploration remains separately retained
 The 575-line U13A DTO/projection prototype was discarded rather than exceed 400, code-golf, or omit coverage. The user-approved U13A1 DTO-only rescope is independently forecast at 128–151 source plus 108–136 test lines; U13A2 retains projection.
-U14 45+35+15+18+60+60+25 = 258; 55+45+22+25+75+70+30 = 322
+U14 is split: U14A1 list-only is ≤400; U14A2 detail/history, U14B transport contract, and U14C HTTP evidence are separate ≤400 boundaries.
 U15A 25+25+20+40+40+40+12+70 = 272; 35+35+30+55+55+55+18+80 = 363
 U15B 20+20+20+20+40+40+40+40 = 240; 30+30+30+30+55+55+55+55 = 340
 U16A 45+70+15+80+45 = 255; 55+80+22+90+55 = 302
@@ -154,7 +157,10 @@ The corrected strict units mechanically group into **31** dependency-ordered opt
 | C11B2 | U13B2 seller detail/history shaping | <400 | deferred after U13B1 |
 | C11C1 | U13C1 seller controller contract and module/AppModule mount | <400 | first U13C slice; no HTTP/E2E transport integration |
 | C11C2 | U13C2 seller HTTP/E2E transport integration | <400 | after U13C1 |
-| C12 | U14 | 322 | 258–322 |
+| C12A1 | U14A1 reviewer list-only projection | 400 | ≤400 |
+| C12A2 | U14A2 reviewer detail/history projection | 400 | ≤400 |
+| C12B | U14B reviewer transport contract | 400 | ≤400 |
+| C12C | U14C reviewer HTTP E2E | 400 | ≤400 |
 | C13 | U15A | 363 | 272–363 |
 | C14 | U15B + U16A | 340+302=642 | 495–642 |
 | C15 | U16B + U17 | 130+235=365 | 295–365 |

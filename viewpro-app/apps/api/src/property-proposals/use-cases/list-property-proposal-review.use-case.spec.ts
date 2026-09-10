@@ -6,7 +6,16 @@ import { ListPropertyProposalReviewUseCase } from './list-property-proposal-revi
 
 const tenantId = 'trusted-tenant'
 const reviewer = { id: 'reviewer-id', email: 'reviewer@example.test' }
-const items = [{ id: 'newest' }, { id: 'older' }]
+const proposals = [
+  { id: 'newest', tenantId, proposedByUserId: 'seller-1', state: 'EN_REVISION', version: 1, title: 'Newest', latestSubmittedAt: null, createdAt: new Date('2026-01-02'), updatedAt: new Date('2026-01-02') },
+  { id: 'older', tenantId, proposedByUserId: 'seller-2', state: 'APROBADA', version: 2, title: 'Older', latestSubmittedAt: new Date('2026-01-01'), createdAt: new Date('2026-01-01'), updatedAt: new Date('2026-01-01') },
+]
+const safeItems = proposals.map((proposal) => ({ proposal, proposedBy: { id: proposal.proposedByUserId, firstName: 'Ada', lastName: null }, resultLink: {} }))
+const items = safeItems.map(({ proposal, proposedBy }) => ({
+  id: proposal.id, state: proposal.state, version: proposal.version, title: proposal.title,
+  currentReviewRoundId: undefined, latestSubmittedAt: proposal.latestSubmittedAt,
+  createdAt: proposal.createdAt, updatedAt: proposal.updatedAt, proposedBy,
+}))
 
 function tenant(role: TenantRole | 'UNSUPPORTED', permissions = [PERMISSIONS.PROPERTY_PROPOSALS_REVIEW]) {
   return { tenantId, role, permissions } as never
@@ -14,7 +23,8 @@ function tenant(role: TenantRole | 'UNSUPPORTED', permissions = [PERMISSIONS.PRO
 
 function repository() {
   return {
-    listForReviewer: vi.fn().mockResolvedValue({ items, total: 2 }),
+    listForReviewer: vi.fn(),
+    listSummariesForReviewer: vi.fn().mockResolvedValue({ items: safeItems, total: 2 }),
     findForReviewer: vi.fn(),
     createDraft: vi.fn(),
     updateForSeller: vi.fn(),
@@ -36,7 +46,7 @@ describe('ListPropertyProposalReviewUseCase', () => {
       const filters = { state: 'APROBADA' as const, history: 'APPROVED' as const, page: 2, pageSize: 5 }
       const result = await new ListPropertyProposalReviewUseCase(repo as never).execute(tenant(role), reviewer, filters)
 
-      expect(repo.listForReviewer).toHaveBeenCalledWith({ tenantId, filters })
+      expect(repo.listSummariesForReviewer).toHaveBeenCalledWith({ tenantId, reviewerUserId: reviewer.id, filters })
       expect(result).toEqual({ items, total: 2, page: 2, pageSize: 5 })
       expect(result.items).toEqual(items)
       expect(result.items[0]).not.toHaveProperty('canonicalEngagementId')
@@ -57,6 +67,7 @@ describe('ListPropertyProposalReviewUseCase', () => {
     await expect(useCase.execute(tenant(role, permissions as never), reviewer, {})).rejects.toEqual(
       expect.objectContaining({ response: expect.objectContaining({ message: 'Insufficient permissions' }) }),
     )
+    expect(repo.listSummariesForReviewer).not.toHaveBeenCalled()
     expect(repo.listForReviewer).not.toHaveBeenCalled()
     expect(repo.findForReviewer).not.toHaveBeenCalled()
     expectNoWrites(repo)
@@ -67,7 +78,7 @@ describe('ListPropertyProposalReviewUseCase', () => {
     const filters = {}
     const result = await new ListPropertyProposalReviewUseCase(repo as never).execute(tenant(TenantRole.MANAGER), reviewer, filters)
 
-    expect(repo.listForReviewer).toHaveBeenCalledWith({ tenantId, filters })
+    expect(repo.listSummariesForReviewer).toHaveBeenCalledWith({ tenantId, reviewerUserId: reviewer.id, filters })
     expect(result).toEqual({ items, total: 2, page: 1, pageSize: 20 })
     expect(result.items.map((item) => item.id)).toEqual(['newest', 'older'])
     expectNoWrites(repo)
@@ -78,7 +89,7 @@ describe('ListPropertyProposalReviewUseCase', () => {
     const filters = { state: 'RECHAZADA' as const, history: 'REJECTED' as const, page: 0, pageSize: 51 }
     const result = await new ListPropertyProposalReviewUseCase(repo as never).execute(tenant(TenantRole.PRINCIPAL_MANAGER), reviewer, filters)
 
-    expect(repo.listForReviewer).toHaveBeenCalledWith({ tenantId, filters })
+    expect(repo.listSummariesForReviewer).toHaveBeenCalledWith({ tenantId, reviewerUserId: reviewer.id, filters })
     expect(result).toEqual({ items, total: 2, page: 1, pageSize: 20 })
     expectNoWrites(repo)
   })
