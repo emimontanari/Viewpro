@@ -6,6 +6,7 @@ import { PermissionsModule } from "../permissions/permissions.module";
 import { TenantContextModule } from "../tenant-context/tenant-context.module";
 import { UsersModule } from "../users/users.module";
 import { ActivePropertyEngagementCapacity } from "./active-property-engagement-capacity";
+import { CanonicalPropertyMaterializer } from "./canonical-property-materializer";
 import { PrismaPropertyEngagementsRepository } from "./prisma-property-engagements.repository";
 import { PropertyEngagementsController } from "./property-engagements.controller";
 import { PROPERTY_ENGAGEMENTS_REPOSITORY } from "./property-engagements.repository";
@@ -65,6 +66,7 @@ const propertyEngagementUseCases = [
 	controllers: [PropertyEngagementsController],
 	providers: [
 		ActivePropertyEngagementCapacity,
+		CanonicalPropertyMaterializer,
 		{
 			provide: PROPERTY_ENGAGEMENTS_REPOSITORY,
 			useClass: PrismaPropertyEngagementsRepository,
@@ -92,6 +94,7 @@ const propertyEngagementUseCases = [
 	exports: [
 		PROPERTY_ENGAGEMENTS_REPOSITORY,
 		ActivePropertyEngagementCapacity,
+		CanonicalPropertyMaterializer,
 		...propertyEngagementUseCases,
 	],
 })
