@@ -15,6 +15,18 @@ export type ReviewerPropertyProposalsPage = {
   total: number
 }
 
+export type ReviewerPropertyProposalSummary = {
+  proposal: PropertyProposal
+  currentReviewRoundId?: string
+  proposedBy: { id: string; firstName: string; lastName: string | null }
+  resultLink: ProposalResultLink
+}
+
+export type ReviewerPropertyProposalSummariesPage = {
+  items: ReviewerPropertyProposalSummary[]
+  total: number
+}
+
 export type SellerPropertyProposalSummary = {
   proposal: PropertyProposal
   currentReviewRoundId?: string
@@ -110,4 +122,9 @@ export type PropertyProposalsRepository = {
     tenantId: string
     proposalId: string
   }): Promise<PropertyProposal | null>
+  listSummariesForReviewer(input: {
+    tenantId: string
+    reviewerUserId: string
+    filters: PropertyProposalReviewFilters
+  }): Promise<ReviewerPropertyProposalSummariesPage>
 }

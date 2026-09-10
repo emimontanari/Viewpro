@@ -1265,3 +1265,42 @@ The parent supplied the exact change/runtime authorization (`proceede643`, remed
 - COMPLETE — both U13C2 rows, both aggregate U13C rows, and both original aggregate U13 rows are now checked. U14 and parent-owned lifecycle rows remain unchanged.
 
 The final E2E candidate remains within the requested 400-line cap. No design deviation or production-source change was made.
+
+## U14A — safe reviewer reads
+
+### Status and completion
+```yaml
+change: seller-property-proposals
+applyState: ready; actionContext: repo-local
+workspace: seller-property-proposals-u14-review-api
+allowedRoots: supplied U14A paths; warnings: []
+delivery: auto-chain / U14A (<400)
+```
+- Replaced reviewer use-case raw returns with tenant-scoped shaped reads and literal transport output; C9A alone resolves optional result visibility.
+- Batched list rounds/proposers/reviewer/membership/results and detail rounds/decisions/actors; preserved C7 filtering/order/pagination, both reviewer roles, and coded scoped absence.
+- Persisted only the two U14A task rows as `[x]`; aggregate U14 and U14B/C remain unchecked, and parent rows are unchanged.
+
+### TDD Cycle Evidence
+| Task | RED | GREEN | TRIANGULATE / REFACTOR |
+|---|---|---|---|
+| U14A safe reads | 4 files/7 behavioral failures: missing transport and safe methods/raw reads. | Focused 4 files/13 passed. | Raw-spread, tenant-drop, filter/order, direct-source/capability, and N+1 mutants failed then restored; literal projector refactor stayed green. |
+
+### Verification and boundary
+- Normal guarded focus stopped in Prisma global setup with local `P1001`; the pure no-global fallback passed focused 5 files/60 tests twice.
+- PASS — contracts build, API typecheck, and API lint. No database, route/controller/module/DTO/materializer/command/E2E/BFF/UI work occurred.
+- Remaining: `- [ ] U14B — DTO/controller/module contract`; `- [ ] U14C — Reviewer HTTP E2E`; aggregate U14 remains deferred.
+- Final arithmetic is 153 additions + 137 deletions + 107 untracked lines = 397, within the 400-line U14A boundary. No design deviation, commit, push, PR, review, or receipt occurred.
+
+## U14A1 list-only corrective retry
+
+- **Status:** consumed parent authority `seller-property-proposals`, OpenSpec apply-ready, workspace `/Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u14-review-api`, runtime `proceed904c`, remediation `remediates6147`; all edits stayed in the supplied roots, with no action-context warning.
+- **Scope:** reset the combined candidate, restored `get-property-proposal-review` source/spec exactly to `HEAD`, and removed reviewer detail/history types, methods, projectors, and tests. U14A1 now owns only safe list reads; U14A2/B/C remain unchecked.
+- **Completed:** preserved every C7 list test while adapting its fixture to the safe port; added a literal list-summary projector and two-row repository evidence. Reviewer role/capability rejection occurs before the repository call; the adapter keeps C7 filters/order/pagination, batches rounds/results/proposers once per page, keeps former-proposer rows, and emits no raw tenant, proposer FK, owner, or source field.
+
+| TDD task | RED | GREEN | TRIANGULATE / REFACTOR |
+|---|---|---|---|
+| U14A1 reviewer list | New transport import failed; safe-port assertions failed 6/10. | Focused no-global unit suite: 3 files/12 tests passed twice. | Adding proposer membership filtering failed 1/2 repository tests; restored. No further refactor. |
+
+- **Verification:** normal guarded focused Vitest stopped in global Prisma setup with local `P1001`; the safe no-global fallback passed twice (12/12). API typecheck and lint passed. No database fixture, controller, DTO, module, route, E2E, detail/history, commit, push, PR, review, or receipt action occurred.
+- **Persisted tasks:** only U14A1's two implementation rows are visibly `[x]`; U14A2, U14B, U14C, and parent-owned lifecycle rows are unchecked and unchanged.
+- **Boundary/risk:** final candidate arithmetic is 167 tracked additions + 11 tracked deletions + 126 untracked lines = **304**, within 400. The user batch is keyed by already tenant-scoped proposal identities so former proposers remain visible; missing durable user FKs raise rather than silently drop a row.
