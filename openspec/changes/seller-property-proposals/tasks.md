@@ -265,12 +265,21 @@ Manifest: seller `route.ts` files and colocated `route.test.ts` files for collec
 
 - [x] U15A aggregate: complete both U15A1 and U15A2 seller BFF slices without route-local helper duplication. <!-- sdd-owner: implementation -->
 
-### U15B — Reviewer BFF routes
+### U15B — Reviewer BFF routes (aggregate)
 
-Manifest: reviewer collection, detail, reject, and approve `route.ts` files with their exact colocated `route.test.ts` files.
+Manifest: reviewer collection, detail, reject, and approve `route.ts` files with their exact colocated `route.test.ts` files. The user-approved U15B1 → U15B2 split keeps reviewer reads and decisions independently reviewable under 400 lines.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR each reviewer route independently; never accept a body-controlled tenant override or a nonexistent consolidated route test. <!-- sdd-owner: implementation -->
-- [ ] Run all four listed reviewer route tests and App typecheck; clear mocks, timers, and request context. <!-- sdd-owner: implementation -->
+#### U15B1 — Reviewer reads: collection and detail
+
+- [x] RED → GREEN → TRIANGULATE → REFACTOR reviewer collection and detail GET routes through only `bffFetch`, `proxyJsonResponse`, and `proxyBffErrorResponse`; preserve raw collection query bytes, encode async detail params exactly once, and retain backend-owned tenant/auth/query validation. <!-- sdd-owner: implementation -->
+- [x] Run the two U15B1 reviewer-read route tests twice, App typecheck, and lint; clear mocked `bffFetch` state and generated residue. <!-- sdd-owner: implementation -->
+
+#### U15B2 — Reviewer decisions: reject and approve
+
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR reviewer reject and approve routes independently; forward only the authorized method/path/raw body through the shared BFF helpers without tenant or decision logic. <!-- sdd-owner: implementation -->
+- [ ] Run the two U15B2 reviewer-decision route tests, App typecheck, and lint; clear mocks, timers, and request context. <!-- sdd-owner: implementation -->
+
+- [ ] U15B aggregate: complete U15B1 reviewer reads and U15B2 reviewer decisions without a consolidated route test or route-local BFF helper behavior. <!-- sdd-owner: implementation -->
 
 ### U16A — Browser service and safe BFF error boundary
 
