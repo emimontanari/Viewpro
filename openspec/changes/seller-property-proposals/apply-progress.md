@@ -1703,3 +1703,63 @@ U15B1 is the completed reviewer-read boundary. Exact remaining implementation-ow
 - [ ] U15B aggregate: complete U15B1 reviewer reads and U15B2 reviewer decisions without a consolidated route test or route-local BFF helper behavior. <!-- sdd-owner: implementation -->
 
 The U15B1 candidate is 201 untracked source/test lines plus 80 tracked additions and 8 tracked deletions across its OpenSpec closure: 289 changed lines, below the user-approved 400-line boundary. U15B2 is a separate later reviewer-decision work-unit. Parent-owned lifecycle rows are preserved byte-for-byte. No design deviation is recorded.
+
+## U15B2 reviewer BFF decisions: reject and approve
+
+### Status consumed
+
+```yaml
+schemaName: spec-driven
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+nextRecommended: apply
+taskProgress: 80/107 before; 83/107 after this work-unit
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u15b2-bff
+  allowedEditRoots:
+    - reviewer reject/approve routes and colocated tests
+    - openspec/changes/seller-property-proposals/tasks.md
+    - openspec/changes/seller-property-proposals/apply-progress.md
+  warnings: []
+delivery: user-approved auto-chain / stacked-to-develop U15B2 under 400 lines
+```
+
+The parent supplied this authoritative status and parent-held runtime continuation; no ambient/native status lookup or additional runtime-attempt operation was performed. Required proposal, specification, design, interface design, tasks, and prior cumulative progress were read. All task ownership markers are valid; only the three U15B2/U15B implementation-owned rows were changed.
+
+### Completed work
+
+- Added reject and approve POST routes that await `proposalId`, encode it exactly once, forward raw bodies and incoming content types unchanged, and delegate trusted tenant/auth selection, JSON/status/request-ID passthrough, and BFF failures to the shared helpers.
+- Added partial-`bffFetch` route tests with real proxy helpers for exact POST paths, raw valid/malformed/empty bodies, content types, success/error JSON status, canonical/invalid request IDs, malformed/no-body backend responses, network 502, AbortError 504, and mock reset hygiene.
+- Persisted `[x]` updates immediately for both U15B2 rows and the U15B aggregate row. U16+ and parent-owned lifecycle rows remain byte-for-byte unchanged.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| U15B2 reject/approve BFF routes | Route unit | N/A — all four routes/tests are new. | After offline install, both test files failed to resolve missing `./route` modules; no tests collected. | Minimal helper-only routes passed 2 files / 10 tests. | Mutants failed and were restored: missing encoding 1/5, JSON parsing 2/5, wrong path 4/5, wrong method 4/5, forced status 4/5, and swallowed network error 1/5. Raw valid, malformed, and empty body cases cover distinct forwarding paths. | No production refactor was needed; clarified parameterized test titles and reran both files twice at 10/10. |
+
+### Verification and cleanup
+
+- PASS — focused U15B2 Vitest command twice: 2 files / 10 tests.
+- PASS — `pnpm exec turbo run typecheck --filter=next-shadcn-dashboard-starter --force`: 3/3 tasks, including the required contracts build.
+- PASS — `pnpm --filter next-shadcn-dashboard-starter lint`.
+- The direct App typecheck initially could not resolve the fresh worktree's generated `@viewpro/contracts` output; the dependency-aware Turbo typecheck generated it and passed without source changes.
+- `pnpm install --offline --frozen-lockfile` was used only for verification. No shared helper/read/seller/backend/docs-plan files, database, provider, commit, push, PR, review, receipt, or lifecycle action was performed.
+
+### Files, boundary, and remaining work
+
+- `viewpro-app/apps/app-new/src/app/api/property-proposals/review/[proposalId]/reject/route.ts`
+- `viewpro-app/apps/app-new/src/app/api/property-proposals/review/[proposalId]/reject/route.test.ts`
+- `viewpro-app/apps/app-new/src/app/api/property-proposals/review/[proposalId]/approve/route.ts`
+- `viewpro-app/apps/app-new/src/app/api/property-proposals/review/[proposalId]/approve/route.test.ts`
+- `openspec/changes/seller-property-proposals/tasks.md`
+- `openspec/changes/seller-property-proposals/apply-progress.md`
+
+This is the user-approved U15B2 decision slice and completes the U15B aggregate: 288 additions plus 3 deletions = 291 changed lines, within the approved 400-line boundary. Dependency, generated-contract, `.turbo`, `.next`, and `*.tsbuildinfo` residue was removed; `git diff --check` passed. Exact next unchecked implementation-owned rows begin with U16A:
+
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR typed service calls through `bffRequest`, `BffError`, canonical UUIDv4 capture, hostile-prose removal, local code mapping, and timeout behavior. <!-- sdd-owner: implementation -->
+- [ ] Run the manifest service/client specs, App typecheck, and strict lint; reset query clients and mock servers. <!-- sdd-owner: implementation -->
+
+No design deviation is recorded, and all parent-owned lifecycle actions remain deferred.
