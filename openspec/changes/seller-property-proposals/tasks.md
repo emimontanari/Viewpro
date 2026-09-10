@@ -276,10 +276,10 @@ Manifest: reviewer collection, detail, reject, and approve `route.ts` files with
 
 #### U15B2 — Reviewer decisions: reject and approve
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR reviewer reject and approve routes independently; forward only the authorized method/path/raw body through the shared BFF helpers without tenant or decision logic. <!-- sdd-owner: implementation -->
-- [ ] Run the two U15B2 reviewer-decision route tests, App typecheck, and lint; clear mocks, timers, and request context. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR reviewer reject and approve routes independently; forward only the authorized method/path/raw body through the shared BFF helpers without tenant or decision logic. <!-- sdd-owner: implementation -->
+- [x] Run the two U15B2 reviewer-decision route tests, App typecheck, and lint; clear mocks, timers, and request context. <!-- sdd-owner: implementation -->
 
-- [ ] U15B aggregate: complete U15B1 reviewer reads and U15B2 reviewer decisions without a consolidated route test or route-local BFF helper behavior. <!-- sdd-owner: implementation -->
+- [x] U15B aggregate: complete U15B1 reviewer reads and U15B2 reviewer decisions without a consolidated route test or route-local BFF helper behavior. <!-- sdd-owner: implementation -->
 
 ### U16A — Browser service and safe BFF error boundary
 
