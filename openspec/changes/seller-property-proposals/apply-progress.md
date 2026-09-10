@@ -1304,3 +1304,55 @@ delivery: auto-chain / U14A (<400)
 - **Verification:** normal guarded focused Vitest stopped in global Prisma setup with local `P1001`; the safe no-global fallback passed twice (12/12). API typecheck and lint passed. No database fixture, controller, DTO, module, route, E2E, detail/history, commit, push, PR, review, or receipt action occurred.
 - **Persisted tasks:** only U14A1's two implementation rows are visibly `[x]`; U14A2, U14B, U14C, and parent-owned lifecycle rows are unchecked and unchanged.
 - **Boundary/risk:** final candidate arithmetic is 167 tracked additions + 11 tracked deletions + 126 untracked lines = **304**, within 400. The user batch is keyed by already tenant-scoped proposal identities so former proposers remain visible; missing durable user FKs raise rather than silently drop a row.
+
+## U14A2 reviewer detail/history
+
+### Status and scope consumed
+
+```yaml
+changeName: seller-property-proposals
+artifactStore: openspec
+applyState: ready
+nextRecommended: apply
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u14a2-detail
+  allowedEditRoots: parent-supplied U14A2 repository, use-case, transport, focused-spec, tasks, and progress paths
+  warnings: []
+delivery: auto-chain / stacked-to-develop; U14A2 only
+```
+
+The parent supplied this authoritative corrective retry context; no ambient status was run or reconstructed. This slice stays below 400 changed source/test lines and does not add controllers, routes, DTOs, module wiring, E2E, or U14B/C work.
+
+### Completed work and persisted task state
+
+- Added a tenant-scoped reviewer detail port, Prisma hydration, literal detail/history mapper, and reviewer use-case mapping while retaining the C7-compatible raw-read seam only for its existing focused fake; the production Prisma adapter always uses the shaped detail port.
+- Detail lookup scopes the proposal, rounds, decisions, source engagement, assignments, and current reviewer membership to the tenant. It batches each relation once, keeps rounds newest-first, maps staged snapshots and minimal person fields literally, and emits nullable decisions.
+- Durable history actor lookup is driven solely by already tenant-scoped round/decision IDs without a current-membership predicate. Missing proposer or history user data throws an integrity error rather than silently omitting durable history.
+- The fresh C9A resolver receives tenant-scoped source, assignment, active reviewer, and current membership data, so `canonicalEngagementId` remains optional and is never directly exposed from a raw relation.
+- Updated the U14A2 implementation row to `[x]` immediately after completion. The task artifact has no separate U14A aggregate checkbox; U14B, U14C, aggregate U14, and every parent-owned lifecycle row remain unchecked and unchanged.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| U14A2 reviewer detail/history | Focused mocked repository/use-case/transport unit tests | Normal focused runner stopped in global Prisma migration setup with local `P1001`; the pre-edit no-global fallback passed 3 files / 12 tests. | Test-first detail port/projector/use-case coverage failed 9 of 21 assertions: missing detail adapter/projector and raw return/absence behavior. | Focused no-global fallback passed 3 files / 21 tests. | Mutating newest order to ascending failed 1/6 reviewer repository tests; removing the fresh C9A result mapping failed 1/10 repository/transport tests. Both were restored. | No further refactor was needed; explicit literal mapping keeps response allowlists auditable. |
+
+### Verification and cleanup
+
+- BLOCKED INFRASTRUCTURE — guarded normal focused Vitest reached global Prisma setup and stopped at local PostgreSQL `P1001` before test collection; no database fixture or connection was created.
+- PASS — temporary no-global focused fallback ran twice after the final restoration: 3 files / 21 tests each time.
+- PASS — `pnpm --filter @viewpro/contracts build`, `pnpm --filter @viewpro/api typecheck`, and `pnpm --filter @viewpro/api lint`.
+- PASS — `git diff --check`; the configured external diff command prevented a later ordinary `git diff` display only and did not affect the whitespace check.
+- No design deviation, database use, commit, push, PR, review, receipt, parent lifecycle action, or U14B/C implementation occurred. Temporary fallback configuration and generated/dependency/build residue are removed during final cleanup.
+
+### Remaining tasks and PR boundary
+
+The U14A2 source/test delta is 309 additions and 6 deletions across seven allowed API files, under the 400-line U14A2 review budget without test deletion or code golf. The remaining implementation-owned rows are:
+
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR reviewer DTO/controller/module/provider wiring, static `review` precedence, both reviewer roles, permission-before-lookup, self-review, direct rejection validation, replay/conflict/quota mappings, and unsupported search rejection. <!-- sdd-owner: implementation -->
+- [ ] Run guarded reviewer query/controller HTTP evidence and API typecheck; return any discovered product defect to U14A2/U14B and clean decisions, rounds, proposals, and assets. <!-- sdd-owner: implementation -->
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR static `review` precedence, both reviewer roles, permission-before-lookup, self-review, direct rejection validation, replay/conflict/quota mappings, and unsupported search rejection. <!-- sdd-owner: implementation -->
+- [ ] Run the manifest query/controller E2E tests and API typecheck; clean decisions, rounds, proposals, and assets. <!-- sdd-owner: implementation -->
+
+The assigned PR boundary is U14A2 only; return to parent lifecycle for the next controlled slice. Parent-owned lifecycle actions remain deferred byte-for-byte.

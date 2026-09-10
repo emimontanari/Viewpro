@@ -74,3 +74,32 @@ describe('GetPropertyProposalReviewUseCase', () => {
     expectNoWrites(repo)
   })
 })
+
+describe('GetPropertyProposalReviewUseCase reviewer detail', () => {
+  const detail = {
+    proposal: { ...proposal, version: 2, addressLine: 'Street', city: 'City', province: 'Province', propertyType: 'HOUSE', operationType: 'SALE', totalAreaSqm: null, coveredAreaSqm: null, rooms: null, bedrooms: null, bathrooms: null, garages: null, ageYears: null, orientation: null, ownerName: null, ownerEmail: null, publishedPriceCents: null, currency: null, latestSubmittedAt: new Date('2026-01-03'), createdAt: new Date('2026-01-01'), updatedAt: new Date('2026-01-03') },
+    proposedBy: { id: 'seller-id', firstName: 'Ada', lastName: null },
+    currentReviewRoundId: 'round-2',
+    history: [{ id: 'round-2', roundNumber: 2, submittedAt: new Date('2026-01-03'), submittedBy: { id: 'seller-id', firstName: 'Ada', lastName: null }, snapshot: { title: 'Current', addressLine: 'Street', city: 'City', province: 'Province', propertyType: 'HOUSE', operationType: 'SALE', totalAreaSqm: null, coveredAreaSqm: null, rooms: null, bedrooms: null, bathrooms: null, garages: null, ageYears: null, orientation: null, ownerName: null, ownerEmail: null, publishedPriceCents: null, currency: null }, decision: null }],
+    resultLink: { canonicalEngagementId: 'engagement-id' },
+  }
+
+  it('uses the reviewer-safe detail port and returns the literal detail/history transport', async () => {
+    const repo = { ...repository(), findDetailForReviewer: vi.fn().mockResolvedValue(detail) }
+
+    await expect(new GetPropertyProposalReviewUseCase(repo as never).execute(tenant(TenantRole.MANAGER), reviewer, proposal.id)).resolves.toEqual({
+      id: proposal.id, state: 'APROBADA', version: 2, title: 'All-state proposal', addressLine: 'Street', city: 'City', province: 'Province', propertyType: 'HOUSE', operationType: 'SALE', totalAreaSqm: null, coveredAreaSqm: null, rooms: null, bedrooms: null, bathrooms: null, garages: null, ageYears: null, orientation: null, ownerName: null, ownerEmail: null, publishedPriceCents: null, currency: null, latestSubmittedAt: new Date('2026-01-03'), createdAt: new Date('2026-01-01'), updatedAt: new Date('2026-01-03'), proposedBy: { id: 'seller-id', firstName: 'Ada', lastName: null }, currentReviewRoundId: 'round-2', canonicalEngagementId: 'engagement-id', history: detail.history,
+    })
+    expect(repo.findDetailForReviewer).toHaveBeenCalledWith({ tenantId, reviewerUserId: reviewer.id, proposalId: proposal.id })
+    expect(repo.findForReviewer).not.toHaveBeenCalled()
+  })
+
+  it.each(['missing-id', 'cross-tenant-id'])('maps reviewer detail %s to the same coded proposal 404', async (proposalId) => {
+    const repo = { ...repository(), findDetailForReviewer: vi.fn().mockResolvedValue(null) }
+
+    await expect(new GetPropertyProposalReviewUseCase(repo as never).execute(tenant(TenantRole.MANAGER), reviewer, proposalId)).rejects.toEqual(expect.objectContaining({
+      response: expect.objectContaining({ errorCode: 'PROPERTY_PROPOSAL_NOT_FOUND', message: 'Property proposal not found' }),
+    }))
+    expect(repo.findDetailForReviewer).toHaveBeenCalledWith({ tenantId, reviewerUserId: reviewer.id, proposalId })
+  })
+})
