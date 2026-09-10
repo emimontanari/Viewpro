@@ -67,7 +67,8 @@ export function proxyBffErrorResponse(
   fallbackMessage: string,
   timeoutMessage = 'La operación tardó demasiado.'
 ) {
-  const isTimeout = error instanceof Error && error.name === 'AbortError';
+  const isTimeout =
+    typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError';
   return NextResponse.json(
     { message: isTimeout ? timeoutMessage : fallbackMessage },
     { status: isTimeout ? 504 : 502 }

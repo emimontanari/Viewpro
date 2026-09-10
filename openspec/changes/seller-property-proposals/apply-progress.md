@@ -1511,3 +1511,64 @@ No ambient/native status was queried. This corrective pass is test-only: no prod
 
 - Marked exactly the U14C-specific execution row and the two aggregate U14 rows `[x]`; U15+ and parent-owned lifecycle rows remain unchanged.
 - Final physical PR arithmetic is the supplied prior 265 lines plus 6 task-checkbox replacement lines and 12 CI-progress lines = **283 changed lines**, within the 400-line boundary. No commit, push, PR, or source/test edit occurred.
+
+## U15A1 shared BFF helper and seller collection
+
+### Status consumed
+
+```yaml
+artifactStore: openspec
+changeName: seller-property-proposals
+applyState: ready
+nextRecommended: apply
+workUnit: U15A1-helper-and-collection
+base: 77ec9d76
+actionContext:
+  mode: repo-local
+  workspaceRoot: /Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u15a-bff
+  allowedEditRoots: user-supplied U15A1 source, tests, and OpenSpec artifacts
+warnings:
+  - The ambient native status named another worktree and had ambiguous change selection; the parent supplied this exact target, change, base, delivery path, and allowed roots.
+```
+
+The parent-authorized delivery is `auto-chain` / `stacked-to-develop`, split as U15A1 then U15A2. The delivery plan and verification companion now formalize both subunits; only U15A1 is complete. The aggregate U15A, U15A2, U15B+, and parent-owned lifecycle rows remain unchecked.
+
+### Completed work
+
+- Added the seller collection BFF route. GET preserves the incoming query string byte-for-byte; POST forwards the raw body and incoming content type without parsing body identity fields. Both paths use only `bffFetch`, `proxyJsonResponse`, and `proxyBffErrorResponse`.
+- Expanded the shared helper evidence for forwarded session/auth headers, trusted header tenant precedence with cookie fallback, raw JSON identity non-override, `credentials: include`, `cache: no-store`, abort signal and timer cleanup, canonical lowercase UUIDv4 request IDs, JSON/error status passthrough, malformed/empty responses, abort 504, and network 502.
+- Hardened timeout classification for DOM `AbortError` objects, which are not always `instanceof Error` in the route test environment.
+- Persisted U15A1's two implementation-owned checkboxes as `[x]`; U15A2 and aggregate-U15A checkboxes are visibly `[ ]`.
+
+### TDD Cycle Evidence
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| U15A1 shared BFF helper | Unit | Existing helper spec: 3/3 passed | New abort classification expectation failed: DOM `AbortError` returned 502 rather than 504. | Helper suite passed 13/13 after structural abort-name recognition. | Tenant-precedence, request-ID version/variant, passthrough-status, and 10s-timeout mutants each failed; all were restored. | Reset mocks/timers between tests and made the fake-timer signal assertion explicit; 13/13 remained green. |
+| U15A1 seller collection | Route unit | New route; shared helper green | Collection spec first failed to resolve missing `./route`; the raw-body parse and query-allowlist mutants then failed representative malformed/empty or duplicate/encoding assertions. | Collection plus helper passed 19/19 after the minimal shared-helper route implementation. | Valid, malformed, and empty POST bodies plus duplicate encoded GET parameters exercise distinct forwarding paths; every mutant was restored. | No route-local helper was added; mock reset avoids queued-response leakage. |
+
+### Verification and cleanup
+
+- PASS — `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/lib/bff-api.test.ts src/app/api/property-proposals/route.test.ts` — 2 files / 19 tests.
+- PASS — `pnpm --filter @viewpro/contracts build`, then `pnpm --filter next-shadcn-dashboard-starter typecheck`.
+- PASS — `pnpm --filter next-shadcn-dashboard-starter lint`.
+- The first App typecheck was blocked only because the fresh worktree lacked generated `@viewpro/contracts/dist`; the offline frozen install and local contracts build supplied that prerequisite. No network, database, provider, Git, commit, push, PR, review, receipt, or delivery gate action occurred.
+
+### Files changed and remaining work
+
+- `viewpro-app/apps/app-new/src/lib/bff-api.ts`
+- `viewpro-app/apps/app-new/src/lib/bff-api.test.ts`
+- `viewpro-app/apps/app-new/src/app/api/property-proposals/route.ts`
+- `viewpro-app/apps/app-new/src/app/api/property-proposals/route.test.ts`
+- `openspec/changes/seller-property-proposals/tasks.md`
+- `openspec/changes/seller-property-proposals/task-delivery-plan.md`
+- `openspec/changes/seller-property-proposals/task-verification-commands.md`
+- `openspec/changes/seller-property-proposals/apply-progress.md`
+
+U15A1 is the assigned under-400 helper-plus-collection PR boundary. The immediate exact unchecked implementation rows are:
+
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR detail and submit method/path/body forwarding, selected-tenant behavior, passthrough status/body, request-ID filtering, malformed/no-body, and timeout handling only through the real shared BFF helpers. <!-- sdd-owner: implementation -->
+- [ ] Run only the detail and submit route tests, App typecheck, and lint; clear mock responses, timers, and request context. <!-- sdd-owner: implementation -->
+- [ ] U15A aggregate: complete both U15A1 and U15A2 seller BFF slices without route-local helper duplication. <!-- sdd-owner: implementation -->
+
+No design deviation occurred. The residual risk is limited to U15A2's unimplemented detail and submit routes; helper coverage is intentionally shared rather than duplicated there.
