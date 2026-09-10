@@ -281,12 +281,23 @@ Manifest: reviewer collection, detail, reject, and approve `route.ts` files with
 
 - [x] U15B aggregate: complete U15B1 reviewer reads and U15B2 reviewer decisions without a consolidated route test or route-local BFF helper behavior. <!-- sdd-owner: implementation -->
 
-### U16A — Browser service and safe BFF error boundary
+### U16A — Browser service and safe BFF error boundary (aggregate)
 
-Manifest: feature `api/types.ts`, `api/service.ts`, `src/lib/bff-client.ts`, `bff-client.spec.ts`, and `api/service.test.ts`.
+#### U16A1 — BFF error boundary
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR typed service calls through `bffRequest`, `BffError`, canonical UUIDv4 capture, hostile-prose removal, local code mapping, and timeout behavior. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest service/client specs, App typecheck, and strict lint; reset query clients and mock servers. <!-- sdd-owner: implementation -->
+Manifest: `src/lib/bff-client.ts`, `src/lib/__tests__/bff-client.spec.ts`.
+
+- [x] RED → GREEN → TRIANGULATE → REFACTOR `BffError`, canonical UUIDv4 capture, hostile-prose removal, and timeout/network behavior. <!-- sdd-owner: implementation -->
+- [x] Run the focused BFF client spec twice, App typecheck, and strict lint; reset fetch, timers, and browser-memory state. <!-- sdd-owner: implementation -->
+
+#### U16A2 — Typed proposal service
+
+Manifest: feature `api/types.ts`, `api/service.ts`, and `api/service.test.ts`; depends on U16A1.
+
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR typed seller/reviewer service calls through `bffRequest`, local code mapping, signals, and timeout behavior. <!-- sdd-owner: implementation -->
+- [ ] Run the focused service spec, App typecheck, and strict lint; reset mocks and query state. <!-- sdd-owner: implementation -->
+
+- [ ] U16A aggregate: complete U16A1 and U16A2 without feature routes, queries, UI, backend, or contract changes. <!-- sdd-owner: implementation -->
 
 ### U16B — Query key and invalidation contracts
 

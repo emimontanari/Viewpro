@@ -7,7 +7,8 @@ import {
   hasErrorCode,
   isBffError,
   clearLatestApplicationRequestId,
-  getLatestApplicationRequestId
+  getLatestApplicationRequestId,
+  toBffError
 } from '@/lib/bff-client';
 
 function jsonResponse(status: number, body: unknown) {
@@ -56,46 +57,81 @@ describe('bffRequest', () => {
     expect((error as Error).message).not.toContain('already linked');
   });
 
-  it('never surfaces the raw body either', async () => {
+  it('drops hostile body fields from error serialization', async () => {
     vi.mocked(global.fetch).mockResolvedValueOnce(
-      jsonResponse(500, { message: 'boom', internalTrace: 'do-not-forward' })
+      jsonResponse(500, {
+        message: 'boom',
+        error: 'hostile error',
+        details: { trace: 'do-not-forward' },
+        statusText: 'hostile status'
+      })
     );
 
     const error = await bffRequest('/api/x').catch((thrown: unknown) => thrown);
 
-    expect(JSON.stringify(error)).not.toContain('do-not-forward');
+    expect(JSON.stringify(error)).not.toMatch(/do-not-forward|hostile error|hostile status/);
   });
 
-  it('keeps an errorCode the catalogue recognises', async () => {
+  it('keeps a known catalogue code and canonical body request ID', async () => {
     vi.mocked(global.fetch).mockResolvedValueOnce(
-      jsonResponse(409, { errorCode: 'STATUS_CHANGE_REQUEST_SUPERSEDED', message: 'raw' })
+      jsonResponse(409, {
+        errorCode: 'STATUS_CHANGE_REQUEST_SUPERSEDED',
+        message: 'raw',
+        requestId: '12345678-1234-4abc-8def-123456789abc'
+      })
     );
 
     const error = await bffRequest('/api/x').catch((thrown: unknown) => thrown);
 
     expect(hasErrorCode(error, 'STATUS_CHANGE_REQUEST_SUPERSEDED')).toBe(true);
-    expect((error as { status: number }).status).toBe(409);
+    expect(error).toMatchObject({ requestId: '12345678-1234-4abc-8def-123456789abc', status: 409 });
   });
 
-  it('drops an errorCode the catalogue does not know, instead of trusting it', async () => {
+  it('drops an unknown code while keeping a canonical request ID', async () => {
     vi.mocked(global.fetch).mockResolvedValueOnce(
-      jsonResponse(409, { errorCode: 'SOMETHING_INVENTED', message: 'raw' })
+      jsonResponse(409, {
+        errorCode: 'SOMETHING_INVENTED',
+        message: 'raw',
+        requestId: '12345678-1234-4abc-8def-123456789abc'
+      })
     );
 
     const error = await bffRequest('/api/x').catch((thrown: unknown) => thrown);
 
     expect(isBffError(error)).toBe(true);
+    expect(error).toMatchObject({ requestId: '12345678-1234-4abc-8def-123456789abc' });
     expect((error as { errorCode?: string }).errorCode).toBeUndefined();
   });
 
   it('reports the status even when the body is not JSON at all', async () => {
-    vi.mocked(global.fetch).mockResolvedValueOnce(new Response('<html>502</html>', { status: 502 }));
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      new Response('<html>502</html>', { status: 502 })
+    );
 
     const error = await bffRequest('/api/x').catch((thrown: unknown) => thrown);
 
     expect(isBffError(error)).toBe(true);
     expect((error as { status: number }).status).toBe(502);
     expect((error as { errorCode?: string }).errorCode).toBeUndefined();
+  });
+
+  it('keeps a returned HTTP 504 as a safe BffError response', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      jsonResponse(504, {
+        errorCode: 'PROPERTY_PROPOSAL_STATE_CONFLICT',
+        message: 'hostile gateway prose',
+        requestId: '12345678-1234-4abc-8def-123456789abc'
+      })
+    );
+
+    const error = await bffRequest('/api/x').catch((thrown: unknown) => thrown);
+
+    expect(error).toMatchObject({
+      errorCode: 'PROPERTY_PROPOSAL_STATE_CONFLICT',
+      message: GENERIC_BFF_ERROR_MESSAGE,
+      requestId: '12345678-1234-4abc-8def-123456789abc',
+      status: 504
+    });
   });
 
   it('aborts a request that outlives its timeout, and says so', async () => {
@@ -141,8 +177,8 @@ describe('bffRequest', () => {
     const headerRequestId = '01234567-89ab-4cde-8fab-0123456789ab';
     vi.mocked(global.fetch).mockResolvedValueOnce(
       new Response(JSON.stringify({ requestId: '12345678-1234-4abc-8def-123456789abc' }), {
-headers: { 'content-type': 'application/json', 'x-request-id': headerRequestId },
-status: 200
+        headers: { 'content-type': 'application/json', 'x-request-id': headerRequestId },
+        status: 200
       })
     );
 
@@ -160,7 +196,13 @@ status: 200
     expect(getLatestApplicationRequestId()).toBe(bodyRequestId);
   });
 
-  it.each(['12345678-1234-1abc-8def-123456789abc', '12345678-1234-4ABC-8DEF-123456789ABC', 'not-a-request-id'])('does not capture an invalid, uppercase, or non-v4 response ID: %s', async (requestId) => {
+  it.each([
+    '12345678-1234-4ABC-8DEF-123456789ABC',
+    '12345678-1234-1abc-8def-123456789abc',
+    '12345678-1234-4abc-7def-123456789abc',
+    '12345678-1234-4abc-8def-123456789ab',
+    '12345678-1234-4abc-8def-123456789abc0'
+  ])('does not capture an invalid request ID: %s', async (requestId) => {
     vi.mocked(global.fetch).mockResolvedValueOnce(jsonResponse(200, { requestId }));
 
     await bffRequest('/api/x');
@@ -168,15 +210,44 @@ status: 200
     expect(getLatestApplicationRequestId()).toBeUndefined();
   });
 
+  it('uses a canonical body ID when the header is invalid', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ requestId: '12345678-1234-4abc-8def-123456789abc' }), {
+        headers: {
+          'content-type': 'application/json',
+          'x-request-id': '12345678-1234-4ABC-8DEF-123456789ABC'
+        },
+        status: 502
+      })
+    );
+
+    const error = await bffRequest('/api/x').catch((thrown: unknown) => thrown);
+
+    expect(error).toMatchObject({ requestId: '12345678-1234-4abc-8def-123456789abc', status: 502 });
+  });
+
+  it('maps non-abort failures to a generic safe 502 error', async () => {
+    vi.mocked(global.fetch).mockRejectedValueOnce(new TypeError('hostile network prose'));
+
+    const error = await bffRequest('/api/x').catch((thrown: unknown) => thrown);
+
+    expect(error).toMatchObject({
+      name: 'BffError',
+      message: GENERIC_BFF_ERROR_MESSAGE,
+      status: 502
+    });
+    expect(JSON.stringify(error)).not.toContain('hostile network prose');
+  });
+
   it('does not capture or reveal request IDs during SSR', async () => {
     vi.stubGlobal('window', undefined);
     vi.mocked(global.fetch).mockResolvedValueOnce(
       new Response(JSON.stringify({ requestId: '12345678-1234-4abc-8def-123456789abc' }), {
-headers: {
-'content-type': 'application/json',
-'x-request-id': '01234567-89ab-4cde-8fab-0123456789ab'
-},
-status: 200
+        headers: {
+          'content-type': 'application/json',
+          'x-request-id': '01234567-89ab-4cde-8fab-0123456789ab'
+        },
+        status: 200
       })
     );
 
@@ -196,6 +267,31 @@ describe('request ID export surface', () => {
       'getLatestApplicationRequestId'
     ]);
     expect(clearLatestApplicationRequestId).toHaveLength(0);
+  });
+});
+
+describe('BffError request ID boundary', () => {
+  const canonicalId = '12345678-1234-4abc-8def-123456789abc';
+
+  it.each([
+    '12345678-1234-4ABC-8DEF-123456789ABC',
+    '12345678-1234-1abc-8def-123456789abc',
+    '12345678-1234-4abc-7def-123456789abc',
+    '12345678-1234-4abc-8def-123456789ab',
+    '12345678-1234-4abc-8def-123456789abc0'
+  ])('drops invalid constructor request IDs: %s', (requestId) => {
+    expect(new BffError(500, undefined, requestId).requestId).toBeUndefined();
+  });
+
+  it.each([
+    ['01234567-89ab-4cde-8fab-0123456789ab', canonicalId, '01234567-89ab-4cde-8fab-0123456789ab'],
+    ['12345678-1234-4ABC-8DEF-123456789ABC', canonicalId, canonicalId]
+  ])('canonicalizes supplied IDs before response fallbacks', (headerId, bodyId, expected) => {
+    const response = new Response(null, { headers: { 'x-request-id': headerId }, status: 500 });
+
+    expect(toBffError(response, { requestId: bodyId }, 'invalid supplied ID').requestId).toBe(
+      expected
+    );
   });
 });
 
@@ -219,4 +315,3 @@ describe('messageFor', () => {
     expect(messageFor('a string', 'fallback')).toBe('fallback');
   });
 });
-
