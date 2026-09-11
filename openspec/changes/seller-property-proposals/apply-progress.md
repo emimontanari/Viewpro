@@ -2131,3 +2131,29 @@ Direct implementation in the current worktree only. Added the standalone rendere
 - PASS — `cd viewpro-app && pnpm --filter @viewpro/contracts build`.
 - PASS three times — `cd viewpro-app && pnpm --filter next-shadcn-dashboard-starter test src/features/property-proposals/components/property-proposal-detail.test.tsx src/app/dashboard/property-proposals/[proposalId]/page.test.tsx`: **2 files / 11 tests**.
 - PASS — `cd viewpro-app && pnpm --filter next-shadcn-dashboard-starter typecheck` and `lint:strict`.
+
+## U19B1 FORM-SAVE recovery
+
+The prior writer was disconnected/unavailable. A replacement worker recovered only the form-save slice at base `5d26580bc149986a04e2467c1e7e58e867033d4d`; U19B2 detail/cache and the U19 aggregate remain pending.
+
+### Recovery TDD evidence
+
+- **Backup/restore:** copied the final candidate source, focused test, and OpenSpec artifacts to an ephemeral parent-authorized `/tmp` backup; restored only the form source to base for RED and restored the candidate source byte-for-byte for GREEN and after the mutant.
+- **RED:** `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/property-proposals/components/property-proposal-form-save.test.tsx` failed **2/2** behavior tests: existing BORRADOR and RECHAZADA saves sent only `title` and `expectedVersion`, omitting every staged field.
+- **GREEN:** the same focused command passed **2/2** after candidate restoration, including both editable states, all six allowlisted fields, `expectedVersion`, whitespace `addressLine` normalized to `null`, and no submit mutation.
+- **TRIANGULATE:** omitting `province` from the save payload failed **2/2** focused cases; the exact candidate source was restored and the focused command passed **2/2**. Together with the prior GREEN and final post-rebuild repeat, this gave three passing final-state executions (including the two required restoration checks).
+
+### Verification, scope, and cleanup
+
+- PASS — existing regression `property-proposal-form.test.tsx`: **1 file / 15 tests**.
+- PASS — `pnpm --filter @viewpro/contracts build`; App `typecheck`; App `lint:strict`; and `git diff --check`.
+- The first post-cleanup focused repeat was a setup-only failure because generated `@viewpro/contracts` output had been removed; rebuilding contracts produced the final **2/2** GREEN repeat. Generated contract output was removed again afterward.
+- Exact repository paths: `viewpro-app/apps/app-new/src/features/property-proposals/components/property-proposal-form.tsx`, `viewpro-app/apps/app-new/src/features/property-proposals/components/property-proposal-form-save.test.tsx`, `openspec/changes/seller-property-proposals/tasks.md`, and this progress artifact.
+- No detail/cache integration, query, service, API, BFF, route, lifecycle, review, commit, push, PR, or merge work occurred.
+
+### Final accounting and hashes
+
+- Arithmetic: **207 additions + 27 deletions + 86 untracked test lines = 320 physical changed/new lines** (under the 400-line cap).
+- `property-proposal-form.tsx`: `80023bce499cdf619652fe828601651e1e0163268a260f5f0e70908968645936`
+- `property-proposal-form-save.test.tsx`: `01c84081d744fc198bc065b49353d8790a428f16e80d77d803c848fc27214f7c`
+- `tasks.md`: `518ee12483ebea094fd1f7eea449ff87297bb5792da6f16729acf6fee27636e1`; the final self-hash for this artifact is reported in the handoff because embedding it here would change it.
