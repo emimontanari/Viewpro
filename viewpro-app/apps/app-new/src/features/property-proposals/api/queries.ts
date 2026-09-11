@@ -1,11 +1,26 @@
-import { queryOptions, type QueryClient } from '@tanstack/react-query';
+import { isBffError } from '@/lib/bff-client';
+import { productKeys } from '@/features/products/api/queries';
+import { queryOptions, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import {
+  approveReviewerPropertyProposal,
+  createSellerPropertyProposal,
   getReviewerPropertyProposal,
   getSellerPropertyProposal,
   listReviewerPropertyProposals,
-  listSellerPropertyProposals
+  listSellerPropertyProposals,
+  rejectReviewerPropertyProposal,
+  submitSellerPropertyProposal,
+  updateSellerPropertyProposal
 } from './service';
-import type { ReviewerPropertyProposalFilters, SellerPropertyProposalFilters } from './types';
+import type {
+  CreatePropertyProposalPayload,
+  RejectPropertyProposalPayload,
+  ReviewerPropertyProposalFilters,
+  ReviewPropertyProposalPayload,
+  SellerPropertyProposalFilters,
+  SubmitPropertyProposalPayload,
+  UpdatePropertyProposalPayload
+} from './types';
 
 export type PropertyProposalAudience = 'seller' | 'reviewer';
 
@@ -58,6 +73,36 @@ export async function cancelAndRemovePropertyProposalQueries(queryClient: QueryC
   for (const queryKey of keys) queryClient.removeQueries({ queryKey });
 }
 
+export function useCreateSellerPropertyProposal(tenantId: string) {
+  return usePropertyProposalMutation(tenantId, (payload: CreatePropertyProposalPayload) =>
+    createSellerPropertyProposal(payload)
+  );
+}
+
+export function useUpdateSellerPropertyProposal(tenantId: string, proposalId: string) {
+  return usePropertyProposalMutation(tenantId, (payload: UpdatePropertyProposalPayload) =>
+    updateSellerPropertyProposal(proposalId, payload)
+  );
+}
+
+export function useSubmitSellerPropertyProposal(tenantId: string, proposalId: string) {
+  return usePropertyProposalMutation(tenantId, (payload: SubmitPropertyProposalPayload) =>
+    submitSellerPropertyProposal(proposalId, payload)
+  );
+}
+
+export function useRejectReviewerPropertyProposal(tenantId: string, proposalId: string) {
+  return usePropertyProposalMutation(tenantId, (payload: RejectPropertyProposalPayload) =>
+    rejectReviewerPropertyProposal(proposalId, payload)
+  );
+}
+
+export function useApproveReviewerPropertyProposal(tenantId: string, proposalId: string) {
+  return usePropertyProposalMutation(tenantId, (payload: ReviewPropertyProposalPayload) =>
+    approveReviewerPropertyProposal(proposalId, payload), true
+  );
+}
+
 function normalizeSellerFilters(filters: SellerPropertyProposalFilters) {
   return { page: filters.page ?? 1, pageSize: filters.pageSize ?? 20 };
 }
@@ -69,4 +114,34 @@ function normalizeReviewerFilters(filters: ReviewerPropertyProposalFilters) {
     pageSize: filters.pageSize ?? 20,
     state: filters.state ?? 'EN_REVISION'
   };
+}
+
+function usePropertyProposalMutation<Payload, Result>(
+  tenantId: string,
+  mutationFn: (payload: Payload) => Promise<Result>,
+  invalidatesProducts = false
+) {
+  const queryClient = useQueryClient();
+  const invalidate = () => invalidatePropertyProposalQueries(queryClient, tenantId, invalidatesProducts);
+
+  return useMutation({
+    mutationFn,
+    onSuccess: invalidate,
+    onError: (error) => isBffError(error) && error.status === 409
+      ? invalidatePropertyProposalQueries(queryClient, tenantId)
+      : undefined
+  });
+}
+
+async function invalidatePropertyProposalQueries(
+  queryClient: QueryClient,
+  tenantId: string,
+  invalidatesProducts = false
+) {
+  await Promise.all([
+    ...audiences.map((audience) => queryClient.invalidateQueries({
+      queryKey: propertyProposalKeys.all(tenantId, audience)
+    })),
+    ...(invalidatesProducts ? [queryClient.invalidateQueries({ queryKey: productKeys.all })] : [])
+  ]);
 }
