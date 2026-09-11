@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { navGroups } from '@/config/nav-config';
 import { useActiveTenant, useSession } from '@/lib/session-context';
-import { navigationAccessScenarios } from '@/test/navigation-access-fixtures';
+import { navigationAccessScenarios, propertyProposalMemberships } from '@/test/navigation-access-fixtures';
 import AppSidebar from './app-sidebar';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 
@@ -38,6 +38,16 @@ describe('AppSidebar navigation access', () => {
     render(<SidebarProvider><AppSidebar navGroupsConfig={navGroups} /></SidebarProvider>);
 
     expect(screen.getAllByRole('link').map((link) => ({ title: link.textContent, href: link.getAttribute('href') }))).toEqual(destinations);
+  });
+
+  it('does not expose either proposal destination to a reviewer before U20B', () => {
+    const activeMembership = propertyProposalMemberships.reviewer;
+    useActiveTenantMock.mockReturnValue({ activeMembership, activeTenantId: activeMembership.tenant.id, hasMemberships: true, isTenantLoading: false, memberships: [activeMembership], needsTenantSelection: false, selectedTenantId: activeMembership.tenant.id });
+
+    render(<SidebarProvider><AppSidebar navGroupsConfig={navGroups} /></SidebarProvider>);
+
+    expect(screen.queryByRole('link', { name: 'Propuestas de propiedades' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Revisión de propuestas' })).toBeNull();
   });
 });
 

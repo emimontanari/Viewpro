@@ -2031,3 +2031,45 @@ U18B1 is the assigned list/direct-access work unit. The exact remaining implemen
 - [ ] U18B aggregate: complete U18B1 list/direct access and U18B2 atomic seller navigation exposure. <!-- sdd-owner: implementation -->
 
 The four source/test files contain 165 physical lines; this concise OpenSpec closure remains below the U18B1 ≤400-line cap. Parent-owned lifecycle rows remain deferred byte-for-byte.
+
+## U18B2 atomic seller navigation exposure
+
+### Status and scope
+
+Parent-authoritative status selected `seller-property-proposals`, apply-ready `99/116`, runtime `proceed16d6`, and fresh `develop` base `dfdf79b4` in `/Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u18b2-navigation`. No ambient/native status was queried. The repo-local allowed roots were the supplied nav/config tests, fixture, optional Sidebar test, and these OpenSpec artifacts; no production hook, Sidebar, KBar, route, page, query, service, or backend file was edited. The selected auto-chain U18B2 slice has the hard ≤400-line budget.
+
+### Completed work
+
+- Added one `Propuestas de propiedades` destination at `/dashboard/property-proposals` after `Perfil`, preserving existing destination order and identity.
+- Its `access` is the imported `sellerPropertyProposalAccess` singleton, not an inline role/capability copy. Existing Sidebar and KBar both filter this same `navGroups` source through `useFilteredNavGroups`.
+- Expanded config, hook, fixture, and rendered Sidebar evidence for active/TRIAL seller access; loading, unresolved, missing-capability, reviewer, suspended, cancelled, unknown, and tenant-switch denial; no reviewer or direct-create destination is introduced.
+- Persisted task updates: both U18B2 rows and the U18B aggregate row are visibly `[x]`; U19+ and all parent-owned lifecycle rows remain unchanged.
+
+### TDD Cycle Evidence
+
+| Task | Safety net / RED | GREEN | TRIANGULATE / REFACTOR |
+|---|---|---|---|
+| U18B2 navigation | Existing nav/use-nav/Sidebar safety net passed 21/21. Test-first seller config, hook, fixture, Sidebar, and existing KBar evidence then failed 6 assertions across 4 files because no destination existed. | Final focused nav/use-nav/Sidebar/KBar suite passed 4 files / 39 tests twice. | Inline role clone failed 1/9 after identity assertion; missing capability failed 2/14; unguarded/loading exposure failed 8/14; wrong href, duplicate, and reviewer-destination mutants each failed config/rendered tests. All were restored. No refactor was needed. |
+
+### Verification, cleanup, and boundary
+
+- PASS twice — `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/config/nav-config.test.ts src/hooks/use-nav.test.ts src/components/layout/app-sidebar.test.tsx src/components/kbar/palette.test.ts` — 4 files / 39 tests.
+- PASS — `pnpm --filter next-shadcn-dashboard-starter typecheck` and `pnpm --filter next-shadcn-dashboard-starter lint:strict`.
+- No design deviation, commit, push, PR, merge, review, receipt, or parent lifecycle action occurred. Dependency, generated contract output, and TypeScript build residue are removed after final checks.
+- The source/test delta is 89 additions and 7 deletions before OpenSpec closure; the complete candidate is 123 additions and 10 deletions (133 changed lines), below 400. Workload boundary: U18B2 is the assigned `auto-chain` slice.
+
+Remaining implementation begins with:
+
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR the direct seller-detail page boundary in `apps/app-new/src/app/dashboard/property-proposals/[proposalId]/page.test.tsx` with detail/history, rejected edit/resubmit context, optional safe canonical link, 409 refetch, audience/tenant invalidation, and old-tenant cleanup. <!-- sdd-owner: implementation -->
+- [ ] Run the manifest detail/cache tests, App typecheck, and strict lint; clear caches, mutation state, and tenant fixtures. <!-- sdd-owner: implementation -->
+
+## U18B2 navigation-access correction
+
+Parent-authoritative corrective scope reused runtime `proceed16d6` in the same U18B2 workspace; no ambient/native status was queried. Only `src/lib/navigation-access.test.ts` and this progress artifact were added to the prior authorized U18B2 closure.
+
+- **RED:** the full relevant navigation command failed exactly 1/60 at the obsolete AGENT-only global no-proposal assertion.
+- **GREEN:** replaced it with the bounded pre-U20B assertion that `/dashboard/property-proposals/review` is absent while retaining the fixture-driven exact destination matrix, including the seller route.
+- **TRIANGULATE:** removing the seller destination failed 2/30 focused assertions; adding an unprotected reviewer destination failed 7/30. Both mutants were restored.
+- **Verification:** the complete navigation set (navigation access, nav config, hook, Sidebar, and KBar) passed 5 files / 60 tests twice; App typecheck and strict lint passed.
+- U18B2 and U18B persisted checkboxes remain visibly `[x]`; U19+ and parent-owned rows are unchanged. No production code, commit, push, PR, merge, review, receipt, or lifecycle action occurred.
+- Cleanup removed dependency directories, generated contract output, and TypeScript build residue after final checks. The final candidate is 136 additions and 12 deletions (148 changed lines), within the 400-line budget.

@@ -340,9 +340,9 @@ Manifest: `apps/app-new/src/features/property-proposals/components/property-prop
 
 #### U18B2 — Atomic seller navigation exposure
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR the authorized seller destination in nav-config, Sidebar, and KBar only after U18B1; preserve no reviewer/direct-create destination and exact loading parity. <!-- sdd-owner: implementation -->
-- [ ] Run the nav-config, Sidebar, and KBar tests, App typecheck, and strict lint; clear router/query fixtures. <!-- sdd-owner: implementation -->
-- [ ] U18B aggregate: complete U18B1 list/direct access and U18B2 atomic seller navigation exposure. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR the authorized seller destination in nav-config, Sidebar, and KBar only after U18B1; preserve no reviewer/direct-create destination and exact loading parity. <!-- sdd-owner: implementation -->
+- [x] Run the nav-config, Sidebar, and KBar tests, App typecheck, and strict lint; clear router/query fixtures. <!-- sdd-owner: implementation -->
+- [x] U18B aggregate: complete U18B1 list/direct access and U18B2 atomic seller navigation exposure. <!-- sdd-owner: implementation -->
 
 ### U19 — Seller detail, history, links, and cache
 

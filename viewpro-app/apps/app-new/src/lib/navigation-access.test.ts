@@ -51,10 +51,10 @@ describe('navigation access policy', () => {
     expect(navGroups[0]?.items.find(({ title }) => title === 'Equipo')?.access).toBe(workspaceAdministrationAccess);
   });
 
-  it.each(navigationAccessScenarios)('keeps $state destinations unchanged and exposes no proposal destination', ({ activeMembership, destinations, isTenantLoading }) => {
+  it.each(navigationAccessScenarios)('keeps $state destinations unchanged and omits reviewer navigation before U20B', ({ activeMembership, destinations, isTenantLoading }) => {
     const visible = filterNavigationGroups(navGroups, toNavigationAccessContext(activeMembership, isTenantLoading)).flatMap((group) => group.items).map(({ title, url }) => ({ title, href: url }));
     expect(visible).toEqual(destinations);
-    expect(visible.some(({ title, href }) => title.includes('propuesta') || href.includes('property-proposals'))).toBe(false);
+    expect(navGroups.flatMap((group) => group.items).map(({ url }) => url)).not.toContain('/dashboard/property-proposals/review');
   });
 });
 

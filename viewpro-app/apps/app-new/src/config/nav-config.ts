@@ -1,3 +1,4 @@
+import { sellerPropertyProposalAccess } from '@/lib/property-proposal-access';
 import type { NavigationAccessPolicy, NavGroup } from '@/types';
 
 export const workspaceAdministrationAccess: Readonly<NavigationAccessPolicy> = Object.freeze({ roles: Object.freeze(['MANAGER', 'PRINCIPAL_MANAGER']), permissions: Object.freeze(['team.view']) });
@@ -99,6 +100,14 @@ export const navGroups: NavGroup[] = [
         shortcut: ['m', 'm'],
         isActive: false,
         items: []
+      },
+      {
+        title: 'Propuestas de propiedades',
+        url: '/dashboard/property-proposals',
+        icon: 'product',
+        isActive: false,
+        items: [],
+        access: sellerPropertyProposalAccess
       }
     ]
   }
