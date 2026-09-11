@@ -357,7 +357,7 @@ Manifest: seller detail/history/page, direct page boundary `apps/app-new/src/app
 
 #### U19A2 — Authorized seller detail and safe canonical link
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR the authorized seller detail boundary, history integration, and optional safe canonical result link. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR the authorized seller detail boundary, history integration, and optional safe canonical result link. <!-- sdd-owner: implementation -->
 
 #### U19B — Seller detail editing and cache
 
