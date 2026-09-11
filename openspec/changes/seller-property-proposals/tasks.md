@@ -333,8 +333,16 @@ Manifest: seller schema/form/new/list support paths, direct page boundary `apps/
 
 Manifest: `apps/app-new/src/features/property-proposals/components/property-proposal-list.tsx`, `apps/app-new/src/features/property-proposals/components/property-proposal-list.test.tsx`, `apps/app-new/src/app/dashboard/property-proposals/page.tsx`, direct page boundary `apps/app-new/src/app/dashboard/property-proposals/page.test.tsx` T11–15, `apps/app-new/src/config/nav-config.ts`, `apps/app-new/src/config/nav-config.test.ts`, `apps/app-new/src/components/layout/app-sidebar.tsx`, `apps/app-new/src/components/kbar/palette.tsx`, `apps/app-new/src/components/layout/app-sidebar.test.tsx`, and `apps/app-new/src/components/kbar/palette.test.ts`.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR the direct seller-list/root page boundary in `apps/app-new/src/app/dashboard/property-proposals/page.test.tsx` with seller list/page loading, empty/error/data behavior and the authorized seller destination only after the working seller page exists; preserve no reviewer/direct-create destination and exact loading parity. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest list/page, nav-config, Sidebar, and KBar tests, App typecheck, and strict lint; clear router/query fixtures. <!-- sdd-owner: implementation -->
+#### U18B1 — Seller list and direct root access
+
+- [x] RED → GREEN → TRIANGULATE → REFACTOR the direct seller-list/root page boundary in `apps/app-new/src/app/dashboard/property-proposals/page.test.tsx` with seller list/page loading, empty/error/data behavior, exact authorized query enablement, and no detail destination before U19. <!-- sdd-owner: implementation -->
+- [x] Run the focused list/page tests twice, App typecheck, and strict lint; clear router/query fixtures. <!-- sdd-owner: implementation -->
+
+#### U18B2 — Atomic seller navigation exposure
+
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR the authorized seller destination in nav-config, Sidebar, and KBar only after U18B1; preserve no reviewer/direct-create destination and exact loading parity. <!-- sdd-owner: implementation -->
+- [ ] Run the nav-config, Sidebar, and KBar tests, App typecheck, and strict lint; clear router/query fixtures. <!-- sdd-owner: implementation -->
+- [ ] U18B aggregate: complete U18B1 list/direct access and U18B2 atomic seller navigation exposure. <!-- sdd-owner: implementation -->
 
 ### U19 — Seller detail, history, links, and cache
 
