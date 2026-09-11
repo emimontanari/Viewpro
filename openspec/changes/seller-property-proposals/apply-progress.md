@@ -1995,3 +1995,39 @@ Parent-authoritative corrective status: runtime `proceed05ec`, remediation `evid
 Verification: focused suite twice (3 files/22 tests), App typecheck, strict lint, and `git diff --check` passed. U18A tasks remain visibly `[x]`; U18B and parent rows are unchanged.
 
 This correction supersedes the earlier arithmetic: final cumulative scope is 171 source/test physical lines plus 69 tracked OpenSpec changed lines = 240, below the hard 400-line cap.
+
+## U18B1 seller list and direct root access
+
+### Status and scope
+
+Parent-authoritative OpenSpec status: `seller-property-proposals`, apply-ready `97/113`, runtime `proceed074c`, fresh `develop` base `3f611213`, repo-local U18B1 roots only, and no action-context warnings. The selected `auto-chain` U18B1 slice has the hard ≤400-line budget; no ambient/native status lookup was used.
+
+### Completed work
+
+- Added the seller list through existing `sellerPropertyProposalsOptions(activeTenantId)` with React Query `enabled` equal to the resolved seller-access predicate.
+- The direct root page is fail-closed for loading, denied, and missing-tenant contexts; it mounts the list only with the resolved active tenant and exact access predicate.
+- The list renders bounded loading, generic local error copy, empty state, title/status rows, and the already-landed `/dashboard/property-proposals/new` link. It intentionally emits no detail link because U19 owns the detail route.
+- Persisted task updates: the two U18B1 implementation rows are visibly `[x]`; U18B2 navigation and U18B aggregate rows remain `[ ]`.
+
+### TDD Cycle Evidence
+
+| Task | RED | GREEN | TRIANGULATE / REFACTOR |
+|---|---|---|---|
+| U18B1 list/root | Test-first list and page suites failed to resolve both missing production modules. | Final focused list/page suite passed 8/8 twice. | Always-enabled, wrong-tenant, access-bypass, raw-error, missing-loading-state, new-href, and dead-detail mutants each failed; all were restored. |
+
+### Verification and cleanup
+
+- PASS — `pnpm --filter @viewpro/contracts build` (required local test import prerequisite).
+- PASS twice — `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/property-proposals/components/property-proposal-list.test.tsx 'src/app/dashboard/property-proposals/page.test.tsx'` — 2 files / 8 tests.
+- PASS — App typecheck and strict lint.
+- No design deviation, navigation/config/sidebar/KBar, detail route, query/service, backend, commit, push, PR, merge, review, receipt, or parent lifecycle action occurred.
+
+### Remaining work and workload boundary
+
+U18B1 is the assigned list/direct-access work unit. The exact remaining implementation rows are:
+
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR the authorized seller destination in nav-config, Sidebar, and KBar only after U18B1; preserve no reviewer/direct-create destination and exact loading parity. <!-- sdd-owner: implementation -->
+- [ ] Run the nav-config, Sidebar, and KBar tests, App typecheck, and strict lint; clear router/query fixtures. <!-- sdd-owner: implementation -->
+- [ ] U18B aggregate: complete U18B1 list/direct access and U18B2 atomic seller navigation exposure. <!-- sdd-owner: implementation -->
+
+The four source/test files contain 165 physical lines; this concise OpenSpec closure remains below the U18B1 ≤400-line cap. Parent-owned lifecycle rows remain deferred byte-for-byte.
