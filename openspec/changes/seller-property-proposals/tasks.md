@@ -303,8 +303,17 @@ Manifest: feature `api/types.ts`, `api/service.ts`, and `api/service.test.ts`; d
 
 Manifest: feature `api/queries.ts` and `api/queries.test.ts`.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR tenant-plus-audience list/detail keys, mutation invalidation, 409 authoritative refresh, canonical invalidation, and tenant-switch cancellation. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest query spec, App typecheck, and strict lint; clear query caches and tenant fixtures. <!-- sdd-owner: implementation -->
+#### U16B1 — Tenant-scoped query reads
+
+- [x] RED → GREEN → TRIANGULATE → REFACTOR tenant-plus-audience list/detail keys, normalized seller/reviewer read filters, signal propagation, and cancel-before-remove old-tenant cleanup. <!-- sdd-owner: implementation -->
+- [x] Run the focused query-read spec twice, App typecheck, and strict lint; clear query caches and tenant fixtures. <!-- sdd-owner: implementation -->
+
+#### U16B2 — Mutation invalidation and authoritative refresh
+
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR five closure-bound mutations, both-audience invalidation, 409 authoritative refresh, canonical product invalidation, and no optimistic cache writes. <!-- sdd-owner: implementation -->
+- [ ] Run the focused mutation query spec, App typecheck, and strict lint; clear mutation/query caches and tenant fixtures. <!-- sdd-owner: implementation -->
+
+- [ ] U16B aggregate: complete U16B1 and U16B2 query contracts without route, UI, backend, or contract changes. <!-- sdd-owner: implementation -->
 
 ### U17 — Shared access policy and fail-closed boundaries (S47, S49)
 

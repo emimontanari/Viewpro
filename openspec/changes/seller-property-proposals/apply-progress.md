@@ -1866,3 +1866,24 @@ Parent authority supplied `proceedb776` / `remediates4759`; no ambient status wa
 | U16A correction | 50/50 safety net; new caller-cancellation tests failed 2/34 before the relay. | BFF/client test passed 34/34 and combined focused suite passed 54/54 twice. | Ignored caller signal, init override, undefined query, and `Date` wire mutants failed 1/34, 1/20, 1/20, and App typecheck respectively; all were restored. No further refactor. |
 
 Verification: App typecheck, strict lint, and `git diff --check` passed. `tsconfig.tsbuildinfo` was removed after typecheck. No design deviation, task change, route/query/UI/backend/contract change, commit, push, PR, review, or lifecycle action occurred. Cumulative arithmetic is 88 tracked plus 282 untracked physical lines = 370, within the 400-line cap (78-line correction).
+
+## U16B1 tenant-scoped query reads
+
+### Status, scope, and split
+
+Parent authority supplied `proceed16bc` / `remediatesf804` for the exact `6743b756` U16B1 workspace; no ambient/native status or other-worktree Git context was used. The approved split retains U16B1 read keys/options/tenant cleanup only; U16B2 owns every mutation, invalidation, 409 refresh, canonical product cache, and optimistic-state rule. U16B1's two implementation rows are visibly `[x]`; U16B2 and aggregate U16B remain `[ ]`.
+
+### Completed behavior and TDD evidence
+
+- Added required tenant-plus-audience `all`/`lists`/`list`/`detail` keys, seller/reviewer default normalization with explicit-undefined equivalence, and four signal-forwarding read options that use the same normalized object for key and service call.
+- Added `cancelAndRemovePropertyProposalQueries`, which awaits both old-audience cancellations before their scoped removal and cannot remove a new-tenant entry.
+
+| Task | Layer | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|
+| U16B1 reads/cache cleanup | QueryClient unit | Missing `./queries` import failed collection. | 5/5 focused tests passed. | Tenant, audience, default, signal, dropped-await, and broad-remove mutants failed 2/5, 1/5, 1/5, 2/5, 1/5, and 2/5; all restored. | Added test mock cleanup for isolated request assertions. |
+
+### Verification, cleanup, and boundary
+
+- PASS — focused U16B1 query spec twice: 5/5 each; App typecheck and strict lint passed.
+- Offline frozen dependencies and the contract build enabled App verification only; cleanup removes dependency, contract-dist, Turbo, and TypeScript build-info residue. No database, route, UI, mutation, backend, contract, Git, commit, push, PR, review, or receipt work occurred.
+- Source/test total 198 lines; the six-file OpenSpec split/closure is within the 400-line U16B1 hard boundary without code golf or size exception. Next unchecked implementation is U16B2, but this apply executor returns `next_recommended: parent-lifecycle`.
