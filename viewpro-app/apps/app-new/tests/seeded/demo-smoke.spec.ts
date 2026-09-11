@@ -326,7 +326,12 @@ test('demo user can navigate the seeded operational workflow', async ({ page }) 
       await expect(shortcuts).toHaveCount(2);
       await expect(shortcuts.nth(0)).toHaveAttribute('href', '/dashboard/product');
       await expect(shortcuts.nth(1)).toHaveAttribute('href', '/dashboard/seguimiento');
-      await expect(page.getByRole('link', { name: /Nueva propiedad|Crear propiedad|Propuestas?|Agenda|WhatsApp/i })).toHaveCount(0);
+      const proposalDestination = page.getByRole('link', { name: 'Propuestas de propiedades', exact: true });
+      await expect(proposalDestination).toHaveCount(1);
+      await expect(proposalDestination).toBeVisible();
+      await expect(proposalDestination).toHaveAttribute('href', '/dashboard/property-proposals');
+      await expect(page.locator('a[href="/dashboard/property-proposals/review"]')).toHaveCount(0);
+      await expect(page.getByRole('link', { name: /Nueva propiedad|Crear propiedad|Agenda|WhatsApp/i })).toHaveCount(0);
       await expect(page.getByRole('button', { name: /Crear propiedad|Movimiento global|Propuestas?|Agenda|WhatsApp/i })).toHaveCount(0);
 
       const propertyRegion = page.getByRole('region', { name: 'Mis propiedades' });

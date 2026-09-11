@@ -2073,3 +2073,22 @@ Parent-authoritative corrective scope reused runtime `proceed16d6` in the same U
 - **Verification:** the complete navigation set (navigation access, nav config, hook, Sidebar, and KBar) passed 5 files / 60 tests twice; App typecheck and strict lint passed.
 - U18B2 and U18B persisted checkboxes remain visibly `[x]`; U19+ and parent-owned rows are unchanged. No production code, commit, push, PR, merge, review, receipt, or lifecycle action occurred.
 - Cleanup removed dependency directories, generated contract output, and TypeScript build residue after final checks. The final candidate is 136 additions and 12 deletions (148 changed lines), within the 400-line budget.
+
+## PR613 exact-head CI correction
+
+### Status and scope
+
+Parent-authoritative corrective context selected `seller-property-proposals` at `4e8d8b55` in this repo-local U18B2 workspace, with runtime `proceeda186`; no ambient/native status was queried. Only the supplied fixture, seeded smoke assertion, and this cumulative progress artifact changed. U18B2/U18B task rows remain visibly `[x]`; U19+ and all parent-owned rows are deferred unchanged.
+
+### Correction and strict-TDD evidence
+
+- **RED:** the focused access/navigation command exposed the candidate regression: `property-proposal-access.test.ts` failed 1 assertion because `switchedSeller` lacked `property_proposals.seller`; the unrelated navigation imports required the generated contracts prerequisite.
+- **GREEN:** restored that capability only on the switched seller fixture. The Martin seeded assertion now requires exactly one visible `Propuestas de propiedades` link at `/dashboard/property-proposals`, while retaining no reviewer-path, direct-create, agenda, or WhatsApp destination.
+- **TRIANGULATE:** temporary allowed-fixture mutants each failed and were restored: missing seller capability, duplicate seller destination, review href, and manager review-path exposure.
+- **REFACTOR:** none needed; this is additive fixture/assertion repair with no navigation-policy or production change.
+
+### Verification, cleanup, and boundary
+
+- PASS — `pnpm --filter @viewpro/contracts build` prerequisite; focused property-proposal access plus navigation/config/hook/Sidebar/KBar suite passed **6 files / 70 tests** twice; App typecheck and strict lint passed.
+- Seeded browser run not attempted: `DATABASE_URL` is unset and its existing global setup invokes local `pnpm demo:seed`; static typecheck covers the edited spec. Rerun the guarded seeded CI job for browser evidence.
+- `git diff --check` passed. This correction is +7/-2 source/test lines before this concise record; cumulative PR is 172 changed lines, below 400. Dependencies/generated/build residue was removed. No commit, push, PR, merge, review, receipt, or lifecycle action occurred.

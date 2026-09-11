@@ -8,7 +8,7 @@ const permissions = {
 export const membership = (role: string, permissions: string[], tenantStatus = 'ACTIVE', tenantId = 'tenant-1') => ({ id: `membership-${tenantId}`, role, permissions, tenant: { id: tenantId, name: 'Tenant One', slug: 'tenant-one', status: tenantStatus } });
 export const propertyProposalMemberships = {
   seller: membership('AGENT', ['tenant.view', 'property_proposals.seller']), reviewer: membership('MANAGER', ['tenant.view', 'property_proposals.review']),
-  principalReviewer: membership('PRINCIPAL_MANAGER', ['tenant.view', 'property_proposals.review']), switchedSeller: membership('AGENT', ['tenant.view'], 'ACTIVE', 'tenant-2')
+  principalReviewer: membership('PRINCIPAL_MANAGER', ['tenant.view', 'property_proposals.review']), switchedSeller: membership('AGENT', ['tenant.view', 'property_proposals.seller'], 'ACTIVE', 'tenant-2')
 };
 
 export const navigationAccessScenarios = [
