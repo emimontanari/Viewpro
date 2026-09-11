@@ -2113,3 +2113,21 @@ Direct implementation in the current worktree only. Added the standalone rendere
 - Generated `packages/contracts/dist` was removed afterward.
 - The renderer maps the supplied readonly newest-first history directly, uses each immutable round snapshot instead of staged values, renders submitter/reviewer and submitted/decision dates, and renders pending/approved/rejected outcomes and rejection reason. Tests freeze input, pair every approved snapshot field with its label (including distinct city/province), assert optional-null omission, actor/date/outcome output, escaped hostile strings, and absence of controls, images, and links.
 - No SDD lifecycle action, receipt, commit, push, PR, merge, provider, or external operation occurred.
+
+## U19A2 authorized seller detail and safe canonical link
+
+- Added the seller detail page boundary and read-only detail renderer. The page blocks loading, denied, and tenantless contexts before mounting; the renderer repeats the authorized tenant/query predicate, displays staged fields/status/history, and has no edit, review, or image controls.
+- The optional canonical link renders only for `APROBADA` data with a nonblank backend-supplied ID, encodes that ID, and targets only `/dashboard/product/{id}`. Backend error prose is never rendered.
+
+### Strict TDD evidence
+
+- **RED** — after the required contracts build, detail behavior tests failed **6/7** against the null skeleton; page-boundary tests failed **4/4**. The first detail command before that build was an environment prerequisite failure resolving `@viewpro/contracts`, not behavioral RED.
+- **GREEN** — detail tests passed **7/7** and page tests passed **4/4** after the smallest renderer and access boundary.
+- **TRIANGULATE** — removing page `enabled` gating failed **1/4**; dropping component query `enabled` failed **1/7**; removing the approved-state guard failed **1/7**; changing the canonical route failed **1/7**; replacing supplied history with an empty array failed **4/7**. All mutations were restored.
+- **REFACTOR** — expanded the staged-field type and rendering layout for readability without behavioral change.
+
+### Verification and cleanup
+
+- PASS — `cd viewpro-app && pnpm --filter @viewpro/contracts build`.
+- PASS three times — `cd viewpro-app && pnpm --filter next-shadcn-dashboard-starter test src/features/property-proposals/components/property-proposal-detail.test.tsx src/app/dashboard/property-proposals/[proposalId]/page.test.tsx`: **2 files / 11 tests**.
+- PASS — `cd viewpro-app && pnpm --filter next-shadcn-dashboard-starter typecheck` and `lint:strict`.
