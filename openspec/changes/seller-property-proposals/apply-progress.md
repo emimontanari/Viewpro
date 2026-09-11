@@ -2189,3 +2189,20 @@ The prior writer was disconnected/unavailable. A replacement worker recovered on
 ### Verification
 
 - PASS twice — focused U19 detail/cache/page suite; form/query regressions; App `typecheck`; `lint:strict`; and `git diff --check`.
+
+## U20A split: reviewer inbox core and filters
+
+- U20A1 is complete: direct reviewer inbox/page boundary only, with fixed `EN_REVISION` page 1/page size 20, backend order, proposer display, pagination, safe states, cache fail-closed behavior, and tenant cleanup.
+- U20A2 remains pending on a fresh post-merge base: state/history AND filters and filter-change page reset. U20A aggregate remains pending; no navigation exposure changed.
+
+### U20A1 strict TDD evidence
+
+- **RED:** the narrowed no-controls assertion failed while the existing state/history selects rendered.
+- **GREEN:** removing filter UI/logic passed the focused inbox/page suite.
+- **TRIANGULATE:** omitting the child `queryEnabled` rendering guard failed the cache-seeded assertion; it was restored.
+- **REFACTOR:** no additional refactor; hooks remain unconditional.
+
+### U20A1 verification
+
+- PASS — focused inbox/page suite: 2 files / 4 tests.
+- U20A1 rows are `[x]`; U20A2 and U20A aggregate rows are `[ ]`.
