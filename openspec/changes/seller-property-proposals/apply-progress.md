@@ -1930,3 +1930,68 @@ Parent authority supplied `seller-property-proposals` apply-ready `93/113` and r
 - PASS — App typecheck and strict lint. The first typecheck exposed the required contracts build plus test-only required `tenantId`; after building contracts and making that context field optional for existing navigation callers, typecheck passed.
 - Temporary mutant backups/logs are removed. No database, backend, destination, navigation configuration, page, query, commit, push, PR, merge, review, receipt, or parent lifecycle action occurred.
 - U17 source/test plus OpenSpec closure remains within the hard 400-line no-split boundary. No design deviation; remaining implementation starts with the exact unchecked U18A row: `- [ ] RED → GREEN → TRIANGULATE → REFACTOR the direct seller-new page boundary in \`apps/app-new/src/app/dashboard/property-proposals/new/page.test.tsx\` alongside title-only save, six-field submit validation, separate save/submit mutations, persisted \`EN_REVISION\` rendering as \`EN_REVISIÓN\`, no images, and no canonical-create call. <!-- sdd-owner: implementation -->`.
+
+## U18A seller form and direct new-page boundary
+
+### Status and boundary
+
+Parent-authoritative OpenSpec status: `seller-property-proposals`, apply-ready `95/113`, runtime `proceed3222`, fresh `develop` base `a77b0989`, repo-local U18A edit roots only; no ambient/native status lookup was used. The selected `auto-chain` slice is under the hard 400-line budget. Both U18A implementation-owned rows are now visibly `[x]`; U18B+ and all parent-owned rows remain unchanged.
+
+### Completed work
+
+- Added independent draft and submit schemas: a trimmed nonblank title capped at 120 for drafts, and exactly title/address/city/province/property-type/operation for submission.
+- Added a six-field seller form with separate create/update persistence then authoritative-ID/version submission, pending deduplication, code-only safe error copy, and no image or canonical-create control.
+- Added all-state status badges, including exact `EN REVISIÓN`, and a direct page boundary that mounts only an authorized resolved seller tenant; loading and denial mount no form.
+
+### TDD Cycle Evidence
+
+| Task | RED | GREEN | TRIANGULATE / REFACTOR |
+|---|---|---|---|
+| U18A form, status, page | New tests failed to resolve the three missing production modules. | Focused status/form/page suite passed 14/14 twice. | Dropped complete fields (1 failed), stale returned version (2 failed), skipped persistence (3 failed), raw state (1 failed), image (1 failed), canonical link (1 failed), and access bypass (1 failed); all restored. |
+
+### Verification and cleanup
+
+- PASS — focused seller component/page tests twice: 3 files, 14 tests.
+- PASS — App typecheck and strict lint; contracts build was required before typecheck in this fresh worktree.
+- PASS — `git diff --check` before OpenSpec closure edits.
+- No routes beyond the direct new page, list/nav/sidebar/KBar/detail/product/query/service changes, images, canonical imports, database, commit, push, PR, review, or lifecycle work occurred.
+
+### Remaining and workload
+
+The seven new U18A source/test files contain 175 physical lines; this source closure plus the two task checkboxes and this progress entry is below the 400-line hard cap. U18B remains deferred; its two exact unchecked implementation rows remain in `tasks.md`. No design deviation is recorded.
+
+## U18A audited hook-integration correction
+
+Parent-authoritative corrective status: runtime `proceedfa8b`, remediation `failed evidencecff7`; the original U18A scope and fresh `a77b0989` base remain in force, with no ambient/native status lookup.
+
+- Replaced direct proposal-service calls with the existing tenant-bound create/update/submit mutation hooks. Submission queues the authoritative persistence response until the submit hook is rebound to its returned ID, then sends its returned version; this preserves U16 invalidation and real-409 behavior.
+- Added hook-mocked exact-call coverage, 120/121 title boundaries, all six one-at-a-time incomplete-submit cases, and settled pending overlap/save-deduplication coverage. No service import remains in the form.
+
+| Correction TDD evidence | Result |
+|---|---|
+| Safety net / RED | Original U18A suite passed 14/14; hook-mocked test-first correction failed 5/12 against direct service calls. |
+| GREEN | Corrected form suite passed 12/12; final status/form/page suite passed 19/19 twice. |
+| TRIANGULATE | Hook bypass failed 4/12; max removal failed 1/12; dropped province failed 3/12; stale-version plus pending-overlap mutants failed 3/12. All were restored. |
+| REFACTOR | Kept a single queued authoritative submit effect and a global pending guard; all deferred test promises resolve. |
+
+Verification: offline frozen install and contracts build; focused 3-file suite twice (19/19), App typecheck, strict lint, and `git diff --check` passed. No query/service source changed, no other scope changed, and U18A tasks remain visibly `[x]`; U18B and parent-owned rows remain unchanged. Cleanup removes dependencies, generated contract output, and TypeScript build residue after final checks.
+
+Final cumulative arithmetic is 162 source/test physical lines plus 51 tracked OpenSpec changed lines = 213, below the hard 400-line cap.
+
+## U18A ID-bound submit and safe-conflict correction
+
+Parent-authoritative corrective status: runtime `proceed05ec`, remediation `evidence259d`; scope remains the seven U18A source/test files and task/progress artifacts only.
+
+- The form now proves its submit hook is ID-sensitive: the initial empty-ID mutation rejects if called, while only the post-persistence `proposal-1` hook accepts the authoritative version. The queued effect performs the same user action after React rebinds the hook and uses a ref guard to remain single-shot across StrictMode and pending rerenders.
+- Error copy branches only on real `BffError` status: 409 renders `La propuesta cambió. Actualizá e intentá nuevamente.` while non-409 and hostile errors render the generic local sentence; backend prose is never displayed. Existing U16 hook handling retains authoritative 409 refetch.
+
+| Correction TDD evidence | Result |
+|---|---|
+| RED | The real-BffError 409 test failed with generic copy before the status branch. |
+| GREEN | Form suite passed 15/15; final status/form/page suite passed 22/22 twice. |
+| TRIANGULATE | Empty-ID submit failed 3/15; genericized 409 failed 1/15; backend-message mutation failed 3/15; duplicate-effect guard removal failed 1/15. All were restored. |
+| REFACTOR | The ID-sensitive factory and StrictMode pending-rerender test keep all promises settled and prove one submit mutation. |
+
+Verification: focused suite twice (3 files/22 tests), App typecheck, strict lint, and `git diff --check` passed. U18A tasks remain visibly `[x]`; U18B and parent rows are unchanged.
+
+This correction supersedes the earlier arithmetic: final cumulative scope is 171 source/test physical lines plus 69 tracked OpenSpec changed lines = 240, below the hard 400-line cap.

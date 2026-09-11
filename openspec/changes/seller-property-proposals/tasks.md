@@ -326,8 +326,8 @@ Manifest: `src/lib/property-proposal-access.ts`, `navigation-access.ts`, `hooks/
 
 Manifest: seller schema/form/new/list support paths, direct page boundary `apps/app-new/src/app/dashboard/property-proposals/new/page.test.tsx` T11–15, `property-proposal-status-label.tsx`, `property-proposal-status-label.test.tsx`, and `property-proposal-form.test.tsx`.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR the direct seller-new page boundary in `apps/app-new/src/app/dashboard/property-proposals/new/page.test.tsx` alongside title-only save, six-field submit validation, separate save/submit mutations, persisted `EN_REVISION` rendering as `EN_REVISIÓN`, no images, and no canonical-create call. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest seller component tests, App typecheck, and strict lint; reset form, router, and query state. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR the direct seller-new page boundary in `apps/app-new/src/app/dashboard/property-proposals/new/page.test.tsx` alongside title-only save, six-field submit validation, separate save/submit mutations, persisted `EN_REVISION` rendering as `EN_REVISIÓN`, no images, and no canonical-create call. <!-- sdd-owner: implementation -->
+- [x] Run the manifest seller component tests, App typecheck, and strict lint; reset form, router, and query state. <!-- sdd-owner: implementation -->
 
 ### U18B — Working seller list and seller exposure (S46)
 
