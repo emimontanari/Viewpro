@@ -2092,3 +2092,24 @@ Parent-authoritative corrective context selected `seller-property-proposals` at 
 - PASS — `pnpm --filter @viewpro/contracts build` prerequisite; focused property-proposal access plus navigation/config/hook/Sidebar/KBar suite passed **6 files / 70 tests** twice; App typecheck and strict lint passed.
 - Seeded browser run not attempted: `DATABASE_URL` is unset and its existing global setup invokes local `pnpm demo:seed`; static typecheck covers the edited spec. Rerun the guarded seeded CI job for browser evidence.
 - `git diff --check` passed. This correction is +7/-2 source/test lines before this concise record; cumulative PR is 172 changed lines, below 400. Dependencies/generated/build residue was removed. No commit, push, PR, merge, review, receipt, or lifecycle action occurred.
+<!-- markdownlint-disable-file MD012 MD022 MD031 MD032 MD038 MD058 MD060 -->
+
+## U19A1 immutable seller history renderer
+
+Direct implementation in the current worktree only. Added the standalone renderer and its focused test; no page, route, query, mutation, canonical link, image, or list exposure changed. U19A1's implementation and validation rows are `[x]`; U19A2 authorization/detail/link, U19B editing/cache, and the U19 aggregate remain `[ ]`.
+
+### Strict TDD evidence
+
+- **RED** — `cd viewpro-app && pnpm --filter next-shadcn-dashboard-starter test src/features/property-proposals/components/property-proposal-history.test.tsx` failed before implementation because `./property-proposal-history` did not exist; no tests collected.
+- **GREEN** — the same focused command passed **1 file / 3 tests** after the renderer was added.
+- **TRIANGULATE** — the same command failed, then source was restored, for each focused mutant: title snapshot field replaced by owner name (1/3 failed), city-to-province field mapping (1/3 failed), reversed backend order (1/3 failed), submitter family-name omission (1/3 failed), and rejection-reason omission (1/3 failed).
+- **REFACTOR** — no refactor beyond the explicit readonly renderer and literal approved snapshot-field allowlist.
+
+### Verification and boundary
+
+- PASS — the focused history command passed a second time after all mutant restorations: **1 file / 3 tests**.
+- PASS — `cd viewpro-app && pnpm --filter next-shadcn-dashboard-starter lint:strict`.
+- PASS — `cd viewpro-app && pnpm --filter @viewpro/contracts build`, followed by `cd viewpro-app && pnpm --filter next-shadcn-dashboard-starter typecheck`.
+- Generated `packages/contracts/dist` was removed afterward.
+- The renderer maps the supplied readonly newest-first history directly, uses each immutable round snapshot instead of staged values, renders submitter/reviewer and submitted/decision dates, and renders pending/approved/rejected outcomes and rejection reason. Tests freeze input, pair every approved snapshot field with its label (including distinct city/province), assert optional-null omission, actor/date/outcome output, escaped hostile strings, and absence of controls, images, and links.
+- No SDD lifecycle action, receipt, commit, push, PR, merge, provider, or external operation occurred.
