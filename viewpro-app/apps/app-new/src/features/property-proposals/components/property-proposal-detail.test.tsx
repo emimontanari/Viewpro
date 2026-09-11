@@ -1,15 +1,22 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BffError } from '@/lib/bff-client';
 import * as service from '../api/service';
 import type { PropertyProposalSnapshot, SellerPropertyProposalDetail } from '../api/types';
 import { PropertyProposalDetail } from './property-proposal-detail';
 
-vi.mock('../api/service', () => ({ getSellerPropertyProposal: vi.fn() }));
+vi.mock('../api/service', () => ({
+  getSellerPropertyProposal: vi.fn(),
+  submitSellerPropertyProposal: vi.fn(),
+  updateSellerPropertyProposal: vi.fn()
+}));
 
 const getSellerPropertyProposal = vi.mocked(service.getSellerPropertyProposal);
+const submitSellerPropertyProposal = vi.mocked(service.submitSellerPropertyProposal);
+const updateSellerPropertyProposal = vi.mocked(service.updateSellerPropertyProposal);
 const snapshot: PropertyProposalSnapshot = {
   title: 'Snapshot nuevo',
   addressLine: 'Calle 2',
@@ -96,7 +103,10 @@ function renderDetail(enabled = true, tenantId = 'tenant-1', proposalId = 'propo
 }
 
 describe('PropertyProposalDetail', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
 
   it('does not start its seller detail query until the authorized boundary enables it', async () => {
     renderDetail(false);
@@ -140,7 +150,7 @@ describe('PropertyProposalDetail', () => {
     async (state, label) => {
       getSellerPropertyProposal.mockResolvedValueOnce(proposal({ state }));
       const { container } = renderDetail();
-      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(label));
+      await waitFor(() => expect(screen.getAllByRole('status')[0]).toHaveTextContent(label));
       expect(getSellerPropertyProposal).toHaveBeenCalledWith(
         'proposal-1',
         expect.objectContaining({ signal: expect.any(AbortSignal) })
@@ -162,10 +172,64 @@ describe('PropertyProposalDetail', () => {
           .filter((heading) => heading.textContent?.startsWith('Ronda'))
           .map((heading) => heading.textContent)
       ).toEqual(['Ronda 2', 'Ronda 1']);
-      expect(within(container).queryAllByRole('button')).toHaveLength(0);
-      expect(container.querySelectorAll('form, input, select, textarea, img')).toHaveLength(0);
+      const editable = state === 'BORRADOR' || state === 'RECHAZADA';
+      expect(within(container).queryAllByRole('button')).toHaveLength(editable ? 2 : 0);
+      expect(container.querySelectorAll('form, input, select, textarea')).toHaveLength(
+        editable ? 7 : 0
+      );
+      expect(container.querySelectorAll('img')).toHaveLength(0);
     }
   );
+
+  it('keeps rejected edits staged until an explicit resubmit and refetches authoritative detail on conflict', async () => {
+    const user = userEvent.setup();
+    getSellerPropertyProposal
+      .mockResolvedValueOnce(proposal({ state: 'RECHAZADA', version: 7 }))
+      .mockResolvedValueOnce(
+        proposal({ state: 'RECHAZADA', version: 8, title: 'Casa actualizada' })
+      );
+    updateSellerPropertyProposal.mockRejectedValueOnce(
+      new BffError(409, 'PROPERTY_PROPOSAL_STATE_CONFLICT')
+    );
+    const view = renderDetail();
+
+    await screen.findByText('Casa staged');
+    expect(
+      screen.getByText('Guardá los cambios y reenviá a revisión solo cuando estés lista.')
+    ).toBeVisible();
+    await user.clear(screen.getByLabelText('Título'));
+    await user.type(screen.getByLabelText('Título'), 'Cambio local');
+    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'La propuesta cambió. Actualizá e intentá nuevamente.'
+      )
+    );
+    await waitFor(() => expect(getSellerPropertyProposal).toHaveBeenCalledTimes(2));
+    expect(updateSellerPropertyProposal).toHaveBeenCalledWith(
+      'proposal-1',
+      expect.objectContaining({ expectedVersion: 7, title: 'Cambio local' })
+    );
+    expect(submitSellerPropertyProposal).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { level: 2, name: 'Casa actualizada' })).toBeVisible();
+    expect(screen.getByLabelText('Título')).toHaveValue('Casa actualizada');
+    view.rerender(<PropertyProposalDetail tenantId='tenant-1' proposalId='proposal-1' enabled />);
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'La propuesta cambió. Actualizá e intentá nuevamente.'
+    );
+
+    updateSellerPropertyProposal.mockResolvedValueOnce(
+      proposal({ state: 'RECHAZADA', version: 9, title: 'Casa actualizada' })
+    );
+    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }));
+    await waitFor(() => expect(updateSellerPropertyProposal).toHaveBeenCalledTimes(2));
+    expect(updateSellerPropertyProposal).toHaveBeenLastCalledWith(
+      'proposal-1',
+      expect.objectContaining({ expectedVersion: 8, title: 'Casa actualizada' })
+    );
+    expect(submitSellerPropertyProposal).not.toHaveBeenCalled();
+  });
 
   it('links only a nonblank approved canonical result through the encoded existing product route', async () => {
     getSellerPropertyProposal.mockResolvedValueOnce(
