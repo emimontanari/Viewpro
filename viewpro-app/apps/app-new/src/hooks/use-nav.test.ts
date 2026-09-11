@@ -6,15 +6,17 @@ import { useFilteredNavGroups } from './use-nav';
 const activeTenant = vi.fn();
 vi.mock('@/lib/session-context', () => ({ useActiveTenant: () => activeTenant() }));
 
-const membership = (role: string, permissions: string[], tenantStatus = 'ACTIVE') => ({
-  id: 'membership-1',
+const membership = (role: string, permissions: string[], tenantStatus = 'ACTIVE', tenantId = 'tenant-1') => ({
+  id: `membership-${tenantId}`,
   role,
   permissions,
-  tenant: { id: 'tenant-1', name: 'Agency', slug: 'agency', status: tenantStatus }
+  tenant: { id: tenantId, name: 'Agency', slug: 'agency', status: tenantStatus }
 });
 
 const MANAGER = ['tenant.view', 'team.view', 'engagements.view_all'];
 const AGENT = ['tenant.view', 'engagements.view_assigned'];
+const SELLER = [...AGENT, 'property_proposals.seller'];
+const REVIEWER = ['tenant.view', 'property_proposals.review'];
 
 const titles = (groups: ReturnType<typeof useFilteredNavGroups>) =>
   groups.flatMap((group) => group.items).map((item) => item.title);
@@ -91,5 +93,50 @@ describe('useFilteredNavGroups', () => {
     const { result } = renderHook(() => useFilteredNavGroups(navGroups));
 
     expect(titles(result.current)).not.toContain('Equipo');
+  });
+
+  it.each(['ACTIVE', 'TRIAL'])('shows the seller destination only to an operational seller in %s', (tenantStatus) => {
+    activeTenant.mockReturnValue({
+      activeMembership: membership('AGENT', SELLER, tenantStatus),
+      isTenantLoading: false
+    });
+
+    const { result } = renderHook(() => useFilteredNavGroups(navGroups));
+
+    expect(titles(result.current)).toContain('Propuestas de propiedades');
+    expect(titles(result.current)).not.toContain('Revisión de propuestas');
+  });
+
+  it.each([
+    ['loading', membership('AGENT', SELLER), true],
+    ['unresolved membership', null, false],
+    ['missing seller capability', membership('AGENT', AGENT), false],
+    ['reviewer role and capability', membership('MANAGER', REVIEWER), false],
+    ['suspended tenant', membership('AGENT', SELLER, 'SUSPENDED'), false],
+    ['cancelled tenant', membership('AGENT', SELLER, 'CANCELLED'), false],
+    ['unknown tenant state', membership('AGENT', SELLER, 'UNKNOWN'), false]
+  ])('hides the seller destination for %s', (_state, activeMembership, isTenantLoading) => {
+    activeTenant.mockReturnValue({ activeMembership, isTenantLoading });
+
+    const { result } = renderHook(() => useFilteredNavGroups(navGroups));
+
+    expect(titles(result.current)).not.toContain('Propuestas de propiedades');
+  });
+
+  it('removes the seller destination on a tenant switch instead of retaining stale visibility', () => {
+    activeTenant.mockReturnValue({
+      activeMembership: membership('AGENT', SELLER, 'ACTIVE', 'tenant-1'),
+      isTenantLoading: false
+    });
+    const { result, rerender } = renderHook(() => useFilteredNavGroups(navGroups));
+    expect(titles(result.current)).toContain('Propuestas de propiedades');
+
+    activeTenant.mockReturnValue({
+      activeMembership: membership('AGENT', AGENT, 'ACTIVE', 'tenant-2'),
+      isTenantLoading: false
+    });
+    rerender();
+
+    expect(titles(result.current)).not.toContain('Propuestas de propiedades');
   });
 });

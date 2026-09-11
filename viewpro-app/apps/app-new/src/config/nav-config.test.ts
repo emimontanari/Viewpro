@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { sellerPropertyProposalAccess } from '@/lib/property-proposal-access';
 import { navGroups, ownerNavGroups } from './nav-config';
 
 const navItems = navGroups.flatMap((group) =>
@@ -67,6 +68,21 @@ describe('nav config', () => {
     expect(navTitles).toEqual(
       expect.arrayContaining(['Inicio', 'Propiedades', 'Seguimiento', 'Inmobiliarias', 'Equipo'])
     );
+  });
+
+  it('exposes exactly one seller proposal destination through the shared policy', () => {
+    const sellerDestinations = navItems.filter(
+      ({ url }) => url === '/dashboard/property-proposals'
+    );
+
+    expect(sellerDestinations).toHaveLength(1);
+    expect(sellerDestinations[0]).toMatchObject({
+      title: 'Propuestas de propiedades',
+      url: '/dashboard/property-proposals'
+    });
+    expect(sellerDestinations[0]?.access).toBe(sellerPropertyProposalAccess);
+    expect(navItems.map(({ url }) => url)).not.toContain('/dashboard/property-proposals/review');
+    expect(navItems.map(({ url }) => url)).not.toContain('/dashboard/product/new');
   });
 
   it('points the Equipo menu item to the real team list', () => {
