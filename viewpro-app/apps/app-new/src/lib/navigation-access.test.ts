@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { navGroups, workspaceAdministrationAccess } from '@/config/nav-config';
+import { navigationAccessScenarios } from '@/test/navigation-access-fixtures';
 import {
   canAccessNavigation,
   filterNavigationGroups,
@@ -48,6 +49,12 @@ describe('navigation access policy', () => {
     expect(workspaceAdministrationAccess).toEqual({ roles: ['MANAGER', 'PRINCIPAL_MANAGER'], permissions: ['team.view'] });
     expect(Object.isFrozen(workspaceAdministrationAccess)).toBe(true); expect(navGroups[0]?.items.find(({ title }) => title === 'Inmobiliarias')?.access).toBe(workspaceAdministrationAccess);
     expect(navGroups[0]?.items.find(({ title }) => title === 'Equipo')?.access).toBe(workspaceAdministrationAccess);
+  });
+
+  it.each(navigationAccessScenarios)('keeps $state destinations unchanged and exposes no proposal destination', ({ activeMembership, destinations, isTenantLoading }) => {
+    const visible = filterNavigationGroups(navGroups, toNavigationAccessContext(activeMembership, isTenantLoading)).flatMap((group) => group.items).map(({ title, url }) => ({ title, href: url }));
+    expect(visible).toEqual(destinations);
+    expect(visible.some(({ title, href }) => title.includes('propuesta') || href.includes('property-proposals'))).toBe(false);
   });
 });
 
@@ -130,4 +137,3 @@ describe('toNavigationAccessContext', () => {
     expect(canAccessNavigation({ roles: ['MANAGER'] }, toNavigationAccessContext(noTenant, false))).toBe(false);
   });
 });
-

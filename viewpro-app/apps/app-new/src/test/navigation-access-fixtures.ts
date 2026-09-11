@@ -5,7 +5,11 @@ const permissions = {
   MANAGER: ['tenant.view', 'team.view', 'engagements.view_all'], PRINCIPAL_MANAGER: ['tenant.view', 'team.view', 'engagements.view_all', 'tenant.manage_settings'],
   AGENT: ['tenant.view', 'engagements.view_assigned']
 };
-export const membership = (role: string, permissions: string[]) => ({ id: 'membership-1', role, permissions, tenant: { id: 'tenant-1', name: 'Tenant One', slug: 'tenant-one', status: 'ACTIVE' } });
+export const membership = (role: string, permissions: string[], tenantStatus = 'ACTIVE', tenantId = 'tenant-1') => ({ id: `membership-${tenantId}`, role, permissions, tenant: { id: tenantId, name: 'Tenant One', slug: 'tenant-one', status: tenantStatus } });
+export const propertyProposalMemberships = {
+  seller: membership('AGENT', ['tenant.view', 'property_proposals.seller']), reviewer: membership('MANAGER', ['tenant.view', 'property_proposals.review']),
+  principalReviewer: membership('PRINCIPAL_MANAGER', ['tenant.view', 'property_proposals.review']), switchedSeller: membership('AGENT', ['tenant.view', 'property_proposals.seller'], 'ACTIVE', 'tenant-2')
+};
 
 export const navigationAccessScenarios = [
   {
