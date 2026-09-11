@@ -348,8 +348,21 @@ Manifest: `apps/app-new/src/features/property-proposals/components/property-prop
 
 Manifest: seller detail/history/page, direct page boundary `apps/app-new/src/app/dashboard/property-proposals/[proposalId]/page.test.tsx` T11–15, `property-proposal-detail.test.tsx`, and `property-proposal-cache.test.tsx`.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR the direct seller-detail page boundary in `apps/app-new/src/app/dashboard/property-proposals/[proposalId]/page.test.tsx` with detail/history, rejected edit/resubmit context, optional safe canonical link, 409 refetch, audience/tenant invalidation, and old-tenant cleanup. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest detail/cache tests, App typecheck, and strict lint; clear caches, mutation state, and tenant fixtures. <!-- sdd-owner: implementation -->
+<!-- markdownlint-disable-file MD012 MD022 MD031 MD032 MD038 MD058 MD060 -->
+
+#### U19A1 — Immutable history renderer
+
+- [x] RED → GREEN → TRIANGULATE → REFACTOR the standalone immutable history renderer for backend-order rounds, snapshot fields, submitter/reviewer attribution, dates, decisions, rejection reasons, and escaped text only. <!-- sdd-owner: implementation -->
+- [x] Run the focused history test twice, App typecheck, and strict lint. <!-- sdd-owner: implementation -->
+
+#### U19A2 — Authorized seller detail and safe canonical link
+
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR the authorized seller detail boundary, history integration, and optional safe canonical result link. <!-- sdd-owner: implementation -->
+
+#### U19B — Seller detail editing and cache
+
+- [ ] RED → GREEN → TRIANGULATE → REFACTOR rejected edit/resubmit context, 409 refetch, audience/tenant invalidation, and old-tenant cleanup. <!-- sdd-owner: implementation -->
+- [ ] U19 aggregate: complete U19A1, U19A2, and U19B detail/history/link/cache work. <!-- sdd-owner: implementation -->
 
 ### U20A — Working reviewer inbox and filters (no navigation exposure)
 
