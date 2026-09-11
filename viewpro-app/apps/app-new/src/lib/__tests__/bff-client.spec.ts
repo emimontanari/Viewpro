@@ -29,6 +29,7 @@ describe('bffRequest', () => {
   afterEach(() => {
     global.fetch = originalFetch;
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it('returns the parsed body on success', async () => {
@@ -150,6 +151,42 @@ describe('bffRequest', () => {
 
     expect(isBffError(error)).toBe(true);
     expect((error as { status: number }).status).toBe(408);
+  });
+
+  it('relays caller cancellation into a timed request and clears the timer', async () => {
+    vi.useFakeTimers();
+    const caller = new AbortController();
+    const removeEventListener = vi.spyOn(caller.signal, 'removeEventListener');
+    const captured = { signal: null as AbortSignal | null };
+    vi.mocked(global.fetch).mockImplementationOnce((_url, init) => new Promise((_resolve, reject) => {
+      captured.signal = init?.signal ?? null;
+      captured.signal?.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+    }));
+
+    const result = bffRequest('/api/x', { signal: caller.signal }, { timeoutMs: 10_000 })
+      .catch((error: unknown) => error);
+    caller.abort();
+    await Promise.resolve();
+    try {
+      expect(captured.signal?.aborted).toBe(true);
+      await expect(result).resolves.toMatchObject({ status: 408 });
+      expect(removeEventListener).toHaveBeenCalledWith('abort', expect.any(Function));
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      await vi.advanceTimersByTimeAsync(10_000);
+      await result;
+    }
+  });
+
+  it('maps an already-aborted caller signal to a safe 408', async () => {
+    const caller = new AbortController();
+    caller.abort();
+    vi.mocked(global.fetch).mockImplementationOnce((_url, init) => Promise.reject(Object.assign(
+      new Error('aborted'), { name: init?.signal?.aborted ? 'AbortError' : 'TypeError' }
+    )));
+
+    await expect(bffRequest('/api/x', { signal: caller.signal }, { timeoutMs: 10_000 }))
+      .rejects.toMatchObject({ message: GENERIC_BFF_ERROR_MESSAGE, status: 408 });
   });
 
   it('leaves a caller-supplied signal alone when no timeout is asked for', async () => {

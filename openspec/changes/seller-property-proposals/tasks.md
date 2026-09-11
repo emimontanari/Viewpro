@@ -294,10 +294,10 @@ Manifest: `src/lib/bff-client.ts`, `src/lib/__tests__/bff-client.spec.ts`.
 
 Manifest: feature `api/types.ts`, `api/service.ts`, and `api/service.test.ts`; depends on U16A1.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR typed seller/reviewer service calls through `bffRequest`, local code mapping, signals, and timeout behavior. <!-- sdd-owner: implementation -->
-- [ ] Run the focused service spec, App typecheck, and strict lint; reset mocks and query state. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR typed seller/reviewer service calls through `bffRequest`, local code mapping, signals, and timeout behavior. <!-- sdd-owner: implementation -->
+- [x] Run the focused service spec, App typecheck, and strict lint; reset mocks and query state. <!-- sdd-owner: implementation -->
 
-- [ ] U16A aggregate: complete U16A1 and U16A2 without feature routes, queries, UI, backend, or contract changes. <!-- sdd-owner: implementation -->
+- [x] U16A aggregate: complete U16A1 and U16A2 without feature routes, queries, UI, backend, or contract changes. <!-- sdd-owner: implementation -->
 
 ### U16B — Query key and invalidation contracts
 
