@@ -2,8 +2,15 @@ import type { NavigationAccessPolicy, NavGroup } from '@/types';
 
 export type NavigationAccessContext = {
   resolved: boolean;
-  membership: { role: string; permissions: string[]; tenantStatus: string | null } | null;
+  membership: { role: string; permissions: string[]; tenantId?: string | null; tenantStatus: string | null } | null;
 };
+
+export type FrozenNavigationAccessPolicy = Readonly<Required<NavigationAccessPolicy>>;
+
+/** Creates a policy with the only nested values navigation access permits. */
+export function createNavigationAccessPolicy(roles: readonly string[], permissions: readonly string[]): FrozenNavigationAccessPolicy {
+  return Object.freeze({ roles: Object.freeze([...roles]), permissions: Object.freeze([...permissions]) });
+}
 
 /**
  * The tenant states in which the product may be operated.
@@ -43,7 +50,7 @@ export function filterNavigationGroups(groups: NavGroup[], context: NavigationAc
 export type NavigationMembershipSource = {
   role: string;
   permissions: string[];
-  tenant?: { status?: string | null } | null;
+  tenant?: { id?: string | null; status?: string | null } | null;
 } | null;
 
 /**
@@ -64,6 +71,7 @@ export function toNavigationAccessContext(
       ? {
           role: membership.role,
           permissions: membership.permissions,
+          tenantId: membership.tenant?.id ?? null,
           // Optional on purpose: a payload without a tenant must fall to the
           // fail-closed path, not throw while rendering the sidebar.
           tenantStatus: membership.tenant?.status ?? null

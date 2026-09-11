@@ -319,8 +319,8 @@ Manifest: feature `api/queries.ts` and `api/queries.test.ts`.
 
 Manifest: `src/lib/property-proposal-access.ts`, `navigation-access.ts`, `hooks/use-nav.ts`, their exact tests, and `src/test/navigation-access-fixtures.ts`; do not expose a destination yet.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR deeply immutable policy reuse, unresolved/loading suppression, inactive/wrong-role/missing-capability fail-closed behavior, and query enablement without a landed destination. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest access/navigation specs, App typecheck, and strict lint; clear router/query/tenant-switch fixtures. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR deeply immutable policy reuse, unresolved/loading suppression, inactive/wrong-role/missing-capability fail-closed behavior, and query enablement without a landed destination. <!-- sdd-owner: implementation -->
+- [x] Run the manifest access/navigation specs, App typecheck, and strict lint; clear router/query/tenant-switch fixtures. <!-- sdd-owner: implementation -->
 
 ### U18A — Working seller form and status label (S36)
 

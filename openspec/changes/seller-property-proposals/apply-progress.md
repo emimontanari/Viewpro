@@ -1908,3 +1908,25 @@ Parent authority supplied apply-ready `seller-property-proposals` runtime `proce
 - PASS — focused query spec twice: 12/12 each; App typecheck and strict lint passed.
 - Active seller-list and reviewer-detail observers refetched only after real 409; pending decisions retained the same cached object. No database, route, UI, backend, contract, commit, push, PR, review, or receipt action occurred.
 - The U16B2 delta plus OpenSpec closure remains within the hard 400-line boundary without code golf or size exception. Dependency, contract-dist, Turbo, and TypeScript build-info residue are removed after verification; `next_recommended: parent-lifecycle`.
+
+## U17 shared access policy and fail-closed boundaries
+
+### Status and scope
+
+Parent authority supplied `seller-property-proposals` apply-ready `93/113` and runtime `proceededa6` for this exact fresh `a631a9a5` workspace; no ambient/native status was used. Produced status: OpenSpec proposal/spec/design/tasks are present, apply remains ready for later units, and the repo-local allowed root is this U17 worktree with only the supplied App/OpenSpec paths. U17's two implementation rows are visibly `[x]`; U18+ and parent-owned lifecycle rows remain unchanged.
+
+### Completed behavior and strict TDD evidence
+
+- Added singleton seller (`AGENT` + `property_proposals.seller`) and reviewer (`MANAGER|PRINCIPAL_MANAGER` + `property_proposals.review`) policies through a fixed-shape frozen constructor. Neither includes `engagements.create`.
+- Added reusable query access evaluation/hook requiring a non-null active tenant, resolved current membership for that tenant, operational `ACTIVE|TRIAL` status, exact role, and every permission. It returns only `activeTenantId` and `enabled`; no destination, nav-config, Sidebar, KBar, page, route, or query was added.
+
+| Task | Layer | Safety net / RED | GREEN | TRIANGULATE / REFACTOR |
+|---|---|---|---|---|
+| U17 access/navigation | Unit + renderHook | Existing navigation/use-nav safety net passed 19/19 after offline frozen install; new access test then failed to resolve its missing module. | Focused access/navigation/use-nav suite passed 35/35 twice. | Nested-freeze, permission-OR, loading-ignored, broadened-role, `engagements.create`, and runtime proposal-destination mutants each failed and were restored. The fixed-shape constructor avoids a broad recursive freezer. |
+
+### Verification, cleanup, and boundary
+
+- PASS — `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/lib/property-proposal-access.test.ts src/lib/navigation-access.test.ts src/hooks/use-nav.test.ts` twice: 35/35 each.
+- PASS — App typecheck and strict lint. The first typecheck exposed the required contracts build plus test-only required `tenantId`; after building contracts and making that context field optional for existing navigation callers, typecheck passed.
+- Temporary mutant backups/logs are removed. No database, backend, destination, navigation configuration, page, query, commit, push, PR, merge, review, receipt, or parent lifecycle action occurred.
+- U17 source/test plus OpenSpec closure remains within the hard 400-line no-split boundary. No design deviation; remaining implementation starts with the exact unchecked U18A row: `- [ ] RED → GREEN → TRIANGULATE → REFACTOR the direct seller-new page boundary in \`apps/app-new/src/app/dashboard/property-proposals/new/page.test.tsx\` alongside title-only save, six-field submit validation, separate save/submit mutations, persisted \`EN_REVISION\` rendering as \`EN_REVISIÓN\`, no images, and no canonical-create call. <!-- sdd-owner: implementation -->`.
