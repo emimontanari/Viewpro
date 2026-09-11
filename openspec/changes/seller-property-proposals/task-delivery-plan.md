@@ -70,7 +70,8 @@ The guard parses `DATABASE_URL`, requires hostname exactly `localhost` or `127.0
 | U15B2 reviewer decisions | `apps/app-new/src/app/api/property-proposals/review/[proposalId]/reject/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/approve/route.ts` P20–30; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/reject/route.test.ts` T40–55; `apps/app-new/src/app/api/property-proposals/review/[proposalId]/approve/route.test.ts` T40–55 | **120–170**; production-bearing; reject/approve only after U15B1 |
 | U16A1 | `apps/app-new/src/lib/bff-client.ts`; `apps/app-new/src/lib/__tests__/bff-client.spec.ts` | **≤250**; production-bearing BFF error boundary |
 | U16A2 | `apps/app-new/src/features/property-proposals/api/types.ts`; `apps/app-new/src/features/property-proposals/api/service.ts`; `apps/app-new/src/features/property-proposals/api/service.test.ts` | **≤250**; production-bearing, after U16A1 |
-| U16B | `apps/app-new/src/features/property-proposals/api/queries.ts` P65–75; `apps/app-new/src/features/property-proposals/api/queries.test.ts` T45–55 | **110–130**; production-bearing |
+| U16B1 query reads | `apps/app-new/src/features/property-proposals/api/queries.ts`; `apps/app-new/src/features/property-proposals/api/queries.test.ts` | **≤250**; production-bearing tenant/audience keys, normalized reads, signals, and old-tenant cancellation/removal only; no mutations |
+| U16B2 mutation cache | the retained U16B query files | **≤250**; production-bearing mutation invalidation/409/canonical cache only, after U16B1 |
 | U17 | `apps/app-new/src/lib/property-proposal-access.ts` P35–45; `apps/app-new/src/lib/navigation-access.ts` P12–18; `apps/app-new/src/hooks/use-nav.ts` P8–12; `apps/app-new/src/lib/navigation-access.test.ts` T60–70; `apps/app-new/src/hooks/use-nav.test.ts` T35–45; `apps/app-new/src/test/navigation-access-fixtures.ts` T20–25 F15–20 | **185–235**; production-bearing |
 | U18A | `apps/app-new/src/features/property-proposals/schemas/property-proposal.ts` P45–55; `apps/app-new/src/features/property-proposals/components/property-proposal-form.tsx` P85–95; `apps/app-new/src/app/dashboard/property-proposals/new/page.tsx` P20–28; `apps/app-new/src/app/dashboard/property-proposals/new/page.test.tsx` T11–15; `apps/app-new/src/features/property-proposals/components/property-proposal-status-label.tsx` P25–35; `apps/app-new/src/features/property-proposals/components/property-proposal-status-label.test.tsx` T35–45; `apps/app-new/src/features/property-proposals/components/property-proposal-form.test.tsx` T65–75 | **286–348**; production-bearing |
 | U18B | `apps/app-new/src/features/property-proposals/components/property-proposal-list.tsx` P55–65; `apps/app-new/src/features/property-proposals/components/property-proposal-list.test.tsx` T55–70; `apps/app-new/src/app/dashboard/property-proposals/page.tsx` P20–28; `apps/app-new/src/app/dashboard/property-proposals/page.test.tsx` T11–15; `apps/app-new/src/config/nav-config.ts` P15–22; `apps/app-new/src/config/nav-config.test.ts` T45–55; `apps/app-new/src/components/layout/app-sidebar.tsx` P8–12; `apps/app-new/src/components/kbar/palette.tsx` P8–12; `apps/app-new/src/components/layout/app-sidebar.test.tsx` T55–65; `apps/app-new/src/components/kbar/palette.test.ts` T45–55 | **317–399**; production-bearing |
@@ -113,7 +114,7 @@ U14 is split: U14A1 list-only is ≤400; U14A2 detail/history, U14B transport co
 U15A1 helper+collection and U15A2 detail+submit are separate hard ≤400 slices; their former aggregate forecast was 272–363.
 U15B1 reviewer reads 20+20+40+40 = 120; 30+30+55+55 = 170. U15B2 reviewer decisions 20+20+40+40 = 120; 30+30+55+55 = 170. The aggregate remains 240–340 but its two independently applied slices stay under 400.
 U16A1 BFF error boundary ≤250; U16A2 typed proposal service ≤250 after U16A1
-U16B 65+45 = 110; 75+55 = 130
+U16B is split: U16B1 query reads and tenant-switch cleanup is independently capped at 250; U16B2 mutation invalidation/409/canonical refresh follows in a separate ≤250 slice. The U16B aggregate remains incomplete until both slices are green.
 U17 35+12+8+60+35+20+15 = 185; 45+18+12+70+45+25+20 = 235
 U18A 45+85+20+11+25+35+65 = 286; 55+95+28+15+35+45+75 = 348
 U18B 55+55+20+11+15+45+8+8+55+45 = 317; 65+70+28+15+22+55+12+12+65+55 = 399
@@ -167,7 +168,7 @@ The corrected strict units mechanically group into **31** dependency-ordered opt
 | C13A | U15A1 helper + collection | 400 | ≤400 |
 | C13B | U15A2 detail + submit | 400 | ≤400 |
 | C14 | U15B1 reviewer reads → U15B2 reviewer decisions → U16A1 → U16A2 | max independently applied sub-slice 250 | 120–170; 120–170; ≤250; ≤250 |
-| C15 | U16B + U17 | 130+235=365 | 295–365 |
+| C15 | U16B1 → U16B2 → U17 | each independently applied ≤400 | U16B1 ≤250; U16B2 ≤250; U17 185–235 |
 | C16 | U18A | 348 | 286–348 |
 | C17 | U18B | 399 | 317–399 |
 | C18 | U19 + U20A | 317+277=594 | 502–594 |
