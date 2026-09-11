@@ -74,7 +74,13 @@ export async function bffRequest<TResponse>(
   options: BffRequestOptions = {}
 ): Promise<TResponse> {
   const url = path.startsWith('http') ? path : `${APP_URL}${path}`;
+  const callerSignal = init.signal;
   const controller = options.timeoutMs ? new AbortController() : undefined;
+  const relayCallerAbort = () => controller?.abort();
+  if (controller && callerSignal) {
+    if (callerSignal.aborted) controller.abort();
+    else callerSignal.addEventListener('abort', relayCallerAbort, { once: true });
+  }
   const timeoutId = controller
     ? setTimeout(() => controller.abort(), options.timeoutMs)
     : undefined;
@@ -98,6 +104,7 @@ export async function bffRequest<TResponse>(
     }
     throw new BffError(502);
   } finally {
+    if (controller && callerSignal) callerSignal.removeEventListener('abort', relayCallerAbort);
     if (timeoutId) clearTimeout(timeoutId);
   }
 

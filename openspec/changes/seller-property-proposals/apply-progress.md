@@ -1828,3 +1828,41 @@ Status consumed: parent-directed `seller-property-proposals` U16A1 corrective pa
 | REFACTOR | Reused the existing canonical-ID helper for every exported and internal error boundary. |
 
 Verification: focused client spec passed twice at 32/32; App typecheck and strict lint passed; `git diff --check` passed. Offline dependencies/generated contracts were used only for verification and will be removed during cleanup. U16A1 checkboxes remain visibly `[x]`; U16A2 and aggregate U16A remain unchecked. No design deviation, route, service/type, UI, backend, contract, commit, push, PR, review, or receipt action occurred.
+
+## U16A2 typed proposal service
+
+### Status and scope
+
+Parent authority selected `seller-property-proposals` as apply-ready under runtime `proceedfeef`; no native/ambient status lookup was run. The permitted roots were exactly the three proposal API files plus `tasks.md` and this progress file. The approved `auto-chain` split assigns U16A2 and its U16A aggregate only; no U16B, route, query, UI, backend, contract, lifecycle, Git, review, receipt, commit, push, or PR work was performed.
+
+### Completed work and TDD evidence
+
+- Verified the recovered timed-out candidate's nine seller/reviewer operations use the exact BFF methods, paths, encoded IDs, query order, JSON bodies, content-type header, signal-only caller init, and 10-second timeout.
+- Confirmed wire types mirror the transport allowlists: ISO timestamp fields, nullable staged/snapshot scalars, optional current-round/result IDs, reviewer proposer data, immutable history, and paged list envelopes.
+- Kept local error copy code-only and fallback-only; `service.ts` contains no `error.message` access. Added `afterEach(vi.clearAllMocks)` so service mocks are reset after each focused test.
+- Persisted `[x]` updates immediately for both U16A2 rows and the U16A aggregate; no other checkbox changed.
+
+| Task | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|
+| U16A2 service contract | Unit | Recovered candidate focused suite: 18/18 passed before executor edits. | The timed-out writer's original RED chronology is unavailable; executor did not claim it. | Final focused suite passed 18/18 twice with the recovered implementation. | Restored path, approve-verb, timeout, caller-init override, and unsafe error-message mutants failed 10/18, 1/18, 10/18, 1/18, and 1/18 respectively. | No production refactor was required; test cleanup clears mocks after every case. |
+
+### Verification, cleanup, and boundary
+
+- PASS — focused `service.test.ts` twice: 18/18 each run.
+- PASS — App typecheck and strict lint.
+- PASS — `git diff --check`; final static check found no `error.message` in `service.ts`.
+- No database, network provider, query state, cache, or test fixture was created. Temporary mutants were restored before final verification; App typecheck generated the ignored `apps/app-new/tsconfig.tsbuildinfo`, which is outside the supplied edit surfaces and was left untouched.
+- Remaining implementation begins with U16B; its persisted rows remain unchecked. Parent-owned lifecycle rows are deferred unchanged.
+
+## U16A cancellation correction
+
+Parent authority supplied `proceedb776` / `remediates4759`; no ambient status was queried. This bounded correction changes only the allowed BFF/client tests and service-test evidence; U16A task checkboxes remain visibly `[x]`, while U16B and parent rows are unchanged.
+
+- Timed BFF requests now relay a caller abort to the internal timeout controller, including an already-aborted caller signal, and remove the relay listener and timer in `finally`. Existing safe `BffError` semantics remain unchanged.
+- The compact service evidence adds undefined-filter omission, hostile-init authority, and seller/reviewer wire fixtures with `expectTypeOf`; the service remains mock-based while real cancellation is covered by the BFF test.
+
+| Task | RED | GREEN | TRIANGULATE / refactor |
+|---|---|---|---|
+| U16A correction | 50/50 safety net; new caller-cancellation tests failed 2/34 before the relay. | BFF/client test passed 34/34 and combined focused suite passed 54/54 twice. | Ignored caller signal, init override, undefined query, and `Date` wire mutants failed 1/34, 1/20, 1/20, and App typecheck respectively; all were restored. No further refactor. |
+
+Verification: App typecheck, strict lint, and `git diff --check` passed. `tsconfig.tsbuildinfo` was removed after typecheck. No design deviation, task change, route/query/UI/backend/contract change, commit, push, PR, review, or lifecycle action occurred. Cumulative arithmetic is 88 tracked plus 282 untracked physical lines = 370, within the 400-line cap (78-line correction).
