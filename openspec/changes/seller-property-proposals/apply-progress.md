@@ -2157,3 +2157,35 @@ The prior writer was disconnected/unavailable. A replacement worker recovered on
 - `property-proposal-form.tsx`: `80023bce499cdf619652fe828601651e1e0163268a260f5f0e70908968645936`
 - `property-proposal-form-save.test.tsx`: `01c84081d744fc198bc065b49353d8790a428f16e80d77d803c848fc27214f7c`
 - `tasks.md`: `518ee12483ebea094fd1f7eea449ff87297bb5792da6f16729acf6fee27636e1`; the final self-hash for this artifact is reported in the handoff because embedding it here would change it.
+
+## U19B2 seller detail editing and cache
+
+- Seller detail now mounts the existing form only for `BORRADOR`/`RECHAZADA`; rejected saves remain staged and resubmission stays an explicit form action. History and the server-authorized canonical link remain unchanged.
+- Tenant changes clean both old seller/reviewer query families through the existing query helper. Successful update/submit invalidates both audiences; 409 invalidates/refetches authoritative detail without optimistic writes.
+- U19B2 and aggregate U19 task rows are `[x]`.
+
+### Strict TDD evidence
+
+- **RED:** with the production detail restored to `HEAD`, 5/15 focused assertions failed: editable BORRADOR/RECHAZADA controls/context and old-tenant cache cleanup were absent. A test-isolation correction was made before GREEN.
+- **GREEN:** restored detail plus cache tests passed 3 files / 15 tests.
+- **TRIANGULATE:** widening the editable guard failed 1/8; disabling old-tenant cleanup failed 1/3; keying the form by authoritative version removed the 409 alert and failed 1/8. Each mutant was restored.
+- **REFACTOR:** initial unkeyed-form decision was superseded by the final scoped conflict correction below.
+
+### Verification
+
+- PASS — contracts build; focused U19 suite twice (3 files / 15 tests); form/query regressions (3 files / 29 tests); App typecheck; App strict lint; and `git diff --check`.
+- Offline frozen dependencies remain installed for parent verification. No API/BFF/query/service/contract changes, review, commit, push, PR, or merge occurred.
+
+## U19B2 conflict-scoping correction
+
+- A local edit-action capture records this detail's context, expected version, and timestamp. Only a matching later 409 may persist the authoritative conflict version; it clears on context, next action, or version advance.
+
+### Strict TDD evidence
+
+- **RED:** a post-mount 409 for `proposal-2` incorrectly alerted `proposal-1` after its version advance; the valid alert vanished on a harmless rerender.
+- **GREEN:** focused U19 passed **3 files / 16 tests**, including authoritative reset, version-8 next-save, other-proposal isolation, and persistent alert assertions.
+- **TRIANGULATE:** introducing an ambient fallback attempt failed the cache test; clearing the persisted conflict version failed the detail test. Both mutations were restored.
+
+### Verification
+
+- PASS twice — focused U19 detail/cache/page suite; form/query regressions; App `typecheck`; `lint:strict`; and `git diff --check`.

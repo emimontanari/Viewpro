@@ -365,8 +365,8 @@ Manifest: seller detail/history/page, direct page boundary `apps/app-new/src/app
 
 #### U19B2 — Seller detail editing and cache
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR rejected edit/resubmit context, 409 refetch, audience/tenant invalidation, and old-tenant cleanup. <!-- sdd-owner: implementation -->
-- [ ] U19 aggregate: complete U19A1, U19A2, U19B1, and U19B2 detail/history/link/cache work. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR rejected edit/resubmit context, authoritative 409 input reset with persistent Spanish feedback, audience/tenant invalidation, and old-tenant cleanup. <!-- sdd-owner: implementation -->
+- [x] U19 aggregate: complete U19A1, U19A2, U19B1, and U19B2 detail/history/link/cache work. <!-- sdd-owner: implementation -->
 
 ### U20A — Working reviewer inbox and filters (no navigation exposure)
 
