@@ -359,10 +359,14 @@ Manifest: seller detail/history/page, direct page boundary `apps/app-new/src/app
 
 - [x] RED → GREEN → TRIANGULATE → REFACTOR the authorized seller detail boundary, history integration, and optional safe canonical result link. <!-- sdd-owner: implementation -->
 
-#### U19B — Seller detail editing and cache
+#### U19B1 — Form-save correction
+
+- [x] Preserve all six approved staged fields plus `expectedVersion` when saving existing `BORRADOR` and `RECHAZADA` proposals; normalize blank optional values to `null` and never auto-submit. <!-- sdd-owner: implementation -->
+
+#### U19B2 — Seller detail editing and cache
 
 - [ ] RED → GREEN → TRIANGULATE → REFACTOR rejected edit/resubmit context, 409 refetch, audience/tenant invalidation, and old-tenant cleanup. <!-- sdd-owner: implementation -->
-- [ ] U19 aggregate: complete U19A1, U19A2, and U19B detail/history/link/cache work. <!-- sdd-owner: implementation -->
+- [ ] U19 aggregate: complete U19A1, U19A2, U19B1, and U19B2 detail/history/link/cache work. <!-- sdd-owner: implementation -->
 
 ### U20A — Working reviewer inbox and filters (no navigation exposure)
 
