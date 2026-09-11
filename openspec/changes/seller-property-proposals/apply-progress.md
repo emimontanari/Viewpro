@@ -1887,3 +1887,24 @@ Parent authority supplied `proceed16bc` / `remediatesf804` for the exact `6743b7
 - PASS — focused U16B1 query spec twice: 5/5 each; App typecheck and strict lint passed.
 - Offline frozen dependencies and the contract build enabled App verification only; cleanup removes dependency, contract-dist, Turbo, and TypeScript build-info residue. No database, route, UI, mutation, backend, contract, Git, commit, push, PR, review, or receipt work occurred.
 - Source/test total 198 lines; the six-file OpenSpec split/closure is within the 400-line U16B1 hard boundary without code golf or size exception. Next unchecked implementation is U16B2, but this apply executor returns `next_recommended: parent-lifecycle`.
+
+## U16B2 mutation invalidation and authoritative refresh
+
+### Status and scope
+
+Parent authority supplied apply-ready `seller-property-proposals` runtime `proceed1c29` at merged U16B1 base `c101486a`; no ambient/native status or unrelated worktree Git context was used. Only the two U16B query files plus `tasks.md` and this progress file changed. U16B2 and the aggregate U16B rows are now visibly `[x]`; U17+ and parent-owned lifecycle rows remain unchanged.
+
+### Completed behavior and TDD evidence
+
+- Added five closure-bound create/update/submit/reject/approve hooks. Their only variables are the typed payloads; captured tenant/proposal IDs are never caller variables. Success invalidates both proposal audiences; approval alone also invalidates `productKeys.all`.
+- Only real `BffError` 409 failures invalidate/refetch active proposal queries. Non-409 and status-shaped non-Bff errors do nothing, and no hook uses `onMutate` or writes fabricated cache data.
+
+| Task | Layer | Safety net / RED | GREEN | TRIANGULATE / REFACTOR |
+|---|---|---|---|---|
+| U16B2 mutations/cache | QueryClient + renderHook | U16B1 5/5 passed; missing hooks made 7/12 fail. | Focused suite 12/12 passed. | Payload, captured-ID, audience, non-approval-product, non-Bff-409, wrong-status, and optimistic-cache mutants failed 1/12, 1/12, 8/12, 1/12, 1/12, 1/12, and 2/12; all restored. The create closure intentionally discards React Query's mutation context. |
+
+### Verification, cleanup, and boundary
+
+- PASS — focused query spec twice: 12/12 each; App typecheck and strict lint passed.
+- Active seller-list and reviewer-detail observers refetched only after real 409; pending decisions retained the same cached object. No database, route, UI, backend, contract, commit, push, PR, review, or receipt action occurred.
+- The U16B2 delta plus OpenSpec closure remains within the hard 400-line boundary without code golf or size exception. Dependency, contract-dist, Turbo, and TypeScript build-info residue are removed after verification; `next_recommended: parent-lifecycle`.
