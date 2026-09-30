@@ -2206,3 +2206,25 @@ The prior writer was disconnected/unavailable. A replacement worker recovered on
 
 - PASS — focused inbox/page suite: 2 files / 4 tests.
 - U20A1 rows are `[x]`; U20A2 and U20A aggregate rows are `[ ]`.
+
+## U20A2 reviewer state/history filters — isolated clean-baseline redo
+
+- **Baseline/isolation:** Reconfirmed this worktree root and detached `HEAD` `49f25e8ca720d370b0893c8868b822cb9ec0d026`. The parent-provided `apps/app-new/node_modules` symlink exposed the existing Vitest executable; no install or link mutation was performed. Vitest/Vite caches under the shared `node_modules` target were authorized. The preserved `/Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u20a-review-inbox` worktree was not accessed or modified.
+- **Behavior:** State choices cover the four supported proposal states, defaulting to `EN_REVISION`. History `''` means unrestricted; explicit `NONE` means no review history; `PENDING`, `REJECTED`, and `APPROVED` remain distinct choices. The existing normalized reviewer query receives selected history and current state together. Changing either filter resets requested page to 1. The UI adds no search, navigation, or decision controls. No unsupported “all states” choice is exposed because existing query normalization defaults an omitted state to `EN_REVISION`.
+
+### Strict TDD evidence
+
+- **Prior redo RED caveat:** The earlier writer reported a RED at the missing `Estado` combobox. Its raw runner output was unavailable to the parent and is not independently verified here; this is retained only as writer-reported history, not as independent evidence.
+- **U20A2 `NONE` RED (observed):** Before the component change, `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/property-proposals/components/property-proposal-review-inbox.test.tsx src/features/property-proposals/components/property-proposal-review-filters.test.tsx` collected both files and failed 2 tests: the filter-choice assertion showed actual `['', 'PENDING', 'REJECTED', 'APPROVED']` versus expected `['', 'NONE', 'PENDING', 'REJECTED', 'APPROVED']`; the integration test could not select the missing `NONE` option. This is direct behavior RED, not import/collection failure.
+- **GREEN:** Added the explicit `NONE` option. The same focused command then passed 2 files / 4 tests. The exact U20A suite subsequently passed 3 files / 6 tests.
+- **TRIANGULATE:** The inbox integration test navigates to page 2, selects `NONE`, and verifies the normalized reviewer-service request is `{ state: 'EN_REVISION', history: 'NONE', page: 1, pageSize: 20 }`; it then changes state and verifies `RECHAZADA` remains combined with `NONE`. Tests also cover unrestricted history clearing, PENDING/REJECTED/APPROVED, all state choices, and no search/navigation/decision controls.
+- **REFACTOR:** The prior page-state refactor remains: pagination display follows requested page during query-key transitions rather than stale response metadata. Focused tests, typecheck, and strict lint pass after the NONE addition.
+
+### Verification
+
+- PASS — `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/property-proposals/components/property-proposal-review-inbox.test.tsx src/features/property-proposals/components/property-proposal-review-filters.test.tsx` — GREEN, 2 files / 4 tests.
+- PASS — `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/features/property-proposals/components/property-proposal-review-inbox.test.tsx src/features/property-proposals/components/property-proposal-review-filters.test.tsx 'src/app/dashboard/property-proposals/review/page.test.tsx'` — 3 files / 6 tests.
+- PASS — `pnpm --filter next-shadcn-dashboard-starter typecheck`.
+- PASS — `pnpm --filter next-shadcn-dashboard-starter lint:strict`.
+- PASS — `git diff --check` after the final documentation updates.
+- U20A2 implementation rows are complete; U20A aggregate and U20B remain pending, and no navigation task was performed.
