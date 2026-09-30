@@ -2228,3 +2228,9 @@ The prior writer was disconnected/unavailable. A replacement worker recovered on
 - PASS — `pnpm --filter next-shadcn-dashboard-starter lint:strict`.
 - PASS — `git diff --check` after the final documentation updates.
 - U20A2 implementation rows are complete; U20A aggregate and U20B remain pending, and no navigation task was performed.
+
+### U20A aggregate
+
+- U20A1 (`49f25e8c`) and U20A2 (`aa4697ae`) are both committed on the U20A branch.
+- Independent verification of the combined candidate: PASS — exact U20A focused suite 3 files / 6 tests, App typecheck, App `lint:strict`, and `git diff --check`. Explicit `NONE` is distinct from unrestricted history, and a page-2 history change requests page 1 with the current state.
+- No reviewer destination was added to nav-config, Sidebar, or KBar; U20B remains pending.

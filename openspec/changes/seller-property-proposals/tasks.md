@@ -381,7 +381,7 @@ Manifest: `apps/app-new/src/features/property-proposals/components/property-prop
 
 - [x] RED → GREEN → TRIANGULATE → REFACTOR AND-combined state/history filters, explicit `NONE` (no review history) distinct from unrestricted history, and history/state filter-change page reset. <!-- sdd-owner: implementation -->
 - [x] Run focused inbox/filter/page coverage, including page-2 history change with the current state; App typecheck, strict lint, and diff check. <!-- sdd-owner: implementation -->
-- [ ] U20A aggregate: complete U20A1 and U20A2 without navigation exposure. <!-- sdd-owner: implementation -->
+- [x] U20A aggregate: complete U20A1 and U20A2 without navigation exposure. <!-- sdd-owner: implementation -->
 
 ### U20B — Atomic reviewer Sidebar/KBar parity exposure (S48)
 
