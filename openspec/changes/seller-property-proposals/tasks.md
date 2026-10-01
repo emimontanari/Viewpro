@@ -394,8 +394,8 @@ Manifest: `apps/app-new/src/config/nav-config.ts`, `apps/app-new/src/config/nav-
 
 Manifest: reviewer detail/reject-dialog/page, direct page boundary `apps/app-new/src/app/dashboard/property-proposals/review/[proposalId]/page.test.tsx` T11–15, `property-proposal-review-detail.test.tsx`, and `property-proposal-review-cache.test.tsx`.
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR the direct reviewer-detail page boundary in `apps/app-new/src/app/dashboard/property-proposals/review/[proposalId]/page.test.tsx` with current-round approve/reject, bounded reason UI, pending lockout, safe copy, no optimistic success, 409 refresh, and canonical invalidation. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest reviewer detail/cache tests, App typecheck, and strict lint; clear mutation/query/router fixtures. <!-- sdd-owner: implementation -->
+- [x] RED → GREEN → TRIANGULATE → REFACTOR the direct reviewer-detail page boundary in `apps/app-new/src/app/dashboard/property-proposals/review/[proposalId]/page.test.tsx` with current-round approve/reject, bounded reason UI, pending lockout, safe copy, no optimistic success, 409 refresh, and canonical invalidation. <!-- sdd-owner: implementation -->
+- [x] Run the manifest reviewer detail/cache tests, App typecheck, and strict lint; clear mutation/query/router fixtures. <!-- sdd-owner: implementation -->
 
 ### U22A — API seeded integration (verification-only)
 

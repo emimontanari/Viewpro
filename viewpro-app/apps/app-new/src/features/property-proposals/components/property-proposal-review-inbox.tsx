@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   PropertyProposalHistoryFilter,
@@ -83,7 +84,9 @@ export function PropertyProposalReviewInbox({ tenantId, enabled }: Props) {
         <ul>
           {data.items.map((proposal) => (
             <li key={proposal.id} className='flex gap-2'>
-              <span>{proposal.title}</span>
+              <Link href={`/dashboard/property-proposals/review/${encodeURIComponent(proposal.id)}`}>
+                {proposal.title}
+              </Link>
               <span>
                 {[proposal.proposedBy.firstName, proposal.proposedBy.lastName]
                   .filter(Boolean)
