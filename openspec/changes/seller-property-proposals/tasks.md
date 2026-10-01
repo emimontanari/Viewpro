@@ -370,10 +370,18 @@ Manifest: seller detail/history/page, direct page boundary `apps/app-new/src/app
 
 ### U20A — Working reviewer inbox and filters (no navigation exposure)
 
-Manifest: `apps/app-new/src/features/property-proposals/components/property-proposal-review-inbox.tsx`, `apps/app-new/src/app/dashboard/property-proposals/review/page.tsx`, direct page boundary `apps/app-new/src/app/dashboard/property-proposals/review/page.test.tsx` T11–15, `apps/app-new/src/features/property-proposals/components/property-proposal-review-inbox.test.tsx`, and `apps/app-new/src/features/property-proposals/components/property-proposal-review-filters.test.tsx`.
+#### U20A1 — Reviewer inbox core
 
-- [ ] RED → GREEN → TRIANGULATE → REFACTOR the direct reviewer-inbox boundary with pending-first inbox, state/history AND filters, pagination, proposer display, and bounded loading/empty/error states; do not expose a reviewer destination in navigation. <!-- sdd-owner: implementation -->
-- [ ] Run the manifest inbox/filter/page tests, App typecheck, and strict lint; clear reviewer router/query state. <!-- sdd-owner: implementation -->
+Manifest: `apps/app-new/src/features/property-proposals/components/property-proposal-review-inbox.tsx`, `apps/app-new/src/app/dashboard/property-proposals/review/page.tsx`, direct page boundary `apps/app-new/src/app/dashboard/property-proposals/review/page.test.tsx` T11–15, and `apps/app-new/src/features/property-proposals/components/property-proposal-review-inbox.test.tsx`.
+
+- [x] RED → GREEN → TRIANGULATE → REFACTOR the direct reviewer-inbox boundary with pending-first pagination, proposer display, and bounded loading/empty/error states; do not expose a reviewer destination in navigation. <!-- sdd-owner: implementation -->
+- [x] Run the manifest inbox/page tests, App typecheck, and strict lint; clear reviewer router/query state. <!-- sdd-owner: implementation -->
+
+#### U20A2 — Reviewer state and history filters
+
+- [x] RED → GREEN → TRIANGULATE → REFACTOR AND-combined state/history filters, explicit `NONE` (no review history) distinct from unrestricted history, and history/state filter-change page reset. <!-- sdd-owner: implementation -->
+- [x] Run focused inbox/filter/page coverage, including page-2 history change with the current state; App typecheck, strict lint, and diff check. <!-- sdd-owner: implementation -->
+- [x] U20A aggregate: complete U20A1 and U20A2 without navigation exposure. <!-- sdd-owner: implementation -->
 
 ### U20B — Atomic reviewer Sidebar/KBar parity exposure (S48)
 
