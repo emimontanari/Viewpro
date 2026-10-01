@@ -1,4 +1,4 @@
-import { sellerPropertyProposalAccess } from '@/lib/property-proposal-access';
+import { reviewerPropertyProposalAccess, sellerPropertyProposalAccess } from '@/lib/property-proposal-access';
 import type { NavigationAccessPolicy, NavGroup } from '@/types';
 
 export const workspaceAdministrationAccess: Readonly<NavigationAccessPolicy> = Object.freeze({ roles: Object.freeze(['MANAGER', 'PRINCIPAL_MANAGER']), permissions: Object.freeze(['team.view']) });
@@ -108,6 +108,14 @@ export const navGroups: NavGroup[] = [
         isActive: false,
         items: [],
         access: sellerPropertyProposalAccess
+      },
+      {
+        title: 'Revisión de propuestas',
+        url: '/dashboard/property-proposals/review',
+        icon: 'product',
+        isActive: false,
+        items: [],
+        access: reviewerPropertyProposalAccess
       }
     ]
   }

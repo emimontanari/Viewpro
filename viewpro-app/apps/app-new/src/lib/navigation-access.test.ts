@@ -51,10 +51,48 @@ describe('navigation access policy', () => {
     expect(navGroups[0]?.items.find(({ title }) => title === 'Equipo')?.access).toBe(workspaceAdministrationAccess);
   });
 
-  it.each(navigationAccessScenarios)('keeps $state destinations unchanged and omits reviewer navigation before U20B', ({ activeMembership, destinations, isTenantLoading }) => {
-    const visible = filterNavigationGroups(navGroups, toNavigationAccessContext(activeMembership, isTenantLoading)).flatMap((group) => group.items).map(({ title, url }) => ({ title, href: url }));
-    expect(visible).toEqual(destinations);
-    expect(navGroups.flatMap((group) => group.items).map(({ url }) => url)).not.toContain('/dashboard/property-proposals/review');
+  it('keeps destinations unchanged and exposes reviewer navigation only when its policy authorizes it', () => {
+    const reviewerPolicy = navGroups.flatMap((group) => group.items).find(({ url }) => url === '/dashboard/property-proposals/review')?.access;
+    expect(reviewerPolicy).toBeDefined();
+
+    for (const { activeMembership, destinations, isTenantLoading } of navigationAccessScenarios) {
+      const accessContext = toNavigationAccessContext(activeMembership, isTenantLoading);
+      const visibleGroups = filterNavigationGroups(navGroups, accessContext);
+      const visible = visibleGroups.flatMap((group) => group.items).map(({ title, url }) => ({ title, href: url }));
+      const reviewerVisible = visible.some(({ href }) => href === '/dashboard/property-proposals/review');
+
+      expect(visible).toEqual(destinations);
+      expect(reviewerVisible).toBe(canAccessNavigation(reviewerPolicy, accessContext));
+    }
+
+    const deniedContexts = [
+      { resolved: true, membership: null },
+      { resolved: false, membership: manager.membership },
+      { resolved: true, membership: { role: 'MANAGER', permissions: ['property_proposals.review'], tenantStatus: 'SUSPENDED' } },
+      { resolved: true, membership: { role: 'MANAGER', permissions: ['property_proposals.review'], tenantStatus: null } },
+      { resolved: true, membership: { role: 'MANAGER', permissions: ['team.view'], tenantStatus: 'ACTIVE' } },
+      { resolved: true, membership: { role: 'AGENT', permissions: ['property_proposals.review'], tenantStatus: 'ACTIVE' } },
+      { resolved: true, membership: { role: 'OWNER', permissions: ['property_proposals.review'], tenantStatus: 'ACTIVE' } },
+      { resolved: true, membership: { role: 'OTHER', permissions: ['property_proposals.review'], tenantStatus: 'ACTIVE' } }
+    ];
+
+    for (const accessContext of deniedContexts) {
+      const reviewerVisible = filterNavigationGroups(navGroups, accessContext)
+        .flatMap((group) => group.items)
+        .some(({ url }) => url === '/dashboard/property-proposals/review');
+      expect(canAccessNavigation(reviewerPolicy, accessContext)).toBe(false);
+      expect(reviewerVisible).toBe(false);
+    }
+
+    for (const role of ['MANAGER', 'PRINCIPAL_MANAGER']) {
+      const accessContext = {
+        resolved: true,
+        membership: { role, permissions: ['property_proposals.review'], tenantStatus: 'ACTIVE' }
+      };
+      expect(canAccessNavigation(reviewerPolicy, accessContext)).toBe(true);
+      expect(filterNavigationGroups(navGroups, accessContext).flatMap((group) => group.items)
+        .some(({ url }) => url === '/dashboard/property-proposals/review')).toBe(true);
+    }
   });
 });
 

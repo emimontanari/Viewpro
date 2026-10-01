@@ -40,13 +40,27 @@ describe('AppSidebar navigation access', () => {
     expect(screen.getAllByRole('link').map((link) => ({ title: link.textContent, href: link.getAttribute('href') }))).toEqual(destinations);
   });
 
-  it('does not expose either proposal destination to a reviewer before U20B', () => {
-    const activeMembership = propertyProposalMemberships.reviewer;
+  it.each([
+    ['MANAGER', propertyProposalMemberships.reviewer],
+    ['PRINCIPAL_MANAGER', propertyProposalMemberships.principalReviewer]
+  ])('exposes only the reviewer destination to an authorized %s', (_role, activeMembership) => {
     useActiveTenantMock.mockReturnValue({ activeMembership, activeTenantId: activeMembership.tenant.id, hasMemberships: true, isTenantLoading: false, memberships: [activeMembership], needsTenantSelection: false, selectedTenantId: activeMembership.tenant.id });
 
     render(<SidebarProvider><AppSidebar navGroupsConfig={navGroups} /></SidebarProvider>);
 
+    expect(screen.getByRole('link', { name: 'Revisión de propuestas' }).getAttribute('href')).toBe('/dashboard/property-proposals/review');
     expect(screen.queryByRole('link', { name: 'Propuestas de propiedades' })).toBeNull();
+  });
+
+  it.each([
+    ['seller', propertyProposalMemberships.seller],
+    ['reviewer without capability', { ...propertyProposalMemberships.reviewer, permissions: ['tenant.view'] }],
+    ['inactive reviewer', { ...propertyProposalMemberships.reviewer, tenant: { ...propertyProposalMemberships.reviewer.tenant, status: 'SUSPENDED' } }]
+  ])('does not expose reviewer navigation to %s', (_state, activeMembership) => {
+    useActiveTenantMock.mockReturnValue({ activeMembership, activeTenantId: activeMembership.tenant.id, hasMemberships: true, isTenantLoading: false, memberships: [activeMembership], needsTenantSelection: false, selectedTenantId: activeMembership.tenant.id });
+
+    render(<SidebarProvider><AppSidebar navGroupsConfig={navGroups} /></SidebarProvider>);
+
     expect(screen.queryByRole('link', { name: 'Revisión de propuestas' })).toBeNull();
   });
 });

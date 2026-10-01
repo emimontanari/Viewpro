@@ -387,8 +387,8 @@ Manifest: `apps/app-new/src/features/property-proposals/components/property-prop
 
 Manifest: `apps/app-new/src/config/nav-config.ts`, `apps/app-new/src/config/nav-config.test.ts`, `apps/app-new/src/components/layout/app-sidebar.tsx`, `apps/app-new/src/components/layout/app-sidebar.test.tsx`, `apps/app-new/src/components/kbar/palette.tsx`, and `apps/app-new/src/components/kbar/palette.test.ts`.
 
-- [ ] After U20A's working inbox is green, run RED for the authorized manager reviewer destination in nav-config, Sidebar, and KBar, then GREEN → TRIANGULATE → REFACTOR all three consumers atomically through the immutable policy; do not leave an intermediate Sidebar/KBar parity violation. <!-- sdd-owner: implementation -->
-- [ ] Run the exact nav-config, Sidebar, and KBar parity command from the verification companion, App typecheck, and strict lint; clear navigation/router/query fixtures. <!-- sdd-owner: implementation -->
+- [x] After U20A's working inbox is green, run RED for the authorized manager reviewer destination in nav-config, Sidebar, and KBar, then GREEN → TRIANGULATE → REFACTOR all three consumers atomically through the immutable policy; do not leave an intermediate Sidebar/KBar parity violation. <!-- sdd-owner: implementation -->
+- [x] Run the exact nav-config, Sidebar, and KBar parity command from the verification companion, App typecheck, and strict lint; clear navigation/router/query fixtures. <!-- sdd-owner: implementation -->
 
 ### U21A — Reviewer detail and decision cache
 
