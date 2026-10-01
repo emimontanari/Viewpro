@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { sellerPropertyProposalAccess } from '@/lib/property-proposal-access';
+import { reviewerPropertyProposalAccess, sellerPropertyProposalAccess } from '@/lib/property-proposal-access';
 import { navGroups, ownerNavGroups } from './nav-config';
 
 const navItems = navGroups.flatMap((group) =>
@@ -81,7 +81,16 @@ describe('nav config', () => {
       url: '/dashboard/property-proposals'
     });
     expect(sellerDestinations[0]?.access).toBe(sellerPropertyProposalAccess);
-    expect(navItems.map(({ url }) => url)).not.toContain('/dashboard/property-proposals/review');
+
+    const reviewerDestinations = navItems.filter(
+      ({ url }) => url === '/dashboard/property-proposals/review'
+    );
+    expect(reviewerDestinations).toHaveLength(1);
+    expect(reviewerDestinations[0]).toMatchObject({
+      title: 'Revisión de propuestas',
+      url: '/dashboard/property-proposals/review'
+    });
+    expect(reviewerDestinations[0]?.access).toBe(reviewerPropertyProposalAccess);
     expect(navItems.map(({ url }) => url)).not.toContain('/dashboard/product/new');
   });
 

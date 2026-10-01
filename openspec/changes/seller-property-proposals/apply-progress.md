@@ -2234,3 +2234,46 @@ The prior writer was disconnected/unavailable. A replacement worker recovered on
 - U20A1 (`49f25e8c`) and U20A2 (`aa4697ae`) are both committed on the U20A branch.
 - Independent verification of the combined candidate: PASS — exact U20A focused suite 3 files / 6 tests, App typecheck, App `lint:strict`, and `git diff --check`. Explicit `NONE` is distinct from unrestricted history, and a page-2 history change requests page 1 with the current state.
 - No reviewer destination was added to nav-config, Sidebar, or KBar; U20B remains pending.
+
+## U20B atomic reviewer navigation exposure
+
+### Scope and implementation
+
+- Confirmed the selected worktree was `/Users/emimontanari/Work/Apps/Viewpro-worktrees/seller-property-proposals-u20b-navigation`, branch `feat/seller-property-proposals-u20b-navigation`, HEAD `f45a34b19cac0c2ec714f203f71bc6718950a047`, initially clean. No commit or delivery action was performed.
+- Implemented the reviewer inbox destination at `/dashboard/property-proposals/review` in `nav-config.ts`, referencing the existing immutable `reviewerPropertyProposalAccess` policy. Sidebar and KBar continue to consume the same filtered navigation groups; no role checks were added to either consumer.
+- Added policy-identity/config and rendered Sidebar/KBar authorized-role tests plus denial cases for sellers, manager without review capability, inactive reviewer, and loading roles. Navigation access coverage keeps its exact baseline route assertions and now explicitly tests policy-driven reviewer presence for active authorized MANAGER/PRINCIPAL_MANAGER and absence for missing membership, unresolved context, inactive/missing-status tenant, missing capability, AGENT, OWNER, and other roles.
+- **Approved scope addition:** `viewpro-app/apps/app-new/src/lib/navigation-access.test.ts` was added only to change the temporal `before U20B` guard, which required unconditional reviewer absence after this authorized unit. The updated guard was renamed and now asserts the immutable policy outcome; no other policy assertions or `navigation-access.ts` / `use-nav.ts` were changed.
+
+### Strict TDD evidence
+
+- **Initial RED attempt (invalid for behavior evidence):** exact focused command failed suite collection because `@viewpro/contracts` output was missing. Two KBar assertions did fail, but other suites could not collect; no production edit had occurred. After approval, `pnpm --filter @viewpro/contracts build` generated the documented ignored prerequisite, then the exact targeted command was rerun with production unchanged.
+- **Valid RED (all 5 suites collected):** the exact targeted command failed 5 assertion-level tests / 69 total across config, Sidebar, and KBar. Verbatim runner excerpt:
+
+```text
+ FAIL  src/config/nav-config.test.ts > nav config > exposes exactly one seller proposal destination through the shared policy
+AssertionError: expected [] to have a length of 1 but got +0
+ FAIL  src/components/layout/app-sidebar.test.tsx > AppSidebar navigation access > exposes only the reviewer destination to an authorized MANAGER
+TestingLibraryElementError: Unable to find an accessible element with the role "link" and name "Revisión de propuestas"
+ FAIL  src/components/layout/app-sidebar.test.tsx > AppSidebar navigation access > exposes only the reviewer destination to an authorized PRINCIPAL_MANAGER
+TestingLibraryElementError: Unable to find an accessible element with the role "link" and name "Revisión de propuestas"
+ FAIL  src/components/kbar/palette.test.ts > KBarPalette navigation access > registers only reviewer navigation for authorized MANAGER
+AssertionError: expected [ 'Inicio', 'Propiedades', …(5) ] to include 'Revisión de propuestas'
+ FAIL  src/components/kbar/palette.test.ts > KBarPalette navigation access > registers only reviewer navigation for authorized PRINCIPAL_MANAGER
+AssertionError: expected [ 'Inicio', 'Propiedades', …(6) ] to include 'Revisión de propuestas'
+ Test Files  3 failed | 2 passed (5)
+      Tests  5 failed | 64 passed (69)
+```
+
+- **GREEN:** added the single shared nav-config entry and policy reference, making the same filtered item available to Sidebar and KBar atomically. Initial GREEN surfaced the obsolete temporal guard in `navigation-access.test.ts`; after the parent-approved test-only correction, the exact targeted command passed 5 files / 64 tests.
+- **TRIANGULATE:** exact rendered Sidebar tests independently cover both reviewer roles and assert the reviewer href while excluding the seller route. KBar tests independently cover both reviewer roles, execute the reviewer action, and assert `router.push('/dashboard/property-proposals/review')`; they also exclude the seller route. Negative consumer cases assert absence for seller, missing review permission, and inactive membership. The policy test explicitly checks denied absent/inactive/loading/unresolved/seller/owner/other contexts and positive active authorized reviewer roles. A nav-config URL mutation to `/dashboard/property-proposals/review-mutant` made both authorized KBar cases fail their exact router-target assertion (2 failed, 9 skipped); the original URL was restored before final verification.
+- **Correction classification:** this added KBar router-target assertion is TRIANGULATE on already-GREEN behavior, not a new RED or production defect.
+- **REFACTOR:** retained the shared policy and shared filtered-group path; no inline role predicates, navigation-hook edits, or broader refactor.
+
+### Final verification
+
+- PASS — `pnpm --filter @viewpro/contracts build` (approved generated `packages/contracts/dist/**` prerequisite; ignored output).
+- PASS — `pnpm --filter next-shadcn-dashboard-starter exec vitest run src/config/nav-config.test.ts src/components/layout/app-sidebar.test.tsx src/components/kbar/palette.test.ts src/lib/navigation-access.test.ts src/hooks/use-nav.test.ts` — 5 files / 64 tests, rerun after the KBar TRIANGULATE assertion and restoration of the URL mutant.
+- PASS — `pnpm --filter next-shadcn-dashboard-starter typecheck`.
+- PASS — `pnpm --filter next-shadcn-dashboard-starter lint:strict`.
+- PASS — `git -c diff.external= diff --no-ext-diff --check`.
+- U20B's two implementation-owned task rows are `[x]`. U21A/U22 and parent-owned lifecycle rows are unchanged. No DB/provider operation, commit, push, PR, or delivery was performed.

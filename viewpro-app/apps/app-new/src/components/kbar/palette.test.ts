@@ -2,7 +2,7 @@ import { createElement, type ReactNode } from 'react';
 import { render } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useActiveTenant } from '@/lib/session-context';
-import { navigationAccessScenarios, type membership } from '@/test/navigation-access-fixtures';
+import { membership, navigationAccessScenarios } from '@/test/navigation-access-fixtures';
 import { KBarPalette } from './palette';
 
 const registeredActions: { name: string; perform?: () => void }[] = [];
@@ -42,5 +42,30 @@ describe('KBarPalette navigation access', () => {
 
     actions.forEach((action) => action.perform?.());
     expect(actions.map(({ name }, index) => ({ title: name, href: push.mock.calls[index]?.[0] }))).toEqual(destinations);
+  });
+
+  it.each([
+    ['MANAGER', 'MANAGER', ['tenant.view', 'team.view', 'engagements.view_all', 'property_proposals.review']],
+    ['PRINCIPAL_MANAGER', 'PRINCIPAL_MANAGER', ['tenant.view', 'team.view', 'engagements.view_all', 'tenant.manage_settings', 'property_proposals.review']]
+  ])('registers only reviewer navigation for authorized %s', (_label, role, permissions) => {
+    const actions = renderPalette(membership(role, permissions));
+
+    expect(actions.map(({ name }) => name)).toContain('Revisión de propuestas');
+    const reviewerAction = actions.find(({ name }) => name === 'Revisión de propuestas');
+    expect(reviewerAction?.perform).toBeDefined();
+    reviewerAction?.perform?.();
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(push).toHaveBeenCalledWith('/dashboard/property-proposals/review');
+    expect(actions.map(({ name }) => name)).not.toContain('Propuestas de propiedades');
+  });
+
+  it.each([
+    ['seller', membership('AGENT', ['tenant.view', 'property_proposals.seller'])],
+    ['manager without review capability', membership('MANAGER', ['tenant.view', 'team.view', 'engagements.view_all'])],
+    ['inactive reviewer', membership('MANAGER', ['tenant.view', 'property_proposals.review'], 'SUSPENDED')]
+  ])('omits reviewer navigation for %s', (_label, activeMembership) => {
+    const actions = renderPalette(activeMembership);
+
+    expect(actions.map(({ name }) => name)).not.toContain('Revisión de propuestas');
   });
 });
