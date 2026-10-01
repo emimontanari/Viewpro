@@ -54,7 +54,10 @@ describe('PropertyProposalReviewInbox', () => {
     expect(screen.getByText('Sofía Vendedora')).toBeVisible();
     expect(screen.getByRole('status')).toHaveTextContent('EN REVISIÓN');
     expect(screen.queryByText('seller-1')).toBeNull();
-    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Casa del lago' })).toHaveAttribute(
+      'href',
+      '/dashboard/property-proposals/review/proposal-1'
+    );
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.getByRole('combobox', { name: 'Estado' })).toHaveValue('EN_REVISION');
     expect(screen.getByRole('combobox', { name: 'Historial' })).toHaveValue('');
