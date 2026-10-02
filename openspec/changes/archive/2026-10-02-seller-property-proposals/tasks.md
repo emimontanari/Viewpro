@@ -416,9 +416,9 @@ Manifest: `apps/api/test/property-proposal-fixtures.ts`, `apps/app-new/tests/see
 
 ## Parent review and lifecycle gates
 
-- [ ] Start or reuse one bounded review after apply, checking unit boundaries, TDD order, cleanup/rollback, isolation, race evidence, exact manifests, and budgets. <!-- sdd-owner: parent -->
+- [x] Start or reuse one bounded review after apply, checking unit boundaries, TDD order, cleanup/rollback, isolation, race evidence, exact manifests, and budgets. Evidence: per-unit independent gates recorded in apply-progress (including C7A1, C8A, U21A CHANGES_REQUIRED then corrected); focused final read-only frontend review on 2026-10-02 used reliability and risk/security lenses; zero blockers. <!-- sdd-owner: parent -->
 - [x] After planning-chain acceptance and any separately authorized merges, require fresh explicit source/apply authorization and a fresh `origin/develop` implementation worktree before beginning the controlled C1→C2A→C2B1→C2B2→C3A→C3B→C4…C20 source chain. <!-- sdd-owner: parent -->
-- [ ] Run the final read-only `git diff --check` gate and reconcile all 49 matrix rows, commands, skips, blockers, and residual risks; Git mutation, delivery, push, merge, and archive remain forbidden here. <!-- sdd-owner: parent -->
+- [x] Run the final read-only `git diff --check` gate and reconcile all 49 matrix rows, commands, skips, blockers, and residual risks; Git mutation, delivery, push, merge, and archive remain forbidden here. Evidence: CI run 37053929774 on develop @ 6b7819be succeeded for all jobs; all 49 matrix rows are COVERED (36 Test-job matrix files and seeded `property-proposals.spec.ts` 3/3); residuals are recorded in `verify-report.md`. <!-- sdd-owner: parent -->
 
 ## Arithmetic check
 
