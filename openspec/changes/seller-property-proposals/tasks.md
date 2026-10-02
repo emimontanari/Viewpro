@@ -407,12 +407,12 @@ Manifest: `apps/api/test/property-proposals.e2e-spec.ts`, `property-proposal-fix
 - [x] Make cleanup failure-safe: explicitly discover engagements in the exact fixture tenants and assets owned by exact fixture users, union with explicit ID sets, continue ordered assignment → engagement → asset → proposal-related cleanup if discovery fails, and retain scoped zero-leftover checks. No shared helper is needed for this single suite. <!-- sdd-owner: implementation -->
 - [x] Scoped runtime journeys: `pnpm --filter @viewpro/api exec vitest run test/property-proposals.e2e-spec.ts` passed: 1 file, 10 tests on 2026-10-01 at 15:51. An earlier run had 3 failed assertions; test-only corrections kept role-change GET at 403 and direct seller canonical-create denial at 400, asserted newest-first round history individually, and used `property.id` for canonical detail's nested asset. No product code changed. Source confirms scoped zero-leftover assertions for agents, engagements, assets, proposals, rounds, and decisions. Never run `property-engagements.e2e-spec.ts` because its teardown has broad unfiltered global `deleteMany()`. U22B seeded runtime remains pending. <!-- sdd-owner: implementation -->
 
-### U22B — Seeded App integration (verification-only)
+### U22B — Seeded App integration (authoring + runtime verification)
 
-Manifest: `apps/app-new/tests/seeded/property-proposals.spec.ts`, `property-proposals.helpers.ts`.
+Manifest: `apps/api/test/property-proposal-fixtures.ts`, `apps/app-new/tests/seeded/property-proposals.helpers.ts`, `property-proposals.spec.ts`.
 
-- [ ] Execute the approve and reject/edit/resubmit browser journeys, role/route boundaries, localized labels, result navigation, and cleanup with run-scoped local fixtures only. <!-- sdd-owner: implementation -->
-- [ ] Report exact observed outcomes, skips, blockers, and cleanup; do not add product behavior or claim provider/external evidence. <!-- sdd-owner: implementation -->
+- [x] Author seeded App approve and reject/edit/explicit-resubmit journeys, role/route boundaries, localized `EN_REVISION`, approved-result navigation, run-scoped fixtures, and exact cleanup helpers; no product or global-setup changes. <!-- sdd-owner: implementation -->
+- [x] Runtime: `pnpm --filter next-shadcn-dashboard-starter test:seeded -- tests/seeded/property-proposals.spec.ts` passed **3/3** on 2026-10-02 against a disposable local PostgreSQL 16 database named like CI (`viewpro_seeded`). Earlier failures were product defects found by this unit and fixed separately: #625 (StrictMode unmount purge aborted the detail query) and #626 (detail submit lost after save). Test-only corrections: status assertions filter by text (the status label has no accessible name), the resubmitted snapshot is scoped to the `Ronda 2` item (history is newest-first), and the fixture guard also accepts the seeded `*_seeded` database. <!-- sdd-owner: implementation -->
 
 ## Parent review and lifecycle gates
 
