@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { hasErrorCode } from '@/lib/bff-client';
 import {
-  cancelAndRemovePropertyProposalQueries,
   reviewerPropertyProposalDetailOptions,
   useApproveReviewerPropertyProposal,
+  usePurgePreviousTenantPropertyProposalQueries,
   useRejectReviewerPropertyProposal
 } from '../api/queries';
 import { propertyProposalErrorCopy } from '../api/service';
@@ -29,16 +29,12 @@ const fields: readonly [StagedField, string][] = [
 ];
 
 export function PropertyProposalReviewDetail({ tenantId, proposalId, enabled }: Props) {
-  const queryClient = useQueryClient();
   const [rejecting, setRejecting] = useState(false);
   const [decisionError, setDecisionError] = useState<string>();
   const approveMutation = useApproveReviewerPropertyProposal(tenantId, proposalId);
   const rejectMutation = useRejectReviewerPropertyProposal(tenantId, proposalId);
   const pending = approveMutation.isPending || rejectMutation.isPending;
-  useEffect(
-    () => () => { void cancelAndRemovePropertyProposalQueries(queryClient, tenantId); },
-    [queryClient, tenantId]
-  );
+  usePurgePreviousTenantPropertyProposalQueries(tenantId);
   const { data, error, isPending } = useQuery({
     ...reviewerPropertyProposalDetailOptions(tenantId, proposalId),
     enabled: enabled && Boolean(tenantId) && Boolean(proposalId)

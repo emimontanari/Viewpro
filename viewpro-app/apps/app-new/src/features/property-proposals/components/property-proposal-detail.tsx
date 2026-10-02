@@ -1,12 +1,12 @@
 'use client';
 
-import { useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutationState, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { hasErrorCode } from '@/lib/bff-client';
 import {
-  cancelAndRemovePropertyProposalQueries,
-  sellerPropertyProposalDetailOptions
+  sellerPropertyProposalDetailOptions,
+  usePurgePreviousTenantPropertyProposalQueries
 } from '../api/queries';
 import type { PropertyProposalFields } from '../api/types';
 import { PropertyProposalForm } from './property-proposal-form';
@@ -39,13 +39,7 @@ const stagedFields: readonly [StagedField, string][] = [
 ];
 
 export function PropertyProposalDetail({ tenantId, proposalId, enabled }: Props) {
-  const queryClient = useQueryClient();
-  useEffect(
-    () => () => {
-      void cancelAndRemovePropertyProposalQueries(queryClient, tenantId);
-    },
-    [queryClient, tenantId]
-  );
+  usePurgePreviousTenantPropertyProposalQueries(tenantId);
   const context = `${tenantId}:${proposalId}`;
   const scope = useRef<{ context: string; attempt?: EditAttempt }>({ context });
   if (scope.current.context !== context) scope.current = { context };
