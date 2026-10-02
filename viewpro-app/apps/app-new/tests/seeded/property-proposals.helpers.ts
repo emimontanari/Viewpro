@@ -1,9 +1,23 @@
 import { randomUUID } from 'node:crypto'
+import { createRequire } from 'node:module'
 import type { Page } from '@playwright/test'
-import {
-  cleanupPropertyProposalFixtures,
-  type PropertyProposalFixtureIds
-} from '../../../api/test/property-proposal-fixtures'
+
+// Mirrors PropertyProposalFixtureIds in apps/api/test/property-proposal-fixtures.ts.
+export type PropertyProposalFixtureIds = {
+  runId: string
+  tenantIds: string[]
+  userIds: string[]
+  scopeTenantIds: string[]
+  proposalIds: string[]
+}
+
+type ProposalFixturesModule = {
+  cleanupPropertyProposalFixtures: (ids: PropertyProposalFixtureIds) => Promise<void>
+}
+
+// Loaded at runtime only: a static import would pull the API test module (and its Prisma
+// client types) into the app type-check, which fails in app-only builds such as Vercel.
+const proposalFixturesModule = '../../../api/test/property-proposal-fixtures'
 
 const apiBaseUrl = `http://127.0.0.1:${Number(process.env.VIEWPRO_APP_NEW_SEEDED_E2E_API_PORT ?? 3001)}`
 
@@ -51,5 +65,7 @@ export async function createProposal(page: Page, ids: PropertyProposalFixtureIds
 }
 
 export async function cleanupProposalRun(ids: PropertyProposalFixtureIds) {
-  await cleanupPropertyProposalFixtures(ids)
+  // require (not import()) so Playwright's TypeScript loader transpiles the module.
+  const fixtures = createRequire(__filename)(proposalFixturesModule) as ProposalFixturesModule
+  await fixtures.cleanupPropertyProposalFixtures(ids)
 }
