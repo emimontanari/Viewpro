@@ -1,8 +1,8 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { notifyManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { createElement, StrictMode, type ReactNode } from 'react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { BffError } from '@/lib/bff-client';
 import * as service from '../api/service';
 import type { PropertyProposalSnapshot, SellerPropertyProposalDetail } from '../api/types';
@@ -250,6 +250,33 @@ describe('PropertyProposalDetail', () => {
       expect.objectContaining({ expectedVersion: 8, title: 'Casa actualizada' })
     );
     expect(submitSellerPropertyProposal).not.toHaveBeenCalled();
+  });
+
+  it('submits an existing proposal after the save refetch remounts the version-keyed form', async () => {
+    // Flush query notifications synchronously, as a browser render would land before the
+    // save mutation resolves; the default setTimeout batching hides the remount.
+    notifyManager.setScheduler((callback) => callback());
+    onTestFinished(() => notifyManager.setScheduler((callback) => setTimeout(callback, 0)));
+    const user = userEvent.setup();
+    getSellerPropertyProposal
+      .mockResolvedValueOnce(proposal({ version: 1 }))
+      .mockResolvedValueOnce(proposal({ version: 2 }))
+      .mockResolvedValueOnce(proposal({ state: 'EN_REVISION', version: 3 }));
+    updateSellerPropertyProposal.mockResolvedValueOnce(proposal({ version: 2 }));
+    submitSellerPropertyProposal.mockResolvedValueOnce(
+      proposal({ state: 'EN_REVISION', version: 3 })
+    );
+    renderDetail();
+    await screen.findByRole('heading', { name: 'Casa staged' });
+    await user.click(screen.getByRole('button', { name: 'Enviar a revisión' }));
+
+    await waitFor(() =>
+      expect(submitSellerPropertyProposal).toHaveBeenCalledWith(
+        'proposal-1',
+        { expectedVersion: 2 }
+      )
+    );
+    expect(await screen.findByText('EN REVISIÓN')).toBeVisible();
   });
 
   it('links only a nonblank approved canonical result through the encoded existing product route', async () => {
