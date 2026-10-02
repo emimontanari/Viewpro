@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createElement, type ReactNode } from 'react';
+import { createElement, StrictMode, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BffError } from '@/lib/bff-client';
 import * as service from '../api/service';
@@ -32,14 +32,37 @@ function detail(overrides: Partial<ReviewerPropertyProposalDetail> = {}): Review
     ...overrides
   };
 }
-function renderDetail() {
+function renderDetail(strict = false) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client }, children);
-  return { client, ...render(<PropertyProposalReviewDetail tenantId='tenant-1' proposalId='proposal-1' enabled />, { wrapper }) };
+  const component = <PropertyProposalReviewDetail tenantId='tenant-1' proposalId='proposal-1' enabled />;
+  return { client, ...render(strict ? <StrictMode>{component}</StrictMode> : component, { wrapper }) };
 }
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 beforeEach(() => { getDetail.mockResolvedValue(detail()); });
 describe('PropertyProposalReviewDetail', () => {
+  it('keeps its reviewer query cached after unmount', async () => {
+    const { client, unmount } = renderDetail();
+    expect(await screen.findByRole('heading', { name: 'Casa revisable' })).toBeVisible();
+    unmount();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(client.getQueryCache().findAll({ queryKey: ['property-proposals', 'tenant-1'] })).toHaveLength(1);
+  });
+
+  it('loads delayed data under StrictMode without leaving the pending loader', async () => {
+    getDetail.mockImplementation((_id, init) => new Promise((resolve, reject) => {
+      const abort = () => reject(new DOMException('The operation was aborted', 'AbortError'));
+      if (init?.signal?.aborted) return abort();
+      init?.signal?.addEventListener('abort', abort, { once: true });
+      setTimeout(() => {
+        init?.signal?.removeEventListener('abort', abort);
+        resolve(detail());
+      }, 35);
+    }));
+    renderDetail(true);
+    expect(await screen.findByRole('heading', { name: 'Casa revisable' }, { timeout: 500 })).toBeVisible();
+    expect(screen.queryByText('Cargando propuesta…')).toBeNull();
+  });
   it('loads scoped detail, keeps non-reviewable states read-only, and renders coded self-review errors', async () => {
     getDetail.mockResolvedValueOnce(detail({ state: 'APROBADA' }));
     const { unmount } = renderDetail();

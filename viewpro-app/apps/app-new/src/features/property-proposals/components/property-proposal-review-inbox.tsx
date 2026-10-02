@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import type {
   PropertyProposalHistoryFilter,
   PropertyProposalStatus
 } from '../api/types';
 import {
-  cancelAndRemovePropertyProposalQueries,
-  reviewerPropertyProposalsOptions
+  reviewerPropertyProposalsOptions,
+  usePurgePreviousTenantPropertyProposalQueries
 } from '../api/queries';
 import { PropertyProposalStatusLabel } from './property-proposal-status-label';
 
@@ -17,17 +17,11 @@ type Props = { tenantId: string; enabled: boolean };
 const pageSize = 20;
 
 export function PropertyProposalReviewInbox({ tenantId, enabled }: Props) {
-  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [state, setState] = useState<PropertyProposalStatus>('EN_REVISION');
   const [history, setHistory] = useState<PropertyProposalHistoryFilter | ''>('');
   const queryEnabled = enabled && Boolean(tenantId);
-  useEffect(
-    () => () => {
-      void cancelAndRemovePropertyProposalQueries(queryClient, tenantId);
-    },
-    [queryClient, tenantId]
-  );
+  usePurgePreviousTenantPropertyProposalQueries(tenantId);
   const { data, error, isPending } = useQuery({
     ...reviewerPropertyProposalsOptions(tenantId, {
       state,

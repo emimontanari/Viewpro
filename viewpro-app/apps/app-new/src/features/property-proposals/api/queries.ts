@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { isBffError } from '@/lib/bff-client';
 import { productKeys } from '@/features/products/api/queries';
 import { queryOptions, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
@@ -71,6 +72,19 @@ export async function cancelAndRemovePropertyProposalQueries(queryClient: QueryC
   const keys = audiences.map((audience) => propertyProposalKeys.all(tenantId, audience));
   await Promise.all(keys.map((queryKey) => queryClient.cancelQueries({ queryKey })));
   for (const queryKey of keys) queryClient.removeQueries({ queryKey });
+}
+
+export function usePurgePreviousTenantPropertyProposalQueries(tenantId: string) {
+  const queryClient = useQueryClient();
+  const previousTenantId = useRef(tenantId);
+
+  useEffect(() => {
+    const previous = previousTenantId.current;
+    if (previous && previous !== tenantId) {
+      void cancelAndRemovePropertyProposalQueries(queryClient, previous);
+    }
+    previousTenantId.current = tenantId;
+  }, [queryClient, tenantId]);
 }
 
 export function useCreateSellerPropertyProposal(tenantId: string) {

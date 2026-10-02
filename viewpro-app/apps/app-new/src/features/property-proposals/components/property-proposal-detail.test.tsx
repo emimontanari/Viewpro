@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
-import { createElement, type ReactNode } from 'react';
+import { createElement, StrictMode, type ReactNode } from 'react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BffError } from '@/lib/bff-client';
@@ -92,17 +92,38 @@ function proposal(
   };
 }
 
-function renderDetail(enabled = true, tenantId = 'tenant-1', proposalId = 'proposal-1') {
+function renderDetail(enabled = true, tenantId = 'tenant-1', proposalId = 'proposal-1', strict = false) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) =>
     createElement(QueryClientProvider, { client }, children);
-  return render(
-    <PropertyProposalDetail tenantId={tenantId} proposalId={proposalId} enabled={enabled} />,
-    { wrapper }
-  );
+  const component = <PropertyProposalDetail tenantId={tenantId} proposalId={proposalId} enabled={enabled} />;
+  return { client, ...render(strict ? <StrictMode>{component}</StrictMode> : component, { wrapper }) };
 }
 
 describe('PropertyProposalDetail', () => {
+  it('keeps its seller query cached after unmount', async () => {
+    getSellerPropertyProposal.mockResolvedValueOnce(proposal());
+    const { client, unmount } = renderDetail();
+    expect(await screen.findByRole('heading', { name: 'Casa staged' })).toBeVisible();
+    unmount();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(client.getQueryCache().findAll({ queryKey: ['property-proposals', 'tenant-1'] })).toHaveLength(1);
+  });
+
+  it('loads delayed data under StrictMode without leaving the pending loader', async () => {
+    getSellerPropertyProposal.mockImplementation((_id, init) => new Promise((resolve, reject) => {
+      const abort = () => reject(new DOMException('The operation was aborted', 'AbortError'));
+      if (init?.signal?.aborted) return abort();
+      init?.signal?.addEventListener('abort', abort, { once: true });
+      setTimeout(() => {
+        init?.signal?.removeEventListener('abort', abort);
+        resolve(proposal());
+      }, 35);
+    }));
+    renderDetail(true, 'tenant-1', 'proposal-1', true);
+    expect(await screen.findByRole('heading', { name: 'Casa staged' }, { timeout: 500 })).toBeVisible();
+    expect(screen.queryByText('Cargando propuesta…')).toBeNull();
+  });
   beforeEach(() => {
     cleanup();
     vi.clearAllMocks();

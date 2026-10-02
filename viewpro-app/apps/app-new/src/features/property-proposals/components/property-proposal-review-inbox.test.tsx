@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createElement, type ReactNode } from 'react';
+import { createElement, StrictMode, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as service from '../api/service';
 import { reviewerPropertyProposalsOptions } from '../api/queries';
@@ -21,13 +21,18 @@ const proposal = {
   proposedBy: { id: 'seller-1', firstName: 'Sofía', lastName: 'Vendedora' }
 };
 
-function renderInbox(enabled = true, tenantId = 'tenant-1') {
+function renderInbox(enabled = true, tenantId = 'tenant-1', strict = false) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) =>
     createElement(QueryClientProvider, { client }, children);
   return {
     client,
-    ...render(<PropertyProposalReviewInbox tenantId={tenantId} enabled={enabled} />, { wrapper })
+    ...render(
+      strict
+        ? <StrictMode><PropertyProposalReviewInbox tenantId={tenantId} enabled={enabled} /></StrictMode>
+        : <PropertyProposalReviewInbox tenantId={tenantId} enabled={enabled} />,
+      { wrapper }
+    )
   };
 }
 
@@ -37,6 +42,29 @@ afterEach(() => {
 });
 
 describe('PropertyProposalReviewInbox', () => {
+  it('keeps its reviewer query cached after unmount', async () => {
+    listReviewerPropertyProposals.mockResolvedValueOnce({ items: [proposal], total: 1, page: 1, pageSize: 20 });
+    const { client, unmount } = renderInbox();
+    expect(await screen.findByText('Casa del lago')).toBeVisible();
+    unmount();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(client.getQueryCache().findAll({ queryKey: ['property-proposals', 'tenant-1'] })).toHaveLength(1);
+  });
+
+  it('loads delayed data under StrictMode without leaving the pending loader', async () => {
+    listReviewerPropertyProposals.mockImplementation((_filters, init) => new Promise((resolve, reject) => {
+      const abort = () => reject(new DOMException('The operation was aborted', 'AbortError'));
+      if (init?.signal?.aborted) return abort();
+      init?.signal?.addEventListener('abort', abort, { once: true });
+      setTimeout(() => {
+        init?.signal?.removeEventListener('abort', abort);
+        resolve({ items: [proposal], total: 1, page: 1, pageSize: 20 });
+      }, 35);
+    }));
+    renderInbox(true, 'tenant-1', true);
+    expect(await screen.findByText('Casa del lago', {}, { timeout: 500 })).toBeVisible();
+    expect(screen.queryByText('Cargando propuestas para revisar…')).toBeNull();
+  });
   it('uses the pending-first reviewer query and renders localized status with proposer display only', async () => {
     const user = userEvent.setup();
     listReviewerPropertyProposals
