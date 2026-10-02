@@ -101,10 +101,17 @@ export function PropertyProposalForm({ tenantId, proposal: initialProposal }: Pr
               : { ...fields, expectedVersion: proposal.version }
           )
         : await create.mutateAsync(action === 'save' ? { title: fields.title } : fields);
-      setProposal(saved);
-      setForm(values(saved));
-      if (action === 'submit') setQueued(saved);
-      else setPending(false);
+      if (action === 'submit' && proposal) {
+        const response = await submit.mutateAsync({ expectedVersion: saved.version });
+        setProposal(response);
+        setForm(values(response));
+        setPending(false);
+      } else {
+        setProposal(saved);
+        setForm(values(saved));
+        if (action === 'submit') setQueued(saved);
+        else setPending(false);
+      }
     } catch (cause) {
       setError(errorCopy(cause));
       setPending(false);
