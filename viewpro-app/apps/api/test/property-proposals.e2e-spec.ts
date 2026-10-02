@@ -23,6 +23,8 @@ const proposalFields = {
   propertyType: PropertyType.APARTMENT,
   operationType: PropertyOperationType.SALE,
   totalAreaSqm: 85,
+  ownerName: 'Reference only',
+  ownerEmail: 'reference-only@example.com',
 }
 
 const snapshotKeys = [
@@ -54,6 +56,8 @@ describe('Property proposals seller transport (e2e)', () => {
   let previousPublicErrorEnvelopeEnabled: string | undefined
   const tenantIds = new Set<string>()
   const userIds = new Set<string>()
+  const engagementIds = new Set<string>()
+  const assetIds = new Set<string>()
 
   beforeAll(async () => {
     process.env.NODE_ENV = 'test'
@@ -70,14 +74,26 @@ describe('Property proposals seller transport (e2e)', () => {
   afterEach(async () => {
     const tenants = [...tenantIds]
     const users = [...userIds]
-    let sources: { id: string; propertyAssetId: string }[] = []
+    const engagements = new Set(engagementIds)
+    const assets = new Set(assetIds)
     try {
-      sources = await prisma.propertyEngagement.findMany({
-        where: { tenantId: { in: tenants }, sourceProposalId: { not: null } }, select: { id: true, propertyAssetId: true },
-      })
       await runCleanupSteps([
-        { name: 'source engagements', run: async () => { await prisma.propertyEngagement.deleteMany({ where: { id: { in: sources.map(({ id }) => id) } } }) } },
-        { name: 'captured orphan assets', run: async () => { await prisma.propertyAsset.deleteMany({ where: { id: { in: sources.map(({ propertyAssetId }) => propertyAssetId) } } }) } },
+        { name: 'discover tenant-scoped materialized fixtures', run: async () => {
+          const discoveredEngagements = await prisma.propertyEngagement.findMany({
+            where: { tenantId: { in: tenants } }, select: { id: true, propertyAssetId: true },
+          })
+          for (const engagement of discoveredEngagements) {
+            engagements.add(engagement.id)
+            assets.add(engagement.propertyAssetId)
+          }
+          const discoveredAssets = await prisma.propertyAsset.findMany({
+            where: { createdByUserId: { in: users } }, select: { id: true },
+          })
+          for (const asset of discoveredAssets) assets.add(asset.id)
+        } },
+        { name: 'property agents', run: async () => { await prisma.propertyAgent.deleteMany({ where: { tenantId: { in: tenants }, propertyEngagementId: { in: [...engagements] } } }) } },
+        { name: 'engagements', run: async () => { await prisma.propertyEngagement.deleteMany({ where: { id: { in: [...engagements] }, tenantId: { in: tenants } } }) } },
+        { name: 'tracked assets', run: async () => { await prisma.propertyAsset.deleteMany({ where: { id: { in: [...assets] }, createdByUserId: { in: users } } }) } },
         { name: 'proposal decisions', run: async () => { await prisma.propertyProposalReviewDecision.deleteMany({ where: { tenantId: { in: tenants } } }) } },
         { name: 'proposal rounds', run: async () => { await prisma.propertyProposalReviewRound.deleteMany({ where: { tenantId: { in: tenants } } }) } },
         { name: 'proposals', run: async () => { await prisma.propertyProposal.deleteMany({ where: { tenantId: { in: tenants } } }) } },
@@ -87,11 +103,22 @@ describe('Property proposals seller transport (e2e)', () => {
         { name: 'tenants', run: async () => { await prisma.tenant.deleteMany({ where: { id: { in: tenants } } }) } },
         { name: 'users', run: async () => { await prisma.user.deleteMany({ where: { id: { in: users } } }) } },
       ])
-      const remainingProposals = await prisma.propertyProposal.count({ where: { tenantId: { in: tenants } } })
-      if (remainingProposals !== 0) throw new Error(`Proposal cleanup left ${remainingProposals} rows`)
+      const leftovers = await Promise.all([
+        prisma.propertyAgent.count({ where: { tenantId: { in: tenants }, propertyEngagementId: { in: [...engagements] } } }),
+        prisma.propertyEngagement.count({ where: { id: { in: [...engagements] }, tenantId: { in: tenants } } }),
+        prisma.propertyAsset.count({ where: { id: { in: [...assets] }, createdByUserId: { in: users } } }),
+        prisma.propertyProposal.count({ where: { tenantId: { in: tenants } } }),
+        prisma.propertyEngagement.count({ where: { tenantId: { in: tenants } } }),
+        prisma.propertyAsset.count({ where: { createdByUserId: { in: users } } }),
+        prisma.propertyProposalReviewRound.count({ where: { tenantId: { in: tenants } } }),
+        prisma.propertyProposalReviewDecision.count({ where: { tenantId: { in: tenants } } }),
+      ])
+      if (leftovers.some((count) => count !== 0)) throw new Error(`Fixture cleanup left scoped propertyAgent/propertyEngagement/propertyAsset/proposal/round/decision counts: ${leftovers.join('/')}`)
     } finally {
       tenantIds.clear()
       userIds.clear()
+      engagementIds.clear()
+      assetIds.clear()
     }
   })
 
@@ -217,6 +244,10 @@ describe('Property proposals seller transport (e2e)', () => {
           .set('x-tenant-id', manager.tenantId), 404, 'REQUEST_FAILED')
         expectPublicError(await seller.agent.post(`/api/property-proposals/${proposal.id}/images`)
           .set('x-tenant-id', manager.tenantId), 404, 'REQUEST_FAILED')
+        const before = await canonicalWriteCounts(manager.tenantId, seller.userId)
+        expectPublicError(await seller.agent.post('/api/property-engagements').set('x-tenant-id', manager.tenantId)
+          .send({ title: 'Seller cannot create canonical properties' }), 400, 'REQUEST_FAILED')
+        expect(await canonicalWriteCounts(manager.tenantId, seller.userId)).toEqual(before)
       })
 
       it('guards static reviewer reads, scopes them to the tenant, and never writes on GET', async () => {
@@ -277,6 +308,68 @@ describe('Property proposals seller transport (e2e)', () => {
           .send({ reviewRoundId: proposal.reviewRoundId, reason }), 403, 'PROPERTY_PROPOSAL_SELF_REVIEW_FORBIDDEN')
       })
 
+      it('keeps a rejected proposal editable until explicit resubmission and preserves both rounds', async () => {
+        const { manager, seller } = await sellerInManagedTenant()
+        const proposal = await submitForReview(seller, manager.tenantId)
+        const firstSnapshot = await prisma.propertyProposalReviewRound.findUniqueOrThrow({
+          where: { id: proposal.reviewRoundId },
+          select: { title: true, addressLine: true, city: true, province: true, propertyType: true, operationType: true },
+        })
+        await manager.agent.post(`/api/property-proposals/review/${proposal.id}/reject`).set('x-tenant-id', manager.tenantId)
+          .send({ reviewRoundId: proposal.reviewRoundId, reason: 'Update the property details' }).expect(200)
+
+        const rejected = await seller.agent.get(`/api/property-proposals/${proposal.id}`).set('x-tenant-id', manager.tenantId).expect(200)
+        const edited = await seller.agent.patch(`/api/property-proposals/${proposal.id}`).set('x-tenant-id', manager.tenantId)
+          .send({ title: 'Updated proposal title', expectedVersion: rejected.body.version }).expect(200)
+        expect(edited.body.state).toBe('RECHAZADA')
+        expect(await prisma.propertyProposalReviewRound.count({ where: { proposalId: proposal.id } })).toBe(1)
+
+        const resubmitted = await seller.agent.post(`/api/property-proposals/${proposal.id}/submit`).set('x-tenant-id', manager.tenantId)
+          .send({ expectedVersion: edited.body.version }).expect(200)
+        expect(resubmitted.body.state).toBe('EN_REVISION')
+        expect(resubmitted.body.history.map((round: { roundNumber: number }) => round.roundNumber)).toEqual([2, 1])
+        expect(resubmitted.body.history[0]).toMatchObject({
+          roundNumber: 2, snapshot: expect.objectContaining({ title: 'Updated proposal title' }), decision: null,
+        })
+        expect(resubmitted.body.history[1]).toMatchObject({
+          roundNumber: 1, snapshot: firstSnapshot,
+          decision: expect.objectContaining({ outcome: 'REJECTED', rejectionReason: 'Update the property details' }),
+        })
+        expectSafeDetail(resubmitted.body)
+      })
+
+      it('retries approval after canonical capacity is restored without partial writes', async () => {
+        const { manager, seller } = await sellerInManagedTenant()
+        const proposal = await submitForReview(seller, manager.tenantId)
+        const blocker = await manager.agent.post('/api/property-engagements').set('x-tenant-id', manager.tenantId)
+          .send({ title: 'Capacity blocker', addressLine: 'Capacity Street 1', city: 'Córdoba', province: 'Córdoba', propertyType: PropertyType.APARTMENT, operationType: PropertyOperationType.SALE }).expect(201)
+        await trackEngagement(manager.tenantId, blocker.body.id)
+        await prisma.tenant.update({ where: { id: manager.tenantId }, data: { maxActivePropertyEngagements: 1 } })
+        const beforeAssets = await prisma.propertyAsset.count({ where: { createdByUserId: seller.userId } })
+        const failed = await manager.agent.post(`/api/property-proposals/review/${proposal.id}/approve`).set('x-tenant-id', manager.tenantId)
+          .send({ reviewRoundId: proposal.reviewRoundId })
+        expect(failed.status).toBe(409)
+        expect(failed.body.errorCode).toBe('TENANT_ACTIVE_PROPERTY_ENGAGEMENT_LIMIT_EXCEEDED')
+        expect(await prisma.propertyProposal.findUniqueOrThrow({ where: { id: proposal.id }, select: { state: true } })).toEqual({ state: 'EN_REVISION' })
+        expect(await prisma.propertyEngagement.count({ where: { tenantId: manager.tenantId, sourceProposalId: proposal.id } })).toBe(0)
+        expect(await prisma.propertyProposalReviewDecision.count({ where: { tenantId: manager.tenantId, reviewRoundId: proposal.reviewRoundId } })).toBe(0)
+        expect(await prisma.propertyAsset.count({ where: { createdByUserId: seller.userId } })).toBe(beforeAssets)
+
+        await manager.agent.post(`/api/property-engagements/${blocker.body.id}/archive`).set('x-tenant-id', manager.tenantId)
+          .send({ reason: 'Restore proposal capacity' }).expect(201)
+        const approved = await manager.agent.post(`/api/property-proposals/review/${proposal.id}/approve`).set('x-tenant-id', manager.tenantId)
+          .send({ reviewRoundId: proposal.reviewRoundId }).expect(200)
+        expect(approved.body).toMatchObject({ state: 'APROBADA', canonicalEngagementId: expect.any(String) })
+        const source = await prisma.propertyEngagement.findFirstOrThrow({
+          where: { tenantId: manager.tenantId, sourceProposalId: proposal.id },
+          select: { id: true, propertyAssetId: true },
+        })
+        expect(source.id).toBe(approved.body.canonicalEngagementId)
+        expect(await prisma.propertyProposalReviewDecision.count({ where: { tenantId: manager.tenantId, reviewRoundId: proposal.reviewRoundId } })).toBe(1)
+        expect(await prisma.propertyAsset.count({ where: { id: source.propertyAssetId, createdByUserId: seller.userId } })).toBe(1)
+        await trackEngagement(manager.tenantId, source.id)
+      })
+
       it('approves once through the mounted materializer and leaves no owner, image, or event side effects', async () => {
         const { manager, seller } = await sellerInManagedTenant()
         const proposal = await submitForReview(seller, manager.tenantId)
@@ -286,8 +379,15 @@ describe('Property proposals seller transport (e2e)', () => {
         expect(approved.body).toMatchObject({ id: proposal.id, state: 'APROBADA', canonicalEngagementId: expect.any(String) })
         expectSafeReviewerDetail(approved.body)
         const source = await prisma.propertyEngagement.findFirstOrThrow({ where: { tenantId: manager.tenantId, sourceProposalId: proposal.id }, include: { propertyAsset: true, agents: true } })
+        engagementIds.add(source.id)
+        assetIds.add(source.propertyAssetId)
         expect(source).toMatchObject({ status: 'CAPTURE', createdByUserId: seller.userId, propertyAsset: { createdByUserId: seller.userId }, agents: [{ agentUserId: seller.userId, assignedByUserId: manager.userId, isPrimary: false }] })
         expect(approved.body.canonicalEngagementId).toBe(source.id)
+        const sellerDetail = await seller.agent.get(`/api/property-proposals/${proposal.id}`).set('x-tenant-id', manager.tenantId).expect(200)
+        expectSafeDetail(sellerDetail.body)
+        expect(sellerDetail.body.canonicalEngagementId).toBe(source.id)
+        const canonicalDetail = await seller.agent.get(`/api/property-engagements/${source.id}`).set('x-tenant-id', manager.tenantId).expect(200)
+        expect(canonicalDetail.body).toMatchObject({ id: source.id, property: { id: source.propertyAssetId } })
         const counts = await approvedAggregateCounts(manager.tenantId, proposal.reviewRoundId, source.propertyAssetId, source.id)
         expect(counts).toEqual([1, 1, 1, 1, 0, 0, ...effects])
         const replay = await manager.agent.post(`/api/property-proposals/review/${proposal.id}/approve`).set('x-tenant-id', manager.tenantId)
@@ -295,6 +395,14 @@ describe('Property proposals seller transport (e2e)', () => {
         expect(replay.body.canonicalEngagementId).toBe(source.id)
         expect(await approvedAggregateCounts(manager.tenantId, proposal.reviewRoundId, source.propertyAssetId, source.id)).toEqual(counts)
         expectSafeReviewerDetail(replay.body)
+        await prisma.propertyAgent.deleteMany({ where: { tenantId: manager.tenantId, propertyEngagementId: source.id, agentUserId: seller.userId } })
+        const proposalAfterAssignmentRemoval = await seller.agent
+          .get(`/api/property-proposals/${proposal.id}`)
+          .set('x-tenant-id', manager.tenantId)
+          .expect(200)
+        expectSafeDetail(proposalAfterAssignmentRemoval.body)
+        expect(proposalAfterAssignmentRemoval.body).not.toHaveProperty('canonicalEngagementId')
+        expectPublicError(await seller.agent.get(`/api/property-engagements/${source.id}`).set('x-tenant-id', manager.tenantId), 404, 'REQUEST_FAILED')
       })
 
       async function sellerInManagedTenant() {
@@ -336,6 +444,21 @@ describe('Property proposals seller transport (e2e)', () => {
     const submitted = await seller.agent.post(`/api/property-proposals/${draft.id}/submit`).set('x-tenant-id', tenantId)
       .send({ expectedVersion: updated.body.version }).expect(200)
     return { id: draft.id, reviewRoundId: submitted.body.currentReviewRoundId as string }
+  }
+
+  async function trackEngagement(tenantId: string, engagementId: string) {
+    const fixture = await prisma.propertyEngagement.findFirstOrThrow({
+      where: { id: engagementId, tenantId }, select: { id: true, propertyAssetId: true },
+    })
+    engagementIds.add(fixture.id)
+    assetIds.add(fixture.propertyAssetId)
+  }
+
+  function canonicalWriteCounts(tenantId: string, creatorUserId: string) {
+    return Promise.all([
+      prisma.propertyEngagement.count({ where: { tenantId } }),
+      prisma.propertyAsset.count({ where: { createdByUserId: creatorUserId } }),
+    ])
   }
 
   function reviewerReadCounts(tenantId: string, userId: string) {

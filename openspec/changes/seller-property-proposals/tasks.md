@@ -397,12 +397,15 @@ Manifest: reviewer detail/reject-dialog/page, direct page boundary `apps/app-new
 - [x] RED → GREEN → TRIANGULATE → REFACTOR the direct reviewer-detail page boundary in `apps/app-new/src/app/dashboard/property-proposals/review/[proposalId]/page.test.tsx` with current-round approve/reject, bounded reason UI, pending lockout, safe copy, no optimistic success, 409 refresh, and canonical invalidation. <!-- sdd-owner: implementation -->
 - [x] Run the manifest reviewer detail/cache tests, App typecheck, and strict lint; clear mutation/query/router fixtures. <!-- sdd-owner: implementation -->
 
-### U22A — API seeded integration (verification-only)
+### U22A — API seeded integration (authorized test-authoring expansion)
 
-Manifest: `apps/api/test/property-proposals.e2e-spec.ts`, `property-proposal-fixtures.ts`, and `property-engagements.e2e-spec.ts`.
+The user selected re-scoping U22 from verification-only to author missing API/App tests and helpers. U22A is the API-only first work unit. The scoped `property-proposals.e2e-spec.ts` runtime passed: 1 file, 10 tests on 2026-10-01 at 15:51, against disposable PostgreSQL 16 container `viewpro-issue306-u22-test-pg` (no volume, `127.0.0.1:54096`, database `property_proposals_u22_test`); all 32 migrations were applied and the strict localhost/`_test` guard passed immediately before testing. Do not run `property-engagements.e2e-spec.ts` because its teardown has broad unfiltered global `deleteMany()`. U22B seeded runtime remains pending.
 
-- [ ] Execute approve, reject/edit/resubmit, isolation, result visibility, quota retry, owner/image/side-effect exclusion, seller denial, manager direct-create, and canonical compatibility journeys only after their behavior units are green. <!-- sdd-owner: implementation -->
-- [ ] Report exact observed outcomes, skips, blockers, and cleanup; do not introduce a new RED or production fix in this integration unit. <!-- sdd-owner: implementation -->
+Manifest: `apps/api/test/property-proposals.e2e-spec.ts`, `property-proposal-fixtures.ts` (create only if it reduces duplicate setup and guarantees run-scoped cleanup), and `property-engagements.e2e-spec.ts`.
+
+- [x] Author missing API journeys only: rejected edit plus explicit resubmission/history, quota-blocked approval retry, direct canonical-create denial with no-write assertions, and authorized result detail plus result-link omission after removal of the proposer's assignment; retain existing approval side-effect and manager direct-create coverage. The omission assertion covers this assignment-removal scenario only, not cross-tenant, inactive, or other lost-capability cases. <!-- sdd-owner: implementation -->
+- [x] Make cleanup failure-safe: explicitly discover engagements in the exact fixture tenants and assets owned by exact fixture users, union with explicit ID sets, continue ordered assignment → engagement → asset → proposal-related cleanup if discovery fails, and retain scoped zero-leftover checks. No shared helper is needed for this single suite. <!-- sdd-owner: implementation -->
+- [x] Scoped runtime journeys: `pnpm --filter @viewpro/api exec vitest run test/property-proposals.e2e-spec.ts` passed: 1 file, 10 tests on 2026-10-01 at 15:51. An earlier run had 3 failed assertions; test-only corrections kept role-change GET at 403 and direct seller canonical-create denial at 400, asserted newest-first round history individually, and used `property.id` for canonical detail's nested asset. No product code changed. Source confirms scoped zero-leftover assertions for agents, engagements, assets, proposals, rounds, and decisions. Never run `property-engagements.e2e-spec.ts` because its teardown has broad unfiltered global `deleteMany()`. U22B seeded runtime remains pending. <!-- sdd-owner: implementation -->
 
 ### U22B — Seeded App integration (verification-only)
 
