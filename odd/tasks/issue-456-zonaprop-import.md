@@ -10,7 +10,8 @@ Delivery: `feature-branch-chain` (user-selected) — draft tracker PR to `develo
 - [x] Decide publisher verification without manual 24/7 review.
 - [x] Draft OpenSpec exploration, proposal, design, delta specs and tasks with a work-unit delivery plan.
 - [x] Obtain user acceptance of the design and slicing before implementation.
-- [ ] U1 — Schema, tenant isolation, import records, external references and publisher claims.
+- [ ] U1a — External property references and publisher claims (schema, migration, isolation, constraint tests).
+- [ ] U1b — Import batch, candidate and durable work records (schema, migration, isolation, constraint tests).
 - [ ] U2 — URL/publisher parsing, mapping, Córdoba/CABA fixtures and contract tests.
 - [ ] U3 — Fixture-fed staging and idempotent confirmation.
 - [ ] U4 — Publisher verification ladder.
