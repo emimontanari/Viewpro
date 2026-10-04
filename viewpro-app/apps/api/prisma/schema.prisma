@@ -57,6 +57,23 @@ enum PropertyOperationType {
   RENT
 }
 
+enum ExternalPropertySource {
+  ZONAPROP
+}
+
+enum PublisherClaimState {
+  PENDING
+  APPROVED
+  REJECTED
+  REVOKED
+}
+
+enum PublisherClaimVerificationMethod {
+  MANAGER_DOMAIN
+  EMAIL_CODE
+  LISTING_CODE
+}
+
 enum PropertyProposalStatus {
   BORRADOR
   EN_REVISION
@@ -212,6 +229,7 @@ model User {
   refreshTokens           RefreshToken[]
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
+  publisherClaimEvents PublisherClaimEvent[]
 
   createdPropertyAssets        PropertyAsset[]
   createdPropertyEngagements   PropertyEngagement[]
@@ -268,6 +286,9 @@ model Tenant {
   propertyProposals                  PropertyProposal[]
   propertyProposalReviewRounds       PropertyProposalReviewRound[]
   propertyProposalReviewDecisions    PropertyProposalReviewDecision[]
+  externalPropertyReferences         ExternalPropertyReference[]
+  publisherClaims                    PublisherClaim[]
+  publisherClaimEvents               PublisherClaimEvent[]
 
   @@map("tenants")
 }
@@ -549,6 +570,7 @@ model PropertyEngagement {
   notifications        Notification[]
   statusChangeRequests StatusChangeRequest[]
   sourceProposal       PropertyProposal? @relation(fields: [sourceProposalId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+  externalPropertyReferences ExternalPropertyReference[]
 
   @@unique([sourceProposalId, tenantId])
   @@index([tenantId, status, createdAt])
@@ -851,6 +873,64 @@ model PlatformOutboxEvent {
 
   @@index([occurredAt, seqNo])
   @@map("platform_outbox_events")
+}
+
+model ExternalPropertyReference {
+  id                    String                @id @default(uuid())
+  tenantId              String
+  externalSource        ExternalPropertySource
+  externalId            String
+  propertyEngagementId  String
+  createdAt             DateTime              @default(now())
+
+  tenant               Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyEngagement   PropertyEngagement  @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, externalSource, externalId])
+  @@index([propertyEngagementId])
+  @@map("external_property_references")
+}
+
+model PublisherClaim {
+  id                  String                         @id @default(uuid())
+  tenantId            String
+  externalSource      ExternalPropertySource
+  publisherId         String
+  state               PublisherClaimState            @default(PENDING)
+  verificationMethod  PublisherClaimVerificationMethod?
+  approvedAt          DateTime?
+  rejectedAt          DateTime?
+  revokedAt           DateTime?
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+
+  tenant Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  events PublisherClaimEvent[]
+
+  // PostgreSQL-only partial unique index: approved claims are exclusive; pending claims are not.
+  // Enforced in the additive migration because Prisma cannot model a partial unique constraint.
+  @@index([externalSource, publisherId, state])
+  @@index([tenantId, state])
+  @@map("publisher_claims")
+}
+
+model PublisherClaimEvent {
+  id              String              @id @default(uuid())
+  tenantId        String
+  publisherClaimId String
+  eventType       String
+  actorUserId     String?
+  verificationMethod PublisherClaimVerificationMethod?
+  reason          String?
+  metadata        Json?
+  createdAt       DateTime            @default(now())
+
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  publisherClaim  PublisherClaim @relation(fields: [publisherClaimId], references: [id], onDelete: Cascade)
+  actorUser       User?         @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, publisherClaimId, createdAt])
+  @@map("publisher_claim_events")
 }
 
 model StatusChangeRequest {
