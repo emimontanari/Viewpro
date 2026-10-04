@@ -36,6 +36,7 @@ import { PropertyDetailHeader, PropertyReadOnlySections } from './property-detai
 import { PropertyStatusSummary } from './property-status-summary';
 import { DeletePropertyImageDialog, PropertyImagePreviewDialog } from './property-image-dialogs';
 import { PropertyImageCarousel } from './property-images';
+import { PropertyDetailNavigation } from './property-detail-navigation';
 import {
   PropertyBasicFields,
   PropertyCharacteristicsFields,
@@ -490,50 +491,24 @@ function PropertyEngagementDetails({
         </CardHeader>
 
         <CardContent className='space-y-6 p-4 sm:p-6'>
+          <PropertyDetailNavigation />
           <div className='grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)] xl:items-start'>
-            <div className='min-w-0 space-y-4'>
+            <div id='property-data-images' className='min-w-0 space-y-4'>
               <PropertyImageCarousel
                 images={getCarouselImages(propertyEngagement)}
                 title={propertyEngagement.property.title}
               />
 
               <PropertyReadOnlySections
-                className='hidden border-t border-border/40 pt-4 xl:block'
-                density='compact'
+                className='border-t border-border/40 pt-4'
                 propertyEngagement={propertyEngagement}
               />
             </div>
 
-            <aside className='flex flex-col gap-3 rounded-2xl border bg-card p-3 shadow-xs sm:p-4'>
-              {/* T-28: Pending chip + T-26: Manager PendingRequestCard */}
-              {!isArchived && pendingRequest && canManageProperties && (
-                <PendingRequestCard
-                  request={pendingRequest}
-                  propertyTitle={propertyEngagement.property.title}
-                  requesterName={pendingRequest.requestedByUserId}
-                  onApprove={handleApproveFromDetail}
-                  onReject={(requestId) => setRejectFromDetail({ open: true, requestId })}
-                />
-              )}
-              {/* T-27: Seller-only RequestStatusChangeDialog */}
-              {!isArchived && canCreateMovements && !canManageProperties && (
-                <RequestStatusChangeDialog
-                  engagementId={propertyEngagement.id}
-                  currentStatus={propertyEngagement.status}
-                  onSuccess={() =>
-                    queryClient.invalidateQueries({
-                      queryKey: productKeys.detail(propertyEngagement.id)
-                    })
-                  }
-                />
-              )}
-
-              <PropertyStatusSummary
-                canUpdateStatus={canManageProperties}
-                isArchived={isArchived}
-                propertyEngagement={propertyEngagement}
-              />
-
+            <aside
+              id='property-people'
+              className='flex flex-col gap-3 rounded-2xl border bg-card p-3 shadow-xs sm:p-4'
+            >
               <PropertyOwnerSection
                 canManageOwners={canManageProperties}
                 isArchived={isArchived}
@@ -553,22 +528,53 @@ function PropertyEngagementDetails({
             </aside>
           </div>
 
-          <PropertyReadOnlySections className='xl:hidden' propertyEngagement={propertyEngagement} />
+          <section id='property-activity' className='space-y-6'>
+            {/* T-28: Pending chip + T-26: Manager PendingRequestCard */}
+            {!isArchived && pendingRequest && canManageProperties && (
+              <PendingRequestCard
+                request={pendingRequest}
+                propertyTitle={propertyEngagement.property.title}
+                requesterName={pendingRequest.requestedByUserId}
+                onApprove={handleApproveFromDetail}
+                onReject={(requestId) => setRejectFromDetail({ open: true, requestId })}
+              />
+            )}
+            {/* T-27: Seller-only RequestStatusChangeDialog */}
+            {!isArchived && canCreateMovements && !canManageProperties && (
+              <RequestStatusChangeDialog
+                engagementId={propertyEngagement.id}
+                currentStatus={propertyEngagement.status}
+                onSuccess={() =>
+                  queryClient.invalidateQueries({
+                    queryKey: productKeys.detail(propertyEngagement.id)
+                  })
+                }
+              />
+            )}
 
-          <PropertyMovementHistory
-            isError={movements.isError}
-            isLoading={movements.isLoading}
-            movements={movements.items}
-          />
+            <PropertyStatusSummary
+              canUpdateStatus={canManageProperties}
+              isArchived={isArchived}
+              propertyEngagement={propertyEngagement}
+            />
 
-          <PropertyDocumentRequests
-            canRequestDocuments={canRequestDocuments}
-            canReviewDocuments={canReviewDocuments}
-            isArchived={isArchived}
-            owners={propertyEngagement.property.owners}
-            productId={propertyEngagement.id}
-            tenantId={propertyEngagement.tenantId}
-          />
+            <PropertyMovementHistory
+              isError={movements.isError}
+              isLoading={movements.isLoading}
+              movements={movements.items}
+            />
+          </section>
+
+          <section id='property-documents' className='space-y-3'>
+            <PropertyDocumentRequests
+              canRequestDocuments={canRequestDocuments}
+              canReviewDocuments={canReviewDocuments}
+              isArchived={isArchived}
+              owners={propertyEngagement.property.owners}
+              productId={propertyEngagement.id}
+              tenantId={propertyEngagement.tenantId}
+            />
+          </section>
         </CardContent>
         <CreatePropertyMovementDialog
           canUpdateStatus={canManageProperties}
