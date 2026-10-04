@@ -36,6 +36,7 @@ import { PropertyDetailHeader, PropertyReadOnlySections } from './property-detai
 import { PropertyStatusSummary } from './property-status-summary';
 import { DeletePropertyImageDialog, PropertyImagePreviewDialog } from './property-image-dialogs';
 import { PropertyImageCarousel } from './property-images';
+import { PropertyDetailNavigation } from './property-detail-navigation';
 import {
   PropertyBasicFields,
   PropertyCharacteristicsFields,
@@ -59,7 +60,11 @@ import {
   TENANT_PERMISSIONS
 } from '@/lib/session';
 import { useActiveTenant } from '@/lib/session-context';
-import { useStatusChangeRequestsByEngagement, useApproveStatusChangeRequest, useRejectStatusChangeRequest } from '@/features/status-change-requests/api/queries';
+import {
+  useStatusChangeRequestsByEngagement,
+  useApproveStatusChangeRequest,
+  useRejectStatusChangeRequest
+} from '@/features/status-change-requests/api/queries';
 import { PendingRequestCard } from '@/features/status-change-requests/components/pending-request-card';
 import { RequestStatusChangeDialog } from '@/features/status-change-requests/components/request-status-change-dialog';
 import {
@@ -389,8 +394,14 @@ function PropertyEngagementDetails({
   const queryClient = useQueryClient();
   const isArchived = isArchivedProduct(propertyEngagement);
   const canManageProperties = canManagePropertyEngagements(activeMembership);
-  const canCreateMovements = hasTenantPermission(activeMembership, TENANT_PERMISSIONS.MOVEMENTS_CREATE);
-  const canRequestDocuments = hasTenantPermission(activeMembership, TENANT_PERMISSIONS.DOCUMENTS_REQUEST);
+  const canCreateMovements = hasTenantPermission(
+    activeMembership,
+    TENANT_PERMISSIONS.MOVEMENTS_CREATE
+  );
+  const canRequestDocuments = hasTenantPermission(
+    activeMembership,
+    TENANT_PERMISSIONS.DOCUMENTS_REQUEST
+  );
   const canReviewDocuments = canReviewTenantDocuments(activeMembership);
   const movements = usePropertyMovementsController({
     isArchived,
@@ -460,41 +471,64 @@ function PropertyEngagementDetails({
 
   return (
     <>
-    <Card className='mx-auto w-full overflow-hidden'>
-      <CardHeader className='border-b bg-muted/20'>
-        <PropertyDetailHeader
-          canAddMovement={canCreateMovements}
-          canEdit={canManageProperties}
-          canRestore={canManageProperties}
-          isAddingMovement={movements.isCreatingMovement}
-          isArchived={isArchived}
-          isRestoring={restoreMutation.isPending}
-          hasPendingStatusRequest={hasPendingStatusRequest}
-          pageTitle={pageTitle}
-          propertyEngagement={propertyEngagement}
-          onAddMovement={() => movements.setDialogOpen(true)}
-          onBackToList={() => router.push('/dashboard/product')}
-          onEdit={() => router.push(`/dashboard/product/${propertyEngagement.id}/edit`)}
-          onRestore={handleRestoreProperty}
-        />
-      </CardHeader>
+      <Card className='mx-auto w-full overflow-hidden'>
+        <CardHeader className='border-b bg-muted/20'>
+          <PropertyDetailHeader
+            canAddMovement={canCreateMovements}
+            canEdit={canManageProperties}
+            canRestore={canManageProperties}
+            isAddingMovement={movements.isCreatingMovement}
+            isArchived={isArchived}
+            isRestoring={restoreMutation.isPending}
+            hasPendingStatusRequest={hasPendingStatusRequest}
+            pageTitle={pageTitle}
+            propertyEngagement={propertyEngagement}
+            onAddMovement={() => movements.setDialogOpen(true)}
+            onBackToList={() => router.push('/dashboard/product')}
+            onEdit={() => router.push(`/dashboard/product/${propertyEngagement.id}/edit`)}
+            onRestore={handleRestoreProperty}
+          />
+        </CardHeader>
 
-      <CardContent className='space-y-6 p-4 sm:p-6'>
-        <div className='grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)] xl:items-start'>
-          <div className='min-w-0 space-y-4'>
-            <PropertyImageCarousel
-              images={getCarouselImages(propertyEngagement)}
-              title={propertyEngagement.property.title}
-            />
+        <CardContent className='space-y-6 p-4 sm:p-6'>
+          <PropertyDetailNavigation />
+          <div className='grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)] xl:items-start'>
+            <div id='property-data-images' className='min-w-0 space-y-4'>
+              <PropertyImageCarousel
+                images={getCarouselImages(propertyEngagement)}
+                title={propertyEngagement.property.title}
+              />
 
-            <PropertyReadOnlySections
-              className='hidden border-t border-border/40 pt-4 xl:block'
-              density='compact'
-              propertyEngagement={propertyEngagement}
-            />
+              <PropertyReadOnlySections
+                className='border-t border-border/40 pt-4'
+                propertyEngagement={propertyEngagement}
+              />
+            </div>
+
+            <aside
+              id='property-people'
+              className='flex flex-col gap-3 rounded-2xl border bg-card p-3 shadow-xs sm:p-4'
+            >
+              <PropertyOwnerSection
+                canManageOwners={canManageProperties}
+                isArchived={isArchived}
+                ownerEmail={propertyEngagement.property.ownerEmail}
+                ownerName={propertyEngagement.property.ownerName}
+                owners={propertyEngagement.property.owners}
+                productId={propertyEngagement.id}
+              />
+
+              <PropertyAgentsSection
+                agents={propertyEngagement.agents}
+                canManageAgents={canManageProperties}
+                isArchived={isArchived}
+                productId={propertyEngagement.id}
+                tenantId={propertyEngagement.tenantId}
+              />
+            </aside>
           </div>
 
-          <aside className='flex flex-col gap-3 rounded-2xl border bg-card p-3 shadow-xs sm:p-4'>
+          <section id='property-activity' className='space-y-6'>
             {/* T-28: Pending chip + T-26: Manager PendingRequestCard */}
             {!isArchived && pendingRequest && canManageProperties && (
               <PendingRequestCard
@@ -524,101 +558,83 @@ function PropertyEngagementDetails({
               propertyEngagement={propertyEngagement}
             />
 
-            <PropertyOwnerSection
-              canManageOwners={canManageProperties}
-              isArchived={isArchived}
-              ownerEmail={propertyEngagement.property.ownerEmail}
-              ownerName={propertyEngagement.property.ownerName}
-              owners={propertyEngagement.property.owners}
-              productId={propertyEngagement.id}
+            <PropertyMovementHistory
+              isError={movements.isError}
+              isLoading={movements.isLoading}
+              movements={movements.items}
             />
+          </section>
 
-            <PropertyAgentsSection
-              agents={propertyEngagement.agents}
-              canManageAgents={canManageProperties}
+          <section id='property-documents' className='space-y-3'>
+            <PropertyDocumentRequests
+              canRequestDocuments={canRequestDocuments}
+              canReviewDocuments={canReviewDocuments}
               isArchived={isArchived}
+              owners={propertyEngagement.property.owners}
               productId={propertyEngagement.id}
               tenantId={propertyEngagement.tenantId}
             />
-          </aside>
-        </div>
-
-        <PropertyReadOnlySections className='xl:hidden' propertyEngagement={propertyEngagement} />
-
-        <PropertyMovementHistory
-          isError={movements.isError}
-          isLoading={movements.isLoading}
-          movements={movements.items}
+          </section>
+        </CardContent>
+        <CreatePropertyMovementDialog
+          canUpdateStatus={canManageProperties}
+          open={movements.dialogOpen}
+          isSubmitting={movements.isCreatingMovement}
+          onOpenChange={movements.setDialogOpen}
+          onSubmit={movements.handleCreateMovement}
         />
+      </Card>
 
-        <PropertyDocumentRequests
-          canRequestDocuments={canRequestDocuments}
-          canReviewDocuments={canReviewDocuments}
-          isArchived={isArchived}
-          owners={propertyEngagement.property.owners}
-          productId={propertyEngagement.id}
-          tenantId={propertyEngagement.tenantId}
-        />
-      </CardContent>
-      <CreatePropertyMovementDialog
-        canUpdateStatus={canManageProperties}
-        open={movements.dialogOpen}
-        isSubmitting={movements.isCreatingMovement}
-        onOpenChange={movements.setDialogOpen}
-        onSubmit={movements.handleCreateMovement}
-      />
-    </Card>
-
-    {/* T-26: Reject dialog for manager on property detail */}
-    <Dialog
-      open={rejectFromDetail.open}
-      onOpenChange={(open) => {
-        if (!open) {
-          setRejectFromDetail({ open: false, requestId: '' });
-          setRejectComment('');
-        }
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Rechazar solicitud</DialogTitle>
-          <DialogDescription>
-            Indicá el motivo del rechazo. El vendedor recibirá esta información.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleRejectFromDetailSubmit} className='flex flex-col gap-4'>
-          <div className='flex flex-col gap-1.5'>
-            <Label htmlFor='detail-resolution-comment'>Motivo del rechazo</Label>
-            <Textarea
-              id='detail-resolution-comment'
-              value={rejectComment}
-              onChange={(e) => setRejectComment(e.target.value)}
-              placeholder='Ej: Documentación incompleta...'
-              maxLength={1000}
-              rows={4}
-              required
-              aria-required='true'
-            />
-          </div>
-          <div className='flex justify-end gap-2'>
-            <Button
-              type='button'
-              variant='outline'
-              onClick={() => setRejectFromDetail({ open: false, requestId: '' })}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type='submit'
-              variant='destructive'
-              disabled={!rejectComment.trim() || rejectMutation.isPending}
-            >
-              {rejectMutation.isPending ? 'Rechazando...' : 'Rechazar'}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+      {/* T-26: Reject dialog for manager on property detail */}
+      <Dialog
+        open={rejectFromDetail.open}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRejectFromDetail({ open: false, requestId: '' });
+            setRejectComment('');
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rechazar solicitud</DialogTitle>
+            <DialogDescription>
+              Indicá el motivo del rechazo. El vendedor recibirá esta información.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleRejectFromDetailSubmit} className='flex flex-col gap-4'>
+            <div className='flex flex-col gap-1.5'>
+              <Label htmlFor='detail-resolution-comment'>Motivo del rechazo</Label>
+              <Textarea
+                id='detail-resolution-comment'
+                value={rejectComment}
+                onChange={(e) => setRejectComment(e.target.value)}
+                placeholder='Ej: Documentación incompleta...'
+                maxLength={1000}
+                rows={4}
+                required
+                aria-required='true'
+              />
+            </div>
+            <div className='flex justify-end gap-2'>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => setRejectFromDetail({ open: false, requestId: '' })}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type='submit'
+                variant='destructive'
+                disabled={!rejectComment.trim() || rejectMutation.isPending}
+              >
+                {rejectMutation.isPending ? 'Rechazando...' : 'Rechazar'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
