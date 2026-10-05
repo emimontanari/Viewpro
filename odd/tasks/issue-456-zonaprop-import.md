@@ -14,7 +14,7 @@ Delivery: `feature-branch-chain` (user-selected) — draft tracker PR to `develo
 - [x] U1b — Import batch, candidate and durable work records (schema, migration, isolation, constraint tests). Commit `dd80d712`, PR #636.
 - [x] U2a — Shape-independent parsing and normalization: advertiser/listing URLs, city/province split, type table, price/currency pair, feature codes, phone/domain normalization. Commits `53d385bd` + `6b865a83`, PR #637.
 - [ ] U2b — Raw payload adapter with captured Córdoba/CABA fixtures and drift contract tests (blocked until the user creates an Apify account).
-- [ ] U3a — Fixture-fed staging: batch creation, candidate ingestion from normalized input, states, edit/exclude, listing.
+- [x] U3a — Fixture-fed staging: batch creation, candidate ingestion from normalized input, states, edit/exclude, listing. Commits `c1c95beb` + `6c262e53`.
 - [ ] U3b — Idempotent confirmation: materialization through the canonical create/capacity path, external references, tenant equality, permission revalidation, partial retry, concurrency.
 - [ ] U4 — Publisher verification ladder.
 - [ ] U5 — Apify runs, webhook and durable work rows.
@@ -46,4 +46,5 @@ U1b: commit `dd80d712`, 370+/6−; RED missing models + inventory 31≠34; focus
 U2 split: the discovery doc does not fix raw field paths for price/currency, operation, title, garages or agency email, and no captured payloads exist in the repo. Inventing paths was rejected; U2a covers shape-independent logic now, U2b waits for captured payloads. User will create the Apify account later; U5 and U8 also depend on it.
 U2a: 226+/2−, 27 tests; RDD `review-13f531e8dc9d0c1d` flagged inherited feature codes, fractional areas and zero-cent prices → fixed test-first in `6b865a83`, RDD `review-dbaa57bbacd33826` clean.
 U3 pre-split into U3a/U3b: staging and confirmation together would exceed 400 lines.
+U3a: parent review of the first draft found re-staging could reset CONFIRMED/IMPORTED rows (double-import risk), READY rows unselected, a wrong Córdoba fixture and inverted architecture → reworked to mirror property-proposals. RDD `review-d599a0c331d05dd8` then flagged stale features on re-stage and a read-then-write state race; fixing exposed missing `ageYears`/`orientation` candidate columns (would crash real payloads) and Int area columns vs decimal areas. Fixed test-first in `6c262e53` with an additive migration (Prisma's generated SQL included unrelated develop drift — trimmed to the two columns); RDD `review-cb5f0cc031e7cf54` approved. Full API suite 183 files / 1,845 tests green.
 Local test DBs: use `127.0.0.1` (localhost resolves to IPv6 and Colima does not answer). Isolated bases `viewpro_456_import`, `viewpro_456_test`.
