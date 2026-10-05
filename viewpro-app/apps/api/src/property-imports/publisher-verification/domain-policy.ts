@@ -10,27 +10,10 @@ export interface PublisherDomainPolicyInput {
   };
 }
 
-export interface PublisherDomainPolicyResult {
-  eligible: boolean;
-  continueProof: boolean;
+export interface PublisherDomainSignalResult {
+  domainMatch: boolean;
+  proofRequired: true;
 }
-
-// Consumer mailbox providers are not evidence of an organization's domain.
-const GENERIC_EMAIL_DOMAINS = new Set([
-  'gmail.com',
-  'googlemail.com',
-  'outlook.com',
-  'hotmail.com',
-  'live.com',
-  'yahoo.com',
-  'icloud.com',
-  'me.com',
-  'aol.com',
-  'proton.me',
-  'protonmail.com',
-  'gmx.com',
-  'mail.com',
-]);
 
 function normalizedEmailDomain(email: string): string | null {
   const normalized = email.trim().toLowerCase();
@@ -48,18 +31,17 @@ function normalizedEmailDomain(email: string): string | null {
 }
 
 /**
- * Pure eligibility decision only: this does not acquire trusted provider or identity provenance,
- * persist or approve a claim, nor prove provenance through caller-supplied input values.
+ * Domain equality is context only, never claim proof. Inputs must be supplied from trusted
+ * provider-published contact and current verified identity/membership sources by a future caller.
  */
-export function evaluatePublisherDomainPolicy(
+export function evaluatePublisherDomainSignal(
   input: PublisherDomainPolicyInput,
-): PublisherDomainPolicyResult {
+): PublisherDomainSignalResult {
   const publisherDomain = normalizedEmailDomain(input.publisherEmail);
   const userDomain = normalizedEmailDomain(input.userEmail);
-  const eligible = Boolean(
+  const domainMatch = Boolean(
     publisherDomain &&
     userDomain &&
-    !GENERIC_EMAIL_DOMAINS.has(publisherDomain) &&
     publisherDomain === userDomain &&
     input.emailVerifiedAt instanceof Date &&
     Number.isFinite(input.emailVerifiedAt.getTime()) &&
@@ -67,8 +49,5 @@ export function evaluatePublisherDomainPolicy(
     input.membership.role === 'PRINCIPAL_MANAGER' &&
     input.membership.tenantId === input.membership.currentTenantId,
   );
-
-  // Generic/malformed/mismatched domains and ineligible identities continue through proof,
-  // preserving later email-code fallback rather than rejecting the publisher claim.
-  return { eligible, continueProof: !eligible };
+  return { domainMatch, proofRequired: true };
 }

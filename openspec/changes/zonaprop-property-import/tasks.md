@@ -6,7 +6,7 @@
 2. **U2 — URL/publisher parsing, mapping, fixtures** (≈250–350). Canonical parser, publisher checks, city/province and feature/type/price mapping, Córdoba/CABA fixtures and contract tests. Depends U1 contracts; independently testable and shippable as library groundwork.
 3. **U3 — Fixture-fed staging and idempotent confirmation** (≈350–400). Tenant staging, states, field edits, external reference uniqueness, permission revalidation, canonical creation/capacity reuse, partial retry. Depends U1/U2; earliest useful vertical slice, no Apify required.
 4. **U4 — Verification ladder** (split into bounded children; not complete until all land):
-   - **U4a — Pure domain policy** (implemented; review/publication pending; ≤400 authored lines incl tests): exact normalized non-generic domain match; require active tenant `PRINCIPAL_MANAGER` and verified user email; generic/malformed/mismatched inputs continue proof. No persistence, approval, or provenance acquisition. Test-first malformed-local RED (3 failing cases) → fixed; focused suite 19/19.
+   - **U4a — Pure domain signal** (corrected implementation pending native review/publication; ≤400 cumulative authored lines incl tests): normalized exact full-domain equality may signal context only for a verified active same-tenant `PRINCIPAL_MANAGER`; all outcomes require proof, including public-domain matches. No denylist, persistence, approval, or provenance acquisition. No behavioral RED was captured: the initial run failed because the renamed export was absent; focused suite 16/16 GREEN after implementation; full API suite 185 files / 1,870 tests, `tsc --noEmit`, lint, and diff check passed.
    - **U4b — Trusted provider/identity seam and atomic claim approval** (future): provider-sourced publisher contact + server-side current identity, approved-only conflict serialization/audit.
    - **U4c — Email challenge** (future): Resend delivery, HMAC challenge storage, TTL/attempt/resend limits.
    - **U4d — Listing-description proof and lifecycle operations** (future): bounded proof, audit, transfer/revoke contracts.
@@ -18,11 +18,11 @@
 
 ## Dependencies and delivery recommendation
 
-Primary path U1 → U2 → U3; U4 branches after U1/U2 and is required before production confirmation; U5 follows U1–U3; U6 follows U3; U7 integrates U3–U6; U8 follows integration. Prefer fixture-first vertical slices and keep each work unit ≤400 authored lines. Recommend considering a feature-branch-chain like #349 to keep review slices coherent, but do **not** decide the chain/PR strategy until the user accepts design and delivery topology.
+Primary path U1 → U2 → U3; U4 branches after U1/U2 and is required before production confirmation; U5 follows U1–U3; U6 follows U3; U7 integrates U3–U6; U8 follows integration. The user selected feature-branch-chain delivery: draft tracker PR to `develop`, then one child PR per work unit. Keep each work unit ≤400 authored lines and fixture-first where practical.
 
 ## U4a tracking
 
-U4a implementation is complete on `feat/456-u4a-domain-policy`; parent review/publication remains pending. Verification: focused no-DB 19/19; API full suite 185 files / 1,873 tests; API `tsc --noEmit`, real oxlint, and `git diff --check` passed. Source implementation and focused tests remain separate from provider provenance, identity retrieval, claim persistence/approval, and all challenge flows. U4 remains incomplete until U4b–U4d are delivered and reviewed.
+U4a corrected implementation is pending native review/publication on `feat/456-u4a-domain-policy`. The domain policy emits context signal only and requires proof for every outcome. Claims require a one-time code to the exact trusted provider-published agency address or bounded listing-description code fallback. Challenge persistence/atomic claim approval, sender integration, and listing proof remain future work; no manual operator review or new provider/identity integration is included. Commit `24cca3b5` contained the superseded denylist/eligibility draft; this correction removes that behavior without rewriting its history. U4 remains incomplete until U4b–U4d are delivered and reviewed.
 
 ## Test and operational gates
 

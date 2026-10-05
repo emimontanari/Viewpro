@@ -12,7 +12,7 @@ An authorized agency user submits a canonical publisher URL, sees processing/com
 
 ## Product rules
 
-- Publisher proof ladder: verified `PRINCIPAL_MANAGER` email domain equals a non-generic `agencyEmail` domain → approve; otherwise send one-time code through existing Resend sender to the exact published address; fallback verifies a short code in a publisher listing description using bounded single-listing scrape. Specify length, TTL, attempts, rate limit, hashed-at-rest storage, and audit. Names/phones are display signals only.
+- Publisher domain equality is a context signal only, never approval or proof. Every claim requires a one-time code sent to the exact trusted provider-published agency address; bounded single-listing description-code verification is the fallback if email verification cannot be used. Specify length, TTL, attempts, rate limit, hashed-at-rest storage, and audit. Names/phones are display signals only. No manual operator review or new provider/identity integration is included.
 - Only approved `(externalSource, publisherId)` claims are globally exclusive; pending claims never block. A different tenant's approved claim yields contact-support outcome. Define claim approve/reject/revoke/transfer at contract/data level; no live review UI.
 - Canonical listing identity is tenant-scoped `ExternalPropertyReference(tenantId, externalSource, externalId)` unique by those three fields and linked to `PropertyEngagement`. Never store identity on `PropertyAsset` alone.
 - Proposed async durability: DB-backed work rows, triggered by webhook/confirmation/explicit retry, startup resume, leases and idempotent handlers; no periodic polling/timers. Fixture-fed staging and confirmation precede Apify integration.
@@ -27,4 +27,4 @@ Includes URL/publisher parsing, claims, bounded Apify discovery/detail runs and 
 
 ## Acceptance boundary
 
-No implementation until this design is accepted. Work-unit topology is a recommendation, not a chosen branch/PR strategy; review chain strategy before delivery. See `tasks.md` for ordered slices and forecasts.
+Design is accepted. The corrected U4a implementation is pending parent review/publication; U4 remains incomplete. The user selected feature-branch-chain delivery: draft tracker PR to `develop`, followed by one child PR per work unit. See `tasks.md` for ordered slices and forecasts.

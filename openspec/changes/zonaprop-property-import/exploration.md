@@ -17,9 +17,9 @@ A new Argentine agency may have many public ZonaProp listings and no ViewPro inv
 
 ## Accepted and proposed decisions
 
-Accepted publisher proof ladder: (1) verified `PRINCIPAL_MANAGER` email domain matches non-generic published `agencyEmail` domain; (2) otherwise email one-time code to exact published address; (3) fallback short code in a publisher listing description, proven by bounded single-listing scrape. Contact name/phone are display-only. Another tenant's approved claim blocks with contact-support message; pending claims do not block. Claim transfer/revocation operations are defined as data/contracts, not live review UI.
+Accepted publisher proof ladder: normalized email-domain equality for an active, same-tenant, verified `PRINCIPAL_MANAGER` is context signal only and never proof or approval. Every claim requires a one-time code sent to the exact trusted provider-published agency address; fallback is a short code in a publisher listing description, verified by bounded single-listing scrape. Contact name/phone are display-only. Another tenant's approved claim blocks with contact-support message; pending claims do not block. Claim transfer/revocation operations are defined as data/contracts, not live review UI. No manual operator review or new provider/identity integration is included.
 
-Proposed, pending acceptance: database work rows with state/attempts/lease/last error, triggered by webhook, confirmation, explicit retry, and API startup resume; in-process execution, idempotent handlers, no periodic timers/polling. Earliest slice stages/confirms from fixtures before Apify integration.
+Accepted design: database work rows with state/attempts/lease/last error, triggered by webhook, confirmation, explicit retry, and API startup resume; in-process execution, idempotent handlers, no periodic timers/polling. Lease recovery details remain an implementation advisory for U5, not a pending product decision. The earliest slice stages/confirms from fixtures before Apify integration.
 
 ## Discovery-derived mapping
 
