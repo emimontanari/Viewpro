@@ -21,8 +21,9 @@ export class PrismaPropertyImportStagingRepository implements PropertyImportStag
   }
   findCandidate(tenantId: string, candidateId: string) { return this.prisma.propertyImportCandidate.findFirst({ where: { tenantId, id: candidateId } }) }
   findCandidateByExternalId(tenantId: string, batchId: string, externalId: string) { return this.prisma.propertyImportCandidate.findFirst({ where: { tenantId, batchId, externalId } }) }
-  updateCandidate(tenantId: string, candidateId: string, data: Prisma.PropertyImportCandidateUncheckedUpdateInput) {
-    return this.prisma.propertyImportCandidate.update({ where: { id: candidateId, tenantId }, data })
+  async updateCandidateIfState(tenantId: string, candidateId: string, expectedState: PropertyImportCandidateState, data: Prisma.PropertyImportCandidateUncheckedUpdateInput) {
+    const result = await this.prisma.propertyImportCandidate.updateMany({ where: { id: candidateId, tenantId, state: expectedState }, data })
+    return result.count ? this.prisma.propertyImportCandidate.findFirst({ where: { id: candidateId, tenantId } }) : null
   }
   listCandidates(tenantId: string, batchId: string) { return this.prisma.propertyImportCandidate.findMany({ where: { tenantId, batchId }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] }) }
   async countCandidates(tenantId: string, batchId: string) {

@@ -47,6 +47,20 @@ describe('property import staging use cases', () => {
     const [restaged] = await stage(batchId, [input('flip', { publisherId: 'other' })])
     expect(restaged).toMatchObject({ state: 'REJECTED', selected: false })
   })
+  it('clears feature values that a re-staged listing no longer reports', async () => {
+    await stage(batchId, [input('features', { features: [{ code: 'CFT1', value: '3 amb.' }, { code: 'CFT2', value: '2 dorm.' }] })])
+    const [restaged] = await stage(batchId, [input('features', { features: [{ code: 'CFT1', value: '4 amb.' }, { code: 'CFT101', value: '57,5 m² cub.' }, { code: 'CFT5', value: '25 años' }, { code: '1000029', value: 'N' }] })])
+    expect(restaged).toMatchObject({ rooms: 4, bedrooms: null, coveredAreaSqm: 58, ageYears: 25, orientation: 'N' })
+  })
+  it('does not overwrite a candidate whose state changed after it was read', async () => {
+    const [row] = await stage(batchId, [input('race')])
+    const stale = { ...row!, state: 'READY' as const }
+    await prisma.propertyImportCandidate.update({ where: { id: row!.id }, data: { state: 'CONFIRMED' } })
+    const racingRepository = Object.create(repository, { findCandidate: { value: async () => stale } })
+    await expect(new EditImportCandidateUseCase(racingRepository).execute(context(), row!.id, { title: 'Late' })).rejects.toBeInstanceOf(BadRequestException)
+    await expect(new SetImportCandidateSelectedUseCase(racingRepository).execute(context(), row!.id, false)).rejects.toBeInstanceOf(BadRequestException)
+    expect(await prisma.propertyImportCandidate.findUniqueOrThrow({ where: { id: row!.id } })).toMatchObject({ state: 'CONFIRMED', title: 'Casa' })
+  })
   it('blocks staging after batch leaves ingestion states', async () => { await prisma.propertyImportBatch.update({ where: { id: batchId }, data: { state: 'READY' } }); await expect(stage(batchId, [input('late')])).rejects.toBeInstanceOf(BadRequestException) })
   it('allows selection only for READY; deselection is always allowed', async () => {
     const rows = await stage(batchId, [input('ready'), input('incomplete', { title: null }), input('rejected', { publisherId: 'bad' })])

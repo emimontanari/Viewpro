@@ -8,7 +8,8 @@ export interface PropertyImportStagingRepository {
   upsertCandidate(tenantId: string, batchId: string, externalId: string, create: Prisma.PropertyImportCandidateUncheckedCreateInput, update: Prisma.PropertyImportCandidateUncheckedUpdateInput, protectedStates: PropertyImportCandidateState[]): Promise<PropertyImportCandidate>
   findCandidate(tenantId: string, candidateId: string): Promise<PropertyImportCandidate | null>
   findCandidateByExternalId(tenantId: string, batchId: string, externalId: string): Promise<PropertyImportCandidate | null>
-  updateCandidate(tenantId: string, candidateId: string, data: Prisma.PropertyImportCandidateUncheckedUpdateInput): Promise<PropertyImportCandidate>
+  /** Writes only if the candidate is still in `expectedState`; returns null when it changed concurrently. */
+  updateCandidateIfState(tenantId: string, candidateId: string, expectedState: PropertyImportCandidateState, data: Prisma.PropertyImportCandidateUncheckedUpdateInput): Promise<PropertyImportCandidate | null>
   listCandidates(tenantId: string, batchId: string): Promise<PropertyImportCandidate[]>
   countCandidates(tenantId: string, batchId: string): Promise<Record<string, number>>
 }

@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
-import { Prisma, type PropertyOperationType, type PropertyType } from '@prisma/client'
+import { Prisma, type PropertyImportCandidate, type PropertyOperationType, type PropertyType } from '@prisma/client'
 import type { CurrentUser } from '../auth/types/current-user'
 import type { TenantContext } from '../tenant-context/tenant-context.types'
 import { PROPERTY_IMPORTS_REPOSITORY, type PropertyImportStagingRepository } from './property-imports.repository'
@@ -37,8 +37,10 @@ export class StageImportCandidatesUseCase {
       if (prior && ['CONFIRMED', 'IMPORTED', 'FAILED'].includes(prior.state)) { rows.push(prior); continue }
       const location = splitLocation(input.locationParts)
       const price = validatePrice(input.priceAmount, input.priceCurrency)
-      const features: Record<string, number | string> = {}
-      for (const feature of input.features) { const value = mapFeature(feature.code, feature.value); if (value) features[value.field] = value.value }
+      // Start every feature at null so a re-staged listing never keeps a value it no longer reports.
+      // Numeric columns are Int in the schema, so decimal areas ("57,5 m²") are rounded.
+      const features: Record<string, number | string | null> = { totalAreaSqm: null, coveredAreaSqm: null, rooms: null, bedrooms: null, bathrooms: null, ageYears: null, orientation: null }
+      for (const feature of input.features) { const mapped = mapFeature(feature.code, feature.value); if (mapped) features[mapped.field] = typeof mapped.value === 'number' ? Math.round(mapped.value) : mapped.value }
       const fields = { title: input.title?.trim() || null, addressLine: input.addressLine?.trim() || null, city: location?.city ?? null, province: location?.province ?? null, propertyType: mapPropertyType(input.typeLabel), operationType: mapOperationType(input.operationLabel) }
       const complete = requiredFieldsStatus(fields)
       const reference = await this.repository.findReference(tenant.tenantId, input.externalId)
@@ -72,7 +74,13 @@ export class EditImportCandidateUseCase {
     if (!['READY', 'INCOMPLETE'].includes(candidate.state)) throw new BadRequestException('Candidate state cannot be edited')
     const fields = { title: candidate.title, addressLine: candidate.addressLine, city: candidate.city, province: candidate.province, propertyType: candidate.propertyType, operationType: candidate.operationType, ...patch }
     const status = requiredFieldsStatus(fields)
-    return this.repository.updateCandidate(tenant.tenantId, candidateId, { ...patch, state: status.status === 'ready' ? 'READY' : 'INCOMPLETE', selected: status.status === 'ready' ? candidate.selected : false, errorReason: status.status === 'ready' ? null : `Missing required fields: ${status.missing.join(', ')}` })
+    return this.updateIfUnchanged(tenant, candidate, { ...patch, state: status.status === 'ready' ? 'READY' : 'INCOMPLETE', selected: status.status === 'ready' ? candidate.selected : false, errorReason: status.status === 'ready' ? null : `Missing required fields: ${status.missing.join(', ')}` })
+  }
+  // Optimistic guard: confirmation may change the state between the read above and this write.
+  private async updateIfUnchanged(tenant: TenantContext, candidate: PropertyImportCandidate, data: Prisma.PropertyImportCandidateUncheckedUpdateInput) {
+    const updated = await this.repository.updateCandidateIfState(tenant.tenantId, candidate.id, candidate.state, data)
+    if (!updated) throw new BadRequestException('Candidate changed state; reload and try again')
+    return updated
   }
 }
 
@@ -83,7 +91,9 @@ export class SetImportCandidateSelectedUseCase {
     const candidate = await this.repository.findCandidate(tenant.tenantId, candidateId)
     if (!candidate) throw missing()
     if (selected && candidate.state !== 'READY') throw new BadRequestException('Only ready candidates can be selected')
-    return this.repository.updateCandidate(tenant.tenantId, candidateId, { selected })
+    const updated = await this.repository.updateCandidateIfState(tenant.tenantId, candidateId, candidate.state, { selected })
+    if (!updated) throw new BadRequestException('Candidate changed state; reload and try again')
+    return updated
   }
 }
 
