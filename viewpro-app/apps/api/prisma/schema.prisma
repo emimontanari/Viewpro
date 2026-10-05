@@ -961,6 +961,8 @@ model PropertyImportCandidate {
   bedrooms             Int?
   bathrooms            Int?
   garages              Int?
+  ageYears             Int?
+  orientation          String?
   publishedPriceCents  Int?
   currency             String?
   state                PropertyImportCandidateState @default(INCOMPLETE)
