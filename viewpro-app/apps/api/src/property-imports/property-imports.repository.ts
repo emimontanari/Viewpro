@@ -14,7 +14,7 @@ export interface PropertyImportStagingRepository {
   countCandidates(tenantId: string, batchId: string): Promise<Record<string, number>>
   findApprovedClaim(tenantId: string, publisherId: string): Promise<boolean>
   listSelectedReady(tenantId: string, batchId: string): Promise<PropertyImportCandidate[]>
-  importCandidate(tenantId: string, candidateId: string, userId: string): Promise<{ imported: boolean; referenceId?: string }>
+  importCandidate(tenantId: string, candidateId: string, userId: string): Promise<{ imported: boolean; referenceId?: string; existingReferenceId?: string }>
   /** Writes only if the candidate is still in `expectedState`; a concurrent result is never overwritten. */
   markCandidate(tenantId: string, candidateId: string, expectedState: PropertyImportCandidateState, data: Prisma.PropertyImportCandidateUncheckedUpdateInput): Promise<void>
 }

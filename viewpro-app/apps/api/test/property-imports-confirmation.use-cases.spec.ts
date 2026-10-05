@@ -58,6 +58,15 @@ describe('property import confirmation', () => {
     await prisma.tenant.update({ where: { id: tenantId }, data: { maxActivePropertyEngagements: null } })
     expect(await confirm()).toMatchObject({ imported: 2, capacityExceeded: 0 })
   })
+  it('reports an already-imported listing as existing even when the plan is full', async () => {
+    const [row] = await stage(['known'])
+    const asset = await prisma.propertyAsset.create({ data: { title: 'Old', addressLine: '1', city: 'Córdoba', province: 'Córdoba', propertyType: 'HOUSE', createdByUserId: userId } })
+    const engagement = await prisma.propertyEngagement.create({ data: { tenantId, propertyAssetId: asset.id, operationType: 'SALE', createdByUserId: userId } })
+    await prisma.externalPropertyReference.create({ data: { tenantId, externalSource: 'ZONAPROP', externalId: 'known', propertyEngagementId: engagement.id } })
+    await prisma.tenant.update({ where: { id: tenantId }, data: { maxActivePropertyEngagements: 0 } })
+    expect(await confirm()).toMatchObject({ existing: 1, capacityExceeded: 0 })
+    expect(await prisma.propertyImportCandidate.findUniqueOrThrow({ where: { id: row!.id } })).toMatchObject({ state: 'EXISTING' })
+  })
   it('links a concurrently-existing reference without creating another canonical record', async () => {
     const [row] = await stage(['existing'])
     const asset = await prisma.propertyAsset.create({ data: { title: 'Old', addressLine: '1', city: 'Córdoba', province: 'Córdoba', propertyType: 'HOUSE', createdByUserId: userId } })

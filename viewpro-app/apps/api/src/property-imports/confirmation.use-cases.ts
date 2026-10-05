@@ -30,8 +30,14 @@ export class ConfirmImportCandidatesUseCase {
   // Every write after a rolled-back row transaction is guarded on READY, so a concurrent confirmation's result is never overwritten.
   private async confirmRow(tenantId: string, row: { id: string; externalId: string }, userId: string): Promise<ConfirmationOutcome> {
     try {
-      // `imported: false` means a sibling confirmation already took the row.
-      return (await this.repository.importCandidate(tenantId, row.id, userId)).imported ? 'imported' : 'skipped'
+      const result = await this.repository.importCandidate(tenantId, row.id, userId)
+      if (result.imported) return 'imported'
+      if (result.existingReferenceId) {
+        await this.repository.markCandidate(tenantId, row.id, 'READY', { state: 'EXISTING', selected: false, resultingReferenceId: result.existingReferenceId, errorReason: null })
+        return 'existing'
+      }
+      // Otherwise a sibling confirmation already took the row.
+      return 'skipped'
     } catch (error) {
       if (error instanceof ActivePropertyCapacityExceededError) {
         await this.repository.markCandidate(tenantId, row.id, 'READY', { errorReason: 'plan_limit_reached' })

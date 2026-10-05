@@ -37,6 +37,9 @@ export class PrismaPropertyImportStagingRepository implements PropertyImportStag
     return this.prisma.$transaction(async tx => {
       const candidate = await tx.propertyImportCandidate.findFirst({ where: { id: candidateId, tenantId, state: 'READY', selected: true } })
       if (!candidate) return { imported: false }
+      // An already-imported listing is reported as existing before capacity is consulted, so a full plan never hides it.
+      const known = await tx.externalPropertyReference.findFirst({ where: { tenantId, externalSource: 'ZONAPROP', externalId: candidate.externalId }, select: { id: true } })
+      if (known) return { imported: false, existingReferenceId: known.id }
       const changed = await tx.propertyImportCandidate.updateMany({ where: { id: candidateId, tenantId, state: 'READY', selected: true }, data: { state: 'CONFIRMED' } })
       if (!changed.count) return { imported: false }
       const capacity = await this.capacity.acquire(tx, tenantId); await capacity.assertAvailable()
