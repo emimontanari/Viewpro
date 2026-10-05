@@ -200,6 +200,11 @@ class EnvironmentVariables {
 	@MinLength(16)
 	PLATFORM_CONTROL_SECRET!: string;
 
+	// Used only for purpose-separated HMAC challenge digests; never log its value.
+	@IsOptional()
+	@IsString()
+	ZONAPROP_PUBLISHER_CHALLENGE_HMAC_SECRET?: string;
+
 	// Optional — configurable batch size for GET /internal/platform/changes.
 	// Controller reads process.env.PLATFORM_DATA_BATCH_LIMIT directly at request
 	// time so test overrides take effect without restarting the app.
@@ -251,6 +256,11 @@ function assertProductionSecurity(config: EnvironmentVariables) {
 		violations.push(
 			"COOKIE_SECURE: must be true in production so session cookies require HTTPS",
 		);
+	}
+
+	const publisherChallengeSecret = config.ZONAPROP_PUBLISHER_CHALLENGE_HMAC_SECRET?.trim();
+	if (!publisherChallengeSecret || publisherChallengeSecret.length < 32) {
+		violations.push("ZONAPROP_PUBLISHER_CHALLENGE_HMAC_SECRET: must be at least 32 characters in production");
 	}
 
 	if (config.DOCUMENT_STORAGE_DRIVER !== "s3") {

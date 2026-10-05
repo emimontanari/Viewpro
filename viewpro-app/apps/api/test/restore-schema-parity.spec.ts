@@ -150,7 +150,7 @@ describe('restore migration contract', () => {
       '"public"."property_asset_images"', '"public"."property_asset_owners"', '"public"."property_assets"', '"public"."property_engagements"',
       '"public"."property_import_batches"', '"public"."property_import_candidates"', '"public"."property_import_work"',
       '"public"."property_proposal_review_decisions"', '"public"."property_proposal_review_rounds"', '"public"."property_proposals"',
-      '"public"."publisher_claim_events"', '"public"."publisher_claims"', '"public"."refresh_tokens"', '"public"."status_change_requests"', '"public"."team_invitations"', '"public"."tenant_memberships"',
+      '"public"."publisher_claim_challenges"', '"public"."publisher_claim_events"', '"public"."publisher_claims"', '"public"."refresh_tokens"', '"public"."status_change_requests"', '"public"."team_invitations"', '"public"."tenant_memberships"',
       '"public"."tenant_movement_outcome_labels"', '"public"."tenants"', '"public"."users"',
     ])
     expect(foldMigrations(join(appRoot, 'apps/viewpro-api/prisma/migrations'), { repositoryRoot: appRoot }).tables).toEqual([
@@ -247,7 +247,7 @@ describe('restore schema parity', () => {
     cliNoSpawn(state, ['--migration-dir', state.migrationDir, '--schema', 'private', '--psql', state.psqlPath], 'schema_invalid')
   })
   it('emits complete product and platform repository receipts', async () => {
-    for (const [migrationDir, count] of [[join(appRoot, 'apps/api/prisma/migrations'), 34], [join(appRoot, 'apps/viewpro-api/prisma/migrations'), 6]]) {
+    for (const [migrationDir, count] of [[join(appRoot, 'apps/api/prisma/migrations'), 35], [join(appRoot, 'apps/viewpro-api/prisma/migrations'), 6]]) {
       const state = input(); writeFileSync(join(state.psqlPath, '..', 'catalog.tsv'), catalogRows(migrationDir)); writeFileSync(join(state.psqlPath, '..', 'ledger.tsv'), appliedLedger(migrationDir))
       expect(await runParity({ ...state, migrationDir })).toMatchObject({ exitCode: 0, output: { pass: true, expectedCount: count, actualCount: count, missing: [], unexpectedCount: 0 } }); const cli = runParityCli({ ...state, migrationDir }); expect(cli).toMatchObject({ status: 0 }); expect(JSON.parse(cli.stdout)).toMatchObject({ pass: true, expectedCount: count, actualCount: count, missing: [], unexpectedCount: 0 })
     }

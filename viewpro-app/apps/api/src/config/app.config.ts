@@ -59,6 +59,10 @@ export function getFeedbackEmailConfig(env: SentryEnvironment = process.env) {
   return { feedbackRecipient: env.FEEDBACK_RECIPIENT_EMAIL?.trim() }
 }
 
+export function getPublisherChallengeConfig(env: SentryEnvironment = process.env) {
+  return { hmacSecret: env.ZONAPROP_PUBLISHER_CHALLENGE_HMAC_SECRET?.trim() }
+}
+
 export function getSentryConfig(nodeEnv: NodeEnv, env: SentryEnvironment = process.env) {
   const tracesSampleRate = Number(env.SENTRY_TRACES_SAMPLE_RATE ?? 0)
 
@@ -94,6 +98,7 @@ export const appConfig = registerAs('app', () => {
       ),
     },
     authRateLimit: getAuthRateLimitConfig(),
+    publisherChallenge: getPublisherChallengeConfig(),
     cookies: {
       domain: process.env.COOKIE_DOMAIN,
       secure: process.env.COOKIE_SECURE === 'true',
