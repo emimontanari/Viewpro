@@ -16,7 +16,8 @@ Delivery: `feature-branch-chain` (user-selected) — draft tracker PR to `develo
 - [ ] U2b — Raw payload adapter with captured Córdoba/CABA fixtures and drift contract tests (blocked until the user creates an Apify account).
 - [x] U3a — Fixture-fed staging: batch creation, candidate ingestion from normalized input, states, edit/exclude, listing. Commits `c1c95beb` + `6c262e53`.
 - [x] U3b — Idempotent confirmation: materialization through the canonical create/capacity path, external references, tenant equality, permission revalidation, partial retry, concurrency. Commits `67cca04e` + `825d94ea`.
-- [ ] U4 — Publisher verification ladder.
+- [ ] U4 — Publisher verification ladder (in progress; U4a is only the pure policy slice).
+- [x] U4a — Pure domain policy implemented on `feat/456-u4a-domain-policy`: exact normalized non-generic domain match; active same-tenant PRINCIPAL_MANAGER and verified email; malformed/generic/mismatch continue proof. No provenance acquisition, claim persistence/approval, or challenge flows. RED: 3 malformed local-part cases failed; GREEN: focused 19/19, full API 185 files / 1,873 tests, tsc, oxlint, diff check passed. **Parent review/publication pending.**
 - [ ] U5 — Apify runs, webhook and durable work rows.
 - [ ] U6 — R2 image pipeline.
 - [ ] U7 — Review/confirm UI and #459 handoff.
@@ -36,6 +37,10 @@ Delivery: `feature-branch-chain` (user-selected) — draft tracker PR to `develo
 Preserve tenant isolation, capacity limits, authorization and audit. No owners import (#459). No network calls in normal tests; fixtures only. Apify account and secrets are needed only for the bounded operational smoke test. Each work unit ≤400 authored lines with tests alongside.
 
 - Accepted limits: 8-digit codes; email code TTL 15 min, listing code TTL 24 h; 5 attempts; resend cooldown 60 s; max 3 sends/hour; HMAC-hashed codes. Images: 10/property, 10 MiB/image, 50 MiB/property, 3 redirects. Raw payload retention 30 days.
+
+## U4a scope boundary
+
+Provider-sourced published agency email, server-side identity/membership retrieval, atomic approved-claim conflict handling, and proof challenges are separate future U4 children. A TypeScript source/provenance label is not runtime proof; the pure policy cannot establish input provenance. U4 is not complete after U4a.
 
 ## Evidence
 
