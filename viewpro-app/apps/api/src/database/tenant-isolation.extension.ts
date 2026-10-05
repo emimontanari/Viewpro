@@ -35,6 +35,9 @@ export const TENANT_OWNED_MODELS: ReadonlySet<string> = new Set([
 	"PropertyProposalReviewRound",
 	"PropertyProposalReviewDecision",
 	"ExternalPropertyReference",
+	"PropertyImportBatch",
+	"PropertyImportCandidate",
+	"PropertyImportWork",
 	"PublisherClaim",
 	"PublisherClaimEvent",
 ]);
