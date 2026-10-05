@@ -12,9 +12,10 @@ Delivery: `feature-branch-chain` (user-selected) — draft tracker PR to `develo
 - [x] Obtain user acceptance of the design and slicing before implementation.
 - [x] U1a — External property references and publisher claims (schema, migration, isolation, constraint tests). Commit `24666221`, PR #635.
 - [x] U1b — Import batch, candidate and durable work records (schema, migration, isolation, constraint tests). Commit `dd80d712`, PR #636.
-- [ ] U2a — Shape-independent parsing and normalization: advertiser/listing URLs, city/province split, type table, price/currency pair, phone/domain normalization.
+- [x] U2a — Shape-independent parsing and normalization: advertiser/listing URLs, city/province split, type table, price/currency pair, feature codes, phone/domain normalization. Commits `53d385bd` + `6b865a83`, PR #637.
 - [ ] U2b — Raw payload adapter with captured Córdoba/CABA fixtures and drift contract tests (blocked until the user creates an Apify account).
-- [ ] U3 — Fixture-fed staging and idempotent confirmation.
+- [ ] U3a — Fixture-fed staging: batch creation, candidate ingestion from normalized input, states, edit/exclude, listing.
+- [ ] U3b — Idempotent confirmation: materialization through the canonical create/capacity path, external references, tenant equality, permission revalidation, partial retry, concurrency.
 - [ ] U4 — Publisher verification ladder.
 - [ ] U5 — Apify runs, webhook and durable work rows.
 - [ ] U6 — R2 image pipeline.
@@ -43,4 +44,6 @@ Planning: commit `b0cb4c6a`, RDD `review-cc2a2b1337c87835` (advisory: no-timer l
 U1a: commit `24666221`, 263+/5−; RED `42P01`; focused 38 tests + full API suite 1,804 tests green; RDD `review-56ee2322e5d11590` (advisory: reference tenant not forced equal to engagement tenant at DB level → U3 writes both in one tenant-scoped transaction and tests it). Original 526-line U1 split honestly into U1a/U1b; full draft kept in local-only `wip/456-u1-full`.
 U1b: commit `dd80d712`, 370+/6−; RED missing models + inventory 31≠34; focused 41 tests + full API suite 1,807 tests green; RDD `review-4582554598da114f` (advisory: candidate/batch/reference tenant equality not DB-enforced → same U3 follow-up).
 U2 split: the discovery doc does not fix raw field paths for price/currency, operation, title, garages or agency email, and no captured payloads exist in the repo. Inventing paths was rejected; U2a covers shape-independent logic now, U2b waits for captured payloads. User will create the Apify account later; U5 and U8 also depend on it.
+U2a: 226+/2−, 27 tests; RDD `review-13f531e8dc9d0c1d` flagged inherited feature codes, fractional areas and zero-cent prices → fixed test-first in `6b865a83`, RDD `review-dbaa57bbacd33826` clean.
+U3 pre-split into U3a/U3b: staging and confirmation together would exceed 400 lines.
 Local test DBs: use `127.0.0.1` (localhost resolves to IPv6 and Colima does not answer). Isolated bases `viewpro_456_import`, `viewpro_456_test`.
