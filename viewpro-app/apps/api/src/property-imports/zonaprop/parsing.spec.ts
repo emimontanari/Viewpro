@@ -81,4 +81,20 @@ describe('ZonaProp pure parsing', () => {
     expect(mapFeature('CFT1', 'consultar')).toBeNull()
     expect(mapFeature('CFT2', '')).toBeNull()
   })
+
+  it('never resolves inherited object properties as feature codes', () => {
+    expect(mapFeature('constructor', '3')).toBeNull()
+    expect(mapFeature('toString', '3')).toBeNull()
+    expect(mapFeature('__proto__', '3')).toBeNull()
+  })
+
+  it('keeps decimal areas instead of truncating them', () => {
+    expect(mapFeature('CFT101', '57,5 m² cub.')).toEqual({ field: 'coveredAreaSqm', value: 57.5 })
+    expect(mapFeature('CFT100', '1.250,75 m² tot.')).toEqual({ field: 'totalAreaSqm', value: 1250.75 })
+  })
+
+  it('rejects prices that round to zero cents', () => {
+    expect(validatePrice(0.001, 'USD')).toEqual({ reason: 'invalid_price' })
+    expect(validatePrice('0.004', 'ARS')).toEqual({ reason: 'invalid_price' })
+  })
 })

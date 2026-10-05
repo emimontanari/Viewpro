@@ -69,6 +69,7 @@ export function validatePrice(amount: number | string | null, currency: string |
   const value = typeof amount === 'number' ? amount : /^\d+(?:\.\d+)?$/.test(amount.trim()) ? Number(amount) : NaN
   if (!Number.isFinite(value) || value <= 0) return { reason: 'invalid_price' }
   const cents = Math.round(value * 100)
+  if (cents === 0) return { reason: 'invalid_price' }
   if (!Number.isSafeInteger(cents) || cents > 2_147_483_647) return { reason: 'price_out_of_range' }
   return { publishedPriceCents: cents, currency: normalizedCurrency }
 }
@@ -84,12 +85,14 @@ export type FeatureMapping =
 export function mapFeature(code: string, rawValue: string): FeatureMapping | null {
   const value = rawValue.trim()
   if (code === '1000029') return value ? { field: 'orientation', value: value.toUpperCase() } : null
+  // Own-property check: codes come from untrusted payloads and must not resolve Object.prototype members.
+  if (!Object.hasOwn(NUMERIC_FEATURES, code)) return null
   const field = NUMERIC_FEATURES[code as keyof typeof NUMERIC_FEATURES]
-  if (!field) return null
   if (field === 'ageYears' && /^a estrenar$/i.test(value)) return { field, value: 0 }
-  // Values are strings with units and Argentine thousands separators: "1.250 m² tot.".
-  const match = /^(\d{1,3}(?:\.\d{3})+|\d+)/.exec(value)
-  return match?.[1] ? { field, value: Number(match[1].replace(/\./g, '')) } : null
+  // Argentine number format: "." groups thousands and "," marks decimals, e.g. "1.250,75 m² tot.".
+  const match = /^(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d+))?/.exec(value)
+  if (!match?.[1]) return null
+  return { field, value: Number(`${match[1].replace(/\./g, '')}${match[2] ? `.${match[2]}` : ''}`) }
 }
 
 export function normalizePhone(phone: string | null): string | null {
