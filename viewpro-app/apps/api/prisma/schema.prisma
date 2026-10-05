@@ -108,6 +108,11 @@ enum PublisherClaimVerificationMethod {
   LISTING_CODE
 }
 
+enum PublisherClaimChallengeMethod {
+  EMAIL
+  LISTING
+}
+
 enum PropertyProposalStatus {
   BORRADOR
   EN_REVISION
@@ -327,6 +332,7 @@ model Tenant {
   propertyImportWork                 PropertyImportWork[]
   publisherClaims                    PublisherClaim[]
   publisherClaimEvents               PublisherClaimEvent[]
+  publisherClaimChallenges           PublisherClaimChallenge[]
 
   @@map("tenants")
 }
@@ -1042,12 +1048,35 @@ model PublisherClaim {
 
   tenant Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   events PublisherClaimEvent[]
+  challenges PublisherClaimChallenge[]
 
   // PostgreSQL-only partial unique index: approved claims are exclusive; pending claims are not.
   // Enforced in the additive migration because Prisma cannot model a partial unique constraint.
   @@index([externalSource, publisherId, state])
   @@index([tenantId, state])
   @@map("publisher_claims")
+}
+
+model PublisherClaimChallenge {
+  id                   String                         @id @default(uuid())
+  tenantId             String
+  publisherClaimId     String
+  method               PublisherClaimChallengeMethod
+  codeDigest           String                         // HMAC digest only; plaintext code is never persisted.
+  recipientFingerprint String                         // Purpose-separated HMAC; never a raw recipient address.
+  attempts             Int                            @default(0)
+  issuedAt             DateTime                       @default(now())
+  expiresAt            DateTime
+  consumedAt           DateTime?
+
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  publisherClaim PublisherClaim @relation(fields: [publisherClaimId], references: [id], onDelete: Cascade)
+
+  // Claim/tenant equality is enforced by the issuing/verifying transaction; the FK
+  // ensures both rows exist but does not enforce that they belong to the same tenant.
+  @@index([tenantId, recipientFingerprint, issuedAt])
+  @@index([publisherClaimId, method, issuedAt])
+  @@map("publisher_claim_challenges")
 }
 
 model PublisherClaimEvent {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAppPublicUrl, getFeedbackEmailConfig } from "./app.config";
+import { getAppPublicUrl, getFeedbackEmailConfig, getPublisherChallengeConfig } from "./app.config";
 
 describe("getAppPublicUrl", () => {
 	it("defaults to the local app origin outside production", () => {
@@ -23,6 +23,12 @@ describe("getAppPublicUrl", () => {
 	it("keeps the feedback recipient as one configured value", () => {
 		expect(getFeedbackEmailConfig({ FEEDBACK_RECIPIENT_EMAIL: " recipient@example.com " })).toEqual({
 			feedbackRecipient: "recipient@example.com",
+		});
+	});
+
+	it("exposes the dedicated publisher challenge secret only to application configuration", () => {
+		expect(getPublisherChallengeConfig({ ZONAPROP_PUBLISHER_CHALLENGE_HMAC_SECRET: " private-test-value " })).toEqual({
+			hmacSecret: "private-test-value",
 		});
 	});
 });

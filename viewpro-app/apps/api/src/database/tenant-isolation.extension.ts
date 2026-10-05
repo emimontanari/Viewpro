@@ -40,6 +40,7 @@ export const TENANT_OWNED_MODELS: ReadonlySet<string> = new Set([
 	"PropertyImportWork",
 	"PublisherClaim",
 	"PublisherClaimEvent",
+	"PublisherClaimChallenge",
 ]);
 
 /**

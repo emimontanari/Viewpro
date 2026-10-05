@@ -27,6 +27,7 @@ const productionHardened = {
   DOCUMENT_STORAGE_DRIVER: 's3',
   FEEDBACK_RECIPIENT_EMAIL: 'recipient@example.com',
   RESEND_API_KEY: 're_test',
+  ZONAPROP_PUBLISHER_CHALLENGE_HMAC_SECRET: 'z'.repeat(32),
 }
 
 describe('validateEnv — non-production', () => {
@@ -38,6 +39,12 @@ describe('validateEnv — non-production', () => {
 
   it('accepts defaults under NODE_ENV=test', () => {
     expect(() => validateEnv({ ...baseValid, NODE_ENV: 'test' })).not.toThrow()
+  })
+
+  it('does not require a challenge HMAC secret in development or test', () => {
+    for (const NODE_ENV of ['development', 'test']) {
+      expect(() => validateEnv({ ...baseValid, NODE_ENV })).not.toThrow()
+    }
   })
 
   const publicErrorEnvelopeStates = [
@@ -68,6 +75,21 @@ describe('validateEnv — non-production', () => {
 describe('validateEnv — production hardening', () => {
   it('accepts a fully hardened production config', () => {
     expect(() => validateEnv(productionHardened)).not.toThrow()
+  })
+
+  it('rejects a secret whose trimmed length is below 32 even when raw length is 32', () => {
+    expect(() => validateEnv({
+      ...productionHardened,
+      ZONAPROP_PUBLISHER_CHALLENGE_HMAC_SECRET: 'x' + ' '.repeat(31),
+    })).toThrow(/ZONAPROP_PUBLISHER_CHALLENGE_HMAC_SECRET/)
+  })
+
+  it.each([undefined, 'too-short'])('requires a strong dedicated challenge HMAC secret in production', (secret) => {
+    const config = { ...productionHardened, ZONAPROP_PUBLISHER_CHALLENGE_HMAC_SECRET: secret }
+    let message = ''
+    try { validateEnv(config) } catch (error) { message = (error as Error).message }
+    expect(message).toContain('ZONAPROP_PUBLISHER_CHALLENGE_HMAC_SECRET')
+    expect(message).not.toContain(String(secret))
   })
 
   it.each([
