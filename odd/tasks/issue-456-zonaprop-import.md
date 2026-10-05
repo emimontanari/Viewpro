@@ -11,8 +11,9 @@ Delivery: `feature-branch-chain` (user-selected) — draft tracker PR to `develo
 - [x] Draft OpenSpec exploration, proposal, design, delta specs and tasks with a work-unit delivery plan.
 - [x] Obtain user acceptance of the design and slicing before implementation.
 - [x] U1a — External property references and publisher claims (schema, migration, isolation, constraint tests). Commit `24666221`, PR #635.
-- [ ] U1b — Import batch, candidate and durable work records (schema, migration, isolation, constraint tests).
-- [ ] U2 — URL/publisher parsing, mapping, Córdoba/CABA fixtures and contract tests.
+- [x] U1b — Import batch, candidate and durable work records (schema, migration, isolation, constraint tests). Commit `dd80d712`, PR #636.
+- [ ] U2a — Shape-independent parsing and normalization: advertiser/listing URLs, city/province split, type table, price/currency pair, phone/domain normalization.
+- [ ] U2b — Raw payload adapter with captured Córdoba/CABA fixtures and drift contract tests (blocked until the user creates an Apify account).
 - [ ] U3 — Fixture-fed staging and idempotent confirmation.
 - [ ] U4 — Publisher verification ladder.
 - [ ] U5 — Apify runs, webhook and durable work rows.
@@ -40,4 +41,6 @@ Preserve tenant isolation, capacity limits, authorization and audit. No owners i
 Read-only exploration: muua3oy1-k-pvj2. Discovery doc: `docs/zonaprop-import-discovery.md`.
 Planning: commit `b0cb4c6a`, RDD `review-cc2a2b1337c87835` (advisory: no-timer lease recovery → handle in U5). Tracker PR #634.
 U1a: commit `24666221`, 263+/5−; RED `42P01`; focused 38 tests + full API suite 1,804 tests green; RDD `review-56ee2322e5d11590` (advisory: reference tenant not forced equal to engagement tenant at DB level → U3 writes both in one tenant-scoped transaction and tests it). Original 526-line U1 split honestly into U1a/U1b; full draft kept in local-only `wip/456-u1-full`.
+U1b: commit `dd80d712`, 370+/6−; RED missing models + inventory 31≠34; focused 41 tests + full API suite 1,807 tests green; RDD `review-4582554598da114f` (advisory: candidate/batch/reference tenant equality not DB-enforced → same U3 follow-up).
+U2 split: the discovery doc does not fix raw field paths for price/currency, operation, title, garages or agency email, and no captured payloads exist in the repo. Inventing paths was rejected; U2a covers shape-independent logic now, U2b waits for captured payloads. User will create the Apify account later; U5 and U8 also depend on it.
 Local test DBs: use `127.0.0.1` (localhost resolves to IPv6 and Colima does not answer). Isolated bases `viewpro_456_import`, `viewpro_456_test`.
