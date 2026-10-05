@@ -10,7 +10,7 @@ Delivery: `feature-branch-chain` (user-selected) — draft tracker PR to `develo
 - [x] Decide publisher verification without manual 24/7 review.
 - [x] Draft OpenSpec exploration, proposal, design, delta specs and tasks with a work-unit delivery plan.
 - [x] Obtain user acceptance of the design and slicing before implementation.
-- [ ] U1a — External property references and publisher claims (schema, migration, isolation, constraint tests).
+- [x] U1a — External property references and publisher claims (schema, migration, isolation, constraint tests). Commit `24666221`, PR #635.
 - [ ] U1b — Import batch, candidate and durable work records (schema, migration, isolation, constraint tests).
 - [ ] U2 — URL/publisher parsing, mapping, Córdoba/CABA fixtures and contract tests.
 - [ ] U3 — Fixture-fed staging and idempotent confirmation.
@@ -38,3 +38,6 @@ Preserve tenant isolation, capacity limits, authorization and audit. No owners i
 ## Evidence
 
 Read-only exploration: muua3oy1-k-pvj2. Discovery doc: `docs/zonaprop-import-discovery.md`.
+Planning: commit `b0cb4c6a`, RDD `review-cc2a2b1337c87835` (advisory: no-timer lease recovery → handle in U5). Tracker PR #634.
+U1a: commit `24666221`, 263+/5−; RED `42P01`; focused 38 tests + full API suite 1,804 tests green; RDD `review-56ee2322e5d11590` (advisory: reference tenant not forced equal to engagement tenant at DB level → U3 writes both in one tenant-scoped transaction and tests it). Original 526-line U1 split honestly into U1a/U1b; full draft kept in local-only `wip/456-u1-full`.
+Local test DBs: use `127.0.0.1` (localhost resolves to IPv6 and Colima does not answer). Isolated bases `viewpro_456_import`, `viewpro_456_test`.

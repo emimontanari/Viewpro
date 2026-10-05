@@ -61,6 +61,40 @@ enum ExternalPropertySource {
   ZONAPROP
 }
 
+enum PropertyImportBatchState {
+  PENDING
+  DISCOVERING
+  SCRAPING
+  READY
+  INCOMPLETE
+  FAILED
+  COMPLETED
+}
+
+enum PropertyImportCandidateState {
+  READY
+  EXISTING
+  INCOMPLETE
+  REJECTED
+  CONFIRMED
+  IMPORTED
+  FAILED
+}
+
+enum PropertyImportWorkKind {
+  DISCOVERY
+  SCRAPE
+  CONFIRMATION
+  IMAGE_COPY
+}
+
+enum PropertyImportWorkState {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 enum PublisherClaimState {
   PENDING
   APPROVED
@@ -229,6 +263,7 @@ model User {
   refreshTokens           RefreshToken[]
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
+  initiatedPropertyImportBatches PropertyImportBatch[]
   publisherClaimEvents PublisherClaimEvent[]
 
   createdPropertyAssets        PropertyAsset[]
@@ -287,6 +322,9 @@ model Tenant {
   propertyProposalReviewRounds       PropertyProposalReviewRound[]
   propertyProposalReviewDecisions    PropertyProposalReviewDecision[]
   externalPropertyReferences         ExternalPropertyReference[]
+  propertyImportBatches              PropertyImportBatch[]
+  propertyImportCandidates           PropertyImportCandidate[]
+  propertyImportWork                 PropertyImportWork[]
   publisherClaims                    PublisherClaim[]
   publisherClaimEvents               PublisherClaimEvent[]
 
@@ -875,6 +913,101 @@ model PlatformOutboxEvent {
   @@map("platform_outbox_events")
 }
 
+model PropertyImportBatch {
+  id                  String                  @id @default(uuid())
+  tenantId            String
+  initiatedByUserId   String
+  externalSource      ExternalPropertySource
+  canonicalUrl        String
+  publisherId         String
+  actorBuild          String?
+  activeRunId         String?
+  activeDatasetId     String?
+  expectedCount       Int?
+  discoveredCount     Int?
+  uniqueReceivedCount Int?
+  truncationReason    String?
+  state               PropertyImportBatchState @default(PENDING)
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  tenant          Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  initiatedByUser User                      @relation(fields: [initiatedByUserId], references: [id])
+  candidates      PropertyImportCandidate[]
+  work            PropertyImportWork[]
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, state])
+  @@map("property_import_batches")
+}
+
+model PropertyImportCandidate {
+  id                  String                       @id @default(uuid())
+  tenantId            String
+  batchId             String
+  externalId          String
+  sourceUrl           String
+  sourceSnapshot      Json
+  snapshotExpiresAt   DateTime
+  title               String?
+  addressLine         String?
+  city                String?
+  province             String?
+  propertyType         PropertyType?
+  operationType        PropertyOperationType?
+  totalAreaSqm         Int?
+  coveredAreaSqm       Int?
+  rooms                Int?
+  bedrooms             Int?
+  bathrooms            Int?
+  garages              Int?
+  publishedPriceCents  Int?
+  currency             String?
+  state                PropertyImportCandidateState @default(INCOMPLETE)
+  rejectionReason      String?
+  errorReason          String?
+  selected             Boolean                      @default(false)
+  resultingReferenceId String?
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+
+  tenant             Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  batch              PropertyImportBatch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  resultingReference ExternalPropertyReference? @relation(fields: [resultingReferenceId], references: [id], onDelete: SetNull)
+
+  @@unique([batchId, externalId])
+  @@index([tenantId, state])
+  @@index([batchId, state])
+  @@index([snapshotExpiresAt])
+  @@map("property_import_candidates")
+}
+
+model PropertyImportWork {
+  id             String                 @id @default(uuid())
+  tenantId       String
+  batchId        String?
+  kind           PropertyImportWorkKind
+  state          PropertyImportWorkState @default(PENDING)
+  attempts       Int                    @default(0)
+  leaseExpiresAt DateTime?
+  claimedAt      DateTime?
+  lastError      String?
+  idempotencyKey String
+  correlationId  String?
+  runId          String?
+  datasetId      String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  tenant Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  batch  PropertyImportBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, state, leaseExpiresAt])
+  @@index([batchId, state])
+  @@map("property_import_work")
+}
+
 model ExternalPropertyReference {
   id                    String                @id @default(uuid())
   tenantId              String
@@ -885,6 +1018,7 @@ model ExternalPropertyReference {
 
   tenant               Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   propertyEngagement   PropertyEngagement  @relation(fields: [propertyEngagementId], references: [id], onDelete: Cascade)
+  candidates           PropertyImportCandidate[]
 
   @@unique([tenantId, externalSource, externalId])
   @@index([propertyEngagementId])
