@@ -2,10 +2,11 @@ import { Inject, Injectable } from '@nestjs/common'
 import type { Prisma, PropertyImportCandidateState } from '@prisma/client'
 import type { PropertyImportStagingRepository } from './property-imports.repository'
 import { PrismaService } from '../database/prisma.service'
+import { ActivePropertyEngagementCapacity } from '../property-engagements/active-property-engagement-capacity'
 
 @Injectable()
 export class PrismaPropertyImportStagingRepository implements PropertyImportStagingRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService, private readonly capacity: ActivePropertyEngagementCapacity = new ActivePropertyEngagementCapacity()) {}
   createBatch(data: Parameters<PropertyImportStagingRepository['createBatch']>[0]) { return this.prisma.propertyImportBatch.create({ data }) }
   findBatch(tenantId: string, batchId: string) { return this.prisma.propertyImportBatch.findFirst({ where: { tenantId, id: batchId } }) }
   findReference(tenantId: string, externalId: string) { return this.prisma.externalPropertyReference.findFirst({ where: { tenantId, externalSource: 'ZONAPROP', externalId }, select: { id: true } }) }
@@ -30,4 +31,24 @@ export class PrismaPropertyImportStagingRepository implements PropertyImportStag
     const groups = await this.prisma.propertyImportCandidate.groupBy({ by: ['state'], where: { tenantId, batchId }, _count: { _all: true } })
     return Object.fromEntries(groups.map(group => [group.state, group._count._all]))
   }
+  async findApprovedClaim(tenantId: string, publisherId: string) { return null !== await this.prisma.publisherClaim.findFirst({ where: { tenantId, publisherId, externalSource: 'ZONAPROP', state: 'APPROVED' }, select: { id: true } }) }
+  listSelectedReady(tenantId: string, batchId: string) { return this.prisma.propertyImportCandidate.findMany({ where: { tenantId, batchId, state: 'READY', selected: true }, orderBy: { createdAt: 'asc' } }) }
+  async importCandidate(tenantId: string, candidateId: string, userId: string) {
+    return this.prisma.$transaction(async tx => {
+      const candidate = await tx.propertyImportCandidate.findFirst({ where: { id: candidateId, tenantId, state: 'READY', selected: true } })
+      if (!candidate) return { imported: false }
+      // An already-imported listing is reported as existing before capacity is consulted, so a full plan never hides it.
+      const known = await tx.externalPropertyReference.findFirst({ where: { tenantId, externalSource: 'ZONAPROP', externalId: candidate.externalId }, select: { id: true } })
+      if (known) return { imported: false, existingReferenceId: known.id }
+      const changed = await tx.propertyImportCandidate.updateMany({ where: { id: candidateId, tenantId, state: 'READY', selected: true }, data: { state: 'CONFIRMED' } })
+      if (!changed.count) return { imported: false }
+      const capacity = await this.capacity.acquire(tx, tenantId); await capacity.assertAvailable()
+      const asset = await tx.propertyAsset.create({ data: { title: candidate.title!, addressLine: candidate.addressLine!, city: candidate.city!, province: candidate.province!, propertyType: candidate.propertyType!, totalAreaSqm: candidate.totalAreaSqm, coveredAreaSqm: candidate.coveredAreaSqm, rooms: candidate.rooms, bedrooms: candidate.bedrooms, bathrooms: candidate.bathrooms, garages: candidate.garages, ageYears: candidate.ageYears, orientation: candidate.orientation, ownerName: null, ownerEmail: null, createdByUserId: userId } })
+      const engagement = await tx.propertyEngagement.create({ data: { tenantId, propertyAssetId: asset.id, operationType: candidate.operationType!, publishedPriceCents: candidate.publishedPriceCents, currency: candidate.currency ?? 'ARS', createdByUserId: userId } })
+      const reference = await tx.externalPropertyReference.create({ data: { tenantId, externalSource: 'ZONAPROP', externalId: candidate.externalId, propertyEngagementId: engagement.id } })
+      await tx.propertyImportCandidate.update({ where: { id: candidateId }, data: { state: 'IMPORTED', resultingReferenceId: reference.id, errorReason: null } })
+      return { imported: true, referenceId: reference.id }
+    })
+  }
+  async markCandidate(tenantId: string, candidateId: string, expectedState: PropertyImportCandidateState, data: Prisma.PropertyImportCandidateUncheckedUpdateInput) { await this.prisma.propertyImportCandidate.updateMany({ where: { id: candidateId, tenantId, state: expectedState }, data }) }
 }
