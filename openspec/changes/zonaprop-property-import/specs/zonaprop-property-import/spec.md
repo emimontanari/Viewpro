@@ -4,15 +4,15 @@
 
 ## Requirement: Canonical publisher intake and proof of control
 
-The system MUST accept only recognized HTTPS ZonaProp advertiser URLs, derive publisher identity server-side, and approve a claim only through the automatic proof ladder. Contact name and phone MUST NOT establish control.
+The system MUST accept only recognized HTTPS ZonaProp advertiser URLs and derive publisher identity server-side. Domain equality is context signal only, never proof or approval; every claim MUST require a one-time code sent to the exact trusted provider-published agency address or the bounded listing-description code fallback. Contact name and phone MUST NOT establish control.
 
 ### Scenario: Verified principal-manager domain matches
-- **GIVEN** an active tenant `PRINCIPAL_MANAGER` has a verified non-generic email domain matching ZonaProp's published `agencyEmail` domain
+- **GIVEN** an active same-tenant `PRINCIPAL_MANAGER` has a verified email domain matching ZonaProp's published `agencyEmail` domain
 - **WHEN** the agency submits a valid advertiser URL
-- **THEN** the system binds its parsed publisher ID to the tenant and approves the publisher claim.
+- **THEN** the domain match is a context signal only, the system binds its parsed publisher ID to the tenant, and a proof challenge is still required before any claim approval.
 
 ### Scenario: Email challenge proves exact published address
-- **GIVEN** the domain match is unavailable and no other tenant owns an approved claim
+- **GIVEN** no other tenant owns an approved claim
 - **WHEN** the user enters a valid, unexpired, rate-limit-compliant one-time code sent to the exact published `agencyEmail`
 - **THEN** the system approves the claim and records method and outcome in audit history.
 
@@ -21,10 +21,10 @@ The system MUST accept only recognized HTTPS ZonaProp advertiser URLs, derive pu
 - **WHEN** the publisher places the issued short code in a listing description and the bounded single-listing verification scrape finds it
 - **THEN** the system approves the claim and audits the verification.
 
-### Scenario: Generic or mismatched domain does not auto-approve
-- **GIVEN** published agency email uses a generic domain or does not match a verified principal-manager domain
+### Scenario: Domain match is signal only for all domains
+- **GIVEN** published agency email uses any public or organizational domain, including a match with a verified principal-manager domain
 - **WHEN** a user submits the publisher URL
-- **THEN** automatic domain approval is denied and the proof ladder continues without treating contact name or phone as proof.
+- **THEN** domain equality may provide context but never approves the claim; exact published-address code proof or listing-description code fallback is required, and contact name or phone is not proof.
 
 ### Scenario: Approved publisher already claimed elsewhere
 - **GIVEN** a different tenant has an approved claim for the publisher

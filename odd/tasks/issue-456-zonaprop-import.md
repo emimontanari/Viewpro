@@ -16,7 +16,8 @@ Delivery: `feature-branch-chain` (user-selected) — draft tracker PR to `develo
 - [ ] U2b — Raw payload adapter with captured Córdoba/CABA fixtures and drift contract tests (blocked until the user creates an Apify account).
 - [x] U3a — Fixture-fed staging: batch creation, candidate ingestion from normalized input, states, edit/exclude, listing. Commits `c1c95beb` + `6c262e53`.
 - [x] U3b — Idempotent confirmation: materialization through the canonical create/capacity path, external references, tenant equality, permission revalidation, partial retry, concurrency. Commits `67cca04e` + `825d94ea`.
-- [ ] U4 — Publisher verification ladder.
+- [ ] U4 — Publisher verification ladder (in progress; U4a is only the pure policy slice).
+- [x] U4a — Corrected pure domain signal implementation: normalized exact domain equality is context only; proof is required for all results, including matching public domains. No denylist, provenance acquisition, claim persistence/approval, or challenge flows. **No behavior RED was captured** (initial failure was renamed API export absent); focused suite 16/16, full API suite 185 files / 1,870 tests, tsc, lint, diff check passed. Initial commit `24cca3b58547690da8f30d842dead3fb7c45a976` recorded superseded denylist/eligibility behavior; correction `1735751fc54bf9359a36dffbdd247ac27e1cf80f` removes it. Both native lineages `review-f237378c49ac8a2e` and `review-7d4dba93fb1c51b7` approved/acknowledged. PR #640 is open for child review, not merged. **U4 remains incomplete.**
 - [ ] U5 — Apify runs, webhook and durable work rows.
 - [ ] U6 — R2 image pipeline.
 - [ ] U7 — Review/confirm UI and #459 handoff.
@@ -24,11 +25,7 @@ Delivery: `feature-branch-chain` (user-selected) — draft tracker PR to `develo
 
 ## Decisions
 
-- Publisher verification is an automatic proof-of-control ladder:
-  1. Verified principal-manager email domain matches the non-generic `agencyEmail` domain published by ZonaProp → approved.
-  2. Otherwise, a one-time code is sent through Resend to the exact `agencyEmail` published by ZonaProp; entering it approves.
-  3. Fallback: a short code placed in one of the publisher's listing descriptions, verified by a bounded scrape.
-  Name and phone are displayed signals only. An already-approved claim by another tenant blocks the import with a contact-support message; no live manual review.
+- Publisher domain equality is context signal only and never proof or approval. Every claim requires a one-time code to the exact trusted provider-published agency address; fallback is a short code placed in a publisher listing description, verified by a bounded scrape. Name and phone are displayed signals only, not proof. An already-approved claim by another tenant blocks the import with a contact-support message; no manual operator review or new provider/identity integration.
 - Durable work (accepted): database-backed work rows processed in-process when triggered by the webhook, confirmation or an explicit user retry, and resumed on API startup. No polling or timers. `apps/api` runs as a long-lived Dokploy container.
 
 ## Constraints
@@ -36,6 +33,10 @@ Delivery: `feature-branch-chain` (user-selected) — draft tracker PR to `develo
 Preserve tenant isolation, capacity limits, authorization and audit. No owners import (#459). No network calls in normal tests; fixtures only. Apify account and secrets are needed only for the bounded operational smoke test. Each work unit ≤400 authored lines with tests alongside.
 
 - Accepted limits: 8-digit codes; email code TTL 15 min, listing code TTL 24 h; 5 attempts; resend cooldown 60 s; max 3 sends/hour; HMAC-hashed codes. Images: 10/property, 10 MiB/image, 50 MiB/property, 3 redirects. Raw payload retention 30 days.
+
+## U4a scope boundary
+
+Trusted provider-published agency email, server-side identity/membership retrieval, atomic approved-claim conflict handling, email sender/challenge persistence, and listing-description proof are separate future U4 children. The pure domain signal cannot establish input provenance or approve a claim. U4 is not complete after U4a.
 
 ## Evidence
 
